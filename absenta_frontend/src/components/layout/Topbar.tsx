@@ -3,7 +3,7 @@ import { Menu, Bell, Check, X, Calendar, AlertTriangle, Info, CheckCircle, Credi
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { Button } from '../ui/Button';
-import { Modal } from '../ui/Modal';
+const Modal = React.lazy(() => import('../ui/Modal').then((m) => ({ default: m.Modal })));
 import { useNotifications } from '../../hooks/useNotifications';
 import { useQuery } from '@tanstack/react-query';
 import { fetchActiveSystemConfig } from '@/services/systemConfig';
@@ -282,7 +282,9 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
       </div>
 
         {/* Notification Detail Modal */}
-        <Modal
+        {selectedNotification && (
+          <React.Suspense fallback={null}>
+            <Modal
           isOpen={!!selectedNotification}
           onClose={() => setSelectedNotification(null)}
           title={cleanMessage(selectedNotification?.subject) || 'Detail Notifikasi'}
@@ -351,6 +353,8 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
             </div>
           </div>
         </Modal>
+          </React.Suspense>
+        )}
 
         {/* 🔍 Global Teacher Locator Modal (Lazy-mounted on open) */}
         {locatorModalOpen && (

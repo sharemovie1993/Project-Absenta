@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { create } from 'zustand';
 import { 
   Menu, 
   X, 
@@ -16,104 +14,27 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
-import { ConfirmModal } from '@/components/ui/Modal';
 import { getEcosystemTokens, EcosystemType } from '@/config/bottomNavEcosystems.config';
+const ConfirmModal = React.lazy(() => import('@/components/ui/Modal').then(m => ({ default: m.ConfirmModal })));
 
-// ==========================================
-// 1. Types & Interfaces
-// ==========================================
+export {
+  type UniversalSubtabItem,
+  type UniversalSubtabCategory,
+  normalizeRoleToScope,
+  checkScopeMatchesUrlTab,
+  type MobileSubtabSidebarStore,
+  useMobileSubtabSidebarStore,
+  useMobileSubtabSidebar,
+} from './subtabSidebarStore';
 
-export interface UniversalSubtabItem {
-  id: string;
-  label: string;
-  shortLabel?: string;
-  icon: React.ComponentType<{ className?: string; size?: number }> | React.ComponentType<any>;
-  badge?: number | string;
-  badgeColor?: string;
-  category?: string;
-  description?: string;
-  disabled?: boolean;
-  targetPath?: string;
-}
-
-export interface UniversalSubtabCategory {
-  id: string;
-  label: string;
-  shortLabel?: string;
-  badge?: number | string;
-  badgeColor?: string;
-  icon?: React.ComponentType<{ className?: string; size?: number }> | React.ComponentType<any>;
-}
-
-// ── PURE SCOPE NORMALIZATION & URL TAB RESOLVER ──
-export function normalizeRoleToScope(roleBadge?: string, scope?: string): string {
-  const raw = scope || roleBadge || '';
-  if (!raw) return '';
-  const clean = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (clean === 'portal' || clean.includes('portal') || clean.includes('guru') || clean.includes('pendidik') || clean.includes('pengajar')) return 'portal';
-  if (clean.includes('kaprog')) return 'kaprog';
-  if (clean.includes('wali') || clean.includes('walas')) return 'walas';
-  if (clean.includes('kurikulum')) return 'kurikulum';
-  if (clean.includes('kesiswaan')) return 'kesiswaan';
-  if (clean.includes('sarpras')) return 'sarpras';
-  if (clean.includes('hubin')) return 'hubin';
-  if (clean.includes('bkk')) return 'bkk';
-  if (clean.includes('bp') || clean.includes('bk')) return 'bpbk';
-  if (clean.includes('toolman')) return 'toolman';
-  if (clean.includes('ekskul') || clean.includes('ekstra')) return 'ekskul';
-  if (clean.includes('pkl') || clean.includes('pembimbing')) return 'pembimbing_pkl';
-  if (clean.includes('satpam') || clean.includes('gerbang')) return 'satpam';
-  if (clean.includes('koperasi')) return 'koperasi';
-  if (clean.includes('tatausaha') || clean.includes('tu') || clean.includes('kepegawaian')) return 'tu';
-  if (clean.includes('admin')) return 'admin';
-  if (clean.includes('kepala') || clean.includes('kepsek')) return 'kepsek';
-  if (clean.includes('siswa') || clean.includes('student')) return 'siswa';
-  return clean;
-}
-
-export function checkScopeMatchesUrlTab(scope: string, currentTab: string): boolean {
-  switch (scope) {
-    case 'portal':
-    case 'guru':
-      return !currentTab || ['ringkasan', 'action_hub', 'rekap_mapel', 'jadwal', 'manual_presensi', 'kelola', 'profil'].includes(currentTab);
-    case 'kaprog':
-      return currentTab === 'kaprog';
-    case 'walas':
-      return currentTab === 'binaan' || currentTab === 'walas';
-    case 'kurikulum':
-      return currentTab === 'kurikulum';
-    case 'kesiswaan':
-      return currentTab === 'kesiswaan';
-    case 'sarpras':
-      return currentTab === 'sarpras';
-    case 'hubin':
-      return currentTab === 'hubin';
-    case 'bkk':
-      return currentTab === 'bkk';
-    case 'bpbk':
-      return currentTab === 'bpbk' || currentTab === 'bk';
-    case 'toolman':
-      return currentTab === 'toolman';
-    case 'ekskul':
-      return currentTab === 'ekskul';
-    case 'pembimbing_pkl':
-      return currentTab === 'pembimbing_pkl';
-    case 'satpam':
-      return currentTab === 'satpam' || currentTab === 'gerbang';
-    case 'koperasi':
-      return currentTab === 'koperasi';
-    case 'tu':
-      return currentTab === 'tu' || currentTab === 'kepegawaian';
-    case 'admin':
-      return currentTab === 'admin';
-    case 'kepsek':
-      return currentTab === 'ringkasan' || currentTab === 'kepsek';
-    case 'siswa':
-      return !currentTab || ['ringkasan', 'pkl', 'cbt', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil', 'siswa'].includes(currentTab);
-    default:
-      return true;
-  }
-}
+import {
+  type UniversalSubtabItem,
+  type UniversalSubtabCategory,
+  normalizeRoleToScope,
+  checkScopeMatchesUrlTab,
+  useMobileSubtabSidebarStore,
+  useMobileSubtabSidebar,
+} from './subtabSidebarStore';
 
 export interface UniversalMobileSubtabSidebarProps {
   isOpen: boolean;
@@ -300,7 +221,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
   const isLeft = side === 'left';
 
   return createPortal(
-    <AnimatePresence>
+    <>
       {isEffectivelyOpen && (
         <div 
           className="fixed inset-0 z-[100] lg:hidden flex"
@@ -309,25 +230,17 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
           aria-label={title || 'Menu Subtab Dashboard'}
         >
           {/* 1. Backdrop Overlay */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+          <div
             onClick={onClose}
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs cursor-pointer"
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs cursor-pointer animate-in fade-in duration-200"
             aria-hidden="true"
           />
 
           {/* 2. Slide-Over Mobile Drawer */}
-          <motion.div
-            initial={{ x: isLeft ? '-100%' : '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: isLeft ? '-100%' : '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+          <div
             className={cn(
-              'relative z-10 w-[78vw] max-w-[280px] h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col overflow-hidden',
-              isLeft ? 'mr-auto rounded-r-2xl' : 'ml-auto rounded-l-2xl',
+              'relative z-10 w-[78vw] max-w-[280px] h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col overflow-hidden animate-in duration-200',
+              isLeft ? 'mr-auto rounded-r-2xl slide-in-from-left' : 'ml-auto rounded-l-2xl slide-in-from-right',
               className
             )}
           >
@@ -489,22 +402,26 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
                 <span>Keluar dari Akun (Logout)</span>
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
       {/* Modal Dialog Konfirmasi Logout */}
-      <ConfirmModal
-        isOpen={showLogoutConfirm}
-        onClose={() => setShowLogoutConfirm(false)}
-        onConfirm={handleLogout}
-        title="Konfirmasi Keluar Sesi"
-        message="Apakah Anda yakin ingin keluar dari akun Absenta? Anda harus masuk kembali untuk mengakses fitur sistem."
-        confirmText="Ya, Keluar"
-        cancelText="Batal"
-        variant="danger"
-        zIndex={200}
-      />
-    </AnimatePresence>,
+      {showLogoutConfirm && (
+        <React.Suspense fallback={null}>
+          <ConfirmModal
+            isOpen={showLogoutConfirm}
+            onClose={() => setShowLogoutConfirm(false)}
+            onConfirm={handleLogout}
+            title="Konfirmasi Keluar Sesi"
+            message="Apakah Anda yakin ingin keluar dari akun Absenta? Anda harus masuk kembali untuk mengakses fitur sistem."
+            confirmText="Ya, Keluar"
+            cancelText="Batal"
+            variant="danger"
+            zIndex={200}
+          />
+        </React.Suspense>
+      )}
+    </>,
     document.body
   );
 };
@@ -634,111 +551,3 @@ export const MobileSubtabBar: React.FC<MobileSubtabBarProps> = () => {
 // 5. Convenient State Hook & Global Store
 // ==========================================
 
-export interface MobileSubtabSidebarStore {
-  isOpen: boolean;
-  activeScope: string | null;
-  registeredScopes: string[];
-  registerScope: (scope: string) => void;
-  unregisterScope: (scope: string) => void;
-  open: (scope?: string) => void;
-  close: () => void;
-  toggle: (scope?: string) => void;
-  reset: () => void;
-}
-
-export const useMobileSubtabSidebarStore = create<MobileSubtabSidebarStore>((set) => ({
-  isOpen: false,
-  activeScope: null,
-  registeredScopes: [],
-  registerScope: (scope: string) => set((state) => {
-    const normalized = normalizeRoleToScope(undefined, scope);
-    if (!normalized || state.registeredScopes.includes(normalized)) return state;
-    return { registeredScopes: [...state.registeredScopes, normalized] };
-  }),
-  unregisterScope: (scope: string) => set((state) => {
-    const normalized = normalizeRoleToScope(undefined, scope);
-    if (!normalized) return state;
-    return { registeredScopes: state.registeredScopes.filter((s) => s !== normalized) };
-  }),
-  open: (scope?: string) => set({ 
-    isOpen: true, 
-    activeScope: scope ? normalizeRoleToScope(undefined, scope) : null 
-  }),
-  close: () => set({ isOpen: false, activeScope: null }),
-  toggle: (scope?: string) => set((state) => {
-    const normalized = scope ? normalizeRoleToScope(undefined, scope) : null;
-    if (state.isOpen && (!normalized || state.activeScope === normalized)) {
-      return { isOpen: false, activeScope: null };
-    }
-    return {
-      isOpen: true,
-      activeScope: normalized,
-    };
-  }),
-  reset: () => set({ isOpen: false, activeScope: null, registeredScopes: [] }),
-}));
-
-export function useMobileSubtabSidebar(scopeOrInitialState?: string | boolean) {
-  const scope = typeof scopeOrInitialState === 'string' ? scopeOrInitialState : undefined;
-  const initialOpen = typeof scopeOrInitialState === 'boolean' ? scopeOrInitialState : false;
-
-  const isOpen = useMobileSubtabSidebarStore((state) => state.isOpen);
-  const activeScope = useMobileSubtabSidebarStore((state) => state.activeScope);
-  const openStore = useMobileSubtabSidebarStore((state) => state.open);
-  const closeStore = useMobileSubtabSidebarStore((state) => state.close);
-  const toggleStore = useMobileSubtabSidebarStore((state) => state.toggle);
-
-  const location = useLocation();
-  const currentTab = useMemo(() => {
-    const params = new URLSearchParams(location.search);
-    return params.get('tab') || 'ringkasan';
-  }, [location.search]);
-
-  const normalizedScope = useMemo(() => {
-    return scope ? normalizeRoleToScope(undefined, scope) : undefined;
-  }, [scope]);
-
-  // Daftarkan scope ke global store saat hook aktif
-  useEffect(() => {
-    if (!normalizedScope) return;
-    useMobileSubtabSidebarStore.getState().registerScope(normalizedScope);
-    return () => {
-      useMobileSubtabSidebarStore.getState().unregisterScope(normalizedScope);
-    };
-  }, [normalizedScope]);
-
-  // Validasi kecocokan scope terhadap URL aktif di /dashboard
-  const isScopeActive = useMemo(() => {
-    if (!normalizedScope) return true;
-    if (location.pathname !== '/dashboard' && location.pathname !== '/dashboard/') return true;
-    return checkScopeMatchesUrlTab(normalizedScope, currentTab);
-  }, [normalizedScope, location.pathname, currentTab]);
-
-  useEffect(() => {
-    if (initialOpen && isScopeActive) {
-      openStore(normalizedScope);
-    }
-  }, [initialOpen, isScopeActive, openStore, normalizedScope]);
-
-  // Tutup sidebar saat unmount untuk mencegah sidebar menggantung
-  useEffect(() => {
-    return () => {
-      closeStore();
-    };
-  }, [closeStore]);
-
-  const isMobileSidebarOpen = useMemo(() => {
-    if (!isOpen) return false;
-    if (!isScopeActive) return false;
-    if (activeScope && normalizedScope && activeScope !== normalizedScope) return false;
-    return true;
-  }, [isOpen, isScopeActive, activeScope, normalizedScope]);
-
-  return {
-    isMobileSidebarOpen,
-    setIsMobileSidebarOpen: (openState: boolean) => (openState ? openStore(normalizedScope) : closeStore()),
-    openMobileSidebar: () => openStore(normalizedScope),
-    closeMobileSidebar: closeStore,
-    toggleMobileSidebar: () => toggleStore(normalizedScope),
-  };
-}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ErrorAlert, WarningAlert } from '@/components/ui/Alert';
 import { useAuthStore } from '@/store/authStore';
 import { isSystemSuperAdmin, isPlatformUser } from '@/utils/rbac';
-import { Button } from '@/components/ui';
+import Button from '@/components/ui/Button';
 import { Loader } from '@/components/ui/Loader';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { formatDateShort } from '@/utils/layoutUtils';

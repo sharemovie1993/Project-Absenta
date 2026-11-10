@@ -14,7 +14,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { PetugasRoute } from './components/auth/PetugasRoute';
 import { Loader } from './components/ui/Loader';
 import Button from './components/ui/Button';
-import Modal, { ModalFooter } from './components/ui/Modal';
+
 import RoleSwitch from './components/routing/RoleSwitch';
 
 // Context & Stores
@@ -505,7 +505,7 @@ function App() {
                 }}
               />
               <ScrollToTop />
-              {/* <GlobalSubscriptionIssueModal /> */}
+
             {isLoading ? (
               <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
                 <div className="flex flex-col items-center gap-4">
@@ -1872,49 +1872,7 @@ function App() {
 );
 }
 
-function GlobalSubscriptionIssueModal() {
-  const navigate = useNavigate();
-  const { subscriptionIssueModalOpen, closeSubscriptionIssueModal } = useAuthStore();
 
-  return (
-    <Modal
-      isOpen={subscriptionIssueModalOpen}
-      onClose={closeSubscriptionIssueModal}
-      title="Langganan Tidak Aktif"
-      description="Beberapa fitur tidak bisa digunakan karena status langganan tenant Anda tidak aktif."
-      size="md"
-      zIndex={80}
-    >
-      <div className="space-y-4">
-        <div className="text-sm text-gray-700 dark:text-gray-200">
-          Silakan buka halaman langganan untuk melihat status terbaru dan melakukan aktivasi atau pembayaran.
-        </div>
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          Jika Anda yakin ini tidak sesuai, coba muat ulang atau hubungi tim support.
-        </div>
-        <ModalFooter>
-          <Button
-            variant="outline"
-            onClick={() => {
-              closeSubscriptionIssueModal();
-              window.location.reload();
-            }}
-          >
-            Muat Ulang
-          </Button>
-          <Button
-            onClick={() => {
-              closeSubscriptionIssueModal();
-              navigate('/billing');
-            }}
-          >
-            Buka Halaman Langganan
-          </Button>
-        </ModalFooter>
-      </div>
-    </Modal>
-  );
-}
 
 export default App;
 

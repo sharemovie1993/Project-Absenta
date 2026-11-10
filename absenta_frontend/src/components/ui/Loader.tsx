@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
@@ -31,22 +30,24 @@ export interface LoaderProps
   text?: string;
 }
 
-// Spinner Loader
+// Spinner Loader (Pure GPU-accelerated CSS spin)
 function SpinnerLoader({ size, color, className }: { 
   size?: VariantProps<typeof loaderVariants>['size'];
   color?: VariantProps<typeof loaderVariants>['color'];
   className?: string;
 }) {
   return (
-    <motion.div
-      className={cn(loaderVariants({ size, color }), 'border-2 border-current border-t-transparent rounded-full', className)}
-      animate={{ rotate: 360 }}
-      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+    <div
+      className={cn(
+        loaderVariants({ size, color }),
+        'border-2 border-current border-t-transparent rounded-full animate-spin',
+        className
+      )}
     />
   );
 }
 
-// Dots Loader
+// Dots Loader (Pure CSS pulse)
 function DotsLoader({ size, color, className }: { 
   size?: VariantProps<typeof loaderVariants>['size'];
   color?: VariantProps<typeof loaderVariants>['color'];
@@ -60,20 +61,16 @@ function DotsLoader({ size, color, className }: {
   };
 
   return (
-    <div className={cn('flex space-x-1', className)}>
+    <div className={cn('flex space-x-1 items-center', className)}>
       {[0, 1, 2].map((index) => (
-        <motion.div
+        <div
           key={index}
-          className={cn(dotSize[size || 'default'], 'bg-current rounded-full', loaderVariants({ color }))}
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.7, 1, 0.7],
-          }}
-          transition={{
-            duration: 0.6,
-            repeat: Infinity,
-            delay: index * 0.2,
-          }}
+          className={cn(
+            dotSize[size || 'default'],
+            'bg-current rounded-full animate-pulse',
+            loaderVariants({ color })
+          )}
+          style={{ animationDelay: `${index * 150}ms` }}
         />
       ))}
     </div>
@@ -87,16 +84,8 @@ function PulseLoader({ size, color, className }: {
   className?: string;
 }) {
   return (
-    <motion.div
-      className={cn(loaderVariants({ size, color }), 'bg-current rounded-full', className)}
-      animate={{
-        scale: [1, 1.2, 1],
-        opacity: [0.7, 1, 0.7],
-      }}
-      transition={{
-        duration: 1,
-        repeat: Infinity,
-      }}
+    <div
+      className={cn(loaderVariants({ size, color }), 'bg-current rounded-full animate-ping', className)}
     />
   );
 }
@@ -124,22 +113,15 @@ function BarsLoader({ size, color, className }: {
   return (
     <div className={cn('flex items-end space-x-1', className)}>
       {[0, 1, 2, 3].map((index) => (
-        <motion.div
+        <div
           key={index}
           className={cn(
             barWidth[size || 'default'],
             barHeight[size || 'default'],
-            'bg-current',
+            'bg-current animate-pulse',
             loaderVariants({ color })
           )}
-          animate={{
-            scaleY: [1, 0.3, 1],
-          }}
-          transition={{
-            duration: 0.8,
-            repeat: Infinity,
-            delay: index * 0.1,
-          }}
+          style={{ animationDelay: `${index * 120}ms` }}
         />
       ))}
     </div>

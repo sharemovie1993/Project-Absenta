@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui';
+import Button from '@/components/ui/Button';
 import { CreditCard, ArrowRight, Lock, Sparkles } from 'lucide-react';
 import { getSubscriptionsByTenant, getMySubscription } from '@/api/subscription.api';
 import { formatCurrency } from '@/lib/billingUtils';
@@ -118,10 +117,8 @@ export const PendingPaymentBlocker = () => {
     };
 
     return (
-        <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-xl border border-amber-200 dark:border-amber-900/50 bg-gradient-to-r from-amber-50 via-white to-amber-50 dark:from-amber-950/20 dark:via-slate-900 dark:to-amber-950/20 shadow-sm mb-6"
+        <div 
+            className="relative overflow-hidden rounded-xl border border-amber-200 dark:border-amber-900/50 bg-gradient-to-r from-amber-50 via-white to-amber-50 dark:from-amber-950/20 dark:via-slate-900 dark:to-amber-950/20 shadow-sm mb-6 animate-in fade-in slide-in-from-top-4 duration-300"
         >
             {/* Decorative background sparkles */}
             <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
@@ -185,6 +182,6 @@ export const PendingPaymentBlocker = () => {
                     </Button>
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 };

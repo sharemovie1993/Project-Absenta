@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useState } from 'react';
-import ConfirmDialog from '@/components/ui/ConfirmDialog';
+const ConfirmDialog = React.lazy(() => import('@/components/ui/ConfirmDialog'));
 
 interface ConfirmOptions {
   title?: React.ReactNode;
@@ -77,19 +77,23 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   return (
     <ConfirmContext.Provider value={{ confirm, setConfirmLoading }}>
       {children}
-      <ConfirmDialog
-        isOpen={open}
-        title={options.title}
-        description={options.description}
-        confirmText={options.confirmText}
-        cancelText={options.cancelText}
-        style={options.style}
-        loading={loading}
-        progress={progress}
-        progressLabel={options.progressLabel}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
-      />
+      {open && (
+        <React.Suspense fallback={null}>
+          <ConfirmDialog
+            isOpen={open}
+            title={options.title}
+            description={options.description}
+            confirmText={options.confirmText}
+            cancelText={options.cancelText}
+            style={options.style}
+            loading={loading}
+            progress={progress}
+            progressLabel={options.progressLabel}
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+          />
+        </React.Suspense>
+      )}
     </ConfirmContext.Provider>
   );
 }

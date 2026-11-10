@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { 
   CheckCircle, 
@@ -72,7 +71,7 @@ const AlertDescription = React.forwardRef<
 ));
 AlertDescription.displayName = 'AlertDescription';
 
-// Enhanced Alert with icon and dismiss functionality
+// Enhanced Alert with icon and dismiss functionality (Pure CSS animation)
 export interface EnhancedAlertProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof alertVariants> {
@@ -120,35 +119,28 @@ function EnhancedAlert({
 
   const IconComponent = Icon || getDefaultIcon();
 
+  if (!isVisible) return null;
+
   return (
-    <AnimatePresence>
-      {isVisible && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
-        >
-          <Alert variant={variant} size={size} className={className} {...props}>
-            <IconComponent className="h-4 w-4" />
-            {dismissible && (
-              <button
-                onClick={handleDismiss}
-                className="absolute right-2 top-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
-              >
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </button>
-            )}
-            <div className={dismissible ? 'pr-6' : ''}>
-              {title && <AlertTitle>{title}</AlertTitle>}
-              {description && <AlertDescription>{description}</AlertDescription>}
-              {children}
-            </div>
-          </Alert>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <div className={cn('animate-in fade-in slide-in-from-top-2 duration-200', className)}>
+      <Alert variant={variant} size={size} {...props}>
+        <IconComponent className="h-4 w-4" />
+        {dismissible && (
+          <button
+            onClick={handleDismiss}
+            className="absolute right-2 top-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
+        )}
+        <div className={dismissible ? 'pr-6' : ''}>
+          {title && <AlertTitle>{title}</AlertTitle>}
+          {description && <AlertDescription>{description}</AlertDescription>}
+          {children}
+        </div>
+      </Alert>
+    </div>
   );
 }
 
