@@ -11,6 +11,7 @@ import { Controller } from 'react-hook-form';
 import { JENIS_KELAMIN_OPTIONS, AGAMA_OPTIONS } from '../../../../api/dropdown.api';
 import { useProvinsiOptions, useKabupatenOptions, useKecamatanOptions, useKelurahanOptions } from '../../../../hooks/useWilayahOptions';
 import { SectionCard, DetailRow } from './FormShared';
+import { FieldDocumentTrigger } from '../../../documents/FieldDocumentTrigger';
 import { requestWithFallback } from '../../../../api/apiUtils';
 import toast from 'react-hot-toast';
 import { resolveProfilePhotoUrl } from '../../../../lib/utils';
@@ -313,11 +314,38 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
         <>
           <SectionCard title="Identitas Personal" icon={User}>
             <DetailRow icon={<Hash size={16} />} label="NIP" value={watch('nip')} />
-            <DetailRow icon={<CreditCard size={16} />} label="NIK (KTP)" value={watch('nik')} />
-            <DetailRow icon={<CreditCard size={16} />} label="No. Kartu Keluarga" value={watch('no_kk')} />
+            <DetailRow 
+              icon={<CreditCard size={16} />} 
+              label="NIK (KTP)" 
+              value={
+                <div className="flex items-center justify-between gap-2 w-full">
+                  <span>{watch('nik') || '-'}</span>
+                  {guruId && <FieldDocumentTrigger entityType="GURU" entityId={guruId} entityName={watch('nama')} kategori="KTP" label="KTP" disabled={false} />}
+                </div>
+              } 
+            />
+            <DetailRow 
+              icon={<CreditCard size={16} />} 
+              label="No. Kartu Keluarga" 
+              value={
+                <div className="flex items-center justify-between gap-2 w-full">
+                  <span>{watch('no_kk') || '-'}</span>
+                  {guruId && <FieldDocumentTrigger entityType="GURU" entityId={guruId} entityName={watch('nama')} kategori="KK" label="KK" disabled={false} />}
+                </div>
+              } 
+            />
             <DetailRow icon={<CreditCard size={16} />} label="NUPTK" value={watch('nuptk')} />
             <DetailRow icon={<CreditCard size={16} />} label="NPWP" value={watch('npwp')} />
-            <DetailRow icon={<User size={16} />} label="Nama Lengkap" value={watch('nama')} />
+            <DetailRow 
+              icon={<User size={16} />} 
+              label="Nama Lengkap" 
+              value={
+                <div className="flex items-center justify-between gap-2 w-full">
+                  <span>{watch('nama')}</span>
+                  {guruId && <FieldDocumentTrigger entityType="GURU" entityId={guruId} entityName={watch('nama')} kategori="SK" label="SK / Karpeg" disabled={false} />}
+                </div>
+              } 
+            />
             <DetailRow icon={<User size={16} />} label="Nama Ibu Kandung" value={watch('nama_ibu_kandung')} />
             <DetailRow icon={<Mail size={16} />} label="Email" value={watch('email')} />
             <DetailRow icon={<Phone size={16} />} label="Nomor WhatsApp" value={watch('no_hp')} />
@@ -345,11 +373,35 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
               {errors.nip && <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.nip.message}</p>}
             </div>
             <div className="space-y-2 group">
-              <Label htmlFor="nik" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">NIK (KTP 16 Digit)</Label>
+              <div className="flex items-center justify-between px-1">
+                <Label htmlFor="nik" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">NIK (KTP 16 Digit)</Label>
+                {guruId && (
+                  <FieldDocumentTrigger
+                    entityType="GURU"
+                    entityId={guruId}
+                    entityName={watch('nama')}
+                    kategori="KTP"
+                    label="KTP"
+                    disabled={isViewMode}
+                  />
+                )}
+              </div>
               <Input id="nik" {...register('nik')} placeholder="3204xxxxxxxxxxxx" disabled={isViewMode} className="h-10 text-[13px] font-mono font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl" />
             </div>
             <div className="space-y-2 group">
-              <Label htmlFor="no_kk" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">No. Kartu Keluarga (KK)</Label>
+              <div className="flex items-center justify-between px-1">
+                <Label htmlFor="no_kk" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">No. Kartu Keluarga (KK)</Label>
+                {guruId && (
+                  <FieldDocumentTrigger
+                    entityType="GURU"
+                    entityId={guruId}
+                    entityName={watch('nama')}
+                    kategori="KK"
+                    label="KK"
+                    disabled={isViewMode}
+                  />
+                )}
+              </div>
               <Input id="no_kk" {...register('no_kk')} placeholder="16-digit No. KK..." disabled={isViewMode} className="h-10 text-[13px] font-mono font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl" />
             </div>
             <div className="space-y-2 group">
@@ -361,7 +413,19 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
               <Input id="npwp" {...register('npwp')} placeholder="Nomor NPWP Guru..." disabled={isViewMode} className="h-10 text-[13px] font-mono font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl" />
             </div>
             <div className="space-y-2 group">
-              <Label htmlFor="nama" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Nama Lengkap <span className="text-rose-500">*</span></Label>
+              <div className="flex items-center justify-between px-1">
+                <Label htmlFor="nama" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Nama Lengkap <span className="text-rose-500">*</span></Label>
+                {guruId && (
+                  <FieldDocumentTrigger
+                    entityType="GURU"
+                    entityId={guruId}
+                    entityName={watch('nama')}
+                    kategori="SK"
+                    label="SK / Karpeg"
+                    disabled={isViewMode}
+                  />
+                )}
+              </div>
               <Input id="nama" {...register('nama')} placeholder="Entry Nama Lengkap..." disabled={isViewMode} className="h-10 text-[13px] font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl shadow-inner" />
               {errors.nama && <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.nama.message}</p>}
             </div>

@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { Button, Input, Badge, Loader, Modal } from '@/components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { SiswaDetailModal } from '@/components/academic/siswa/SiswaDetailModal';
+import { FieldDocumentTrigger } from '@/components/documents/FieldDocumentTrigger';
 import {
   getDapodikServerInfo,
   getDapodikConfig,
@@ -1225,19 +1226,35 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
 
             <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
               {inspectedStudent.absentaRaw ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const targetId = inspectedStudent.absentaRaw?.id || inspectedStudent.id;
-                    setSelectedSiswaDetailId(targetId);
-                  }}
-                  className="gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer"
-                >
-                  <User className="w-3.5 h-3.5" />
-                  <span>Buka Profil Siswa (Mutasi &amp; Berkas)</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const targetId = inspectedStudent.absentaRaw?.id || inspectedStudent.id;
+                      setSelectedSiswaDetailId(targetId);
+                    }}
+                    className="gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer"
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>Buka Profil Siswa</span>
+                  </Button>
+                  <FieldDocumentTrigger
+                    entityType="SISWA"
+                    entityId={inspectedStudent.absentaRaw.id || inspectedStudent.id}
+                    entityName={inspectedStudent.nama}
+                    kategori="KK"
+                    label="KK"
+                  />
+                  <FieldDocumentTrigger
+                    entityType="SISWA"
+                    entityId={inspectedStudent.absentaRaw.id || inspectedStudent.id}
+                    entityName={inspectedStudent.nama}
+                    kategori="AKTA"
+                    label="Akta"
+                  />
+                </div>
               ) : (
                 <div />
               )}

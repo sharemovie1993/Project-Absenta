@@ -24,6 +24,7 @@ import {
 } from '../../../../hooks/useWilayahOptions';
 import { SiswaFormValues } from '../../../../schemas/academic/siswa.schema';
 import { SectionCard, DetailRow } from './FormShared';
+import { FieldDocumentTrigger } from '../../../documents/FieldDocumentTrigger';
 import { requestWithFallback } from '../../../../api/apiUtils';
 import toast from 'react-hot-toast';
 import { resolveProfilePhotoUrl } from '../../../../lib/utils';
@@ -383,9 +384,36 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
 
                 <SectionCard title="Informasi Pribadi Siswa" icon={UserIcon}>
                     <DetailRow icon={<Hash size={16} />} label="NIS" value={watch('nis')} />
-                    <DetailRow icon={<Hash size={16} />} label="NISN" value={watch('nisn') || '-'} />
-                    <DetailRow icon={<Hash size={16} />} label="NIK" value={watch('nik') || '-'} />
-                    <DetailRow icon={<UserIcon size={16} />} label="Nama Lengkap" value={watch('nama_siswa')} />
+                    <DetailRow 
+                        icon={<Hash size={16} />} 
+                        label="NISN" 
+                        value={
+                            <div className="flex items-center justify-between gap-2 w-full">
+                                <span>{watch('nisn') || '-'}</span>
+                                {siswaId && <FieldDocumentTrigger entityType="SISWA" entityId={siswaId} entityName={watch('nama_siswa')} kategori="NISN" label="Kartu NISN" disabled={false} />}
+                            </div>
+                        } 
+                    />
+                    <DetailRow 
+                        icon={<Hash size={16} />} 
+                        label="NIK" 
+                        value={
+                            <div className="flex items-center justify-between gap-2 w-full">
+                                <span>{watch('nik') || '-'}</span>
+                                {siswaId && <FieldDocumentTrigger entityType="SISWA" entityId={siswaId} entityName={watch('nama_siswa')} kategori="KK" label="KK" disabled={false} />}
+                            </div>
+                        } 
+                    />
+                    <DetailRow 
+                        icon={<UserIcon size={16} />} 
+                        label="Nama Lengkap" 
+                        value={
+                            <div className="flex items-center justify-between gap-2 w-full">
+                                <span>{watch('nama_siswa')}</span>
+                                {siswaId && <FieldDocumentTrigger entityType="SISWA" entityId={siswaId} entityName={watch('nama_siswa')} kategori="AKTA" label="Akta Lahir" disabled={false} />}
+                            </div>
+                        } 
+                    />
                     <DetailRow icon={<UserIcon size={16} />} label="Tinggi Badan" value={watch('tinggi_badan') ? `${watch('tinggi_badan')} cm` : '-'} />
                     <DetailRow icon={<UserIcon size={16} />} label="Berat Badan" value={watch('berat_badan') ? `${watch('berat_badan')} kg` : '-'} />
                     <DetailRow icon={<Mail size={16} />} label="Email Pengguna (User)" value={watch('email') || '-'} />
@@ -484,6 +512,16 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                         <Label htmlFor="nisn" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                             NISN (Nasional)
                         </Label>
+                        {siswaId && (
+                            <FieldDocumentTrigger
+                                entityType="SISWA"
+                                entityId={siswaId}
+                                entityName={watch('nama_siswa')}
+                                kategori="NISN"
+                                label="Bukti NISN"
+                                disabled={isViewMode}
+                            />
+                        )}
                     </div>
                     <Input
                         id="nisn"
@@ -502,6 +540,16 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                         <Label htmlFor="nik" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                             NIK (Nomor Induk Kependudukan)
                         </Label>
+                        {siswaId && (
+                            <FieldDocumentTrigger
+                                entityType="SISWA"
+                                entityId={siswaId}
+                                entityName={watch('nama_siswa')}
+                                kategori="KK"
+                                label="Kartu Keluarga (KK)"
+                                disabled={isViewMode}
+                            />
+                        )}
                     </div>
                     <Input
                         id="nik"
@@ -663,6 +711,16 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                         <Label htmlFor="nama_siswa" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                             Nama Lengkap <span className="text-rose-500">*</span>
                         </Label>
+                        {siswaId && (
+                            <FieldDocumentTrigger
+                                entityType="SISWA"
+                                entityId={siswaId}
+                                entityName={watch('nama_siswa')}
+                                kategori="AKTA"
+                                label="Akta Lahir"
+                                disabled={isViewMode}
+                            />
+                        )}
                     </div>
                     <Input
                         id="nama_siswa"
