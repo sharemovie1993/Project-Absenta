@@ -310,7 +310,12 @@ export default function CbtExamRoomPage() {
     };
 
     const handleWindowBlur = async () => {
-      await triggerViolation('BLUR_WINDOW', 'Kursor keluar dari jendela aplikasi ujian');
+      // Pada smartphone/tablet (data selular & WiFi), popup sistem (baterai, SMS) & keyboard virtual memicu window.blur.
+      // Deteksi kecurangan buka aplikasi lain/tab lain pada mobile dijamin 100% oleh document.hidden (visibilitychange).
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      if (!isTouchDevice) {
+        await triggerViolation('BLUR_WINDOW', 'Kursor keluar dari jendela aplikasi ujian');
+      }
     };
 
     const handleFullscreenChange = async () => {
