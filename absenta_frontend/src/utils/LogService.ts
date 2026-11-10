@@ -21,7 +21,7 @@ class LogServiceClass {
   private static instance: LogServiceClass;
   private logs: LogEntry[] = [];
   private maxLogs: number = 1000;
-  private isProduction: boolean = ((globalThis as any).process?.env?.NODE_ENV ?? '').toLowerCase() === 'production';
+  private isProduction: boolean = Boolean(import.meta.env?.PROD);
   private sensitiveKeys = [
     // payment and secrets
     'payment_method', 'payment_reference', 'card_number', 'cvv', 'bank_account',

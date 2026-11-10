@@ -260,9 +260,11 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
   ], []);
 
   const defaultStatusSiswaOptions: SearchableSelectOption[] = useMemo(() => [
-    { value: '', label: 'Semua' },
+    { value: '', label: 'Semua Status' },
     { value: 'AKTIF', label: 'Aktif' },
+    { value: 'TIDAK_AKTIF', label: 'Tidak Aktif' },
     { value: 'LULUS', label: 'Lulus' },
+    { value: 'PINDAH', label: 'Pindah' },
     { value: 'MUTASI', label: 'Mutasi' },
     { value: 'KELUAR', label: 'Keluar' },
   ], []);

@@ -55,9 +55,12 @@ export const bukuIndukApi = {
   getList: async (params: {
     tahun_pelajaran_id?: string;
     kelas_id?: string;
+    jurusan_id?: string;
+    tingkat?: string;
     angkatan?: string;
     search?: string;
     status?: string;
+    gender?: string;
     page?: number;
     limit?: number;
   }): Promise<BukuIndukPaginatedResponse> => {
@@ -75,6 +78,7 @@ export const bukuIndukApi = {
     tingkat?: string;
     angkatan?: string;
     status?: string;
+    gender?: string;
     search?: string;
     huruf?: string;
     page?: number;

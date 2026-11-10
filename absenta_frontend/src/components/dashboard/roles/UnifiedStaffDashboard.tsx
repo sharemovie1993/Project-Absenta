@@ -6,7 +6,7 @@ import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+
 import { useSessionWindowAlert } from '../../../hooks/attendance/useSessionWindowAlert';
 import { 
   User, 
@@ -56,7 +56,7 @@ import {
 
 // Components
 import { type QuickAction } from '../shared/QuickActionGrid';
-import Modal from '../../ui/Modal';
+const Modal = React.lazy(() => import('../../ui/Modal'));
 import Badge from '../../ui/Badge';
 import Button from '../../ui/Button';
 import { Loader } from '../../ui/Loader';
@@ -67,7 +67,8 @@ import { usePiketIzinKeluarOptions } from '../../../hooks/usePiketIzinKeluarOpti
 import { tenantApi } from '../../../api/tenants.api';
 import { raporApi } from '../../../api/rapor.api';
 import { useNavStore } from '../../../store/navStore';
-import { useMobileSubtabSidebarStore } from './common/UniversalMobileSubtabSidebar';
+import { useMobileSubtabSidebarStore } from './common/subtabSidebarStore';
+import { useGuruMe } from '../../../hooks/useGuruMe';
 
 // Lazy-Loaded Heavy Modals (Zero Network Leak on Initial Load)
 const JurnalKbmModal = React.lazy(() => import('../../kurikulum/JurnalKbmModal').then(m => ({ default: m.JurnalKbmModal })));
@@ -179,13 +180,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
   } = useCapabilities();
 
   // ── 2. Base Data ──────────────────────────────────────────────────────────────
-  const { data: guruProfileRes, refetch: refetchGuruProfile } = useQuery({
-    queryKey: ['guru-profile-me'],
-    queryFn: () => guruApi.getMe(),
-    enabled: !!user?.id,
-    staleTime: 10 * 60 * 1000,
-  });
-  const guruProfile = guruProfileRes?.data as any;
+  const { guruProfile, refetch: refetchGuruProfile } = useGuruMe();
 
   // Query P5 Projects for facilitator role
   const { data: myP5ProjectsRes } = useQuery({
@@ -1205,11 +1200,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
           </Suspense>
         )}
         {selectedSesi && (
-          <Modal isOpen={!!selectedSesi} onClose={() => setSelectedSesi(null)} title="Presensi Sesi KBM">
-            <Suspense fallback={<div className="py-8 flex justify-center"><Loader /></div>}>
-              <SesiAttendanceList sesiId={selectedSesi.id} sesi={selectedSesi} />
-            </Suspense>
-          </Modal>
+          <Suspense fallback={null}>
+            <Modal isOpen={!!selectedSesi} onClose={() => setSelectedSesi(null)} title="Presensi Sesi KBM">
+              <Suspense fallback={<div className="py-8 flex justify-center"><Loader /></div>}>
+                <SesiAttendanceList sesiId={selectedSesi.id} sesi={selectedSesi} />
+              </Suspense>
+            </Modal>
+          </Suspense>
         )}
         {catatModalOpen && (
           <React.Suspense fallback={null}>
@@ -1814,11 +1811,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
         </Suspense>
       )}
       {selectedSesi && (
-        <Modal isOpen={!!selectedSesi} onClose={() => setSelectedSesi(null)} title="Presensi Sesi KBM">
-          <Suspense fallback={<div className="py-8 flex justify-center"><Loader /></div>}>
-            <SesiAttendanceList sesiId={selectedSesi.id} sesi={selectedSesi} />
-          </Suspense>
-        </Modal>
+        <Suspense fallback={null}>
+          <Modal isOpen={!!selectedSesi} onClose={() => setSelectedSesi(null)} title="Presensi Sesi KBM">
+            <Suspense fallback={<div className="py-8 flex justify-center"><Loader /></div>}>
+              <SesiAttendanceList sesiId={selectedSesi.id} sesi={selectedSesi} />
+            </Suspense>
+          </Modal>
+        </Suspense>
       )}
       {catatModalOpen && (
         <React.Suspense fallback={null}>

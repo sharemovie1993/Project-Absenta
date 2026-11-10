@@ -54,10 +54,8 @@ import {
   AdminCategoryConfig 
 } from './admin/types';
 import { AdminDashboardSkeleton } from './admin/AdminDashboardSkeleton';
-import { 
-  UniversalMobileSubtabSidebar, 
-  useMobileSubtabSidebar 
-} from './common/UniversalMobileSubtabSidebar';
+import { useMobileSubtabSidebar } from './common/subtabSidebarStore';
+const UniversalMobileSubtabSidebar = React.lazy(() => import('./common/UniversalMobileSubtabSidebar').then(m => ({ default: m.UniversalMobileSubtabSidebar })));
 
 // Default Tab Component (Directly imported with AdminDashboard to eliminate nested lazy waterfall delay)
 import { AdminRingkasanTab } from './admin/tabs/AdminRingkasanTab';
@@ -527,57 +525,59 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
 
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
         {isMobileSidebarOpen && (
-          <UniversalMobileSubtabSidebar
-            isOpen={isMobileSidebarOpen}
-            onClose={() => setIsMobileSidebarOpen(false)}
-            title="Panel Administrator"
-            subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
-            roleBadge="ADMINISTRATOR"
-            scope="admin"
-            roleIcon={ShieldCheck}
-            tabs={navTabs}
-            activeTab={activeTab}
-            onSelectTab={(tabId) => handleTabSelect(tabId as AdminTabId)}
-            categories={categories}
-            headerExtra={
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileSidebarOpen(false);
-                  useRoleDashboardSwitcherStore.getState().open();
-                }}
-                className="w-full p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/70 dark:to-purple-950/70 text-indigo-700 dark:text-indigo-300 hover:brightness-105 flex items-center justify-between shadow-2xs transition-all cursor-pointer group select-none"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
-                    <Sparkles size={14} />
+          <React.Suspense fallback={null}>
+            <UniversalMobileSubtabSidebar
+              isOpen={isMobileSidebarOpen}
+              onClose={() => setIsMobileSidebarOpen(false)}
+              title="Panel Administrator"
+              subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
+              roleBadge="ADMINISTRATOR"
+              scope="admin"
+              roleIcon={ShieldCheck}
+              tabs={navTabs}
+              activeTab={activeTab}
+              onSelectTab={(tabId) => handleTabSelect(tabId as AdminTabId)}
+              categories={categories}
+              headerExtra={
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileSidebarOpen(false);
+                    useRoleDashboardSwitcherStore.getState().open();
+                  }}
+                  className="w-full p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/70 dark:to-purple-950/70 text-indigo-700 dark:text-indigo-300 hover:brightness-105 flex items-center justify-between shadow-2xs transition-all cursor-pointer group select-none"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                      <Sparkles size={14} />
+                    </div>
+                    <div className="text-left min-w-0">
+                      <p className="text-xs font-black leading-tight text-slate-900 dark:text-white truncate">
+                        Pusat Dashboard Divisi
+                      </p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        Pilih 12+ Dashboard Sekolah
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-left min-w-0">
-                    <p className="text-xs font-black leading-tight text-slate-900 dark:text-white truncate">
-                      Pusat Dashboard Divisi
-                    </p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      Pilih 12+ Dashboard Sekolah
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight size={15} className="text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-              </button>
-            }
-            footerExtra={
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileSidebarOpen(false);
-                  navigate('/dashboard');
-                }}
-                className="w-full py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-[0.98]"
-              >
-                <Home size={15} className="stroke-[2.2]" />
-                <span>Beranda Portal</span>
-              </button>
-            }
-          />
+                  <ChevronRight size={15} className="text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                </button>
+              }
+              footerExtra={
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileSidebarOpen(false);
+                    navigate('/dashboard');
+                  }}
+                  className="w-full py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+                >
+                  <Home size={15} className="stroke-[2.2]" />
+                  <span>Beranda Portal</span>
+                </button>
+              }
+            />
+          </React.Suspense>
         )}
       </div>
 

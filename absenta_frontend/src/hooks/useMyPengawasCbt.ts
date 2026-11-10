@@ -10,7 +10,7 @@ export function useMyPengawasCbt() {
     user?.guru_profile?.id ||
     (user as any)?.guru_id ||
     (user as any)?.ptk_id ||
-    user?.id;
+    null;
 
   const { data: myPengawasCbtData, isLoading, refetch } = useQuery<CbtJadwalUjian[]>({
     queryKey: ['my-pengawas-cbt-schedules', effectiveGuruId],
