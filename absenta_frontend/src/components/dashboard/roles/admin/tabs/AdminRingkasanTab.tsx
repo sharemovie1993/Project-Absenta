@@ -25,7 +25,8 @@ import {
   AlertCircle,
   BarChart2,
   PlusCircle,
-  ArrowRight
+  ArrowRight,
+  Database,
 } from 'lucide-react';
 import { 
   HubCard, 
@@ -224,6 +225,13 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
         icon: Users,
         iconColorClass: 'text-indigo-600 dark:text-indigo-400',
         onClick: () => onNavigateSubtab?.('siswa'),
+      },
+      {
+        id: 'dapodik',
+        label: 'Integrasi Dapodik',
+        icon: Database,
+        iconColorClass: 'text-cyan-600 dark:text-cyan-400',
+        onClick: () => onNavigateSubtab?.('dapodik'),
       },
       {
         id: 'guru',

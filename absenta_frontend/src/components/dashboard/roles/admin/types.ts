@@ -10,6 +10,7 @@ export type AdminTabId =
   | 'mapel'
   | 'guru'
   | 'siswa'
+  | 'dapodik'
   | 'dokumen'
   | 'berkas_ptk'
   | 'jenis_kegiatan'

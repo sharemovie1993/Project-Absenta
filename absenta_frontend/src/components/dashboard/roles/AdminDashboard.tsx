@@ -63,6 +63,7 @@ import { AdminRingkasanTab } from './admin/tabs/AdminRingkasanTab';
 
 // Lazy-loaded Universal Pages (Pilar 21B & TBT Optimization)
 const SiswaPage = lazy(() => import('@/pages/academic/SiswaPage').then((m) => ({ default: m.SiswaPage })));
+const DapodikIntegrationPage = lazy(() => import('@/pages/academic/DapodikIntegrationPage').then((m) => ({ default: m.DapodikIntegrationPage || m.default })));
 const GuruPage = lazy(() => import('@/pages/academic/GuruPage').then((m) => ({ default: m.GuruPage })));
 const KelasPage = lazy(() => import('@/pages/academic/KelasPage').then((m) => ({ default: m.KelasPage })));
 const JurusanPage = lazy(() => import('@/pages/academic/JurusanPage').then((m) => ({ default: m.JurusanPage })));
@@ -112,6 +113,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     'mapel',
     'guru',
     'siswa',
+    'dapodik',
     'dokumen',
     'berkas_ptk',
     'jenis_kegiatan',
@@ -294,6 +296,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         shortLabel: 'Siswa',
         category: 'master',
         icon: GraduationCap,
+      },
+      {
+        id: 'dapodik',
+        label: 'Integrasi Dapodik',
+        shortLabel: 'Dapodik',
+        category: 'master',
+        icon: Database,
       },
       {
         id: 'dokumen',
@@ -864,6 +873,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                 }
               >
                 <SiswaPage />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB: INTEGRASI DAPODIK */}
+          {visitedTabs.has('dapodik') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'dapodik'}
+              className={cn('w-full min-w-0', activeTab === 'dapodik' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Integrasi & Audit Dapodik...</span>
+                  </div>
+                }
+              >
+                <DapodikIntegrationPage />
               </Suspense>
             </div>
           )}
