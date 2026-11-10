@@ -27,10 +27,16 @@ export async function dapodikRoutes(fastify: any) {
     handler: dapodikController.testConnection.bind(dapodikController),
   });
 
-  // 5. Jalankan Diff Engine / Komparasi Siswa
+  // 5. Jalankan Diff Engine / Komparasi Siswa (Mendukung source_mode: LIVE | STAGING)
   fastify.get('/compare-students', {
     preHandler: [requireCapability('academic.dapodik.view'), determineDataScope()],
     handler: dapodikController.compareStudents.bind(dapodikController),
+  });
+
+  // 5b. Metadata Storage Staging Platform
+  fastify.get('/staging-meta', {
+    preHandler: [requireCapability('academic.dapodik.view'), determineDataScope()],
+    handler: dapodikController.getStagingMeta.bind(dapodikController),
   });
 
   // 6. Eksekusi Sinkronisasi / Pemutakhiran Siswa

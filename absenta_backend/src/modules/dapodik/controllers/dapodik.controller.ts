@@ -1,4 +1,4 @@
-import { dapodikService } from '../services/dapodik.service';
+import { dapodikService, DapodikService } from '../services/dapodik.service';
 
 export const dapodikController = {
   /**
@@ -117,8 +117,9 @@ export const dapodikController = {
       };
 
       const forceRefresh = q.force_refresh === 'true' || q.force_refresh === true;
+      const sourceMode: 'LIVE' | 'STAGING' = (q.source_mode || 'LIVE').toUpperCase() === 'STAGING' ? 'STAGING' : 'LIVE';
 
-      const report = await dapodikService.compareStudents(tenantId, options, forceRefresh);
+      const report = await dapodikService.compareStudents(tenantId, options, forceRefresh, sourceMode);
       return reply.status(200).send({
         success: true,
         data: report,
@@ -127,6 +128,26 @@ export const dapodikController = {
       return reply.status(500).send({
         success: false,
         message: err.message || 'Gagal menjalankan komparasi data siswa',
+      });
+    }
+  },
+
+  /**
+   * Mengambil Metadata Staging Storage di Platform
+   */
+  async getStagingMeta(request: any, reply: any) {
+    try {
+      const user = request.user!;
+      const tenantId = user.tenantId || user.tenant_id;
+      const meta = DapodikService.getStagingMeta(tenantId);
+      return reply.status(200).send({
+        success: true,
+        data: meta,
+      });
+    } catch (err: any) {
+      return reply.status(500).send({
+        success: false,
+        message: err.message || 'Gagal mengambil metadata staging platform',
       });
     }
   },

@@ -9,10 +9,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Key, CheckCircle2, AlertTriangle, Download, RefreshCw, 
   Copy, Check, Users, School, Eye,
-  HelpCircle, Search, ArrowRight, Database, Server,
+  HelpCircle, Search, ArrowRight, Database, Server, HardDrive,
   SlidersHorizontal, Settings2,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock, Sparkles,
-  Printer, Bookmark, User, ExternalLink, X
+  Printer, Bookmark, User, ExternalLink, X, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -91,6 +91,9 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   // Audit Template State
   const [activeTemplateId, setActiveTemplateId] = useState<string>('full_audit');
 
+  // Source Mode: 'LIVE' (Real-time port 5774) vs 'STAGING' (Snapshot Platform di Server Absenta)
+  const [sourceMode, setSourceMode] = useState<'LIVE' | 'STAGING'>('LIVE');
+
   // Selection State
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
 
@@ -138,7 +141,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     }
   }, [configData]);
 
-  // 3. Fetch Comparison Data (Secara Default Menggunakan In-Memory Snapshot Cache Backend)
+  // 3. Fetch Comparison Data (Mendukung Switch Mode: LIVE vs STAGING)
   const {
     data: comparisonData,
     isLoading: isLoadingComparison,
@@ -146,8 +149,8 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     refetch: refetchComparison,
     error: comparisonError,
   } = useQuery({
-    queryKey: ['dapodik-student-comparison', compareOptions],
-    queryFn: () => getDapodikStudentComparison(compareOptions, false),
+    queryKey: ['dapodik-student-comparison', compareOptions, sourceMode],
+    queryFn: () => getDapodikStudentComparison(compareOptions, false, sourceMode),
     enabled: Boolean(configData?.data?.is_configured),
     staleTime: 5 * 60 * 1000, // 5 menit cache di client
   });
@@ -159,12 +162,12 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     setIsFetchingFresh(true);
     const toastId = toast.loading('Sedang menghubungi Web Service Dapodik port 5774...');
     try {
-      const res = await getDapodikStudentComparison(compareOptions, true);
+      const res = await getDapodikStudentComparison(compareOptions, true, 'LIVE');
       // Perbarui cache TanStack Query
-      queryClient.setQueryData(['dapodik-student-comparison', compareOptions], res);
+      queryClient.setQueryData(['dapodik-student-comparison', compareOptions, sourceMode], res);
       queryClient.invalidateQueries({ queryKey: ['dapodik-config'] });
       toast.success(
-        `Berhasil menarik ${res.data.summary.totalDapodik} data siswa terbaru dari Dapodik!`,
+        `Berhasil menarik ${res.data.summary.totalDapodik} data siswa dari Dapodik & disimpan ke Staging Platform!`,
         { id: toastId }
       );
     } catch (err: any) {
@@ -485,12 +488,15 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     }
   };
 
-  // Helper Format Waktu Cache
+  // Helper Format Waktu Cache & Staging
   const formattedCacheTime = useMemo(() => {
     if (!cacheInfo?.cachedAt) return null;
     const d = new Date(cacheInfo.cachedAt);
     return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
   }, [cacheInfo?.cachedAt]);
+
+  const stagingMeta = comparisonData?.data?.stagingMeta;
+  const isCurrentlyStaging = cacheInfo?.sourceMode === 'STAGING' || sourceMode === 'STAGING';
 
   return (
     <div className="space-y-3.5">
@@ -535,9 +541,11 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 px-2 py-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
                   <Clock className="w-3 h-3 text-slate-400" />
                   <span>Snapshot: <strong>{formattedCacheTime}</strong></span>
-                  {cacheInfo?.isFromCache && (
+                  {cacheInfo?.sourceMode === 'STAGING' || sourceMode === 'STAGING' ? (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">(Staging Platform)</span>
+                  ) : cacheInfo?.isFromCache ? (
                     <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">(In-Memory)</span>
-                  )}
+                  ) : null}
                 </div>
               )}
 
@@ -547,8 +555,49 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
               </div>
             </div>
 
-            {/* Sisi Kanan: Action Buttons Terpadu */}
+            {/* Sisi Kanan: Action Buttons Terpadu & Switcher Mode Dapodik */}
             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+              {/* SWITCHER PERBANDINGAN: STAGING PLATFORM VS DAPODIK LANGSUNG */}
+              <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] mr-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (sourceMode !== 'STAGING') {
+                      setSourceMode('STAGING');
+                      toast.info('Beralih ke Mode Dapodik Lokal (Staging Platform). Komputer Dapodik tidak perlu dinyalakan.');
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold transition-all ${
+                    sourceMode === 'STAGING'
+                      ? 'bg-amber-500 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                  title="Gunakan Data Dapodik yang tersimpan permanen di platform Absenta (Komputer Dapodik tidak perlu dinyalakan)"
+                >
+                  <HardDrive className="w-3 h-3" />
+                  <span>Dapodik Lokal (Staging)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (sourceMode !== 'LIVE') {
+                      setSourceMode('LIVE');
+                      toast.info('Beralih ke Mode Dapodik Langsung (Live Port 5774).');
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold transition-all ${
+                    sourceMode === 'LIVE'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                  title="Hubungkan langsung ke Web Service Dapodik operator secara real-time (Port 5774)"
+                >
+                  <Server className="w-3 h-3" />
+                  <span>Dapodik Langsung (Live)</span>
+                </button>
+              </div>
+
               {/* Tombol Pengaturan Koneksi (Modal) */}
               <Button
                 size="sm"
@@ -882,15 +931,30 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 <p className="text-xs text-slate-500">Mengkonsolidasi data Dapodik &amp; Absenta...</p>
               </div>
             ) : comparisonError ? (
-              <div className="p-8 text-center space-y-2">
+              <div className="p-8 text-center space-y-3">
                 <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto" />
                 <h4 className="font-bold text-sm text-slate-900 dark:text-white">Gagal Memuat Komparasi Data</h4>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
                   {(comparisonError as any)?.response?.data?.message || (comparisonError as any)?.message || 'Terjadi kesalahan sistem.'}
                 </p>
-                <Button size="sm" onClick={() => refetchComparison()} className="h-7 text-xs gap-1 mt-2">
-                  <RefreshCw className="w-3.5 h-3.5" /> Coba Lagi
-                </Button>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  {sourceMode === 'LIVE' && (
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => {
+                        setSourceMode('STAGING');
+                        toast.info('Beralih ke Mode Staging Platform (Snapshot Lokal).');
+                      }}
+                      className="h-7 text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      <HardDrive className="w-3.5 h-3.5" /> Beralih ke Dapodik Lokal (Staging)
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => refetchComparison()} className="h-7 text-xs gap-1">
+                    <RefreshCw className="w-3.5 h-3.5" /> Coba Lagi
+                  </Button>
+                </div>
               </div>
             ) : filteredStudents.length === 0 ? (
               <div className="p-10 text-center space-y-1">

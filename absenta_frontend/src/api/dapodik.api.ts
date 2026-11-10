@@ -53,6 +53,15 @@ export interface ReconciliationSummary {
   absentaOnlyCount: number;
 }
 
+export interface StagingStorageMeta {
+  exists: boolean;
+  savedAt: string | null;
+  totalStudents: number;
+  npsn: string | null;
+  host: string | null;
+  fileSizeBytes: number;
+}
+
 export interface ReconciliationReport {
   summary: ReconciliationSummary;
   lastCheckAt: string;
@@ -60,7 +69,9 @@ export interface ReconciliationReport {
     isFromCache: boolean;
     cachedAt: string;
     totalCached: number;
+    sourceMode?: 'LIVE' | 'STAGING';
   };
+  stagingMeta?: StagingStorageMeta;
   students: ReconciledStudent[];
 }
 
@@ -138,7 +149,8 @@ export interface CompareOptions {
 
 export const getDapodikStudentComparison = async (
   options?: CompareOptions,
-  forceRefresh?: boolean
+  forceRefresh?: boolean,
+  sourceMode?: 'LIVE' | 'STAGING'
 ): Promise<{ success: boolean; data: ReconciliationReport }> => {
   const params: Record<string, any> = {};
   if (options) {
@@ -156,7 +168,15 @@ export const getDapodikStudentComparison = async (
   if (forceRefresh) {
     params.force_refresh = true;
   }
+  if (sourceMode) {
+    params.source_mode = sourceMode;
+  }
   const response = await axiosInstance.get('/dapodik/compare-students', { params });
+  return response.data;
+};
+
+export const getDapodikStagingMeta = async (): Promise<{ success: boolean; data: StagingStorageMeta }> => {
+  const response = await axiosInstance.get('/dapodik/staging-meta');
   return response.data;
 };
 
