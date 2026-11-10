@@ -43,7 +43,7 @@ import { Loader } from '@/components/ui/Loader';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAuthStore } from '@/store/authStore';
 import { useRoleDashboardSwitcherStore } from '@/store/roleDashboardSwitcherStore';
-import { getDashboardOverview, getAttendanceChart } from '@/api/dashboard.api';
+import { getDashboardOverview } from '@/api/dashboard.api';
 import { getAcademicStats } from '@/api/academic-stats.api';
 import { getTenantActivityLogs } from '@/api/activityLog.api';
 import toast from 'react-hot-toast';
@@ -214,13 +214,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     queryKey: ['admin-overview-stats'],
     queryFn: () => getDashboardOverview(),
     enabled: isRingkasanActive,
-    staleTime: 60 * 1000,
-  });
-
-  const { data: chartRes, isLoading: isChartLoading } = useQuery({
-    queryKey: ['admin-attendance-chart'],
-    queryFn: () => getAttendanceChart(),
-    enabled: isRingkasanActive && isDeferredReady,
     staleTime: 60 * 1000,
   });
 
@@ -739,7 +732,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                   user={currentUser}
                   stats={overviewRes?.data}
                   academicStats={academicRes?.data}
-                  chartData={chartRes?.data}
                   recentLogs={logsRes?.data?.logs || []}
                   isLogsLoading={!isDeferredReady || isLogsLoading}
                   loading={isOverviewLoading || isAcademicLoading}

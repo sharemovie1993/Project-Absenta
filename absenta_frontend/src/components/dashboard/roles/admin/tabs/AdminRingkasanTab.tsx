@@ -1,4 +1,6 @@
 import React, { useMemo, useState, Suspense, lazy } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getAttendanceChart } from '@/api/dashboard.api';
 import { 
   Users, 
   GraduationCap, 
@@ -138,6 +140,17 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
       }
     };
   }, [activeAnalyticsTab]);
+
+  // On-demand Chart Fetching: Only fetch when 'chart' tab is active AND chart component is ready
+  // Prevents mobile from loading heavy attendance history when default tab is 'tingkat' (CSS rombel)
+  const { data: localChartRes } = useQuery({
+    queryKey: ['admin-attendance-chart'],
+    queryFn: () => getAttendanceChart(),
+    enabled: activeAnalyticsTab === 'chart' && isChartReady,
+    staleTime: 60 * 1000,
+  });
+
+  const effectiveChartData = chartData ?? localChartRes?.data ?? null;
 
   const totalSiswa = stats?.total_siswa ?? academicStats?.total_siswa ?? 0;
   const totalGuru = stats?.total_guru ?? academicStats?.total_guru ?? 0;
@@ -553,7 +566,7 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
                   </div>
                 }
               >
-                <AttendanceChart data={chartData || null} height={280} />
+                <AttendanceChart data={effectiveChartData} height={280} />
               </Suspense>
             ) : (
               <div className="flex items-center justify-center h-64 text-slate-400">
