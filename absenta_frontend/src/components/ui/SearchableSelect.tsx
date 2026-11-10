@@ -179,14 +179,35 @@ export function SearchableSelect({
       if (!rect) return;
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
-      const dropHeight = Math.min(300, (filteredOptions?.length || 0) * 38 + 50);
+      const dropHeight = Math.min(320, (filteredOptions?.length || 0) * 38 + 50);
       const openUpward = spaceBelow < dropHeight && spaceAbove > spaceBelow;
+
+      // Smart alignment: if opening to the right overflows the viewport, align to trigger's right edge
+      const alignRight = rect.left + 360 > window.innerWidth - 16;
+      const maxAllowedWidth = Math.min(580, window.innerWidth - 32);
+
+      let horizontalPosStyle: React.CSSProperties;
+      if (alignRight) {
+        const rightPos = Math.max(16, window.innerWidth - rect.right);
+        horizontalPosStyle = {
+          right: rightPos,
+          minWidth: Math.min(Math.max(rect.width, 340), maxAllowedWidth),
+          width: 'max-content',
+          maxWidth: Math.min(maxAllowedWidth, window.innerWidth - rightPos - 16),
+        };
+      } else {
+        const leftPos = Math.max(16, rect.left);
+        horizontalPosStyle = {
+          left: leftPos,
+          minWidth: Math.min(Math.max(rect.width, 340), maxAllowedWidth),
+          width: 'max-content',
+          maxWidth: Math.min(maxAllowedWidth, window.innerWidth - leftPos - 16),
+        };
+      }
+
       setDropdownStyle({
         position: 'fixed',
-        left: rect.left,
-        minWidth: Math.max(rect.width, 320),
-        width: 'max-content',
-        maxWidth: Math.min(window.innerWidth - rect.left - 16, 520),
+        ...horizontalPosStyle,
         zIndex: 99999,
         ...(openUpward
           ? { bottom: window.innerHeight - rect.top + 4 }
@@ -251,6 +272,7 @@ export function SearchableSelect({
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
+          title={searchQuery || placeholder}
           aria-label={placeholder || searchPlaceholder || "Pilih opsi"}
           disabled={disabled}
           className="flex-1 h-full bg-transparent outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-800 dark:text-slate-100 min-w-0 text-xs sm:text-[13px] font-semibold pl-10 pr-10 truncate"
@@ -324,7 +346,7 @@ export function SearchableSelect({
                     {option.statusDotClass && (
                       <span className={cn("w-2 h-2 rounded-full shrink-0", option.statusDotClass)} />
                     )}
-                    <span className="truncate whitespace-nowrap text-slate-800 dark:text-slate-100 font-medium">
+                    <span title={option.label} className="truncate whitespace-nowrap text-slate-800 dark:text-slate-100 font-medium">
                       {option.label}
                     </span>
                   </div>

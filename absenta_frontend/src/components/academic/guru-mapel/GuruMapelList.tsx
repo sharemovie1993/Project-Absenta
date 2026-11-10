@@ -711,8 +711,8 @@ const GuruMapelList = React.memo<Props>(({
   return (
     <div className="flex flex-col">
       {/* Toolbar Baris Kedua - Filter & Search */}
-      <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
-        <div className="flex-1 relative w-full">
+      <div className="flex flex-col md:flex-row flex-wrap lg:flex-nowrap gap-3 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
+        <div className="flex-1 min-w-[200px] relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <Input
             placeholder="Cari guru atau mapel..."
@@ -722,7 +722,7 @@ const GuruMapelList = React.memo<Props>(({
             className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
           />
         </div>
-        <div className="w-full md:w-52">
+        <div className="w-full md:w-44 lg:w-48 shrink-0">
           <TahunPelajaranSelect
             value={selectedTahunPelajaranId}
             onValueChange={setSelectedTahunPelajaranId}
@@ -730,7 +730,7 @@ const GuruMapelList = React.memo<Props>(({
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
           />
         </div>
-        <div className="w-full md:w-48">
+        <div className="w-full md:w-40 lg:w-44 shrink-0">
           <SemesterSelect
             tahunPelajaranId={selectedTahunPelajaranId}
             value={selectedSemesterId}
@@ -739,7 +739,7 @@ const GuruMapelList = React.memo<Props>(({
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
           />
         </div>
-        <div className="w-full md:w-48">
+        <div className="w-full md:w-48 lg:w-56 shrink-0">
           <SearchableSelect
             value={selectedGuruId}
             onValueChange={setSelectedGuruId}
@@ -750,7 +750,7 @@ const GuruMapelList = React.memo<Props>(({
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
           />
         </div>
-        <div className="w-full md:w-48">
+        <div className="w-full md:w-64 lg:w-72 xl:w-80 shrink-0">
           <SearchableSelect
             value={selectedMapelId}
             onValueChange={setSelectedMapelId}
