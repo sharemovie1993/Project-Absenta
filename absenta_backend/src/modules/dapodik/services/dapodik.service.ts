@@ -649,6 +649,8 @@ export class DapodikService {
     tenantId: string,
     payload: {
       action: 'UPDATE_SELECTED' | 'IMPORT_SELECTED';
+      tahun_pelajaran_id?: string;
+      semester_id?: string;
       students: {
         absentaId?: string;
         nisn?: string;
@@ -661,6 +663,8 @@ export class DapodikService {
         rombel?: string;
         kelas_id?: string;
         jurusan_id?: string;
+        tahun_pelajaran_id?: string;
+        semester_id?: string;
       }[];
     },
     userContext?: { userId?: string; org?: any }
@@ -668,7 +672,23 @@ export class DapodikService {
     let updatedCount = 0;
     let importedCount = 0;
 
+    // Ambil default periode akademik aktif jika tidak ditentukan
+    let defaultTpId = payload.tahun_pelajaran_id;
+    let defaultSemId = payload.semester_id;
+
+    if (!defaultTpId || !defaultSemId) {
+      const [activeTp, activeSem] = await Promise.all([
+        !defaultTpId ? prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }) : null,
+        !defaultSemId ? prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } }) : null,
+      ]);
+      if (!defaultTpId && activeTp) defaultTpId = activeTp.id;
+      if (!defaultSemId && activeSem) defaultSemId = activeSem.id;
+    }
+
     for (const item of payload.students) {
+      const targetTpId = item.tahun_pelajaran_id || defaultTpId || undefined;
+      const targetSemId = item.semester_id || defaultSemId || undefined;
+
       if (payload.action === 'UPDATE_SELECTED' && item.absentaId) {
         const updateData: any = {
           nama_siswa: item.nama,
@@ -682,6 +702,12 @@ export class DapodikService {
         if (item.kelas_id) {
           updateData.kelas_id = item.kelas_id;
         }
+        if (targetTpId) {
+          updateData.tahun_pelajaran_id = targetTpId;
+        }
+        if (targetSemId) {
+          updateData.semester_id = targetSemId;
+        }
 
         await prisma.siswa.updateMany({
           where: {
@@ -692,34 +718,28 @@ export class DapodikService {
         });
 
         // Jika kelas_id disertakan, sinkronkan juga rekam akademik aktif
-        if (item.kelas_id) {
+        if (item.kelas_id && targetTpId && targetSemId) {
           try {
-            const [activeTp, activeSem] = await Promise.all([
-              prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
-              prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
-            ]);
-            if (activeTp && activeSem) {
-              await prisma.siswaAkademik.upsert({
-                where: {
-                  siswa_id_tahun_pelajaran_id_semester_id: {
-                    siswa_id: item.absentaId,
-                    tahun_pelajaran_id: activeTp.id,
-                    semester_id: activeSem.id,
-                  },
-                },
-                update: {
-                  kelas_id: item.kelas_id,
-                  status: 'AKTIF',
-                },
-                create: {
+            await prisma.siswaAkademik.upsert({
+              where: {
+                siswa_id_tahun_pelajaran_id_semester_id: {
                   siswa_id: item.absentaId,
-                  kelas_id: item.kelas_id,
-                  tahun_pelajaran_id: activeTp.id,
-                  semester_id: activeSem.id,
-                  status: 'AKTIF',
+                  tahun_pelajaran_id: targetTpId,
+                  semester_id: targetSemId,
                 },
-              });
-            }
+              },
+              update: {
+                kelas_id: item.kelas_id,
+                status: 'AKTIF',
+              },
+              create: {
+                siswa_id: item.absentaId,
+                kelas_id: item.kelas_id,
+                tahun_pelajaran_id: targetTpId,
+                semester_id: targetSemId,
+                status: 'AKTIF',
+              },
+            });
           } catch (academicErr: any) {
             console.error('[DapodikSync] Gagal update SiswaAkademik:', academicErr?.message || academicErr);
           }
@@ -764,6 +784,8 @@ export class DapodikService {
                 tanggal_lahir: item.tanggal_lahir ? new Date(item.tanggal_lahir) : undefined,
                 kelas_id: item.kelas_id || undefined,
                 jurusan_id: resolvedJurusanId || undefined,
+                tahun_pelajaran_id: targetTpId,
+                semester_id: targetSemId,
                 status: item.kelas_id ? 'AKTIF' : 'CALON',
               },
               {
@@ -775,8 +797,8 @@ export class DapodikService {
             importedCount++;
           } catch (createErr: any) {
             console.error(`[DapodikSync] createSiswaCommand fallback for ${item.nama}:`, createErr?.message || createErr);
-            // Fallback gracefully jika terdapat kondisi khusus (misal validasi spesifik)
-            await prisma.siswa.create({
+            // Fallback gracefully jika terdapat kondisi khusus
+            const created = await prisma.siswa.create({
               data: {
                 tenant_id: tenantId,
                 nama_siswa: item.nama,
@@ -788,9 +810,38 @@ export class DapodikService {
                 tanggal_lahir: item.tanggal_lahir ? new Date(item.tanggal_lahir) : null,
                 kelas_id: item.kelas_id || null,
                 jurusan_id: resolvedJurusanId || null,
+                tahun_pelajaran_id: targetTpId || null,
+                semester_id: targetSemId || null,
                 status: item.kelas_id ? 'AKTIF' : 'CALON',
               },
             });
+
+            if (item.kelas_id && targetTpId && targetSemId) {
+              try {
+                await prisma.siswaAkademik.upsert({
+                  where: {
+                    siswa_id_tahun_pelajaran_id_semester_id: {
+                      siswa_id: created.id,
+                      tahun_pelajaran_id: targetTpId,
+                      semester_id: targetSemId,
+                    },
+                  },
+                  update: {
+                    kelas_id: item.kelas_id,
+                    status: 'AKTIF',
+                  },
+                  create: {
+                    siswa_id: created.id,
+                    kelas_id: item.kelas_id,
+                    tahun_pelajaran_id: targetTpId,
+                    semester_id: targetSemId,
+                    status: 'AKTIF',
+                  },
+                });
+              } catch (fallbackSaErr: any) {
+                console.error('[DapodikSync] Fallback SiswaAkademik error:', fallbackSaErr?.message || fallbackSaErr);
+              }
+            }
             importedCount++;
           }
         }

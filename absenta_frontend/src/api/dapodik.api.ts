@@ -82,6 +82,8 @@ export interface TestConnectionResponse {
 
 export interface SyncStudentsPayload {
   action: 'UPDATE_SELECTED' | 'IMPORT_SELECTED';
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
   students: {
     absentaId?: string;
     nisn?: string;
@@ -94,6 +96,8 @@ export interface SyncStudentsPayload {
     rombel?: string;
     kelas_id?: string;
     jurusan_id?: string;
+    tahun_pelajaran_id?: string;
+    semester_id?: string;
   }[];
 }
 

@@ -138,7 +138,7 @@ export const dapodikController = {
     try {
       const user = request.user!;
       const tenantId = user.tenantId || user.tenant_id;
-      const { action, students } = request.body || {};
+      const { action, students, tahun_pelajaran_id, semester_id } = request.body || {};
 
       if (!action || !Array.isArray(students) || students.length === 0) {
         return reply.status(400).send({
@@ -152,6 +152,8 @@ export const dapodikController = {
         {
           action,
           students,
+          tahun_pelajaran_id,
+          semester_id,
         },
         {
           userId: user.id || user.userId,

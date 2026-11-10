@@ -1088,11 +1088,13 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
         isOpen={isRombelMappingModalOpen}
         onClose={() => setIsRombelMappingModalOpen(false)}
         students={selectedStudents.filter((s) => s.status === 'DAPODIK_ONLY')}
-        onConfirmImport={(studentsWithKelas) => {
+        onConfirmImport={(studentsWithKelas, academicContext) => {
           syncMutation.mutate(
             {
               action: 'IMPORT_SELECTED',
               students: studentsWithKelas,
+              tahun_pelajaran_id: academicContext.tahun_pelajaran_id,
+              semester_id: academicContext.semester_id,
             },
             {
               onSuccess: () => {

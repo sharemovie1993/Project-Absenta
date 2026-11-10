@@ -1,6 +1,7 @@
 /**
  * DapodikRombelMappingModal.tsx
  * Modal Wizard Pemetaan Rombel Dapodik ke Kelas Platform Absenta
+ * Lengkap dengan Pengikatan Konteks Akademik Resmi (Tahun Pelajaran & Semester)
  * Standar Industri: Shopee-Grade Zero-Noise, High-Density Mapping Interface & Smart Auto-Matcher.
  */
 
@@ -19,11 +20,17 @@ import {
   Info,
   ShieldCheck,
   Layers,
+  Calendar,
+  Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Modal, Button, Badge, Loader, Input } from '@/components/ui';
-import { getKelasForDropdown } from '@/api/dropdown.api';
+import {
+  getKelasForDropdown,
+  getTahunPelajaranForDropdown,
+  getSemesterForDropdown,
+} from '@/api/dropdown.api';
 import type { ReconciledStudent } from '@/api/dapodik.api';
 
 export interface DapodikRombelMappingModalProps {
@@ -42,7 +49,13 @@ export interface DapodikRombelMappingModalProps {
       rombel?: string;
       kelas_id?: string;
       jurusan_id?: string;
-    }[]
+      tahun_pelajaran_id?: string;
+      semester_id?: string;
+    }[],
+    academicContext: {
+      tahun_pelajaran_id?: string;
+      semester_id?: string;
+    }
   ) => void;
   isSubmitting?: boolean;
 }
@@ -71,7 +84,7 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
   onConfirmImport,
   isSubmitting = false,
 }) => {
-  // 1. Fetch Daftar Kelas yang Ada di Absenta
+  // 1. Fetch Data Master Akademik untuk Pemetaan
   const { data: kelasOptions = [], isLoading: isLoadingKelas } = useQuery({
     queryKey: ['dropdown-kelas-all'],
     queryFn: getKelasForDropdown,
@@ -79,10 +92,42 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
     enabled: isOpen,
   });
 
-  // 2. Mapping State: Record<dapodikRombelName, targetKelasId>
+  const { data: tpOptions = [], isLoading: isLoadingTp } = useQuery({
+    queryKey: ['dropdown-tp-all'],
+    queryFn: getTahunPelajaranForDropdown,
+    staleTime: 10 * 60 * 1000,
+    enabled: isOpen,
+  });
+
+  const { data: semOptions = [], isLoading: isLoadingSem } = useQuery({
+    queryKey: ['dropdown-semester-all'],
+    queryFn: getSemesterForDropdown,
+    staleTime: 10 * 60 * 1000,
+    enabled: isOpen,
+  });
+
+  // 2. State Konteks Akademik & Pemetaan Rombel
+  const [selectedTpId, setSelectedTpId] = useState<string>('');
+  const [selectedSemId, setSelectedSemId] = useState<string>('');
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [activeStep, setActiveStep] = useState<'map' | 'review'>('map');
+
+  // Auto-select Tahun Pelajaran Aktif
+  useEffect(() => {
+    if (tpOptions.length > 0 && !selectedTpId) {
+      const active = tpOptions.find((t) => t.label.includes('(Aktif)')) || tpOptions[0];
+      if (active) setSelectedTpId(String(active.value));
+    }
+  }, [tpOptions, selectedTpId]);
+
+  // Auto-select Semester Aktif
+  useEffect(() => {
+    if (semOptions.length > 0 && !selectedSemId) {
+      const active = semOptions.find((s) => s.label.includes('(Aktif)')) || semOptions[0];
+      if (active) setSelectedSemId(String(active.value));
+    }
+  }, [semOptions, selectedSemId]);
 
   // 3. Kelompokkan Siswa Terpilih Berdasarkan Rombel Dapodik
   const rombelGroups = useMemo<RombelGroup[]>(() => {
@@ -109,7 +154,6 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
         students: list,
       }))
       .sort((a, b) => {
-        // Taruh 'Tanpa Rombel' di paling bawah
         if (a.dapodikRombel === 'Tanpa Rombel') return 1;
         if (b.dapodikRombel === 'Tanpa Rombel') return -1;
         return a.dapodikRombel.localeCompare(b.dapodikRombel);
@@ -154,14 +198,13 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
         }
       }
 
-      // Default: Belum terpetakan
       newMapping[rName] = '';
     }
 
     return newMapping;
   };
 
-  // 5. Inisialisasi Auto-Match saat Modal Dibuka & Kelas Siap
+  // Inisialisasi Auto-Match saat Modal Dibuka & Kelas Siap
   useEffect(() => {
     if (isOpen && kelasOptions.length > 0 && rombelGroups.length > 0) {
       const autoMatched = executeAutoMatch(rombelGroups, kelasOptions);
@@ -187,7 +230,7 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
     toast.success(`Auto-matcher diterapkan: ${matchedCount} dari ${rombelGroups.length} rombel berhasil dicocokkan!`);
   };
 
-  // 6. Hitung Statistik Pemetaan
+  // 5. Hitung Statistik Pemetaan
   const stats = useMemo(() => {
     let mappedRombelCount = 0;
     let mappedStudentsCount = 0;
@@ -216,7 +259,7 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
     };
   }, [rombelGroups, mapping]);
 
-  // 7. Filter Rombel Groups berdasarkan Pencarian
+  // 6. Filter Rombel Groups berdasarkan Pencarian
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return rombelGroups;
     const q = searchQuery.toLowerCase().trim();
@@ -228,7 +271,7 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
     });
   }, [rombelGroups, searchQuery, mapping, kelasOptions]);
 
-  // 8. Kelas Options Grouped by Tingkat
+  // 7. Kelas Options Grouped by Tingkat
   const groupedClasses = useMemo(() => {
     const tingkat10 = kelasOptions.filter((k) => (k as any).tingkat === 10);
     const tingkat11 = kelasOptions.filter((k) => (k as any).tingkat === 11);
@@ -245,7 +288,16 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
     ].filter((g) => g.items.length > 0);
   }, [kelasOptions]);
 
-  // 9. Submit Handler: Pasangkan Setiap Siswa dengan kelas_id Hasil Pemetaan
+  // Nama label TP & Semester terpilih untuk display review
+  const selectedTpLabel = useMemo(() => {
+    return tpOptions.find((t) => t.value === selectedTpId)?.label || 'Belum dipilih';
+  }, [tpOptions, selectedTpId]);
+
+  const selectedSemLabel = useMemo(() => {
+    return semOptions.find((s) => s.value === selectedSemId)?.label || 'Belum dipilih';
+  }, [semOptions, selectedSemId]);
+
+  // 8. Submit Handler: Pasangkan Setiap Siswa dengan kelas_id & Konteks Akademik
   const handleSubmit = () => {
     const payload = students.map((s) => {
       const rombelName = (
@@ -269,11 +321,18 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
         rombel: s.rombel || s.dapodikRaw?.nama_rombel || undefined,
         kelas_id: targetKelasId,
         jurusan_id: (targetKelas as any)?.jurusan_id || undefined,
+        tahun_pelajaran_id: selectedTpId || undefined,
+        semester_id: selectedSemId || undefined,
       };
     });
 
-    onConfirmImport(payload);
+    onConfirmImport(payload, {
+      tahun_pelajaran_id: selectedTpId || undefined,
+      semester_id: selectedSemId || undefined,
+    });
   };
+
+  const isMasterLoading = isLoadingKelas || isLoadingTp || isLoadingSem;
 
   return (
     <Modal
@@ -287,25 +346,25 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span>Pemetaan Rombel Dapodik ke Kelas Platform</span>
+              <span>Pemetaan Konteks Akademik &amp; Rombel Dapodik</span>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300">
                 {activeStep === 'map' ? 'Langkah 1 dari 2' : 'Langkah 2 dari 2'}
               </span>
             </h3>
             <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
               {activeStep === 'map'
-                ? `Petakan rombel Dapodik ke kelas Absenta agar rekam akademik & akun siswa terbentuk otomatis`
-                : `Verifikasi ringkasan akhir sebelum data siswa disimpan ke database Absenta`}
+                ? `Tentukan tahun ajaran, semester, dan petakan rombel agar siswa langsung aktif di platform`
+                : `Verifikasi ringkasan akhir penempatan periode & kelas sebelum data disimpan`}
             </p>
           </div>
         </div>
       }
     >
       <div className="space-y-3.5 text-xs">
-        {isLoadingKelas ? (
+        {isMasterLoading ? (
           <div className="p-12 text-center space-y-2">
             <Loader className="w-6 h-6 animate-spin mx-auto text-indigo-600" />
-            <p className="text-xs text-slate-500">Memuat daftar kelas platform...</p>
+            <p className="text-xs text-slate-500">Memuat data master akademik platform...</p>
           </div>
         ) : (
           <>
@@ -353,13 +412,81 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
             </div>
 
             {/* ═══════════════════════════════════════════════════════════════
-                LANGKAH 1: TABEL PEMETAAN ROMBEL
+                LANGKAH 1: KONTEKS AKADEMIK & TABEL PEMETAAN ROMBEL
             ═══════════════════════════════════════════════════════════════ */}
             {activeStep === 'map' && (
-              <div className="space-y-3">
-                {/* Toolbar: Search & Auto-match Trigger */}
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="relative flex-1 min-w-[200px]">
+              <div className="space-y-3.5">
+                {/* 1. SEKSI KONTEKS PERIODE AKADEMIK TARGET IMPORT */}
+                <div className="p-3 bg-gradient-to-r from-indigo-50/80 to-purple-50/60 dark:from-indigo-950/40 dark:to-purple-950/30 rounded-xl border border-indigo-200/80 dark:border-indigo-800/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 text-xs">
+                      <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>1. Konteks Periode Akademik Target Penempatan</span>
+                    </span>
+                    <span className="text-[11px] text-indigo-700 dark:text-indigo-300 font-semibold flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Rekam SiswaAkademik
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Tahun Pelajaran:
+                      </label>
+                      <select
+                        value={selectedTpId}
+                        onChange={(e) => setSelectedTpId(e.target.value)}
+                        className="w-full h-8 px-2.5 text-xs rounded-lg border font-medium bg-white dark:bg-slate-800 border-indigo-200 dark:border-indigo-700 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-indigo-500"
+                      >
+                        {tpOptions.map((tp) => (
+                          <option key={tp.value} value={tp.value}>
+                            {tp.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Semester:
+                      </label>
+                      <select
+                        value={selectedSemId}
+                        onChange={(e) => setSelectedSemId(e.target.value)}
+                        className="w-full h-8 px-2.5 text-xs rounded-lg border font-medium bg-white dark:bg-slate-800 border-indigo-200 dark:border-indigo-700 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-indigo-500"
+                      >
+                        {semOptions.map((sem) => (
+                          <option key={sem.value} value={sem.value}>
+                            {sem.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. SEKSI PEMETAAN ROMBEL DAPODIK KE KELAS */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 text-xs">
+                      <School className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>2. Pemetaan Rombel Dapodik ke Kelas Platform</span>
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleResetAutoMatch}
+                      className="h-7 text-[11px] gap-1.5 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40 hover:bg-indigo-100"
+                      title="Jalankan kembali algoritma pencocokan nama otomatis"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>Petakan Ulang Otomatis</span>
+                    </Button>
+                  </div>
+
+                  {/* Toolbar Search */}
+                  <div className="relative">
                     <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <Input
                       type="text"
@@ -370,113 +497,101 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
                     />
                   </div>
 
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={handleResetAutoMatch}
-                    className="h-8 text-[11px] gap-1.5 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40 hover:bg-indigo-100"
-                    title="Jalankan kembali algoritma pencocokan nama otomatis"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    <span>Petakan Ulang Otomatis</span>
-                  </Button>
-                </div>
+                  {/* List Pemetaan (Scrollable High-Density List) */}
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-[300px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                    {filteredGroups.length === 0 ? (
+                      <div className="p-8 text-center text-slate-400">
+                        Tidak ada rombel yang cocok dengan kata kunci &quot;{searchQuery}&quot;.
+                      </div>
+                    ) : (
+                      filteredGroups.map((g) => {
+                        const currentKelasId = mapping[g.dapodikRombel] || '';
+                        const isMapped = Boolean(currentKelasId);
 
-                {/* List Pemetaan (Scrollable High-Density List) */}
-                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-[380px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-                  {filteredGroups.length === 0 ? (
-                    <div className="p-8 text-center text-slate-400">
-                      Tidak ada rombel yang cocok dengan kata kunci &quot;{searchQuery}&quot;.
-                    </div>
-                  ) : (
-                    filteredGroups.map((g) => {
-                      const currentKelasId = mapping[g.dapodikRombel] || '';
-                      const isMapped = Boolean(currentKelasId);
-
-                      return (
-                        <div
-                          key={g.dapodikRombel}
-                          className={`p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-colors ${
-                            isMapped
-                              ? 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'
-                              : 'bg-amber-50/30 dark:bg-amber-950/10 hover:bg-amber-50/60'
-                          }`}
-                        >
-                          {/* Sisi Kiri: Rombel Dapodik */}
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
-                                {g.dapodikRombel}
-                              </span>
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                                {g.studentCount} Siswa
-                              </span>
+                        return (
+                          <div
+                            key={g.dapodikRombel}
+                            className={`p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-colors ${
+                              isMapped
+                                ? 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'
+                                : 'bg-amber-50/30 dark:bg-amber-950/10 hover:bg-amber-50/60'
+                            }`}
+                          >
+                            {/* Sisi Kiri: Rombel Dapodik */}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+                                  {g.dapodikRombel}
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                  {g.studentCount} Siswa
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                                Contoh: {g.students.slice(0, 3).map((s) => s.nama).join(', ')}
+                                {g.students.length > 3 && ` +${g.students.length - 3} lainnya`}
+                              </div>
                             </div>
-                            <div className="text-[11px] text-slate-400 truncate mt-0.5">
-                              Contoh: {g.students.slice(0, 3).map((s) => s.nama).join(', ')}
-                              {g.students.length > 3 && ` +${g.students.length - 3} lainnya`}
+
+                            {/* Arrow Divider */}
+                            <div className="hidden sm:flex items-center text-slate-300 dark:text-slate-600">
+                              <ArrowRight className="w-4 h-4" />
+                            </div>
+
+                            {/* Sisi Kanan: Dropdown Pemilihan Kelas di Absenta */}
+                            <div className="w-full sm:w-[260px] shrink-0 flex items-center gap-2">
+                              <select
+                                value={currentKelasId}
+                                onChange={(e) => handleSelectKelas(g.dapodikRombel, e.target.value)}
+                                className={`w-full h-8 px-2.5 text-xs rounded-lg border font-medium transition-colors focus:ring-1 focus:ring-indigo-500 focus:outline-hidden ${
+                                  isMapped
+                                    ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100'
+                                    : 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
+                                }`}
+                              >
+                                <option value="">-- Jangan Petakan (Tanpa Kelas / Calon) --</option>
+                                {groupedClasses.map((group) => (
+                                  <optgroup key={group.label} label={group.label}>
+                                    {group.items.map((k) => (
+                                      <option key={k.value} value={k.value}>
+                                        {(k as any).nama_kelas || k.label}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+
+                              {/* Status Pill */}
+                              {isMapped ? (
+                                <span
+                                  className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center justify-center shrink-0"
+                                  title="Rombel berhasil dipetakan ke kelas platform"
+                                >
+                                  <Check className="w-3 h-3" />
+                                </span>
+                              ) : (
+                                <span
+                                  className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 flex items-center justify-center shrink-0"
+                                  title="Rombel belum dipetakan. Siswa akan diimpor sebagai Calon Siswa (tanpa rombel aktif)"
+                                >
+                                  <AlertTriangle className="w-3 h-3" />
+                                </span>
+                              )}
                             </div>
                           </div>
-
-                          {/* Arrow Divider */}
-                          <div className="hidden sm:flex items-center text-slate-300 dark:text-slate-600">
-                            <ArrowRight className="w-4 h-4" />
-                          </div>
-
-                          {/* Sisi Kanan: Dropdown Pemilihan Kelas di Absenta */}
-                          <div className="w-full sm:w-[260px] shrink-0 flex items-center gap-2">
-                            <select
-                              value={currentKelasId}
-                              onChange={(e) => handleSelectKelas(g.dapodikRombel, e.target.value)}
-                              className={`w-full h-8 px-2.5 text-xs rounded-lg border font-medium transition-colors focus:ring-1 focus:ring-indigo-500 focus:outline-hidden ${
-                                isMapped
-                                  ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100'
-                                  : 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
-                              }`}
-                            >
-                              <option value="">-- Jangan Petakan (Tanpa Kelas / Calon) --</option>
-                              {groupedClasses.map((group) => (
-                                <optgroup key={group.label} label={group.label}>
-                                  {group.items.map((k) => (
-                                    <option key={k.value} value={k.value}>
-                                      {(k as any).nama_kelas || k.label}
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              ))}
-                            </select>
-
-                            {/* Status Pill */}
-                            {isMapped ? (
-                              <span
-                                className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center justify-center shrink-0"
-                                title="Rombel berhasil dipetakan ke kelas platform"
-                              >
-                                <Check className="w-3 h-3" />
-                              </span>
-                            ) : (
-                              <span
-                                className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 flex items-center justify-center shrink-0"
-                                title="Rombel belum dipetakan. Siswa akan diimpor sebagai Calon Siswa (tanpa rombel aktif)"
-                              >
-                                <AlertTriangle className="w-3 h-3" />
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
 
                 {/* Info Note */}
                 <div className="p-2.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 text-[11px] text-blue-800 dark:text-blue-300 flex items-start gap-2">
                   <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                   <div className="leading-relaxed">
-                    Siswa dengan rombel yang <strong>terpetakan</strong> akan langsung didaftarkan ke{' '}
-                    <strong>Kelas &amp; Semester Aktif</strong> platform, serta dibuatkan akun pengguna untuk login. Siswa
-                    tanpa pemetaan akan disimpan sebagai <em>Calon Siswa</em> dan dapat di-rolling kemudian.
+                    Siswa dengan rombel yang <strong>terpetakan</strong> akan langsung dicatat ke{' '}
+                    <strong>{selectedTpLabel}</strong> ({selectedSemLabel}) serta dibuatkan akun pengguna untuk login.
+                    Siswa tanpa pemetaan kelas akan disimpan sebagai <em>Calon Siswa</em> dan dapat di-rolling kemudian.
                   </div>
                 </div>
               </div>
@@ -495,11 +610,19 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
 
                   <div className="divide-y divide-slate-200 dark:divide-slate-700 text-xs">
                     <div className="py-2 flex items-center justify-between">
+                      <span className="text-slate-500">Tahun Pelajaran Target:</span>
+                      <span className="font-bold text-indigo-700 dark:text-indigo-400">{selectedTpLabel}</span>
+                    </div>
+                    <div className="py-2 flex items-center justify-between">
+                      <span className="text-slate-500">Semester Target:</span>
+                      <span className="font-bold text-indigo-700 dark:text-indigo-400">{selectedSemLabel}</span>
+                    </div>
+                    <div className="py-2 flex items-center justify-between">
                       <span className="text-slate-500">Jumlah Siswa Siap Diimpor:</span>
                       <span className="font-bold text-slate-800 dark:text-slate-100">{students.length} Siswa</span>
                     </div>
                     <div className="py-2 flex items-center justify-between">
-                      <span className="text-slate-500">Siswa Masuk Kelas &amp; Semester Aktif:</span>
+                      <span className="text-slate-500">Siswa Masuk Kelas &amp; Semester:</span>
                       <span className="font-bold text-emerald-700 dark:text-emerald-400">
                         {stats.mappedStudentsCount} Siswa ({stats.mappedRombelCount} Rombel)
                       </span>
