@@ -4,6 +4,5 @@ export { SavingTransactionModal } from './SavingTransactionModal';
 export { SavingInsightsPanel } from './SavingInsightsPanel';
 export { SavingsTable } from './SavingsTable';
 export { SavingsHistoryPanel } from './SavingsHistoryPanel';
-export { SavingsPassbookModal } from './SavingsPassbookModal';
 export { useSavingsState } from './useSavingsState';
 export * from './savingsExportUtils';

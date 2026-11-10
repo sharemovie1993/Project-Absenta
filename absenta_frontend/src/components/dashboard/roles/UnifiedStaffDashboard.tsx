@@ -514,13 +514,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const [printedPermit, setPrintedPermit] = useState<any>(null);
   const [printPaperSize, setPrintPaperSize] = useState<string>('80mm');
 
+  const { tenant: authTenant } = useAuthStore();
+
   const { data: tenantRes } = useQuery({
     queryKey: ['my-tenant'],
     queryFn: () => tenantApi.getMyTenant().catch(() => null),
-    enabled: !!user?.tenant_id,
+    enabled: !!user?.tenant_id && !authTenant && !(user as any)?.tenant,
     staleTime: 10 * 60 * 1000,
   });
-  const tenantInfo = tenantRes?.success ? tenantRes.data : null;
+  const tenantInfo = tenantRes?.success ? tenantRes.data : (authTenant || (user as any)?.tenant || null);
 
   const [selectedSesi, setSelectedSesi] = useState<any>(null);
   const [sessionForJournal, setSessionForJournal] = useState<any>(null);

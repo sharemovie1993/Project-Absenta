@@ -1,4 +1,5 @@
 import { requestWithFallback } from "./apiUtils";
+import axios from '@/lib/axiosInstance';
 
 // Types based on AUTH_MODULE_API.md
 export interface LoginRequest {
@@ -195,7 +196,6 @@ export interface MigrationManifest {
 export async function inspectInitialBundle(file: File): Promise<{ success: boolean; data: MigrationManifest; message?: string }> {
   const formData = new FormData();
   formData.append('file', file);
-  const { default: axios } = await import('@/lib/axiosInstance');
   const res = await axios.post('/auth/inspect-initial-bundle', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 180000
@@ -206,7 +206,6 @@ export async function inspectInitialBundle(file: File): Promise<{ success: boole
 export async function restoreInitialBundle(file: File): Promise<{ success: boolean; data: any; message?: string }> {
   const formData = new FormData();
   formData.append('file', file);
-  const { default: axios } = await import('@/lib/axiosInstance');
   const res = await axios.post('/auth/restore-initial-bundle', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 600000 // 10 menit

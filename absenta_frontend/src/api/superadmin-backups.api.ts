@@ -1,4 +1,5 @@
 import { requestWithFallback, type StandardApiResponse } from './apiUtils';
+import axios from '@/lib/axiosInstance';
 
 export interface Backup {
   id: string;
@@ -24,14 +25,12 @@ export const backupApi = {
     return requestWithFallback<StandardApiResponse>('post', `/admin/backups/${id}/restore`, { data: { newTenantId } });
   },
   downloadBlob: async (id: string) => {
-    const { default: axios } = await import('@/lib/axiosInstance');
     const response = await axios.get(`/admin/backups/${id}/download`, {
       responseType: 'blob'
     });
     return response.data as Blob;
   },
   exportBundle: async (tenantId?: string, options?: { includeAttendance?: boolean; includeMedia?: boolean }) => {
-    const { default: axios } = await import('@/lib/axiosInstance');
     const response = await axios.post('/admin/backups/export-bundle', {
       tenantId: tenantId || undefined,
       includeAttendance: options?.includeAttendance !== false,
@@ -45,7 +44,6 @@ export const backupApi = {
   inspectBundle: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const { default: axios } = await import('@/lib/axiosInstance');
     const res = await axios.post('/admin/backups/inspect-bundle', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 180000 // 3 menit
@@ -55,7 +53,6 @@ export const backupApi = {
   importBundle: async (file: File, targetTenantId?: string) => {
     const formData = new FormData();
     formData.append('file', file);
-    const { default: axios } = await import('@/lib/axiosInstance');
     const params = targetTenantId ? { targetTenantId } : {};
     const res = await axios.post('/admin/backups/import-bundle', formData, {
       params,

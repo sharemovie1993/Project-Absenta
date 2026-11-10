@@ -22,7 +22,7 @@ import { renderApiValue } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { changePassword } from '@/api/auth.api';
 import { DEFAULT_CONFIG } from '@/components/academic/student-card/constants';
-import { calculateProfileCompleteness, type SectionEditType } from '@/components/academic/siswa/SiswaOnboardingModal';
+import { calculateProfileCompleteness, type SectionEditType } from '@/components/academic/siswa/profileCompleteness';
 import { useGerbangAttendanceData } from '@/hooks/attendance/useGerbangAttendanceData';
 
 // Types & Skeletons
