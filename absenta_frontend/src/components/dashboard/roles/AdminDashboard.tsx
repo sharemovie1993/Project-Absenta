@@ -59,8 +59,8 @@ import {
   useMobileSubtabSidebar 
 } from './common/UniversalMobileSubtabSidebar';
 
-// Tab Subcomponents (Lazy-loaded for optimal mobile performance & low TBT)
-const AdminRingkasanTab = lazy(() => import('./admin/tabs/AdminRingkasanTab').then((m) => ({ default: m.AdminRingkasanTab })));
+// Default Tab Component (Directly imported with AdminDashboard to eliminate nested lazy waterfall delay)
+import { AdminRingkasanTab } from './admin/tabs/AdminRingkasanTab';
 
 // Lazy-loaded Universal Pages (Pilar 21B & TBT Optimization)
 const SiswaPage = lazy(() => import('@/pages/academic/SiswaPage').then((m) => ({ default: m.SiswaPage })));
