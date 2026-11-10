@@ -401,9 +401,21 @@ export const kurikulumApi = {
     return response.data;
   },
 
-  checkBebanGuru: async (guruId: string, addMapelId?: string, addKelasId?: string) => {
+  checkBebanGuru: async (
+    guruId: string, 
+    addMapelId?: string, 
+    addKelasId?: string,
+    tahun_pelajaran_id?: string,
+    semester_id?: string
+  ) => {
     const response = await api.get('/kurikulum/struktur/check-beban-guru', {
-      params: { guru_id: guruId, add_mapel_id: addMapelId, add_kelas_id: addKelasId }
+      params: { 
+        guru_id: guruId, 
+        add_mapel_id: addMapelId, 
+        add_kelas_id: addKelasId,
+        tahun_pelajaran_id,
+        semester_id
+      }
     });
     return response.data;
   },

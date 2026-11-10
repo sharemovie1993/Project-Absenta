@@ -137,7 +137,7 @@ export class StrukturKurikulumController {
   static async checkBebanGuru(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { guru_id, add_mapel_id, add_kelas_id } = req.query;
+      const { guru_id, add_mapel_id, add_kelas_id, tahun_pelajaran_id, semester_id } = req.query;
 
       if (!guru_id) {
         return reply.status(400).send({
@@ -150,7 +150,9 @@ export class StrukturKurikulumController {
         tenant_id,
         guru_id,
         add_mapel_id || undefined,
-        add_kelas_id || undefined
+        add_kelas_id || undefined,
+        tahun_pelajaran_id || undefined,
+        semester_id || undefined
       );
 
       return sendResponse(reply, 200, true, 'Beban guru checked successfully', result);

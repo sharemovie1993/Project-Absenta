@@ -94,7 +94,15 @@ export class TimetableSolverService {
         User: {
           select: {
             organizationalAssignments: {
-              where: { is_active: true },
+              where: { 
+                is_active: true,
+                ...(tahun_pelajaran_id ? {
+                  OR: [
+                    { tahun_pelajaran_id },
+                    { tahun_pelajaran_id: null }
+                  ]
+                } : {})
+              },
               select: {
                 Position: {
                   select: { code: true, name: true }

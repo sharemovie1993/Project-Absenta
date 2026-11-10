@@ -165,10 +165,60 @@ export class StrukturKurikulumService {
     });
   }
 
-  static async checkBebanGuru(tenantId: string, guruId: string, addMapelId?: string, addKelasId?: string) {
+  static async checkBebanGuru(
+    tenantId: string, 
+    guruId: string, 
+    addMapelId?: string, 
+    addKelasId?: string,
+    tahunPelajaranId?: string,
+    semesterId?: string
+  ) {
+    const activeYear = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true }
+    });
+    const yearId = tahunPelajaranId || activeYear?.id;
+
+    const activeSemester = await prisma.semester.findFirst({
+      where: { tenant_id: tenantId, tahun_pelajaran_id: yearId, is_active: true }
+    });
+    const semId = semesterId || activeSemester?.id;
+
     const guru = await prisma.guru.findFirst({
       where: { id: guruId, tenant_id: tenantId },
-      select: { max_jp: true, nama_guru: true }
+      select: { 
+        max_jp: true, 
+        nama_guru: true,
+        User: {
+          select: {
+            organizationalAssignments: {
+              where: {
+                is_active: true,
+                ...(yearId ? {
+                  OR: [
+                    { tahun_pelajaran_id: yearId },
+                    { tahun_pelajaran_id: null }
+                  ]
+                } : {})
+              },
+              select: {
+                Position: {
+                  select: {
+                    id: true,
+                    code: true,
+                    name: true
+                  }
+                },
+                Kelas: {
+                  select: {
+                    id: true,
+                    nama_kelas: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     });
 
     if (!guru) {
@@ -177,28 +227,35 @@ export class StrukturKurikulumService {
 
     const maxJp = guru.max_jp ?? 24;
 
-    const activeYear = await prisma.tahunPelajaran.findFirst({
-      where: { tenant_id: tenantId, is_active: true }
-    });
-    if (!activeYear) return { current_jp: 0, max_jp: maxJp, is_exceeded: false, nama_guru: guru.nama_guru };
+    if (!yearId || !semId) {
+      return { current_jp: 0, max_jp: maxJp, is_exceeded: false, nama_guru: guru.nama_guru };
+    }
 
-    const activeSemester = await prisma.semester.findFirst({
-      where: { tenant_id: tenantId, tahun_pelajaran_id: activeYear.id, is_active: true }
-    });
-    if (!activeSemester) return { current_jp: 0, max_jp: maxJp, is_exceeded: false, nama_guru: guru.nama_guru };
+    const positions = (guru.User?.organizationalAssignments || []).map((oa: any) => {
+      const eqJp = calculatePositionEquivalency(oa.Position?.code, oa.Position?.name);
+      const kelasLabel = oa.Kelas?.nama_kelas ? ` (${oa.Kelas.nama_kelas})` : '';
+      return {
+        id: oa.Position?.id,
+        code: oa.Position?.code,
+        name: `${oa.Position?.name || ''}${kelasLabel}`.trim(),
+        ekuivalen_jp: eqJp
+      };
+    }).filter((p: any) => p.ekuivalen_jp > 0);
+
+    const ekuivalenPositionJp = positions.reduce((acc: number, p: any) => acc + p.ekuivalen_jp, 0);
 
     // Count actual scheduled slots for this teacher in the visual grid
     const schedulesCount = await prisma.jadwalKBM.count({
       where: {
         tenant_id: tenantId,
         guru_id: guruId,
-        tahun_pelajaran_id: activeYear.id,
-        semester_id: activeSemester.id,
+        tahun_pelajaran_id: yearId,
+        semester_id: semId,
         mapel_id: { not: null },
       }
     });
 
-    const totalJp = schedulesCount + 1; // Count plus the one we are placing
+    const totalJp = schedulesCount + 1 + ekuivalenPositionJp; // Count plus the one we are placing + structural equivalency
 
     // Class KBM subject allocation check
     let isAllocationExceeded = false;
@@ -226,7 +283,7 @@ export class StrukturKurikulumService {
             tenant_id: tenantId,
             mapel_id: addMapelId,
             tingkat: cls.tingkat,
-            tahun_pelajaran_id: activeYear.id
+            tahun_pelajaran_id: yearId
           },
           select: { jp_per_minggu: true }
         });
@@ -239,8 +296,8 @@ export class StrukturKurikulumService {
             tenant_id: tenantId,
             kelas_id: addKelasId,
             mapel_id: addMapelId,
-            tahun_pelajaran_id: activeYear.id,
-            semester_id: activeSemester.id,
+            tahun_pelajaran_id: yearId,
+            semester_id: semId,
           }
         });
 
@@ -262,7 +319,17 @@ export class StrukturKurikulumService {
   }
 
   static async getBebanGuruAll(tenantId: string, tahunPelajaranId?: string, semesterId?: string) {
-    const cacheKey = CACHE_KEYS.ACADEMIC.BEBAN_GURU(tenantId, tahunPelajaranId, semesterId);
+    const activeYear = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true }
+    });
+    const yearId = tahunPelajaranId || activeYear?.id;
+
+    const activeSemester = await prisma.semester.findFirst({
+      where: { tenant_id: tenantId, tahun_pelajaran_id: yearId, is_active: true }
+    });
+    const semId = semesterId || activeSemester?.id;
+
+    const cacheKey = CACHE_KEYS.ACADEMIC.BEBAN_GURU(tenantId, yearId, semId);
     const cachedData = await cacheService.get(cacheKey);
     if (cachedData) {
       return cachedData;
@@ -282,13 +349,27 @@ export class StrukturKurikulumService {
         User: {
           select: {
             organizationalAssignments: {
-              where: { is_active: true },
+              where: {
+                is_active: true,
+                ...(yearId ? {
+                  OR: [
+                    { tahun_pelajaran_id: yearId },
+                    { tahun_pelajaran_id: null }
+                  ]
+                } : {})
+              },
               select: {
                 Position: {
                   select: {
                     id: true,
                     code: true,
                     name: true
+                  }
+                },
+                Kelas: {
+                  select: {
+                    id: true,
+                    nama_kelas: true
                   }
                 }
               }
@@ -300,16 +381,6 @@ export class StrukturKurikulumService {
         nama_guru: 'asc'
       }
     });
-
-    const activeYear = await prisma.tahunPelajaran.findFirst({
-      where: { tenant_id: tenantId, is_active: true }
-    });
-    const activeSemester = await prisma.semester.findFirst({
-      where: { tenant_id: tenantId, tahun_pelajaran_id: activeYear?.id, is_active: true }
-    });
-
-    const yearId = tahunPelajaranId || activeYear?.id;
-    const semId = semesterId || activeSemester?.id;
 
     const countMap = new Map<string, number>();
 
@@ -341,10 +412,11 @@ export class StrukturKurikulumService {
 
       const positions = (t.User?.organizationalAssignments || []).map((oa: any) => {
         const eqJp = calculatePositionEquivalency(oa.Position?.code, oa.Position?.name);
+        const kelasLabel = oa.Kelas?.nama_kelas ? ` (${oa.Kelas.nama_kelas})` : '';
         return {
           id: oa.Position?.id,
           code: oa.Position?.code,
-          name: oa.Position?.name,
+          name: `${oa.Position?.name || ''}${kelasLabel}`.trim(),
           ekuivalen_jp: eqJp
         };
       }).filter((p: any) => p.ekuivalen_jp > 0);

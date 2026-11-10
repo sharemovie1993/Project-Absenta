@@ -822,7 +822,13 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
         // Capping JP check
         if (paintGuruId) {
           try {
-            const checkRes = await kurikulumApi.checkBebanGuru(paintGuruId, paintMapelId, targetKelasId);
+            const checkRes = await kurikulumApi.checkBebanGuru(
+              paintGuruId, 
+              paintMapelId, 
+              targetKelasId,
+              tahunPelajaranId,
+              semesterId
+            );
             if (checkRes?.success) {
               const { 
                 is_exceeded, 
