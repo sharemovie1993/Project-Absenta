@@ -57,7 +57,7 @@ export class SocketService {
         cb({ token: freshToken });
       },
       path,
-      transports: ['polling', 'websocket'],
+      transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: Infinity, // Coba menghubungkan ulang tanpa batas!
       reconnectionDelay: 1000, // Mulai dari 1 detik agar gegas
