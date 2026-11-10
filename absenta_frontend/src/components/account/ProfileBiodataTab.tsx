@@ -361,15 +361,13 @@ export const ProfileBiodataTab: React.FC<ProfileBiodataTabProps> = React.memo(({
                 <GraduationCap size={15} className="text-indigo-500" />
                 Kualifikasi &amp; Status Kepegawaian
               </h4>
-              {guruEntityId && (
-                <FieldDocumentTrigger
-                  entityType="GURU"
-                  entityId={guruEntityId}
-                  entityName={summaryName}
-                  kategori="SK"
-                  label="SK / Karpeg"
-                />
-              )}
+              <FieldDocumentTrigger
+                entityType="GURU"
+                entityId={guruEntityId}
+                entityName={summaryName}
+                kategori="SK"
+                label="SK / Karpeg"
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
@@ -416,15 +414,13 @@ export const ProfileBiodataTab: React.FC<ProfileBiodataTabProps> = React.memo(({
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
                       <Award size={11} className="text-indigo-500" /> NIK (KTP 16 Digit)
                     </span>
-                    {guruEntityId && (
-                      <FieldDocumentTrigger
-                        entityType="GURU"
-                        entityId={guruEntityId}
-                        entityName={summaryName}
-                        kategori="KTP"
-                        label="KTP"
-                      />
-                    )}
+                    <FieldDocumentTrigger
+                      entityType="GURU"
+                      entityId={guruEntityId}
+                      entityName={summaryName}
+                      kategori="KTP"
+                      label="KTP"
+                    />
                   </div>
                   <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1 font-mono">{details.nik || '-'}</p>
                 </div>
@@ -434,15 +430,13 @@ export const ProfileBiodataTab: React.FC<ProfileBiodataTabProps> = React.memo(({
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
                       <Award size={11} className="text-indigo-500" /> No. Kartu Keluarga (KK)
                     </span>
-                    {guruEntityId && (
-                      <FieldDocumentTrigger
-                        entityType="GURU"
-                        entityId={guruEntityId}
-                        entityName={summaryName}
-                        kategori="KK"
-                        label="KK"
-                      />
-                    )}
+                    <FieldDocumentTrigger
+                      entityType="GURU"
+                      entityId={guruEntityId}
+                      entityName={summaryName}
+                      kategori="KK"
+                      label="KK"
+                    />
                   </div>
                   <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1 font-mono">{details.no_kk || '-'}</p>
                 </div>
@@ -464,15 +458,13 @@ export const ProfileBiodataTab: React.FC<ProfileBiodataTabProps> = React.memo(({
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
                       <Award size={11} className="text-indigo-500" /> NISN
                     </span>
-                    {siswaEntityId && (
-                      <FieldDocumentTrigger
-                        entityType="SISWA"
-                        entityId={siswaEntityId}
-                        entityName={summaryName}
-                        kategori="NISN"
-                        label="Kartu NISN"
-                      />
-                    )}
+                    <FieldDocumentTrigger
+                      entityType="SISWA"
+                      entityId={siswaEntityId}
+                      entityName={summaryName}
+                      kategori="NISN"
+                      label="Kartu NISN"
+                    />
                   </div>
                   <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1 font-mono">{details.nisn}</p>
                 </div>
@@ -481,15 +473,13 @@ export const ProfileBiodataTab: React.FC<ProfileBiodataTabProps> = React.memo(({
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
                       <Award size={11} className="text-indigo-500" /> NIK
                     </span>
-                    {siswaEntityId && (
-                      <FieldDocumentTrigger
-                        entityType="SISWA"
-                        entityId={siswaEntityId}
-                        entityName={summaryName}
-                        kategori="KK"
-                        label="KK"
-                      />
-                    )}
+                    <FieldDocumentTrigger
+                      entityType="SISWA"
+                      entityId={siswaEntityId}
+                      entityName={summaryName}
+                      kategori="KK"
+                      label="KK"
+                    />
                   </div>
                   <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1 font-mono">{details.nik}</p>
                 </div>
@@ -518,7 +508,7 @@ export const ProfileBiodataTab: React.FC<ProfileBiodataTabProps> = React.memo(({
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
                   <Calendar size={11} className="text-indigo-500" /> Tempat &amp; Tanggal Lahir
                 </span>
-                {siswaEntityId && isSiswa && (
+                {isSiswa && (
                   <FieldDocumentTrigger
                     entityType="SISWA"
                     entityId={siswaEntityId}

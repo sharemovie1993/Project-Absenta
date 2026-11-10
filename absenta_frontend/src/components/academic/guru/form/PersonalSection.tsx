@@ -320,7 +320,7 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
               value={
                 <div className="flex items-center justify-between gap-2 w-full">
                   <span>{watch('nik') || '-'}</span>
-                  {guruId && <FieldDocumentTrigger entityType="GURU" entityId={guruId} entityName={watch('nama')} kategori="KTP" label="KTP" disabled={false} />}
+                  <FieldDocumentTrigger entityType="GURU" entityId={guruId} entityName={watch('nama')} kategori="KTP" label="KTP" disabled={false} />
                 </div>
               } 
             />
@@ -330,7 +330,7 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
               value={
                 <div className="flex items-center justify-between gap-2 w-full">
                   <span>{watch('no_kk') || '-'}</span>
-                  {guruId && <FieldDocumentTrigger entityType="GURU" entityId={guruId} entityName={watch('nama')} kategori="KK" label="KK" disabled={false} />}
+                  <FieldDocumentTrigger entityType="GURU" entityId={guruId} entityName={watch('nama')} kategori="KK" label="KK" disabled={false} />
                 </div>
               } 
             />
@@ -342,7 +342,7 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
               value={
                 <div className="flex items-center justify-between gap-2 w-full">
                   <span>{watch('nama')}</span>
-                  {guruId && <FieldDocumentTrigger entityType="GURU" entityId={guruId} entityName={watch('nama')} kategori="SK" label="SK / Karpeg" disabled={false} />}
+                  <FieldDocumentTrigger entityType="GURU" entityId={guruId} entityName={watch('nama')} kategori="SK" label="SK / Karpeg" disabled={false} />
                 </div>
               } 
             />

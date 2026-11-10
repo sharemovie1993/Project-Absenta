@@ -390,7 +390,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                         value={
                             <div className="flex items-center justify-between gap-2 w-full">
                                 <span>{watch('nisn') || '-'}</span>
-                                {siswaId && <FieldDocumentTrigger entityType="SISWA" entityId={siswaId} entityName={watch('nama_siswa')} kategori="NISN" label="Kartu NISN" disabled={false} />}
+                                <FieldDocumentTrigger entityType="SISWA" entityId={siswaId} entityName={watch('nama_siswa')} kategori="NISN" label="Kartu NISN" disabled={false} />
                             </div>
                         } 
                     />
@@ -400,7 +400,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                         value={
                             <div className="flex items-center justify-between gap-2 w-full">
                                 <span>{watch('nik') || '-'}</span>
-                                {siswaId && <FieldDocumentTrigger entityType="SISWA" entityId={siswaId} entityName={watch('nama_siswa')} kategori="KK" label="KK" disabled={false} />}
+                                <FieldDocumentTrigger entityType="SISWA" entityId={siswaId} entityName={watch('nama_siswa')} kategori="KK" label="KK" disabled={false} />
                             </div>
                         } 
                     />
@@ -410,7 +410,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                         value={
                             <div className="flex items-center justify-between gap-2 w-full">
                                 <span>{watch('nama_siswa')}</span>
-                                {siswaId && <FieldDocumentTrigger entityType="SISWA" entityId={siswaId} entityName={watch('nama_siswa')} kategori="AKTA" label="Akta Lahir" disabled={false} />}
+                                <FieldDocumentTrigger entityType="SISWA" entityId={siswaId} entityName={watch('nama_siswa')} kategori="AKTA" label="Akta Lahir" disabled={false} />
                             </div>
                         } 
                     />

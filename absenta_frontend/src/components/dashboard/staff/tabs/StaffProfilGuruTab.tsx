@@ -13,6 +13,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getStrukturList } from '../../../../api/academic/strukturOrganisasi.api';
 import { uploadGuruDocument, getMemberDocPreviewUrl } from '../../../../api/memberDocs.api';
 import { FieldDocumentTrigger } from '@/components/documents/FieldDocumentTrigger';
+import { GuruForm } from '@/components/academic/guru/GuruForm';
 import { resolveProfilePhotoUrl } from '../../../../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { TeacherAlertsGrid } from '../saya/TeacherAlertsGrid';
@@ -659,15 +660,13 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                 <span className="text-slate-400 font-bold">NIK (KTP)</span>
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNik || '-'}</span>
-                  {guruId && (
-                    <FieldDocumentTrigger
-                      entityType="GURU"
-                      entityId={guruId}
-                      entityName={activeGuruName}
-                      kategori="KTP"
-                      label="KTP"
-                    />
-                  )}
+                  <FieldDocumentTrigger
+                    entityType="GURU"
+                    entityId={guruId}
+                    entityName={activeGuruName}
+                    kategori="KTP"
+                    label="KTP"
+                  />
                 </div>
               </div>
               <div className="flex items-center justify-between">
@@ -881,9 +880,18 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="col-span-2 pb-1 border-b border-slate-100 dark:border-slate-800/60">
-              <span className="text-[10px] font-semibold text-slate-400 block">Nama Lengkap &amp; Gelar</span>
-              <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">{editNamaGuru || activeNama}</span>
+            <div className="col-span-2 pb-1 border-b border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-semibold text-slate-400 block">Nama Lengkap &amp; Gelar</span>
+                <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">{editNamaGuru || activeNama}</span>
+              </div>
+              <FieldDocumentTrigger
+                entityType="GURU"
+                entityId={guruId}
+                entityName={activeGuruName}
+                kategori="SK"
+                label="SK / Karpeg"
+              />
             </div>
             <div>
               <span className="text-[10px] font-semibold text-slate-400 block">Jenis Kelamin</span>
@@ -910,30 +918,26 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold text-slate-400 block">NIK (KTP)</span>
-                {guruId && (
-                  <FieldDocumentTrigger
-                    entityType="GURU"
-                    entityId={guruId}
-                    entityName={activeGuruName}
-                    kategori="KTP"
-                    label="KTP"
-                  />
-                )}
+                <FieldDocumentTrigger
+                  entityType="GURU"
+                  entityId={guruId}
+                  entityName={activeGuruName}
+                  kategori="KTP"
+                  label="KTP"
+                />
               </div>
               <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNik || '-'}</span>
             </div>
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold text-slate-400 block">No. Kartu Keluarga (KK)</span>
-                {guruId && (
-                  <FieldDocumentTrigger
-                    entityType="GURU"
-                    entityId={guruId}
-                    entityName={activeGuruName}
-                    kategori="KK"
-                    label="KK"
-                  />
-                )}
+                <FieldDocumentTrigger
+                  entityType="GURU"
+                  entityId={guruId}
+                  entityName={activeGuruName}
+                  kategori="KK"
+                  label="KK"
+                />
               </div>
               <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNoKk || '-'}</span>
             </div>
@@ -1090,468 +1094,26 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
         </div>
       </div>
 
-      {/* Edit Data Diri & Kepegawaian Modal */}
+      {/* Edit Data Diri & Kepegawaian Modal (SSOT via GuruForm) */}
       {isEditModalOpen && (
         <Modal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          title={
-            activeEditSection === 'pribadi'
-              ? 'Edit Data Pribadi Guru'
-              : activeEditSection === 'kepegawaian'
-              ? 'Edit Kepegawaian & Dapodik Guru'
-              : 'Edit Kontak & Alamat Guru'
-          }
+          title="Edit Data Guru"
+          size="4xl"
         >
-          <form onSubmit={handleDataDiriSubmit} className="space-y-4 pt-2">
-            {activeEditSection === 'pribadi' && (
-              <>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="editNamaGuru">
-                      Nama Lengkap &amp; Gelar Guru <span className="text-rose-500">*</span>
-                    </Label>
-                    {guruId && (
-                      <FieldDocumentTrigger
-                        entityType="GURU"
-                        entityId={guruId}
-                        entityName={activeGuruName}
-                        kategori="SK"
-                        label="SK / Karpeg"
-                      />
-                    )}
-                  </div>
-                  <Input
-                    id="editNamaGuru"
-                    type="text"
-                    value={editNamaGuru}
-                    onChange={(e) => setEditNamaGuru(e.target.value)}
-                    placeholder="Contoh: Drs. Budi Santoso, M.Pd"
-                    required
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    Perubahan nama akan otomatis diperbarui pada profil akun login, tanda tangan rapor, dan dokumen akademik resmi.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="editNik">
-                        NIK (KTP 16 Digit)
-                      </Label>
-                      {guruId && (
-                        <FieldDocumentTrigger
-                          entityType="GURU"
-                          entityId={guruId}
-                          entityName={activeGuruName}
-                          kategori="KTP"
-                          label="KTP"
-                        />
-                      )}
-                    </div>
-                    <Input
-                      id="editNik"
-                      type="text"
-                      value={editNik}
-                      onChange={(e) => setEditNik(e.target.value)}
-                      placeholder="3204xxxxxxxxxxxx"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="editNoKk">
-                        No. Kartu Keluarga (KK)
-                      </Label>
-                      {guruId && (
-                        <FieldDocumentTrigger
-                          entityType="GURU"
-                          entityId={guruId}
-                          entityName={activeGuruName}
-                          kategori="KK"
-                          label="KK"
-                        />
-                      )}
-                    </div>
-                    <Input
-                      id="editNoKk"
-                      type="text"
-                      value={editNoKk}
-                      onChange={(e) => setEditNoKk(e.target.value)}
-                      placeholder="16-digit No. KK"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="editNamaIbuKandung">
-                    Nama Ibu Kandung (Sesuai Dapodik)
-                  </Label>
-                  <Input
-                    id="editNamaIbuKandung"
-                    type="text"
-                    value={editNamaIbuKandung}
-                    onChange={(e) => setEditNamaIbuKandung(e.target.value)}
-                    placeholder="Nama Ibu Kandung"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <Label htmlFor="editTempatLahir">
-                      Tempat Lahir
-                    </Label>
-                    <Input
-                      id="editTempatLahir"
-                      type="text"
-                      value={editTempatLahir}
-                      onChange={(e) => setEditTempatLahir(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="editTanggalLahir">
-                      Tanggal Lahir
-                    </Label>
-                    <Input
-                      id="editTanggalLahir"
-                      type="date"
-                      value={editTanggalLahir}
-                      onChange={(e) => setEditTanggalLahir(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <Label htmlFor="editJenisKelamin">
-                      Jenis Kelamin
-                    </Label>
-                    <select
-                      id="editJenisKelamin"
-                      value={editJenisKelamin}
-                      onChange={(e) => setEditJenisKelamin(e.target.value)}
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                    >
-                      <option value="L">Laki-laki</option>
-                      <option value="P">Perempuan</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="editAgama">
-                      Agama
-                    </Label>
-                    <select
-                      id="editAgama"
-                      value={editAgama}
-                      onChange={(e) => setEditAgama(e.target.value)}
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                    >
-                      <option value="ISLAM">Islam</option>
-                      <option value="KRISTEN">Kristen</option>
-                      <option value="KATHOLIK">Katholik</option>
-                      <option value="HINDU">Hindu</option>
-                      <option value="BUDDHA">Buddha</option>
-                      <option value="KONGHUCU">Konghucu</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="editPendidikanTerakhir">
-                    Pendidikan Terakhir
-                  </Label>
-                  <Input
-                    id="editPendidikanTerakhir"
-                    type="text"
-                    value={editPendidikanTerakhir}
-                    onChange={(e) => setEditPendidikanTerakhir(e.target.value)}
-                    placeholder="S1 Pendidikan Komputer"
-                  />
-                </div>
-              </>
-            )}
-
-            {activeEditSection === 'kepegawaian' && (
-              <>
-                <div className="space-y-1">
-                  <Label htmlFor="editNip">
-                    NIP (Nomor Induk Pegawai)
-                  </Label>
-                  <Input
-                    id="editNip"
-                    type="text"
-                    value={editNip}
-                    onChange={(e) => setEditNip(e.target.value)}
-                    placeholder="18-digit NIP ASN / NIP Sekolah"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <Label htmlFor="editNuptk">
-                      NUPTK
-                    </Label>
-                    <Input
-                      id="editNuptk"
-                      type="text"
-                      value={editNuptk}
-                      onChange={(e) => setEditNuptk(e.target.value)}
-                      placeholder="16-digit NUPTK"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="editNpwp">
-                      NPWP
-                    </Label>
-                    <Input
-                      id="editNpwp"
-                      type="text"
-                      value={editNpwp}
-                      onChange={(e) => setEditNpwp(e.target.value)}
-                      placeholder="Nomor NPWP Guru"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <Label htmlFor="editStatusKepegawaian">
-                      Status Kepegawaian
-                    </Label>
-                    <select
-                      id="editStatusKepegawaian"
-                      value={editStatusKepegawaian}
-                      onChange={(e) => setEditStatusKepegawaian(e.target.value)}
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                    >
-                      <option value="PNS">PNS / Pegawai Negeri Sipil</option>
-                      <option value="PPPK">PPPK / PPPK Guru</option>
-                      <option value="GTY">GTY / Guru Tetap Yayasan</option>
-                      <option value="GTT">GTT / Guru Tidak Tetap</option>
-                      <option value="HONORER">Honorer Sekolah</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="editPangkatGolongan">
-                      Golongan / Pangkat
-                    </Label>
-                    <Input
-                      id="editPangkatGolongan"
-                      type="text"
-                      value={editPangkatGolongan}
-                      onChange={(e) => setEditPangkatGolongan(e.target.value)}
-                      placeholder="IV/a - Pembina"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <Label htmlFor="editJenisPtk">
-                      Jenis PTK
-                    </Label>
-                    <select
-                      id="editJenisPtk"
-                      value={editJenisPtk}
-                      onChange={(e) => setEditJenisPtk(e.target.value)}
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
-                    >
-                      <option value="PENDIDIK">PENDIDIK (Guru)</option>
-                      <option value="TENAGA_KEPENDIDIKAN">TENAGA KEPENDIDIKAN (Staf / TU)</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="editTmtGuru">
-                      TMT Guru (Terhitung Mulai Tanggal)
-                    </Label>
-                    <Input
-                      id="editTmtGuru"
-                      type="date"
-                      value={editTmtGuru}
-                      onChange={(e) => setEditTmtGuru(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {activeEditSection === 'alamat' && (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <Label>
-                      1. Provinsi
-                    </Label>
-                    <SearchableSelect
-                      value={editProvinsi}
-                      onValueChange={(val) => {
-                        setEditProvinsi(val);
-                        setEditKabupaten('');
-                        setEditKecamatan('');
-                        setEditKelurahan('');
-                      }}
-                      options={provinsiOptions}
-                      placeholder={loadingProv ? 'Memuat Provinsi...' : 'Pilih Provinsi...'}
-                      disabled={loadingProv}
-                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label>
-                      2. Kabupaten / Kota
-                    </Label>
-                    <SearchableSelect
-                      value={editKabupaten}
-                      onValueChange={(val) => {
-                        setEditKabupaten(val);
-                        setEditKecamatan('');
-                        setEditKelurahan('');
-                      }}
-                      options={kabupatenOptions}
-                      placeholder={loadingKab ? 'Memuat Kab/Kota...' : 'Pilih Kab/Kota...'}
-                      disabled={!editProvinsi || loadingKab}
-                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="space-y-1">
-                    <Label>
-                      3. Kecamatan
-                    </Label>
-                    <SearchableSelect
-                      value={editKecamatan}
-                      onValueChange={(val) => {
-                        setEditKecamatan(val);
-                        setEditKelurahan('');
-                      }}
-                      options={kecamatanOptions}
-                      placeholder={loadingKec ? 'Memuat Kecamatan...' : 'Pilih Kecamatan...'}
-                      disabled={!editKabupaten || loadingKec}
-                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label>
-                      4. Kelurahan / Desa
-                    </Label>
-                    <SearchableSelect
-                      value={editKelurahan}
-                      onValueChange={(val) => setEditKelurahan(val)}
-                      options={kelurahanOptions}
-                      placeholder={loadingKel ? 'Memuat Desa/Kel...' : 'Pilih Desa/Kel...'}
-                      disabled={!editKecamatan || loadingKel}
-                      triggerClassName="h-10 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3.5">
-                  <div className="space-y-1">
-                    <Label htmlFor="editRt">
-                      RT
-                    </Label>
-                    <Input
-                      id="editRt"
-                      type="text"
-                      value={editRt}
-                      onChange={(e) => setEditRt(e.target.value)}
-                      placeholder="001"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="editRw">
-                      RW
-                    </Label>
-                    <Input
-                      id="editRw"
-                      type="text"
-                      value={editRw}
-                      onChange={(e) => setEditRw(e.target.value)}
-                      placeholder="002"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="editKodePos">
-                      Kode Pos
-                    </Label>
-                    <Input
-                      id="editKodePos"
-                      type="text"
-                      value={editKodePos}
-                      onChange={(e) => setEditKodePos(e.target.value)}
-                      placeholder="41162"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="editAlamat">
-                    Alamat Jalan / Blok (Lengkap dengan Nomor Rumah / Gang)
-                  </Label>
-                  <Textarea
-                    id="editAlamat"
-                    rows={2}
-                    value={editAlamat}
-                    onChange={(e) => setEditAlamat(e.target.value)}
-                    placeholder="Jl. Raya No. 123 / Gang Masjid"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label htmlFor="editDusun">
-                    Dusun / Kampung
-                  </Label>
-                  <Input
-                    id="editDusun"
-                    type="text"
-                    value={editDusun}
-                    onChange={(e) => setEditDusun(e.target.value)}
-                    placeholder="Kampung Krajan / Dusun Mekar"
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsEditModalOpen(false)}
-                className="h-9 px-4 rounded-xl text-xs font-bold"
-              >
-                Batal
-              </Button>
-              <Button
-                type="submit"
-                disabled={updateGuruMeMutation.isPending}
-                className="h-9 px-5 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-md"
-              >
-                {updateGuruMeMutation.isPending ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" />
-                    <span>Menyimpan...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save size={14} />
-                    <span>Simpan Perubahan</span>
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
+          <GuruForm
+            guruId={guruId}
+            mode="edit"
+            defaultTab={activeEditSection === 'kepegawaian' ? 'kepegawaian' : 'data-pribadi'}
+            enableMapelAssignments={false}
+            onSuccess={() => {
+              setIsEditModalOpen(false);
+              refetchGuruProfile();
+              loadUser().catch(() => {});
+            }}
+            onCancel={() => setIsEditModalOpen(false)}
+          />
         </Modal>
       )}
 

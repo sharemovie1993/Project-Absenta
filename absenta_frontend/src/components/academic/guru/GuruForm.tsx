@@ -36,6 +36,7 @@ interface GuruFormProps {
   onCancel?: () => void;
   mode?: 'create' | 'edit' | 'view';
   enableMapelAssignments?: boolean;
+  defaultTab?: 'data-pribadi' | 'kepegawaian' | 'penugasan' | 'berkas';
 }
 
 const STATUS_KEPEGAWAIAN_OPTIONS = [
@@ -54,11 +55,19 @@ export const GuruForm = React.memo<GuruFormProps>(({
   onSuccess,
   onCancel,
   mode = 'create',
-  enableMapelAssignments = true
+  enableMapelAssignments = true,
+  defaultTab = 'data-pribadi'
 }) => {
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<'data-pribadi' | 'kepegawaian' | 'penugasan' | 'berkas'>(defaultTab);
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab]);
 
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
@@ -566,7 +575,7 @@ export const GuruForm = React.memo<GuruFormProps>(({
           </div>
         )}
 
-        <Tabs defaultValue="data-pribadi" className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
           <TabsList className={cn(
             'grid w-full mb-8 h-14 p-2 bg-slate-100/80 dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800/50',
             guruId ? 'grid-cols-4' : 'grid-cols-3'
