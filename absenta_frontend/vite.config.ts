@@ -76,24 +76,6 @@ export default defineConfig(({ mode }) => {
               if (normalizedId.includes('clsx') || normalizedId.includes('tailwind-merge') || normalizedId.includes('react-hot-toast')) {
                 return 'vendor-ui-libs';
               }
-              if (normalizedId.includes('xlsx') || normalizedId.includes('exceljs')) {
-                return 'vendor-excel';
-              }
-              if (normalizedId.includes('jspdf') || normalizedId.includes('html2canvas') || normalizedId.includes('html2pdf')) {
-                return 'vendor-pdf';
-              }
-              if (normalizedId.includes('leaflet')) {
-                return 'vendor-map';
-              }
-              if (normalizedId.includes('fabric')) {
-                return 'vendor-canvas';
-              }
-              if (normalizedId.includes('face-api') || normalizedId.includes('@vladmandic')) {
-                return 'vendor-face';
-              }
-              if (normalizedId.includes('tinymce') || normalizedId.includes('@tinymce')) {
-                return 'vendor-editor';
-              }
             }
           }
         }
