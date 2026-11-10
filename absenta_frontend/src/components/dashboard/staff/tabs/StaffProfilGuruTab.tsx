@@ -12,6 +12,7 @@ import { formatAlamatLengkap } from '../../../../lib/alamat.util';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getStrukturList } from '../../../../api/academic/strukturOrganisasi.api';
 import { uploadGuruDocument, getMemberDocPreviewUrl } from '../../../../api/memberDocs.api';
+import { FieldDocumentTrigger } from '@/components/documents/FieldDocumentTrigger';
 import { resolveProfilePhotoUrl } from '../../../../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { TeacherAlertsGrid } from '../saya/TeacherAlertsGrid';
@@ -212,6 +213,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const guruId: string | undefined = guruProfile?.id;
+  const activeGuruName = guruProfile?.nama_guru || user?.full_name || user?.name || '';
 
   // Resolve display photo: local preview → guruProfile.foto → fallback initials
   const rawGuruPhoto = guruProfile?.foto || guruProfile?.foto_url || null;
@@ -655,7 +657,18 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">NIK (KTP)</span>
-                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNik || '-'}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNik || '-'}</span>
+                  {guruId && (
+                    <FieldDocumentTrigger
+                      entityType="GURU"
+                      entityId={guruId}
+                      entityName={activeGuruName}
+                      kategori="KTP"
+                      label="KTP"
+                    />
+                  )}
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">NUPTK</span>
@@ -895,11 +908,33 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               <span className="font-bold text-slate-800 dark:text-slate-200">{editPendidikanTerakhir}</span>
             </div>
             <div>
-              <span className="text-[10px] font-semibold text-slate-400 block">NIK (KTP)</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-slate-400 block">NIK (KTP)</span>
+                {guruId && (
+                  <FieldDocumentTrigger
+                    entityType="GURU"
+                    entityId={guruId}
+                    entityName={activeGuruName}
+                    kategori="KTP"
+                    label="KTP"
+                  />
+                )}
+              </div>
               <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNik || '-'}</span>
             </div>
             <div>
-              <span className="text-[10px] font-semibold text-slate-400 block">No. Kartu Keluarga (KK)</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-slate-400 block">No. Kartu Keluarga (KK)</span>
+                {guruId && (
+                  <FieldDocumentTrigger
+                    entityType="GURU"
+                    entityId={guruId}
+                    entityName={activeGuruName}
+                    kategori="KK"
+                    label="KK"
+                  />
+                )}
+              </div>
               <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNoKk || '-'}</span>
             </div>
             <div>
@@ -1072,9 +1107,20 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
             {activeEditSection === 'pribadi' && (
               <>
                 <div className="space-y-1">
-                  <Label htmlFor="editNamaGuru">
-                    Nama Lengkap &amp; Gelar Guru <span className="text-rose-500">*</span>
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="editNamaGuru">
+                      Nama Lengkap &amp; Gelar Guru <span className="text-rose-500">*</span>
+                    </Label>
+                    {guruId && (
+                      <FieldDocumentTrigger
+                        entityType="GURU"
+                        entityId={guruId}
+                        entityName={activeGuruName}
+                        kategori="SK"
+                        label="SK / Karpeg"
+                      />
+                    )}
+                  </div>
                   <Input
                     id="editNamaGuru"
                     type="text"
@@ -1090,9 +1136,20 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
-                    <Label htmlFor="editNik">
-                      NIK (KTP 16 Digit)
-                    </Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="editNik">
+                        NIK (KTP 16 Digit)
+                      </Label>
+                      {guruId && (
+                        <FieldDocumentTrigger
+                          entityType="GURU"
+                          entityId={guruId}
+                          entityName={activeGuruName}
+                          kategori="KTP"
+                          label="KTP"
+                        />
+                      )}
+                    </div>
                     <Input
                       id="editNik"
                       type="text"
@@ -1103,9 +1160,20 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="editNoKk">
-                      No. Kartu Keluarga (KK)
-                    </Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="editNoKk">
+                        No. Kartu Keluarga (KK)
+                      </Label>
+                      {guruId && (
+                        <FieldDocumentTrigger
+                          entityType="GURU"
+                          entityId={guruId}
+                          entityName={activeGuruName}
+                          kategori="KK"
+                          label="KK"
+                        />
+                      )}
+                    </div>
                     <Input
                       id="editNoKk"
                       type="text"

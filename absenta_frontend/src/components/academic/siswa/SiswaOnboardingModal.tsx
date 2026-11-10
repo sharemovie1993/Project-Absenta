@@ -24,6 +24,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { uploadSiswaDocument } from '@/api/memberDocs.api';
+import { FieldDocumentTrigger } from '@/components/documents/FieldDocumentTrigger';
 import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { jenisKegiatanMasterApi } from '@/api/academic/jenisKegiatanMaster.api';
@@ -688,10 +689,23 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
-                    <CreditCard size={13} className="text-emerald-500" />
-                    <span>NIK (Nomor Induk Kependudukan)</span>
-                    {renderFieldStatusBadge(formData.nik)}
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className="flex items-center gap-1.5">
+                      <CreditCard size={13} className="text-emerald-500" />
+                      <span>NIK (Nomor Induk Kependudukan)</span>
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {siswa?.id && (
+                        <FieldDocumentTrigger
+                          entityType="SISWA"
+                          entityId={siswa.id}
+                          entityName={studentName}
+                          kategori="KK"
+                          label="KK"
+                        />
+                      )}
+                      {renderFieldStatusBadge(formData.nik)}
+                    </div>
                   </label>
                   <input
                     type="text"
@@ -704,10 +718,23 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
-                    <CreditCard size={13} className="text-indigo-500" />
-                    <span>NISN (Nasional)</span>
-                    {renderFieldStatusBadge(formData.nisn)}
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className="flex items-center gap-1.5">
+                      <CreditCard size={13} className="text-indigo-500" />
+                      <span>NISN (Nasional)</span>
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {siswa?.id && (
+                        <FieldDocumentTrigger
+                          entityType="SISWA"
+                          entityId={siswa.id}
+                          entityName={studentName}
+                          kategori="NISN"
+                          label="Kartu NISN"
+                        />
+                      )}
+                      {renderFieldStatusBadge(formData.nisn)}
+                    </div>
                   </label>
                   <input
                     type="text"

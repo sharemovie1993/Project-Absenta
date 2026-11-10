@@ -38,6 +38,7 @@ import { uploadGuruDocument, getMemberDocPreviewUrl } from '../../../api/memberD
 import { resolveProfilePhotoUrl } from '../../../lib/utils';
 import { normalizeTeacherIdentity } from '@/utils/academic/academicIdentityNormalizer';
 import { SelfMemberDocsSection } from '../../documents/SelfMemberDocsSection';
+import { FieldDocumentTrigger } from '../../documents/FieldDocumentTrigger';
 import { studentCardConfigApi } from '../../../api/academic/student-card-config.api';
 import { PrintOverlay } from '@/components/academic/student-card/PrintOverlay';
 import { DEFAULT_GURU_CONFIG, PAPER_SIZES } from '@/components/academic/student-card/constants';
@@ -1033,7 +1034,19 @@ export const GuruDetailView: React.FC<GuruDetailViewProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="editNik">NIK (KTP)</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="editNik">NIK (KTP)</Label>
+                    {guruId && (
+                      <FieldDocumentTrigger
+                        entityType="GURU"
+                        entityId={guruId}
+                        entityName={guru?.nama_guru}
+                        kategori="KTP"
+                        label="KTP"
+                        disabled={!canEdit}
+                      />
+                    )}
+                  </div>
                   <Input
                     id="editNik"
                     value={editNik}
@@ -1042,7 +1055,19 @@ export const GuruDetailView: React.FC<GuruDetailViewProps> = ({
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="editNoKk">No. Kartu Keluarga (KK)</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="editNoKk">No. Kartu Keluarga (KK)</Label>
+                    {guruId && (
+                      <FieldDocumentTrigger
+                        entityType="GURU"
+                        entityId={guruId}
+                        entityName={guru?.nama_guru}
+                        kategori="KK"
+                        label="KK"
+                        disabled={!canEdit}
+                      />
+                    )}
+                  </div>
                   <Input
                     id="editNoKk"
                     value={editNoKk}

@@ -38,6 +38,7 @@ import { useProvinsiOptions, useKabupatenOptions, useKecamatanOptions, useKelura
 import { formatAlamatLengkap } from '../../../lib/alamat.util';
 import { uploadSiswaDocument, getMemberDocPreviewUrl } from '../../../api/memberDocs.api';
 import { resolveProfilePhotoUrl } from '../../../lib/utils';
+import { FieldDocumentTrigger } from '../../documents/FieldDocumentTrigger';
 import { normalizeStudentIdentity } from '@/utils/academic/academicIdentityNormalizer';
 import { SelfMemberDocsSection } from '../../documents/SelfMemberDocsSection';
 import { getKelasForDropdown, type DropdownOption } from '../../../api/dropdown.api';
@@ -986,7 +987,19 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
           {activeEditSection === 'pribadi' && (
             <div className="space-y-3.5">
               <div className="space-y-1">
-                <Label htmlFor="editNamaSiswa">Nama Lengkap Siswa</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="editNamaSiswa">Nama Lengkap Siswa</Label>
+                  {siswaId && (
+                    <FieldDocumentTrigger
+                      entityType="SISWA"
+                      entityId={siswaId}
+                      entityName={editNamaSiswa}
+                      kategori="AKTA"
+                      label="Akta Lahir"
+                      disabled={!canEdit}
+                    />
+                  )}
+                </div>
                 <Input
                   id="editNamaSiswa"
                   value={editNamaSiswa}
@@ -1047,7 +1060,19 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="editNik">NIK (KTP / KIA)</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="editNik">NIK (KTP / KIA)</Label>
+                    {siswaId && (
+                      <FieldDocumentTrigger
+                        entityType="SISWA"
+                        entityId={siswaId}
+                        entityName={editNamaSiswa}
+                        kategori="KK"
+                        label="Kartu Keluarga (KK)"
+                        disabled={!canEdit}
+                      />
+                    )}
+                  </div>
                   <Input
                     id="editNik"
                     value={editNik}
@@ -1056,7 +1081,19 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="editNoKk">No. Kartu Keluarga (KK)</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="editNoKk">No. Kartu Keluarga (KK)</Label>
+                    {siswaId && (
+                      <FieldDocumentTrigger
+                        entityType="SISWA"
+                        entityId={siswaId}
+                        entityName={editNamaSiswa}
+                        kategori="KK"
+                        label="KK"
+                        disabled={!canEdit}
+                      />
+                    )}
+                  </div>
                   <Input
                     id="editNoKk"
                     value={editNoKk}
@@ -1096,7 +1133,19 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
             <div className="space-y-3.5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="editNisn">NISN</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="editNisn">NISN</Label>
+                    {siswaId && (
+                      <FieldDocumentTrigger
+                        entityType="SISWA"
+                        entityId={siswaId}
+                        entityName={editNamaSiswa}
+                        kategori="NISN"
+                        label="Kartu NISN"
+                        disabled={!canEdit}
+                      />
+                    )}
+                  </div>
                   <Input
                     id="editNisn"
                     value={editNisn}
