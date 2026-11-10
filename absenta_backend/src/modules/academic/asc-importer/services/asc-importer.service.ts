@@ -537,29 +537,78 @@ export class AscImporterService {
       }
 
       // 3.5. Safe Re-import Guard:
-      // (a) Bersihkan sesi presensi template otomatis yang berstatus MENDATANG di semester ini agar nanti dibuat ulang sesuai jadwal baru.
-      await tx.sesiAbsensi.deleteMany({
+      // (a) Temukan seluruh JadwalKBM lama di semester & TP ini yang akan di-overwrite
+      const existingJadwalKbm = await tx.jadwalKBM.findMany({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: input.tahun_pelajaran_id,
+          semester_id: input.semester_id,
+        },
+        select: { id: true },
+      });
+      const existingJadwalIds = existingJadwalKbm.map((j: any) => j.id);
+
+      // (b) Bersihkan sesi presensi template otomatis yang berstatus MENDATANG di semester ini agar nanti dibuat ulang sesuai jadwal baru.
+      const upcomingSessions = await tx.sesiAbsensi.findMany({
         where: {
           tenant_id: tenantId,
           tahun_pelajaran_id: input.tahun_pelajaran_id,
           semester_id: input.semester_id,
           status: 'MENDATANG',
         },
+        select: { id: true },
       });
 
-      // (b) Lepaskan relasi foreign key jadwal_kbm_id pada sesi yang sudah terisi/berlangsung (di-set null)
-      // agar catatan riwayat presensi siswa & jurnal guru tetap 100% utuh dan tidak crash terkena FK RESTRICT.
-      await tx.sesiAbsensi.updateMany({
-        where: {
-          tenant_id: tenantId,
-          tahun_pelajaran_id: input.tahun_pelajaran_id,
-          semester_id: input.semester_id,
-          jadwal_kbm_id: { not: null },
-        },
-        data: {
-          jadwal_kbm_id: null,
-        },
-      });
+      if (upcomingSessions.length > 0) {
+        const upcomingIds = upcomingSessions.map((s: any) => s.id);
+
+        // Hapus child records log presensi guru & siswa yang berelasi dengan sesi MENDATANG
+        // Wajib dihapus terlebih dahulu karena AbsenGuru_sesi_id_fkey & AbsenSiswa_sesi_id_fkey tidak cascade delete
+        await tx.absenGuru.deleteMany({
+          where: { sesi_id: { in: upcomingIds } },
+        });
+        await tx.absenSiswa.deleteMany({
+          where: { sesi_id: { in: upcomingIds } },
+        });
+        await tx.nilaiSiswa.updateMany({
+          where: { sesi_absensi_id: { in: upcomingIds } },
+          data: { sesi_absensi_id: null },
+        });
+        await tx.progresMateri.deleteMany({
+          where: { sesi_id: { in: upcomingIds } },
+        });
+
+        // Hapus SesiAbsensi template MENDATANG setelah seluruh child FK dibersihkan
+        await tx.sesiAbsensi.deleteMany({
+          where: { id: { in: upcomingIds } },
+        });
+      }
+
+      // (c) Lepaskan relasi foreign key jadwal_kbm_id pada seluruh sesi yang sudah terisi/berlangsung (di-set null)
+      // agar catatan riwayat presensi siswa & jurnal guru tetap 100% utuh dan tidak crash terkena FK RESTRICT saat JadwalKBM dihapus.
+      if (existingJadwalIds.length > 0) {
+        await tx.sesiAbsensi.updateMany({
+          where: {
+            tenant_id: tenantId,
+            jadwal_kbm_id: { in: existingJadwalIds },
+          },
+          data: {
+            jadwal_kbm_id: null,
+          },
+        });
+      } else {
+        await tx.sesiAbsensi.updateMany({
+          where: {
+            tenant_id: tenantId,
+            tahun_pelajaran_id: input.tahun_pelajaran_id,
+            semester_id: input.semester_id,
+            jadwal_kbm_id: { not: null },
+          },
+          data: {
+            jadwal_kbm_id: null,
+          },
+        });
+      }
 
       // 4. Overwrite Mode: Delete existing JadwalKBM & JadwalKontrakKbm for selected TP & Semester
       await tx.jadwalKBM.deleteMany({
@@ -859,6 +908,25 @@ export class AscImporterService {
       await guruMapelService.syncFromJadwalKbm(tenantId, input.tahun_pelajaran_id, input.semester_id);
     } catch (syncErr: any) {
       console.warn('[AscImporter] Non-fatal auto-sync to GuruMapel warning:', syncErr.message);
+    }
+
+    // Invalidate Jadwal KBM Cache
+    try {
+      const { cacheInvalidationService } = await import('@/utils/cache-invalidation.service');
+      await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
+    } catch (cacheErr: any) {
+      console.warn('[AscImporter] Non-fatal cache invalidation warning:', cacheErr.message);
+    }
+
+    // Auto-sync sessions for today
+    try {
+      const { systemConfigService } = await import('@/modules/system-config/services/system-config.service');
+      const { getTenantLocalTime, generateSessionsForTenantDirect } = await import('@/jobs/attendanceAutoSession.job');
+      const cfg = await systemConfigService.getActive(tenantId);
+      const { dateStr, timeZone } = getTenantLocalTime(cfg?.timezone, new Date());
+      await generateSessionsForTenantDirect(tenantId, dateStr, timeZone);
+    } catch (jobErr: any) {
+      console.warn('[AscImporter] Non-fatal auto-session sync warning:', jobErr.message);
     }
 
     return result;

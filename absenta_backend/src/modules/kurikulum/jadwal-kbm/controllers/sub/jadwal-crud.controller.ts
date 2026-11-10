@@ -425,7 +425,30 @@ export class JadwalCrudController {
       if (targetSesiIds.length > 0) {
         await prisma.absenSiswa.deleteMany({ where: { sesi_id: { in: targetSesiIds } } });
         await prisma.absenGuru.deleteMany({ where: { sesi_id: { in: targetSesiIds } } });
+        await prisma.nilaiSiswa.updateMany({
+          where: { sesi_absensi_id: { in: targetSesiIds } },
+          data: { sesi_absensi_id: null },
+        });
+        await prisma.progresMateri.deleteMany({ where: { sesi_id: { in: targetSesiIds } } });
         await prisma.sesiAbsensi.deleteMany({ where: { id: { in: targetSesiIds } } });
+      }
+
+      // 1.5. Lepaskan relasi foreign key jadwal_kbm_id pada sesi yang tersisa agar tidak terkena FK RESTRICT
+      const targetJadwal = await prisma.jadwalKBM.findMany({
+        where: jadwalWhere,
+        select: { id: true },
+      });
+      const targetJadwalIds = targetJadwal.map(j => j.id);
+      if (targetJadwalIds.length > 0) {
+        await prisma.sesiAbsensi.updateMany({
+          where: {
+            tenant_id: tenantId,
+            jadwal_kbm_id: { in: targetJadwalIds },
+          },
+          data: {
+            jadwal_kbm_id: null,
+          },
+        });
       }
 
       // 2. Delete JadwalKBM (Except slot_index: 0)
