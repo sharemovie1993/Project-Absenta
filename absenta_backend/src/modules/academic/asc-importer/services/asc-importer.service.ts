@@ -239,7 +239,12 @@ export class AscImporterService {
     return { start: `${startH}:${startM}`, end: `${endH}:${endM}` };
   }
 
-  static async analyzeAscXml(tenantId: string, xmlContent: string) {
+  static async analyzeAscXml(
+    tenantId: string,
+    xmlContent: string,
+    tahunPelajaranId?: string,
+    semesterId?: string
+  ) {
     const timetable = this.parseXml(xmlContent);
 
     // 1. Fetch DB master entities
@@ -247,6 +252,28 @@ export class AscImporterService {
     const dbClasses = await prisma.kelas.findMany({ where: { tenant_id: tenantId }, include: { Jurusan: true } });
     const dbJurusans = await prisma.jurusan.findMany({ where: { tenant_id: tenantId } });
     const dbSubjects = await prisma.mapel.findMany({ where: { tenant_id: tenantId } });
+
+    // 1.5. Ambil data registrasi SiswaAkademik aktif untuk konteks tahun pelajaran sasaran
+    const studentCountMap = new Map<string, number>();
+    if (tahunPelajaranId) {
+      try {
+        const activeRegistrations = await prisma.siswaAkademik.groupBy({
+          by: ['kelas_id'],
+          where: {
+            kelas: { tenant_id: tenantId },
+            tahun_pelajaran_id: tahunPelajaranId,
+            ...(semesterId ? { semester_id: semesterId } : {}),
+            status: 'AKTIF',
+          },
+          _count: { siswa_id: true },
+        });
+        activeRegistrations.forEach((r: any) => {
+          studentCountMap.set(r.kelas_id, r._count.siswa_id);
+        });
+      } catch (err) {
+        console.warn('[AscImporter] Failed to fetch SiswaAkademik count in analyze:', err);
+      }
+    }
 
     // 2. Extract XML entities
     const xmlSubjectsRaw = timetable.subjects?.subject || [];
@@ -308,11 +335,14 @@ export class AscImporterService {
 
       const activeClasses = dbClasses.filter((k: any) => k.is_active !== false);
 
-      // Prioritas 1: Cocok nama_kelas / asc_id DAN cocok Konsentrasi Keahlian / Jurusan
+      // Prioritas 1: Cocok nama_kelas / asc_id DAN cocok Konsentrasi Keahlian / Jurusan DAN memiliki siswa aktif di TP sasaran
       let exactMatch = activeClasses.find((k: any) => {
         const isNameMatch = this.normalizeName(k.nama_kelas) === normXmlName;
         const isAscMatch = k.asc_id && String(k.asc_id) === xmlId;
         if (!isNameMatch && !isAscMatch) return false;
+
+        // Jika ada data siswa aktif di TP ini, prioritaskan rombel yang ada siswanya
+        if (studentCountMap.size > 0 && !studentCountMap.get(k.id)) return false;
 
         if (detectedJurusan && k.Jurusan) {
           const jKode = (k.Jurusan.kode || '').toUpperCase();
@@ -324,7 +354,25 @@ export class AscImporterService {
         return true;
       });
 
-      // Prioritas 2: Fallback pencocokan nama standar
+      // Prioritas 2: Cocok nama_kelas / asc_id DAN cocok Konsentrasi Keahlian / Jurusan (kelas aktif)
+      if (!exactMatch) {
+        exactMatch = activeClasses.find((k: any) => {
+          const isNameMatch = this.normalizeName(k.nama_kelas) === normXmlName;
+          const isAscMatch = k.asc_id && String(k.asc_id) === xmlId;
+          if (!isNameMatch && !isAscMatch) return false;
+
+          if (detectedJurusan && k.Jurusan) {
+            const jKode = (k.Jurusan.kode || '').toUpperCase();
+            const jSing = (k.Jurusan.singkatan || '').toUpperCase();
+            const jNama = (k.Jurusan.nama || '').toUpperCase();
+            const det = detectedJurusan.toUpperCase();
+            return jKode === det || jSing === det || jNama.includes(det) || det.includes(jKode) || det.includes(jSing);
+          }
+          return true;
+        });
+      }
+
+      // Prioritas 3: Fallback pencocokan nama standar
       if (!exactMatch) {
         exactMatch = activeClasses.find(
           (k: any) => this.normalizeName(k.nama_kelas) === normXmlName || (k.asc_id && String(k.asc_id) === xmlId)
@@ -333,8 +381,9 @@ export class AscImporterService {
         );
       }
 
+      const activeStudentCount = exactMatch ? (studentCountMap.get(exactMatch.id) || 0) : 0;
       const matchedNameWithJurusan = exactMatch
-        ? `${exactMatch.nama_kelas}${exactMatch.Jurusan ? ` - ${exactMatch.Jurusan.singkatan || exactMatch.Jurusan.nama}` : ''}`
+        ? `${exactMatch.nama_kelas}${exactMatch.Jurusan ? ` - ${exactMatch.Jurusan.singkatan || exactMatch.Jurusan.nama}` : ''}${activeStudentCount > 0 ? ` (${activeStudentCount} Siswa)` : ''}`
         : null;
 
       return {
@@ -346,6 +395,7 @@ export class AscImporterService {
         detected_jurusan: detectedJurusan || null,
         matched_jurusan_nama: exactMatch?.Jurusan?.nama || null,
         matched_jurusan_kode: exactMatch?.Jurusan?.kode || exactMatch?.Jurusan?.singkatan || null,
+        total_siswa_aktif: activeStudentCount,
         match_status: exactMatch ? 'EXACT_MATCH' : 'NEW_CREATE',
       };
     });
@@ -391,16 +441,20 @@ export class AscImporterService {
       classes: classAnalysis,
       subjects: subjectAnalysis,
       db_teachers: dbGurus.map((g: any) => ({ id: g.id, name: g.nama_guru })),
-      db_classes: dbClasses.map((c: any) => ({
-        id: c.id,
-        name: `${c.nama_kelas}${c.Jurusan ? ` (${c.Jurusan.singkatan || c.Jurusan.nama})` : ''}${c.is_active === false ? ' [NONAKTIF]' : ''}`,
-        nama_kelas: c.nama_kelas,
-        tingkat: c.tingkat,
-        jurusan_id: c.jurusan_id || null,
-        jurusan_nama: c.Jurusan?.nama || null,
-        jurusan_kode: c.Jurusan?.kode || c.Jurusan?.singkatan || null,
-        is_active: c.is_active !== false,
-      })),
+      db_classes: dbClasses.map((c: any) => {
+        const studentCount = studentCountMap.get(c.id) || 0;
+        return {
+          id: c.id,
+          name: `${c.nama_kelas}${c.Jurusan ? ` (${c.Jurusan.singkatan || c.Jurusan.nama})` : ''}${studentCount > 0 ? ` • ${studentCount} Siswa` : ''}${c.is_active === false ? ' [NONAKTIF]' : ''}`,
+          nama_kelas: c.nama_kelas,
+          tingkat: c.tingkat,
+          jurusan_id: c.jurusan_id || null,
+          jurusan_nama: c.Jurusan?.nama || null,
+          jurusan_kode: c.Jurusan?.kode || c.Jurusan?.singkatan || null,
+          is_active: c.is_active !== false,
+          total_siswa_aktif: studentCount,
+        };
+      }),
       db_subjects: dbSubjects.map((m: any) => ({ id: m.id, name: m.nama_mapel, code: m.kode_mapel })),
     };
   }

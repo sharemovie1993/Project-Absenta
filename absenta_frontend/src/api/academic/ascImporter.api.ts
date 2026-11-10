@@ -18,6 +18,7 @@ export interface MatchAnalysisItem {
   detected_jurusan?: string | null;
   matched_jurusan_nama?: string | null;
   matched_jurusan_kode?: string | null;
+  total_siswa_aktif?: number;
 }
 
 export interface AscDbClassItem {
@@ -29,6 +30,7 @@ export interface AscDbClassItem {
   jurusan_nama?: string | null;
   jurusan_kode?: string | null;
   is_active?: boolean;
+  total_siswa_aktif?: number;
 }
 
 export interface AscAnalysisResult {
@@ -59,15 +61,25 @@ export interface ExecuteImportPayload {
   subject_mappings: EntityMapping[];
 }
 
-export async function analyzeAscXml(file: File): Promise<{ success: boolean; data: AscAnalysisResult; message?: string }> {
+export async function analyzeAscXml(
+  file: File,
+  tahunPelajaranId?: string,
+  semesterId?: string
+): Promise<{ success: boolean; data: AscAnalysisResult; message?: string }> {
   const formData = new FormData();
   formData.append('file', file);
+  if (tahunPelajaranId) formData.append('tahun_pelajaran_id', tahunPelajaranId);
+  if (semesterId) formData.append('semester_id', semesterId);
 
   return requestWithFallback<{ success: boolean; data: AscAnalysisResult; message?: string }>(
     'post',
     '/academic/asc-importer/analyze',
     {
       data: formData,
+      params: {
+        ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {}),
+        ...(semesterId ? { semester_id: semesterId } : {}),
+      },
     }
   );
 }

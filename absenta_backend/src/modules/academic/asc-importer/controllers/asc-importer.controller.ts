@@ -15,7 +15,10 @@ export class AscImporterController {
     const xmlBuffer = await data.toBuffer();
     const xmlContent = xmlBuffer.toString('utf-8');
 
-    const analysis = await AscImporterService.analyzeAscXml(tenantId, xmlContent);
+    const tahunPelajaranId = request.query?.tahun_pelajaran_id || (data.fields?.tahun_pelajaran_id as any)?.value;
+    const semesterId = request.query?.semester_id || (data.fields?.semester_id as any)?.value;
+
+    const analysis = await AscImporterService.analyzeAscXml(tenantId, xmlContent, tahunPelajaranId, semesterId);
 
     return reply.send({
       success: true,

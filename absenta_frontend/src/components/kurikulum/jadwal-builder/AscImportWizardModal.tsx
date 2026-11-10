@@ -279,7 +279,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
     const toastId = toast.loading('Memproses & menganalisis file XML aSc TimeTables...');
     try {
       console.log('⏳ [aSc Import Wizard] Sending XML file to backend /api/academic/asc-importer/analyze ...');
-      const res = await analyzeAscXml(file);
+      const res = await analyzeAscXml(file, targetTpId, targetSemId);
       console.log('📩 [aSc Import Wizard] Received Backend Analysis Response:', res);
 
       if (res.success && res.data) {
@@ -1141,6 +1141,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                                     const levelConflict = xmlLevel && dbcLevel && xmlLevel !== dbcLevel;
                                     const jurConflict = xmlJurusan && isJurusanConflict(xmlJurusan, dbc);
                                     const jurLabel = dbc.jurusan_nama ? ` - ${dbc.jurusan_nama}` : dbc.jurusan_kode ? ` - ${dbc.jurusan_kode}` : '';
+                                    const studentBadge = (dbc.total_siswa_aktif && dbc.total_siswa_aktif > 0) ? ` • ${dbc.total_siswa_aktif} Siswa` : '';
                                     const activeLabel = dbc.is_active === false ? ' [Nonaktif]' : '';
 
                                     let prefix = '';
@@ -1149,7 +1150,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
 
                                     return (
                                       <option key={dbc.id} value={dbc.id}>
-                                        {prefix}{dbc.nama_kelas || dbc.name}{jurLabel}{activeLabel}
+                                        {prefix}{dbc.nama_kelas || dbc.name}{jurLabel}{studentBadge}{activeLabel}
                                       </option>
                                     );
                                   })}
