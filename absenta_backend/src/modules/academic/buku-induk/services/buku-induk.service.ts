@@ -14,6 +14,7 @@ export class BukuIndukService {
       angkatan?: string;
       search?: string;
       status?: string;
+      gender?: string;
       page?: number;
       limit?: number;
     }
@@ -26,6 +27,7 @@ export class BukuIndukService {
       angkatan,
       search,
       status,
+      gender,
       page = 1,
       limit = 20,
     } = params;
@@ -44,7 +46,18 @@ export class BukuIndukService {
     }
 
     if (status) {
-      where.status = status;
+      if (status === 'PINDAH' || status === 'MUTASI') {
+        where.status = { in: ['PINDAH', 'MUTASI'] };
+      } else if (status === 'TIDAK_AKTIF') {
+        where.status = { in: ['TIDAK_AKTIF', 'NONAKTIF'] };
+      } else {
+        where.status = status;
+      }
+    }
+
+    if (gender) {
+      const gPrefix = gender.toUpperCase().startsWith('L') ? 'L' : 'P';
+      where.jenis_kelamin = { startsWith: gPrefix, mode: 'insensitive' };
     }
 
     if (angkatan) {
@@ -82,7 +95,14 @@ export class BukuIndukService {
     }
 
     if (tingkat) {
-      where.Kelas = { tingkat: parseInt(tingkat, 10) };
+      const tingkatNum = parseInt(tingkat, 10);
+      const tingkatCond = {
+        OR: [
+          { Kelas: { tingkat: tingkatNum } },
+          { SiswaAkademik: { some: { kelas: { tingkat: tingkatNum } } } },
+        ],
+      };
+      where.AND = where.AND ? [...where.AND, tingkatCond] : [tingkatCond];
     }
 
     const [data, total] = await Promise.all([
@@ -252,6 +272,7 @@ export class BukuIndukService {
       tingkat?: string;
       angkatan?: string;
       status?: string;
+      gender?: string;
       search?: string;
       huruf?: string;
       page?: number;
@@ -265,6 +286,7 @@ export class BukuIndukService {
       tingkat,
       angkatan,
       status,
+      gender,
       search,
       huruf,
       page = 1,
@@ -278,7 +300,18 @@ export class BukuIndukService {
     };
 
     if (status) {
-      where.status = status;
+      if (status === 'PINDAH' || status === 'MUTASI') {
+        where.status = { in: ['PINDAH', 'MUTASI'] };
+      } else if (status === 'TIDAK_AKTIF') {
+        where.status = { in: ['TIDAK_AKTIF', 'NONAKTIF'] };
+      } else {
+        where.status = status;
+      }
+    }
+
+    if (gender) {
+      const gPrefix = gender.toUpperCase().startsWith('L') ? 'L' : 'P';
+      where.jenis_kelamin = { startsWith: gPrefix, mode: 'insensitive' };
     }
 
     if (angkatan) {
@@ -340,7 +373,14 @@ export class BukuIndukService {
     }
 
     if (tingkat) {
-      where.Kelas = { tingkat: parseInt(tingkat, 10) };
+      const tingkatNum = parseInt(tingkat, 10);
+      const tingkatCond = {
+        OR: [
+          { Kelas: { tingkat: tingkatNum } },
+          { SiswaAkademik: { some: { kelas: { tingkat: tingkatNum } } } },
+        ],
+      };
+      where.AND = where.AND ? [...where.AND, tingkatCond] : [tingkatCond];
     }
 
     const [data, total] = await Promise.all([

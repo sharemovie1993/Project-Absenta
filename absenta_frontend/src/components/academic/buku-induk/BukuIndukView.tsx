@@ -632,9 +632,11 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
   // AcademicFilter — disable kelas filter if kelasId is already scoped from outside
   const filter = useAcademicFilter({
     enableTp: true,
+    enableTingkat: true,
     enableKelas: !propKelasId,
     enableSearch: true,
     enableStatusSiswa: true,
+    enableGender: true,
     allowAllKelas: true,
     jurusanId,
     onFilterChange: () => {
@@ -645,6 +647,8 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
 
   const effectiveTpId = propTpId || filter.values.tahunPelajaranId;
   const effectiveKelasId = propKelasId || filter.values.kelasId;
+  const effectiveTingkat = filter.values.tingkat;
+  const effectiveGender = filter.values.gender;
   const effectiveStatus = filter.values.statusSiswa;
   const effectiveSearch = filter.debouncedSearchQuery;
 
@@ -653,15 +657,21 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
     queryKey: bukuIndukQueryKeys.list({
       tpId: effectiveTpId,
       kelasId: effectiveKelasId,
+      tingkat: effectiveTingkat,
+      gender: effectiveGender,
       search: effectiveSearch,
       status: effectiveStatus,
       angkatan: selectedAngkatan,
+      jurusanId,
       page,
     }),
     queryFn: () =>
       bukuIndukApi.getList({
         tahun_pelajaran_id: effectiveTpId || undefined,
         kelas_id: effectiveKelasId || undefined,
+        tingkat: effectiveTingkat ? String(effectiveTingkat) : undefined,
+        gender: effectiveGender || undefined,
+        jurusan_id: jurusanId || undefined,
         angkatan: selectedAngkatan || undefined,
         search: effectiveSearch || undefined,
         status: effectiveStatus || undefined,
@@ -677,16 +687,22 @@ export const BukuIndukView: React.FC<UniversalBukuIndukViewProps> = React.memo((
     queryKey: bukuIndukQueryKeys.klapper({
       tpId: effectiveTpId,
       kelasId: effectiveKelasId,
+      tingkat: effectiveTingkat,
+      gender: effectiveGender,
       huruf: selectedHuruf,
       search: effectiveSearch,
       status: effectiveStatus,
       angkatan: selectedAngkatan,
+      jurusanId,
       page: klapperPage,
     }),
     queryFn: () =>
       bukuIndukApi.getKlapper({
         tahun_pelajaran_id: effectiveTpId || undefined,
         kelas_id: effectiveKelasId || undefined,
+        tingkat: effectiveTingkat ? String(effectiveTingkat) : undefined,
+        gender: effectiveGender || undefined,
+        jurusan_id: jurusanId || undefined,
         huruf: selectedHuruf || undefined,
         search: effectiveSearch || undefined,
         status: effectiveStatus || undefined,
