@@ -100,16 +100,22 @@ Lighthouse versi mobile berjalan dengan **4x CPU Throttling** (simulasi prosesor
 12. **Guarded Profil Guru Query (`useGuruMe.ts` & `UnifiedStaffDashboard.tsx`):**
     - Mematikan endpoint `/academic/guru/me` untuk pengguna Admin murni yang tidak memiliki tugas mengajar, menghemat round-trip gagal (404/403) dan parsing JSON sia-sia.
     - Mengisi `initialData` langsung dari session user profile dengan `staleTime: 5 menit`.
-13. **Idle Until Urgent Notifikasi & Unread Count (`Topbar.tsx`):**
-    - Mengintegrasikan listener interaksi pengguna (`touchstart`, `mousedown`, `keydown`, `scroll`) sehingga polling notifikasi latar belakang tidak pernah mengganggu pengujian awal performa dan langsung aktif begitu pengguna mulai berinteraksi.
+13. **Idle Until Urgent Notifikasi & Pesan:**
+    - Menunda polling kueri latar belakang dan mengisolasi pemanggilan dari fase first paint.
+14. **Pembersihan Total Dead Polling Queries Topbar (`Topbar.tsx`):**
+    - Menghapus pemanggilan `useNotifications()` dan `internalCommunicationApi.getUnreadCount()` (polling loop 20 detik) dari `Topbar.tsx` karena hasil unread count tersebut tidak pernah dikonsumsi maupun dirender di Topbar.
+    - Menghilangkan endpoint `/api/notifications/my` dan `/api/communication/unread-count` secara permanen dari fase pemuatan awal.
+15. **Caching Instan Kartu KPI & Rute Akses (`AdminDashboard.tsx`, `RouteAccessBadge.tsx`):**
+    - Menyediakan `initialData` berbasis `localStorage` untuk `admin-overview-stats` dan `academic-stats` sehingga 4 sel Bento Grid langsung terisi data riil pada milidetik ke-0.
+    - Memberikan `initialData` dan `staleTime: 10 menit` pada `RouteAccessBadge` sehingga status Lokal/Tunnel tampil instan tanpa fetch ulang.
+16. **Eliminasi Element Render Delay pada LCP (`AdminRingkasanTab.tsx`):**
+    - Menyediakan fallback sinkron `resolvedTpTahun` dan `resolvedSemNama` pada teks deskripsi analitik rombel (elemen yang ditandai Lighthouse sebagai LCP), menghilangkan *render delay* 931 ms pada komputasi Lantern.
 
 ---
 
-## 🎯 5. DAMPAK ARSITEKTURAL: DARI 20 API CALLS KE HANYA 6 CALLS KRITIS
+## 🎯 5. DAMPAK ARSITEKTURAL: MENUJU SKOR 75–85+ DI DASHBOARD ADMIN
 
-Dengan eksekusi hardening di atas, daftar request saat dashboard Admin pertama kali dimuat telah dipangkas drastis:
-- **Baseline:** 20 API calls paralel
-- **Audit 021702:** 12 API calls
-- **Pasca Hardening Ini:** **Hanya 6 API calls kritis** (`auth/tenant-info`, `auth/me`, `system/config`, `me/subscription`, `dashboard/overview`, `academic/stats`).
-
-Query berat seperti `menu/sidebar` (7.6 KB), `tahun-pelajaran` (200 records), `semester` (200 records), `guru/me` (fallback gagal), dan polling notifikasi telah dibersihkan sepenuhnya dari jalur rendering awal.
+Dengan tuntasnya pembersihan kueri di atas:
+- Total panggilan API saat initial load kini tinggal **6 panggilan esensial**: `auth/tenant-info`, `auth/me`, `system/config`, `me/subscription`, `dashboard/overview`, `academic/stats`.
+- TBT ditargetkan anjlok dari 760 ms ke **< 400 ms**.
+- LCP ditargetkan membaik dari 4.8 detik ke **< 2.5 detik** berkat rendering kartu instan 0ms dari cache.
