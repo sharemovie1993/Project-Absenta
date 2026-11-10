@@ -113,16 +113,20 @@ export async function uploadSiswaDocument(params: {
   kategori: string;
   onProgress?: (pct: number) => void;
 }): Promise<MemberDocUploadResponse> {
+  const cleanId = String(params.siswaId || '').trim();
+  if (!cleanId || cleanId === 'undefined' || cleanId === 'null') {
+    throw new Error('ID Siswa tidak valid. Harap muat ulang halaman sebelum mengunggah berkas.');
+  }
+
   const fd = new FormData();
   fd.append('judul', params.judul);
   fd.append('kategori', params.kategori);
   fd.append('file', params.file);
 
-  return requestWithFallback<MemberDocUploadResponse>('post', `/academic/siswa/${params.siswaId}/documents`, {
+  return requestWithFallback<MemberDocUploadResponse>('post', `/academic/siswa/${cleanId}/documents`, {
     data: fd,
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress: (evt: ProgressEvent) => {
-      if (!params.onProgress || !evt.total) return;
+    onUploadProgress: (evt: any) => {
+      if (!params.onProgress || !evt?.total) return;
       params.onProgress(Math.round((evt.loaded * 100) / evt.total));
     },
   });
@@ -147,16 +151,20 @@ export async function uploadGuruDocument(params: {
   kategori: string;
   onProgress?: (pct: number) => void;
 }): Promise<MemberDocUploadResponse> {
+  const cleanId = String(params.guruId || '').trim();
+  if (!cleanId || cleanId === 'undefined' || cleanId === 'null') {
+    throw new Error('ID Guru tidak valid. Harap muat ulang halaman sebelum mengunggah berkas.');
+  }
+
   const fd = new FormData();
   fd.append('judul', params.judul);
   fd.append('kategori', params.kategori);
   fd.append('file', params.file);
 
-  return requestWithFallback<MemberDocUploadResponse>('post', `/academic/guru/${params.guruId}/documents`, {
+  return requestWithFallback<MemberDocUploadResponse>('post', `/academic/guru/${cleanId}/documents`, {
     data: fd,
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress: (evt: ProgressEvent) => {
-      if (!params.onProgress || !evt.total) return;
+    onUploadProgress: (evt: any) => {
+      if (!params.onProgress || !evt?.total) return;
       params.onProgress(Math.round((evt.loaded * 100) / evt.total));
     },
   });

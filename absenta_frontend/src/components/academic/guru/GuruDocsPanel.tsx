@@ -104,6 +104,11 @@ export const GuruDocsPanel: React.FC<GuruDocsPanelProps> = React.memo(({
 
   // Upload otomatis untuk slot kategori wajib
   const handleUploadSlot = async (category: MemberDocKategori, file: File) => {
+    if (!guruId || guruId === 'undefined') {
+      toast.error('ID Guru belum siap. Silakan muat ulang halaman.');
+      return;
+    }
+
     const allowedMime = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
     const maxBytes = 10 * 1024 * 1024;
 
@@ -158,6 +163,10 @@ export const GuruDocsPanel: React.FC<GuruDocsPanelProps> = React.memo(({
   // Upload Berkas Lain-lain
   const handleUploadOther = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!guruId || guruId === 'undefined') {
+      toast.error('ID Guru belum siap. Silakan muat ulang halaman.');
+      return;
+    }
     if (!otherFile) return;
     if (!otherJudul.trim()) {
       toast.error('Judul berkas wajib diisi');

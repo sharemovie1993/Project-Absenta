@@ -9,11 +9,17 @@ export async function deleteSiswaDocumentCommand(params: {
   const { tenantId, siswaId, documentId } = params;
 
   const doc = await prisma.siswaDocument.findFirst({
-    where: { id: documentId, siswa_id: siswaId, tenant_id: tenantId }
+    where: {
+      id: documentId,
+      siswa_id: siswaId,
+      ...(tenantId && tenantId !== 'system' ? { tenant_id: tenantId } : {})
+    }
   });
 
   if (!doc) {
-    throw new Error('Dokumen tidak ditemukan');
+    const notFoundError: any = new Error('Dokumen tidak ditemukan');
+    notFoundError.statusCode = 404;
+    throw notFoundError;
   }
 
   // 1. Hapus record database

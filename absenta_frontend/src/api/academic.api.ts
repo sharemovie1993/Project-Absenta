@@ -65,6 +65,10 @@ export const siswaApi = {
     return requestWithFallback<AcademicApiResponse<Siswa>>('get', `/academic/siswa/${id}`);
   },
 
+  getMe: async (): Promise<AcademicApiResponse<Siswa>> => {
+    return requestWithFallback<AcademicApiResponse<Siswa>>('get', '/academic/siswa/me');
+  },
+
   create: async (data: CreateSiswaData): Promise<AcademicApiResponse<Siswa>> => {
     return requestWithFallback<AcademicApiResponse<Siswa>>('post', '/academic/siswa', { data });
   },

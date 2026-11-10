@@ -16,19 +16,27 @@ export async function uploadSiswaDocumentCommand(params: {
 
   // 1. Validasi Siswa
   const student = await prisma.siswa.findFirst({
-    where: { id: siswaId, tenant_id: tenantId }
+    where: {
+      id: siswaId,
+      ...(tenantId && tenantId !== 'system' ? { tenant_id: tenantId } : {})
+    }
   });
   if (!student) {
-    throw new Error('Siswa tidak ditemukan');
+    const notFoundError: any = new Error('Siswa tidak ditemukan');
+    notFoundError.statusCode = 404;
+    throw notFoundError;
   }
 
+  const effectiveTenantId = student.tenant_id;
+
   // 2. Simpan file fisik
-  const cleanName = student.nama_siswa.replace(/[^\w\- ]+/g, '_').replace(/\s+/g, '_').trim();
+  const safeName = student.nama_siswa || 'siswa';
+  const cleanName = safeName.replace(/[^\w\- ]+/g, '_').replace(/\s+/g, '_').trim();
   const nisSegment = student.nis || 'no-nis';
   const subFolder = `siswa/${nisSegment}_${cleanName}`;
 
   const stored = await storage.saveFile({
-    tenantId,
+    tenantId: effectiveTenantId,
     category: kategori,
     file,
     subFolder
@@ -37,7 +45,7 @@ export async function uploadSiswaDocumentCommand(params: {
   // 3. Simpan record di database
   const doc = await prisma.siswaDocument.create({
     data: {
-      tenant_id: tenantId,
+      tenant_id: effectiveTenantId,
       siswa_id: siswaId,
       judul,
       kategori,

@@ -10,10 +10,16 @@ export async function deleteGuruDocumentCommand(params: {
 
   // 1. Cari dokumen
   const doc = await prisma.guruDocument.findFirst({
-    where: { id: documentId, guru_id: guruId, tenant_id: tenantId }
+    where: {
+      id: documentId,
+      guru_id: guruId,
+      ...(tenantId && tenantId !== 'system' ? { tenant_id: tenantId } : {})
+    }
   });
   if (!doc) {
-    throw new Error('Dokumen tidak ditemukan');
+    const notFoundError: any = new Error('Dokumen tidak ditemukan');
+    notFoundError.statusCode = 404;
+    throw notFoundError;
   }
 
   // 2. Hapus record dari database terlebih dahulu

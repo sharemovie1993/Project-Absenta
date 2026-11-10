@@ -143,6 +143,10 @@ export const SelfMemberDocsSection: React.FC<SelfMemberDocsSectionProps> = ({
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!entityId || entityId === 'undefined' || entityId === 'null') {
+      toast.error('ID Profil belum siap. Silakan muat ulang halaman.');
+      return;
+    }
     if (!selectedFile) {
       setFileError('Pilih file berkas yang akan diunggah.');
       return;

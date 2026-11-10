@@ -158,12 +158,28 @@ const ProfilePage: React.FC = React.memo(() => {
       setLoading(true);
       setErrorMsg(null);
 
-      if (isSiswa && user.siswa_id) {
-        const res = await siswaApi.getById(user.siswa_id);
-        setSiswaProfile(res.data);
-      } else if (isGuru && user.guru_profile?.id) {
-        const res = await guruApi.getById(user.guru_profile.id);
-        setGuruProfile(res.data);
+      if (isSiswa) {
+        try {
+          const meRes = await siswaApi.getMe();
+          if (meRes?.data) setSiswaProfile(meRes.data);
+        } catch {
+          const targetId = user.siswa_id || (user as any)?.siswa_profile?.id || (user as any)?.siswa?.id;
+          if (targetId) {
+            const res = await siswaApi.getById(targetId).catch(() => null);
+            if (res?.data) setSiswaProfile(res.data);
+          }
+        }
+      } else if (isGuru) {
+        try {
+          const meRes = await guruApi.getMe();
+          if (meRes?.data) setGuruProfile(meRes.data);
+        } catch {
+          const targetId = user.guru_profile?.id || (user as any)?.guru?.id;
+          if (targetId) {
+            const res = await guruApi.getById(targetId).catch(() => null);
+            if (res?.data) setGuruProfile(res.data);
+          }
+        }
       }
     } catch (err: unknown) {
       const errObj = err as { message?: string };
@@ -292,16 +308,25 @@ const ProfilePage: React.FC = React.memo(() => {
   }, [cameraFacing, cameraStream]);
 
   const entityId = useMemo(() => {
-    if (isSiswa) return (siswaProfile?.id || user?.siswa_id || '');
-    if (isGuru) return (guruProfile?.id || user?.guru_profile?.id || '');
-    return userId;
-  }, [isSiswa, isGuru, siswaProfile, guruProfile, user, userId]);
+    if (isSiswa) return (siswaProfile?.id || (user as any)?.siswa_id || (user as any)?.siswa_profile?.id || '');
+    if (isGuru) return (guruProfile?.id || (user as any)?.guru_profile?.id || (user as any)?.guru?.id || '');
+    return '';
+  }, [isSiswa, isGuru, siswaProfile, guruProfile, user]);
 
   const uploadCapturedPhoto = useCallback(async () => {
     if (!capturedImage) return;
     setUploadingFoto(true);
     const toastId = toast.loading('Mengompresi dan menyimpan foto...');
     try {
+      if (!isSiswa && !isGuru) {
+        toast.error('Akun Administrator tidak memiliki profil siswa/guru untuk foto formal dokumen.', { id: toastId });
+        return;
+      }
+      if (!entityId) {
+        toast.error('Profil akademik Anda belum terhubung. Silakan muat ulang halaman.', { id: toastId });
+        return;
+      }
+
       const res = await fetch(capturedImage);
       const blob = await res.blob();
       const file = new File([blob], `camera-foto-${Date.now()}.jpg`, { type: 'image/jpeg' });
@@ -327,7 +352,7 @@ const ProfilePage: React.FC = React.memo(() => {
     } finally {
       setUploadingFoto(false);
     }
-  }, [capturedImage, isSiswa, siswaProfile, guruProfile, user, entityId, closeCameraModal, queryClient, loadProfileDetail]);
+  }, [capturedImage, isSiswa, isGuru, siswaProfile, guruProfile, user, entityId, closeCameraModal, queryClient, loadProfileDetail]);
 
   const handleUploadFotoDirect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -348,6 +373,15 @@ const ProfilePage: React.FC = React.memo(() => {
     setUploadingFoto(true);
     const toastId = toast.loading('Memproses dan mengompresi foto...');
     try {
+      if (!isSiswa && !isGuru) {
+        toast.error('Akun Administrator tidak memiliki profil siswa/guru untuk foto formal dokumen.', { id: toastId });
+        return;
+      }
+      if (!entityId) {
+        toast.error('Profil akademik Anda belum terhubung. Silakan muat ulang halaman.', { id: toastId });
+        return;
+      }
+
       const compressedBlob = await compressImage(file, 800, 800, 0.85);
       const compressedFile = new File([compressedBlob], file.name.replace(/\.[^.]+$/, '') + '.jpg', {
         type: 'image/jpeg',
@@ -569,23 +603,26 @@ const ProfilePage: React.FC = React.memo(() => {
           {activeProfileTab === 'berkas' && (
             <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm">
               <Suspense fallback={<div className="h-40 bg-slate-50 dark:bg-slate-900 rounded-2xl animate-pulse" />}>
-                {isSiswa && (siswaProfile?.id || user?.siswa_id) && (
+                {isSiswa && entityId ? (
                   <SiswaDocsPanel
-                    siswaId={siswaProfile?.id || user?.siswa_id || ''}
+                    siswaId={entityId}
                     siswaName={siswaProfile?.nama_siswa || user?.full_name}
                     nis={siswaProfile?.nis}
                     nisn={siswaProfile?.nisn}
                     mode="full"
                     canManage={true}
                   />
-                )}
-                {isGuru && (guruProfile?.id || user?.guru_profile?.id) && (
+                ) : isGuru && entityId ? (
                   <GuruDocsPanel
-                    guruId={guruProfile?.id || user?.guru_profile?.id || ''}
+                    guruId={entityId}
                     guruName={guruProfile?.nama_guru || user?.full_name}
                     mode="full"
                     canManage={true}
                   />
+                ) : (
+                  <div className="p-8 text-center text-slate-400 font-semibold">
+                    Akun Administrator / Non-Akademik tidak memiliki berkas dokumen arsip pribadi siswa/guru.
+                  </div>
                 )}
               </Suspense>
             </div>

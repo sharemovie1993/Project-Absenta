@@ -560,7 +560,7 @@ export class GuruController {
   async uploadGuruDocument(request: any, reply: any) {
     try {
       const { id: guruId } = request.params;
-      const tenantId = request.tenantId;
+      const tenantId = request.tenantId || request.user?.tenantId || request.user?.tenant_id;
       const actorUserId = request.user?.id || request.user?.userId;
 
       const file = await request.file();
@@ -568,8 +568,16 @@ export class GuruController {
         return reply.status(400).send({ success: false, message: 'File wajib diupload' });
       }
 
-      const judul = String(file.fields?.judul?.value || '').trim();
-      const kategori = String(file.fields?.kategori?.value || 'LAINNYA').toUpperCase();
+      const getFieldValue = (field: any) => {
+        if (!field) return '';
+        if (typeof field === 'object' && 'value' in field) return field.value;
+        return String(field);
+      };
+
+      const rawJudul = getFieldValue(file.fields?.judul);
+      const judul = String(rawJudul || file.filename || 'Dokumen Guru').trim();
+      const rawKategori = getFieldValue(file.fields?.kategori);
+      const kategori = String(rawKategori || 'LAINNYA').toUpperCase();
 
       if (!judul) {
         return reply.status(400).send({ success: false, message: 'Judul dokumen wajib diisi' });
@@ -591,14 +599,15 @@ export class GuruController {
       });
     } catch (error: any) {
       console.error('Upload document error:', error);
-      return reply.status(500).send({ success: false, message: error.message || 'Failed to upload document' });
+      const statusCode = error.statusCode || 500;
+      return reply.status(statusCode).send({ success: false, message: error.message || 'Failed to upload document' });
     }
   }
 
   async deleteGuruDocument(request: any, reply: any) {
     try {
       const { id: guruId, docId } = request.params;
-      const tenantId = request.tenantId;
+      const tenantId = request.tenantId || request.user?.tenantId || request.user?.tenant_id;
 
       await guruService.deleteGuruDocument({
         tenantId,
@@ -612,7 +621,8 @@ export class GuruController {
       });
     } catch (error: any) {
       console.error('Delete document error:', error);
-      return reply.status(500).send({ success: false, message: error.message || 'Failed to delete document' });
+      const statusCode = error.statusCode || 500;
+      return reply.status(statusCode).send({ success: false, message: error.message || 'Failed to delete document' });
     }
   }
 

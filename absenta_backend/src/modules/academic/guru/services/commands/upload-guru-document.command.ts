@@ -16,19 +16,27 @@ export async function uploadGuruDocumentCommand(params: {
 
   // 1. Validasi Guru
   const teacher = await prisma.guru.findFirst({
-    where: { id: guruId, tenant_id: tenantId }
+    where: {
+      id: guruId,
+      ...(tenantId && tenantId !== 'system' ? { tenant_id: tenantId } : {})
+    }
   });
   if (!teacher) {
-    throw new Error('Guru tidak ditemukan');
+    const notFoundError: any = new Error('Guru tidak ditemukan');
+    notFoundError.statusCode = 404;
+    throw notFoundError;
   }
 
+  const effectiveTenantId = teacher.tenant_id;
+
   // 2. Simpan file fisik
-  const cleanName = teacher.nama_guru.replace(/[^\w\- ]+/g, '_').replace(/\s+/g, '_').trim();
+  const safeName = teacher.nama_guru || 'guru';
+  const cleanName = safeName.replace(/[^\w\- ]+/g, '_').replace(/\s+/g, '_').trim();
   const nipSegment = teacher.nip || 'no-nip';
   const subFolder = `guru/${nipSegment}_${cleanName}`;
 
   const stored = await storage.saveFile({
-    tenantId,
+    tenantId: effectiveTenantId,
     category: kategori,
     file,
     subFolder
@@ -37,7 +45,7 @@ export async function uploadGuruDocumentCommand(params: {
   // 3. Simpan record di database
   const doc = await prisma.guruDocument.create({
     data: {
-      tenant_id: tenantId,
+      tenant_id: effectiveTenantId,
       guru_id: guruId,
       judul,
       kategori,
