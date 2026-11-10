@@ -195,11 +195,20 @@ export class CbtJadwalController {
       const { tenant_id } = req.user!;
       const parsed = bulkCreateJadwalSchema.parse(req.body);
       const result = await CbtJadwalService.bulkCreate(tenant_id, parsed.items);
+      const parts: string[] = [];
+      if (result.created_count > 0) parts.push(`${result.created_count} jadwal baru`);
+      if ((result as any).updated_count > 0) parts.push(`${(result as any).updated_count} jadwal diperbarui`);
+
+      const message =
+        parts.length > 0
+          ? `Berhasil memproses ${parts.join(' & ')} serentak`
+          : (result as any).message || `Seluruh jadwal ujian sudah sesuai di database`;
+
       return sendResponse(
         reply,
         201,
         true,
-        `Berhasil merangkai & membuat ${result.created_count} jadwal ujian serentak`,
+        message,
         result
       );
     } catch (error: any) {

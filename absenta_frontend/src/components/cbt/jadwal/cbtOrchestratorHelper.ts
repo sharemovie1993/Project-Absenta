@@ -448,8 +448,21 @@ export function reconstructMatrixFromExistingSchedules(
     const dt = String(jDate.getDate()).padStart(2, '0');
     const jDateStr = `${y}-${m}-${dt}`;
 
-    const targetDay = days.find((d) => d.tanggal === jDateStr);
-    if (!targetDay) return;
+    let targetDay = days.find((d) => d.tanggal === jDateStr);
+    if (!targetDay) {
+      const indonesianDays = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      targetDay = {
+        day_index: days.length + 1,
+        nama_hari: indonesianDays[jDate.getDay()] || `Hari ke-${days.length + 1}`,
+        tanggal: jDateStr,
+        sessions: [],
+      };
+      days.push(targetDay);
+      days.sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+      days.forEach((d, idx) => {
+        d.day_index = idx + 1;
+      });
+    }
 
     const sec = j.setting_keamanan as any;
     const sessLabel = sec?.nama_sesi_waktu;
@@ -463,8 +476,29 @@ export function reconstructMatrixFromExistingSchedules(
       matchedSess = targetDay.sessions.find((s) => s.jam_mulai === jTime);
     }
 
-    if (!matchedSess && targetDay.sessions.length > 0) {
-      matchedSess = targetDay.sessions[0];
+    if (!matchedSess) {
+      // Rekonstruksi slot sesi baru jika belum ada di targetDay
+      const sessMatch = (sessLabel || j.nama_sesi || '').match(/Sesi\s*(\d+)/i);
+      const sessIdx = sessMatch ? parseInt(sessMatch[1], 10) : (targetDay.sessions.length + 1);
+
+      const h = String(jDate.getHours()).padStart(2, '0');
+      const min = String(jDate.getMinutes()).padStart(2, '0');
+      const jTime = `${h}:${min}`;
+
+      const endDate = j.tanggal_selesai ? new Date(j.tanggal_selesai) : null;
+      const endH = endDate ? String(endDate.getHours()).padStart(2, '0') : '09';
+      const endMin = endDate ? String(endDate.getMinutes()).padStart(2, '0') : '00';
+      const endJTime = `${endH}:${endMin}`;
+
+      matchedSess = {
+        session_index: sessIdx,
+        nama_sesi: sessLabel || `Sesi ${sessIdx}`,
+        jam_mulai: jTime,
+        jam_selesai: endJTime,
+        durasi_menit: j.durasi_menit || 90,
+      };
+      targetDay.sessions.push(matchedSess);
+      targetDay.sessions.sort((a, b) => a.session_index - b.session_index);
     }
 
     if (matchedSess) {

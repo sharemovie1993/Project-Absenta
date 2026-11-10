@@ -22,6 +22,7 @@ import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
 import {
   ExamDayConfig,
+  ExamSessionSlot,
   KelasRoomMapping,
   TimetableMatrixState,
   buildMassSchedulePayloads,
@@ -252,6 +253,191 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     );
   };
 
+  // Helper kalkulasi durasi menit dan penambahan waktu
+  const calculateDurationMinutes = (start: string, end: string): number => {
+    if (!start || !end) return 90;
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) return 90;
+    const diff = eh * 60 + em - (sh * 60 + sm);
+    return diff > 0 ? diff : 90;
+  };
+
+  const addMinutesToTime = (time: string, minutes: number): string => {
+    const [h, m] = (time || '07:30').split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return '09:00';
+    const total = h * 60 + m + minutes;
+    const newH = Math.floor(total / 60) % 24;
+    const newM = total % 60;
+    return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+  };
+
+  // Handler Update Jam Slot / Nama Sesi
+  const handleUpdateSessionTime = (
+    dayIdx: number,
+    sessIdx: number,
+    field: 'jam_mulai' | 'jam_selesai' | 'nama_sesi' | 'durasi_menit',
+    value: string | number
+  ) => {
+    setDays((prev) =>
+      prev.map((d) => {
+        if (d.day_index !== dayIdx) return d;
+        const updatedSessions = d.sessions.map((s) => {
+          if (s.session_index !== sessIdx) return s;
+
+          if (field === 'jam_mulai') {
+            const newStart = String(value);
+            const currentDur = s.durasi_menit || 90;
+            const autoEnd = addMinutesToTime(newStart, currentDur);
+            return {
+              ...s,
+              jam_mulai: newStart,
+              jam_selesai: autoEnd,
+              durasi_menit: currentDur,
+            };
+          }
+
+          if (field === 'jam_selesai') {
+            const newEnd = String(value);
+            const dur = calculateDurationMinutes(s.jam_mulai, newEnd);
+            return {
+              ...s,
+              jam_selesai: newEnd,
+              durasi_menit: dur,
+            };
+          }
+
+          if (field === 'durasi_menit') {
+            const numDur = Math.max(15, Number(value) || 90);
+            const autoEnd = addMinutesToTime(s.jam_mulai, numDur);
+            return {
+              ...s,
+              durasi_menit: numDur,
+              jam_selesai: autoEnd,
+            };
+          }
+
+          if (field === 'nama_sesi') {
+            return { ...s, nama_sesi: String(value) };
+          }
+
+          return s;
+        });
+
+        return { ...d, sessions: updatedSessions };
+      })
+    );
+  };
+
+  // Terapkan Jam Sesi Tertentu ke Seluruh Hari Ujian
+  const handleApplySessionTimeToAllDays = (sourceSess: ExamSessionSlot) => {
+    setDays((prev) =>
+      prev.map((d) => ({
+        ...d,
+        sessions: d.sessions.map((s) =>
+          s.session_index === sourceSess.session_index
+            ? {
+                ...s,
+                nama_sesi: sourceSess.nama_sesi,
+                jam_mulai: sourceSess.jam_mulai,
+                jam_selesai: sourceSess.jam_selesai,
+                durasi_menit: sourceSess.durasi_menit,
+              }
+            : s
+        ),
+      }))
+    );
+    toast.success(`Jam ${sourceSess.nama_sesi} (${sourceSess.jam_mulai} - ${sourceSess.jam_selesai}) berhasil disalin ke semua hari ujian!`);
+  };
+
+  // Tambah Slot Sesi pada Hari Tertentu
+  const handleAddSessionToDay = (dayIdx: number) => {
+    setDays((prev) =>
+      prev.map((d) => {
+        if (d.day_index !== dayIdx) return d;
+        const lastSess = d.sessions[d.sessions.length - 1];
+        const nextIdx = (lastSess?.session_index || 0) + 1;
+        const defaultStart = lastSess ? addMinutesToTime(lastSess.jam_selesai, 30) : '07:30';
+        const defaultEnd = addMinutesToTime(defaultStart, 90);
+
+        const newSession: ExamSessionSlot = {
+          session_index: nextIdx,
+          nama_sesi: `Sesi ${nextIdx}`,
+          jam_mulai: defaultStart,
+          jam_selesai: defaultEnd,
+          durasi_menit: 90,
+        };
+
+        return {
+          ...d,
+          sessions: [...d.sessions, newSession],
+        };
+      })
+    );
+    toast.success(`Slot sesi baru ditambahkan ke Hari ke-${dayIdx}`);
+  };
+
+  // Tambah Slot Sesi Serentak ke Semua Hari
+  const handleAddSessionToAllDays = () => {
+    setDays((prev) => {
+      const maxSessionIdx = Math.max(
+        0,
+        ...prev.flatMap((d) => d.sessions.map((s) => s.session_index))
+      );
+      const nextIdx = maxSessionIdx + 1;
+
+      return prev.map((d) => {
+        const lastSess = d.sessions[d.sessions.length - 1];
+        const defaultStart = lastSess ? addMinutesToTime(lastSess.jam_selesai, 30) : '07:30';
+        const defaultEnd = addMinutesToTime(defaultStart, 90);
+
+        const newSession: ExamSessionSlot = {
+          session_index: nextIdx,
+          nama_sesi: `Sesi ${nextIdx}`,
+          jam_mulai: defaultStart,
+          jam_selesai: defaultEnd,
+          durasi_menit: 90,
+        };
+
+        return {
+          ...d,
+          sessions: [...d.sessions, newSession],
+        };
+      });
+    });
+    toast.success('Slot sesi baru berhasil ditambahkan ke seluruh hari ujian!');
+  };
+
+  // Hapus Slot Sesi dari Hari Tertentu
+  const handleRemoveSessionFromDay = (dayIdx: number, sessIdx: number) => {
+    const targetDay = days.find((d) => d.day_index === dayIdx);
+    if (!targetDay) return;
+    if (targetDay.sessions.length <= 1) {
+      toast.error('Minimal harus ada 1 sesi ujian dalam 1 hari');
+      return;
+    }
+
+    // Bersihkan key matrix untuk slot sesi yang dihapus
+    setMatrix((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((key) => {
+        if (key.startsWith(`${dayIdx}_${sessIdx}_`)) {
+          delete next[key];
+        }
+      });
+      return next;
+    });
+
+    setDays((prev) =>
+      prev.map((d) =>
+        d.day_index === dayIdx
+          ? { ...d, sessions: d.sessions.filter((s) => s.session_index !== sessIdx) }
+          : d
+      )
+    );
+    toast.success('Slot sesi berhasil dihapus');
+  };
+
   const handleAddDay = () => {
     setDays((prev) => {
       const last = prev[prev.length - 1];
@@ -349,11 +535,17 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       return cbtApi.bulkCreateJadwal(payloads);
     },
     onSuccess: async (res) => {
-      if (res?.created_count === 0 && (res?.skipped_count || 0) > 0) {
-        toast.success(res.message || 'Semua jadwal yang dipilih sudah pernah diterbitkan sebelumnya (aman & idempoten).');
+      const parts: string[] = [];
+      if (res?.created_count) parts.push(`${res.created_count} jadwal baru`);
+      if (res?.updated_count) parts.push(`${res.updated_count} jadwal diperbarui`);
+
+      if (parts.length > 0) {
+        const skippedText = res?.skipped_count ? ` (${res.skipped_count} jadwal sudah sesuai)` : '';
+        toast.success(`Berhasil memproses: ${parts.join(', ')}!${skippedText}`);
+      } else if ((res?.skipped_count || 0) > 0) {
+        toast.success(res.message || 'Semua jadwal yang dipilih sudah sesuai di database (aman & idempoten).');
       } else {
-        const skippedText = res?.skipped_count ? ` (${res.skipped_count} jadwal lama sudah terbit & dilewati)` : '';
-        toast.success(`Berhasil menerbitkan ${res?.created_count} jadwal ujian baru!${skippedText}`);
+        toast.success('Jadwal ujian berhasil diproses');
       }
       await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
       if (onSuccessGenerate) onSuccessGenerate();
@@ -496,7 +688,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50/50 dark:bg-slate-800/40 border-b border-slate-200/60 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="p-3 w-40 min-w-[140px]">Sesi &amp; Jam</th>
+                    <th className="p-3 w-56 min-w-[210px]">Sesi &amp; Jam</th>
                     {activeTingkatList.map((tingkat) => {
                       const slottedCount = Object.keys(matrix).filter(
                         (k) => k.endsWith(`_${tingkat}`) && Boolean(matrix[k])
@@ -537,16 +729,78 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {day.sessions.map((sess) => (
                     <tr key={sess.session_index} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                      <td className="p-3 align-top font-bold text-slate-900 dark:text-slate-100 bg-slate-50/30 dark:bg-slate-900/40">
-                        <div className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-400">
-                          <Clock size={13} />
-                          <span>{sess.nama_sesi}</span>
+                      <td className="p-2.5 align-top bg-slate-50/40 dark:bg-slate-900/40 border-r border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center justify-between gap-1 mb-1.5">
+                          <div className="flex items-center gap-1 min-w-0 flex-1">
+                            <Clock size={12} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                            <input
+                              type="text"
+                              value={sess.nama_sesi}
+                              onChange={(e) =>
+                                handleUpdateSessionTime(day.day_index, sess.session_index, 'nama_sesi', e.target.value)
+                              }
+                              className="w-full text-xs font-bold text-indigo-950 dark:text-indigo-200 bg-transparent border-b border-transparent hover:border-indigo-300 focus:border-indigo-500 focus:outline-hidden py-0.5 px-1 rounded transition-colors"
+                              title="Klik untuk ubah nama sesi"
+                              aria-label={`Nama Sesi ${sess.session_index}`}
+                            />
+                          </div>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleApplySessionTimeToAllDays(sess)}
+                              title="Terapkan jam sesi ini ke seluruh hari ujian"
+                              className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-colors cursor-pointer"
+                              aria-label="Salin jam ke semua hari"
+                            >
+                              <Layers size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSessionFromDay(day.day_index, sess.session_index)}
+                              title="Hapus slot sesi ini"
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors cursor-pointer"
+                              aria-label="Hapus slot sesi"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                         </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5 font-medium">
-                          {sess.jam_mulai} - {sess.jam_selesai}
+
+                        {/* Interactive Time Range Inputs */}
+                        <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200/90 dark:border-slate-700 shadow-2xs">
+                          <input
+                            type="time"
+                            value={sess.jam_mulai}
+                            onChange={(e) =>
+                              handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_mulai', e.target.value)
+                            }
+                            className="w-[72px] text-[11px] font-bold text-slate-800 dark:text-slate-100 bg-transparent text-center focus:outline-hidden cursor-pointer"
+                            aria-label={`Jam Mulai ${sess.nama_sesi}`}
+                          />
+                          <span className="text-[10px] text-slate-400 font-bold">-</span>
+                          <input
+                            type="time"
+                            value={sess.jam_selesai}
+                            onChange={(e) =>
+                              handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_selesai', e.target.value)
+                            }
+                            className="w-[72px] text-[11px] font-bold text-slate-800 dark:text-slate-100 bg-transparent text-center focus:outline-hidden cursor-pointer"
+                            aria-label={`Jam Selesai ${sess.nama_sesi}`}
+                          />
                         </div>
-                        <div className="text-[10px] text-slate-400 font-normal mt-0.5">
-                          {sess.durasi_menit} Menit
+
+                        {/* Durasi & Aksi Cepat Salin */}
+                        <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-1 px-0.5">
+                          <span className="font-semibold text-slate-600 dark:text-slate-300">
+                            {sess.durasi_menit} Menit
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleApplySessionTimeToAllDays(sess)}
+                            className="text-[9px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline cursor-pointer"
+                          >
+                            Semua Hari
+                          </button>
                         </div>
                       </td>
 
@@ -621,6 +875,35 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                 </tbody>
               </table>
             </div>
+
+            {/* Footer Tambah Slot Sesi pada Hari Ini */}
+            <div className="px-3.5 py-2 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  onClick={() => handleAddSessionToDay(day.day_index)}
+                  className="text-[11px] h-7 px-2.5 font-bold border-indigo-200 text-indigo-700 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer shadow-2xs"
+                >
+                  <Plus size={12} className="mr-1" />
+                  + Tambah Slot Waktu ({day.nama_hari})
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={handleAddSessionToAllDays}
+                  className="text-[11px] h-7 px-2 text-slate-600 dark:text-slate-300 hover:text-indigo-600 cursor-pointer"
+                >
+                  <Layers size={12} className="mr-1" />
+                  + Slot ke Semua Hari
+                </Button>
+              </div>
+              <span className="text-[10px] text-slate-400 font-medium">
+                {day.sessions.length} Slot Waktu Ujian
+              </span>
+            </div>
           </div>
         ))}
       </div>
@@ -639,19 +922,30 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
             <span>Tambah Hari Ujian</span>
           </Button>
 
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleAddSessionToAllDays}
+            className="text-xs h-9 px-3 font-bold border-slate-300 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 cursor-pointer"
+          >
+            <Layers size={14} className="mr-1" />
+            <span>Tambah Slot Sesi ke Semua Hari</span>
+          </Button>
+
           <div className="text-xs text-slate-600 dark:text-slate-300">
             {newGeneratedCount > 0 ? (
               <span>
                 <strong className="text-indigo-600 dark:text-indigo-400 font-black">{newGeneratedCount}</strong> jadwal baru siap diterbitkan
                 {alreadyPublishedCount > 0 && (
                   <span className="text-emerald-700 dark:text-emerald-400 ml-1 font-semibold">
-                    ({alreadyPublishedCount} jadwal lama sudah terbit &amp; aman dilewati)
+                    ({alreadyPublishedCount} jadwal lama akan disinkronkan/diperbarui)
                   </span>
                 )}
               </span>
             ) : alreadyPublishedCount > 0 ? (
               <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
-                <CheckCircle2 size={14} /> Seluruh {alreadyPublishedCount} jadwal di matriks sudah aktif diterbitkan (Aman &amp; Idempoten)
+                <CheckCircle2 size={14} /> Seluruh {alreadyPublishedCount} jadwal aktif di matriks (Klik untuk sinkronkan perubahan jam/slot)
               </span>
             ) : (
               <span>Pilih mata pelajaran pada slot matriks di atas untuk memulai</span>
@@ -663,12 +957,12 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
           type="button"
           variant="primary"
           size="sm"
-          disabled={totalSlotsFilled === 0 || newGeneratedCount === 0 || bulkCreateMutation.isPending}
+          disabled={totalSlotsFilled === 0 || bulkCreateMutation.isPending}
           onClick={() => bulkCreateMutation.mutate()}
           className={cn(
             'text-xs h-9 px-5 font-bold shadow-2xs transition-all cursor-pointer',
             newGeneratedCount === 0 && alreadyPublishedCount > 0
-              ? 'bg-emerald-600 text-white opacity-90 cursor-not-allowed'
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
               : 'bg-indigo-600 hover:bg-indigo-700 text-white'
           )}
         >
@@ -677,12 +971,15 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
           ) : newGeneratedCount > 0 ? (
             <>
               <Sparkles size={14} className="mr-1.5" />
-              <span>Terbitkan {newGeneratedCount} Jadwal Baru</span>
+              <span>
+                Terbitkan {newGeneratedCount} Jadwal Baru
+                {alreadyPublishedCount > 0 ? ` & Sinkronkan (${alreadyPublishedCount})` : ''}
+              </span>
             </>
           ) : alreadyPublishedCount > 0 ? (
             <>
               <CheckCircle2 size={14} className="mr-1.5" />
-              <span>Semua Jadwal Sudah Terbit (Idempoten)</span>
+              <span>Sinkronkan / Perbarui Jam ({alreadyPublishedCount} Jadwal)</span>
             </>
           ) : (
             <>
