@@ -1,7 +1,6 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { queryClient } from './lib/queryClient';
 import { Toaster, toast } from 'react-hot-toast';
 
@@ -13,7 +12,7 @@ import { Footer } from './components/layout/Footer';
 import { PendingPaymentBlocker } from './components/billing/PendingPaymentBlocker';
 
 // Core Components (Static)
-import LoginPage from './pages/auth/LoginPage';
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { PetugasRoute } from './components/auth/PetugasRoute';
 import { Loader } from './components/ui/Loader';
@@ -32,7 +31,7 @@ import { isCapacitorApp } from './services/serverConfig';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { AttendanceErrorBoundary } from './components/attendance/AttendanceErrorBoundary';
 import ScrollToTop from './components/common/ScrollToTop';
-import { FloatingDemoSwitcher } from './components/common/FloatingDemoSwitcher';
+const FloatingDemoSwitcher = lazy(() => import('./components/common/FloatingDemoSwitcher').then(m => ({ default: m.FloatingDemoSwitcher })));
 
 // Lazy Loaded Pages
 const CheckEmail = lazy(() => import('./pages/auth/CheckEmail'));
@@ -297,53 +296,21 @@ function App() {
     }
   }, []);
 
-  // ⚡ Parallel Route & Tab Chunk Preloading (Anti-Waterfall / Network Dependency Tree Flattening)
+  // ⚡ Non-blocking Idle Route Preloader (Runs ONLY when browser is idle to prevent mobile CPU throttling & TBT spike)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const path = window.location.pathname;
-    const params = new URLSearchParams(window.location.search);
-    const tab = params.get('tab');
-
-    if (path === '/' || path === '/dashboard' || path.startsWith('/dashboard/')) {
-      import('./components/dashboard/roles/UnifiedStaffDashboard');
-      if (tab === 'admin' || !tab) {
-        import('./components/dashboard/roles/AdminDashboard');
-        import('./components/charts/AttendanceChart');
-        import('./components/ui/SearchableSelect');
+    const idleCallback = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 3500));
+    const handle = idleCallback(() => {
+      const path = window.location.pathname;
+      if (path === '/' || path === '/dashboard' || path.startsWith('/dashboard/')) {
+        import('./components/dashboard/roles/UnifiedStaffDashboard').catch(() => {});
       }
-      if (tab === 'ringkasan' || !tab) {
-        import('./components/dashboard/staff/tabs/StaffBerandaTab');
-      } else if (tab === 'kurikulum') {
-        import('./components/dashboard/roles/KurikulumDashboard');
-      } else if (tab === 'kesiswaan') {
-        import('./components/dashboard/roles/KesiswaanDashboard');
-      } else if (tab === 'binaan' || tab === 'walas') {
-        import('./components/dashboard/roles/WaliKelasDashboard');
-      } else if (tab === 'kaprog') {
-        import('./components/dashboard/roles/KaprogDashboard');
-      } else if (tab === 'sarpras') {
-        import('./components/dashboard/roles/SarprasDashboard');
-      } else if (tab === 'hubin') {
-        import('./components/dashboard/roles/HubinDashboard');
-      } else if (tab === 'bpbk') {
-        import('./components/dashboard/roles/BpbkDashboard');
-      } else if (tab === 'bkk') {
-        import('./components/dashboard/roles/BkkDashboard');
-      } else if (tab === 'koperasi') {
-        import('./components/dashboard/roles/KoperasiDashboard');
-      } else if (tab === 'tu' || tab === 'kepegawaian') {
-        import('./components/dashboard/roles/TataUsahaDashboard');
-        import('./components/dashboard/roles/KepegawaianDashboard');
-      } else if (tab === 'toolman') {
-        import('./components/dashboard/roles/ToolmanDashboard');
-      } else if (tab === 'ekskul') {
-        import('./components/dashboard/roles/EkskulDashboard');
-      } else if (tab === 'pembimbing_pkl') {
-        import('./components/dashboard/roles/PembimbingPklDashboard');
-      } else if (tab === 'satpam') {
-        import('./components/dashboard/roles/SatpamDashboard');
+    });
+    return () => {
+      if ((window as any).cancelIdleCallback && typeof handle === 'number') {
+        (window as any).cancelIdleCallback(handle);
       }
-    }
+    };
   }, []);
 
   // Intercept quick_login_token & support_token query param for Quick Login from WhatsApp / Licensing Server
@@ -589,7 +556,11 @@ function App() {
                 <Route path="/login" element={
                   !isAuthenticated ? <AuthLayout /> : <Navigate to={'/'} replace />
                 }>
-                  <Route index element={<LoginPage />} />
+                  <Route index element={
+                    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900"><Loader /></div>}>
+                      <LoginPage />
+                    </Suspense>
+                  } />
                   {/* Registrasi user biasa dinonaktifkan. Gunakan /register-tenant di rute publik */}
                   <Route path="forgot-password" element={<ForgotPasswordPage />} />
                 </Route>
@@ -1880,7 +1851,9 @@ function App() {
                 <Route path="*" element={<Navigate to="/404" replace />} />
               </Routes>
             )}
-            <FloatingDemoSwitcher />
+            <Suspense fallback={null}>
+              <FloatingDemoSwitcher />
+            </Suspense>
             </EcosystemProvider>
           </BrowserRouter>
           </SocketProvider>

@@ -120,6 +120,17 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
   onNavigateSubtab,
 }) => {
   const [activeAnalyticsTab, setActiveAnalyticsTab] = useState<'chart' | 'tingkat'>('chart');
+  const [isChartReady, setIsChartReady] = useState(false);
+
+  React.useEffect(() => {
+    const idleCallback = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 250));
+    const handle = idleCallback(() => setIsChartReady(true));
+    return () => {
+      if ((window as any).cancelIdleCallback && typeof handle === 'number') {
+        (window as any).cancelIdleCallback(handle);
+      }
+    };
+  }, []);
 
   const totalSiswa = stats?.total_siswa ?? academicStats?.total_siswa ?? 0;
   const totalGuru = stats?.total_guru ?? academicStats?.total_guru ?? 0;
@@ -527,15 +538,21 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
 
         {activeAnalyticsTab === 'chart' ? (
           <div className="min-h-[280px]">
-            <Suspense
-              fallback={
-                <div className="flex items-center justify-center h-64 text-slate-400">
-                  <Loader size="sm" />
-                </div>
-              }
-            >
-              <AttendanceChart data={chartData || null} height={280} />
-            </Suspense>
+            {isChartReady ? (
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center h-64 text-slate-400">
+                    <Loader size="sm" />
+                  </div>
+                }
+              >
+                <AttendanceChart data={chartData || null} height={280} />
+              </Suspense>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-slate-400">
+                <Loader size="sm" />
+              </div>
+            )}
           </div>
         ) : (
           <div className="min-h-[280px] flex flex-col justify-center space-y-4 py-2">

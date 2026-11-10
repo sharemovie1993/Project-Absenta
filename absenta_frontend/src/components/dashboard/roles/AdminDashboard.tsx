@@ -58,8 +58,8 @@ import {
   useMobileSubtabSidebar 
 } from './common/UniversalMobileSubtabSidebar';
 
-// Tab Subcomponents
-import { AdminRingkasanTab } from './admin/tabs/AdminRingkasanTab';
+// Tab Subcomponents (Lazy-loaded for optimal mobile performance & low TBT)
+const AdminRingkasanTab = lazy(() => import('./admin/tabs/AdminRingkasanTab').then((m) => ({ default: m.AdminRingkasanTab })));
 
 // Lazy-loaded Universal Pages (Pilar 21B & TBT Optimization)
 const SiswaPage = lazy(() => import('@/pages/academic/SiswaPage').then((m) => ({ default: m.SiswaPage })));
@@ -186,28 +186,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
   const semNama = academicFilter.selectedSemesterNama || academicFilter.activeSemester?.nama_semester?.replace(/\s*⭐\s*/g, '').trim() || '';
   const tpTahun = academicFilter.selectedTahunPelajaranNama || academicFilter.activeTpYear?.tahun || '';
 
-  // Data Fetching dengan React Query (Pilar 31 Optimasi Data Fetching)
+  // Data Fetching dengan React Query (Pilar 31 Optimasi Data Fetching - Lazy Per-Tab)
+  const isRingkasanActive = activeTab === 'ringkasan';
+
   const { data: overviewRes, isLoading: isOverviewLoading } = useQuery({
     queryKey: ['admin-overview-stats'],
     queryFn: () => getDashboardOverview(),
+    enabled: isRingkasanActive,
     staleTime: 60 * 1000,
   });
 
   const { data: chartRes, isLoading: isChartLoading } = useQuery({
     queryKey: ['admin-attendance-chart'],
     queryFn: () => getAttendanceChart(),
+    enabled: isRingkasanActive,
     staleTime: 60 * 1000,
   });
 
   const { data: academicRes, isLoading: isAcademicLoading } = useQuery({
     queryKey: ['academic-stats'],
     queryFn: () => getAcademicStats(),
+    enabled: isRingkasanActive,
     staleTime: 60 * 1000,
   });
 
   const { data: logsRes, isLoading: isLogsLoading } = useQuery({
     queryKey: ['admin-recent-logs'],
     queryFn: () => getTenantActivityLogs({ limit: 4 }),
+    enabled: isRingkasanActive,
     staleTime: 60 * 1000,
   });
 
@@ -702,18 +708,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
               aria-hidden={activeTab !== 'ringkasan'}
               className={cn('w-full min-w-0', activeTab === 'ringkasan' ? 'block' : 'hidden')}
             >
-              <AdminRingkasanTab
-                user={currentUser}
-                stats={overviewRes?.data}
-                academicStats={academicRes?.data}
-                chartData={chartRes?.data}
-                recentLogs={logsRes?.data?.logs || []}
-                isLogsLoading={isLogsLoading}
-                loading={isOverviewLoading || isAcademicLoading}
-                tpTahun={tpTahun}
-                semNama={semNama}
-                onNavigateSubtab={handleTabSelect}
-              />
+              <Suspense fallback={<AdminDashboardSkeleton />}>
+                <AdminRingkasanTab
+                  user={currentUser}
+                  stats={overviewRes?.data}
+                  academicStats={academicRes?.data}
+                  chartData={chartRes?.data}
+                  recentLogs={logsRes?.data?.logs || []}
+                  isLogsLoading={isLogsLoading}
+                  loading={isOverviewLoading || isAcademicLoading}
+                  tpTahun={tpTahun}
+                  semNama={semNama}
+                  onNavigateSubtab={handleTabSelect}
+                />
+              </Suspense>
             </div>
           )}
 
