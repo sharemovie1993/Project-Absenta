@@ -6,17 +6,15 @@ import { Toaster, toast } from 'react-hot-toast';
 
 // Layouts
 import MainLayout from './components/layout/MainLayout';
-import AuthLayout from './components/layout/AuthLayout';
-import { Navbar } from './components/layout/Navbar';
-import { Footer } from './components/layout/Footer';
-import { PendingPaymentBlocker } from './components/billing/PendingPaymentBlocker';
+const AuthLayout = lazy(() => import('./components/layout/AuthLayout'));
 
 // Core Components (Static)
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { PetugasRoute } from './components/auth/PetugasRoute';
 import { Loader } from './components/ui/Loader';
-import { Button, Modal, ModalFooter } from './components/ui';
+import Button from './components/ui/Button';
+import Modal, { ModalFooter } from './components/ui/Modal';
 import RoleSwitch from './components/routing/RoleSwitch';
 
 // Context & Stores
@@ -554,7 +552,11 @@ function App() {
                 
 
                 <Route path="/login" element={
-                  !isAuthenticated ? <AuthLayout /> : <Navigate to={'/'} replace />
+                  !isAuthenticated ? (
+                    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900"><Loader /></div>}>
+                      <AuthLayout />
+                    </Suspense>
+                  ) : <Navigate to={'/'} replace />
                 }>
                   <Route index element={
                     <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900"><Loader /></div>}>

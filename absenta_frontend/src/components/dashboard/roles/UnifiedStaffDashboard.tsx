@@ -56,7 +56,10 @@ import {
 
 // Components
 import { type QuickAction } from '../shared/QuickActionGrid';
-import { Modal, Badge, Button, Loader } from '../../ui';
+import Modal from '../../ui/Modal';
+import Badge from '../../ui/Badge';
+import Button from '../../ui/Button';
+import { Loader } from '../../ui/Loader';
 import { StaffPortalAppLauncher } from '../portal/StaffPortalAppLauncher';
 import { resolveSmartDashboardMode } from '../../../helpers/dashboardModeHelper';
 import { useWaliKelasOptions } from '../../../hooks/useWaliKelasOptions';

@@ -38,7 +38,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
-import { Button, Loader } from '@/components/ui';
+import Button from '@/components/ui/Button';
+import { Loader } from '@/components/ui/Loader';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAuthStore } from '@/store/authStore';
 import { useRoleDashboardSwitcherStore } from '@/store/roleDashboardSwitcherStore';

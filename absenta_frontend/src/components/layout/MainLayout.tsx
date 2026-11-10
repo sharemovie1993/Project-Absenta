@@ -14,7 +14,7 @@ import { InstructionProvider, useInstruction } from '@/contexts/InstructionConte
 import { BottomNavigation } from './BottomNavigation';
 import { useTvStore } from '@/store/tvStore';
 import { cn } from '@/lib/utils';
-import { Loader } from '@/components/ui';
+import { Loader } from '@/components/ui/Loader';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { PendingPaymentBlocker } from '../billing/PendingPaymentBlocker';
 import { resolveSmartDashboardMode } from '@/helpers/dashboardModeHelper';
