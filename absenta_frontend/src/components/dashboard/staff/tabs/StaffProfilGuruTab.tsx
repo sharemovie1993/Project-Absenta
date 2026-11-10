@@ -203,6 +203,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   const { guruProfile, refetch: refetchGuruProfile } = useGuruMe();
   const updateGuruMeMutation = useUpdateGuruMe();
   const queryClient = useQueryClient();
+  const { loadUser } = useAuthStore();
 
   // ── Photo state ──────────────────────────────────────────────────────────────
   const [isWebcamOpen, setIsWebcamOpen] = useState(false);
@@ -247,6 +248,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
 
   // 3. Edit Data Diri & Kepegawaian Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editNamaGuru, setEditNamaGuru] = useState('');
   const [editAlamat, setEditAlamat] = useState('');
   const [editTempatLahir, setEditTempatLahir] = useState('');
   const [editTanggalLahir, setEditTanggalLahir] = useState('');
@@ -302,6 +304,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
         }
       };
 
+      setEditNamaGuru(activeGuru.nama_guru || user?.full_name || user?.name || '');
       setNoHp(activeGuru.no_hp || user?.no_hp || '');
       setEmail(activeGuru.email || user?.email || '');
       setEditAlamat(activeGuru.alamat || '');
@@ -361,8 +364,12 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   // Handle Edit Data Diri & Kepegawaian Submit
   const handleDataDiriSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (activeEditSection === 'pribadi' && !editNamaGuru.trim()) {
+      toast.error('Nama lengkap guru tidak boleh kosong!');
+      return;
+    }
     try {
-      const payload = {
+      const payload: Record<string, any> = {
         nip: editNip,
         alamat: editAlamat,
         tempat_lahir: editTempatLahir,
@@ -389,7 +396,13 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
         kode_pos: editKodePos,
       };
 
+      if (editNamaGuru.trim()) {
+        payload.nama_guru = editNamaGuru.trim();
+      }
+
       await updateGuruMeMutation.mutateAsync(payload);
+      await loadUser().catch(() => {});
+      refetchGuruProfile();
       toast.success('Data pribadi & kepegawaian berhasil diperbarui!');
       setIsEditModalOpen(false);
     } catch (err: any) {
@@ -594,9 +607,19 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
 
             {/* Teacher Name & Dynamic Jabatan Badges */}
             <div className="text-center space-y-1.5">
-              <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                {activeNama}
-              </h3>
+              <div className="inline-flex items-center justify-center gap-1.5 group">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                  {activeNama}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditSection('pribadi')}
+                  title="Ubah Nama Lengkap & Gelar"
+                  className="p-1 rounded-full text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer opacity-70 group-hover:opacity-100"
+                >
+                  <Edit3 size={13} />
+                </button>
+              </div>
               {/* Status pill */}
               <span className="inline-block px-3 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                 Guru Aktif
@@ -845,6 +868,10 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="col-span-2 pb-1 border-b border-slate-100 dark:border-slate-800/60">
+              <span className="text-[10px] font-semibold text-slate-400 block">Nama Lengkap &amp; Gelar</span>
+              <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">{editNamaGuru || activeNama}</span>
+            </div>
             <div>
               <span className="text-[10px] font-semibold text-slate-400 block">Jenis Kelamin</span>
               <span className="font-bold text-slate-800 dark:text-slate-200">
@@ -1044,6 +1071,23 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
           <form onSubmit={handleDataDiriSubmit} className="space-y-4 pt-2">
             {activeEditSection === 'pribadi' && (
               <>
+                <div className="space-y-1">
+                  <Label htmlFor="editNamaGuru">
+                    Nama Lengkap &amp; Gelar Guru <span className="text-rose-500">*</span>
+                  </Label>
+                  <Input
+                    id="editNamaGuru"
+                    type="text"
+                    value={editNamaGuru}
+                    onChange={(e) => setEditNamaGuru(e.target.value)}
+                    placeholder="Contoh: Drs. Budi Santoso, M.Pd"
+                    required
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Perubahan nama akan otomatis diperbarui pada profil akun login, tanda tangan rapor, dan dokumen akademik resmi.
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
                     <Label htmlFor="editNik">
