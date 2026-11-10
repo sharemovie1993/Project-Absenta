@@ -301,6 +301,33 @@ export const UnifiedStaffDashboard: React.FC = () => {
     || isSarpras || isHubin || isToolman || isKaprog || isKabeng
     || isBpbk || isBkk || isGerbang || isTU;
 
+  // 🎯 DEFAULT TAB RESOLUTION (Posisi Netral: Apapun jabatannya, selalu mendarat di Beranda Dashboard)
+  const defaultTabId = useMemo(() => {
+    if (isAdminRole && !isKepsek) return 'admin';
+    return 'ringkasan';
+  }, [isAdminRole, isKepsek]);
+
+  // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab (dengan guard akses)
+  const rawRequestedTab = searchParams.get('tab');
+  const requestedTab =
+    rawRequestedTab === 'walas'
+      ? 'binaan'
+      : rawRequestedTab === 'jadwal' || rawRequestedTab === 'action_hub' || rawRequestedTab === 'rekap_mapel'
+      ? 'ringkasan'
+      : rawRequestedTab;
+  const activeTab = requestedTab || defaultTabId;
+
+  // Sinkronisasi query param otomatis saat akses /dashboard polosan atau legacy tabs
+  useEffect(() => {
+    if (!rawRequestedTab) {
+      setSearchParams({ tab: defaultTabId }, { replace: true });
+    } else if (rawRequestedTab === 'action_hub') {
+      setSearchParams({ tab: 'ringkasan', subtab: 'tugas' }, { replace: true });
+    } else if (rawRequestedTab === 'rekap_mapel') {
+      setSearchParams({ tab: 'ringkasan', subtab: 'rekap' }, { replace: true });
+    }
+  }, [rawRequestedTab, defaultTabId, setSearchParams]);
+
   // ── 3. Role-Specific Scoped Queries (Google Platform Standard: Scoped Lazy Query Execution) ───
   const { rawList: waliKelasAssignments } = useWaliKelasOptions({
     enabled: Boolean(isWaliKelas) || activeTab === 'binaan',
@@ -341,33 +368,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (waliKelasStrukturItem?.StrukturOrganisasi?.Kelas?.nama_kelas) return waliKelasStrukturItem.StrukturOrganisasi.Kelas.nama_kelas;
     return guruProfile?.wali_kelas_di?.nama_kelas || (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas || 'Kelas Binaan';
   }, [waliKelasStrukturItem, guruProfile, user]);
-
-  // 🎯 DEFAULT TAB RESOLUTION (Posisi Netral: Apapun jabatannya, selalu mendarat di Beranda Dashboard)
-  const defaultTabId = useMemo(() => {
-    if (isAdminRole && !isKepsek) return 'admin';
-    return 'ringkasan';
-  }, [isAdminRole, isKepsek]);
-
-  // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab (dengan guard akses)
-  const rawRequestedTab = searchParams.get('tab');
-  const requestedTab =
-    rawRequestedTab === 'walas'
-      ? 'binaan'
-      : rawRequestedTab === 'jadwal' || rawRequestedTab === 'action_hub' || rawRequestedTab === 'rekap_mapel'
-      ? 'ringkasan'
-      : rawRequestedTab;
-  const activeTab = requestedTab || defaultTabId;
-
-  // Sinkronisasi query param otomatis saat akses /dashboard polosan atau legacy tabs
-  useEffect(() => {
-    if (!rawRequestedTab) {
-      setSearchParams({ tab: defaultTabId }, { replace: true });
-    } else if (rawRequestedTab === 'action_hub') {
-      setSearchParams({ tab: 'ringkasan', subtab: 'tugas' }, { replace: true });
-    } else if (rawRequestedTab === 'rekap_mapel') {
-      setSearchParams({ tab: 'ringkasan', subtab: 'rekap' }, { replace: true });
-    }
-  }, [rawRequestedTab, defaultTabId, setSearchParams]);
 
   const handleTabChange = React.useCallback((newTab: string) => {
     useMobileSubtabSidebarStore.getState().close();
