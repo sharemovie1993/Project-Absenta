@@ -129,9 +129,11 @@ function MainLayoutContent() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 transition-all duration-500 selection:bg-blue-100 selection:text-blue-700">
-      <Suspense fallback={null}>
-        <CommandPalette />
-      </Suspense>
+      {!isMobile && (
+        <Suspense fallback={null}>
+          <CommandPalette />
+        </Suspense>
+      )}
       
       <div className="flex flex-col min-h-screen">
         {/* Topbar fixed at top */}

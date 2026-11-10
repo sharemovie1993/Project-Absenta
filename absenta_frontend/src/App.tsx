@@ -284,6 +284,11 @@ function App() {
   const isSaas = deployScenario === 'saas-public' || deployScenario === 'saas-local' || deployScenario === 'saas';
   const shouldOnboard = false; // Disabled per user request
   const isImpersonating = !!localStorage.getItem('support_auth_state');
+  const isDemoMode = typeof window !== 'undefined' && (
+    sessionStorage.getItem('is_demo_session') === 'true' ||
+    window.location.hostname.toLowerCase().includes('demo') ||
+    String(import.meta.env.VITE_DEMO_MODE || '').toLowerCase() === 'true'
+  );
 
   // Prevent Mobile Status Bar from overlapping web content in Capacitor
   useEffect(() => {
@@ -1853,9 +1858,11 @@ function App() {
                 <Route path="*" element={<Navigate to="/404" replace />} />
               </Routes>
             )}
-            <Suspense fallback={null}>
-              <FloatingDemoSwitcher />
-            </Suspense>
+            {isDemoMode && (
+              <Suspense fallback={null}>
+                <FloatingDemoSwitcher />
+              </Suspense>
+            )}
             </EcosystemProvider>
           </BrowserRouter>
           </SocketProvider>
