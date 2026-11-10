@@ -31,6 +31,7 @@ import { CbtBankSoalFormModal } from './CbtBankSoalFormModal';
 import { CbtBankSoalDetailModal } from './CbtBankSoalDetailModal';
 import { CbtJadwalFormModal } from '../jadwal/CbtJadwalFormModal';
 import { getTingkatRoman } from './cbtAsesmenHelper';
+import { useCbtOperationMode } from '../cbtModeHelper';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 
@@ -60,6 +61,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const confirm = useConfirm();
   const { user } = useAuthStore();
   const { isAdmin, isKurikulum } = useCapabilities();
+  const { activeEvent, eventName, targetTingkat } = useCbtOperationMode();
   const currentGuruId = guruId || user?.guru_profile?.id;
 
   // Konteks Mode: Panitia CBT (Kurikulum / Admin) vs Guru Mandiri
@@ -649,6 +651,9 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           defaultGuruId={guruId}
           defaultMapelId={mapelId || (filter.values.mapelId as string) || undefined}
           roleContext={roleContext}
+          activeEvent={activeEvent}
+          eventName={eventName}
+          targetTingkat={targetTingkat}
           onSuccess={async () => {
             setPage(1);
             await queryClient.invalidateQueries({

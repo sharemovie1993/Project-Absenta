@@ -26,6 +26,7 @@ import {
 } from './cbtAsesmenHelper';
 import { CbtMgmpColleaguePicker } from './CbtMgmpColleaguePicker';
 import { getMgmpSharedTeacherIds, setMgmpSharedTeacherIds } from '../jadwal/cbtMgmpHelper';
+import { useCbtOperationMode } from '../cbtModeHelper';
 
 export * from './cbtAsesmenHelper';
 
@@ -53,9 +54,9 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   defaultMapelId,
   defaultTingkat,
   roleContext,
-  activeEvent,
-  eventName,
-  targetTingkat,
+  activeEvent: propActiveEvent,
+  eventName: propEventName,
+  targetTingkat: propTargetTingkat,
   customMapelOptions,
 }) => {
   const queryClient = useQueryClient();
@@ -67,11 +68,21 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const officialAsesmenTypes = useMemo(() => getOfficialAsesmenTypes(jenjang), [jenjang]);
 
   // ── Kepatuhan Pengaturan Event (Event-Compliance Engine) ──
+  const cbtMode = useCbtOperationMode();
+  const activeEvent = propActiveEvent !== undefined ? propActiveEvent : cbtMode.activeEvent;
+  const eventName = propEventName || cbtMode.eventName;
+  const rawTargetTingkat =
+    propTargetTingkat && propTargetTingkat.length > 0
+      ? propTargetTingkat
+      : (activeEvent?.target_tingkat && activeEvent.target_tingkat.length > 0
+          ? activeEvent.target_tingkat
+          : cbtMode.targetTingkat);
+
   const effectiveTargetTingkat = useMemo(() => {
-    if (targetTingkat && targetTingkat.length > 0) return targetTingkat;
+    if (rawTargetTingkat && rawTargetTingkat.length > 0) return rawTargetTingkat;
     if (activeEvent?.target_tingkat && activeEvent.target_tingkat.length > 0) return activeEvent.target_tingkat;
     return undefined;
-  }, [targetTingkat, activeEvent?.target_tingkat]);
+  }, [rawTargetTingkat, activeEvent?.target_tingkat]);
 
   const effectiveTingkatList = useMemo(() => {
     if (effectiveTargetTingkat && effectiveTargetTingkat.length > 0) {
@@ -92,6 +103,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     if (raw.includes('ASTS') || raw.includes('STS') || raw.includes('PTS')) return 'PSTS';
     if (raw.includes('ASAJ') || raw.includes('PSAJ') || raw.includes('AM')) return 'PSAJ';
     if (raw.includes('UKK')) return 'UKK';
+    if (activeEvent) return officialAsesmenTypes[0]?.key || 'PSAS';
     return undefined;
   }, [activeEvent, eventName, officialAsesmenTypes]);
 

@@ -166,14 +166,16 @@ function MainLayoutContent() {
               )}
             >
               <div className="flex-1 overflow-y-auto overscroll-contain pb-24">
-                <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader /></div>}>
-                  <InAppSidebar 
-                    isMobileDrawer={true} 
-                    onClose={() => setIsMobileMenuOpen(false)} 
-                    isCollapsed={false} 
-                    onToggleCollapse={() => {}} 
-                  />
-                </Suspense>
+                {isMobileMenuOpen && (
+                  <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader /></div>}>
+                    <InAppSidebar 
+                      isMobileDrawer={true} 
+                      onClose={() => setIsMobileMenuOpen(false)} 
+                      isCollapsed={false} 
+                      onToggleCollapse={() => {}} 
+                    />
+                  </Suspense>
+                )}
               </div>
             </aside>
           </>

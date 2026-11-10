@@ -49,20 +49,22 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
       setIsIdleReady(true);
     };
 
-    const userEvents = ['mousedown', 'touchstart', 'keydown', 'scroll'];
+    // Urgent: User interaction (click, tap, keypress)
+    const userEvents = ['mousedown', 'touchstart', 'keydown'];
     userEvents.forEach((evt) => window.addEventListener(evt, makeReady, { once: true, passive: true }));
 
-    const idleCallback = (window as any).requestIdleCallback 
-      ? (cb: () => void) => (window as any).requestIdleCallback(cb, { timeout: 3500 })
-      : ((cb: () => void) => setTimeout(cb, 3500));
-    const h = idleCallback(() => makeReady());
+    // Idle Delay: Tunggu minimal 4 detik agar fase FCP/LCP awal selesai tanpa gangguan polling
+    const timer = setTimeout(() => {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(makeReady);
+      } else {
+        makeReady();
+      }
+    }, 4000);
+
     return () => {
       userEvents.forEach((evt) => window.removeEventListener(evt, makeReady));
-      if ((window as any).cancelIdleCallback && typeof h === 'number') {
-        (window as any).cancelIdleCallback(h);
-      } else {
-        clearTimeout(h);
-      }
+      clearTimeout(timer);
     };
   }, []);
 

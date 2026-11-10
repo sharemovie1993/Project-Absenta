@@ -3,7 +3,7 @@ import { PRISMA_GURU_USER_SELECT, enrichGuruWithUser } from '../helpers/guru-map
 
 export async function getGuruMeQuery(userId: string, tenantId: string): Promise<any | null> {
   // 1. Temukan record guru berdasarkan user_id
-  const rawGuru = await prisma.guru.findFirst({
+  let rawGuru = await prisma.guru.findFirst({
     where: { user_id: userId, tenant_id: tenantId },
     include: {
       User: PRISMA_GURU_USER_SELECT,
@@ -15,6 +15,33 @@ export async function getGuruMeQuery(userId: string, tenantId: string): Promise<
       },
     },
   });
+
+  if (!rawGuru) {
+    const userRecord = await prisma.user.findFirst({ where: { id: userId, tenant_id: tenantId } });
+    if (userRecord) {
+      const created = await prisma.guru.create({
+        data: {
+          tenant_id: tenantId,
+          user_id: userId,
+          nama_guru: userRecord.full_name || 'Staff Guru',
+          status_kepegawaian: 'PNS',
+          jenis_ptk: 'TENAGA_KEPENDIDIKAN'
+        }
+      });
+      rawGuru = await prisma.guru.findFirst({
+        where: { id: created.id },
+        include: {
+          User: PRISMA_GURU_USER_SELECT,
+          GuruMapel: {
+            include: {
+              Mapel: true,
+              Kelas: true,
+            },
+          },
+        },
+      });
+    }
+  }
 
   if (!rawGuru) return null;
 

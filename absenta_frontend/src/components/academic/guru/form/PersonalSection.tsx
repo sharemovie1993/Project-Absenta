@@ -375,32 +375,28 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
             <div className="space-y-2 group">
               <div className="flex items-center justify-between px-1">
                 <Label htmlFor="nik" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">NIK (KTP 16 Digit)</Label>
-                {guruId && (
-                  <FieldDocumentTrigger
-                    entityType="GURU"
-                    entityId={guruId}
-                    entityName={watch('nama')}
-                    kategori="KTP"
-                    label="KTP"
-                    disabled={isViewMode}
-                  />
-                )}
+                <FieldDocumentTrigger
+                  entityType="GURU"
+                  entityId={guruId}
+                  entityName={watch('nama')}
+                  kategori="KTP"
+                  label="KTP"
+                  disabled={isViewMode}
+                />
               </div>
               <Input id="nik" {...register('nik')} placeholder="3204xxxxxxxxxxxx" disabled={isViewMode} className="h-10 text-[13px] font-mono font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl" />
             </div>
             <div className="space-y-2 group">
               <div className="flex items-center justify-between px-1">
                 <Label htmlFor="no_kk" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">No. Kartu Keluarga (KK)</Label>
-                {guruId && (
-                  <FieldDocumentTrigger
-                    entityType="GURU"
-                    entityId={guruId}
-                    entityName={watch('nama')}
-                    kategori="KK"
-                    label="KK"
-                    disabled={isViewMode}
-                  />
-                )}
+                <FieldDocumentTrigger
+                  entityType="GURU"
+                  entityId={guruId}
+                  entityName={watch('nama')}
+                  kategori="KK"
+                  label="KK"
+                  disabled={isViewMode}
+                />
               </div>
               <Input id="no_kk" {...register('no_kk')} placeholder="16-digit No. KK..." disabled={isViewMode} className="h-10 text-[13px] font-mono font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl" />
             </div>
@@ -415,16 +411,14 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
             <div className="space-y-2 group">
               <div className="flex items-center justify-between px-1">
                 <Label htmlFor="nama" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Nama Lengkap <span className="text-rose-500">*</span></Label>
-                {guruId && (
-                  <FieldDocumentTrigger
-                    entityType="GURU"
-                    entityId={guruId}
-                    entityName={watch('nama')}
-                    kategori="SK"
-                    label="SK / Karpeg"
-                    disabled={isViewMode}
-                  />
-                )}
+                <FieldDocumentTrigger
+                  entityType="GURU"
+                  entityId={guruId}
+                  entityName={watch('nama')}
+                  kategori="SK"
+                  label="SK / Karpeg"
+                  disabled={isViewMode}
+                />
               </div>
               <Input id="nama" {...register('nama')} placeholder="Entry Nama Lengkap..." disabled={isViewMode} className="h-10 text-[13px] font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl shadow-inner" />
               {errors.nama && <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.nama.message}</p>}

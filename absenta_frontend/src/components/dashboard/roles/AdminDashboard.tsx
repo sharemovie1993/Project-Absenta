@@ -193,33 +193,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
       setIsDeferredReady(true);
     };
 
-    // Urgent: Pengguna mulai berinteraksi dengan layar
-    const userEvents = ['mousedown', 'touchstart', 'keydown', 'scroll'];
+    // Urgent: Pengguna mulai berinteraksi dengan layar (tap, click, ketik)
+    const userEvents = ['mousedown', 'touchstart', 'keydown'];
     userEvents.forEach((evt) => window.addEventListener(evt, makeReady, { once: true, passive: true }));
 
-    // Idle: Defer query non-kritis hingga browser benar-benar santai (timeout 3500ms)
-    const idleCallback = (window as any).requestIdleCallback 
-      ? (cb: () => void) => (window as any).requestIdleCallback(cb, { timeout: 3500 })
-      : ((cb: () => void) => setTimeout(cb, 3500));
-
-    const handle = idleCallback(() => {
-      makeReady();
-    });
+    // Idle Delay: Tunda minimal 4 detik agar fase FCP/LCP awal selesai tanpa beban parsing opsi
+    const timer = setTimeout(() => {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(makeReady);
+      } else {
+        makeReady();
+      }
+    }, 4000);
 
     return () => {
       userEvents.forEach((evt) => window.removeEventListener(evt, makeReady));
-      if ((window as any).cancelIdleCallback && typeof handle === 'number') {
-        (window as any).cancelIdleCallback(handle);
-      } else {
-        clearTimeout(handle);
-      }
+      clearTimeout(timer);
     };
   }, []);
 
   // Academic Filter SSOT (Sama persis dengan Kurikulum & Kaprog)
+  // Pada mobile: Opsi filter disembunyikan dalam drawer/collapse, hanya aktif saat dibuka atau di desktop
+  const isFilterNeeded = !isMobile || showMobileFilter;
   const academicFilter = useAcademicFilter({
-    enableTp: isDeferredReady,
-    enableSemester: isDeferredReady,
+    enableTp: isDeferredReady && isFilterNeeded,
+    enableSemester: isDeferredReady && isFilterNeeded,
   });
 
   const semNama = academicFilter.selectedSemesterNama || academicFilter.activeSemester?.nama_semester?.replace(/\s*⭐\s*/g, '').trim() || '';

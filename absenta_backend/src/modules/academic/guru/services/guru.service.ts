@@ -156,12 +156,21 @@ export class GuruService {
   }
 
   async updateGuruMe(userId: string, tenantId: string, input: any): Promise<any> {
-    const existingGuru = await prisma.guru.findFirst({
+    let existingGuru = await prisma.guru.findFirst({
       where: { user_id: userId, tenant_id: tenantId },
     });
 
     if (!existingGuru) {
-      throw new Error('Profil guru tidak ditemukan untuk user ini.');
+      const user = await prisma.user.findFirst({ where: { id: userId, tenant_id: tenantId } });
+      existingGuru = await prisma.guru.create({
+        data: {
+          tenant_id: tenantId,
+          user_id: userId,
+          nama_guru: user?.full_name || 'Staff Guru',
+          status_kepegawaian: 'PNS',
+          jenis_ptk: 'TENAGA_KEPENDIDIKAN'
+        }
+      });
     }
 
     return this.updateGuru(existingGuru.id, input, { tenantId });
