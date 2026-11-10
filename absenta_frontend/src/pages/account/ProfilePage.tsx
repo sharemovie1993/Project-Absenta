@@ -571,8 +571,8 @@ const ProfilePage: React.FC = React.memo(() => {
             <Suspense fallback={<div className="h-64 bg-slate-50 dark:bg-slate-900 rounded-3xl animate-pulse" />}>
               <ProfileBiodataTab
                 user={user}
-                isSiswa={isSiswa}
-                isGuru={isGuru}
+                isSiswa={effectiveIsSiswa}
+                isGuru={effectiveIsGuru}
                 siswaProfile={siswaProfile}
                 guruProfile={guruProfile}
                 sekolahProfile={sekolahProfile}

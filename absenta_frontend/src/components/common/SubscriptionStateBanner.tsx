@@ -45,10 +45,11 @@ export default function SubscriptionStateBanner() {
 
   const actualRoleName = user?.role?.name || (user as any)?.roleName || '';
   const isPlatform = user?.tenant_id === 'system' || isPlatformUser(actualRoleName, user?.tenant_id);
+  const isDashboardPage = location.pathname === '/dashboard' || location.pathname === '/' || location.pathname === '/apps';
 
   const { data: menuData } = useQuery({
     queryKey: MENU_QUERY_KEY,
-    enabled: !!token,
+    enabled: !!token && !isDashboardPage,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => (await getSidebarMenu()).sidebar,
   });

@@ -6,7 +6,6 @@ import { Topbar } from './Topbar';
 // Sidebar is lazy loaded below
 import { useAuthStore } from '@/store/authStore';
 import SubscriptionStateBanner from '@/components/common/SubscriptionStateBanner';
-import { useSmartMenu } from '@/hooks/useSmartMenu';
 import { HelpCircle } from 'lucide-react';
 // InstructionPanel is lazy loaded below
 import { InstructionProvider, useInstruction } from '@/contexts/InstructionContext';
@@ -38,7 +37,6 @@ function MainLayoutContent() {
   const { status, user, subscription } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
-  const { menu: groupedMenu } = useSmartMenu();
   const { instructionData } = useInstruction();
   const [showInstruction, setShowInstruction] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

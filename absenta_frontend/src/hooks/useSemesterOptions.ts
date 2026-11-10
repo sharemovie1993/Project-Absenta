@@ -29,7 +29,17 @@ export function useSemesterOptions(params: UseSemesterOptionsParams = {}) {
   }, [rawList, tahunPelajaranId]);
 
   const activeSemester = useMemo(() => {
-    return filteredList.find(s => s.is_active) || filteredList[0] || rawList.find(s => s.is_active) || null;
+    const found = filteredList.find(s => s.is_active) || filteredList[0] || rawList.find(s => s.is_active) || null;
+    if (found) {
+      try { localStorage.setItem('absenta_cached_sem', JSON.stringify(found)); } catch {}
+      return found;
+    }
+    try {
+      const raw = localStorage.getItem('absenta_cached_sem');
+      return raw ? (JSON.parse(raw) as Semester) : null;
+    } catch {
+      return null;
+    }
   }, [filteredList, rawList]);
 
   const options: SearchableSelectOption[] = useMemo(() => {

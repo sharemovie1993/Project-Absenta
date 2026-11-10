@@ -23,7 +23,17 @@ export function useTahunPelajaranOptions(params?: UseTahunPelajaranOptionsParams
   }, [query.data]);
 
   const activeYear = useMemo(() => {
-    return rawList.find(y => y.is_active);
+    const found = rawList.find(y => y.is_active);
+    if (found) {
+      try { localStorage.setItem('absenta_cached_tp', JSON.stringify(found)); } catch {}
+      return found;
+    }
+    try {
+      const raw = localStorage.getItem('absenta_cached_tp');
+      return raw ? (JSON.parse(raw) as TahunPelajaran) : undefined;
+    } catch {
+      return undefined;
+    }
   }, [rawList]);
 
   const options: SearchableSelectOption[] = useMemo(() => {

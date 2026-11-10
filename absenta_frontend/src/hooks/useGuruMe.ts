@@ -4,11 +4,20 @@ import { useAuthStore } from '../store/authStore';
 
 export const GURU_ME_QUERY_KEY = ['guru-profile-me'] as const;
 
+export interface UseGuruMeOptions {
+  enabled?: boolean;
+}
+
 /**
  * Hook to fetch logged in teacher's profile data with smart fallbacks
  */
-export function useGuruMe() {
+export function useGuruMe(options?: UseGuruMeOptions) {
   const { user } = useAuthStore();
+  const rawRoleName = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
+  const roleNameStr = String(rawRoleName || '').toUpperCase();
+  const isSiswa = roleNameStr.includes('SISWA') || Boolean(user?.siswa_id) || Boolean((user as any)?.isStudent);
+  const isTeacher = !isSiswa || Boolean(user?.guru_profile?.id || (user as any)?.guru?.id || (user as any)?.guru_id);
+  const isEnabled = options?.enabled ?? isTeacher;
 
   const query = useQuery({
     queryKey: [...GURU_ME_QUERY_KEY, user?.guru_profile?.id, user?.id],
@@ -18,7 +27,7 @@ export function useGuruMe() {
         const meRes = await guruApi.getMe();
         if (meRes?.data) return meRes.data;
       } catch (err) {
-        console.warn('guruApi.getMe endpoint fallback:', err);
+        // Fallback gracefully without throwing
       }
 
       // 2. Direct ID getById if ID exists
@@ -28,14 +37,16 @@ export function useGuruMe() {
           const res = await guruApi.getById(targetId);
           if (res?.data) return res.data;
         } catch (err) {
-          console.warn('guruApi.getById fallback:', err);
+          // Fallback gracefully without throwing
         }
       }
 
       // 3. Fallback embedded profile on user
       return (user as any)?.guru_profile || (user as any)?.guru || null;
     },
-    enabled: !!user?.id,
+    initialData: () => (user as any)?.guru_profile || (user as any)?.guru || null,
+    enabled: Boolean(user?.id && isEnabled),
+    staleTime: 5 * 60 * 1000,
   });
 
   return {

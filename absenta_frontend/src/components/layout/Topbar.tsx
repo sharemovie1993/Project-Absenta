@@ -34,17 +34,30 @@ interface TopbarProps {
 
 export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) => {
   // Defer background poll queries (notifications & communication unread count) until after main thread idle
+  // Mengadopsi Pola "Idle Until Urgent"
   const [isIdleReady, setIsIdleReady] = useState(false);
   React.useEffect(() => {
     if (typeof window === 'undefined') {
       setIsIdleReady(true);
       return;
     }
+
+    let isDone = false;
+    const makeReady = () => {
+      if (isDone) return;
+      isDone = true;
+      setIsIdleReady(true);
+    };
+
+    const userEvents = ['mousedown', 'touchstart', 'keydown', 'scroll'];
+    userEvents.forEach((evt) => window.addEventListener(evt, makeReady, { once: true, passive: true }));
+
     const idleCallback = (window as any).requestIdleCallback 
       ? (cb: () => void) => (window as any).requestIdleCallback(cb, { timeout: 3500 })
-      : ((cb: () => void) => setTimeout(cb, 3000));
-    const h = idleCallback(() => setIsIdleReady(true));
+      : ((cb: () => void) => setTimeout(cb, 3500));
+    const h = idleCallback(() => makeReady());
     return () => {
+      userEvents.forEach((evt) => window.removeEventListener(evt, makeReady));
       if ((window as any).cancelIdleCallback && typeof h === 'number') {
         (window as any).cancelIdleCallback(h);
       } else {

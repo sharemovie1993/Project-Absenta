@@ -176,7 +176,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
   );
 
   // State deferral untuk query below-the-fold & opsi filter periode
-  // Menghindari persaingan thread CPU di awal mount agar TBT dan FCP tetap optimal
+  // Mengadopsi Pola "Idle Until Urgent" (Philip Walton, Google Chrome Team)
+  // Menghindari persaingan thread CPU di awal mount agar TBT, LCP, dan FCP tetap optimal
   const [isDeferredReady, setIsDeferredReady] = useState(false);
 
   useEffect(() => {
@@ -184,11 +185,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
       setIsDeferredReady(true);
       return;
     }
-    const idleCallback = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 400));
-    const handle = idleCallback(() => {
+
+    let isDone = false;
+    const makeReady = () => {
+      if (isDone) return;
+      isDone = true;
       setIsDeferredReady(true);
+    };
+
+    // Urgent: Pengguna mulai berinteraksi dengan layar
+    const userEvents = ['mousedown', 'touchstart', 'keydown', 'scroll'];
+    userEvents.forEach((evt) => window.addEventListener(evt, makeReady, { once: true, passive: true }));
+
+    // Idle: Defer query non-kritis hingga browser benar-benar santai (timeout 3500ms)
+    const idleCallback = (window as any).requestIdleCallback 
+      ? (cb: () => void) => (window as any).requestIdleCallback(cb, { timeout: 3500 })
+      : ((cb: () => void) => setTimeout(cb, 3500));
+
+    const handle = idleCallback(() => {
+      makeReady();
     });
+
     return () => {
+      userEvents.forEach((evt) => window.removeEventListener(evt, makeReady));
       if ((window as any).cancelIdleCallback && typeof handle === 'number') {
         (window as any).cancelIdleCallback(handle);
       } else {

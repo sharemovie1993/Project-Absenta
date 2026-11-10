@@ -23,14 +23,12 @@ import { WelcomeBanner } from '../shared/WelcomeBanner';
 import { QuickActionGrid, type QuickAction } from '../shared/QuickActionGrid';
 import { InfoStripGrid, type InfoStripItem } from '../shared/InfoStripGrid';
 import { CompactSectionCard } from '../shared/CompactSectionCard';
-import { useSmartMenu } from '../../../hooks/useSmartMenu';
 import iconForName from '../../../lib/iconForName';
 import { cn } from '../../../lib/utils';
 
 export const PetugasDashboard: React.FC = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const { menu: groupedMenu } = useSmartMenu();
   
   const { data: stats, isLoading, refetch } = useQuery({
     queryKey: ['petugas-stats'],

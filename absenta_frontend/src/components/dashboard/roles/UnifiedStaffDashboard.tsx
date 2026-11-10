@@ -123,7 +123,6 @@ const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/mod
 
 // Hooks & APIs
 import { useStaffTimeline } from '../../../hooks/useStaffTimeline';
-import { useSmartMenu } from '../../../hooks/useSmartMenu';
 import { guruApi } from '../../../api/academic.api';
 import { kesiswaanApi } from '../../../api/kesiswaan.api';
 import { hubinApi } from '../../../api/hubin.api';
@@ -140,7 +139,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const { menu: _groupedMenu } = useSmartMenu();
 
   // ── 1. Role & Capability Detection ──────────────────────────────────────────
   const {
@@ -180,7 +178,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
   } = useCapabilities();
 
   // ── 2. Base Data ──────────────────────────────────────────────────────────────
-  const { guruProfile, refetch: refetchGuruProfile } = useGuruMe();
+  const isGuruOrStaff = !isAdmin || Boolean(user?.guru_profile?.id);
+  const { guruProfile, refetch: refetchGuruProfile } = useGuruMe({ enabled: isGuruOrStaff });
 
   // Query P5 Projects for facilitator role
   const { data: myP5ProjectsRes } = useQuery({
