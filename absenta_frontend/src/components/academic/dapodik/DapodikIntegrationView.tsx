@@ -35,6 +35,7 @@ import { DAPODIK_AUDIT_TEMPLATES, type DapodikAuditTemplate } from './dapodikAud
 import { DapodikBeritaAcaraPrintModal } from './DapodikBeritaAcaraPrintModal';
 import { DapodikConnectionModal } from './DapodikConnectionModal';
 import { DapodikCriteriaModal } from './DapodikCriteriaModal';
+import { DapodikRombelMappingModal } from './DapodikRombelMappingModal';
 
 export interface UniversalDapodikIntegrationViewProps {
   hideLayout?: boolean;
@@ -47,6 +48,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
   const [isCriteriaModalOpen, setIsCriteriaModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isRombelMappingModalOpen, setIsRombelMappingModalOpen] = useState(false);
   const [selectedSiswaDetailId, setSelectedSiswaDetailId] = useState<string | null>(null);
 
   // Form State
@@ -362,37 +364,15 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   };
 
   const handleBulkImport = () => {
-    const targets = selectedStudents
-      .filter((s) => s.status === 'DAPODIK_ONLY')
-      .map((s) => ({
-        nisn: s.nisn,
-        nik: s.nik || undefined,
-        nis: s.nis || undefined,
-        nama: s.nama,
-        jenis_kelamin: s.jenis_kelamin,
-        tempat_lahir: s.tempat_lahir || undefined,
-        tanggal_lahir: s.tanggal_lahir || undefined,
-        rombel: s.rombel || undefined,
-      }));
+    const targets = selectedStudents.filter((s) => s.status === 'DAPODIK_ONLY');
 
     if (targets.length === 0) {
       toast.warning('Tidak ada siswa berstatus Dapodik Saja dalam pilihan Anda.');
       return;
     }
 
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Import Siswa Baru dari Dapodik',
-      message: `Import ${targets.length} siswa baru dari Dapodik ke database Absenta? Akun siswa dan data akademik awal akan dibuat.`,
-      confirmText: 'Ya, Import Sekarang',
-      onConfirm: () => {
-        setConfirmDialog(null);
-        syncMutation.mutate({
-          action: 'IMPORT_SELECTED',
-          students: targets,
-        });
-      },
-    });
+    // Buka Wizard Pemetaan Rombel Dapodik ke Kelas Platform
+    setIsRombelMappingModalOpen(true);
   };
 
   // Format Helper Status Badge
@@ -1101,6 +1081,27 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
         }}
         siswaId={selectedSiswaDetailId}
         canEdit={true}
+      />
+
+      {/* ─── MODAL 7: PEMETAAN ROMBEL DAPODIK KE KELAS PLATFORM ─── */}
+      <DapodikRombelMappingModal
+        isOpen={isRombelMappingModalOpen}
+        onClose={() => setIsRombelMappingModalOpen(false)}
+        students={selectedStudents.filter((s) => s.status === 'DAPODIK_ONLY')}
+        onConfirmImport={(studentsWithKelas) => {
+          syncMutation.mutate(
+            {
+              action: 'IMPORT_SELECTED',
+              students: studentsWithKelas,
+            },
+            {
+              onSuccess: () => {
+                setIsRombelMappingModalOpen(false);
+              },
+            }
+          );
+        }}
+        isSubmitting={syncMutation.isPending}
       />
     </div>
   );

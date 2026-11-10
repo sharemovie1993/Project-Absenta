@@ -1,6 +1,7 @@
 import os from 'os';
 import axios from 'axios';
 import { prisma } from '@/utils/prisma';
+import { createSiswaCommand } from '@/modules/academic/siswa/services/commands/create-siswa.command';
 
 export interface ServerNetworkInfo {
   primaryIp: string;
@@ -642,7 +643,7 @@ export class DapodikService {
   /**
    * Menyinkronkan siswa yang dipilih:
    * - 'UPDATE': Perbarui field siswa di Absenta agar sesuai dengan Dapodik
-   * - 'IMPORT': Daftarkan siswa baru dari Dapodik ke Absenta
+   * - 'IMPORT': Daftarkan siswa baru dari Dapodik ke Absenta (termasuk pemetaan kelas & rekam akademik)
    */
   async syncStudents(
     tenantId: string,
@@ -658,32 +659,75 @@ export class DapodikService {
         tempat_lahir?: string;
         tanggal_lahir?: string;
         rombel?: string;
+        kelas_id?: string;
+        jurusan_id?: string;
       }[];
-    }
+    },
+    userContext?: { userId?: string; org?: any }
   ) {
     let updatedCount = 0;
     let importedCount = 0;
 
     for (const item of payload.students) {
       if (payload.action === 'UPDATE_SELECTED' && item.absentaId) {
+        const updateData: any = {
+          nama_siswa: item.nama,
+          nis: item.nis || undefined,
+          nisn: item.nisn || undefined,
+          nik: item.nik || undefined,
+          jenis_kelamin: item.jenis_kelamin || undefined,
+          tempat_lahir: item.tempat_lahir || undefined,
+          tanggal_lahir: item.tanggal_lahir ? new Date(item.tanggal_lahir) : undefined,
+        };
+        if (item.kelas_id) {
+          updateData.kelas_id = item.kelas_id;
+        }
+
         await prisma.siswa.updateMany({
           where: {
             id: item.absentaId,
             tenant_id: tenantId,
           },
-          data: {
-            nama_siswa: item.nama,
-            nis: item.nis || undefined,
-            nisn: item.nisn || undefined,
-            nik: item.nik || undefined,
-            jenis_kelamin: item.jenis_kelamin || undefined,
-            tempat_lahir: item.tempat_lahir || undefined,
-            tanggal_lahir: item.tanggal_lahir ? new Date(item.tanggal_lahir) : undefined,
-          },
+          data: updateData,
         });
+
+        // Jika kelas_id disertakan, sinkronkan juga rekam akademik aktif
+        if (item.kelas_id) {
+          try {
+            const [activeTp, activeSem] = await Promise.all([
+              prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
+              prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
+            ]);
+            if (activeTp && activeSem) {
+              await prisma.siswaAkademik.upsert({
+                where: {
+                  siswa_id_tahun_pelajaran_id_semester_id: {
+                    siswa_id: item.absentaId,
+                    tahun_pelajaran_id: activeTp.id,
+                    semester_id: activeSem.id,
+                  },
+                },
+                update: {
+                  kelas_id: item.kelas_id,
+                  status: 'AKTIF',
+                },
+                create: {
+                  siswa_id: item.absentaId,
+                  kelas_id: item.kelas_id,
+                  tahun_pelajaran_id: activeTp.id,
+                  semester_id: activeSem.id,
+                  status: 'AKTIF',
+                },
+              });
+            }
+          } catch (academicErr: any) {
+            console.error('[DapodikSync] Gagal update SiswaAkademik:', academicErr?.message || academicErr);
+          }
+        }
+
         updatedCount++;
       } else if (payload.action === 'IMPORT_SELECTED') {
-        // Cek apakah NISN sudah ada di tenant ini
+        // Cek apakah NISN / NIS sudah ada di tenant ini
         const existing = await prisma.siswa.findFirst({
           where: {
             tenant_id: tenantId,
@@ -695,19 +739,60 @@ export class DapodikService {
         });
 
         if (!existing) {
-          await prisma.siswa.create({
-            data: {
-              tenant_id: tenantId,
-              nama_siswa: item.nama,
-              nis: item.nis || item.nisn || `NIS-${Date.now()}`,
-              nisn: item.nisn || null,
-              nik: item.nik || null,
-              jenis_kelamin: item.jenis_kelamin || 'L',
-              tempat_lahir: item.tempat_lahir || null,
-              tanggal_lahir: item.tanggal_lahir ? new Date(item.tanggal_lahir) : null,
-            },
-          });
-          importedCount++;
+          // Resolve jurusan_id dari kelas jika ada pemetaan kelas
+          let resolvedJurusanId = item.jurusan_id;
+          if (!resolvedJurusanId && item.kelas_id) {
+            const kelasRecord = await prisma.kelas.findUnique({
+              where: { id: item.kelas_id },
+              select: { jurusan_id: true },
+            });
+            if (kelasRecord?.jurusan_id) {
+              resolvedJurusanId = kelasRecord.jurusan_id;
+            }
+          }
+
+          try {
+            // Gunakan createSiswaCommand agar akun User, SiswaAkademik, dan ActivityLog terbentuk sempurna
+            await createSiswaCommand(
+              {
+                nama_siswa: item.nama,
+                nis: item.nis || undefined,
+                nisn: item.nisn || undefined,
+                nik: item.nik || undefined,
+                jenis_kelamin: (item.jenis_kelamin || 'L').toUpperCase().startsWith('P') ? 'P' : 'L',
+                tempat_lahir: item.tempat_lahir || undefined,
+                tanggal_lahir: item.tanggal_lahir ? new Date(item.tanggal_lahir) : undefined,
+                kelas_id: item.kelas_id || undefined,
+                jurusan_id: resolvedJurusanId || undefined,
+                status: item.kelas_id ? 'AKTIF' : 'CALON',
+              },
+              {
+                tenantId,
+                org: userContext?.org || { tenant_wide: true },
+                userId: userContext?.userId,
+              }
+            );
+            importedCount++;
+          } catch (createErr: any) {
+            console.error(`[DapodikSync] createSiswaCommand fallback for ${item.nama}:`, createErr?.message || createErr);
+            // Fallback gracefully jika terdapat kondisi khusus (misal validasi spesifik)
+            await prisma.siswa.create({
+              data: {
+                tenant_id: tenantId,
+                nama_siswa: item.nama,
+                nis: item.nis || item.nisn || `NIS-${Date.now()}`,
+                nisn: item.nisn || null,
+                nik: item.nik || null,
+                jenis_kelamin: (item.jenis_kelamin || 'L').toUpperCase().startsWith('P') ? 'P' : 'L',
+                tempat_lahir: item.tempat_lahir || null,
+                tanggal_lahir: item.tanggal_lahir ? new Date(item.tanggal_lahir) : null,
+                kelas_id: item.kelas_id || null,
+                jurusan_id: resolvedJurusanId || null,
+                status: item.kelas_id ? 'AKTIF' : 'CALON',
+              },
+            });
+            importedCount++;
+          }
         }
       }
     }

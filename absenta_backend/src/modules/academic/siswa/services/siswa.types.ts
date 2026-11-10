@@ -47,7 +47,7 @@ export interface PaginatedSiswaResponse {
 
 export interface CreateSiswaInput {
   nama_siswa: string;
-  kelas_id: string;
+  kelas_id?: string | null;
   tahun_pelajaran_id?: string;
   semester_id?: string;
   nis?: string;

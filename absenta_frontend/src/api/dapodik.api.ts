@@ -92,6 +92,8 @@ export interface SyncStudentsPayload {
     tempat_lahir?: string;
     tanggal_lahir?: string;
     rombel?: string;
+    kelas_id?: string;
+    jurusan_id?: string;
   }[];
 }
 

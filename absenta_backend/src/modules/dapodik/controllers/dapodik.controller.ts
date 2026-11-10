@@ -147,10 +147,17 @@ export const dapodikController = {
         });
       }
 
-      const result = await dapodikService.syncStudents(tenantId, {
-        action,
-        students,
-      });
+      const result = await dapodikService.syncStudents(
+        tenantId,
+        {
+          action,
+          students,
+        },
+        {
+          userId: user.id || user.userId,
+          org: user.org,
+        }
+      );
 
       return reply.status(200).send(result);
     } catch (err: any) {
