@@ -302,7 +302,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
     || isBpbk || isBkk || isGerbang || isTU;
 
   // ── 3. Role-Specific Scoped Queries (Google Platform Standard: Scoped Lazy Query Execution) ───
-  const { rawList: waliKelasAssignments } = useWaliKelasOptions();
+  const { rawList: waliKelasAssignments } = useWaliKelasOptions({
+    enabled: Boolean(isWaliKelas) || activeTab === 'binaan',
+  });
 
   const waliKelasStrukturItem = useMemo(() => {
     const guruProfileId = (user as any)?.guru_profile?.id || (user as any)?.guru_profile_id || guruProfile?.id;
@@ -506,7 +508,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
   });
 
   // ── 4. UI State & Piket Operations ─────────────────────────────────────────────
-  const { rawList: dailyPermits, refetch: refetchPermits } = usePiketIzinKeluarOptions();
+  const { rawList: dailyPermits, refetch: refetchPermits } = usePiketIzinKeluarOptions({
+    enabled: (Boolean(isPiketGuruActual) || Boolean(isKesiswaan)) && (activeTab === 'kelola' || activeTab === 'ringkasan'),
+  });
   const [printedPermit, setPrintedPermit] = useState<any>(null);
   const [printPaperSize, setPrintPaperSize] = useState<string>('80mm');
 

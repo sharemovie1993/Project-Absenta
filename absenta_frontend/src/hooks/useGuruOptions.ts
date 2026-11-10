@@ -9,10 +9,11 @@ export interface UseGuruOptionsParams {
   jenisPtk?: 'PENDIDIK' | 'TENAGA_KEPENDIDIKAN' | 'ALL';
   onlyActive?: boolean;
   teachingLoadMap?: Record<string, { total_jp: number }>;
+  enabled?: boolean;
 }
 
 export function useGuruOptions(params: UseGuruOptionsParams = {}) {
-  const { jenisPtk = 'PENDIDIK', onlyActive = true, teachingLoadMap } = params;
+  const { jenisPtk = 'PENDIDIK', onlyActive = true, teachingLoadMap, enabled = true } = params;
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id || 'default';
 
@@ -22,6 +23,7 @@ export function useGuruOptions(params: UseGuruOptionsParams = {}) {
       limit: 1000, 
       ...(jenisPtk !== 'ALL' ? { jenis_ptk: jenisPtk } : {}) 
     }),
+    enabled,
     staleTime: 5 * 60 * 1000, // 5-minute cache
   });
 

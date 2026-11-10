@@ -151,6 +151,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     onlyActive: true,
     jurusanId: jurusanId || undefined,
     tingkat: typeof tingkat === 'number' ? tingkat : undefined,
+    enabled: enableKelas,
   });
 
   const kelasOptions: SearchableSelectOption[] = useMemo(() => {
@@ -214,6 +215,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
   } = useMapelOptions({
     kelasId: kelasId || undefined,
     tingkat: typeof tingkat === 'number' ? tingkat : undefined,
+    enabled: enableMapel,
   });
 
   const handleKelasChange = useCallback(
@@ -238,6 +240,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     isLoading: isLoadingGuru,
   } = useGuruOptions({
     onlyActive: true,
+    enabled: enableGuru,
   });
 
   const {

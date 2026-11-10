@@ -7,7 +7,7 @@ import { CreditCard, ArrowRight, Lock, Sparkles } from 'lucide-react';
 import { getSubscriptionsByTenant, getMySubscription } from '@/api/subscription.api';
 import { formatCurrency } from '@/lib/billingUtils';
 export const PendingPaymentBlocker = () => {
-    const { isAuthenticated, user } = useAuthStore();
+    const { isAuthenticated, user, subscription } = useAuthStore();
     const [pendingSubs, setPendingSubs] = useState<any[]>([]);
     const [invoiceId, setInvoiceId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -48,6 +48,17 @@ export const PendingPaymentBlocker = () => {
     }, [isAuthenticated, user, location.pathname, isExcludedPage]);
 
     const checkPendingSubscription = async () => {
+        if (subscription) {
+            const invId = (subscription as any).upgrade_invoice_id;
+            setInvoiceId(invId || null);
+            const subs = (subscription as any).subscriptions || [];
+            const pending = subs.filter((s: any) => {
+                const status = s.status?.toUpperCase();
+                return status === 'UPGRADE_PENDING' || status === 'PENDING_PAYMENT';
+            });
+            setPendingSubs(pending);
+            return;
+        }
         setLoading(true);
         try {
             const res = await getMySubscription();

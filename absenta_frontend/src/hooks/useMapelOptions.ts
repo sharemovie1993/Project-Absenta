@@ -8,10 +8,11 @@ export interface UseMapelOptionsParams {
   kelompok?: string;
   tingkat?: number;
   kelasId?: string;
+  enabled?: boolean;
 }
 
 export function useMapelOptions(params: UseMapelOptionsParams = {}) {
-  const { kelompok, tingkat, kelasId } = params;
+  const { kelompok, tingkat, kelasId, enabled = true } = params;
 
   const query = useQuery({
     queryKey: ['mapel-options-list', kelompok, tingkat, kelasId],
@@ -20,6 +21,7 @@ export function useMapelOptions(params: UseMapelOptionsParams = {}) {
       ...(kelasId ? { kelas_id: kelasId } : {}),
       ...(tingkat !== undefined ? { tingkat } : {})
     }),
+    enabled,
     staleTime: 5 * 60 * 1000,
   });
 

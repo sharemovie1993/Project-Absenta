@@ -73,6 +73,10 @@ export default function SubscriptionStateBanner() {
 
   useEffect(() => {
     if (isPlatform) return;
+    if (subscription) {
+      setMySubscription(subscription);
+      return;
+    }
     let active = true;
     const load = async () => {
       try {

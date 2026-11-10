@@ -8,10 +8,11 @@ export interface UseWaliKelasOptionsParams {
   onlyActive?: boolean;
   valueKey?: 'guru_id' | 'kelas_id' | 'assignment_id';
   tahunPelajaranId?: string;
+  enabled?: boolean;
 }
 
 export function useWaliKelasOptions(params: UseWaliKelasOptionsParams = {}) {
-  const { onlyActive = true, valueKey = 'guru_id', tahunPelajaranId } = params;
+  const { onlyActive = true, valueKey = 'guru_id', tahunPelajaranId, enabled = true } = params;
 
   const query = useQuery({
     queryKey: ['wali-kelas-options-list', onlyActive, tahunPelajaranId],
@@ -20,6 +21,7 @@ export function useWaliKelasOptions(params: UseWaliKelasOptionsParams = {}) {
         include_inactive: !onlyActive,
         tahun_pelajaran_id: tahunPelajaranId,
       }).catch(() => ({ data: [] as any })),
+    enabled,
     staleTime: 5 * 60 * 1000,
   });
 

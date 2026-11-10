@@ -8,6 +8,7 @@ export interface UsePiketIzinKeluarOptionsParams {
   endDate?: string;
   status?: string;
   refetchInterval?: number | false;
+  enabled?: boolean;
 }
 
 export interface PiketIzinSelectOption {
@@ -32,8 +33,9 @@ export function usePiketIzinKeluarOptions(params?: UsePiketIzinKeluarOptionsPara
       if (Array.isArray(res.data?.data)) return res.data.data;
       return [];
     },
+    enabled: params?.enabled ?? true,
     staleTime: params?.refetchInterval !== undefined ? 0 : 5000,
-    refetchInterval: params?.refetchInterval ?? 5000, // 5-second real-time auto sync for live gate & dashboard monitoring
+    refetchInterval: (params?.enabled === false) ? false : (params?.refetchInterval ?? 5000), // 5-second real-time auto sync for live gate & dashboard monitoring
   });
 
   const rawList: IzinKeluarSiswa[] = useMemo(() => {

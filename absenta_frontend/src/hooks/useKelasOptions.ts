@@ -10,10 +10,11 @@ export interface UseKelasOptionsParams {
   jurusanId?: string;
   tingkat?: number;
   filterByJenjang?: boolean;
+  enabled?: boolean;
 }
 
 export function useKelasOptions(params: UseKelasOptionsParams = {}) {
-  const { onlyActive = true, jurusanId, tingkat, filterByJenjang = true } = params;
+  const { onlyActive = true, jurusanId, tingkat, filterByJenjang = true, enabled = true } = params;
   const { tingkatList } = useJenjang();
   const serializedTingkatList = useMemo(() => (tingkatList || []).join(','), [tingkatList]);
 
@@ -23,6 +24,7 @@ export function useKelasOptions(params: UseKelasOptionsParams = {}) {
       limit: 500, 
       ...(onlyActive ? { is_active: true } : {}) 
     } as any),
+    enabled,
     staleTime: 5 * 60 * 1000,
   });
 
