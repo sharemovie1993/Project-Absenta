@@ -990,6 +990,13 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                         const xmlLevel = extractClassLevel(c.name);
                         const xmlJurusan = c.detected_jurusan || extractClassJurusan(c.name);
 
+                        // Deteksi jika rombel ini memiliki nama kembar multi-jurusan di database master (seperti X TE 3 di TOI & TAV)
+                        const normCName = (c.name || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                        const twinCandidates = analysis.db_classes.filter(dbc => {
+                          const normDbName = (dbc.nama_kelas || dbc.name || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                          return normDbName === normCName;
+                        });
+
                         const targetLevel = targetDbClass
                           ? (targetDbClass.tingkat ? (targetDbClass.tingkat === 10 ? 'X' : targetDbClass.tingkat === 11 ? 'XI' : 'XII') : extractClassLevel(targetDbClass.nama_kelas || targetDbClass.name))
                           : null;
@@ -1040,6 +1047,12 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                                 <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5 flex items-center gap-1">
                                   <GraduationCap className="w-3.5 h-3.5" />
                                   <span>Konsentrasi: <strong>{xmlJurusan}</strong></span>
+                                </div>
+                              )}
+                              {twinCandidates.length > 1 && (
+                                <div className="mt-1 text-[10px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800/60 flex items-center gap-1 font-medium leading-tight">
+                                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                                  <span>Terdapat {twinCandidates.length} Jurusan di DB ({twinCandidates.map(t => `${t.jurusan_kode || t.jurusan_nama || 'Umum'}${t.is_active === false ? ' [Nonaktif]' : ''}`).join(', ')}). Pastikan memilih yang sesuai periode ini.</span>
                                 </div>
                               )}
                             </td>
@@ -1128,6 +1141,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                                     const levelConflict = xmlLevel && dbcLevel && xmlLevel !== dbcLevel;
                                     const jurConflict = xmlJurusan && isJurusanConflict(xmlJurusan, dbc);
                                     const jurLabel = dbc.jurusan_nama ? ` - ${dbc.jurusan_nama}` : dbc.jurusan_kode ? ` - ${dbc.jurusan_kode}` : '';
+                                    const activeLabel = dbc.is_active === false ? ' [Nonaktif]' : '';
 
                                     let prefix = '';
                                     if (levelConflict) prefix = '⚠️ [BEDA TINGKAT] ';
@@ -1135,7 +1149,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
 
                                     return (
                                       <option key={dbc.id} value={dbc.id}>
-                                        {prefix}{dbc.nama_kelas || dbc.name}{jurLabel}
+                                        {prefix}{dbc.nama_kelas || dbc.name}{jurLabel}{activeLabel}
                                       </option>
                                     );
                                   })}
@@ -1146,7 +1160,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                               {targetDbClass && !isIgnored && (
                                 <div className="mt-1 text-[10px] flex items-center justify-between text-slate-500 dark:text-slate-400 bg-slate-100/70 dark:bg-slate-800/60 px-2 py-0.5 rounded">
                                   <span>Tingkat: <strong className="text-slate-700 dark:text-slate-200">{targetLevel || '-'}</strong></span>
-                                  <span>Konsentrasi: <strong className="text-indigo-600 dark:text-indigo-400">{targetDbClass.jurusan_nama || targetDbClass.jurusan_kode || 'Umum'}</strong></span>
+                                  <span>Konsentrasi: <strong className="text-indigo-600 dark:text-indigo-400">{targetDbClass.jurusan_nama || targetDbClass.jurusan_kode || 'Umum'}</strong>{targetDbClass.is_active === false ? ' [Nonaktif]' : ''}</span>
                                 </div>
                               )}
                             </td>
