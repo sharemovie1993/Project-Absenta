@@ -22,6 +22,7 @@ Berikut adalah data riil yang diekstrak langsung dari 10 berkas audit JSON resmi
 | 10 | `smkn1pld...021702.json` | 02:17 | **55** | **801.2** | 2,847.4 | 1,330.0 | 5,049.7 | 0.061 | 55 | 12 | 531.3 KB |
 | 11 | `smkn1pld...024805.json` | 02:48 | **58** | 854.1 | **2,350.9** ⚡ | 1,097.0 | 5,174.6 | **0.037** | 55 | 11 | 530.9 KB |
 | 12 | `smkn1pld...030627.json` | 03:06 | **63** 🏆 | 1,571.3 | 2,865.5 | **764.0** 📉 | **4,824.1** | **0.037** 🟢 | **51** | **9** | **521.8 KB** |
+| 13 | `smkn1pld...054812.json` | 05:48 | **65** 🚀 | **1,507.0** | **2,492.3** ⚡ | **668.0** 📉 | **4,500.0** | **0.090** 🟢 | **47** | **5** 🎯 | **483.9 KB** |
 
 *\*Catatan Audit 014540: TBT membengkak akibat injeksi ekstensi browser Chrome (`bubble_compiled.js` Google Dictionary/Translate) yang menyumbang 617 ms blocking time artifisial.*
 
