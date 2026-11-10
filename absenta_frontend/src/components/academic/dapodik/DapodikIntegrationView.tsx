@@ -12,11 +12,12 @@ import {
   HelpCircle, Search, ArrowRight, Database, Server,
   SlidersHorizontal, Settings2,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock, Sparkles,
-  Printer, Bookmark, User, ExternalLink
+  Printer, Bookmark, User, ExternalLink, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button, Input, Badge, Loader, Modal } from '@/components/ui';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { SiswaDetailModal } from '@/components/academic/siswa/SiswaDetailModal';
 import {
   getDapodikServerInfo,
@@ -62,6 +63,9 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   // Filter & Search State
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | StudentReconciliationStatus>('ALL');
+  const [rombelFilter, setRombelFilter] = useState('');
+  const [tingkatFilter, setTingkatFilter] = useState('');
+  const [genderFilter, setGenderFilter] = useState('');
 
   // Matching Options State (Opsi Bidang Pencocokan)
   const [compareOptions, setCompareOptions] = useState<CompareOptions>({
@@ -256,27 +260,103 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   const summary = comparisonData?.data?.summary;
   const cacheInfo = comparisonData?.data?.cacheInfo;
 
+  // Helper Ekstraksi Tingkat Siswa
+  const getStudentTingkat = useCallback((s: ReconciledStudent): string => {
+    const absTingkat = s.absentaRaw?.SiswaAkademik?.[0]?.kelas?.tingkat;
+    if (absTingkat) return String(absTingkat);
+
+    const dapTingkat = s.dapodikRaw?.tingkat_pendidikan_id || s.dapodikRaw?.tingkat;
+    if (dapTingkat) {
+      const parsed = parseInt(String(dapTingkat), 10);
+      if (!isNaN(parsed)) return String(parsed);
+    }
+
+    const rombel = (s.rombel || s.dapodikRaw?.nama_rombel || '').trim().toUpperCase();
+    if (rombel.startsWith('10') || rombel.startsWith('X ') || rombel.startsWith('X-') || rombel.startsWith('X.')) return '10';
+    if (rombel.startsWith('11') || rombel.startsWith('XI ') || rombel.startsWith('XI-') || rombel.startsWith('XI.')) return '11';
+    if (rombel.startsWith('12') || rombel.startsWith('XII ') || rombel.startsWith('XII-') || rombel.startsWith('XII.')) return '12';
+    if (rombel.startsWith('13') || rombel.startsWith('XIII ') || rombel.startsWith('XIII-') || rombel.startsWith('XIII.')) return '13';
+
+    return '';
+  }, []);
+
+  // Daftar Pilihan Rombel Unik
+  const availableRombelList = useMemo(() => {
+    const rombelSet = new Set<string>();
+    students.forEach((s) => {
+      const r = (s.rombel || s.dapodikRaw?.nama_rombel || '').trim();
+      if (r) rombelSet.add(r);
+    });
+    return Array.from(rombelSet).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [students]);
+
+  // Cek apakah ada filter aktif selain default
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() ||
+    statusFilter !== 'ALL' ||
+    rombelFilter ||
+    tingkatFilter ||
+    genderFilter
+  );
+
+  const handleResetFilters = useCallback(() => {
+    setSearchQuery('');
+    setStatusFilter('ALL');
+    setRombelFilter('');
+    setTingkatFilter('');
+    setGenderFilter('');
+  }, []);
+
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
+      // 1. Filter Status Rekonsiliasi
       if (statusFilter !== 'ALL' && s.status !== statusFilter) {
         return false;
       }
+
+      // 2. Filter Rombel
+      if (rombelFilter) {
+        const sRombel = (s.rombel || s.dapodikRaw?.nama_rombel || '').trim();
+        if (sRombel !== rombelFilter) {
+          return false;
+        }
+      }
+
+      // 3. Filter Tingkat
+      if (tingkatFilter) {
+        const sTingkat = getStudentTingkat(s);
+        if (sTingkat !== tingkatFilter) {
+          return false;
+        }
+      }
+
+      // 4. Filter Gender
+      if (genderFilter) {
+        const sGender = (s.jenis_kelamin || '').toUpperCase().startsWith('L') ? 'L' : 'P';
+        if (sGender !== genderFilter) {
+          return false;
+        }
+      }
+
+      // 5. Pencarian Teks
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchNama = s.nama.toLowerCase().includes(q);
         const matchNisn = s.nisn.toLowerCase().includes(q);
         const matchNis = (s.nis || '').toLowerCase().includes(q);
+        const matchNik = (s.nik || '').toLowerCase().includes(q);
         const matchRombel = (s.rombel || '').toLowerCase().includes(q);
-        return matchNama || matchNisn || matchNis || matchRombel;
+        return matchNama || matchNisn || matchNis || matchNik || matchRombel;
       }
+
       return true;
     });
-  }, [students, statusFilter, searchQuery]);
+  }, [students, statusFilter, rombelFilter, tingkatFilter, genderFilter, searchQuery, getStudentTingkat]);
 
   // Reset pagination when filter/search/options change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, compareOptions, pageSize]);
+  }, [searchQuery, statusFilter, rombelFilter, tingkatFilter, genderFilter, compareOptions, pageSize]);
 
   // Paginated Slicing (Lightweight DOM: Render only 25 - 100 rows instead of 2,755)
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
@@ -670,6 +750,74 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                   ))}
                 </div>
               </div>
+            </div>
+
+            {/* Kontrol Filter Lanjutan: Rombel Dapodik, Tingkat & Gender */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs">
+              <div className="flex items-center gap-1.5 text-slate-500 font-semibold text-[11px] shrink-0">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Filter Siswa:</span>
+              </div>
+
+              {/* 1. Filter Rombel Dapodik */}
+              <div className="w-full sm:w-48">
+                <SearchableSelect
+                  value={rombelFilter}
+                  onValueChange={setRombelFilter}
+                  options={[
+                    { value: '', label: 'Semua Rombel' },
+                    ...availableRombelList.map((r) => ({ value: r, label: r })),
+                  ]}
+                  placeholder="Semua Rombel"
+                  searchPlaceholder="Cari rombel..."
+                  triggerClassName="h-7 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
+                />
+              </div>
+
+              {/* 2. Filter Tingkat */}
+              <div className="w-full sm:w-36">
+                <SearchableSelect
+                  value={tingkatFilter}
+                  onValueChange={setTingkatFilter}
+                  options={[
+                    { value: '', label: 'Semua Tingkat' },
+                    { value: '10', label: 'Tingkat 10 (X)' },
+                    { value: '11', label: 'Tingkat 11 (XI)' },
+                    { value: '12', label: 'Tingkat 12 (XII)' },
+                    { value: '13', label: 'Tingkat 13 (XIII)' },
+                  ]}
+                  placeholder="Semua Tingkat"
+                  searchPlaceholder="Pilih tingkat..."
+                  triggerClassName="h-7 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
+                />
+              </div>
+
+              {/* 3. Filter Gender */}
+              <div className="w-full sm:w-32">
+                <SearchableSelect
+                  value={genderFilter}
+                  onValueChange={setGenderFilter}
+                  options={[
+                    { value: '', label: 'Semua Gender' },
+                    { value: 'L', label: 'Laki-laki (L)' },
+                    { value: 'P', label: 'Perempuan (P)' },
+                  ]}
+                  placeholder="Semua Gender"
+                  triggerClassName="h-7 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
+                />
+              </div>
+
+              {/* Reset Filter Button */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 px-2 py-1 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors ml-auto"
+                >
+                  <X className="w-3 h-3" />
+                  Reset Filter
+                </button>
+              )}
             </div>
 
             {/* Bulk Selection Bar */}
