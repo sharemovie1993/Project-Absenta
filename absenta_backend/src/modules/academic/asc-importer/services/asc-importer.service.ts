@@ -537,24 +537,28 @@ export class AscImporterService {
       }
 
       // 3.5. Safe Re-import Guard:
-      // (a) Temukan seluruh JadwalKBM lama di semester & TP ini yang akan di-overwrite
+      // (a) Temukan seluruh JadwalKBM lama di semester & TP ini yang akan di-overwrite (Slot Jam 0 dilindungi)
       const existingJadwalKbm = await tx.jadwalKBM.findMany({
         where: {
           tenant_id: tenantId,
           tahun_pelajaran_id: input.tahun_pelajaran_id,
           semester_id: input.semester_id,
+          slot_index: { not: 0 }, // Protect Slot Jam 0 (Upacara / Pembiasaan) from being overwritten
         },
         select: { id: true },
       });
       const existingJadwalIds = existingJadwalKbm.map((j: any) => j.id);
 
       // (b) Bersihkan sesi presensi template otomatis yang berstatus MENDATANG di semester ini agar nanti dibuat ulang sesuai jadwal baru.
+      // Sesi kegiatan Jam 0 (Upacara, Apel, Pembiasaan) dilindungi dan tidak disentuh.
       const upcomingSessions = await tx.sesiAbsensi.findMany({
         where: {
           tenant_id: tenantId,
           tahun_pelajaran_id: input.tahun_pelajaran_id,
           semester_id: input.semester_id,
           status: 'MENDATANG',
+          slot_kbm: { not: 0 },     // Protect Sesi Jam 0 from deletion
+          jadwal_kegiatan_id: null, // Protect Sesi Jadwal Kegiatan from deletion
         },
         select: { id: true },
       });
@@ -610,12 +614,13 @@ export class AscImporterService {
         });
       }
 
-      // 4. Overwrite Mode: Delete existing JadwalKBM & JadwalKontrakKbm for selected TP & Semester
+      // 4. Overwrite Mode: Delete existing JadwalKBM & JadwalKontrakKbm for selected TP & Semester (Protect Slot Jam 0)
       await tx.jadwalKBM.deleteMany({
         where: {
           tenant_id: tenantId,
           tahun_pelajaran_id: input.tahun_pelajaran_id,
           semester_id: input.semester_id,
+          slot_index: { not: 0 }, // Protect Slot Jam 0 from deletion
         },
       });
 
