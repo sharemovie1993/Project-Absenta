@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import type { StudentBadge, SiswaDisciplineItem, SiswaMonthStats } from './types';
 
-export function useSiswaDashboardData() {
+export function useSiswaDashboardData(activeTab: string = 'ringkasan') {
   const { user } = useAuthStore();
   const { tenant: tenantSettings } = useTenantSettings();
   const { can } = useCapabilities();
@@ -72,6 +72,7 @@ export function useSiswaDashboardData() {
   const { data: sekolahProfileRes } = useQuery({
     queryKey: ['sekolah-profile'],
     queryFn: sekolahApi.getProfile,
+    staleTime: 60 * 60 * 1000,
   });
 
   const sekolahName =
@@ -88,7 +89,8 @@ export function useSiswaDashboardData() {
   const { data: studentCardConfigRes } = useQuery({
     queryKey: ['student-card-config-me'],
     queryFn: studentCardConfigApi.getConfig,
-    enabled: true,
+    enabled: activeTab === 'profil' || activeTab === 'ringkasan',
+    staleTime: 60 * 60 * 1000,
   });
 
   const activeCardConfig = studentCardConfigRes || null;
@@ -97,7 +99,8 @@ export function useSiswaDashboardData() {
   const { data: siswaDocsForPhoto } = useQuery({
     queryKey: ['self-member-docs-foto', siswaProfile?.id],
     queryFn: () => listSiswaDocuments(siswaProfile!.id),
-    enabled: !!siswaProfile?.id && !siswaProfile?.foto && !siswaProfile?.foto_url,
+    enabled: !!siswaProfile?.id && !siswaProfile?.foto && !siswaProfile?.foto_url && (activeTab === 'profil' || activeTab === 'ringkasan'),
+    staleTime: 60 * 60 * 1000,
   });
 
   const studentPhotoDoc = useMemo(() => {
@@ -156,13 +159,15 @@ export function useSiswaDashboardData() {
   const { data: dailyRecapRes, refetch: refetchDailyRecap } = useQuery({
     queryKey: ['rekap-harian-siswa-me', selectedDate, user?.siswa_id],
     queryFn: () => getRekapHarianSiswaMe({ tanggal: selectedDate }),
-    enabled: !!user && !!user?.siswa_id,
+    enabled: !!user && !!user?.siswa_id && (activeTab === 'ringkasan' || activeTab === 'kehadiran'),
+    staleTime: 60000,
   });
 
   const { data: monthlyRecapRes, refetch: refetchMonthlyRecap } = useQuery({
     queryKey: ['rekap-bulanan-siswa-me', selectedMonth, user?.siswa_id],
     queryFn: () => getRekapBulananSiswaMe({ bulan: selectedMonth }),
-    enabled: !!user && !!user?.siswa_id,
+    enabled: !!user && !!user?.siswa_id && (activeTab === 'ringkasan' || activeTab === 'kehadiran'),
+    staleTime: 60000,
   });
 
   const { data: scheduleRes, refetch: refetchSchedule, isLoading: isLoadingSchedule } = useQuery({
@@ -175,8 +180,8 @@ export function useSiswaDashboardData() {
         summary: true,
         limit: 100,
       } as any),
-    enabled: !!user && !!studentKelasId,
-    staleTime: 30000,
+    enabled: !!user && !!studentKelasId && activeTab === 'ringkasan',
+    staleTime: 60000,
   });
 
   const { data: pelanggaranRes, refetch: refetchPelanggaran } = useQuery({
@@ -189,7 +194,8 @@ export function useSiswaDashboardData() {
         return null;
       }
     },
-    enabled: !!user,
+    enabled: !!user && (activeTab === 'ringkasan' || activeTab === 'catatan'),
+    staleTime: 60000,
   });
 
   const { data: prestasiRes } = useQuery({
@@ -202,13 +208,15 @@ export function useSiswaDashboardData() {
         return null;
       }
     },
-    enabled: !!user,
+    enabled: !!user && (activeTab === 'ringkasan' || activeTab === 'catatan'),
+    staleTime: 60000,
   });
 
   const { data: kelasLeaderboardRes } = useQuery({
     queryKey: ['class-leaderboard-me-dashboard', selectedMonth],
     queryFn: () => getRekapBulananKelasMe({ bulan: selectedMonth }),
-    enabled: !!user,
+    enabled: !!user && activeTab === 'ringkasan',
+    staleTime: 120000,
   });
 
   const myRank = useMemo(() => {
@@ -233,7 +241,7 @@ export function useSiswaDashboardData() {
   const { data: myPenempatanRaw } = useQuery({
     queryKey: ['hubin-penempatan-me'],
     queryFn: () => hubinApi.getMyPenempatan(),
-    enabled: isPklStudent,
+    enabled: isPklStudent && activeTab === 'pkl',
     staleTime: 5 * 60 * 1000,
   });
 
@@ -250,7 +258,7 @@ export function useSiswaDashboardData() {
   const { data: pklAbsensiDashboardRaw, refetch: refetchPklAbsensi } = useQuery({
     queryKey: ['pkl-absensi-dashboard', (myPenempatan as any)?.id],
     queryFn: () => hubinApi.getAbsensi((myPenempatan as any).id, { limit: 100 }),
-    enabled: isAktifPkl && !!(myPenempatan as any)?.id,
+    enabled: isAktifPkl && !!(myPenempatan as any)?.id && activeTab === 'pkl',
     staleTime: 2 * 60 * 1000,
   });
 
@@ -385,7 +393,7 @@ export function useSiswaDashboardData() {
       }
     },
     staleTime: 5 * 60 * 1000,
-    enabled: !!user,
+    enabled: !!user && (activeTab === 'ringkasan' || activeTab === 'profil'),
   });
 
   const isCoopMember = coopMemberRes?.status === 'member' || Boolean((siswaProfile as any)?.is_anggota_koperasi);

@@ -207,10 +207,23 @@ export const useAuthStore = create<AuthState>()(
 
             console.log('🚀 [AUTH-DEBUG] Login success, tenantMode:', (user as any)?.tenant?.absensi_mode);
 
-            const actualRoleName = user.role?.name || (user as any).roleName || '';
+            const actualRoleName = (user.role?.name || (user as any).roleName || '').toUpperCase();
             const isPlatform = user.tenant_id === 'system' || actualRoleName.startsWith('PLATFORM_') || actualRoleName === 'SUPERADMIN';
+            const isStudent = actualRoleName === 'SISWA' || actualRoleName === 'STUDENT';
+
+            // Extract tenant domain directly from login response payload to avoid redundant API call
+            const loginTenantDomain = user.tenant?.subdomain || (user.tenant as any)?.domain;
+            if (typeof loginTenantDomain === 'string' && loginTenantDomain.trim().length > 0) {
+              const normDomain = loginTenantDomain.trim().toLowerCase();
+              if (rememberMe) {
+                localStorage.setItem('tenant_domain', normDomain);
+              } else {
+                try { sessionStorage.setItem('tenant_domain', normDomain); } catch {}
+              }
+            }
             
-            if (!isPlatform) {
+            // High-concurrency optimization: 2,000 students do NOT need to query SaaS tenant billing/subscription
+            if (!isPlatform && !isStudent) {
               try {
                 const [tenantRes, subRes] = await Promise.allSettled([getMyTenant(), getMySubscription()]);
                 if (tenantRes.status === 'fulfilled') {

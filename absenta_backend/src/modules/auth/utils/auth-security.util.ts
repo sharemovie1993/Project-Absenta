@@ -2,7 +2,7 @@
  * 🔐 Shared Auth Security Utilities & Constants
  */
 
-export const BCRYPT_ROUNDS = 12;
+export const BCRYPT_ROUNDS = 10;
 
 export const MIN_PASSWORD_LENGTH = 8;
 

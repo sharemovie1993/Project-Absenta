@@ -8,7 +8,7 @@ import { organizationalContextCache } from '../../services/organizational-contex
 import { getTenantCapabilities } from '@/utils/tenant-capabilities';
 import { getEffectiveAbsensiMode } from '@/utils/attendanceModeHelper';
 import { activityLogService } from '@/modules/activity/services/activity-log.service';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { getSmartParentAppUrl } from '@/utils/url-helper';
 import * as jwt from 'jsonwebtoken';
 import { BCRYPT_ROUNDS, MIN_PASSWORD_LENGTH, getJwtSecret } from '../../utils/auth-security.util';

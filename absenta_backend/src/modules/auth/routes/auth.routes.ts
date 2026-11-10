@@ -65,8 +65,20 @@ export async function authRoutes(fastify: any) {
       skipAuth: true,
       public: true,
       rateLimit: {
-        max: 5,
-        timeWindow: '1 minute'
+        max: 20,
+        timeWindow: '1 minute',
+        hook: 'preHandler',
+        keyGenerator: (req: any) => {
+          // Isolate rate-limit bucket per account identifier (email/NISN/NIP)
+          // Prevents 2,000 distinct students sharing a school Wi-Fi NAT router IP from blocking each other
+          // while strictly preventing brute-force password guessing against any individual account (max 20 attempts/min)
+          const bodyEmail = req.body && typeof req.body === 'object' ? String((req.body as any).email || '').trim().toLowerCase() : '';
+          if (bodyEmail) {
+            return `login:account:${bodyEmail}`;
+          }
+          const xff = (req.headers && req.headers['x-forwarded-for']) ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : '';
+          return `login:ip:${xff || req.ip}`;
+        }
       }
     },
     handler: authController.login.bind(authController),

@@ -7,7 +7,7 @@ import { VALID_ROLES } from '@/constants/enums';
 import { EmailService } from '@/modules/notification/services/email.service';
 import { WhatsAppService } from '@/modules/notification/services/whatsapp.service';
 import { systemConfigService } from '@/modules/system-config/services/system-config.service';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { getSmartFrontendBaseUrl, getSmartParentAppUrl } from '@/utils/url-helper';
 import { BCRYPT_ROUNDS, MIN_PASSWORD_LENGTH, getJwtSecret } from '../../utils/auth-security.util';

@@ -9,6 +9,27 @@ import { isOnPremiseScenario } from '@/utils/deployScenario';
 import { detectAccessRoute } from '@/middlewares/accessSourceMiddleware';
 export { getJwtSecret };
 
+// In-memory cache for high-concurrency student pre-login traffic
+interface CachedTenantBase {
+  id: string;
+  name: string;
+  domain: string | null;
+  logo_url: string | null;
+  address: string | null;
+  phone: string | null;
+  is_tunnel_active: boolean;
+  cachedAt: number;
+}
+const tenantInfoMemoryCache = new Map<string, CachedTenantBase>();
+const TENANT_INFO_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
+interface CachedPresetData {
+  data: any;
+  cachedAt: number;
+}
+let registrationPresetMemoryCache: CachedPresetData | null = null;
+const PRESET_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
 export const authTenantController = {
   extractSubdomain(host: string): string | null {
     const raw = String(host || '').toLowerCase();
@@ -244,42 +265,65 @@ async tenantInfo(request: any, reply: any) {
         return { success: false, message: 'Tenant not found' };
       }
       
-      let isTunnelActive = false;
-      try {
-        const tunnels = await prisma.easyTunnel.findMany({
-          where: tenantRecord.subdomain 
-            ? { OR: [{ slug: tenantRecord.subdomain }, { status: 'active' }] }
-            : {}
-        });
+      const now = Date.now();
+      const cached = tenantInfoMemoryCache.get(tenantRecord.id);
+      let baseData: Omit<CachedTenantBase, 'cachedAt'>;
 
-        for (const t of tunnels) {
-          if (t.status === 'active' || t.status === 'connected') {
-            isTunnelActive = true;
-            break;
-          }
-          if (t.slug) {
-            const wg = WireguardManager.getStatus(t.slug);
-            if (wg.status === 'connected') {
+      if (cached && (now - cached.cachedAt) < TENANT_INFO_CACHE_TTL_MS) {
+        baseData = cached;
+      } else {
+        let isTunnelActive = false;
+        try {
+          const tunnels = await prisma.easyTunnel.findMany({
+            where: tenantRecord.subdomain 
+              ? { OR: [{ slug: tenantRecord.subdomain }, { status: 'active' }] }
+              : {}
+          });
+
+          for (const t of tunnels) {
+            if (t.status === 'active' || t.status === 'connected') {
               isTunnelActive = true;
               break;
             }
+            if (t.slug) {
+              const wg = WireguardManager.getStatus(t.slug);
+              if (wg.status === 'connected') {
+                isTunnelActive = true;
+                break;
+              }
+            }
           }
+        } catch (tunnelErr) {
+          console.warn('[tenantInfo] Failed to check easy tunnel status:', tunnelErr);
         }
-      } catch (tunnelErr) {
-        console.warn('[tenantInfo] Failed to check easy tunnel status:', tunnelErr);
-      }
 
-      // Fetch address and phone from Config table
-      const configs = await prisma.config.findMany({
-        where: {
-          tenant_id: tenantRecord.id,
-          key: { in: ['address', 'phone'] }
-        }
-      });
-      const configMap = configs.reduce((acc, curr) => {
-        acc[curr.key] = curr.value;
-        return acc;
-      }, {} as Record<string, string>);
+        // Fetch address and phone from Config table
+        const configs = await prisma.config.findMany({
+          where: {
+            tenant_id: tenantRecord.id,
+            key: { in: ['address', 'phone'] }
+          }
+        });
+        const configMap = configs.reduce((acc, curr) => {
+          acc[curr.key] = curr.value;
+          return acc;
+        }, {} as Record<string, string>);
+
+        baseData = {
+          id: tenantRecord.id,
+          name: tenantRecord.name,
+          domain: tenantRecord.domain,
+          logo_url: tenantRecord.logo_url,
+          address: configMap['address'] || null,
+          phone: configMap['phone'] || null,
+          is_tunnel_active: isTunnelActive,
+        };
+
+        tenantInfoMemoryCache.set(tenantRecord.id, {
+          ...baseData,
+          cachedAt: now,
+        });
+      }
 
       const detected = (request as any).accessRoute
         ? { route: (request as any).accessRoute, label: (request as any).accessLabel }
@@ -290,13 +334,7 @@ async tenantInfo(request: any, reply: any) {
         success: true,
         message: 'OK',
         data: {
-          id: tenantRecord.id,
-          name: tenantRecord.name,
-          domain: tenantRecord.domain,
-          logo_url: tenantRecord.logo_url,
-          address: configMap['address'] || null,
-          phone: configMap['phone'] || null,
-          is_tunnel_active: isTunnelActive,
+          ...baseData,
           access_route: detected.route,
           access_label: detected.label,
         }
@@ -410,6 +448,14 @@ async checkDomain(request: any, reply: any) {
   },
 async registrationPreset(_request: any, reply: any) {
     try {
+      const now = Date.now();
+      if (registrationPresetMemoryCache && (now - registrationPresetMemoryCache.cachedAt) < PRESET_CACHE_TTL_MS) {
+        return reply.send({
+          success: true,
+          data: registrationPresetMemoryCache.data
+        });
+      }
+
       const isSingleTenant = isOnPremiseScenario();
       const licenseKey = process.env.LICENSE_KEY;
 
@@ -449,18 +495,30 @@ async registrationPreset(_request: any, reply: any) {
           }
         }
 
+        registrationPresetMemoryCache = {
+          data: presetData,
+          cachedAt: now
+        };
+
         return reply.send({
           success: true,
           data: presetData
         });
       }
 
+      const defaultData = {
+        is_single_tenant: false,
+        is_registered: false
+      };
+
+      registrationPresetMemoryCache = {
+        data: defaultData,
+        cachedAt: now
+      };
+
       return reply.send({
         success: true,
-        data: {
-          is_single_tenant: false,
-          is_registered: false
-        }
+        data: defaultData
       });
     } catch (err: any) {
       console.error('[RegistrationPreset] error:', err);

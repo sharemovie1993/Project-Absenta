@@ -94,8 +94,8 @@ export const SiswaDashboard: React.FC = () => {
     [setSearchParams]
   );
 
-  // Data hook
-  const data = useSiswaDashboardData();
+  // Data hook (optimized with activeTab-driven lazy query loading)
+  const data = useSiswaDashboardData(activeTab);
 
   // Modals state
   const [showDigitalCardModal, setShowDigitalCardModal] = useState(false);

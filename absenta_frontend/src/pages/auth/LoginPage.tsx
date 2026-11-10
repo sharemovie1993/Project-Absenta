@@ -214,9 +214,6 @@ export default function LoginPage() {
     const timer = setInterval(() => {
       setActiveFeatureIndex(prev => (prev + 1) % features.length);
     }, 5000);
-    if (isAuthenticated) {
-      return <Navigate to="/dashboard" replace />;
-    }
     return () => clearInterval(timer);
   }, [features.length]);
   useEffect(() => {
