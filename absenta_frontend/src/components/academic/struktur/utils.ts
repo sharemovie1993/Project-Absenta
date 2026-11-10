@@ -322,7 +322,7 @@ export const transformDataToTree = (
             type: 'CATEGORY' as any,
             data: { roleCode: kode, tingkat, forceVertical: true },
             children: nodesInLevel.map((n: any) => {
-               const sortedMembers = [...(n.members || [])].sort((a: any, b: any) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+               const sortedMembers = [...(n.members || [])].sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
                const headMember = sortedMembers[0];
                return {
                  id: `node-${kode}-${n.id}-${n.kelas_id || 'no-class'}`,

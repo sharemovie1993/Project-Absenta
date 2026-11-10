@@ -68,7 +68,10 @@ export const WaliKelasView: React.FC<UniversalWaliKelasViewProps> = React.memo((
         />
       )}
       <SectionCard fullWidth className="p-0 border-none shadow-none bg-transparent">
-        <WaliKelasList />
+        <WaliKelasList
+          selectedTpId={academicFilter.values.tahunPelajaranId || tahunPelajaranId}
+          searchQuery={academicFilter.searchQuery}
+        />
       </SectionCard>
     </div>
   );

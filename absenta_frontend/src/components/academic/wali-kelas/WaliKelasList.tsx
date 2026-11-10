@@ -21,18 +21,24 @@ import SKWaliKelasTemplateMasterModal from '../guru/SKWaliKelasTemplateMasterMod
 import SKWaliKelasArsipModal from '../guru/SKWaliKelasArsipModal';
 import SKWaliKelasBulkGenerateModal from '../guru/SKWaliKelasBulkGenerateModal';
 import { FileCode, FolderArchive, Archive as Zip } from 'lucide-react';
+import { syncStrukturCache } from '../../../helpers/strukturQuerySync';
 
 interface Props {
   refreshTrigger?: number;
+  selectedTpId?: string;
+  onTpChange?: (tpId: string) => void;
+  searchQuery?: string;
 }
 
-const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
+const WaliKelasList = React.memo<Props>(({
+  refreshTrigger = 0,
+  selectedTpId: externalTpId,
+  onTpChange,
+  searchQuery: externalSearchQuery,
+}) => {
   const queryClient = useQueryClient();
-  const invalidateWaliKelasCache = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
-    queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
-    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
-    queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
+  const invalidateWaliKelasCache = useCallback(async () => {
+    await syncStrukturCache(queryClient);
   }, [queryClient]);
   const navigate = useNavigate();
   const confirm = useConfirm();
@@ -72,13 +78,25 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
   });
   const tahunPelajaranList = useMemo(() => tpRes?.data || [], [tpRes]);
   const activeTp = useMemo(() => tahunPelajaranList.find((tp) => tp.is_active), [tahunPelajaranList]);
-  const [selectedTpId, setSelectedTpId] = useState<string>('');
+  const [internalTpId, setInternalTpId] = useState<string>('');
+  const selectedTpId = externalTpId || internalTpId;
+
+  const setSelectedTpId = useCallback((tpId: string) => {
+    setInternalTpId(tpId);
+    onTpChange?.(tpId);
+  }, [onTpChange]);
 
   useEffect(() => {
     if (!selectedTpId && activeTp?.id) {
       setSelectedTpId(activeTp.id);
     }
-  }, [activeTp, selectedTpId]);
+  }, [activeTp, selectedTpId, setSelectedTpId]);
+
+  useEffect(() => {
+    if (externalSearchQuery !== undefined) {
+      setSearchTerm(externalSearchQuery);
+    }
+  }, [externalSearchQuery]);
 
   // Roll-Over 1-Click State
   const [isRollOverModalOpen, setIsRollOverModalOpen] = useState(false);
@@ -500,36 +518,40 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
   return (
     <div className="flex flex-col">
       {/* Toolbar Baris Kedua - Filter & Search */}
-      <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
-        {/* Filter Tahun Pelajaran Konteks Akademik */}
-        <div className="flex items-center gap-2 bg-white dark:bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm h-10 shrink-0 w-full md:w-auto">
-          <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          <span className="text-[11px] font-black uppercase text-slate-400 select-none tracking-wider">TP:</span>
-          <select
-            value={selectedTpId}
-            onChange={(e) => setSelectedTpId(e.target.value)}
-            className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer pr-2 w-full md:w-auto"
-            aria-label="Filter Tahun Pelajaran"
-          >
-            {tahunPelajaranList.map((tp) => (
-              <option key={tp.id} value={tp.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
-                {tp.tahun} {tp.is_active ? '⭐ (Aktif)' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center justify-between">
+        {!externalTpId && (
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm h-10 shrink-0 w-full md:w-auto">
+            <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-[11px] font-black uppercase text-slate-400 select-none tracking-wider">TP:</span>
+            <select
+              value={selectedTpId}
+              onChange={(e) => setSelectedTpId(e.target.value)}
+              className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer pr-2 w-full md:w-auto"
+              aria-label="Filter Tahun Pelajaran"
+            >
+              {tahunPelajaranList.map((tp) => (
+                <option key={tp.id} value={tp.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
+                  {tp.tahun} {tp.is_active ? '⭐ (Aktif)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
-        <div className="flex-1 relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input
-            placeholder="Cari guru atau kelas..."
-            aria-label="Cari Guru atau Kelas"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
-          />
-        </div>
-        <div className="flex items-center gap-3 bg-white dark:bg-slate-950 px-4 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm h-10">
+        {externalSearchQuery === undefined && (
+          <div className="flex-1 relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              placeholder="Cari guru atau kelas..."
+              aria-label="Cari Guru atau Kelas"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
+            />
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 bg-white dark:bg-slate-950 px-4 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm h-10 ml-auto">
           <span className="text-[10px] font-black uppercase text-slate-400 select-none tracking-wider">Tampilkan Nonaktif</span>
           <Switch checked={includeInactive} onCheckedChange={handleToggleIncludeInactive} className="scale-[0.8]" />
         </div>

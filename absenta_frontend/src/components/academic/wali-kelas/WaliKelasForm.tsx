@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, RefreshCw, X } from 'lucide-react';
 import { Button, ModalFooter } from '../../ui';
 import { assignWaliKelasStruktur } from '../../../api/kurikulum/waliKelas.api';
+import { syncStrukturCache } from '../../../helpers/strukturQuerySync';
 import toast from 'react-hot-toast';
 
 // Modular Sections
@@ -43,11 +44,7 @@ export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
         return;
       }
       toast.success('Berhasil menyimpan penugasan wali kelas');
-      queryClient.invalidateQueries({ queryKey: ['wali-kelas-options-list'] });
-      queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
-      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
-      queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+      await syncStrukturCache(queryClient);
       queryClient.invalidateQueries({ queryKey: ['academic-wali-kelas'] });
       onSuccess?.();
     } catch (e: any) {

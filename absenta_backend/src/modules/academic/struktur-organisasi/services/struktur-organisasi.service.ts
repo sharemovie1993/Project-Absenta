@@ -105,7 +105,7 @@ export class StrukturOrganisasiService {
                 }
               : {}),
           },
-          orderBy: { updated_at: 'asc' },
+          orderBy: { updated_at: 'desc' },
           include: {
             User: {
               include: {
@@ -234,14 +234,16 @@ export class StrukturOrganisasiService {
         };
       });
 
-      // Prioritize assignments explicitly assigned to target academic year over unscoped (null) assignments
-      if (targetTpId) {
-        members.sort((a: any, b: any) => {
-          if (a.tahun_pelajaran_id === targetTpId && b.tahun_pelajaran_id !== targetTpId) return -1;
-          if (a.tahun_pelajaran_id !== targetTpId && b.tahun_pelajaran_id === targetTpId) return 1;
-          return 0;
-        });
-      }
+      // Prioritize assignments explicitly assigned to target academic year over unscoped (null) assignments,
+      // and sort by newest updated_at first
+      members.sort((a: any, b: any) => {
+        if (targetTpId) {
+          const aMatch = a.tahun_pelajaran_id === targetTpId ? 1 : 0;
+          const bMatch = b.tahun_pelajaran_id === targetTpId ? 1 : 0;
+          if (aMatch !== bMatch) return bMatch - aMatch;
+        }
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+      });
 
       // INTELLIGENT AUTO-FILLING LOGIC
       // If position requires context (KAPROG, KABENG, WALIKELAS, etc.), ensure ALL entities are represented
@@ -263,9 +265,14 @@ export class StrukturOrganisasiService {
           });
         }
       } else if (['WALIKELAS', 'PETUGAS_KELAS'].includes(pos.code)) {
-        // Create a node for EACH Kelas
+        // Create a node for EACH Kelas with STRICT NO FALLBACK (SSOT with table view)
         for (const kelas of allKelas) {
-          const assignedMember = members.find((m: any) => m.kelas_id === kelas.id);
+          // Strictly find assignment matching kelas_id and targetTpId (no fallback to other years or null)
+          const assignedMember = members.find((m: any) => {
+            if (m.kelas_id !== kelas.id) return false;
+            if (targetTpId && m.tahun_pelajaran_id !== targetTpId) return false;
+            return true;
+          });
           grouped[pos.code].push({
             id: pos.id,
             kode: pos.code,

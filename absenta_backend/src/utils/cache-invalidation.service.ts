@@ -107,8 +107,9 @@ export class CacheInvalidationService {
    * 🏛️ Invalidate cache struktur organisasi, penugasan guru/wali kelas, dan user organizational context
    */
   async invalidateStrukturTree(tenantId: string, userIds?: string | string[]) {
-    // 1. Purge primary tree & structure listing cache
+    // 1. Purge primary tree & structure listing cache (exact & wildcard by TP)
     await cacheService.delete(CACHE_KEYS.ACADEMIC.STRUKTUR_TREE(tenantId));
+    await cacheService.deletePattern(`${CACHE_KEYS.ACADEMIC.STRUKTUR_TREE(tenantId)}*`);
     await cacheService.deletePattern(`academic:${tenantId}:wali_kelas:*`);
     await cacheService.deletePattern(`academic:${tenantId}:struktur:*`);
     await cacheService.deletePattern(`academic:${tenantId}:beban_guru:*`);
