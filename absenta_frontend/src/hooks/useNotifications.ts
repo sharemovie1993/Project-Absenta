@@ -7,11 +7,13 @@ import type { NotificationStatsResponse } from '../types/notification';
 interface UseNotificationsOptions {
   pollIntervalMs?: number;
   storageKey?: string; // key untuk localStorage unread tracking
+  enabled?: boolean;
 }
 
 export function useNotifications(options?: UseNotificationsOptions) {
   const pollIntervalMs = options?.pollIntervalMs ?? 60000;
   const storageKey = options?.storageKey ?? 'notifications_read_ids';
+  const isEnabled = options?.enabled ?? true;
   const { user } = useAuth();
   const userScopedPrefsKey = `notif_prefs_${user?.id || 'anon'}`;
 
@@ -34,7 +36,7 @@ export function useNotifications(options?: UseNotificationsOptions) {
   } = useQuery({
     queryKey: ['notifications', 'my', user?.id],
     queryFn: () => getUserNotifications({ headers: { 'X-Skip-403-Redirect': 'true' } }),
-    enabled: !!user?.id,
+    enabled: !!user?.id && isEnabled,
     staleTime: 30000,
     refetchInterval: pollIntervalMs,
     refetchOnWindowFocus: false,

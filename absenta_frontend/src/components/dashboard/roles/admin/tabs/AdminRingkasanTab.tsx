@@ -44,7 +44,7 @@ import { Loader } from '@/components/ui/Loader';
 import type { AdminTabId } from '../types';
 import type { DashboardOverviewStats, ChartData } from '@/types/dashboard';
 import type { AcademicStats } from '@/api/academic-stats.api';
-import type { ActivityLogItem } from '@/api/activityLog.api';
+import { getTenantActivityLogs, type ActivityLogItem } from '@/api/activityLog.api';
 import { cn } from '@/lib/utils';
 
 const AttendanceChart = lazy(() => import('@/components/charts/AttendanceChart'));
@@ -151,6 +151,41 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
   });
 
   const effectiveChartData = chartData ?? localChartRes?.data ?? null;
+
+  // ── Lazy Viewport Loading for Activity Logs ──
+  // Defer fetching bottom-of-page activity audit trail until viewport approaches
+  const [isLogsInView, setIsLogsInView] = useState(false);
+  const logsRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsLogsInView(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsLogsInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '250px' }
+    );
+    if (logsRef.current) {
+      observer.observe(logsRef.current);
+    }
+    return () => observer.disconnect();
+  }, []);
+
+  const { data: localLogsRes, isLoading: isLocalLogsLoading } = useQuery({
+    queryKey: ['admin-recent-logs'],
+    queryFn: () => getTenantActivityLogs({ limit: 4 }),
+    enabled: isLogsInView,
+    staleTime: 60 * 1000,
+  });
+
+  const effectiveLogs = (recentLogs && recentLogs.length > 0) ? recentLogs : (localLogsRes?.data?.logs || []);
+  const effectiveLogsLoading = !isLogsInView ? true : isLocalLogsLoading;
 
   const totalSiswa = stats?.total_siswa ?? academicStats?.total_siswa ?? 0;
   const totalGuru = stats?.total_guru ?? academicStats?.total_guru ?? 0;
@@ -629,21 +664,22 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
       </div>
 
       {/* ── 6. BLOK 6: Jejak Aktivitas Terkini (Live Mini Audit Trail) ── */}
-      <HubCard
-        title="Jejak Aktivitas Terkini"
-        subtitle="(Audit Trail Singkat)"
-        actionLabel="Lihat Semua Log"
-        onAction={() => onNavigateSubtab?.('audit')}
-        noPadding={true}
-      >
-        <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-          {isLogsLoading ? (
-            <div className="py-8 flex items-center justify-center gap-2 text-xs text-slate-400">
-              <Loader size="sm" />
-              <span>Memuat log aktivitas terbaru...</span>
-            </div>
-          ) : recentLogs.length > 0 ? (
-            recentLogs.map((log) => {
+      <div ref={logsRef}>
+        <HubCard
+          title="Jejak Aktivitas Terkini"
+          subtitle="(Audit Trail Singkat)"
+          actionLabel="Lihat Semua Log"
+          onAction={() => onNavigateSubtab?.('audit')}
+          noPadding={true}
+        >
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+            {effectiveLogsLoading ? (
+              <div className="py-8 flex items-center justify-center gap-2 text-xs text-slate-400">
+                <Loader size="sm" />
+                <span>Memuat log aktivitas terbaru...</span>
+              </div>
+            ) : effectiveLogs.length > 0 ? (
+              effectiveLogs.map((log) => {
               const meta = getLogMeta(log.action);
               const actorName = log.user?.name || 'Sistem Otomatis';
               return (
@@ -669,6 +705,7 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
           )}
         </div>
       </HubCard>
+      </div>
     </div>
   );
 });

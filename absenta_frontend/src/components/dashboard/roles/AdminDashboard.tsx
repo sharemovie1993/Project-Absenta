@@ -45,7 +45,6 @@ import { useAuthStore } from '@/store/authStore';
 import { useRoleDashboardSwitcherStore } from '@/store/roleDashboardSwitcherStore';
 import { getDashboardOverview } from '@/api/dashboard.api';
 import { getAcademicStats } from '@/api/academic-stats.api';
-import { getTenantActivityLogs } from '@/api/activityLog.api';
 import toast from 'react-hot-toast';
 import { 
   AdminTabId, 
@@ -221,13 +220,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     queryKey: ['academic-stats'],
     queryFn: () => getAcademicStats(),
     enabled: isRingkasanActive,
-    staleTime: 60 * 1000,
-  });
-
-  const { data: logsRes, isLoading: isLogsLoading } = useQuery({
-    queryKey: ['admin-recent-logs'],
-    queryFn: () => getTenantActivityLogs({ limit: 4 }),
-    enabled: isRingkasanActive && isDeferredReady,
     staleTime: 60 * 1000,
   });
 
@@ -732,8 +724,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                   user={currentUser}
                   stats={overviewRes?.data}
                   academicStats={academicRes?.data}
-                  recentLogs={logsRes?.data?.logs || []}
-                  isLogsLoading={!isDeferredReady || isLogsLoading}
                   loading={isOverviewLoading || isAcademicLoading}
                   tpTahun={tpTahun}
                   semNama={semNama}

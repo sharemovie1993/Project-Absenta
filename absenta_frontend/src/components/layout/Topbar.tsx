@@ -33,7 +33,25 @@ interface TopbarProps {
 }
 
 export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) => {
-  const { recent, loading, error, unreadCount, markAsReadLocal, markAllAsReadLocal, reload, isUnread } = useNotifications({ pollIntervalMs: 60000 });
+  // Defer background poll queries (notifications & communication unread count) until after main thread idle
+  const [isIdleReady, setIsIdleReady] = useState(false);
+  React.useEffect(() => {
+    if (typeof window === 'undefined') {
+      setIsIdleReady(true);
+      return;
+    }
+    const idleCallback = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1000));
+    const h = idleCallback(() => setIsIdleReady(true));
+    return () => {
+      if ((window as any).cancelIdleCallback && typeof h === 'number') {
+        (window as any).cancelIdleCallback(h);
+      } else {
+        clearTimeout(h);
+      }
+    };
+  }, []);
+
+  const { recent, loading, error, unreadCount, markAsReadLocal, markAllAsReadLocal, reload, isUnread } = useNotifications({ pollIntervalMs: 60000, enabled: isIdleReady });
   const [open, setOpen] = useState<boolean>(false);
   const [locatorModalOpen, setLocatorModalOpen] = useState<boolean>(false);
   const [selectedNotification, setSelectedNotification] = useState<any | null>(null);
@@ -67,11 +85,11 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
   const userPhoto = rawUserPhoto ? resolveProfilePhotoUrl(rawUserPhoto) : null;
   const userInitial = (user?.full_name || (user as any)?.name || 'U').slice(0, 1).toUpperCase();
   
-  // 💬 Pusat Komunikasi Unread Count
+  // 💬 Pusat Komunikasi Unread Count (Deferred until main thread idle)
   const { data: commUnreadCount = 0 } = useQuery({
     queryKey: communicationKeys.unreadCount(),
     queryFn: () => internalCommunicationApi.getUnreadCount(),
-    enabled: !!user?.id,
+    enabled: !!user?.id && isIdleReady,
     staleTime: 15 * 1000,
     refetchInterval: 20 * 1000
   });
