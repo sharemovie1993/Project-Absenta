@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui';
 import {
   UploadCloud,
@@ -12,6 +12,8 @@ import {
   MessageSquare,
   Save,
   X,
+  Sparkles,
+  FileText,
 } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
 import { useQueryClient } from '@tanstack/react-query';
@@ -21,11 +23,17 @@ import { z } from 'zod';
 import type { CbtSoal, OpsiJawaban } from '@/types/cbt.types';
 import { cn } from '@/lib/utils';
 import { getOptionBadgeColor } from '../common/CbtOptionsRenderer';
+import {
+  parseFullQuestionText,
+  parseOptionDroppedText,
+  extractDragDropPayload,
+} from './cbtTextDragDropHelper';
 
 export interface CbtInlineSoalCardProps {
   bankSoalId: string;
   soal?: CbtSoal | null;
   nomorUrut: number;
+  initialRawText?: string;
   onSaved: (savedMode: 'stay' | 'add-next') => void;
   onCancel?: () => void;
   onDelete?: () => void;
@@ -51,6 +59,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
   bankSoalId,
   soal,
   nomorUrut: initialNomorUrut,
+  initialRawText,
   onSaved,
   onCancel,
   onDelete,
@@ -75,7 +84,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
 
   const [uploadingStimulus, setUploadingStimulus] = useState(false);
   const [uploadingOpsiIndex, setUploadingOpsiIndex] = useState<number | null>(null);
-  const [dragTarget, setDragTarget] = useState<'question' | number | null>(null);
+  const [dragTarget, setDragTarget] = useState<'card' | 'question' | 'pembahasan' | number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPembahasanBox, setShowPembahasanBox] = useState(Boolean(soal?.pembahasan));
 
@@ -558,6 +567,70 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
   };
 
   /**
+   * 🌟 Smart Question Parser & Ingestion Engine:
+   * Menganalisis teks yang di-paste atau di-drag dari browser, Word, PDF, ChatGPT, dll.
+   * Mendeteksi otomatis:
+   * - Pertanyaan soal (membersihkan nomor urut 1., 1), Soal 1.)
+   * - Opsi A, B, C, D, E (menghapus prefix A., a), (A), [A])
+   * - Kunci jawaban (Kunci: A, Jawaban: B, atau tanda *A)
+   * - Pembahasan / Penjelasan soal
+   */
+  const applySmartQuestionText = useCallback((rawText: string, source: 'drag' | 'paste' = 'drag') => {
+    const parsed = parseFullQuestionText(rawText);
+    if (!parsed) return;
+
+    if (parsed.isFullQuestion) {
+      setKontenPertanyaan((prev) => (prev ? `${prev}\n${parsed.question}` : parsed.question));
+
+      const allCodes: ('A' | 'B' | 'C' | 'D' | 'E')[] = ['A', 'B', 'C', 'D', 'E'];
+      setOpsiJawaban((prev) => {
+        const neededCount = Math.min(5, Math.max(prev.length, parsed.options.length));
+        const nextList: OpsiJawaban[] = [];
+        for (let i = 0; i < neededCount; i++) {
+          const existing = prev[i] || { kode: allCodes[i], teks: '', gambar_url: null };
+          nextList.push({
+            ...existing,
+            kode: allCodes[i],
+            teks: i < parsed.options.length ? parsed.options[i].teks : existing.teks,
+          });
+        }
+        return nextList;
+      });
+
+      if (parsed.kunciJawaban) {
+        setKunciJawaban(parsed.kunciJawaban);
+      }
+
+      if (parsed.pembahasan) {
+        setPembahasan(parsed.pembahasan);
+        setShowPembahasanBox(true);
+      }
+
+      const keyInfo = parsed.kunciJawaban ? ` & Kunci Jawaban (${parsed.kunciJawaban})` : '';
+      toast.success(
+        source === 'drag'
+          ? `Soal, ${parsed.options.length} opsi${keyInfo} berhasil diekstrak via Drag & Drop!`
+          : `Soal, ${parsed.options.length} opsi${keyInfo} otomatis terisi dari paste!`
+      );
+    } else {
+      setKontenPertanyaan((prev) => (prev ? `${prev}\n${parsed.question}` : parsed.question));
+      if (parsed.kunciJawaban) setKunciJawaban(parsed.kunciJawaban);
+      if (parsed.pembahasan) {
+        setPembahasan(parsed.pembahasan);
+        setShowPembahasanBox(true);
+      }
+      toast.success(`Teks pertanyaan berhasil dimasukkan via ${source === 'drag' ? 'Drag & Drop' : 'paste'}`);
+    }
+  }, []);
+
+  // Ekstraksi otomatis saat pertama kali dibuka dari drag-drop di luar card
+  useEffect(() => {
+    if (initialRawText && !soal) {
+      applySmartQuestionText(initialRawText, 'drag');
+    }
+  }, [initialRawText, soal, applySmartQuestionText]);
+
+  /**
    * Smart Paste pada kotak Pertanyaan (Mendukung Paste Gambar Screenshot Ctrl+V & Paket Soal + Opsi):
    */
   const handleQuestionPaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -576,48 +649,110 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
     const rawText = e.clipboardData?.getData('text/plain') || '';
     if (!rawText) return;
 
-    const lines = rawText
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
+    const parsed = parseFullQuestionText(rawText);
+    if (parsed && parsed.isFullQuestion) {
+      e.preventDefault();
+      applySmartQuestionText(rawText, 'paste');
+    }
+  };
 
-    if (lines.length < 3) return;
-
-    const firstOptionLineIdx = lines.findIndex((l) => /^(?:[Aa][.)\]:-]\s+|\([Aa]\)\s+)/.test(l));
-    if (firstOptionLineIdx <= 0) return;
-
-    const optionLines = lines.slice(firstOptionLineIdx);
-    const looksLikeOptionList =
-      optionLines.length >= 2 &&
-      optionLines.every((l) => /^(?:[A-Ea-e][.)\]:-]\s+|\([A-Ea-e]\)\s+)/.test(l));
-
-    if (!looksLikeOptionList) return;
-
+  /**
+   * Handler Drag & Drop Teks / Gambar pada Level Kartu Soal Utuh
+   */
+  const handleCardDrop = async (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    setDragTarget(null);
 
-    const questionPart = lines.slice(0, firstOptionLineIdx).join('\n');
-    const cleanedOptions = optionLines
-      .slice(0, 5)
-      .map((l) => l.replace(/^(?:[A-Ea-e][.)\]:-]\s+|\([A-Ea-e]\)\s+)/, '').trim());
+    const payload = await extractDragDropPayload(e);
 
-    setKontenPertanyaan((prev) => (prev ? `${prev}\n${questionPart}` : questionPart));
+    if (payload.imageFile) {
+      await uploadStimulusFile(payload.imageFile);
+      toast.success('Gambar stimulus berhasil diunggah via Drag & Drop');
+    }
 
-    const allCodes: ('A' | 'B' | 'C' | 'D' | 'E')[] = ['A', 'B', 'C', 'D', 'E'];
-    setOpsiJawaban((prev) => {
-      const neededCount = Math.min(5, Math.max(prev.length, cleanedOptions.length));
-      const nextList: OpsiJawaban[] = [];
-      for (let i = 0; i < neededCount; i++) {
-        const existing = prev[i] || { kode: allCodes[i], teks: '', gambar_url: null };
-        nextList.push({
-          ...existing,
-          kode: allCodes[i],
-          teks: i < cleanedOptions.length ? cleanedOptions[i] : existing.teks,
+    if (payload.text) {
+      applySmartQuestionText(payload.text, 'drag');
+    }
+  };
+
+  /**
+   * Handler Drag & Drop Teks / Gambar pada Kolom Pertanyaan
+   */
+  const handleQuestionDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragTarget(null);
+
+    const payload = await extractDragDropPayload(e);
+
+    if (payload.imageFile) {
+      await uploadStimulusFile(payload.imageFile);
+      toast.success('Gambar stimulus berhasil diunggah via Drag & Drop');
+    }
+
+    if (payload.text) {
+      applySmartQuestionText(payload.text, 'drag');
+    }
+  };
+
+  /**
+   * Handler Drag & Drop Teks / Gambar pada Salah Satu Opsi Jawaban (A, B, C, D, E)
+   */
+  const handleOptionDrop = async (index: number, e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragTarget(null);
+
+    const payload = await extractDragDropPayload(e);
+
+    // Jika yang di-drop adalah file gambar
+    const droppedFiles = Array.from(e.dataTransfer?.files || []);
+    const imgFiles = droppedFiles.filter((f) => f.type.startsWith('image/'));
+    if (imgFiles.length > 0) {
+      handleUploadMultiOpsi(index, imgFiles);
+      return;
+    }
+
+    if (payload.text) {
+      const parsedOpt = parseOptionDroppedText(payload.text, index);
+      if (parsedOpt.items.length > 0) {
+        setOpsiJawaban((prev) => {
+          const next = [...prev];
+          parsedOpt.items.forEach((item) => {
+            while (next.length <= item.index && next.length < 5) {
+              const code = (['A', 'B', 'C', 'D', 'E'][next.length]) as 'A' | 'B' | 'C' | 'D' | 'E';
+              next.push({ kode: code, teks: '', gambar_url: null });
+            }
+            if (next[item.index]) {
+              next[item.index] = { ...next[item.index], teks: item.text };
+            }
+          });
+          return next;
         });
-      }
-      return nextList;
-    });
 
-    toast.success(`Pertanyaan & ${cleanedOptions.length} opsi jawaban terisi otomatis`);
+        if (parsedOpt.isMulti) {
+          toast.success(`${parsedOpt.items.length} opsi jawaban terisi otomatis dari Drag & Drop!`);
+        } else {
+          toast.success(`Opsi ${parsedOpt.items[0].kode} berhasil diperbarui via Drag & Drop`);
+        }
+      }
+    }
+  };
+
+  /**
+   * Handler Drag & Drop Teks pada Kolom Pembahasan
+   */
+  const handlePembahasanDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragTarget(null);
+
+    const payload = await extractDragDropPayload(e);
+    if (payload.text) {
+      setPembahasan((prev) => (prev ? `${prev}\n${payload.text}` : payload.text));
+      toast.success('Teks pembahasan berhasil dimasukkan via Drag & Drop');
+    }
   };
 
   const handleRemoveOpsiGambar = (index: number) => {
@@ -747,8 +882,33 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
   return (
     <div
       ref={cardRef}
-      className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-md border border-indigo-200 dark:border-indigo-800 border-l-[6px] border-l-indigo-600 p-4 sm:p-5 space-y-4 transition-all"
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (dragTarget === null) setDragTarget('card');
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setDragTarget(null);
+      }}
+      onDrop={handleCardDrop}
+      className={cn(
+        'bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-md p-4 sm:p-5 space-y-4 transition-all relative',
+        dragTarget === 'card'
+          ? 'border-2 border-dashed border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20 ring-4 ring-indigo-500/20'
+          : 'border border-indigo-200 dark:border-indigo-800 border-l-[6px] border-l-indigo-600'
+      )}
     >
+      {/* ── Visual Banner saat Teks / Gambar di-drag melayang di atas kartu soal ── */}
+      {dragTarget === 'card' && (
+        <div className="p-3 rounded-xl border-2 border-dashed border-indigo-400 bg-indigo-50/95 dark:bg-indigo-950/90 text-indigo-800 dark:text-indigo-200 text-xs font-bold flex items-center justify-center gap-2 animate-pulse shadow-sm">
+          <Sparkles size={16} className="text-indigo-600 dark:text-indigo-400" />
+          <span>Lepaskan teks soal dari browser/aplikasi di sini (Otomatis deteksi Pertanyaan, Opsi A–E, & Kunci)</span>
+        </div>
+      )}
+
       {/* ── 1. HEADER BAR: Nomor Soal & Kunci Aktif ── */}
       <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
@@ -779,7 +939,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
         </div>
       </div>
 
-      {/* ── 2. PERTANYAAN + TOMBOL GAMBAR STIMULUS (SUPPORT PASTE & DRAG-DROP GAMBAR) ── */}
+      {/* ── 2. PERTANYAAN + TOMBOL GAMBAR STIMULUS (SUPPORT PASTE & DRAG-DROP TEKS/GAMBAR) ── */}
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -791,13 +951,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
           e.stopPropagation();
           if (dragTarget === 'question') setDragTarget(null);
         }}
-        onDrop={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setDragTarget(null);
-          const file = e.dataTransfer?.files?.[0];
-          if (file) uploadStimulusFile(file);
-        }}
+        onDrop={handleQuestionDrop}
         className={cn(
           'space-y-2 rounded-xl transition-all',
           dragTarget === 'question' &&
@@ -813,7 +967,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
               value={kontenPertanyaan}
               onChange={(e) => setKontenPertanyaan(e.target.value)}
               onPaste={handleQuestionPaste}
-              placeholder="Tulis pertanyaan soal..."
+              placeholder="Tulis pertanyaan soal atau tarik (drag & drop) teks/gambar dari browser, Word, PDF, atau ChatGPT..."
               className="w-full px-3.5 py-2.5 text-xs sm:text-sm font-medium rounded-xl bg-slate-50/90 hover:bg-slate-100/70 focus:bg-white dark:bg-slate-800/60 dark:focus:bg-slate-900 text-slate-900 dark:text-white border-b-2 border-b-slate-200 dark:border-b-slate-700 focus:border-b-indigo-600 focus:outline-none transition-all resize-y min-h-[60px]"
               aria-label="Pertanyaan Soal"
             />
@@ -876,7 +1030,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
             Pilihan Jawaban
           </span>
           <span className="text-[11px] text-slate-500 dark:text-slate-400">
-            Klik huruf untuk kunci
+            Klik huruf untuk kunci • Mendukung Drag &amp; Drop teks
           </span>
         </div>
 
@@ -896,15 +1050,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
                 e.stopPropagation();
                 if (dragTarget === index) setDragTarget(null);
               }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setDragTarget(null);
-                const droppedFiles = Array.from(e.dataTransfer?.files || []);
-                if (droppedFiles.length > 0) {
-                  handleUploadMultiOpsi(index, droppedFiles);
-                }
-              }}
+              onDrop={(e) => handleOptionDrop(index, e)}
               className={cn(
                 'rounded-xl px-2.5 py-1.5 transition-all flex flex-col gap-1.5',
                 isDragOverThisOption
@@ -934,7 +1080,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
                     value={opt.teks}
                     onChange={(e) => handleOpsiTeksChange(index, e.target.value)}
                     onPaste={(e) => handleOpsiPaste(index, e)}
-                    placeholder={`Pilihan ${opt.kode}...`}
+                    placeholder={`Pilihan ${opt.kode} (Ketik / Drag & Drop teks di sini)...`}
                     className={cn(
                       'w-full py-1 px-1.5 text-xs sm:text-sm font-medium bg-transparent border-b border-b-slate-200 dark:border-b-slate-700 focus:border-b-indigo-600 focus:outline-none transition-colors',
                       isKey && 'font-bold text-emerald-950 dark:text-emerald-200'
@@ -1019,22 +1165,39 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
             </button>
           </div>
         )}
-        <div className="pt-0.5 px-1">
-          <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-            Mendukung paste teks bertingkat A–E langsung dari Word / Excel atau gambar Ctrl+V.
-          </p>
+        <div className="pt-0.5 px-1 flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400">
+          <span className="flex items-center gap-1">
+            <Sparkles size={11} className="text-indigo-500 shrink-0" />
+            <span>Mendukung <strong>Drag &amp; Drop</strong> dan <strong>Paste</strong> teks soal lengkap dari Word, PDF, Browser, atau ChatGPT.</span>
+          </span>
         </div>
       </div>
 
       {/* ── 4. PEMBAHASAN (OPSIONAL) ── */}
       {showPembahasanBox && (
-        <div className="pt-1">
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (dragTarget !== 'pembahasan') setDragTarget('pembahasan');
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (dragTarget === 'pembahasan') setDragTarget(null);
+          }}
+          onDrop={handlePembahasanDrop}
+          className={cn(
+            'pt-1 transition-all rounded-xl',
+            dragTarget === 'pembahasan' && 'ring-2 ring-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/30 p-1.5'
+          )}
+        >
           <textarea
             id={`soal-pembahasan-${nomorUrut}`}
             rows={2}
             value={pembahasan}
             onChange={(e) => setPembahasan(e.target.value)}
-            placeholder="Tulis pembahasan soal (opsional)..."
+            placeholder="Tulis pembahasan soal atau drag & drop teks penjelasan dari sumber lain..."
             className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-600"
             aria-label="Catatan Pembahasan Soal"
           />

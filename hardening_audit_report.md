@@ -9,8 +9,8 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
 | **Total Halaman Utama** | **233 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **148 Halaman** | 64% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **65 Halaman** | 28% | **Butuh Sentuhan Ringan** |
+| **✅ Lolos Sempurna (Hardened)** | **147 Halaman** | 63% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **66 Halaman** | 28% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **20 Halaman** | 9% | **Prioritas Utama Refaktor** |
 
 ---
@@ -271,6 +271,14 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 853 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [AcademicTransitionPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/transition/AcademicTransitionPage.tsx) (535 baris), [TransitionForm.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/transition/components/TransitionForm.tsx) (261 baris), [utils.ts](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/transition/utils.ts) (57 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+
+---
+
+### 📄 Halaman: `ProfilePage.tsx`
+* **Lokasi File:** [ProfilePage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/account/ProfilePage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
 
 ---
 
@@ -912,13 +920,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `TahunPelajaranPage.tsx`
 * **Lokasi File:** [TahunPelajaranPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/TahunPelajaranPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `ProfilePage.tsx`
-* **Lokasi File:** [ProfilePage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/account/ProfilePage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

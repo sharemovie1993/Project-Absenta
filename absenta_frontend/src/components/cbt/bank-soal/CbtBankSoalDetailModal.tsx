@@ -42,6 +42,8 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
 
   // activeCardId: ID soal yang sedang diedit inline, atau 'NEW' untuk form soal baru di bagian bawah, atau null
   const [activeCardId, setActiveCardId] = useState<string | 'NEW' | null>(null);
+  const [droppedDraftText, setDroppedDraftText] = useState<string | null>(null);
+  const [isDragOverAddBtn, setIsDragOverAddBtn] = useState(false);
 
   // Fetch list of questions for this bank
   const { data: soalList = [], isLoading, refetch } = useQuery({
@@ -325,7 +327,9 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                         bankSoalId={bankSoal.id}
                         soal={null}
                         nomorUrut={soalList.length + 1}
+                        initialRawText={droppedDraftText || undefined}
                         onSaved={(mode) => {
+                          setDroppedDraftText(null);
                           refetch();
                           if (mode === 'stay') {
                             setActiveCardId(null);
@@ -333,16 +337,60 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                             setActiveCardId('NEW');
                           }
                         }}
-                        onCancel={soalList.length > 0 ? () => setActiveCardId(null) : undefined}
+                        onCancel={() => {
+                          setDroppedDraftText(null);
+                          if (soalList.length > 0) {
+                            setActiveCardId(null);
+                          }
+                        }}
                       />
                     ) : (
                       <button
                         type="button"
-                        onClick={() => setActiveCardId('NEW')}
-                        className="w-full py-3.5 px-4 rounded-2xl border-2 border-dashed border-indigo-300 dark:border-indigo-800 bg-white/80 dark:bg-slate-900/70 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
+                        onClick={() => {
+                          setDroppedDraftText(null);
+                          setActiveCardId('NEW');
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsDragOverAddBtn(true);
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsDragOverAddBtn(false);
+                        }}
+                        onDrop={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsDragOverAddBtn(false);
+                          let text = e.dataTransfer?.getData('text/plain') || '';
+                          if (!text && e.dataTransfer?.files?.[0]) {
+                            try {
+                              text = await e.dataTransfer.files[0].text();
+                            } catch {
+                              // ignore
+                            }
+                          }
+                          if (text) {
+                            setDroppedDraftText(text);
+                            setActiveCardId('NEW');
+                          }
+                        }}
+                        className={cn(
+                          "w-full py-3.5 px-4 rounded-2xl border-2 border-dashed transition-all cursor-pointer shadow-2xs font-bold text-xs flex items-center justify-center gap-2",
+                          isDragOverAddBtn
+                            ? "border-indigo-600 bg-indigo-100 text-indigo-900 ring-4 ring-indigo-300 scale-[1.01]"
+                            : "border-indigo-300 dark:border-indigo-800 bg-white/80 dark:bg-slate-900/70 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300"
+                        )}
                       >
                         <Plus size={16} />
-                        <span>Tambah Soal #{soalList.length + 1} di Bawah</span>
+                        <span>
+                          {isDragOverAddBtn
+                            ? 'Lepaskan di sini untuk membuat Soal Baru dari teks yang di-drag!'
+                            : `Tambah Soal #${soalList.length + 1} di Bawah (Bisa Drag & Drop Teks Langsung ke Sini)`}
+                        </span>
                       </button>
                     )}
                   </>
