@@ -4,10 +4,17 @@ import { tahunPelajaranApi } from '../api/academic.api';
 import type { TahunPelajaran } from '../types/academic';
 import type { SearchableSelectOption } from '../components/ui/SearchableSelect';
 
-export function useTahunPelajaranOptions() {
+export interface UseTahunPelajaranOptionsParams {
+  enabled?: boolean;
+}
+
+export function useTahunPelajaranOptions(params?: UseTahunPelajaranOptionsParams) {
+  const isEnabled = params?.enabled ?? true;
+
   const query = useQuery({
     queryKey: ['tahun-pelajaran-options-list'],
     queryFn: () => tahunPelajaranApi.getAll({ limit: 200 }),
+    enabled: isEnabled,
     staleTime: 5 * 60 * 1000,
   });
 

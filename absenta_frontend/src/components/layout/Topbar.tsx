@@ -40,7 +40,9 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
       setIsIdleReady(true);
       return;
     }
-    const idleCallback = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1000));
+    const idleCallback = (window as any).requestIdleCallback 
+      ? (cb: () => void) => (window as any).requestIdleCallback(cb, { timeout: 3500 })
+      : ((cb: () => void) => setTimeout(cb, 3000));
     const h = idleCallback(() => setIsIdleReady(true));
     return () => {
       if ((window as any).cancelIdleCallback && typeof h === 'number') {
@@ -294,7 +296,10 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
           {/* 👤 Profile User Menu (Avatar, Name, Jabatan & Menu Akses Cepat) */}
           <UserMenu 
             onOpenTeacherLocator={() => setLocatorModalOpen(true)}
-            onOpenNotifications={() => setOpen(true)}
+            onOpenNotifications={() => {
+              setIsIdleReady(true);
+              setOpen(true);
+            }}
           />
         </div>
       </div>

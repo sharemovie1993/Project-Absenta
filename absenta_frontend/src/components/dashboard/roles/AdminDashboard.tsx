@@ -175,19 +175,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     [searchParams, setSearchParams]
   );
 
-  // Academic Filter SSOT (Sama persis dengan Kurikulum & Kaprog)
-  const academicFilter = useAcademicFilter({
-    enableTp: true,
-    enableSemester: true,
-  });
-
-  const semNama = academicFilter.selectedSemesterNama || academicFilter.activeSemester?.nama_semester?.replace(/\s*⭐\s*/g, '').trim() || '';
-  const tpTahun = academicFilter.selectedTahunPelajaranNama || academicFilter.activeTpYear?.tahun || '';
-
-  // Data Fetching dengan React Query (Pilar 31 Optimasi Data Fetching - Lazy Per-Tab)
-  const isRingkasanActive = activeTab === 'ringkasan';
-
-  // State deferral untuk query below-the-fold (Attendance chart & Activity logs)
+  // State deferral untuk query below-the-fold & opsi filter periode
   // Menghindari persaingan thread CPU di awal mount agar TBT dan FCP tetap optimal
   const [isDeferredReady, setIsDeferredReady] = useState(false);
 
@@ -208,6 +196,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
       }
     };
   }, []);
+
+  // Academic Filter SSOT (Sama persis dengan Kurikulum & Kaprog)
+  const academicFilter = useAcademicFilter({
+    enableTp: isDeferredReady,
+    enableSemester: isDeferredReady,
+  });
+
+  const semNama = academicFilter.selectedSemesterNama || academicFilter.activeSemester?.nama_semester?.replace(/\s*⭐\s*/g, '').trim() || '';
+  const tpTahun = academicFilter.selectedTahunPelajaranNama || academicFilter.activeTpYear?.tahun || '';
+
+  // Data Fetching dengan React Query (Pilar 31 Optimasi Data Fetching - Lazy Per-Tab)
+  const isRingkasanActive = activeTab === 'ringkasan';
 
   const { data: overviewRes, isLoading: isOverviewLoading } = useQuery({
     queryKey: ['admin-overview-stats'],

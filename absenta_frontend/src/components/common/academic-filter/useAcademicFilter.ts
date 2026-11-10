@@ -111,7 +111,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     rawList: tpRawList,
     activeYear: activeTp,
     isLoading: isLoadingTp,
-  } = useTahunPelajaranOptions();
+  } = useTahunPelajaranOptions({ enabled: enableTp });
 
   // Auto-set initial active TP jika belum terisi
   useEffect(() => {
@@ -128,6 +128,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     isLoading: isLoadingSem,
   } = useSemesterOptions({
     tahunPelajaranId: tahunPelajaranId || undefined,
+    enabled: enableSemester,
   });
 
   // Auto-set active Semester jika belum terisi atau tidak valid di TP saat ini

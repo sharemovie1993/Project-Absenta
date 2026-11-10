@@ -6,14 +6,16 @@ import type { SearchableSelectOption } from '../components/ui/SearchableSelect';
 
 export interface UseSemesterOptionsParams {
   tahunPelajaranId?: string;
+  enabled?: boolean;
 }
 
 export function useSemesterOptions(params: UseSemesterOptionsParams = {}) {
-  const { tahunPelajaranId } = params;
+  const { tahunPelajaranId, enabled = true } = params;
 
   const query = useQuery({
     queryKey: ['semester-options-list'],
     queryFn: () => semesterApi.getAll({ limit: 200 }),
+    enabled,
     staleTime: 5 * 60 * 1000,
   });
 
