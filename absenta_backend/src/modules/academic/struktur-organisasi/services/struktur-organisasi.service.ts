@@ -34,6 +34,7 @@ export interface AssignGuruInput {
   is_leader?: boolean;
   assignment_flag?: string | null;
   custom_title?: string | null;
+  tahun_pelajaran_id?: string | null;
 }
 
 export interface AssignSiswaInput {
@@ -43,6 +44,7 @@ export interface AssignSiswaInput {
   start_date?: Date;
   end_date?: Date;
   unit_id?: string | null;
+  tahun_pelajaran_id?: string | null;
 }
 
 export class StrukturOrganisasiService {
@@ -73,8 +75,17 @@ export class StrukturOrganisasiService {
     await cacheInvalidationService.invalidateStrukturTree(tenantId, userIds);
   }
 
-  async getTree(tenantId: string) {
-    const cacheKey = CACHE_KEYS.ACADEMIC.STRUKTUR_TREE(tenantId);
+  async getTree(tenantId: string, tahunPelajaranId?: string) {
+    let targetTpId = tahunPelajaranId || null;
+    if (!targetTpId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+      targetTpId = activeTp?.id || null;
+    }
+
+    const cacheKey = `${CACHE_KEYS.ACADEMIC.STRUKTUR_TREE(tenantId)}:${targetTpId || 'all'}`;
     const cached = await CacheService.getInstance().get<any>(cacheKey);
     if (cached) return cached;
 
@@ -83,7 +94,17 @@ export class StrukturOrganisasiService {
       orderBy: { order: 'asc' },
       include: {
         organizationalAssigns: {
-          where: { is_active: true },
+          where: {
+            is_active: true,
+            ...(targetTpId
+              ? {
+                  OR: [
+                    { tahun_pelajaran_id: targetTpId },
+                    { tahun_pelajaran_id: null },
+                  ],
+                }
+              : {}),
+          },
           orderBy: { updated_at: 'asc' },
           include: {
             User: {
@@ -93,7 +114,8 @@ export class StrukturOrganisasiService {
               },
             },
             Unit: { select: { id: true, nama: true, singkatan: true, kode: true } },
-            Kelas: { select: { id: true, nama_kelas: true, tingkat: true } }
+            Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+            TahunPelajaran: { select: { id: true, tahun: true } },
           },
         },
       },
@@ -115,7 +137,17 @@ export class StrukturOrganisasiService {
           },
           include: {
             organizationalAssigns: {
-              where: { is_active: true },
+              where: {
+                is_active: true,
+                ...(targetTpId
+                  ? {
+                      OR: [
+                        { tahun_pelajaran_id: targetTpId },
+                        { tahun_pelajaran_id: null },
+                      ],
+                    }
+                  : {}),
+              },
               include: {
                 User: {
                   include: {
@@ -124,7 +156,8 @@ export class StrukturOrganisasiService {
                   },
                 },
                 Unit: { select: { id: true, nama: true, singkatan: true, kode: true } },
-                Kelas: { select: { id: true, nama_kelas: true, tingkat: true } }
+                Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+                TahunPelajaran: { select: { id: true, tahun: true } },
               },
             },
           },
@@ -147,6 +180,7 @@ export class StrukturOrganisasiService {
         tenant_id: tenantId,
         is_active: true
       },
+      orderBy: [{ tingkat: 'asc' }, { nama_kelas: 'asc' }],
       select: { id: true, nama_kelas: true, tingkat: true }
     });
 
@@ -184,6 +218,8 @@ export class StrukturOrganisasiService {
           unit_id: a.unit_id,
           kelas_id: a.kelas_id,
           jenis_kegiatan_id: a.jenis_kegiatan_id,
+          tahun_pelajaran_id: a.tahun_pelajaran_id,
+          tahun_pelajaran_name: a.TahunPelajaran?.tahun || null,
           tingkat: a.Kelas?.tingkat || null,
           unit_kode: a.Unit?.singkatan || a.Unit?.kode || a.Kelas?.nama_kelas || null,
           type: a.User?.Guru ? 'GURU' : 'SISWA',
@@ -197,6 +233,15 @@ export class StrukturOrganisasiService {
           structName: pos.name,
         };
       });
+
+      // Prioritize assignments explicitly assigned to target academic year over unscoped (null) assignments
+      if (targetTpId) {
+        members.sort((a: any, b: any) => {
+          if (a.tahun_pelajaran_id === targetTpId && b.tahun_pelajaran_id !== targetTpId) return -1;
+          if (a.tahun_pelajaran_id !== targetTpId && b.tahun_pelajaran_id === targetTpId) return 1;
+          return 0;
+        });
+      }
 
       // INTELLIGENT AUTO-FILLING LOGIC
       // If position requires context (KAPROG, KABENG, WALIKELAS, etc.), ensure ALL entities are represented
@@ -252,6 +297,12 @@ export class StrukturOrganisasiService {
         }
       } else {
         // Regular positions (Kepsek, Waka, etc.)
+        const isMultiStaffRole = ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'BPBK', 'GERBANG', 'PETUGAS_ABSENSI', 'PEMBINA_ESKUL', 'TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'].includes(pos.code);
+        let finalMembers = members;
+        // For single-holder roles (like KEPALA_SEKOLAH), if there's an assignment for target TP, filter out legacy null assignments
+        if (!isMultiStaffRole && targetTpId && members.some((m: any) => m.tahun_pelajaran_id === targetTpId)) {
+          finalMembers = members.filter((m: any) => m.tahun_pelajaran_id === targetTpId);
+        }
         grouped[pos.code].push({
           id: pos.id,
           kode: pos.code,
@@ -259,7 +310,7 @@ export class StrukturOrganisasiService {
           deskripsi: null,
           parent_id: null,
           scope: pos.scope_type,
-          members,
+          members: finalMembers,
         });
       }
     }
@@ -494,13 +545,24 @@ export class StrukturOrganisasiService {
       throw new Error(`Jabatan ${position.code} wajib memilih Ekstrakurikuler.`);
     }
 
+    let tahunPelajaranId = input.tahun_pelajaran_id || null;
+    if (!tahunPelajaranId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+      tahunPelajaranId = activeTp?.id || null;
+    }
+
     const existing = await prisma.organizationalAssignment.findFirst({
       where: {
         tenant_id: tenantId,
         position_id: input.struktur_id,
         user_id: guru.user_id,
         kelas_id: input.kelas_id || null,
+        unit_id: input.unit_id || null,
         jenis_kegiatan_id: input.jenis_kegiatan_id || null,
+        ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {}),
       },
       select: { id: true },
     });
@@ -519,6 +581,7 @@ export class StrukturOrganisasiService {
           position_id: input.struktur_id,
           unit_id: unitId,
           user_id: { not: guru.user_id },
+          ...(tahunPelajaranId ? { OR: [{ tahun_pelajaran_id: tahunPelajaranId }, { tahun_pelajaran_id: null }] } : {}),
           is_active: true,
         },
         select: { id: true, user_id: true }
@@ -562,6 +625,7 @@ export class StrukturOrganisasiService {
           position_id: input.struktur_id,
           kelas_id: kelasId,
           user_id: { not: guru.user_id },
+          ...(tahunPelajaranId ? { OR: [{ tahun_pelajaran_id: tahunPelajaranId }, { tahun_pelajaran_id: null }] } : {}),
           is_active: true,
         },
         select: { id: true, user_id: true }
@@ -604,6 +668,7 @@ export class StrukturOrganisasiService {
           unit_id: input.unit_id || null,
           kelas_id: input.kelas_id || null,
           jenis_kegiatan_id: input.jenis_kegiatan_id || null,
+          ...(tahunPelajaranId ? { OR: [{ tahun_pelajaran_id: tahunPelajaranId }, { tahun_pelajaran_id: null }] } : {}),
           is_active: true,
           NOT: { user_id: guru.user_id }
         },
@@ -619,6 +684,7 @@ export class StrukturOrganisasiService {
           position_id: input.struktur_id,
           unit_id: input.unit_id || null,
           kelas_id: input.kelas_id || null,
+          ...(tahunPelajaranId ? { OR: [{ tahun_pelajaran_id: tahunPelajaranId }, { tahun_pelajaran_id: null }] } : {}),
           is_leader: true,
           NOT: { user_id: guru.user_id },
         },
@@ -634,6 +700,7 @@ export class StrukturOrganisasiService {
           is_leader: input.is_leader !== undefined ? Boolean(input.is_leader) : undefined,
           assignment_flag: input.assignment_flag !== undefined ? input.assignment_flag : undefined,
           custom_title: input.custom_title !== undefined ? input.custom_title : undefined,
+          tahun_pelajaran_id: tahunPelajaranId,
           start_date: input.start_date || new Date(),
           end_date: input.end_date || null,
           kelas_id: input.kelas_id || null,
@@ -655,6 +722,7 @@ export class StrukturOrganisasiService {
         kelas_id: input.kelas_id || null,
         unit_id: input.unit_id || null,
         jenis_kegiatan_id: input.jenis_kegiatan_id || null,
+        tahun_pelajaran_id: tahunPelajaranId,
         is_active: true,
         is_leader: Boolean(input.is_leader),
         assignment_flag: input.assignment_flag || null,
@@ -736,6 +804,15 @@ export class StrukturOrganisasiService {
 
     const kelasId = input.kelas_id ? String(input.kelas_id) : null;
 
+    let tahunPelajaranId = input.tahun_pelajaran_id || null;
+    if (!tahunPelajaranId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+      tahunPelajaranId = activeTp?.id || null;
+    }
+
     // Otomatis menonaktifkan penugasan petugas terdahulu pada kelas yang sama & bersihkan cachenya
     if (position.code === 'PETUGAS_KELAS' && kelasId) {
       const previousAssignments = await prisma.organizationalAssignment.findMany({
@@ -744,6 +821,7 @@ export class StrukturOrganisasiService {
           position_id: input.struktur_id,
           kelas_id: kelasId,
           user_id: { not: siswa.user_id },
+          ...(tahunPelajaranId ? { OR: [{ tahun_pelajaran_id: tahunPelajaranId }, { tahun_pelajaran_id: null }] } : {}),
           is_active: true,
         },
         select: { id: true, user_id: true }
@@ -777,6 +855,7 @@ export class StrukturOrganisasiService {
         position_id: input.struktur_id,
         user_id: siswa.user_id,
         kelas_id: kelasId,
+        ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {}),
       },
       select: { id: true },
     });
@@ -790,6 +869,7 @@ export class StrukturOrganisasiService {
           end_date: input.end_date || null,
           kelas_id: kelasId,
           unit_id: input.unit_id || null,
+          tahun_pelajaran_id: tahunPelajaranId,
           updated_at: new Date(),
         },
       });
@@ -804,6 +884,7 @@ export class StrukturOrganisasiService {
         user_id: siswa.user_id,
         kelas_id: kelasId,
         unit_id: input.unit_id || null,
+        tahun_pelajaran_id: tahunPelajaranId,
         is_active: true,
         start_date: input.start_date || new Date(),
         end_date: input.end_date || null,

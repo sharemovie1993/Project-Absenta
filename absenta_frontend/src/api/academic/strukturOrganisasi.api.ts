@@ -97,6 +97,7 @@ export interface AssignGuruInput {
   is_leader?: boolean;
   assignment_flag?: string | null;
   custom_title?: string | null;
+  tahun_pelajaran_id?: string | null;
 }
 
 export interface AssignSiswaInput {
@@ -105,6 +106,7 @@ export interface AssignSiswaInput {
   kelas_id?: string | null;
   start_date?: string;
   end_date?: string;
+  tahun_pelajaran_id?: string | null;
 }
 
 // === API Methods ===
@@ -113,8 +115,8 @@ export const getStrukturList = async (params?: { is_active?: boolean; search?: s
   return requestWithFallback<ApiResponse<StrukturOrganisasi[]>>('get', '/academic/struktur-organisasi', { params });
 };
 
-export const getStrukturTree = async (): Promise<ApiResponse<Record<string, any[]>>> => {
-  return requestWithFallback<ApiResponse<Record<string, any[]>>>('get', '/academic/struktur-organisasi/tree');
+export const getStrukturTree = async (params?: { tahun_pelajaran_id?: string }): Promise<ApiResponse<Record<string, any[]>>> => {
+  return requestWithFallback<ApiResponse<Record<string, any[]>>>('get', '/academic/struktur-organisasi/tree', { params });
 };
 
 export const getStrukturDetail = async (id: string): Promise<ApiResponse<StrukturOrganisasi>> => {

@@ -33,7 +33,8 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
   isReadOnly = false,
   initialTreeData,
   initialJurusans,
-  jenjangOverride
+  jenjangOverride,
+  tahunPelajaranId,
 }) => {
   const queryClient = useQueryClient();
   const [editingNode, setEditingNode] = useState<{ node: TopologyNodeData; element: HTMLElement | null } | null>(null);
@@ -75,8 +76,8 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
 
   // Queries (skipped when initialTreeData / initialJurusans are provided in public read-only mode)
   const { data: treeRes, isLoading: isTreeLoading } = useQuery({
-    queryKey: ['strukturTree', refreshKey, internalRefreshKey],
-    queryFn: getStrukturTree,
+    queryKey: ['strukturTree', tahunPelajaranId, refreshKey, internalRefreshKey],
+    queryFn: () => getStrukturTree(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : undefined),
     enabled: !initialTreeData && !isReadOnly,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -112,7 +113,8 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
         return assignSiswaToStruktur(realId, { 
           siswa_id: val.value, 
           start_date: dateStr,
-          kelas_id: node.data?.kelas_id 
+          kelas_id: node.data?.kelas_id,
+          tahun_pelajaran_id: tahunPelajaranId || undefined,
         });
       } else {
         return assignGuruToStruktur(realId, { 
@@ -124,6 +126,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
           is_leader: (val as any).is_leader,
           assignment_flag: (val as any).assignment_flag,
           custom_title: (val as any).custom_title,
+          tahun_pelajaran_id: tahunPelajaranId || undefined,
         });
       }
     },

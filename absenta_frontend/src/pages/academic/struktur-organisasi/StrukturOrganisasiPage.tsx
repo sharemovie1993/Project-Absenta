@@ -6,6 +6,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useJenjang } from '@/hooks/useJenjang';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { Button } from '@/components/ui/Button';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { SectionCard } from '@/components/ui/SectionCard';
@@ -61,11 +62,20 @@ export const StrukturOrganisasiPage: React.FC = () => {
 
   const canManageAcademic = isAdmin || isKurikulum || isKepalaSekolah || can('academic.structures.view.tree') || can('academic.structures.view.list');
 
+  // Unified Academic Filter: aware pada Tahun Pelajaran aktif & riwayat TP
+  const filter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: false,
+    enableTingkat: false,
+    enableKelas: false,
+    enableSearch: false,
+  });
+
   // Pre-warm data cache & loading guard (Pillar 9 & 31)
   const { isLoading } = useQuery({
-    queryKey: ['strukturTree'],
-    queryFn: getStrukturTree,
-    enabled: canManageAcademic,
+    queryKey: ['strukturTree', filter.values.tahunPelajaranId],
+    queryFn: () => getStrukturTree(filter.values.tahunPelajaranId ? { tahun_pelajaran_id: filter.values.tahunPelajaranId } : undefined),
+    enabled: canManageAcademic && Boolean(filter.values.tahunPelajaranId),
     staleTime: 5 * 60 * 1000
   });
 
@@ -158,6 +168,13 @@ export const StrukturOrganisasiPage: React.FC = () => {
     >
       <SectionCard fullWidth className="bg-transparent border-none p-0 shadow-none dark:bg-transparent min-w-0">
       <div className="space-y-6">
+        {/* Unified Academic Period Filter (Aware Tahun Pelajaran Aktif & Riwayat) */}
+        <AcademicFilterToolbar
+          {...filter.toolbarProps}
+          variant="card"
+          className="w-full"
+        />
+
         {/* Navigation & Controls header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xs">
           <div className="w-full sm:w-auto overflow-x-auto no-scrollbar py-0.5">
@@ -188,6 +205,7 @@ export const StrukturOrganisasiPage: React.FC = () => {
               activeTab={activeTab}
               activeCodes={activeTabCodes}
               refreshKey={0}
+              tahunPelajaranId={filter.values.tahunPelajaranId}
             />
           </React.Suspense>
         </div>

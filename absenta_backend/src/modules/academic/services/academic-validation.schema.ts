@@ -54,7 +54,11 @@ export const assignGuruSchema = z.object({
   jenis_kegiatan_id: z.string().uuid({ message: 'jenis_kegiatan_id harus berupa UUID yang valid' }).nullable().optional().transform(v => v === null ? undefined : v),
   is_leader: z.boolean().optional().default(false),
   assignment_flag: z.string().nullable().optional().transform(v => v === null ? undefined : v),
-  custom_title: z.string().nullable().optional().transform(v => v === null ? undefined : v)
+  custom_title: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  tahun_pelajaran_id: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.string().uuid({ message: 'tahun_pelajaran_id harus berupa UUID yang valid' }).optional()
+  ),
 });
 
 export const assignSiswaSchema = z.object({
@@ -70,7 +74,11 @@ export const assignSiswaSchema = z.object({
     if (!val) return undefined;
     return new Date(String(val));
   }, z.date().nullable().optional().transform(v => v === null ? undefined : v)),
-  unit_id: z.string().uuid({ message: 'unit_id harus berupa UUID yang valid' }).nullable().optional().transform(v => v === null ? undefined : v)
+  unit_id: z.string().uuid({ message: 'unit_id harus berupa UUID yang valid' }).nullable().optional().transform(v => v === null ? undefined : v),
+  tahun_pelajaran_id: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.string().uuid({ message: 'tahun_pelajaran_id harus berupa UUID yang valid' }).optional()
+  ),
 });
 
 export const upsertStudentCardConfigSchema = z.object({

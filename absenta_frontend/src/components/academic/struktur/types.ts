@@ -63,4 +63,5 @@ export type StrukturDiagramProps = {
   initialTreeData?: GroupedStruktur;
   initialJurusans?: Record<string, string>;
   jenjangOverride?: string;
+  tahunPelajaranId?: string;
 };

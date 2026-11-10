@@ -54,7 +54,8 @@ export const strukturOrganisasiController = {
   getTree: async (req: any, reply: any) => {
     try {
       const tenantId = getEffectiveTenantId(req);
-      const data = await service.getTree(tenantId);
+      const { tahun_pelajaran_id } = req.query as any;
+      const data = await service.getTree(tenantId, tahun_pelajaran_id);
       return reply.status(200).send({
         success: true,
         message: 'Berhasil mengambil data tree struktur organisasi',

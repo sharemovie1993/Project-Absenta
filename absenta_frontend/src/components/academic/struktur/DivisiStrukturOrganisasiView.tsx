@@ -40,6 +40,7 @@ export interface UniversalDivisiStrukturViewProps {
   isModal?: boolean;    // True jika dibuka dalam quick-view modal
   readOnly?: boolean;   // True jika mode pantau tanpa hak edit
   onClose?: () => void;
+  tahunPelajaranId?: string;
 }
 
 const DIVISION_METADATA: Record<string, { title: string; defaultDesc: string; accentColor: string }> = {
@@ -94,6 +95,7 @@ export const DivisiStrukturOrganisasiView: React.FC<UniversalDivisiStrukturViewP
   isModal = false,
   readOnly = false,
   onClose,
+  tahunPelajaranId,
 }) => {
   const queryClient = useQueryClient();
   const { confirm } = useConfirm();
@@ -124,8 +126,8 @@ export const DivisiStrukturOrganisasiView: React.FC<UniversalDivisiStrukturViewP
 
   // 1. Fetch Struktur Tree
   const { data: treeRes, isLoading: isTreeLoading, refetch } = useQuery({
-    queryKey: ['strukturTree', divisionCode, refreshKey],
-    queryFn: getStrukturTree,
+    queryKey: ['strukturTree', divisionCode, tahunPelajaranId, refreshKey],
+    queryFn: () => getStrukturTree(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : undefined),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -184,6 +186,7 @@ export const DivisiStrukturOrganisasiView: React.FC<UniversalDivisiStrukturViewP
         is_leader: val.is_leader ?? node.data?.isLeader,
         assignment_flag: val.assignment_flag ?? node.data?.assignmentFlag,
         custom_title: val.custom_title ?? node.data?.customTitle,
+        tahun_pelajaran_id: tahunPelajaranId || undefined,
       });
     },
     onSuccess: async (_, { node }) => {
