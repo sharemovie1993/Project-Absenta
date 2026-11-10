@@ -300,60 +300,74 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
     setIsEditModalOpen(true);
   };
 
-  // Submit Section Update
+  // Submit Section Update (Targeted per section to prevent dirty state cross-contamination)
   const handleSaveSection = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!siswaId) return;
 
     try {
       setIsSavingSection(true);
-      const payload: any = {
-        nama_siswa: editNamaSiswa,
-        nis: editNis,
-        nisn: editNisn,
-        nik: editNik,
-        no_kk: editNoKk,
-        jenis_kelamin: editJenisKelamin,
-        tempat_lahir: editTempatLahir,
-        tanggal_lahir: editTanggalLahir,
-        agama: editAgama,
-        tinggi_badan: editTinggiBadan ? Number(editTinggiBadan) : undefined,
-        berat_badan: editBeratBadan ? Number(editBeratBadan) : undefined,
-        status: editStatus,
-        kelas_id: editKelasId || undefined,
-        sekolah_asal: editSekolahAsal,
-        no_ijazah_smp: editNoIjazahSmp,
-        tanggal_masuk: editTanggalMasuk,
-        tanggal_keluar: editTanggalKeluar,
-        nama_ayah: editNamaAyah,
-        nik_ayah: editNikAyah,
-        no_hp_ayah: editNoHpAyah,
-        nama_ibu: editNamaIbu,
-        nik_ibu: editNikIbu,
-        no_hp_ibu: editNoHpIbu,
-        nama_wali: editNamaWali,
-        no_hp_wali: editNoHpWali,
-        no_hp_ortu: noHpOrtu,
-        email: emailSiswa,
-        alamat: editAlamat,
-        dusun: editDusun,
-        kelurahan: editKelurahan,
-        kecamatan: editKecamatan,
-        kabupaten: editKabupaten,
-        provinsi: editProvinsi,
-        rt: editRt,
-        rw: editRw,
-        kode_pos: editKodePos,
-        transportasi: editTransportasi,
-      };
+      let payload: any = {};
+
+      if (activeEditSection === 'pribadi') {
+        payload = {
+          nama_siswa: editNamaSiswa ? editNamaSiswa.trim() : undefined,
+          jenis_kelamin: editJenisKelamin || 'L',
+          agama: editAgama || null,
+          tempat_lahir: editTempatLahir ? editTempatLahir.trim() : null,
+          tanggal_lahir: editTanggalLahir || null,
+          nik: editNik ? editNik.trim() : null,
+          tinggi_badan: editTinggiBadan && !isNaN(Number(editTinggiBadan)) ? Number(editTinggiBadan) : null,
+          berat_badan: editBeratBadan && !isNaN(Number(editBeratBadan)) ? Number(editBeratBadan) : null,
+        };
+      } else if (activeEditSection === 'akademik') {
+        payload = {
+          nis: editNis ? editNis.trim() : undefined,
+          nisn: editNisn ? editNisn.trim() : null,
+          status: editStatus,
+          kelas_id: editKelasId || null,
+          sekolah_asal: editSekolahAsal ? editSekolahAsal.trim() : null,
+          no_ijazah_smp: editNoIjazahSmp ? editNoIjazahSmp.trim() : null,
+          tanggal_masuk: editTanggalMasuk || null,
+          tanggal_keluar: editTanggalKeluar || null,
+        };
+      } else if (activeEditSection === 'orangtua') {
+        payload = {
+          nama_ayah: editNamaAyah ? editNamaAyah.trim() : null,
+          nik_ayah: editNikAyah ? editNikAyah.trim() : null,
+          no_hp_ayah: editNoHpAyah ? editNoHpAyah.trim() : null,
+          nama_ibu: editNamaIbu ? editNamaIbu.trim() : null,
+          nik_ibu: editNikIbu ? editNikIbu.trim() : null,
+          no_hp_ibu: editNoHpIbu ? editNoHpIbu.trim() : null,
+          nama_wali: editNamaWali ? editNamaWali.trim() : null,
+          no_hp_wali: editNoHpWali ? editNoHpWali.trim() : null,
+          no_hp_ortu: noHpOrtu ? noHpOrtu.trim() : null,
+        };
+      } else if (activeEditSection === 'alamat') {
+        payload = {
+          alamat: editAlamat ? editAlamat.trim() : null,
+          dusun: editDusun ? editDusun.trim() : null,
+          kelurahan: editKelurahan ? editKelurahan.trim() : null,
+          kecamatan: editKecamatan ? editKecamatan.trim() : null,
+          kabupaten: editKabupaten ? editKabupaten.trim() : null,
+          provinsi: editProvinsi ? editProvinsi.trim() : null,
+          rt: editRt ? editRt.trim() : null,
+          rw: editRw ? editRw.trim() : null,
+          kode_pos: editKodePos ? editKodePos.trim() : null,
+          transportasi: editTransportasi ? editTransportasi.trim() : null,
+        };
+      }
 
       await updateSiswa(siswaId, payload);
       toast.success('Data siswa berhasil diperbarui!');
       setIsEditModalOpen(false);
       queryClient.invalidateQueries({ queryKey: siswaQueryKeys.detail(siswaId) });
+      queryClient.invalidateQueries({ queryKey: siswaQueryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['dapodik-student-comparison'] });
       refetch();
     } catch (err: any) {
-      toast.error(err?.message || 'Gagal memperbarui data siswa.');
+      const msg = err?.response?.data?.message || err?.message || 'Gagal memperbarui data siswa.';
+      toast.error(msg);
     } finally {
       setIsSavingSection(false);
     }
@@ -367,20 +381,25 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
     try {
       setIsSavingAccount(true);
       const payload: any = {
-        no_hp_ortu: noHpOrtu,
-        email: emailSiswa,
+        no_hp_ortu: noHpOrtu ? noHpOrtu.trim() : null,
       };
-      if (passwordBaru) {
-        payload.password = passwordBaru;
+      if (emailSiswa && emailSiswa.trim()) {
+        payload.email = emailSiswa.trim().toLowerCase();
+      }
+      if (passwordBaru && passwordBaru.trim()) {
+        payload.password = passwordBaru.trim();
       }
 
       await updateSiswa(siswaId, payload);
       toast.success('Pengaturan akun & kontak siswa berhasil disimpan!');
       setPasswordBaru('');
+      setIsAccountModalOpen(false);
       queryClient.invalidateQueries({ queryKey: siswaQueryKeys.detail(siswaId) });
+      queryClient.invalidateQueries({ queryKey: siswaQueryKeys.lists() });
       refetch();
     } catch (err: any) {
-      toast.error(err?.message || 'Gagal memperbarui akun siswa.');
+      const msg = err?.response?.data?.message || err?.message || 'Gagal menyimpan akun siswa.';
+      toast.error(msg);
     } finally {
       setIsSavingAccount(false);
     }

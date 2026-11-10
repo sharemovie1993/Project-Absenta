@@ -90,7 +90,38 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
 
   const fileInputStimulusRef = useRef<HTMLInputElement>(null);
   const questionInputRef = useRef<HTMLTextAreaElement>(null);
+  const pembahasanInputRef = useRef<HTMLTextAreaElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // 📝 Auto-resize field pertanyaan mengikuti konten teks secara dinamis (seperti Google Forms)
+  const adjustQuestionHeight = useCallback(() => {
+    const el = questionInputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(el.scrollHeight, 44)}px`;
+  }, []);
+
+  const adjustPembahasanHeight = useCallback(() => {
+    const el = pembahasanInputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(el.scrollHeight, 38)}px`;
+  }, []);
+
+  useEffect(() => {
+    adjustQuestionHeight();
+  }, [kontenPertanyaan, adjustQuestionHeight]);
+
+  useEffect(() => {
+    if (showPembahasanBox) {
+      adjustPembahasanHeight();
+    }
+  }, [pembahasan, showPembahasanBox, adjustPembahasanHeight]);
+
+  useEffect(() => {
+    window.addEventListener('resize', adjustQuestionHeight);
+    return () => window.removeEventListener('resize', adjustQuestionHeight);
+  }, [adjustQuestionHeight]);
 
   useEffect(() => {
     setNomorUrut(soal?.nomor_urut || initialNomorUrut);
@@ -963,12 +994,17 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
             <textarea
               ref={questionInputRef}
               id={`soal-konten-${nomorUrut}`}
-              rows={2}
+              rows={1}
               value={kontenPertanyaan}
               onChange={(e) => setKontenPertanyaan(e.target.value)}
+              onInput={(e) => {
+                const el = e.currentTarget;
+                el.style.height = 'auto';
+                el.style.height = `${Math.max(el.scrollHeight, 44)}px`;
+              }}
               onPaste={handleQuestionPaste}
               placeholder="Tulis pertanyaan soal atau tarik (drag & drop) teks/gambar dari browser, Word, PDF, atau ChatGPT..."
-              className="w-full px-3.5 py-2.5 text-xs sm:text-sm font-medium rounded-xl bg-slate-50/90 hover:bg-slate-100/70 focus:bg-white dark:bg-slate-800/60 dark:focus:bg-slate-900 text-slate-900 dark:text-white border-b-2 border-b-slate-200 dark:border-b-slate-700 focus:border-b-indigo-600 focus:outline-none transition-all resize-y min-h-[60px]"
+              className="w-full px-3.5 py-2.5 text-xs sm:text-sm font-semibold rounded-xl bg-slate-50/90 hover:bg-slate-100/70 focus:bg-white dark:bg-slate-800/60 dark:focus:bg-slate-900 text-slate-900 dark:text-white border-b-2 border-b-slate-200 dark:border-b-slate-700 focus:border-b-indigo-600 focus:outline-none transition-all resize-none overflow-hidden min-h-[44px] leading-relaxed"
               aria-label="Pertanyaan Soal"
             />
           </div>
@@ -1193,12 +1229,18 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
           )}
         >
           <textarea
+            ref={pembahasanInputRef}
             id={`soal-pembahasan-${nomorUrut}`}
-            rows={2}
+            rows={1}
             value={pembahasan}
             onChange={(e) => setPembahasan(e.target.value)}
+            onInput={(e) => {
+              const el = e.currentTarget;
+              el.style.height = 'auto';
+              el.style.height = `${Math.max(el.scrollHeight, 38)}px`;
+            }}
             placeholder="Tulis pembahasan soal atau drag & drop teks penjelasan dari sumber lain..."
-            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-600"
+            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-600 resize-none overflow-hidden transition-all min-h-[38px] leading-normal"
             aria-label="Catatan Pembahasan Soal"
           />
         </div>

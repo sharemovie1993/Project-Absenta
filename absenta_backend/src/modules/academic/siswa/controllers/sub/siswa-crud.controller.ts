@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { ZodError } from 'zod';
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import { findBestMatch } from '@/utils/normalization';
 import { prisma } from '@/utils/prisma';
@@ -142,30 +143,43 @@ async createSiswa(request: any, reply: any) {
         return { success: false, message: 'Unauthorized: tenant_id not found' };
       }
 
-      // Validate required fields (business rules): nama_siswa, kelas_id, tahun_pelajaran_id, semester_id
-      if (!input.nama_siswa || !input.kelas_id || !input.tahun_pelajaran_id || !input.semester_id) {
+      // Validate required fields (business rules): nama_siswa is mandatory.
+      // Auto-fallback to active academic year and semester if not provided.
+      if (!input.nama_siswa || !String(input.nama_siswa).trim()) {
         return reply.status(400).send({
           success: false,
-          message: 'Missing required fields: nama_siswa, kelas_id, tahun_pelajaran_id, semester_id',
+          message: 'Nama Siswa wajib diisi',
           data: null,
         });
       }
 
-      // Convert date strings to Date objects if provided
-      if (input.tanggal_lahir) {
-        input.tanggal_lahir = new Date(input.tanggal_lahir);
+      if (input.status !== 'CALON' && !input.kelas_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Kelas wajib dipilih untuk siswa aktif',
+          data: null,
+        });
       }
-      if (input.tanggal_masuk) {
-        input.tanggal_masuk = new Date(input.tanggal_masuk);
+
+      if (!input.tahun_pelajaran_id || !input.semester_id) {
+        const activeTp = await prisma.tahunPelajaran.findFirst({
+          where: { tenant_id: tenantId, is_active: true }
+        });
+        const activeSem = await prisma.semester.findFirst({
+          where: { tenant_id: tenantId, is_active: true }
+        });
+        if (!input.tahun_pelajaran_id && activeTp) input.tahun_pelajaran_id = activeTp.id;
+        if (!input.semester_id && activeSem) input.semester_id = activeSem.id;
       }
-      if (input.tanggal_keluar) {
-        input.tanggal_keluar = new Date(input.tanggal_keluar);
-      }
+
       if (input.tinggi_badan !== undefined) {
         input.tinggi_badan = input.tinggi_badan === null || input.tinggi_badan === '' ? null : Number(input.tinggi_badan);
       }
       if (input.berat_badan !== undefined) {
         input.berat_badan = input.berat_badan === null || input.berat_badan === '' ? null : Number(input.berat_badan);
+      }
+      if (input.anak_ke !== undefined) {
+        input.anak_ke = input.anak_ke === null || input.anak_ke === '' ? null : Number(input.anak_ke);
       }
 
       const siswa = await siswaService.createSiswa(input, tenantId, scope, request.user?.id);
@@ -178,16 +192,27 @@ async createSiswa(request: any, reply: any) {
     } catch (error) {
       console.error('Error creating siswa:', error);
       
+      if (error instanceof ZodError || error?.name === 'ZodError') {
+        const errorDetails = error.errors?.map((e: any) => `${e.path.join('.')}: ${e.message}`).join('; ') || 'Validasi data siswa gagal';
+        return reply.status(400).send({
+          success: false,
+          message: errorDetails,
+          errors: error.errors
+        });
+      }
+
       if (error instanceof Error) {
         if (error.message.includes('already exists') || 
             error.message.includes('not found') ||
-            error.message.includes('already has a siswa profile')) {
+            error.message.includes('already has a siswa profile') ||
+            error.message.includes('sudah digunakan') ||
+            error.message.includes('sudah terdaftar') ||
+            error.message.includes('tidak valid')) {
           return reply.status(400).send({
             success: false,
             message: error.message,
             data: null,
           });
-          return;
         }
       }
 
@@ -230,23 +255,17 @@ async updateSiswa(request: any, reply: any) {
         scope = null;
       }
 
-      const input: any = request.body;
+      const input: any = request.body || {};
 
-      // Convert date strings to Date objects if provided
-      if (input.tanggal_lahir) {
-        input.tanggal_lahir = new Date(input.tanggal_lahir);
-      }
-      if (input.tanggal_masuk) {
-        input.tanggal_masuk = new Date(input.tanggal_masuk);
-      }
-      if (input.tanggal_keluar) {
-        input.tanggal_keluar = new Date(input.tanggal_keluar);
-      }
+      // Normalize numeric fields cleanly
       if (input.tinggi_badan !== undefined) {
         input.tinggi_badan = input.tinggi_badan === null || input.tinggi_badan === '' ? null : Number(input.tinggi_badan);
       }
       if (input.berat_badan !== undefined) {
         input.berat_badan = input.berat_badan === null || input.berat_badan === '' ? null : Number(input.berat_badan);
+      }
+      if (input.anak_ke !== undefined) {
+        input.anak_ke = input.anak_ke === null || input.anak_ke === '' ? null : Number(input.anak_ke);
       }
 
       const siswa = await siswaService.updateSiswa(id, input, tenantId, scope, request.user?.id);
@@ -259,14 +278,38 @@ async updateSiswa(request: any, reply: any) {
     } catch (error: any) {
       console.error('Error updating siswa:', error);
       
-      if (error.message.includes('not found') || error.message.includes('Forbidden') || error.message.includes('own siswa data')) {
-         const status = error.message.includes('not found') ? 404 : 403;
-         return reply.status(status).send({ success: false, message: error.message });
+      if (error instanceof ZodError || error?.name === 'ZodError') {
+        const errorDetails = error.errors?.map((e: any) => `${e.path.join('.')}: ${e.message}`).join('; ') || 'Validasi data siswa tidak valid';
+        return reply.status(400).send({
+          success: false,
+          message: errorDetails,
+          errors: error.errors
+        });
+      }
+
+      const errMsg = error?.message || '';
+
+      if (errMsg.includes('not found') || errMsg.includes('Forbidden') || errMsg.includes('own siswa data')) {
+         const status = errMsg.includes('not found') ? 404 : 403;
+         return reply.status(status).send({ success: false, message: errMsg });
+      }
+
+      if (errMsg.includes('already exists') ||
+          errMsg.includes('sudah digunakan') ||
+          errMsg.includes('sudah terdaftar') ||
+          errMsg.includes('Format email tidak valid') ||
+          errMsg.includes('tidak valid') ||
+          errMsg.includes('wajib diisi')) {
+        return reply.status(400).send({
+          success: false,
+          message: errMsg,
+          data: null,
+        });
       }
 
       return reply.status(500).send({
         success: false,
-        message: 'Internal server error',
+        message: errMsg || 'Internal server error',
         data: null,
       });
     }

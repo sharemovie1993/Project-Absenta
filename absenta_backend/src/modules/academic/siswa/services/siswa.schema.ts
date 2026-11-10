@@ -40,7 +40,8 @@ const coerceUpdateString = z.preprocess((val) => {
 const coerceUpdateDate = z.preprocess((val) => {
   if (val === undefined) return undefined;
   if (val === null || val === '') return null;
-  return parseSmartDate(val);
+  const parsed = parseSmartDate(val);
+  return parsed ?? null;
 }, z.date().nullable().optional());
 
 const coerceUpdateNumber = z.preprocess((val) => {
@@ -54,6 +55,7 @@ export const createSiswaSchema = z.object({
   nis: coerceString, // Make NIS optional to support auto-generation
   nisn: coerceString,
   nik: coerceString,
+  no_kk: coerceString,
   nama_siswa: coerceRequiredString('Nama Siswa'),
   jenis_kelamin: z.preprocess((val) => {
     if (val === null || val === undefined) return 'L';
@@ -162,6 +164,7 @@ export const updateSiswaSchema = z.object({
   nis: coerceUpdateString,
   nisn: coerceUpdateString,
   nik: coerceUpdateString,
+  no_kk: coerceUpdateString,
   nama_siswa: z.preprocess((val) => {
     if (val === undefined) return undefined;
     if (typeof val === 'string') {
@@ -253,7 +256,10 @@ export const updateSiswaSchema = z.object({
     if (val === null) return null;
     if (typeof val === 'string') {
       const s = val.trim();
-      return s === '' || s === '-' ? null : s.toLowerCase();
+      if (s === '' || s === '-' || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined' || s.toLowerCase() === 'tidak ada' || s.toLowerCase() === 'belum ada') {
+        return null;
+      }
+      return s.toLowerCase();
     }
     return null;
   }, z.string().email('Format email tidak valid').optional().nullable()),

@@ -25,7 +25,7 @@ export const updateGuruSchema = guruSchema.partial();
 
 // Siswa Validation Schema
 export const siswaSchema = z.object({
-  tenant_id: z.string().min(1, 'Tenant ID wajib diisi'),
+  tenant_id: z.string().optional(),
   user_id: z.string().optional(),
   nis: z.string()
     .min(1, 'NIS wajib diisi')
@@ -39,6 +39,11 @@ export const siswaSchema = z.object({
     .optional()
     .refine((val) => !val || nikRegex.test(val), {
       message: 'NIK harus 16 digit angka'
+    }),
+  no_kk: z.string()
+    .optional()
+    .refine((val) => !val || nikRegex.test(val), {
+      message: 'No KK harus 16 digit angka'
     }),
   nama_siswa: z.string()
     .min(2, 'Nama siswa minimal 2 karakter')

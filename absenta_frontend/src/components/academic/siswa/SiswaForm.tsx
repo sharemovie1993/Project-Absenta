@@ -416,7 +416,9 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
       onSuccess?.();
     } catch (error: any) {
       console.error('Error submitting form:', error);
-      setSubmitError(error.response?.data?.message || `Gagal ${isEditMode ? 'memperbarui' : 'membuat'} data siswa`);
+      const errMsg = error.response?.data?.message || error?.message || `Gagal ${isEditMode ? 'memperbarui' : 'membuat'} data siswa`;
+      setSubmitError(errMsg);
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
