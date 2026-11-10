@@ -1,6 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, Home, Sparkles, ExternalLink } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { ABSENTA_APPS_REGISTRY, getVisibleApps, getActiveApp, type AbsentaApp } from '@/config/absentaAppsRegistry';
@@ -99,26 +98,18 @@ export function AppLauncherDropdown() {
         </div>
       </button>
 
-      {/* Google-Style Apps Popover Panel */}
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            {/* Mobile Backdrop Overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/20 backdrop-blur-xs z-40 sm:hidden"
-            />
+      {/* Google-Style Apps Popover Panel (Native CSS Transitions) */}
+      {isOpen && (
+        <>
+          {/* Mobile Backdrop Overlay */}
+          <div
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 bg-black/20 backdrop-blur-xs z-40 sm:hidden animate-in fade-in duration-150"
+          />
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: -8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -8 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="fixed inset-x-3 top-[68px] sm:absolute sm:inset-auto sm:right-0 sm:top-12 z-50 w-auto sm:w-[380px] rounded-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xl overflow-hidden p-3.5 sm:p-4"
-            >
+          <div
+            className="fixed inset-x-3 top-[68px] sm:absolute sm:inset-auto sm:right-0 sm:top-12 z-50 w-auto sm:w-[380px] rounded-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xl overflow-hidden p-3.5 sm:p-4 animate-in fade-in zoom-in-95 duration-150"
+          >
               {/* Header / Home Portal Shortcut */}
               <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-slate-100 dark:border-slate-800/80 px-1">
                 <div className="flex items-center gap-2">
@@ -197,10 +188,9 @@ export function AppLauncherDropdown() {
                   Pusat Layanan
                 </span>
               </div>
-            </motion.div>
+            </div>
           </>
         )}
-      </AnimatePresence>
     </div>
   );
 }

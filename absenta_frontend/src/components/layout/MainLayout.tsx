@@ -1,6 +1,5 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { fetchActiveSystemConfig, applyBrandingFromConfig } from '@/services/systemConfig';
 import { Topbar } from './Topbar';
@@ -150,40 +149,37 @@ function MainLayoutContent() {
           />
         )}
 
-        {/* Mobile Sidebar Drawer Overlay */}
-        <AnimatePresence>
-          {isMobileMenuOpen && !isTvMode && (
-            <>
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] lg:hidden"
-              />
-              {/* Drawer */}
-              <motion.aside
-                initial={{ x: '-100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '-100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed inset-y-0 left-0 w-[280px] sm:w-[320px] bg-white dark:bg-slate-900 z-[70] lg:hidden shadow-2xl flex flex-col"
-              >
-                <div className="flex-1 overflow-y-auto overscroll-contain pb-24">
-                  <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader /></div>}>
-                    <InAppSidebar 
-                      isMobileDrawer={true} 
-                      onClose={() => setIsMobileMenuOpen(false)} 
-                      isCollapsed={false} 
-                      onToggleCollapse={() => {}} 
-                    />
-                  </Suspense>
-                </div>
-              </motion.aside>
-            </>
-          )}
-        </AnimatePresence>
+        {/* Mobile Sidebar Drawer Overlay (Pure CSS GPU Transitions - Zero Framer Motion Bundle Leak) */}
+        {!isTvMode && (
+          <>
+            {/* Backdrop */}
+            <div
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={cn(
+                "fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] lg:hidden transition-opacity duration-300",
+                isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+              )}
+            />
+            {/* Drawer */}
+            <aside
+              className={cn(
+                "fixed inset-y-0 left-0 w-[280px] sm:w-[320px] bg-white dark:bg-slate-900 z-[70] lg:hidden shadow-2xl flex flex-col transition-transform duration-300 ease-out",
+                isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+              )}
+            >
+              <div className="flex-1 overflow-y-auto overscroll-contain pb-24">
+                <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader /></div>}>
+                  <InAppSidebar 
+                    isMobileDrawer={true} 
+                    onClose={() => setIsMobileMenuOpen(false)} 
+                    isCollapsed={false} 
+                    onToggleCollapse={() => {}} 
+                  />
+                </Suspense>
+              </div>
+            </aside>
+          </>
+        )}
         
         {/* Main Content Area - Below Topbar */}
         <div className={cn(
@@ -250,36 +246,31 @@ function MainLayoutContent() {
             </main>
 
             {/* Area Petunjuk Kanan (Standard MyASN - 300px) */}
-            <AnimatePresence>
-              {showInstruction && (
-                <motion.aside 
-                  initial={{ opacity: 0, x: 20, width: 0 }}
-                  animate={{ opacity: 1, x: 0, width: 300 }}
-                  exit={{ opacity: 0, x: 20, width: 0 }}
-                  className="hidden xl:block overflow-hidden flex-shrink-0 relative"
-                >
-                  <div className="sticky top-20 w-[300px]">
-                    <div className="flex justify-end mb-2">
-                      <button 
-                        onClick={() => setShowInstruction(false)}
-                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                        title="Tutup Panduan"
-                      >
-                        <HelpCircle className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <Suspense fallback={<div className="p-4"><Loader /></div>}>
-                      <InstructionPanel 
-                        title={instructionData?.title}
-                        description={instructionData?.description}
-                        items={instructionData?.items}
-                        tips={instructionData?.tips}
-                      />
-                    </Suspense>
+            {showInstruction && (
+              <aside 
+                className="hidden xl:block overflow-hidden flex-shrink-0 relative w-[300px] animate-in fade-in slide-in-from-right-4 duration-300"
+              >
+                <div className="sticky top-20 w-[300px]">
+                  <div className="flex justify-end mb-2">
+                    <button 
+                      onClick={() => setShowInstruction(false)}
+                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                      title="Tutup Panduan"
+                    >
+                      <HelpCircle className="w-4 h-4" />
+                    </button>
                   </div>
-                </motion.aside>
-              )}
-            </AnimatePresence>
+                  <Suspense fallback={<div className="p-4"><Loader /></div>}>
+                    <InstructionPanel 
+                      title={instructionData?.title}
+                      description={instructionData?.description}
+                      items={instructionData?.items}
+                      tips={instructionData?.tips}
+                    />
+                  </Suspense>
+                </div>
+              </aside>
+            )}
 
           </div>
         </div>

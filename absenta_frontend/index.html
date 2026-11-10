@@ -41,7 +41,50 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="app-shell" style="min-height: 100vh; background-color: #f8fafc; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <style>
+          @keyframes abs-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+          .sh-pulse { animation: abs-pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+          @media (prefers-color-scheme: dark) {
+            #app-shell { background-color: #020617 !important; }
+            .sh-bar { background-color: #0f172a !important; border-color: #1e293b !important; }
+            .sh-box { background-color: #1e293b !important; }
+            .sh-card { background-color: #0f172a !important; border-color: #1e293b !important; }
+          }
+          [data-theme='dark'] #app-shell { background-color: #020617 !important; }
+          [data-theme='dark'] .sh-bar { background-color: #0f172a !important; border-color: #1e293b !important; }
+          [data-theme='dark'] .sh-box { background-color: #1e293b !important; }
+          [data-theme='dark'] .sh-card { background-color: #0f172a !important; border-color: #1e293b !important; }
+        </style>
+        <header class="sh-bar" style="height: 56px; background-color: #ffffff; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; padding: 0 16px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="sh-box sh-pulse" style="width: 32px; height: 32px; border-radius: 8px; background-color: #e2e8f0;"></div>
+            <div class="sh-box sh-pulse" style="width: 110px; height: 16px; border-radius: 6px; background-color: #e2e8f0;"></div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="sh-box sh-pulse" style="width: 28px; height: 28px; border-radius: 50%; background-color: #e2e8f0;"></div>
+            <div class="sh-box sh-pulse" style="width: 28px; height: 28px; border-radius: 50%; background-color: #e2e8f0;"></div>
+          </div>
+        </header>
+        <main style="padding: 16px; max-width: 1280px; margin: 0 auto;">
+          <div class="sh-card sh-pulse" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; margin-bottom: 16px;">
+            <div class="sh-box" style="width: 150px; height: 20px; border-radius: 6px; background-color: #e2e8f0; margin-bottom: 8px;"></div>
+            <div class="sh-box" style="width: 230px; height: 12px; border-radius: 4px; background-color: #f1f5f9;"></div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+            <div class="sh-card sh-pulse" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; height: 88px;">
+              <div class="sh-box" style="width: 50%; height: 12px; border-radius: 4px; background-color: #e2e8f0; margin-bottom: 12px;"></div>
+              <div class="sh-box" style="width: 70%; height: 20px; border-radius: 6px; background-color: #cbd5e1;"></div>
+            </div>
+            <div class="sh-card sh-pulse" style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; height: 88px;">
+              <div class="sh-box" style="width: 50%; height: 12px; border-radius: 4px; background-color: #e2e8f0; margin-bottom: 12px;"></div>
+              <div class="sh-box" style="width: 70%; height: 20px; border-radius: 6px; background-color: #cbd5e1;"></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
