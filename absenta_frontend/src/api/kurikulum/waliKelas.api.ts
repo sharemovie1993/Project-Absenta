@@ -75,6 +75,12 @@ export const nonaktifWaliKelasStruktur = async (
   return requestWithFallback<{ success: boolean; message: string; data: null }>('put', `/kurikulum/wali-kelas/struktur/${id}/nonaktif`);
 };
 
+export const deleteWaliKelasStruktur = async (
+  id: string
+): Promise<{ success: boolean; message: string; data: null }> => {
+  return requestWithFallback<{ success: boolean; message: string; data: null }>('delete', `/kurikulum/wali-kelas/struktur/${id}`);
+};
+
 // ── Jurnal Wali Kelas ──
 export const getJurnalWaliKelasList = async (
   page = 1,

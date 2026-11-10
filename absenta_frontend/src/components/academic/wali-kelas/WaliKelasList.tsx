@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, User, School, Plus, Edit, Power, CheckCircle2, Download, FileText, Network, ChevronRight, Printer, Copy, Calendar, Loader2 } from 'lucide-react';
+import { Search, RefreshCw, User, School, Plus, Edit, Power, CheckCircle2, Download, FileText, Network, ChevronRight, Printer, Copy, Calendar, Loader2, Trash2 } from 'lucide-react';
 import { Table, Button, Modal, Switch, Input, Badge, SectionCard } from '../../ui';
 import { MethodPickerModal } from '../../common/MethodPickerModal';
-import { getWaliKelasStrukturList, assignWaliKelasStruktur, nonaktifWaliKelasStruktur, copyWaliKelasFromPreviousYear } from '../../../api/kurikulum/waliKelas.api';
+import { getWaliKelasStrukturList, assignWaliKelasStruktur, nonaktifWaliKelasStruktur, deleteWaliKelasStruktur, copyWaliKelasFromPreviousYear } from '../../../api/kurikulum/waliKelas.api';
 import { getTahunPelajaranList, academicQueryKeys } from '../../../api/academic/tahunPelajaran.api';
 import type { WaliKelasStrukturAssignment } from '../../../types/academic';
 import toast from 'react-hot-toast';
@@ -260,20 +260,50 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
     }
     try {
       setAssigning(true);
-      const res = await assignWaliKelasStruktur({ kelas_id: kelasId, guru_id: guruId });
+      const res = await assignWaliKelasStruktur({ kelas_id: kelasId, guru_id: guruId, tahun_pelajaran_id: selectedTpId || undefined });
       if (!res.success) {
         toast.error(res.message || 'Gagal mengaktifkan');
         return;
       }
       toast.success('Berhasil mengaktifkan penugasan');
       invalidateWaliKelasCache();
-      fetchData(currentPage, debouncedSearchTerm, includeInactive);
+      fetchData(currentPage, debouncedSearchTerm, includeInactive, selectedTpId);
     } catch (e: any) {
       toast.error(e?.message || 'Gagal mengaktifkan');
     } finally {
       setAssigning(false);
     }
-  }, [fetchData, currentPage, debouncedSearchTerm, includeInactive]);
+  }, [fetchData, currentPage, debouncedSearchTerm, includeInactive, selectedTpId, invalidateWaliKelasCache]);
+
+  const handleDelete = useCallback(async (item: WaliKelasStrukturAssignment) => {
+    const kelasName = item.StrukturOrganisasi?.Kelas?.nama_kelas || '';
+    const guruName = item.Guru?.nama_guru || '';
+    const ok = await confirm({
+      title: 'Hapus Penugasan Wali Kelas',
+      description: `Apakah Anda yakin ingin menghapus penugasan ${guruName} sebagai wali kelas ${kelasName}? Data penugasan ini akan dihapus secara permanen.`,
+      confirmText: 'Hapus',
+      cancelText: 'Batal',
+      style: 'danger',
+      withProgress: true,
+      progressLabel: 'Menghapus penugasan wali kelas...',
+    });
+    if (!ok) return;
+    try {
+      const res = await deleteWaliKelasStruktur(item.id);
+      if (!res.success) {
+        toast.error(res.message || 'Gagal menghapus penugasan');
+        return;
+      }
+      toast.success(res.message || 'Berhasil menghapus penugasan');
+      invalidateWaliKelasCache();
+      fetchData(currentPage, debouncedSearchTerm, includeInactive, selectedTpId);
+    } catch (e: any) {
+      const msg = e.response?.data?.message || e.message || 'Gagal menghapus penugasan';
+      toast.error(msg);
+    } finally {
+      confirm.setLoading(false);
+    }
+  }, [confirm, fetchData, currentPage, debouncedSearchTerm, includeInactive, selectedTpId, invalidateWaliKelasCache]);
 
   // Handle export to Excel
   const handleExport = useCallback(() => {
@@ -375,9 +405,10 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                 onClick={() => handleNonaktif(item)}
                 disabled={assigning}
+                title="Nonaktifkan Wali Kelas"
                 aria-label="Nonaktifkan Wali Kelas"
               >
                 <Power className="w-4 h-4" />
@@ -388,18 +419,30 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
                 variant="success"
                 onClick={() => handleAktifkan(item)}
                 disabled={assigning}
+                title="Aktifkan Wali Kelas"
                 aria-label="Aktifkan Wali Kelas"
               >
                 <CheckCircle2 className="w-4 h-4" />
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+              onClick={() => handleDelete(item)}
+              disabled={assigning}
+              title="Hapus Penugasan"
+              aria-label="Hapus Penugasan"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
         )
       });
     }
 
     return base;
-  }, [assigning, canManage, handleAktifkan, handleNonaktif, openAssignModal]);
+  }, [assigning, canManage, handleAktifkan, handleNonaktif, handleDelete, openAssignModal]);
 
   const isMobile = useIsMobile();
 

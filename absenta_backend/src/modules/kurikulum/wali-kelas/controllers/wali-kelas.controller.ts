@@ -63,7 +63,7 @@ export const waliKelasController = {
       const data = await waliKelasService.assignStrukturWaliKelas(tenantId, parsed);
       return reply.status(200).send({ success: true, message: 'OK', data });
     } catch (error: any) {
-      appLogger.error({ err: error }, 'Controller error');
+      appLogger.error({ err: error }, 'assignStrukturWaliKelas controller error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -71,16 +71,11 @@ export const waliKelasController = {
           errors: error.errors
         });
       }
-      if (error instanceof Error) {
-        if (
-          error.message.includes('not found') ||
-          error.message.includes('already assigned') ||
-          error.message.includes('Tenant ID is required')
-        ) {
-          return reply.status(400).send({ success: false, message: error.message, data: null });
-        }
-      }
-      return reply.status(500).send({ success: false, message: 'Internal server error', data: null });
+      return reply.status(400).send({
+        success: false,
+        message: error?.message || 'Gagal menyimpan penugasan wali kelas',
+        data: null
+      });
     }
   },
 
@@ -131,14 +126,35 @@ export const waliKelasController = {
 
       await waliKelasService.nonaktifStrukturAssignment(tenantId, id);
       return reply.status(200).send({ success: true, message: 'OK', data: null });
-    } catch (error) {
-      appLogger.error({ err: error }, 'Controller error');
-      if (error instanceof Error) {
-        if (error.message.includes('not found') || error.message.includes('Tenant ID is required')) {
-          return reply.status(400).send({ success: false, message: error.message, data: null });
-        }
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'nonaktifStrukturAssignment controller error');
+      return reply.status(400).send({
+        success: false,
+        message: error?.message || 'Gagal menonaktifkan penugasan wali kelas',
+        data: null
+      });
+    }
+  },
+
+  async deleteStrukturAssignment(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const { id } = request.params;
+
+      if (!tenantId) {
+        reply.status(401);
+        return { success: false, message: 'Unauthorized: tenant_id not found' };
       }
-      return reply.status(500).send({ success: false, message: 'Internal server error', data: null });
+
+      await waliKelasService.deleteStrukturAssignment(tenantId, id);
+      return reply.status(200).send({ success: true, message: 'Penugasan wali kelas berhasil dihapus', data: null });
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'deleteStrukturAssignment controller error');
+      return reply.status(400).send({
+        success: false,
+        message: error?.message || 'Gagal menghapus penugasan wali kelas',
+        data: null
+      });
     }
   },
 

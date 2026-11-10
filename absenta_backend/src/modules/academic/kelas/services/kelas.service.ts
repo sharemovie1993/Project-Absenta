@@ -444,20 +444,38 @@ export class KelasService {
             update: { updated_at: new Date(), is_active: true },
           });
 
+          const activeTp = await tx.tahunPelajaran.findFirst({
+            where: { tenant_id: tenantId, is_active: true },
+            select: { id: true },
+          });
+          const tahunPelajaranId = activeTp?.id || null;
+
           await tx.organizationalAssignment.updateMany({
-            where: { tenant_id: tenantId, position_id: position.id, kelas_id: kelas.id, is_active: true },
+            where: { 
+              tenant_id: tenantId, 
+              position_id: position.id, 
+              kelas_id: kelas.id, 
+              ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {}),
+              is_active: true 
+            },
             data: { is_active: false, end_date: new Date(), updated_at: new Date() },
           });
 
           const existingAssignment = await tx.organizationalAssignment.findFirst({
-            where: { tenant_id: tenantId, position_id: position.id, user_id: guru.user_id, kelas_id: kelas.id },
+            where: { 
+              tenant_id: tenantId, 
+              position_id: position.id, 
+              user_id: guru.user_id, 
+              kelas_id: kelas.id,
+              ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {}),
+            },
             select: { id: true },
           });
 
           if (existingAssignment) {
             await tx.organizationalAssignment.update({
               where: { id: existingAssignment.id },
-              data: { is_active: true, start_date: new Date(), end_date: null, updated_at: new Date() },
+              data: { is_active: true, start_date: new Date(), end_date: null, tahun_pelajaran_id: tahunPelajaranId, updated_at: new Date() },
             });
           } else {
             await tx.organizationalAssignment.create({
@@ -467,6 +485,7 @@ export class KelasService {
                 user_id: guru.user_id,
                 kelas_id: kelas.id,
                 unit_id: null,
+                tahun_pelajaran_id: tahunPelajaranId,
                 start_date: new Date(),
                 end_date: null,
                 is_active: true,

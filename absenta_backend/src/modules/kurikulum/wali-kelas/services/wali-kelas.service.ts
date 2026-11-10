@@ -320,6 +320,24 @@ export class WaliKelasService {
       throw new Error('Guru is already assigned as wali kelas to another kelas');
     }
 
+    // Invalidate existing active assignments for this class so previous teacher's permissions update
+    const previousAssignments = await prisma.organizationalAssignment.findMany({
+      where: {
+        tenant_id: tenantId,
+        position_id: position.id,
+        kelas_id: input.kelas_id,
+        ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {}),
+        is_active: true,
+      },
+      select: { user_id: true }
+    });
+
+    for (const prevA of previousAssignments) {
+      if (prevA.user_id && prevA.user_id !== guru.user_id) {
+        await organizationalContextCache.invalidateUser(String(prevA.user_id));
+      }
+    }
+
     if (guru.user_id) {
       await organizationalContextCache.invalidateUser(String(guru.user_id));
     }
@@ -383,11 +401,19 @@ export class WaliKelasService {
       'attendance.manage.session',
       'academic.students.view.list',
       'academic.structures.view.list',
-      'academic.structures.manage'
+      'academic.structure.manage',
+      'dashboard.view.walikelas',
     ];
     
-    // Convert to the DB IDs assuming capabilities exactly match Permission IDs in schema.
+    // Safely verify existing permission IDs in DB before upsert to prevent foreign key constraint violations
+    const existingPerms = await prisma.permission.findMany({
+      where: { id: { in: capabilitiesToInject } },
+      select: { id: true }
+    });
+    const validPermIds = new Set(existingPerms.map((p: any) => p.id));
+
     for (const capId of capabilitiesToInject) {
+      if (!validPermIds.has(capId)) continue;
       await prisma.organizationalCapability.upsert({
         where: { position_id_permission_id: { position_id: position.id, permission_id: capId } },
         create: {
@@ -559,6 +585,38 @@ export class WaliKelasService {
     }
 
     await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await CacheService.getInstance().deletePattern(`academic:${tenantId}:wali_kelas:*`);
+  }
+
+  async deleteStrukturAssignment(tenantId: string, id: string): Promise<void> {
+    if (!tenantId) {
+      throw new Error('Tenant ID is required');
+    }
+
+    const position = await prisma.organizationalPosition.findFirst({
+      where: { tenant_id: tenantId, code: 'WALIKELAS' },
+      select: { id: true },
+    });
+    if (!position?.id) throw new Error('Posisi Wali Kelas tidak ditemukan');
+
+    const existing = await prisma.organizationalAssignment.findFirst({
+      where: { id, tenant_id: tenantId, position_id: position.id },
+      select: { id: true, user_id: true },
+    });
+    if (!existing) {
+      throw new Error('Penugasan wali kelas tidak ditemukan');
+    }
+
+    await prisma.organizationalAssignment.delete({
+      where: { id },
+    });
+
+    if (existing.user_id) {
+      await organizationalContextCache.invalidateUser(String(existing.user_id));
+    }
+
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
+    await CacheService.getInstance().deletePattern(`academic:${tenantId}:wali_kelas:*`);
   }
 
   async getBySiswa(

@@ -36,7 +36,7 @@ export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
       const res = await assignWaliKelasStruktur({
         guru_id: selectedGuruId,
         kelas_id: selectedKelasId,
-        tahun_pelajaran_id: tahunPelajaranId,
+        tahun_pelajaran_id: tahunPelajaranId || undefined,
       });
       if (!res.success) {
         toast.error(res.message || 'Gagal menyimpan penugasan');
@@ -47,9 +47,11 @@ export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
       queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
       queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
       queryClient.invalidateQueries({ queryKey: ['guru-options-list'] });
+      queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-wali-kelas'] });
       onSuccess?.();
     } catch (e: any) {
-      toast.error(e?.message || 'Gagal menyimpan penugasan');
+      toast.error(e?.response?.data?.message || e?.message || 'Gagal menyimpan penugasan');
     } finally {
       setAssigning(false);
     }

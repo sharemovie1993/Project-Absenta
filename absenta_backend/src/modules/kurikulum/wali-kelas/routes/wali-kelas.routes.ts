@@ -40,6 +40,15 @@ export async function waliKelasRoutes(fastify: any) {
     handler: waliKelasController.nonaktifStrukturAssignment
   });
 
+  fastify.delete('/struktur/:id', {
+    preHandler: [
+      requireCapability('academic.homeroom.manage'),
+      organizationalScopeMiddleware,
+      determineDataScope(),
+    ],
+    handler: waliKelasController.deleteStrukturAssignment
+  });
+
   fastify.get('/by-siswa/:siswaId', {
     preHandler: [
       requireCapability('academic.homeroom.manage'),

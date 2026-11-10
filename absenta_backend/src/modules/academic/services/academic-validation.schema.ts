@@ -7,7 +7,10 @@ export const assignWaliKelasStrukturSchema = z.object({
   guru_id: z.string({
     required_error: 'guru_id wajib diisi'
   }).uuid({ message: 'guru_id harus berupa UUID yang valid' }),
-  tahun_pelajaran_id: z.string().uuid({ message: 'tahun_pelajaran_id harus berupa UUID yang valid' }).optional(),
+  tahun_pelajaran_id: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.string().uuid({ message: 'tahun_pelajaran_id harus berupa UUID yang valid' }).optional()
+  ),
 });
 
 
