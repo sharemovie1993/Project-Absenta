@@ -12,11 +12,12 @@ import {
   HelpCircle, Search, ArrowRight, Database, Server,
   SlidersHorizontal, Settings2,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock, Sparkles,
-  Printer, Bookmark
+  Printer, Bookmark, User, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button, Input, Badge, Loader, Modal } from '@/components/ui';
+import { SiswaDetailModal } from '@/components/academic/siswa/SiswaDetailModal';
 import {
   getDapodikServerInfo,
   getDapodikConfig,
@@ -46,6 +47,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
   const [isCriteriaModalOpen, setIsCriteriaModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [selectedSiswaDetailId, setSelectedSiswaDetailId] = useState<string | null>(null);
 
   // Form State
   const [configForm, setConfigForm] = useState<DapodikConfig>({
@@ -825,7 +827,17 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                           </td>
                           <td className="p-2.5 font-medium text-slate-800 dark:text-slate-200">
                             {s.absentaRaw ? (
-                              s.absentaRaw.nama_siswa || s.absentaRaw.nama || s.nama
+                              <button
+                                type="button"
+                                onClick={() => setSelectedSiswaDetailId(s.absentaRaw.id || s.id)}
+                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold inline-flex items-center gap-1.5 cursor-pointer text-left group transition-colors"
+                                title="Buka Profil Lengkap & Rekam Jejak Siswa (Mutasi, Berkas, Biodata)"
+                              >
+                                <span className="group-hover:underline">
+                                  {s.absentaRaw.nama_siswa || s.absentaRaw.nama || s.nama}
+                                </span>
+                                <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-indigo-500" />
+                              </button>
                             ) : (
                               <span className="text-slate-400 italic">Belum Ada di Absenta</span>
                             )}
@@ -1013,7 +1025,24 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+              {inspectedStudent.absentaRaw ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const targetId = inspectedStudent.absentaRaw?.id || inspectedStudent.id;
+                    setSelectedSiswaDetailId(targetId);
+                  }}
+                  className="gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>Buka Profil Siswa (Mutasi &amp; Berkas)</span>
+                </Button>
+              ) : (
+                <div />
+              )}
               <Button variant="outline" onClick={() => setInspectedStudent(null)}>
                 Tutup
               </Button>
@@ -1056,6 +1085,17 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
           </div>
         </Modal>
       )}
+
+      {/* ─── MODAL 6: PROFIL SISWA LENGKAP & TINDAKAN MUTASI ─── */}
+      <SiswaDetailModal
+        isOpen={Boolean(selectedSiswaDetailId)}
+        onClose={() => {
+          setSelectedSiswaDetailId(null);
+          queryClient.invalidateQueries({ queryKey: ['dapodik-student-comparison'] });
+        }}
+        siswaId={selectedSiswaDetailId}
+        canEdit={true}
+      />
     </div>
   );
 };
