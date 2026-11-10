@@ -212,7 +212,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const guruId: string | undefined = guruProfile?.id;
+  const guruId: string | undefined = guruProfile?.id || (user as any)?.guru_profile?.id || (user as any)?.guru?.id || (user as any)?.guru_id || (user?.role?.name?.toLowerCase().includes('guru') ? user?.id : undefined);
   const activeGuruName = guruProfile?.nama_guru || user?.full_name || user?.name || '';
 
   // Resolve display photo: local preview → guruProfile.foto → fallback initials

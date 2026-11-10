@@ -468,9 +468,12 @@ const ProfilePage: React.FC = React.memo(() => {
       return {
         utama2Label: 'NIP',
         utama2: gp.nip || '-',
+        nik: gp.nik || (gp as any).nik_ktp || '-',
+        no_kk: (gp as any).no_kk || '-',
+        nuptk: (gp as any).nuptk || '-',
         jk: gp.jenis_kelamin === 'L' ? 'Laki-laki' : gp.jenis_kelamin === 'P' ? 'Perempuan' : '-',
         lahir: gp.tanggal_lahir ? formatDate(gp.tanggal_lahir, { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
-        kontak: gp.no_telepon || '-',
+        kontak: gp.no_telepon || (gp as any).no_hp || '-',
         alamat: formatAlamatLengkap({
           alamat_jalan: gp.alamat_jalan,
           rt: gp.rt,

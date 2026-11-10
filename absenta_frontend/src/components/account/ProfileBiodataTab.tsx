@@ -8,6 +8,7 @@ import { Button, Alert, AlertTitle, AlertDescription } from '@/components/ui';
 import { PrintableCard } from '@/components/academic/student-card/PrintableCard';
 import { CardBackPreview } from '@/components/academic/student-card/CardBackPreview';
 import { resolveProfilePhotoUrl } from '@/lib/utils';
+import { FieldDocumentTrigger } from '@/components/documents/FieldDocumentTrigger';
 import type { Guru, Siswa } from '@/types/academic';
 
 interface ProfileBiodataTabProps {
@@ -48,6 +49,8 @@ interface ProfileBiodataTabProps {
     jurusan?: string;
     nisn?: string;
     nik?: string;
+    no_kk?: string;
+    nuptk?: string;
     tinggiBadan?: string;
     beratBadan?: string;
     statusPegawai?: string;
@@ -96,6 +99,9 @@ export const ProfileBiodataTab: React.FC<ProfileBiodataTabProps> = React.memo(({
   errorMsg,
   successMsg,
 }) => {
+  const guruEntityId = guruProfile?.id || (user as any)?.guru_profile?.id || (user as any)?.guru_id || (user as any)?.guru?.id || (isGuru ? user?.id : undefined);
+  const siswaEntityId = siswaProfile?.id || (user as any)?.siswa_profile?.id || (user as any)?.siswa_id || (user as any)?.siswa?.id || (isSiswa ? user?.id : undefined);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       {/* KOLOM KIRI: Proxy Kartu Identitas Digital / Avatar Card */}
@@ -350,10 +356,21 @@ export const ProfileBiodataTab: React.FC<ProfileBiodataTabProps> = React.memo(({
 
         {isGuru && (
           <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm space-y-4">
-            <h4 className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-slate-800 pb-3">
-              <GraduationCap size={15} className="text-indigo-500" />
-              Kualifikasi & Status Kepegawaian
-            </h4>
+            <div className="flex items-center justify-between border-b border-slate-50 dark:border-slate-800 pb-3 flex-wrap gap-2">
+              <h4 className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest flex items-center gap-2">
+                <GraduationCap size={15} className="text-indigo-500" />
+                Kualifikasi &amp; Status Kepegawaian
+              </h4>
+              {guruEntityId && (
+                <FieldDocumentTrigger
+                  entityType="GURU"
+                  entityId={guruEntityId}
+                  entityName={summaryName}
+                  kategori="SK"
+                  label="SK / Karpeg"
+                />
+              )}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
@@ -381,28 +398,100 @@ export const ProfileBiodataTab: React.FC<ProfileBiodataTabProps> = React.memo(({
         <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm space-y-4">
           <h4 className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-slate-800 pb-3">
             <BadgeInfo size={15} className="text-indigo-500" />
-            Informasi Diri & Identitas
+            Informasi Diri &amp; Identitas
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
                 <Award size={11} className="text-indigo-500" /> {details.utama2Label}
               </span>
-              <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1">{details.utama2}</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1 font-mono">{details.utama2}</p>
             </div>
+
+            {/* Field Khusus Guru */}
+            {isGuru && (
+              <>
+                <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
+                      <Award size={11} className="text-indigo-500" /> NIK (KTP 16 Digit)
+                    </span>
+                    {guruEntityId && (
+                      <FieldDocumentTrigger
+                        entityType="GURU"
+                        entityId={guruEntityId}
+                        entityName={summaryName}
+                        kategori="KTP"
+                        label="KTP"
+                      />
+                    )}
+                  </div>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1 font-mono">{details.nik || '-'}</p>
+                </div>
+
+                <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
+                      <Award size={11} className="text-indigo-500" /> No. Kartu Keluarga (KK)
+                    </span>
+                    {guruEntityId && (
+                      <FieldDocumentTrigger
+                        entityType="GURU"
+                        entityId={guruEntityId}
+                        entityName={summaryName}
+                        kategori="KK"
+                        label="KK"
+                      />
+                    )}
+                  </div>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1 font-mono">{details.no_kk || '-'}</p>
+                </div>
+
+                <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
+                    <Award size={11} className="text-indigo-500" /> NUPTK
+                  </span>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1 font-mono">{details.nuptk || '-'}</p>
+                </div>
+              </>
+            )}
+
+            {/* Field Khusus Siswa */}
             {isSiswa && (
               <>
                 <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
-                    <Award size={11} className="text-indigo-500" /> NISN
-                  </span>
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1">{details.nisn}</p>
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
+                      <Award size={11} className="text-indigo-500" /> NISN
+                    </span>
+                    {siswaEntityId && (
+                      <FieldDocumentTrigger
+                        entityType="SISWA"
+                        entityId={siswaEntityId}
+                        entityName={summaryName}
+                        kategori="NISN"
+                        label="Kartu NISN"
+                      />
+                    )}
+                  </div>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1 font-mono">{details.nisn}</p>
                 </div>
                 <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
-                    <Award size={11} className="text-indigo-500" /> NIK
-                  </span>
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1">{details.nik}</p>
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
+                      <Award size={11} className="text-indigo-500" /> NIK
+                    </span>
+                    {siswaEntityId && (
+                      <FieldDocumentTrigger
+                        entityType="SISWA"
+                        entityId={siswaEntityId}
+                        entityName={summaryName}
+                        kategori="KK"
+                        label="KK"
+                      />
+                    )}
+                  </div>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1 font-mono">{details.nik}</p>
                 </div>
                 <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40">
                   <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
@@ -425,9 +514,20 @@ export const ProfileBiodataTab: React.FC<ProfileBiodataTabProps> = React.memo(({
               <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1">{details.jk}</p>
             </div>
             <div className="p-3.5 bg-slate-50/40 dark:bg-slate-900/20 rounded-2xl border border-slate-100/50 dark:border-slate-800/40 md:col-span-2">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
-                <Calendar size={11} className="text-indigo-500" /> Tempat & Tanggal Lahir
-              </span>
+              <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
+                  <Calendar size={11} className="text-indigo-500" /> Tempat &amp; Tanggal Lahir
+                </span>
+                {siswaEntityId && isSiswa && (
+                  <FieldDocumentTrigger
+                    entityType="SISWA"
+                    entityId={siswaEntityId}
+                    entityName={summaryName}
+                    kategori="AKTA"
+                    label="Akta Lahir"
+                  />
+                )}
+              </div>
               <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1">
                 {isSiswa ? (siswaProfile?.tempat_lahir || '-') : (guruProfile?.tempat_lahir || '-')}, {details.lahir}
               </p>
