@@ -127,6 +127,7 @@ export interface CompareOptions {
   checkTanggalLahir?: boolean;
   checkTempatLahir?: boolean;
   ignoreClassWhitespace?: boolean;
+  onlyActiveStudents?: boolean;
 }
 
 export const getDapodikStudentComparison = async (
@@ -144,6 +145,7 @@ export const getDapodikStudentComparison = async (
     if (options.checkTanggalLahir !== undefined) params.check_tanggal_lahir = options.checkTanggalLahir;
     if (options.checkTempatLahir !== undefined) params.check_tempat_lahir = options.checkTempatLahir;
     if (options.ignoreClassWhitespace !== undefined) params.ignore_class_whitespace = options.ignoreClassWhitespace;
+    if (options.onlyActiveStudents !== undefined) params.only_active_students = options.onlyActiveStudents;
   }
   if (forceRefresh) {
     params.force_refresh = true;

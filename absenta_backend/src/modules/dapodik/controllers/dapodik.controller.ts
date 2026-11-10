@@ -113,6 +113,7 @@ export const dapodikController = {
         checkTanggalLahir: q.check_tanggal_lahir !== undefined ? q.check_tanggal_lahir === 'true' || q.check_tanggal_lahir === true : true,
         checkTempatLahir: q.check_tempat_lahir !== undefined ? q.check_tempat_lahir === 'true' || q.check_tempat_lahir === true : false,
         ignoreClassWhitespace: q.ignore_class_whitespace !== undefined ? q.ignore_class_whitespace === 'true' || q.ignore_class_whitespace === true : true,
+        onlyActiveStudents: q.only_active_students !== undefined ? q.only_active_students === 'true' || q.only_active_students === true : true,
       };
 
       const forceRefresh = q.force_refresh === 'true' || q.force_refresh === true;

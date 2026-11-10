@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { 
-  SlidersHorizontal, Bookmark, Check, Sparkles, CheckCircle2 
+  SlidersHorizontal, Bookmark, Check, Sparkles, CheckCircle2, Users
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -217,11 +217,13 @@ export const DapodikCriteriaModal: React.FC<DapodikCriteriaModalProps> = ({
               size="sm"
               variant="outline"
               className="h-6 text-[10px] px-2"
-              onClick={() => setCompareOptions({
+              onClick={() => setCompareOptions((prev) => ({
+                ...prev,
                 checkNama: true, checkNis: true, checkNisn: true, checkNik: true,
                 checkKelas: true, checkJenisKelamin: true, checkTanggalLahir: true,
-                checkTempatLahir: false, ignoreClassWhitespace: true
-              })}
+                checkTempatLahir: false, ignoreClassWhitespace: true,
+                onlyActiveStudents: true,
+              }))}
             >
               Standar (Semua)
             </Button>
@@ -229,11 +231,13 @@ export const DapodikCriteriaModal: React.FC<DapodikCriteriaModalProps> = ({
               size="sm"
               variant="outline"
               className="h-6 text-[10px] px-2"
-              onClick={() => setCompareOptions({
+              onClick={() => setCompareOptions((prev) => ({
+                ...prev,
                 checkNama: true, checkNis: true, checkNisn: true, checkNik: true,
                 checkKelas: false, checkJenisKelamin: true, checkTanggalLahir: true,
-                checkTempatLahir: false, ignoreClassWhitespace: true
-              })}
+                checkTempatLahir: false, ignoreClassWhitespace: true,
+                onlyActiveStudents: true,
+              }))}
             >
               Biodata Saja (Abaikan Kelas)
             </Button>
@@ -241,11 +245,13 @@ export const DapodikCriteriaModal: React.FC<DapodikCriteriaModalProps> = ({
               size="sm"
               variant="outline"
               className="h-6 text-[10px] px-2"
-              onClick={() => setCompareOptions({
+              onClick={() => setCompareOptions((prev) => ({
+                ...prev,
                 checkNama: false, checkNis: false, checkNisn: false, checkNik: false,
                 checkKelas: true, checkJenisKelamin: false, checkTanggalLahir: false,
-                checkTempatLahir: false, ignoreClassWhitespace: true
-              })}
+                checkTempatLahir: false, ignoreClassWhitespace: true,
+                onlyActiveStudents: true,
+              }))}
             >
               Rombel / Kelas Saja
             </Button>
@@ -253,14 +259,48 @@ export const DapodikCriteriaModal: React.FC<DapodikCriteriaModalProps> = ({
               size="sm"
               variant="outline"
               className="h-6 text-[10px] px-2"
-              onClick={() => setCompareOptions({
+              onClick={() => setCompareOptions((prev) => ({
+                ...prev,
                 checkNama: true, checkNis: false, checkNisn: true, checkNik: false,
                 checkKelas: false, checkJenisKelamin: false, checkTanggalLahir: false,
-                checkTempatLahir: false, ignoreClassWhitespace: true
-              })}
+                checkTempatLahir: false, ignoreClassWhitespace: true,
+                onlyActiveStudents: true,
+              }))}
             >
               Hanya Nama &amp; NISN
             </Button>
+          </div>
+        </div>
+
+        {/* Cakupan Status Siswa & Konteks Data */}
+        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-indigo-600" />
+              Cakupan Data Siswa (Konteks Status):
+            </span>
+            <Badge variant="outline" className="text-[10px] text-indigo-600 border-indigo-200 dark:border-indigo-800 dark:text-indigo-400">
+              {compareOptions.onlyActiveStudents !== false ? 'Hanya Siswa Aktif' : 'Semua Termasuk Alumni'}
+            </Badge>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-2">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={compareOptions.onlyActiveStudents !== false}
+                onChange={(e) => setCompareOptions({ ...compareOptions, onlyActiveStudents: e.target.checked })}
+                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5"
+              />
+              <div className="space-y-0.5">
+                <span className="font-bold text-slate-800 dark:text-slate-100 text-xs block">
+                  Hanya Bandingkan Siswa Berstatus Aktif (Direkomendasikan)
+                </span>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+                  Menyaring siswa yang sedang aktif di sekolah pada semester berjalan agar angka selaras dengan Dashboard Admin dan Web Service Dapodik, serta mengecualikan siswa yang sudah lulus (alumni) atau mutasi keluar.
+                </p>
+              </div>
+            </label>
           </div>
         </div>
 

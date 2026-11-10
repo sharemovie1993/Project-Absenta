@@ -31,6 +31,7 @@ export const DAPODIK_AUDIT_TEMPLATES: DapodikAuditTemplate[] = [
       checkTanggalLahir: true,
       checkTempatLahir: true,
       ignoreClassWhitespace: true,
+      onlyActiveStudents: true,
     },
   },
   {
@@ -49,6 +50,7 @@ export const DAPODIK_AUDIT_TEMPLATES: DapodikAuditTemplate[] = [
       checkTanggalLahir: true,
       checkTempatLahir: true,
       ignoreClassWhitespace: true,
+      onlyActiveStudents: true,
     },
   },
   {
@@ -67,6 +69,7 @@ export const DAPODIK_AUDIT_TEMPLATES: DapodikAuditTemplate[] = [
       checkTanggalLahir: false,
       checkTempatLahir: false,
       ignoreClassWhitespace: true,
+      onlyActiveStudents: true,
     },
   },
   {
@@ -85,6 +88,7 @@ export const DAPODIK_AUDIT_TEMPLATES: DapodikAuditTemplate[] = [
       checkTanggalLahir: true,
       checkTempatLahir: false,
       ignoreClassWhitespace: true,
+      onlyActiveStudents: true,
     },
   },
   {
@@ -103,6 +107,7 @@ export const DAPODIK_AUDIT_TEMPLATES: DapodikAuditTemplate[] = [
       checkTanggalLahir: true,
       checkTempatLahir: true,
       ignoreClassWhitespace: true,
+      onlyActiveStudents: true,
     },
   },
 ];

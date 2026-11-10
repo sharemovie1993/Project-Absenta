@@ -72,6 +72,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     checkTanggalLahir: true,
     checkTempatLahir: false,
     ignoreClassWhitespace: true,
+    onlyActiveStudents: true,
   });
 
   // High-Performance Pagination State (Anti Lemot / Memory Optimization)
@@ -479,6 +480,11 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                   )}
                 </div>
               )}
+
+              <div className="hidden sm:flex items-center gap-1 text-[11px] text-indigo-700 dark:text-indigo-300 bg-indigo-50/70 dark:bg-indigo-950/50 px-2 py-0.5 rounded-lg border border-indigo-200/60 dark:border-indigo-800/50 font-semibold">
+                <Users className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                <span>{compareOptions.onlyActiveStudents !== false ? 'Konteks: Siswa Aktif' : 'Konteks: Semua Siswa'}</span>
+              </div>
             </div>
 
             {/* Sisi Kanan: Action Buttons Terpadu */}

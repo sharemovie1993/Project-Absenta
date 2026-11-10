@@ -32,6 +32,7 @@ export interface CompareOptions {
   checkTanggalLahir?: boolean;
   checkTempatLahir?: boolean;
   ignoreClassWhitespace?: boolean;
+  onlyActiveStudents?: boolean;
 }
 
 export type StudentReconciliationStatus = 'MATCH' | 'MISMATCH' | 'DAPODIK_ONLY' | 'ABSENTA_ONLY';
@@ -323,6 +324,7 @@ export class DapodikService {
       checkTanggalLahir: options?.checkTanggalLahir ?? true,
       checkTempatLahir: options?.checkTempatLahir ?? false,
       ignoreClassWhitespace: options?.ignoreClassWhitespace ?? true,
+      onlyActiveStudents: options?.onlyActiveStudents ?? true,
     };
 
     const config = await prisma.dapodikConfig.findUnique({
@@ -406,8 +408,13 @@ export class DapodikService {
     }
 
     // 2. Tarik Data Siswa & Akademik dari Database Absenta untuk Tenant ini
+    const studentWhereClause: any = { tenant_id: tenantId };
+    if (opt.onlyActiveStudents) {
+      studentWhereClause.status = 'AKTIF';
+    }
+
     const absentaStudents = await prisma.siswa.findMany({
-      where: { tenant_id: tenantId },
+      where: studentWhereClause,
       include: {
         SiswaAkademik: {
           where: { status: 'AKTIF' },
