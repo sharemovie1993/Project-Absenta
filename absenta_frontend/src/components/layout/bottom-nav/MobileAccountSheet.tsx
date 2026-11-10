@@ -39,7 +39,10 @@ export const MobileAccountSheet: React.FC<MobileAccountSheetProps> = ({
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { theme, toggle: toggleTheme } = useTheme();
-  const { unreadCount: notifUnreadCount } = useNotifications({ pollIntervalMs: 60000 });
+  const { unreadCount: notifUnreadCount = 0 } = useNotifications({ 
+    pollIntervalMs: 60000,
+    enabled: isOpen,
+  });
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const isDarkMode = theme === 'dark-default';
@@ -47,8 +50,8 @@ export const MobileAccountSheet: React.FC<MobileAccountSheetProps> = ({
   const isSiswa = roleName === 'SISWA';
   const isGuru = roleName === 'GURU';
 
-  const { siswaProfile } = useSiswaMe();
-  const { guruProfile } = useGuruMe();
+  const { siswaProfile } = useSiswaMe({ enabled: isOpen && isSiswa });
+  const { guruProfile } = useGuruMe({ enabled: isOpen && isGuru });
 
   const rawPhoto = useMemo(() => {
     if ((user as any)?.foto) return (user as any).foto;

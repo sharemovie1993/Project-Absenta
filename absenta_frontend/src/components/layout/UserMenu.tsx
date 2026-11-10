@@ -25,28 +25,31 @@ export function UserMenu({ onOpenTeacherLocator, onOpenNotifications }: UserMenu
   const [isOpen, setIsOpen] = useState(false);
   const { user, logout, isLoading } = useAuthStore();
   const { theme, toggle: toggleTheme } = useTheme();
-  const { unreadCount: notifUnreadCount } = useNotifications({ pollIntervalMs: 60000 });
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   const isDarkMode = theme === 'dark-default';
 
-  // 💬 Pusat Komunikasi Unread Count
-  const { data: commUnreadCount = 0 } = useQuery({
-    queryKey: communicationKeys.unreadCount(),
-    queryFn: () => internalCommunicationApi.getUnreadCount(),
-    enabled: !!user?.id,
-    staleTime: 15 * 1000,
-    refetchInterval: 20 * 1000
-  });
-
   const roleName = user?.role?.name || '';
   const isSiswa = roleName === 'SISWA';
   const isGuru = roleName === 'GURU';
 
-  // 1. Dapatkan data profil Siswa / Guru yang sedang login secara akurat via hook /me
-  const { siswaProfile } = useSiswaMe();
-  const { guruProfile } = useGuruMe();
+  // 1. Dapatkan data profil Siswa / Guru yang sedang login (Hanya aktif sesuai role)
+  const { siswaProfile } = useSiswaMe({ enabled: isSiswa });
+  const { guruProfile } = useGuruMe({ enabled: isGuru });
+
+  // 2. Notifikasi & Pusat Komunikasi Unread Count (Hanya di-fetch saat menu dibuka oleh pengguna)
+  const { unreadCount: notifUnreadCount = 0 } = useNotifications({
+    pollIntervalMs: 60000,
+    enabled: isOpen,
+  });
+
+  const { data: commUnreadCount = 0 } = useQuery({
+    queryKey: communicationKeys.unreadCount(),
+    queryFn: () => internalCommunicationApi.getUnreadCount(),
+    enabled: Boolean(user?.id && isOpen),
+    staleTime: 15 * 1000,
+  });
 
   const entityId = useMemo(() => {
     if (isSiswa) return siswaProfile?.id || user?.siswa_id || (user as any)?.siswa_profile?.id || '';
