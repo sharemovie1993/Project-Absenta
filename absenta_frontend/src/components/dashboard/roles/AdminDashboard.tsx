@@ -228,14 +228,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
 
   const { data: overviewRes, isLoading: isOverviewLoading } = useQuery({
     queryKey: ['admin-overview-stats'],
-    queryFn: () => getDashboardOverview(),
+    queryFn: async () => {
+      const res = await getDashboardOverview();
+      try { localStorage.setItem('absenta_cached_admin_overview', JSON.stringify(res)); } catch {}
+      return res;
+    },
+    initialData: () => {
+      try {
+        const raw = localStorage.getItem('absenta_cached_admin_overview');
+        return raw ? JSON.parse(raw) : undefined;
+      } catch { return undefined; }
+    },
     enabled: isRingkasanActive,
     staleTime: 60 * 1000,
   });
 
   const { data: academicRes, isLoading: isAcademicLoading } = useQuery({
     queryKey: ['academic-stats'],
-    queryFn: () => getAcademicStats(),
+    queryFn: async () => {
+      const res = await getAcademicStats();
+      try { localStorage.setItem('absenta_cached_academic_stats', JSON.stringify(res)); } catch {}
+      return res;
+    },
+    initialData: () => {
+      try {
+        const raw = localStorage.getItem('absenta_cached_academic_stats');
+        return raw ? JSON.parse(raw) : undefined;
+      } catch { return undefined; }
+    },
     enabled: isRingkasanActive,
     staleTime: 60 * 1000,
   });

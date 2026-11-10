@@ -4,7 +4,6 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { Button } from '../ui/Button';
 const Modal = React.lazy(() => import('../ui/Modal').then((m) => ({ default: m.Modal })));
-import { useNotifications } from '../../hooks/useNotifications';
 import { useQuery } from '@tanstack/react-query';
 import { fetchActiveSystemConfig } from '@/services/systemConfig';
 
@@ -21,7 +20,6 @@ import { id as idLocale } from 'date-fns/locale';
 import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { resolveSmartDashboardMode } from '@/helpers/dashboardModeHelper';
-import { internalCommunicationApi, communicationKeys } from '@/api/internal-communication.api';
 import { AppLauncherDropdown } from './AppLauncherDropdown';
 import { getActiveApp } from '@/config/absentaAppsRegistry';
 import { RouteAccessBadge } from './RouteAccessBadge';
@@ -33,43 +31,6 @@ interface TopbarProps {
 }
 
 export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) => {
-  // Defer background poll queries (notifications & communication unread count) until after main thread idle
-  // Mengadopsi Pola "Idle Until Urgent"
-  const [isIdleReady, setIsIdleReady] = useState(false);
-  React.useEffect(() => {
-    if (typeof window === 'undefined') {
-      setIsIdleReady(true);
-      return;
-    }
-
-    let isDone = false;
-    const makeReady = () => {
-      if (isDone) return;
-      isDone = true;
-      setIsIdleReady(true);
-    };
-
-    // Urgent: User interaction (click, tap, keypress)
-    const userEvents = ['mousedown', 'touchstart', 'keydown'];
-    userEvents.forEach((evt) => window.addEventListener(evt, makeReady, { once: true, passive: true }));
-
-    // Idle Delay: Tunggu minimal 4 detik agar fase FCP/LCP awal selesai tanpa gangguan polling
-    const timer = setTimeout(() => {
-      if ('requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(makeReady);
-      } else {
-        makeReady();
-      }
-    }, 4000);
-
-    return () => {
-      userEvents.forEach((evt) => window.removeEventListener(evt, makeReady));
-      clearTimeout(timer);
-    };
-  }, []);
-
-  const { recent, loading, error, unreadCount, markAsReadLocal, markAllAsReadLocal, reload, isUnread } = useNotifications({ pollIntervalMs: 60000, enabled: isIdleReady });
-  const [open, setOpen] = useState<boolean>(false);
   const [locatorModalOpen, setLocatorModalOpen] = useState<boolean>(false);
   const [selectedNotification, setSelectedNotification] = useState<any | null>(null);
   const [sesiDetail, setSesiDetail] = useState<any | null>(null);
@@ -101,15 +62,6 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
   const rawUserPhoto = user?.profile_photo_url || (user as any)?.avatar || (user?.guru_profile as any)?.foto_url;
   const userPhoto = rawUserPhoto ? resolveProfilePhotoUrl(rawUserPhoto) : null;
   const userInitial = (user?.full_name || (user as any)?.name || 'U').slice(0, 1).toUpperCase();
-  
-  // 💬 Pusat Komunikasi Unread Count (Deferred until main thread idle)
-  const { data: commUnreadCount = 0 } = useQuery({
-    queryKey: communicationKeys.unreadCount(),
-    queryFn: () => internalCommunicationApi.getUnreadCount(),
-    enabled: !!user?.id && isIdleReady,
-    staleTime: 15 * 1000,
-    refetchInterval: 20 * 1000
-  });
 
   // Use Mapper for consistent UI state
   const _uiState = subscription ? mapSubscriptionToUI(subscription) : null;
@@ -312,8 +264,7 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
           <UserMenu 
             onOpenTeacherLocator={() => setLocatorModalOpen(true)}
             onOpenNotifications={() => {
-              setIsIdleReady(true);
-              setOpen(true);
+              navigate('/dashboard');
             }}
           />
         </div>

@@ -16,11 +16,13 @@ export function useAccessRoute() {
       try {
         const res = await axiosInstance.get('/auth/tenant-info');
         const data = res.data?.data;
-        return {
+        const resObj: RouteInfo = {
           route: (data?.access_route as 'LOCAL' | 'TUNNEL') || 'LOCAL',
           label: data?.access_label || (data?.access_route === 'TUNNEL' ? 'Tunnel' : 'Lokal'),
           name: data?.name,
         };
+        try { localStorage.setItem('absenta_cached_route', JSON.stringify(resObj)); } catch {}
+        return resObj;
       } catch {
         return {
           route: 'LOCAL',
@@ -28,8 +30,16 @@ export function useAccessRoute() {
         };
       }
     },
-    staleTime: 30 * 1000,
-    refetchOnWindowFocus: true,
+    initialData: () => {
+      try {
+        const raw = localStorage.getItem('absenta_cached_route');
+        return raw ? (JSON.parse(raw) as RouteInfo) : { route: 'LOCAL', label: 'Lokal' };
+      } catch {
+        return { route: 'LOCAL', label: 'Lokal' };
+      }
+    },
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 

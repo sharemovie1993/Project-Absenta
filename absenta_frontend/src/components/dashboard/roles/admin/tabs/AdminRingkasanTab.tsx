@@ -121,6 +121,21 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
   semNama = '',
   onNavigateSubtab,
 }) => {
+  // Resolusi TP dan Semester aktif dengan fallback cache lokal untuk menghilangkan element render delay pada LCP
+  const resolvedTpTahun = tpTahun || (() => {
+    try {
+      const raw = localStorage.getItem('absenta_cached_tp');
+      return raw ? JSON.parse(raw)?.tahun || '' : '';
+    } catch { return ''; }
+  })();
+  const resolvedSemNama = semNama || (() => {
+    try {
+      const raw = localStorage.getItem('absenta_cached_sem');
+      const item = raw ? JSON.parse(raw) : null;
+      return item?.nama_semester?.replace(/\s*⭐\s*/g, '').trim() || item?.nama || '';
+    } catch { return ''; }
+  })();
+
   // On mobile screens, default to instant lightweight CSS rombel distribution instead of heavy 564KB SVG charts
   const [activeAnalyticsTab, setActiveAnalyticsTab] = useState<'chart' | 'tingkat'>(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -558,7 +573,7 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
               <span>Analitik Presensi &amp; Distribusi Akademik</span>
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Statistik fluktuasi harian dan persebaran rombongan belajar ({semNama ? `${semNama} ` : ''}{tpTahun})
+              Statistik fluktuasi harian dan persebaran rombongan belajar ({resolvedSemNama ? `${resolvedSemNama} ` : ''}{resolvedTpTahun})
             </p>
           </div>
 
