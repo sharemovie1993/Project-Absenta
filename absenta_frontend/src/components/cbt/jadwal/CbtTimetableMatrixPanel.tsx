@@ -687,8 +687,13 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50/50 dark:bg-slate-800/40 border-b border-slate-200/60 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="p-3 w-56 min-w-[210px]">Sesi &amp; Jam</th>
+                  <tr className="bg-slate-50/70 dark:bg-slate-800/50 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-3.5 py-2.5 w-60 min-w-[230px] border-r border-slate-200/70 dark:border-slate-800">
+                      <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-bold">
+                        <Clock size={13} className="text-indigo-600 dark:text-indigo-400" />
+                        <span>Sesi &amp; Jam</span>
+                      </div>
+                    </th>
                     {activeTingkatList.map((tingkat) => {
                       const slottedCount = Object.keys(matrix).filter(
                         (k) => k.endsWith(`_${tingkat}`) && Boolean(matrix[k])
@@ -699,10 +704,10 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                       return (
                         <th
                           key={tingkat}
-                          className={cn('p-3 min-w-[220px] transition-colors', theme.headerBg)}
+                          className={cn('px-3 py-2.5 min-w-[240px] transition-colors', theme.headerBg)}
                         >
                           <div className="flex items-center justify-between gap-1.5">
-                            <span className={cn('px-2 py-0.5 rounded-md font-bold text-xs border shadow-2xs flex items-center gap-1.5', theme.badgeBg)}>
+                            <span className={cn('px-2.5 py-0.5 rounded-md font-bold text-xs border shadow-2xs flex items-center gap-1.5', theme.badgeBg)}>
                               <span className={cn('w-2 h-2 rounded-full', theme.dot)} />
                               <span>Kelas {tingkat}</span>
                             </span>
@@ -729,22 +734,24 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {day.sessions.map((sess) => (
                     <tr key={sess.session_index} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                      <td className="p-2.5 align-top bg-slate-50/40 dark:bg-slate-900/40 border-r border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center justify-between gap-1 mb-1.5">
-                          <div className="flex items-center gap-1 min-w-0 flex-1">
-                            <Clock size={12} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                      <td className="px-3 py-2.5 align-middle bg-slate-50/40 dark:bg-slate-900/40 border-r border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center justify-between gap-1.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="shrink-0 px-2 py-0.5 rounded-md font-bold text-[11px] bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80">
+                              Sesi {sess.session_index}
+                            </span>
                             <input
                               type="text"
                               value={sess.nama_sesi}
                               onChange={(e) =>
                                 handleUpdateSessionTime(day.day_index, sess.session_index, 'nama_sesi', e.target.value)
                               }
-                              className="w-full text-xs font-bold text-indigo-950 dark:text-indigo-200 bg-transparent border-b border-transparent hover:border-indigo-300 focus:border-indigo-500 focus:outline-hidden py-0.5 px-1 rounded transition-colors"
+                              className="w-24 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-transparent hover:bg-white dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 focus:border-indigo-400 focus:outline-hidden py-0.5 px-1 rounded transition-all truncate"
                               title="Klik untuk ubah nama sesi"
                               aria-label={`Nama Sesi ${sess.session_index}`}
                             />
                           </div>
-                          <div className="flex items-center gap-0.5 shrink-0">
+                          <div className="flex items-center gap-0.5 shrink-0 bg-white dark:bg-slate-800 p-0.5 rounded-md border border-slate-200/70 dark:border-slate-700/70 shadow-2xs">
                             <button
                               type="button"
                               onClick={() => handleApplySessionTimeToAllDays(sess)}
@@ -766,41 +773,34 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                           </div>
                         </div>
 
-                        {/* Interactive Time Range Inputs */}
-                        <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200/90 dark:border-slate-700 shadow-2xs">
-                          <input
-                            type="time"
-                            value={sess.jam_mulai}
-                            onChange={(e) =>
-                              handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_mulai', e.target.value)
-                            }
-                            className="w-[72px] text-[11px] font-bold text-slate-800 dark:text-slate-100 bg-transparent text-center focus:outline-hidden cursor-pointer"
-                            aria-label={`Jam Mulai ${sess.nama_sesi}`}
-                          />
-                          <span className="text-[10px] text-slate-400 font-bold">-</span>
-                          <input
-                            type="time"
-                            value={sess.jam_selesai}
-                            onChange={(e) =>
-                              handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_selesai', e.target.value)
-                            }
-                            className="w-[72px] text-[11px] font-bold text-slate-800 dark:text-slate-100 bg-transparent text-center focus:outline-hidden cursor-pointer"
-                            aria-label={`Jam Selesai ${sess.nama_sesi}`}
-                          />
-                        </div>
+                        {/* Time Range Pill */}
+                        <div className="mt-1.5 flex items-center justify-between gap-1 bg-white dark:bg-slate-800/90 px-2 py-1 rounded-lg border border-slate-200/90 dark:border-slate-700 shadow-2xs">
+                          <div className="flex items-center gap-1 font-mono text-xs font-bold text-slate-700 dark:text-slate-200">
+                            <Clock size={11} className="text-slate-400 mr-0.5 shrink-0" />
+                            <input
+                              type="time"
+                              value={sess.jam_mulai}
+                              onChange={(e) =>
+                                handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_mulai', e.target.value)
+                              }
+                              className="w-[46px] bg-transparent text-center focus:outline-hidden cursor-pointer p-0 font-mono text-xs font-bold text-slate-800 dark:text-slate-100 hover:text-indigo-600 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden"
+                              aria-label={`Jam Mulai ${sess.nama_sesi}`}
+                            />
+                            <span className="text-slate-400 font-sans font-normal">–</span>
+                            <input
+                              type="time"
+                              value={sess.jam_selesai}
+                              onChange={(e) =>
+                                handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_selesai', e.target.value)
+                              }
+                              className="w-[46px] bg-transparent text-center focus:outline-hidden cursor-pointer p-0 font-mono text-xs font-bold text-slate-800 dark:text-slate-100 hover:text-indigo-600 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden"
+                              aria-label={`Jam Selesai ${sess.nama_sesi}`}
+                            />
+                          </div>
 
-                        {/* Durasi & Aksi Cepat Salin */}
-                        <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-1 px-0.5">
-                          <span className="font-semibold text-slate-600 dark:text-slate-300">
-                            {sess.durasi_menit} Menit
+                          <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-800/60">
+                            {sess.durasi_menit}m
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => handleApplySessionTimeToAllDays(sess)}
-                            className="text-[9px] text-indigo-600 dark:text-indigo-400 font-semibold hover:underline cursor-pointer"
-                          >
-                            Semua Hari
-                          </button>
                         </div>
                       </td>
 
@@ -821,7 +821,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                           !selectedBankId && availableBanks.length === 0 && allBanksForTingkat.length > 0;
 
                         return (
-                          <td key={tingkat} className={cn('p-2.5 align-top transition-colors', theme.cellBg)}>
+                          <td key={tingkat} className={cn('px-3 py-2 align-middle transition-colors', theme.cellBg)}>
                             <select
                               value={selectedBankId}
                               onChange={(e) =>
@@ -830,7 +830,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                               aria-label={`Bank Soal ${day.nama_hari} ${sess.nama_sesi} Tingkat ${tingkat}`}
                               disabled={isAllPlotted}
                               className={cn(
-                                'w-full px-2.5 py-1.5 text-xs rounded-xl border font-bold transition-all cursor-pointer shadow-2xs',
+                                'w-full px-3 py-2 text-xs rounded-xl border font-bold transition-all cursor-pointer shadow-2xs',
                                 selectedBankId
                                   ? theme.activeSelect
                                   : isAllPlotted
@@ -877,31 +877,31 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
             </div>
 
             {/* Footer Tambah Slot Sesi pada Hari Ini */}
-            <div className="px-3.5 py-2 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+            <div className="px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="xs"
                   onClick={() => handleAddSessionToDay(day.day_index)}
-                  className="text-[11px] h-7 px-2.5 font-bold border-indigo-200 text-indigo-700 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer shadow-2xs"
+                  className="text-xs h-7 px-2.5 font-bold border-indigo-200 text-indigo-700 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer shadow-2xs"
                 >
                   <Plus size={12} className="mr-1" />
-                  + Tambah Slot Waktu ({day.nama_hari})
+                  <span>Tambah Slot Sesi ({day.nama_hari})</span>
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="xs"
                   onClick={handleAddSessionToAllDays}
-                  className="text-[11px] h-7 px-2 text-slate-600 dark:text-slate-300 hover:text-indigo-600 cursor-pointer"
+                  className="text-xs h-7 px-2 text-slate-600 dark:text-slate-300 hover:text-indigo-600 cursor-pointer"
                 >
                   <Layers size={12} className="mr-1" />
-                  + Slot ke Semua Hari
+                  <span>Tambah Slot ke Semua Hari</span>
                 </Button>
               </div>
-              <span className="text-[10px] text-slate-400 font-medium">
-                {day.sessions.length} Slot Waktu Ujian
+              <span className="text-[11px] text-slate-500 font-semibold">
+                {day.sessions.length} Slot Waktu Terjadwal
               </span>
             </div>
           </div>
