@@ -1,10 +1,9 @@
 import { useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getSesiAbsensiList } from '../api/attendanceGerbang.api';
 import { useAuthStore } from '../store/authStore';
 import { useSocket } from './useSocket';
 import { toLocalDate } from '../utils/attendance/time';
-import { normalizeFromSesiAbsensi, KbmItem } from '../utils/kbm-normalizer';
+import { normalizeFromSesiAbsensi, type KbmItem } from '../utils/kbm-normalizer';
 
 /**
  * useStaffTimeline
@@ -12,22 +11,27 @@ import { normalizeFromSesiAbsensi, KbmItem } from '../utils/kbm-normalizer';
  * yang sama persis dengan Monitoring KBM & Presensi Ops.
  * Seluruh agregasi slot jam, kalkulasi shift, status server-side dihitung di Backend.
  */
-export const useStaffTimeline = (guruId?: string) => {
+export const useStaffTimeline = (guruId?: string, options?: { enabled?: boolean }) => {
   const { token } = useAuthStore();
   const { subscribe, unsubscribe } = useSocket();
   const today = toLocalDate();
 
+  const isQueryEnabled = !!token && !!guruId && (options?.enabled ?? true);
+
   // Endpoint tunggal terpadu: Sumber yang sama, Mesin yang sama
   const { data: timelineRes, isLoading, refetch } = useQuery({
     queryKey: ['staff-timeline-unified', guruId, today],
-    queryFn: () => getSesiAbsensiList({ 
-      tanggal: today, 
-      guru_id: guruId, 
-      include_scheduled: true, 
-      summary: true, 
-      limit: 100 
-    } as any),
-    enabled: !!token && !!guruId,
+    queryFn: async () => {
+      const { getSesiAbsensiList } = await import('../api/attendanceGerbang.api');
+      return getSesiAbsensiList({ 
+        tanggal: today, 
+        guru_id: guruId, 
+        include_scheduled: true, 
+        summary: true, 
+        limit: 100 
+      } as any);
+    },
+    enabled: isQueryEnabled,
     staleTime: 30000,
   });
 

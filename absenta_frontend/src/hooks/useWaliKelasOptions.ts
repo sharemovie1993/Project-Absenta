@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { getWaliKelasStrukturList } from '../api/kurikulum/waliKelas.api';
 import type { WaliKelasStrukturAssignment } from '../types/academic';
 import type { SearchableSelectOption } from '../components/ui/SearchableSelect';
 
@@ -16,11 +15,13 @@ export function useWaliKelasOptions(params: UseWaliKelasOptionsParams = {}) {
 
   const query = useQuery({
     queryKey: ['wali-kelas-options-list', onlyActive, tahunPelajaranId],
-    queryFn: () =>
-      getWaliKelasStrukturList(1, 1000, '', {
+    queryFn: async () => {
+      const { getWaliKelasStrukturList } = await import('../api/kurikulum/waliKelas.api');
+      return getWaliKelasStrukturList(1, 1000, '', {
         include_inactive: !onlyActive,
         tahun_pelajaran_id: tahunPelajaranId,
-      }).catch(() => ({ data: [] as any })),
+      }).catch(() => ({ data: [] as any }));
+    },
     enabled,
     staleTime: 5 * 60 * 1000,
   });

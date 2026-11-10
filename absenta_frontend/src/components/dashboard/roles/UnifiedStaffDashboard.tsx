@@ -64,8 +64,6 @@ import { StaffPortalAppLauncher } from '../portal/StaffPortalAppLauncher';
 import { resolveSmartDashboardMode } from '../../../helpers/dashboardModeHelper';
 import { useWaliKelasOptions } from '../../../hooks/useWaliKelasOptions';
 import { usePiketIzinKeluarOptions } from '../../../hooks/usePiketIzinKeluarOptions';
-import { tenantApi } from '../../../api/tenants.api';
-import { raporApi } from '../../../api/rapor.api';
 import { useNavStore } from '../../../store/navStore';
 import { useMobileSubtabSidebarStore } from './common/subtabSidebarStore';
 import { useGuruMe } from '../../../hooks/useGuruMe';
@@ -123,15 +121,6 @@ const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/mod
 
 // Hooks & APIs
 import { useStaffTimeline } from '../../../hooks/useStaffTimeline';
-import { guruApi } from '../../../api/academic.api';
-import { kesiswaanApi } from '../../../api/kesiswaan.api';
-import { hubinApi } from '../../../api/hubin.api';
-import { piketApi } from '../../../api/piket.api';
-import { kurikulumApi } from '../../../api/kurikulum.api';
-import { getDailyClassStats, getDailyTeacherStats, getKepsekEscalations,
-  getSarprasStats, getGerbangDashboardStats, getKaprogStats, getToolmanStats,
-  getKabengStats, getBkkStats } from '../../../api/dashboard.api';
-import { createSesiAbsensi } from '../../../api/attendanceGerbang.api';
 import { toLocalDate } from '../../../utils/attendance/time';
 
 export const UnifiedStaffDashboard: React.FC = () => {
@@ -184,7 +173,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
   // Query P5 Projects for facilitator role
   const { data: myP5ProjectsRes } = useQuery({
     queryKey: ['my-p5-projects-hero', user?.id],
-    queryFn: () => raporApi.getMyP5Projects(),
+    queryFn: async () => {
+      const { raporApi } = await import('../../../api/rapor.api');
+      return raporApi.getMyP5Projects();
+    },
     enabled: !!user?.id && !isAdmin && !isKepsek,
     staleTime: 5 * 60 * 1000,
   });
@@ -193,7 +185,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const p5ProjectCount = Math.max(fasilitatorP5Count || 0, myP5ProjectsRes?.data?.length || 0);
 
   const guruId = user?.guru_profile?.id || guruProfile?.id;
-  const { timelineItems, isLoading: timelineLoading, refetch: refetchTimeline } = useStaffTimeline(guruId);
+  const { timelineItems, isLoading: timelineLoading, refetch: refetchTimeline } = useStaffTimeline(guruId, {
+    enabled: !isAdmin && Boolean(guruId),
+  });
 
   const jabatanList: string[] = useMemo(() => {
     const list = [...(guruProfile?.jabatan_list || [])];
@@ -402,49 +396,70 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   const { data: classPresence, isLoading: classPresenceLoading } = useQuery({
     queryKey: ['attendance-today-me-class', waliKelasId],
-    queryFn: () => kesiswaanApi.getRekapHarianSiswa({ kelas_id: waliKelasId }).catch(() => ({ success: true, data: [] })),
+    queryFn: async () => {
+      const { kesiswaanApi } = await import('../../../api/kesiswaan.api');
+      return kesiswaanApi.getRekapHarianSiswa({ kelas_id: waliKelasId }).catch(() => ({ success: true, data: [] }));
+    },
     enabled: !!isWaliKelas && !!waliKelasId && (activeTab === 'binaan' || activeTab === 'ringkasan'),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: kbmStatsRes, isLoading: kbmLoading } = useQuery({
     queryKey: ['dashboard', 'kurikulum', 'kbm-stats'],
-    queryFn: () => getDailyClassStats().catch(() => ({ success: true, data: null })),
+    queryFn: async () => {
+      const { getDailyClassStats } = await import('../../../api/dashboard.api');
+      return getDailyClassStats().catch(() => ({ success: true, data: null }));
+    },
     enabled: (!!isKurikulum || !!isKepsek) && activeTab === 'ringkasan',
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: teacherStatsRes, isLoading: teacherStatsLoading } = useQuery({
     queryKey: ['dashboard', 'kurikulum', 'teacher-stats'],
-    queryFn: () => getDailyTeacherStats().catch(() => ({ success: true, data: null })),
+    queryFn: async () => {
+      const { getDailyTeacherStats } = await import('../../../api/dashboard.api');
+      return getDailyTeacherStats().catch(() => ({ success: true, data: null }));
+    },
     enabled: (!!isKurikulum || !!isKepsek) && activeTab === 'ringkasan',
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: escalationsRes } = useQuery({
     queryKey: ['dashboard', 'kepsek', 'escalations'],
-    queryFn: () => getKepsekEscalations().catch(() => ({ success: true, data: [] })),
+    queryFn: async () => {
+      const { getKepsekEscalations } = await import('../../../api/dashboard.api');
+      return getKepsekEscalations().catch(() => ({ success: true, data: [] }));
+    },
     enabled: !!isKepsek && activeTab === 'ringkasan',
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: dailyPermitsRes, isLoading: permitsLoading } = useQuery({
     queryKey: ['dashboard', 'kesiswaan', 'daily-permits'],
-    queryFn: () => piketApi.getDailyPermits().catch(() => ({ success: true, data: [] })),
+    queryFn: async () => {
+      const { piketApi } = await import('../../../api/piket.api');
+      return piketApi.getDailyPermits().catch(() => ({ success: true, data: [] }));
+    },
     enabled: !!isKesiswaan && (can('attendance.piket.view') || can('attendance.gate.scan')) && (activeTab === 'kelola' || activeTab === 'ringkasan'),
     staleTime: 2 * 60 * 1000,
   });
 
   const { data: violationsRes, isLoading: violationsLoading } = useQuery({
     queryKey: ['dashboard', 'kesiswaan', 'violations'],
-    queryFn: () => kesiswaanApi.getPelanggaran({ limit: 100 }).catch(() => ({ success: true, data: { list: [] } })),
+    queryFn: async () => {
+      const { kesiswaanApi } = await import('../../../api/kesiswaan.api');
+      return kesiswaanApi.getPelanggaran({ limit: 100 }).catch(() => ({ success: true, data: { list: [] } }));
+    },
     enabled: !!isKesiswaan && (activeTab === 'ringkasan' || activeTab === 'binaan'),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: kurikulumMonitoringRes, isLoading: kurikulumMonitoringLoading } = useQuery({
     queryKey: ['dashboard', 'kurikulum', 'monitoring-global', toLocalDate()],
-    queryFn: () => kurikulumApi.getKbmGlobalMonitoring(toLocalDate()).catch(() => ({ success: true, data: null })),
+    queryFn: async () => {
+      const { kurikulumApi } = await import('../../../api/kurikulum.api');
+      return kurikulumApi.getKbmGlobalMonitoring(toLocalDate()).catch(() => ({ success: true, data: null }));
+    },
     enabled: !!isKurikulum && activeTab === 'ringkasan',
     staleTime: 60 * 1000,
     refetchInterval: 60000,
@@ -452,21 +467,30 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   const { data: hubinStatsRes, isLoading: hubinStatsLoading } = useQuery({
     queryKey: ['dashboard', 'hubin', 'stats'],
-    queryFn: () => hubinApi.getStats().catch(() => ({ success: true, data: null })),
+    queryFn: async () => {
+      const { hubinApi } = await import('../../../api/hubin.api');
+      return hubinApi.getStats().catch(() => ({ success: true, data: null }));
+    },
     enabled: !!isHubin && activeTab === 'ringkasan',
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: sarprasStatsRes, isLoading: sarprasStatsLoading } = useQuery({
     queryKey: ['dashboard', 'sarpras', 'stats'],
-    queryFn: () => getSarprasStats().catch(() => ({ success: true, data: null })),
+    queryFn: async () => {
+      const { getSarprasStats } = await import('../../../api/dashboard.api');
+      return getSarprasStats().catch(() => ({ success: true, data: null }));
+    },
     enabled: !!isSarpras && activeTab === 'ringkasan',
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: gerbangStatsRes, isLoading: gerbangStatsLoading } = useQuery({
     queryKey: ['dashboard', 'gerbang', 'stats'],
-    queryFn: () => getGerbangDashboardStats().catch(() => ({ success: true, data: null })),
+    queryFn: async () => {
+      const { getGerbangDashboardStats } = await import('../../../api/dashboard.api');
+      return getGerbangDashboardStats().catch(() => ({ success: true, data: null }));
+    },
     enabled: !!isGerbang && (can('attendance.gate.scan') || can('attendance.piket.view')) && (activeTab === 'kelola' || activeTab === 'ringkasan'),
     staleTime: 60 * 1000,
     refetchInterval: 60000,
@@ -474,29 +498,40 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   const { data: kaprogStatsRes, isLoading: kaprogStatsLoading } = useQuery({
     queryKey: ['dashboard', 'kaprog', 'stats'],
-    queryFn: () => getKaprogStats().catch(() => ({ success: true, data: null })),
+    queryFn: async () => {
+      const { getKaprogStats } = await import('../../../api/dashboard.api');
+      return getKaprogStats().catch(() => ({ success: true, data: null }));
+    },
     enabled: !!isKaprog && can('dashboard.view.kaprog') && activeTab === 'ringkasan',
     staleTime: 5 * 60 * 1000,
   });
 
-
   const { data: toolmanStatsRes, isLoading: toolmanStatsLoading } = useQuery({
     queryKey: ['dashboard', 'toolman', 'stats'],
-    queryFn: () => getToolmanStats().catch(() => ({ success: true, data: null })),
+    queryFn: async () => {
+      const { getToolmanStats } = await import('../../../api/dashboard.api');
+      return getToolmanStats().catch(() => ({ success: true, data: null }));
+    },
     enabled: !!isToolman && can('dashboard.view.toolman') && activeTab === 'ringkasan',
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: kabengStatsRes, isLoading: kabengStatsLoading } = useQuery({
     queryKey: ['dashboard', 'kabeng', 'stats'],
-    queryFn: () => getKabengStats().catch(() => ({ success: true, data: null })),
+    queryFn: async () => {
+      const { getKabengStats } = await import('../../../api/dashboard.api');
+      return getKabengStats().catch(() => ({ success: true, data: null }));
+    },
     enabled: !!isKabeng && can('dashboard.view.kabeng') && activeTab === 'ringkasan',
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: bkkStatsRes, isLoading: bkkStatsLoading } = useQuery({
     queryKey: ['dashboard', 'bkk', 'stats'],
-    queryFn: () => getBkkStats().catch(() => ({ success: true, data: null })),
+    queryFn: async () => {
+      const { getBkkStats } = await import('../../../api/dashboard.api');
+      return getBkkStats().catch(() => ({ success: true, data: null }));
+    },
     enabled: !!isBkk && can('dashboard.view.bkk') && activeTab === 'ringkasan',
     staleTime: 5 * 60 * 1000,
   });
@@ -513,6 +548,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const { data: tenantRes } = useQuery({
     queryKey: ['my-tenant'],
     queryFn: async () => {
+      const { tenantApi } = await import('../../../api/tenants.api');
       const res = await tenantApi.getMyTenant();
       return res.data;
     },

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { piketApi, piketQueryKeys, type IzinKeluarSiswa } from '../api/piket.api';
+import type { IzinKeluarSiswa } from '../api/piket.api';
 
 export interface UsePiketIzinKeluarOptionsParams {
   date?: string;
@@ -22,8 +22,9 @@ export interface PiketIzinSelectOption {
  */
 export function usePiketIzinKeluarOptions(params?: UsePiketIzinKeluarOptionsParams) {
   const query = useQuery({
-    queryKey: piketQueryKeys.dailyPermits(params),
+    queryKey: ['piket', 'permits', params],
     queryFn: async () => {
+      const { piketApi } = await import('../api/piket.api');
       const res: any = await piketApi.getDailyPermits(params).catch(() => null);
       if (!res) return [];
       if (Array.isArray(res)) return res;
