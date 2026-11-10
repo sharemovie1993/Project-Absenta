@@ -595,7 +595,18 @@ export const GuruDetailView: React.FC<GuruDetailViewProps> = ({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">NIK (KTP)</span>
-                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNik || '-'}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNik || '-'}</span>
+                  {guruId && (
+                    <FieldDocumentTrigger
+                      entityType="GURU"
+                      entityId={guruId}
+                      entityName={guru.nama_guru}
+                      kategori="KTP"
+                      label="KTP"
+                    />
+                  )}
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">NUPTK</span>
@@ -763,11 +774,33 @@ export const GuruDetailView: React.FC<GuruDetailViewProps> = ({
               <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">{editPendidikanTerakhir || '-'}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">No. Kartu Keluarga (KK)</p>
+              <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">No. Kartu Keluarga (KK)</p>
+                {guruId && (
+                  <FieldDocumentTrigger
+                    entityType="GURU"
+                    entityId={guruId}
+                    entityName={guru.nama_guru}
+                    kategori="KK"
+                    label="KK"
+                  />
+                )}
+              </div>
               <p className="font-mono font-bold text-slate-800 dark:text-slate-200 mt-0.5">{editNoKk || '-'}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">NIK (KTP)</p>
+              <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">NIK (KTP)</p>
+                {guruId && (
+                  <FieldDocumentTrigger
+                    entityType="GURU"
+                    entityId={guruId}
+                    entityName={guru.nama_guru}
+                    kategori="KTP"
+                    label="KTP"
+                  />
+                )}
+              </div>
               <p className="font-mono font-bold text-slate-800 dark:text-slate-200 mt-0.5">{editNik || '-'}</p>
             </div>
             <div>
@@ -786,14 +819,25 @@ export const GuruDetailView: React.FC<GuruDetailViewProps> = ({
                 JABATAN DAN KEPEGAWAIAN
               </h3>
             </div>
-            <button
-              type="button"
-              onClick={() => handleOpenEditSection('kepegawaian')}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
-              title="Edit Kepegawaian"
-            >
-              <Edit3 size={14} />
-            </button>
+            <div className="flex items-center gap-2">
+              {guruId && (
+                <FieldDocumentTrigger
+                  entityType="GURU"
+                  entityId={guruId}
+                  entityName={guru.nama_guru}
+                  kategori="SK"
+                  label="SK / Karpeg"
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => handleOpenEditSection('kepegawaian')}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                title="Edit Kepegawaian"
+              >
+                <Edit3 size={14} />
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">

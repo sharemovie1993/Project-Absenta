@@ -619,7 +619,18 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
             <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">NISN</span>
-                <span className="font-mono font-extrabold text-slate-800 dark:text-slate-200">{siswa.nisn || '-'}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-extrabold text-slate-800 dark:text-slate-200">{siswa.nisn || '-'}</span>
+                  {siswaId && (
+                    <FieldDocumentTrigger
+                      entityType="SISWA"
+                      entityId={siswaId}
+                      entityName={siswa.nama_siswa}
+                      kategori="NISN"
+                      label="NISN"
+                    />
+                  )}
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">NIS</span>
@@ -627,7 +638,18 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">NIK (KTP/KIA)</span>
-                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNik || '-'}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNik || '-'}</span>
+                  {siswaId && (
+                    <FieldDocumentTrigger
+                      entityType="SISWA"
+                      entityId={siswaId}
+                      entityName={siswa.nama_siswa}
+                      kategori="KK"
+                      label="KK"
+                    />
+                  )}
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">Rombel Kelas</span>
@@ -798,7 +820,18 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
               <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">{editTempatLahir || '-'}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Tanggal Lahir</p>
+              <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Tanggal Lahir</p>
+                {siswaId && (
+                  <FieldDocumentTrigger
+                    entityType="SISWA"
+                    entityId={siswaId}
+                    entityName={siswa.nama_siswa}
+                    kategori="AKTA"
+                    label="Akta Lahir"
+                  />
+                )}
+              </div>
               <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">{editTanggalLahir || '-'}</p>
             </div>
             <div>
@@ -808,11 +841,33 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">No. Kartu Keluarga (KK)</p>
+              <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">No. Kartu Keluarga (KK)</p>
+                {siswaId && (
+                  <FieldDocumentTrigger
+                    entityType="SISWA"
+                    entityId={siswaId}
+                    entityName={siswa.nama_siswa}
+                    kategori="KK"
+                    label="KK"
+                  />
+                )}
+              </div>
               <p className="font-mono font-bold text-slate-800 dark:text-slate-200 mt-0.5">{editNoKk || '-'}</p>
             </div>
             <div className="col-span-2">
-              <p className="text-[10px] font-bold text-slate-400 uppercase">NIK (KTP / KIA)</p>
+              <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">NIK (KTP / KIA)</p>
+                {siswaId && (
+                  <FieldDocumentTrigger
+                    entityType="SISWA"
+                    entityId={siswaId}
+                    entityName={siswa.nama_siswa}
+                    kategori="KK"
+                    label="KK"
+                  />
+                )}
+              </div>
               <p className="font-mono font-bold text-slate-800 dark:text-slate-200 mt-0.5">{editNik || '-'}</p>
             </div>
           </div>
