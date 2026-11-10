@@ -109,8 +109,18 @@ const ProfilePage: React.FC = React.memo(() => {
   const cardRef = useRef<HTMLDivElement>(null);
   const downloadCardRef = useRef<HTMLDivElement>(null);
 
-  const isSiswa = roleName.toLowerCase() === 'siswa' || !!user?.siswa_id;
-  const isGuru = roleName.toLowerCase() === 'guru' || !!user?.guru_profile?.id;
+  const isSiswa = roleName.toLowerCase() === 'siswa' || roleName.toLowerCase() === 'student' || !!user?.siswa_id || !!(user as any)?.isStudent;
+  const isGuru = !isSiswa && (
+    roleName.toLowerCase() === 'guru' ||
+    roleName.toLowerCase() === 'teacher' ||
+    Boolean((user as any)?.isTeacher) ||
+    Boolean(user?.guru_profile?.id) ||
+    Boolean((user as any)?.guru_id) ||
+    ['kurikulum', 'walikelas', 'bpbk', 'bk', 'kaprog', 'kabeng', 'kepsek', 'kesiswaan', 'hubin', 'sarpras', 'pembina_eskul', 'pembimbing_pkl'].includes(roleName.toLowerCase())
+  );
+
+  const effectiveIsGuru = isGuru || !!guruProfile;
+  const effectiveIsSiswa = isSiswa || !!siswaProfile;
 
   // React Query for profile data
   const { data: sekolahProfile } = useQuery({
@@ -169,12 +179,13 @@ const ProfilePage: React.FC = React.memo(() => {
             if (res?.data) setSiswaProfile(res.data);
           }
         }
-      } else if (isGuru) {
+      } else {
+        // Coba muat profil Guru untuk seluruh peran pendidik & staf (Guru, BK, Walikelas, Kurikulum, Kepsek, Kaprog, dll)
         try {
           const meRes = await guruApi.getMe();
           if (meRes?.data) setGuruProfile(meRes.data);
         } catch {
-          const targetId = user.guru_profile?.id || (user as any)?.guru?.id;
+          const targetId = user.guru_profile?.id || (user as any)?.guru?.id || (user as any)?.guru_id;
           if (targetId) {
             const res = await guruApi.getById(targetId).catch(() => null);
             if (res?.data) setGuruProfile(res.data);
@@ -188,7 +199,7 @@ const ProfilePage: React.FC = React.memo(() => {
     } finally {
       setLoading(false);
     }
-  }, [user, isSiswa, isGuru]);
+  }, [user, isSiswa]);
 
   useEffect(() => {
     loadProfileDetail();
@@ -308,17 +319,17 @@ const ProfilePage: React.FC = React.memo(() => {
   }, [cameraFacing, cameraStream]);
 
   const entityId = useMemo(() => {
-    if (isSiswa) return (siswaProfile?.id || (user as any)?.siswa_id || (user as any)?.siswa_profile?.id || '');
-    if (isGuru) return (guruProfile?.id || (user as any)?.guru_profile?.id || (user as any)?.guru?.id || '');
-    return '';
-  }, [isSiswa, isGuru, siswaProfile, guruProfile, user]);
+    if (effectiveIsSiswa) return (siswaProfile?.id || (user as any)?.siswa_id || (user as any)?.siswa_profile?.id || '');
+    if (effectiveIsGuru) return (guruProfile?.id || (user as any)?.guru_profile?.id || (user as any)?.guru?.id || (user as any)?.guru_id || '');
+    return guruProfile?.id || siswaProfile?.id || '';
+  }, [effectiveIsSiswa, effectiveIsGuru, siswaProfile, guruProfile, user]);
 
   const uploadCapturedPhoto = useCallback(async () => {
     if (!capturedImage) return;
     setUploadingFoto(true);
     const toastId = toast.loading('Mengompresi dan menyimpan foto...');
     try {
-      if (!isSiswa && !isGuru) {
+      if (!effectiveIsSiswa && !effectiveIsGuru) {
         toast.error('Akun Administrator tidak memiliki profil siswa/guru untuk foto formal dokumen.', { id: toastId });
         return;
       }
@@ -333,10 +344,10 @@ const ProfilePage: React.FC = React.memo(() => {
       const compressedBlob = await compressImage(file, 800, 800, 0.85);
       const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
 
-      const namePrefix = isSiswa ? (siswaProfile?.nama_siswa || user?.full_name) : (guruProfile?.nama_guru || user?.full_name);
+      const namePrefix = effectiveIsSiswa ? (siswaProfile?.nama_siswa || user?.full_name) : (guruProfile?.nama_guru || user?.full_name);
       const autoTitle = `Foto Formal Kamera - ${namePrefix}`;
 
-      if (isSiswa) {
+      if (effectiveIsSiswa) {
         await uploadSiswaDocument({ siswaId: entityId, file: compressedFile, judul: autoTitle, kategori: 'FOTO' });
       } else {
         await uploadGuruDocument({ guruId: entityId, file: compressedFile, judul: autoTitle, kategori: 'FOTO' });
@@ -344,7 +355,7 @@ const ProfilePage: React.FC = React.memo(() => {
 
       toast.success('Foto profil berhasil disimpan!', { id: toastId });
       closeCameraModal();
-      queryClient.invalidateQueries({ queryKey: [isSiswa ? 'siswa-docs' : 'guru-docs', entityId] });
+      queryClient.invalidateQueries({ queryKey: [effectiveIsSiswa ? 'siswa-docs' : 'guru-docs', entityId] });
       loadProfileDetail();
     } catch (err: unknown) {
       const errObj = err as { message?: string };
@@ -352,7 +363,7 @@ const ProfilePage: React.FC = React.memo(() => {
     } finally {
       setUploadingFoto(false);
     }
-  }, [capturedImage, isSiswa, isGuru, siswaProfile, guruProfile, user, entityId, closeCameraModal, queryClient, loadProfileDetail]);
+  }, [capturedImage, effectiveIsSiswa, effectiveIsGuru, siswaProfile, guruProfile, user, entityId, closeCameraModal, queryClient, loadProfileDetail]);
 
   const handleUploadFotoDirect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -373,7 +384,7 @@ const ProfilePage: React.FC = React.memo(() => {
     setUploadingFoto(true);
     const toastId = toast.loading('Memproses dan mengompresi foto...');
     try {
-      if (!isSiswa && !isGuru) {
+      if (!effectiveIsSiswa && !effectiveIsGuru) {
         toast.error('Akun Administrator tidak memiliki profil siswa/guru untuk foto formal dokumen.', { id: toastId });
         return;
       }
@@ -389,17 +400,17 @@ const ProfilePage: React.FC = React.memo(() => {
       });
 
       const cleanFileName = file.name.replace(/\.[^.]+$/, '').substring(0, 30);
-      const namePrefix = isSiswa ? (siswaProfile?.nama_siswa || user?.full_name) : (guruProfile?.nama_guru || user?.full_name);
+      const namePrefix = effectiveIsSiswa ? (siswaProfile?.nama_siswa || user?.full_name) : (guruProfile?.nama_guru || user?.full_name);
       const autoTitle = `Foto Formal - ${cleanFileName} - ${namePrefix}`;
 
-      if (isSiswa) {
+      if (effectiveIsSiswa) {
         await uploadSiswaDocument({ siswaId: entityId, file: compressedFile, judul: autoTitle, kategori: 'FOTO' });
       } else {
         await uploadGuruDocument({ guruId: entityId, file: compressedFile, judul: autoTitle, kategori: 'FOTO' });
       }
 
       toast.success('Foto profil berhasil diperbarui', { id: toastId });
-      queryClient.invalidateQueries({ queryKey: [isSiswa ? 'siswa-docs' : 'guru-docs', entityId] });
+      queryClient.invalidateQueries({ queryKey: [effectiveIsSiswa ? 'siswa-docs' : 'guru-docs', entityId] });
       loadProfileDetail();
     } catch (err: unknown) {
       const errObj = err as { message?: string };
@@ -603,7 +614,7 @@ const ProfilePage: React.FC = React.memo(() => {
           {activeProfileTab === 'berkas' && (
             <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm">
               <Suspense fallback={<div className="h-40 bg-slate-50 dark:bg-slate-900 rounded-2xl animate-pulse" />}>
-                {isSiswa && entityId ? (
+                {effectiveIsSiswa && entityId ? (
                   <SiswaDocsPanel
                     siswaId={entityId}
                     siswaName={siswaProfile?.nama_siswa || user?.full_name}
@@ -612,7 +623,7 @@ const ProfilePage: React.FC = React.memo(() => {
                     mode="full"
                     canManage={true}
                   />
-                ) : isGuru && entityId ? (
+                ) : effectiveIsGuru && entityId ? (
                   <GuruDocsPanel
                     guruId={entityId}
                     guruName={guruProfile?.nama_guru || user?.full_name}

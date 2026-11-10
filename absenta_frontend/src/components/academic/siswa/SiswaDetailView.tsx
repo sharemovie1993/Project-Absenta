@@ -942,9 +942,12 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
 
       {/* 5. DOKUMEN & BERKAS DIGITAL SISWA */}
       <SelfMemberDocsSection
+        entityType="SISWA"
+        entityId={siswaId}
+        entityName={siswa?.nama_siswa || ''}
         memberType="SISWA"
         memberId={siswaId}
-        memberName={siswa.nama_siswa}
+        memberName={siswa?.nama_siswa || ''}
       />
 
       {/* ── Modal Edit Per Bagian ────────────────────────────────────────────── */}

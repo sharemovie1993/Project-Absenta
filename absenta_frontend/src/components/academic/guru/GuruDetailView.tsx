@@ -958,9 +958,12 @@ export const GuruDetailView: React.FC<GuruDetailViewProps> = ({
 
       {/* 4. DOKUMEN & BERKAS KEPEGAWAIAN */}
       <SelfMemberDocsSection
+        entityType="GURU"
+        entityId={guruId}
+        entityName={guru?.nama_guru || ''}
         memberType="GURU"
         memberId={guruId}
-        memberName={guru.nama_guru}
+        memberName={guru?.nama_guru || ''}
       />
 
       {/* ── Modal Edit Per Bagian ────────────────────────────────────────────── */}

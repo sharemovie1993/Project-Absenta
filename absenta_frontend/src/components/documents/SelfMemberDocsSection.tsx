@@ -35,10 +35,14 @@ import {
   type MemberDocKategori
 } from '../../api/memberDocs.api';
 
-interface SelfMemberDocsSectionProps {
-  entityType: MemberDocEntityType;
-  entityId: string;
+export interface SelfMemberDocsSectionProps {
+  entityType?: MemberDocEntityType;
+  entityId?: string;
   entityName?: string;
+  // Aliases for compatibility
+  memberType?: MemberDocEntityType;
+  memberId?: string;
+  memberName?: string;
   className?: string;
 }
 
@@ -46,11 +50,18 @@ const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
 export const SelfMemberDocsSection: React.FC<SelfMemberDocsSectionProps> = ({
-  entityType,
-  entityId,
-  entityName = '',
+  entityType: rawEntityType,
+  entityId: rawEntityId,
+  entityName: rawEntityName,
+  memberType,
+  memberId,
+  memberName,
   className
 }) => {
+  const entityType: MemberDocEntityType = (rawEntityType || memberType || 'SISWA') as MemberDocEntityType;
+  const entityId = rawEntityId || memberId || '';
+  const entityName = rawEntityName || memberName || '';
+
   const queryClient = useQueryClient();
   const confirm = useConfirm();
 
