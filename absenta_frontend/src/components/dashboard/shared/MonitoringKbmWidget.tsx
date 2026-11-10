@@ -8,7 +8,7 @@ import { useSocket } from '../../../hooks/useSocket';
 import { Button } from '../../ui';
 import Card from '../../ui/Card';
 import { Modal, ModalFooter } from '../../ui/Modal';
-import { BookOpen, Lock, ShieldAlert, ArrowRight, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock, UserCheck, MessageSquare, Send, UserX } from 'lucide-react';
+import { BookOpen, ShieldAlert, ArrowRight, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock, UserCheck, MessageSquare, Send, UserX } from 'lucide-react';
 import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
 import { useAuthStore } from '../../../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -234,16 +234,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
     retry: 1,
   });
 
-  const isSubscriptionRequired = useMemo(() => {
-    const err1 = (monitoringError as any)?.response?.data || (monitoringError as any)?.data;
-    const err2 = (sesiError as any)?.response?.data || (sesiError as any)?.data;
-    const reason = String(err1?.reason || err2?.reason || '');
-    const code = String(err1?.code || err2?.code || '');
-    const status = (monitoringError as any)?.response?.status || (sesiError as any)?.response?.status;
-    return reason.includes('SUBSCRIPTION_REQUIRED') || code.includes('SUBSCRIPTION') || status === 402;
-  }, [monitoringError, sesiError]);
-
-  const isLoading = (monitoringLoading || sesiLoading) && !isSubscriptionRequired;
+  const isLoading = monitoringLoading || sesiLoading;
 
   // Satu kabel: semua sesi dinormalisasi lewat kbm-normalizer
   const enrichedSessions: KbmItem[] = useMemo(() => {
@@ -259,7 +250,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
       return [];
     }
     return items.map((s: any) => normalizeFromSesiAbsensi(s));
-  }, [sesiData, isSubscriptionRequired]);
+  }, [sesiData]);
 
   // Komputasi SSOT seluruh 14 metrik siklus KBM & kehadiran guru
   const stats = useMemo(() => {
@@ -308,14 +299,6 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
       }
     });
 
-    if (total === 0 && isSubscriptionRequired) {
-      return {
-        total: 12, live: 4, withJournal: 10, finished: 8, overdue: 0, upcoming: 0,
-        teacherOnTime: 9, teacherLate: 1, teacherDinasLuar: 1, teacherInval: 1,
-        teacherIzinSakit: 0, teacherPending: 0, teacherNotArrived: 0, teacherAlpa: 0
-      };
-    }
-
     return {
       total,
       live,
@@ -332,7 +315,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
       teacherNotArrived,
       teacherAlpa,
     };
-  }, [enrichedSessions, isSubscriptionRequired]);
+  }, [enrichedSessions]);
 
   // Dynamic Health Score & Progress Rates
   const healthScore = useMemo(() => {
@@ -438,29 +421,6 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
 
   return (
     <div className="space-y-6 relative rounded-2xl overflow-hidden min-h-[300px]">
-      {/* 🔮 Transparent Glass Watermark Overlay when Subscription Required */}
-      {isSubscriptionRequired && (
-        <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden rounded-2xl flex flex-col items-center justify-center p-6 text-center">
-          <div className="absolute inset-0 bg-slate-900/10 dark:bg-slate-900/25 backdrop-blur-[1px]" />
-          <div className="absolute inset-0 flex items-center justify-center rotate-[-12deg] select-none opacity-[0.07] dark:opacity-[0.12]">
-            <span className="text-7xl font-black uppercase tracking-widest text-indigo-950 dark:text-white whitespace-nowrap">
-              ABSENTA PRO • LIVE MONITORING KBM
-            </span>
-          </div>
-          <div className="relative z-10 bg-white/85 dark:bg-slate-900/90 backdrop-blur-md border border-amber-300 dark:border-amber-700/80 px-8 py-5 rounded-3xl shadow-2xl space-y-2 max-w-md pointer-events-auto">
-            <div className="w-12 h-12 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto border border-amber-200 dark:border-amber-800">
-              <Lock className="w-6 h-6" />
-            </div>
-            <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-              Preview Fitur Live Monitoring KBM
-            </h4>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-              Tampilan UI di atas adalah modul asli <strong>Monitoring KBM &amp; Absensi Sesi</strong>. Hubungi administrator untuk mengaktifkan lisensi modul ini.
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* ── LEVEL 1: EXECUTIVE KBM DIRECT STAT CARDS ── */}
       {isExecutive ? (
         <div className="space-y-4">
