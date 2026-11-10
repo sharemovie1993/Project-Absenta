@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './useAuth';
-import { getTenantById } from '../api/tenants.api';
+import { getMyTenant, Tenant } from '../api/tenants.api';
 
 export interface JenjangConfig {
   tingkatMin: number;
@@ -30,15 +30,20 @@ const DEFAULT_CONFIG: JenjangConfig = {
 export function useJenjang() {
   const { user } = useAuth();
   const tenantId = user?.tenant_id;
+  const embeddedTenant: Tenant | undefined = (user as any)?.tenant;
 
-  const { data: tenantResponse, isLoading } = useQuery({
-    queryKey: ['tenant-profile-jenjang', tenantId],
-    queryFn: () => getTenantById(tenantId || ''),
+  const { data: tenantData, isLoading } = useQuery({
+    queryKey: ['my-tenant'],
+    queryFn: async () => {
+      const res = await getMyTenant();
+      return res.data;
+    },
+    initialData: embeddedTenant,
     enabled: !!tenantId,
-    staleTime: 1000 * 60 * 1, // 1 Menit cache
+    staleTime: 10 * 60 * 1000,
   });
 
-  const tenant = tenantResponse?.data;
+  const tenant: Tenant | undefined = tenantData || embeddedTenant;
   const rawJenjang = tenant?.jenjang || (user as any)?.tenant?.jenjang || (user as any)?.jenjang || 'SMK';
   const durasiSmk = tenant?.durasi_smk || '3_TAHUN';
   const has4TahunJurusan = Boolean((tenant as any)?.has_4_tahun_jurusan);
@@ -81,7 +86,7 @@ export function useJenjang() {
     tingkatList,
     kelompokOptions,
     isJenjangSmk,
-    isLoading,
+    isLoading: isLoading && !tenant,
     sekolah: tenant
   };
 }
@@ -137,4 +142,3 @@ export const DEFAULT_KELOMPOK_OPTIONS: KelompokOption[] = [
   { value: 'MATA PELAJARAN PILIHAN', label: 'MAPEL PILIHAN' },
   { value: 'MUATAN LOKAL', label: 'MUATAN LOKAL' }
 ];
-

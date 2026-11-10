@@ -7,18 +7,20 @@ export function useTenantSettings() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const tenantId = user?.tenant_id;
+  const embeddedTenant: Tenant | undefined = (user as any)?.tenant;
 
   const query = useQuery({
-    queryKey: ['tenant-settings-profile', tenantId],
+    queryKey: ['my-tenant'],
     queryFn: async () => {
       const res = await getMyTenant();
       return res.data;
     },
+    initialData: embeddedTenant,
     enabled: !!tenantId,
     staleTime: 10 * 60 * 1000, // 10-minute cache for tenant settings
   });
 
-  const tenant: Tenant | null = useMemo(() => query.data || null, [query.data]);
+  const tenant: Tenant | null = useMemo(() => query.data || embeddedTenant || null, [query.data, embeddedTenant]);
 
   // Derived Kop Surat / Letterhead lines
   const printHeader = useMemo(() => {
@@ -56,8 +58,7 @@ export function useTenantSettings() {
       return updateTenant(tenantId, data as any);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tenant-settings-profile', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['tenant-profile-jenjang', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['my-tenant'] });
     },
   });
 
@@ -72,7 +73,7 @@ export function useTenantSettings() {
     shiftSlots,
     absensiMode: tenant?.absensi_mode || 'SIMPLE',
     isMultiShift: tenant?.absensi_mode === 'MULTI_SESI',
-    isLoading: query.isLoading,
+    isLoading: query.isLoading && !tenant,
     isUpdating: updateMutation.isPending,
     updateSettings,
     refetch: query.refetch

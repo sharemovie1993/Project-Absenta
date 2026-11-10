@@ -40,7 +40,7 @@ export function useNotifications(options?: UseNotificationsOptions) {
     refetchOnWindowFocus: false,
   });
 
-  // 2. Scoped & Deduplicated Preferences Query (Cached for 5 mins)
+  // 2. Scoped Preferences Query (Disabled on initial load to avoid blocking main thread)
   useQuery({
     queryKey: ['notifications', 'preferences', user?.id],
     queryFn: async () => {
@@ -51,8 +51,8 @@ export function useNotifications(options?: UseNotificationsOptions) {
       } catch {}
       return next;
     },
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
+    enabled: false,
+    staleTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 

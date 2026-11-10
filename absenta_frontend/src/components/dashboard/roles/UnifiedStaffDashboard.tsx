@@ -513,11 +513,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   const { data: tenantRes } = useQuery({
     queryKey: ['my-tenant'],
-    queryFn: () => tenantApi.getMyTenant().catch(() => null),
+    queryFn: async () => {
+      const res = await tenantApi.getMyTenant();
+      return res.data;
+    },
+    initialData: (user as any)?.tenant || authTenant,
     enabled: !!user?.tenant_id && !authTenant && !(user as any)?.tenant,
     staleTime: 10 * 60 * 1000,
   });
-  const tenantInfo = tenantRes?.success ? tenantRes.data : (authTenant || (user as any)?.tenant || null);
+  const tenantInfo = tenantRes || authTenant || (user as any)?.tenant || null;
 
   const [selectedSesi, setSelectedSesi] = useState<any>(null);
   const [sessionForJournal, setSessionForJournal] = useState<any>(null);
