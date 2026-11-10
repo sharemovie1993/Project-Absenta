@@ -344,8 +344,23 @@ export const useAuthStore = create<AuthState>()(
             
             if (!isPlatform) {
               try {
-                const [tenantRes, subRes] = await Promise.allSettled([getMyTenant(), getMySubscription()]);
-                if (tenantRes.status === 'fulfilled') {
+                // Optimasi Performa: Ambil subdomain/domain langsung dari payload auth/me jika tersedia
+                const directTenant = (response.data as any)?.tenant;
+                const directDomain = directTenant?.subdomain || directTenant?.domain;
+                if (typeof directDomain === 'string' && directDomain.trim().length > 0) {
+                  const normDomain = directDomain.trim().toLowerCase();
+                  const isRemember = typeof localStorage !== 'undefined' && localStorage.getItem('absenta_remember_me') !== 'false';
+                  if (isRemember) {
+                    localStorage.setItem('tenant_domain', normDomain);
+                  } else {
+                    try { sessionStorage.setItem('tenant_domain', normDomain); } catch {}
+                  }
+                }
+
+                // Hanya fetch getMyTenant jika data tenant belum disertakan oleh backend
+                const tenantPromise = directDomain ? Promise.resolve(null) : getMyTenant();
+                const [tenantRes, subRes] = await Promise.allSettled([tenantPromise, getMySubscription()]);
+                if (tenantRes.status === 'fulfilled' && tenantRes.value) {
                   const domain = (tenantRes.value?.data as any)?.subdomain || (tenantRes.value?.data as any)?.domain;
                   if (typeof domain === 'string' && domain.trim().length > 0) {
                     const normDomain = domain.trim().toLowerCase();

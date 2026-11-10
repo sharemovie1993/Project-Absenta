@@ -87,6 +87,28 @@ export const resolvePublicApiBaseUrl = (): string => {
   return API_URL.replace(/\/+$/, '');
 };
 
+// Cache JWT payload in-memory to prevent repeated atob + JSON.parse on every single HTTP request
+let cachedJwtToken: string | null = null;
+let cachedJwtPayload: any = null;
+
+function parseJwtPayload(token: string): any {
+  if (token === cachedJwtToken && cachedJwtPayload) {
+    return cachedJwtPayload;
+  }
+  try {
+    const parts = token.split('.');
+    if (parts.length >= 2) {
+      cachedJwtPayload = JSON.parse(atob(parts[1]));
+      cachedJwtToken = token;
+      return cachedJwtPayload;
+    }
+  } catch (e) {
+    LogService.error('Failed to decode JWT payload for role/tenant detection:', e);
+    cachedJwtPayload = null;
+  }
+  return null;
+}
+
 // 3. Request Interceptor
 axiosInstance.interceptors.request.use(
   (config) => {
@@ -187,17 +209,13 @@ axiosInstance.interceptors.request.use(
       }
     }
 
-    // Decode token payload to determine role and tenant for SUPERADMIN logic
+    // Decode token payload to determine role and tenant for SUPERADMIN logic (Cached)
     let roleName: string | undefined;
     let tokenTenantId: string | undefined;
     if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        roleName = payload?.roleName ?? payload?.role?.name;
-        tokenTenantId = payload?.tenantId ?? payload?.tenant_id;
-      } catch (e) {
-        LogService.error('Failed to decode JWT payload for role/tenant detection:', e);
-      }
+      const payload = parseJwtPayload(token);
+      roleName = payload?.roleName ?? payload?.role?.name;
+      tokenTenantId = payload?.tenantId ?? payload?.tenant_id;
     }
     
     // Determine if this request should operate without tenant scope

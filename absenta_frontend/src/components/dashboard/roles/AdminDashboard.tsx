@@ -188,6 +188,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
   // Data Fetching dengan React Query (Pilar 31 Optimasi Data Fetching - Lazy Per-Tab)
   const isRingkasanActive = activeTab === 'ringkasan';
 
+  // State deferral untuk query below-the-fold (Attendance chart & Activity logs)
+  // Menghindari persaingan thread CPU di awal mount agar TBT dan FCP tetap optimal
+  const [isDeferredReady, setIsDeferredReady] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      setIsDeferredReady(true);
+      return;
+    }
+    const idleCallback = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 400));
+    const handle = idleCallback(() => {
+      setIsDeferredReady(true);
+    });
+    return () => {
+      if ((window as any).cancelIdleCallback && typeof handle === 'number') {
+        (window as any).cancelIdleCallback(handle);
+      } else {
+        clearTimeout(handle);
+      }
+    };
+  }, []);
+
   const { data: overviewRes, isLoading: isOverviewLoading } = useQuery({
     queryKey: ['admin-overview-stats'],
     queryFn: () => getDashboardOverview(),
@@ -198,7 +220,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
   const { data: chartRes, isLoading: isChartLoading } = useQuery({
     queryKey: ['admin-attendance-chart'],
     queryFn: () => getAttendanceChart(),
-    enabled: isRingkasanActive,
+    enabled: isRingkasanActive && isDeferredReady,
     staleTime: 60 * 1000,
   });
 
@@ -212,12 +234,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
   const { data: logsRes, isLoading: isLogsLoading } = useQuery({
     queryKey: ['admin-recent-logs'],
     queryFn: () => getTenantActivityLogs({ limit: 4 }),
-    enabled: isRingkasanActive,
+    enabled: isRingkasanActive && isDeferredReady,
     staleTime: 60 * 1000,
   });
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    setIsDeferredReady(true);
     try {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['admin-overview-stats'] }),
@@ -718,7 +741,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                   academicStats={academicRes?.data}
                   chartData={chartRes?.data}
                   recentLogs={logsRes?.data?.logs || []}
-                  isLogsLoading={isLogsLoading}
+                  isLogsLoading={!isDeferredReady || isLogsLoading}
                   loading={isOverviewLoading || isAcademicLoading}
                   tpTahun={tpTahun}
                   semNama={semNama}
