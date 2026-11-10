@@ -119,18 +119,25 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
   semNama = '',
   onNavigateSubtab,
 }) => {
-  const [activeAnalyticsTab, setActiveAnalyticsTab] = useState<'chart' | 'tingkat'>('chart');
+  // On mobile screens, default to instant lightweight CSS rombel distribution instead of heavy 564KB SVG charts
+  const [activeAnalyticsTab, setActiveAnalyticsTab] = useState<'chart' | 'tingkat'>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return 'tingkat';
+    }
+    return 'chart';
+  });
   const [isChartReady, setIsChartReady] = useState(false);
 
   React.useEffect(() => {
-    const idleCallback = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 250));
+    if (activeAnalyticsTab !== 'chart') return;
+    const idleCallback = (window as any).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1000));
     const handle = idleCallback(() => setIsChartReady(true));
     return () => {
       if ((window as any).cancelIdleCallback && typeof handle === 'number') {
         (window as any).cancelIdleCallback(handle);
       }
     };
-  }, []);
+  }, [activeAnalyticsTab]);
 
   const totalSiswa = stats?.total_siswa ?? academicStats?.total_siswa ?? 0;
   const totalGuru = stats?.total_guru ?? academicStats?.total_guru ?? 0;
@@ -158,7 +165,7 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
         id: 'sesi',
         icon: (
           <span className="relative flex h-2 w-2 mr-1">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="animate-ping transform-gpu will-change-transform absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
         ),

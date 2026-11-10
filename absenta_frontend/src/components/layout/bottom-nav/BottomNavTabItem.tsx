@@ -163,7 +163,7 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
         {isRoleLauncher && roleStyle && !item.badge && (
           <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 pointer-events-none z-10" aria-hidden="true">
             <span 
-              className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-80", roleStyle.pulseDotRing)} 
+              className={cn("animate-ping transform-gpu will-change-transform absolute inline-flex h-full w-full rounded-full opacity-80", roleStyle.pulseDotRing)} 
             />
             <span className={cn("relative inline-flex rounded-full h-2.5 w-2.5 ring-1.5 ring-white dark:ring-slate-900 shadow-xs", roleStyle.dotColor)} />
           </span>

@@ -18,10 +18,11 @@ import { cn } from '@/lib/utils';
 import { useBottomNavTabs } from './bottom-nav/useBottomNavTabs';
 import { useMyPengawasCbt } from '@/hooks/useMyPengawasCbt';
 import { BottomNavTabItem } from './bottom-nav/BottomNavTabItem';
-import { MobileAccountSheet } from './bottom-nav/MobileAccountSheet';
-import { RoleDashboardSwitcherSheet } from './bottom-nav/RoleDashboardSwitcherSheet';
+const MobileAccountSheet = React.lazy(() => import('./bottom-nav/MobileAccountSheet').then(m => ({ default: m.MobileAccountSheet })));
+const RoleDashboardSwitcherSheet = React.lazy(() => import('./bottom-nav/RoleDashboardSwitcherSheet').then(m => ({ default: m.RoleDashboardSwitcherSheet })));
 import { BottomNavNotchBackground } from './bottom-nav/BottomNavNotchBackground';
 import { useMobileAccountSheetStore } from '@/store/mobileAccountSheetStore';
+import { useRoleDashboardSwitcherStore } from '@/store/roleDashboardSwitcherStore';
 import { 
   useMobileSubtabSidebarStore, 
   normalizeRoleToScope,
@@ -417,13 +418,21 @@ export const BottomNavigation: React.FC = React.memo(() => {
       </div>
 
       {/* ── SUBKOMPONEN 3: SHOPEE-GRADE MOBILE USER ACCOUNT SHEET (SAYA) ── */}
-      <MobileAccountSheet
-        isOpen={isAccountSheetOpen}
-        onClose={() => useMobileAccountSheetStore.getState().close()}
-      />
+      {isAccountSheetOpen && (
+        <React.Suspense fallback={null}>
+          <MobileAccountSheet
+            isOpen={isAccountSheetOpen}
+            onClose={() => useMobileAccountSheetStore.getState().close()}
+          />
+        </React.Suspense>
+      )}
 
       {/* ── SUBKOMPONEN 4: SHOPEE-GRADE ROLE DASHBOARD SWITCHER SHEET (DIVISI) ── */}
-      <RoleDashboardSwitcherSheet />
+      {useRoleDashboardSwitcherStore((s) => s.isOpen) && (
+        <React.Suspense fallback={null}>
+          <RoleDashboardSwitcherSheet />
+        </React.Suspense>
+      )}
     </>
   );
 });
