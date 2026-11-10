@@ -254,6 +254,7 @@ export const JadwalPelajaranView: React.FC<UniversalJadwalPelajaranViewProps> = 
     queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-all'] });
     queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-all-builder'] });
     queryClient.invalidateQueries({ queryKey: ['unified-jadwal-kbm-all'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-delegasi'] });
   }, [queryClient]);
 
   const handleEditSlot = useCallback((_slot: JadwalKBM) => {
@@ -490,6 +491,7 @@ export const JadwalPelajaranView: React.FC<UniversalJadwalPelajaranViewProps> = 
           queryClient.invalidateQueries({ queryKey: ['jadwal-kbm'] });
           queryClient.invalidateQueries({ queryKey: ['jadwal-pelajaran-grid'] });
           queryClient.invalidateQueries({ queryKey: ['unified-jadwal-kbm-all'] });
+          queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-delegasi'] });
         }}
       />
 
