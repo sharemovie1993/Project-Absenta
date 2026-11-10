@@ -349,6 +349,7 @@ export const SiswaCbtTab: React.FC = () => {
   } = useQuery({
     queryKey: cbtQueryKeys.myExams(),
     queryFn: cbtApi.getMyExams,
+    staleTime: 15000,
     refetchInterval: 30000, // pantau ujian yang baru diaktifkan pengawas
     refetchOnWindowFocus: true,
   });

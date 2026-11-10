@@ -116,9 +116,14 @@ export async function registerPlugins(fastify: any) {
 
   const rateLimitOptions: any = {
     global: true, // Enable global rate limiting
-    max: 5000, // Increased limit to support asset loading
+    max: 25000, // Elevated to 25,000 for high-density institutional environments (e.g. 2,000 CBT concurrent students)
     timeWindow: '1 minute',
     keyGenerator: (req: any) => {
+      // Isolate bucket per user ID for authenticated students/teachers
+      // Prevents 2,000 students behind a single school NAT router IP from sharing one rate limit bucket
+      if (req.user?.id) {
+        return `user:${req.user.id}`;
+      }
       const xff = (req.headers && req.headers['x-forwarded-for']) ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : '';
       return xff || req.ip;
     },
@@ -128,6 +133,8 @@ export async function registerPlugins(fastify: any) {
       if (/localhost|127\.0\.0\.1/i.test(host)) return true;
       // Always allow static assets
       if (req.url && req.url.startsWith('/assets/')) return true;
+      // High-frequency CBT autosave sync endpoints (<20s interval) are exempted from IP-level lockout
+      if (req.url && req.url.includes('/cbt/engine/') && req.url.includes('/sync')) return true;
       return false;
     },
     errorResponseBuilder: (_request: any, context: any) => {

@@ -90,7 +90,8 @@ export default function CbtExamRoomPage() {
     queryKey: ['cbt-my-exams-remedial'],
     queryFn: () => cbtApi.getMyExams(),
     enabled: step === 'TOKEN_GATE',
-    refetchInterval: 15000,
+    staleTime: 10000,
+    refetchInterval: 25000,
   });
 
   const activeRemedial = useMemo(() => {
@@ -258,12 +259,22 @@ export default function CbtExamRoomPage() {
     });
   }, [step, currentIdx, soalList]);
 
-  // 4. Background Sync ke Redis setiap 20 detik (Debounced Autosave)
+  // Ref stabil untuk menampung jawaban & sisa waktu tanpa memicu reset interval
+  const answersMapRef = useRef(answersMap);
+  answersMapRef.current = answersMap;
+
+  const sisaWaktuDetikRef = useRef(sisaWaktuDetik);
+  sisaWaktuDetikRef.current = sisaWaktuDetik;
+
+  // 4. Background Sync ke Redis setiap 20 detik (Debounced Autosave Stabil)
   useEffect(() => {
     if (step !== 'EXAM_ROOM' || !jadwalId) return;
 
     const syncInterval = setInterval(async () => {
-      const answersArray: CbtStudentAnswerItem[] = Object.entries(answersMap).map(
+      const currentAnswers = answersMapRef.current;
+      const currentSisaWaktu = sisaWaktuDetikRef.current;
+
+      const answersArray: CbtStudentAnswerItem[] = Object.entries(currentAnswers).map(
         ([soalId, val]) => ({
           soal_id: soalId,
           jawaban_siswa: val.jawaban,
@@ -276,9 +287,9 @@ export default function CbtExamRoomPage() {
         try {
           await cbtApi.syncAnswers(jadwalId, {
             jawaban: answersArray,
-            sisa_waktu_detik: sisaWaktuDetik,
+            sisa_waktu_detik: currentSisaWaktu,
           });
-          await cbtOfflineStorage.markAnswersSynced(jadwalId, user?.id || 'siswa');
+          await cbtOfflineStorage.markAnswersSynced(jadwalId, studentId || 'siswa');
         } catch {
           // Gagal sync sementara tidak masalah karena IndexedDB sudah memegang data secara aman
         }
@@ -286,7 +297,7 @@ export default function CbtExamRoomPage() {
     }, 20000);
 
     return () => clearInterval(syncInterval);
-  }, [step, jadwalId, answersMap, sisaWaktuDetik, user?.id]);
+  }, [step, jadwalId, studentId]);
 
   // 5. Anti-Cheat Security Watchers (Tab Switch & Fullscreen Exit)
   useEffect(() => {

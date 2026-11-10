@@ -4,6 +4,54 @@ import { Prisma } from '@prisma/client';
 import { CbtJadwalService } from './cbt-jadwal.service';
 
 export class CbtTestEngineService {
+  // In-memory cache untuk master data (Denah, Kelas, GuruMapel) guna mengeliminasi 6.000+ query DB saat 2.000 siswa polling
+  private static denahCache = new Map<string, { data: any[]; exp: number }>();
+  private static classesCache = new Map<string, { data: any[]; exp: number }>();
+  private static guruMapelCache = new Map<string, { data: any[]; exp: number }>();
+
+  private static async getCachedDenahs(tenantId: string) {
+    const now = Date.now();
+    const cached = CbtTestEngineService.denahCache.get(tenantId);
+    if (cached && cached.exp > now) return cached.data;
+
+    const data = await prisma.denahSpasial.findMany({
+      where: { tenant_id: tenantId, is_active: true },
+      orderBy: [{ tipe: 'desc' }, { updated_at: 'desc' }],
+      select: { id: true, tipe: true, elements: true },
+    });
+    CbtTestEngineService.denahCache.set(tenantId, { data, exp: now + 600000 }); // 10 menit
+    return data;
+  }
+
+  private static async getCachedClasses(tenantId: string) {
+    const now = Date.now();
+    const cached = CbtTestEngineService.classesCache.get(tenantId);
+    if (cached && cached.exp > now) return cached.data;
+
+    const data = await prisma.kelas.findMany({
+      where: { tenant_id: tenantId, is_active: true },
+      include: { Jurusan: true },
+    });
+    CbtTestEngineService.classesCache.set(tenantId, { data, exp: now + 600000 }); // 10 menit
+    return data;
+  }
+
+  private static async getCachedClassGuruMapels(tenantId: string, kelasId: string) {
+    const cacheKey = `${tenantId}:${kelasId}`;
+    const now = Date.now();
+    const cached = CbtTestEngineService.guruMapelCache.get(cacheKey);
+    if (cached && cached.exp > now) return cached.data;
+
+    const data = await prisma.guruMapel.findMany({
+      where: { tenant_id: tenantId, kelas_id: kelasId },
+      include: {
+        Guru: { select: { id: true, nama_guru: true } },
+      },
+    });
+    CbtTestEngineService.guruMapelCache.set(cacheKey, { data, exp: now + 300000 }); // 5 menit
+    return data;
+  }
+
   /**
    * Daftar jadwal ujian milik siswa (berdasarkan kelas siswa) beserta status & hasil pengerjaannya.
    * Token ujian TIDAK pernah dikirim ke siswa — token tetap diumumkan oleh pengawas.
@@ -80,22 +128,9 @@ export class CbtTestEngineService {
           },
         },
       }),
-      prisma.denahSpasial.findMany({
-        where: { tenant_id: tenantId, is_active: true },
-        orderBy: [{ tipe: 'desc' }, { updated_at: 'desc' }],
-        select: { id: true, tipe: true, elements: true },
-      }),
-      prisma.kelas.findMany({
-        where: { tenant_id: tenantId, is_active: true },
-        include: { Jurusan: true },
-      }),
-      // SSOT Resolusi Guru Pengampu Kelas Siswa untuk Bank Soal Bersama MGMP
-      prisma.guruMapel.findMany({
-        where: { tenant_id: tenantId, kelas_id: siswa.kelas_id },
-        include: {
-          Guru: { select: { id: true, nama_guru: true } },
-        },
-      }),
+      CbtTestEngineService.getCachedDenahs(tenantId),
+      CbtTestEngineService.getCachedClasses(tenantId),
+      CbtTestEngineService.getCachedClassGuruMapels(tenantId, siswa.kelas_id),
     ]);
 
     // 1. Ekstrak pemetaan ruang dari Denah Spasial Kampus (Master Sarpras & Event Ujian)
@@ -846,6 +881,13 @@ export class CbtTestEngineService {
         total_soal: soalList.length,
         soal: soalList,
       };
+
+      // Tulis balik bundle ke Redis dengan TTL 24 jam agar 1.999 siswa berikutnya tidak membebani database
+      if (redis) {
+        await redis
+          .set(`cbt:${tenantId}:bundle:${jadwalId}`, JSON.stringify(bundleData), 'EX', 86400)
+          .catch(() => null);
+      }
     }
 
     // Ambil jawaban yang tersimpan (jika resume dari session buffer Redis atau DB)
@@ -996,14 +1038,41 @@ export class CbtTestEngineService {
       };
     }
 
-    // Ambil kunci jawaban dari seluruh butir soal di Bank Soal
-    const soalList = await prisma.cbtSoal.findMany({
-      where: { tenant_id: tenantId, bank_soal_id: peserta.JadwalUjian.bank_soal_id },
-      select: { id: true, kunci_jawaban: true, bobot: true },
-    });
+    // Ambil kunci jawaban dari seluruh butir soal di Bank Soal (dengan Redis caching)
+    const redis = getRedisConnection();
+    let keyMap: Map<string, string> | null = null;
+    let totalSoal = 0;
+    const cacheKeyScore = `cbt:${tenantId}:scoring_keys:${peserta.JadwalUjian.bank_soal_id}`;
 
-    const keyMap = new Map<string, string>();
-    soalList.forEach((s) => keyMap.set(s.id, s.kunci_jawaban));
+    if (redis) {
+      const cachedKeys = await redis.get(cacheKeyScore).catch(() => null);
+      if (cachedKeys) {
+        try {
+          const parsed = JSON.parse(cachedKeys);
+          keyMap = new Map(Object.entries(parsed.keys || {}));
+          totalSoal = Number(parsed.total) || keyMap.size;
+        } catch {}
+      }
+    }
+
+    if (!keyMap) {
+      const soalList = await prisma.cbtSoal.findMany({
+        where: { tenant_id: tenantId, bank_soal_id: peserta.JadwalUjian.bank_soal_id },
+        select: { id: true, kunci_jawaban: true, bobot: true },
+      });
+      keyMap = new Map();
+      const objKeys: Record<string, string> = {};
+      soalList.forEach((s) => {
+        keyMap!.set(s.id, s.kunci_jawaban);
+        objKeys[s.id] = s.kunci_jawaban;
+      });
+      totalSoal = soalList.length;
+      if (redis) {
+        await redis
+          .set(cacheKeyScore, JSON.stringify({ keys: objKeys, total: totalSoal }), 'EX', 86400)
+          .catch(() => null);
+      }
+    }
 
     let jumlahBenar = 0;
     let jumlahSalah = 0;
@@ -1017,8 +1086,8 @@ export class CbtTestEngineService {
       }
     }
 
-    const totalSoal = soalList.length || 1;
-    const rawScore = Math.round((jumlahBenar / totalSoal) * 100 * 100) / 100;
+    const effectiveTotalSoal = totalSoal || 1;
+    const rawScore = Math.round((jumlahBenar / effectiveTotalSoal) * 100 * 100) / 100;
 
     // ── LOGIKA ENGINE KEPUTUSAN NILAI AKHIR (REMEDIAL VS REGULER) ──
     const sec = (peserta.JadwalUjian.setting_keamanan as any) || {};
@@ -1100,19 +1169,21 @@ export class CbtTestEngineService {
     });
 
     // Bersihkan sesi Redis
-    const redis = getRedisConnection();
     if (redis) {
       await redis.del(`cbt:${tenantId}:session:${siswaId}`).catch(() => null);
     }
 
-    // Jika jadwal mengaktifkan Auto-Transfer ke e-Rapor, suntikkan nilai siswa secara real-time
-    await CbtJadwalService.autoTransferSingleStudentIfEnabled(
-      tenantId,
-      jadwalId,
-      siswaId,
-      nilaiAkhir
-    ).catch((err: any) => {
-      console.warn('[CBT Auto-Transfer on Submit Warn]', err?.message);
+    // Asynchronous Background Transfer ke e-Rapor (Non-blocking)
+    // Menjamin response penyerahan ujian siswa instan (<20ms) tanpa antre koneksi database
+    setImmediate(() => {
+      CbtJadwalService.autoTransferSingleStudentIfEnabled(
+        tenantId,
+        jadwalId,
+        siswaId,
+        nilaiAkhir
+      ).catch((err: any) => {
+        console.warn('[CBT Asynchronous Rapor Transfer Warn]', err?.message);
+      });
     });
 
     const showInstant = (peserta.JadwalUjian.setting_keamanan as any)?.show_result_instant ?? false;

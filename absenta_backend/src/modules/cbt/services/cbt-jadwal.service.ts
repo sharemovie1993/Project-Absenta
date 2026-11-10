@@ -638,6 +638,38 @@ export class CbtJadwalService {
       : 999999;
     const allowFloating = Boolean((jadwal?.setting_keamanan as any)?.floating_duration);
 
+    // Ambil data sesi Redis secara batch (O(1) Redis Pipeline) untuk peserta yang sedang mengerjakan
+    // Memungkinkan pengawas ruang melihat jumlah butir soal terjawab secara langsung (live-sync)
+    const redis = getRedisConnection();
+    const inProgressSiswaIds = items.filter((it) => it.status === 'IN_PROGRESS').map((it) => it.siswa_id);
+    const redisSessionMap = new Map<string, { jawaban: any[]; last_sync: number }>();
+
+    if (redis && inProgressSiswaIds.length > 0) {
+      try {
+        const pipeline = redis.pipeline();
+        inProgressSiswaIds.forEach((sId) => {
+          pipeline.hgetall(`cbt:${tenantId}:session:${sId}`);
+        });
+        const results = await pipeline.exec();
+        if (Array.isArray(results)) {
+          results.forEach((res: any, idx: number) => {
+            const err = res[0];
+            const data = res[1];
+            if (!err && data && data.jawaban) {
+              try {
+                const parsedAnswers = JSON.parse(data.jawaban);
+                const sId = inProgressSiswaIds[idx];
+                redisSessionMap.set(sId, {
+                  jawaban: parsedAnswers,
+                  last_sync: Number(data.last_sync) || 0,
+                });
+              } catch {}
+            }
+          });
+        }
+      } catch {}
+    }
+
     const processedItems = await Promise.all(
       items.map(async (item) => {
         let dynamicSisaWaktu = item.sisa_waktu_detik;
@@ -668,10 +700,24 @@ export class CbtJadwalService {
           }
         }
 
+        let effectiveJawabanJson = item.jawaban_json;
+        let liveStatusSinkron = item.status_sinkron;
+        let lastSyncTimestamp: number | null = null;
+
+        if (item.status === 'IN_PROGRESS' && redisSessionMap.has(item.siswa_id)) {
+          const rSession = redisSessionMap.get(item.siswa_id)!;
+          effectiveJawabanJson = rSession.jawaban;
+          liveStatusSinkron = 'SYNCED';
+          lastSyncTimestamp = rSession.last_sync;
+        }
+
         return {
           ...item,
           sisa_waktu_detik: dynamicSisaWaktu,
           durasi_pengerjaan_detik: durasiPengerjaanDetik,
+          status_sinkron: liveStatusSinkron,
+          last_sync_timestamp: lastSyncTimestamp,
+          jawaban_json: effectiveJawabanJson,
           Siswa: item.Siswa
             ? {
                 ...item.Siswa,

@@ -11,12 +11,23 @@ import { prisma } from '@/utils/prisma';
 import { z } from 'zod';
 
 export class CbtTestEngineController {
+  // In-memory cache berkinerja tinggi (TTL 2 jam) untuk mengeliminasi ribuan query SQL ke PostgreSQL saat 2.000 siswa aktif
+  private static siswaIdMemoryCache = new Map<string, { id: string; exp: number }>();
+
   /**
    * Helper untuk mendapatkan ID Siswa dari akun yang sedang login
    */
   private static async resolveSiswaId(req: any): Promise<string> {
     const { tenant_id, id: userId } = req.user!;
     if (req.user.siswa_id) return req.user.siswa_id;
+
+    const cacheKey = `${tenant_id}:${userId}`;
+    const now = Date.now();
+    const cached = CbtTestEngineController.siswaIdMemoryCache.get(cacheKey);
+    if (cached && cached.exp > now) {
+      req.user.siswa_id = cached.id;
+      return cached.id;
+    }
 
     const profile = await prisma.siswa.findFirst({
       where: { user_id: userId, tenant_id },
@@ -27,6 +38,8 @@ export class CbtTestEngineController {
       throw new Error('Akun Anda tidak terhubung dengan data profil Siswa');
     }
 
+    CbtTestEngineController.siswaIdMemoryCache.set(cacheKey, { id: profile.id, exp: now + 7200000 });
+    req.user.siswa_id = profile.id;
     return profile.id;
   }
 
