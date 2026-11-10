@@ -111,6 +111,12 @@ Lighthouse versi mobile berjalan dengan **4x CPU Throttling** (simulasi prosesor
     - Memberikan `initialData` dan `staleTime: 10 menit` pada `RouteAccessBadge` sehingga status Lokal/Tunnel tampil instan tanpa fetch ulang.
 16. **Eliminasi Element Render Delay pada LCP (`AdminRingkasanTab.tsx`):**
     - Menyediakan fallback sinkron `resolvedTpTahun` dan `resolvedSemNama` pada teks deskripsi analitik rombel (elemen yang ditandai Lighthouse sebagai LCP), menghilangkan *render delay* 931 ms pada komputasi Lantern.
+17. **Conditional Gating Menu Akun (`UserMenu.tsx` & `MobileAccountSheet.tsx`):**
+    - Mengunci pemanggilan query `notifications/my` dan `communication/unread-count` dengan `enabled: isOpen`. Kedua API tidak lagi ditembakkan saat initial load startup, menyusutkan pemanggilan API awal menjadi hanya 3 panggilan esensial.
+18. **Eliminasi Chunk Leakage & Font-Display Optional (`UnifiedStaffDashboard.tsx` & `index.html`):**
+    - Mengubah pemanggilan `useWaliKelasOptions`, `usePiketIzinKeluarOptions`, `kesiswaanApi`, `kurikulumApi`, `hubinApi`, `piketApi`, `tenantApi`, dan `get*Stats` di `UnifiedStaffDashboard` menjadi dynamic `import()` di dalam `queryFn` masing-masing, sehingga belasan file API peran lain tidak lagi diunduh pada initial load tab Admin.
+    - Menghapus import dead code `guruApi` dan `createSesiAbsensi`.
+    - Menerapkan `display=optional` dan merampingkan varian bobot Plus Jakarta Sans di `index.html` guna menjamin zero layout shift (CLS = 0) dan kebal terhadap latensi CDN font eksternal.
 
 ---
 
