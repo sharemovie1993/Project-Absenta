@@ -209,6 +209,18 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
   const teacherDashboards = useMemo<MobileBottomSubItem[]>(() => {
     const list: MobileBottomSubItem[] = [];
 
+    if (isAdminRole && !isKepsek) {
+      list.push({
+        id: 'dash-kepsek',
+        label: 'Dashboard Kepala Sekolah',
+        shortLabel: 'Kepsek',
+        icon: Award,
+        targetPath: '/dashboard?tab=kepsek',
+        color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+        roleEcosystem: 'kepsek',
+      });
+    }
+
     if (isKaprog || isAdminRole) {
       list.push({
         id: 'dash-kaprog',
@@ -448,6 +460,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       if (currentTab === 'koperasi') return 'koperasi';
       if (currentTab === 'kelola' || currentTab === 'piket') return 'piket';
       if (currentTab === 'admin') return 'admin';
+      if (currentTab === 'kepsek') return 'kepsek';
       if (isPureGerbangStaff && (!currentTab || currentTab === 'ringkasan' || currentTab === 'kelola')) return 'satpam';
       if (isTuStaff && !isPendidik && (!currentTab || currentTab === 'ringkasan')) return 'tu';
     }
@@ -489,6 +502,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         return getPiketTabs();
       case 'admin':
         return getAdminTabs(teacherDashboards);
+      case 'kepsek':
+        return kepsekTabs;
       default: {
         // ── 🌟 FORMASI 7 PATEN: UNIVERSAL GURU MULTI-ROLE HUB (3 KIRI - 1 CENTER FAB - 3 KANAN) ──
         const isDashActive = (targetPath: string, p: string, t: string | null) => {

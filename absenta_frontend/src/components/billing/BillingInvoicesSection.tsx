@@ -290,7 +290,7 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
                   const sub = (inv as any).Subscription || (inv as any).Billing?.[0]?.Subscription;
                   const serviceName = sub?.Plan?.Module?.name || sub?.Plan?.name || sub?.service_code || 'Umum';
                   const style = getServiceStyle(serviceName);
-                  const IconComponent = (LucideIcons as any)[style.icon] || Box;
+                  const IconComponent = isValidIconName(style.icon) ? iconForName(style.icon) : Box;
                   const payment = (inv as any).payments?.[0]; // Get most recent payment
 
                   return (

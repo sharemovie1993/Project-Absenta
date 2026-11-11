@@ -103,6 +103,7 @@ export type EcosystemType =
   | 'koperasi' 
   | 'piket' 
   | 'admin' 
+  | 'kepsek'
   | 'portal';
 
 export interface EcosystemTheme {
@@ -136,6 +137,7 @@ export function getEcosystemLabel(ecosystem: EcosystemType): string {
     case 'toolman': return 'Sarpras • Toolman';
     case 'koperasi': return 'Koperasi';
     case 'admin': return 'Administrator';
+    case 'kepsek': return 'Kepala Sekolah';
     case 'siswa': return 'Siswa';
     case 'portal': return 'Ruang Pendidik';
     default: return 'Absenta';

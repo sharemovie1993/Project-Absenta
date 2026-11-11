@@ -364,6 +364,29 @@ export const UnifiedStaffDashboard: React.FC = () => {
     setSearchParams({ tab: newTab }, { replace: true });
   }, [setSearchParams, navigate]);
 
+  // ── Desktop Horizontal Tab Scroll Controls (Tombol Kiri / Kanan) ─────────────
+  const desktopNavScrollRef = React.useRef<HTMLDivElement | null>(null);
+  const [canScrollNavLeft, setCanScrollNavLeft] = useState(false);
+  const [canScrollNavRight, setCanScrollNavRight] = useState(false);
+
+  const updateDesktopNavScrollState = React.useCallback(() => {
+    const el = desktopNavScrollRef.current;
+    if (!el) return;
+    const maxScrollLeft = el.scrollWidth - el.clientWidth;
+    setCanScrollNavLeft(el.scrollLeft > 4);
+    setCanScrollNavRight(maxScrollLeft > 4 && el.scrollLeft < maxScrollLeft - 4);
+  }, []);
+
+  const scrollDesktopNav = React.useCallback((direction: 'left' | 'right') => {
+    const el = desktopNavScrollRef.current;
+    if (!el) return;
+    const step = Math.max(220, Math.round(el.clientWidth * 0.55));
+    el.scrollBy({
+      left: direction === 'left' ? -step : step,
+      behavior: 'smooth',
+    });
+  }, []);
+
   // Tutup dan reset sidebar otomatis hanya saat activeTab benar-benar berubah setelah mount
   const prevActiveTabRef = React.useRef(activeTab);
   useEffect(() => {
@@ -908,6 +931,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     // 0. Tab khusus Admin
     if (isAdminRole && !isKepsek) {
       list.push({ id: 'admin', label: 'Dashboard Admin', icon: ShieldCheck });
+      list.push({ id: 'kepsek', label: 'Dashboard Kepala Sekolah', icon: Award });
     }
 
     // 1. Beranda Guru / Scan Gerbang / Overview Eksekutif Kepsek
@@ -943,11 +967,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
-    // 4.1 Kaprog (Khusus Ketua Program Keahlian / Jurusan)
-    if (isKaprog && !isKepsek) {
+    // 4.1 Kaprog (Ketua Program Keahlian / Jurusan & Admin)
+    if ((isKaprog || isAdminRole) && !isKepsek) {
       list.push({ 
         id: 'kaprog', 
-        label: 'Dashboard Jurusan', 
+        label: isAdminRole && !isKaprog ? 'Dashboard Kaprog' : 'Dashboard Jurusan', 
         icon: Award, 
       });
     }
@@ -1120,11 +1144,35 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isPembinaEskul,
   ]);
 
+  useEffect(() => {
+    const el = desktopNavScrollRef.current;
+    if (!el) return;
+
+    updateDesktopNavScrollState();
+    const activeBtn = el.querySelector<HTMLElement>('[data-nav-tab-active="true"]');
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+
+    const handleScroll = () => updateDesktopNavScrollState();
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => updateDesktopNavScrollState())
+      : null;
+    resizeObserver?.observe(el);
+
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      resizeObserver?.disconnect();
+    };
+  }, [tabs.length, activeTab, updateDesktopNavScrollState]);
+
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
   useEffect(() => {
-    // Tab binaan, kaprog, kepegawaian, pembimbing_pkl, dan kelola (piket) valid jika user memiliki peran tersebut
+    // Tab binaan, kepsek, kaprog, kepegawaian, pembimbing_pkl, dan kelola (piket) valid jika user memiliki peran tersebut
     if (activeTab === 'binaan' && (isWaliKelas || Boolean(waliKelasId))) return;
-    if (activeTab === 'kaprog' && isKaprog) return;
+    if (activeTab === 'kepsek' && (isKepsek || isAdminRole)) return;
+    if (activeTab === 'kaprog' && (isKaprog || isAdminRole)) return;
     if (activeTab === 'kepegawaian' && (isTUKepala || isTUPersuratan || isTUKepegawaian || isTUKeuangan || isTUSarpras || isTU || isAdminRole)) return;
     if (activeTab === 'pembimbing_pkl' && isPembimbingPkl) return;
     if (activeTab === 'kelola' && (isPiketGuruActual || isPureGerbangStaff)) return;
@@ -1333,29 +1381,67 @@ export const UnifiedStaffDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Tab Navigation Row Inset (Desktop) */}
-        <div className="hidden md:flex p-1.5 rounded-2xl bg-slate-950/80 backdrop-blur-md border border-white/10 items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar relative z-10 shadow-lg">
-          {tabs.map((tab, idx) => {
-            const TabIcon = tab.icon;
-            const isTabActive = activeTab === tab.id;
+        {/* Tab Navigation Row Inset (Desktop) dengan Tombol Geser Kiri / Kanan */}
+        <div className="hidden md:flex items-center gap-1.5 p-1.5 rounded-2xl bg-slate-950/80 backdrop-blur-md border border-white/10 relative z-10 shadow-lg">
+          <button
+            type="button"
+            onClick={() => scrollDesktopNav('left')}
+            disabled={!canScrollNavLeft}
+            aria-label="Geser navigasi dashboard ke kiri"
+            title="Geser ke kiri"
+            className={cn(
+              "w-8 h-9 rounded-xl flex items-center justify-center shrink-0 border transition-all select-none",
+              canScrollNavLeft
+                ? "bg-white/10 hover:bg-white/20 text-white border-white/15 cursor-pointer active:scale-95 shadow-xs"
+                : "bg-transparent text-slate-600 border-transparent opacity-35 cursor-default"
+            )}
+          >
+            <ChevronLeft size={16} />
+          </button>
 
-            return (
-              <button
-                key={tab.id || `tab-idx-${idx}`}
-                type="button"
-                onClick={() => handleTabChange(tab.id)}
-                className={cn(
-                  "px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap select-none",
-                  isTabActive
-                    ? "bg-slate-900 text-emerald-400 border border-emerald-500/40 shadow-md shadow-emerald-950/50"
-                    : "text-slate-300 hover:text-white hover:bg-white/10"
-                )}
-              >
-                <TabIcon size={15} className={isTabActive ? "text-emerald-400" : "text-slate-400"} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
+          <div
+            ref={desktopNavScrollRef}
+            className="flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth"
+          >
+            {tabs.map((tab, idx) => {
+              const TabIcon = tab.icon;
+              const isTabActive = activeTab === tab.id;
+
+              return (
+                <button
+                  key={tab.id || `tab-idx-${idx}`}
+                  type="button"
+                  data-nav-tab-active={isTabActive ? 'true' : undefined}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={cn(
+                    "px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 select-none",
+                    isTabActive
+                      ? "bg-slate-900 text-emerald-400 border border-emerald-500/40 shadow-md shadow-emerald-950/50"
+                      : "text-slate-300 hover:text-white hover:bg-white/10"
+                  )}
+                >
+                  <TabIcon size={15} className={isTabActive ? "text-emerald-400" : "text-slate-400"} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => scrollDesktopNav('right')}
+            disabled={!canScrollNavRight}
+            aria-label="Geser navigasi dashboard ke kanan"
+            title="Geser ke kanan"
+            className={cn(
+              "w-8 h-9 rounded-xl flex items-center justify-center shrink-0 border transition-all select-none",
+              canScrollNavRight
+                ? "bg-white/10 hover:bg-white/20 text-white border-white/15 cursor-pointer active:scale-95 shadow-xs"
+                : "bg-transparent text-slate-600 border-transparent opacity-35 cursor-default"
+            )}
+          >
+            <ChevronRight size={16} />
+          </button>
         </div>
       </div>
 
@@ -1757,6 +1843,22 @@ export const UnifiedStaffDashboard: React.FC = () => {
           >
             <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
               <AdminDashboard user={user} />
+            </Suspense>
+          </div>
+          </EcosystemProvider>
+        )}
+
+        {/* 🏆 TAB KEPSEK: DASHBOARD KEPALA SEKOLAH (AKSES ADMIN / EKSEKUTIF) */}
+        {visitedTabs.has('kepsek') && (
+          <EcosystemProvider ecosystem='kepsek' as={React.Fragment}>
+            <div 
+            key="tab-kepsek"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'kepsek'}
+            className={cn("w-full min-w-0", activeTab === 'kepsek' ? "block" : "hidden")}
+          >
+            <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
+              <KepalaSekolahDashboard />
             </Suspense>
           </div>
           </EcosystemProvider>

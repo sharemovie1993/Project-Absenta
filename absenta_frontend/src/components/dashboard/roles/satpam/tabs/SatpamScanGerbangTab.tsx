@@ -138,16 +138,16 @@ export const SatpamScanGerbangTab: React.FC<SatpamScanGerbangTabProps> = ({
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start">
       {/* ── LEFT: SCAN TERMINAL (7 COLS) ────────────────────── */}
       <div className="lg:col-span-7 space-y-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 text-white shadow-xl space-y-5">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 sm:p-6 text-slate-900 dark:text-white shadow-xs dark:shadow-xl space-y-5">
           {/* Header Pos Status */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-rose-600/20 text-rose-400 border border-rose-500/30 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-600/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 flex items-center justify-center">
                 <Camera size={20} />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white tracking-tight">Terminal Scan RFID & Barcode</h3>
-                <p className="text-[11px] text-slate-400">Siap menerima tap kartu fisik & kamera QR</p>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">Terminal Scan RFID & Barcode</h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Siap menerima tap kartu fisik & kamera QR</p>
               </div>
             </div>
 
@@ -155,47 +155,47 @@ export const SatpamScanGerbangTab: React.FC<SatpamScanGerbangTabProps> = ({
               <button
                 type="button"
                 onClick={() => setIsMuted((prev) => !prev)}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
                 title={isMuted ? 'Nyalakan Suara Beep' : 'Bisukan Suara Beep'}
                 aria-label="Toggle Suara Beep"
               >
-                {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} className="text-emerald-400" />}
+                {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} className="text-emerald-600 dark:text-emerald-400" />}
               </button>
 
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                 ONLINE
               </span>
             </div>
           </div>
 
           {/* Scanner Viewport Frame */}
-          <div className="relative w-full h-56 sm:h-64 rounded-2xl bg-slate-950 border border-emerald-500/30 flex flex-col items-center justify-center text-center p-6 space-y-3 overflow-hidden group select-none">
+          <div className="relative w-full h-56 sm:h-64 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-emerald-300/80 dark:border-emerald-500/30 flex flex-col items-center justify-center text-center p-6 space-y-3 overflow-hidden group select-none">
             {/* Animated Laser Reticle */}
-            <div className="absolute inset-x-0 h-0.5 bg-emerald-400 shadow-[0_0_15px_#10b981] animate-pulse top-1/2 -translate-y-1/2 pointer-events-none" />
+            <div className="absolute inset-x-0 h-0.5 bg-emerald-500/80 dark:bg-emerald-400 shadow-[0_0_15px_#10b981] animate-pulse top-1/2 -translate-y-1/2 pointer-events-none" />
 
-            <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 shadow-inner group-hover:scale-105 transition-transform">
+            <div className="w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-xs dark:shadow-inner group-hover:scale-105 transition-transform">
               <QrCode size={36} />
             </div>
             <div className="space-y-1 relative z-10 max-w-sm">
-              <h4 className="text-xs font-mono font-bold text-slate-200 tracking-wide uppercase">
+              <h4 className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200 tracking-wide uppercase">
                 Tempelkan Kartu Siswa ke Reader USB
               </h4>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Alat scanner otomatis membaca kode RFID / NISN tanpa perlu klik mouse
               </p>
             </div>
           </div>
 
           {/* Input Bar for Hardware Reader & Manual Input */}
-          <form onSubmit={handleSubmit} className="space-y-2 pt-2 border-t border-slate-800">
-            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
+          <form onSubmit={handleSubmit} className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
               <span className="uppercase tracking-wider">Input Barcode / NISN Fisik:</span>
-              <span className="text-[10px] text-teal-400 font-mono">Auto-Focus Ready</span>
+              <span className="text-[10px] text-teal-600 dark:text-teal-400 font-mono">Auto-Focus Ready</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
-                <Scan className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <Scan className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
                 <Input
                   ref={inputRef}
                   type="text"
@@ -203,13 +203,13 @@ export const SatpamScanGerbangTab: React.FC<SatpamScanGerbangTabProps> = ({
                   onChange={(e) => setNisnInput(e.target.value)}
                   placeholder="Scan kartu atau ketik NISN..."
                   aria-label="Scan kartu atau ketik NISN"
-                  className="pl-10 h-11 bg-slate-950 border-slate-800 text-white font-mono text-xs rounded-2xl focus:border-rose-500"
+                  className="pl-10 h-11 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono text-xs rounded-2xl focus:border-rose-500"
                 />
               </div>
               <Button
                 type="submit"
                 disabled={isProcessing || !nisnInput.trim()}
-                className="h-11 px-5 rounded-2xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-950/40 gap-1.5 shrink-0"
+                className="h-11 px-5 rounded-2xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-sm dark:shadow-lg dark:shadow-rose-950/40 gap-1.5 shrink-0"
               >
                 {isProcessing ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
                 <span>Tap</span>
