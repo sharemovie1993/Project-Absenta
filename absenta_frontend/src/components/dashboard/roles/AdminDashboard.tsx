@@ -54,7 +54,7 @@ import {
 } from './admin/types';
 import { AdminDashboardSkeleton } from './admin/AdminDashboardSkeleton';
 import { useMobileSubtabSidebar } from './common/subtabSidebarStore';
-const UniversalMobileSubtabSidebar = React.lazy(() => import('./common/UniversalMobileSubtabSidebar').then(m => ({ default: m.UniversalMobileSubtabSidebar })));
+import { UniversalMobileSubtabSidebar } from './common/UniversalMobileSubtabSidebar';
 
 // Default Tab Component (Directly imported with AdminDashboard to eliminate nested lazy waterfall delay)
 import { AdminRingkasanTab } from './admin/tabs/AdminRingkasanTab';
@@ -569,9 +569,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         )}
 
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
-        {isMobileSidebarOpen && (
-          <React.Suspense fallback={null}>
-            <UniversalMobileSubtabSidebar
+        <UniversalMobileSubtabSidebar
               isOpen={isMobileSidebarOpen}
               onClose={() => setIsMobileSidebarOpen(false)}
               title="Panel Administrator"
@@ -622,8 +620,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                 </button>
               }
             />
-          </React.Suspense>
-        )}
       </div>
 
       {/* ── 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) ── */}

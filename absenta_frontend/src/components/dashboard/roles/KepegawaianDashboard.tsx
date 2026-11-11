@@ -72,7 +72,7 @@ export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user
 
   const [activeTab, setActiveTab] = useState<KepegawaianTabId>('beranda');
   const [visitedTabs, setVisitedTabs] = useState<Set<KepegawaianTabId>>(() => new Set<KepegawaianTabId>(['beranda']));
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('tu');
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen } = useMobileSubtabSidebar(hideLayout ? '' : 'tu');
 
   const handleTabSelect = (tabId: KepegawaianTabId) => {
     setActiveTab(tabId);
@@ -271,18 +271,21 @@ export const KepegawaianDashboard: React.FC<KepegawaianDashboardProps> = ({ user
   const renderNavTabs = () => {
     return (
       <div className="w-full max-w-full min-w-0 border-b border-slate-200 dark:border-slate-800">
-        {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
-        <UniversalMobileSubtabSidebar
-          isOpen={isMobileSidebarOpen}
-          onClose={() => setIsMobileSidebarOpen(false)}
-          title="Kepegawaian & PTK"
-          subtitle={`${summary.totalPtk} PTK Terdata • Dapodik Aktif`}
-          roleBadge="KEPEGAWAIAN"
-          roleIcon={Users}
-          tabs={navTabs}
-          activeTab={activeTab}
-          onSelectTab={(tabId) => handleTabSelect(tabId as KepegawaianTabId)}
-        />
+        {/* Dedicated Universal Mobile Subtab Sidebar Drawer (hanya saat standalone, bukan embedded di TU) */}
+        {!hideLayout && (
+          <UniversalMobileSubtabSidebar
+            isOpen={isMobileSidebarOpen}
+            onClose={() => setIsMobileSidebarOpen(false)}
+            title="Kepegawaian & PTK"
+            subtitle={`${summary.totalPtk} PTK Terdata • Dapodik Aktif`}
+            roleBadge="KEPEGAWAIAN"
+            scope="tu"
+            roleIcon={Users}
+            tabs={navTabs}
+            activeTab={activeTab}
+            onSelectTab={(tabId) => handleTabSelect(tabId as KepegawaianTabId)}
+          />
+        )}
 
         {/* Desktop Nav Tabs */}
         <div className="hidden lg:flex items-center gap-2 overflow-x-auto no-scrollbar py-2">

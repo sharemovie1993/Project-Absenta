@@ -82,7 +82,7 @@ export function checkScopeMatchesUrlTab(scope: string, currentTab: string): bool
     case 'pembimbing_pkl':
       return currentTab === 'pembimbing_pkl';
     case 'satpam':
-      return currentTab === 'satpam' || currentTab === 'gerbang';
+      return ['satpam', 'gerbang', 'ringkasan', 'kelola', 'scan', 'log', 'izin'].includes(currentTab);
     case 'koperasi':
       return currentTab === 'koperasi';
     case 'tu':
@@ -184,12 +184,13 @@ export function useMobileSubtabSidebar(scopeOrInitialState?: string | boolean) {
     }
   }, [initialOpen, isScopeActive, openStore, normalizedScope]);
 
-  // Tutup sidebar saat unmount untuk mencegah sidebar menggantung
+  // Tutup sidebar saat unmount hanya jika hook memiliki scope aktif
   useEffect(() => {
+    if (!normalizedScope) return;
     return () => {
       closeStore();
     };
-  }, [closeStore]);
+  }, [normalizedScope, closeStore]);
 
   const isMobileSidebarOpen = useMemo(() => {
     if (!isOpen) return false;

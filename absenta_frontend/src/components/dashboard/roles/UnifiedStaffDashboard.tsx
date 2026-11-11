@@ -364,9 +364,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
     setSearchParams({ tab: newTab }, { replace: true });
   }, [setSearchParams, navigate]);
 
-  // Tutup dan reset sidebar otomatis saat activeTab berubah
+  // Tutup dan reset sidebar otomatis hanya saat activeTab benar-benar berubah setelah mount
+  const prevActiveTabRef = React.useRef(activeTab);
   useEffect(() => {
-    useMobileSubtabSidebarStore.getState().close();
+    if (prevActiveTabRef.current !== activeTab) {
+      prevActiveTabRef.current = activeTab;
+      useMobileSubtabSidebarStore.getState().close();
+    }
   }, [activeTab]);
 
   // ⚡ Keep-Alive Lazy-Mount Tab Cache:
