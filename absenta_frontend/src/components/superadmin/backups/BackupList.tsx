@@ -10,7 +10,9 @@ import {
   Filter, 
   Sparkles, 
   RotateCcw,
-  Layers
+  Layers,
+  Copy,
+  Globe
 } from 'lucide-react';
 import { 
   Button, 
@@ -27,6 +29,7 @@ interface BackupListProps {
   onRefresh: () => void;
   onDownload: (backup: Backup) => void;
   onRestore: (backup: Backup) => void;
+  onClone?: (backup: Backup) => void;
 }
 
 export const getReplicaSyncStatus = (
@@ -101,9 +104,10 @@ export const BackupList: React.FC<BackupListProps> = ({
   items,
   loading,
   replicationStatus,
-  onRefresh,
+  onRefresh: _onRefresh,
   onDownload,
-  onRestore
+  onRestore,
+  onClone
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTenant, setSelectedTenant] = useState('ALL');
@@ -116,9 +120,10 @@ export const BackupList: React.FC<BackupListProps> = ({
     const map = new Map<string, string>();
     items?.forEach(b => {
       const tenantId = b.tenant_id || 'system';
-      const name = b.Tenant?.name || (tenantId === 'system' ? 'System Platform' : tenantId);
+      const baseName = b.Tenant?.name || (tenantId === 'system' ? 'System Platform' : tenantId);
+      const subLabel = b.Tenant?.subdomain ? ` (${b.Tenant.subdomain})` : '';
       if (!map.has(tenantId)) {
-        map.set(tenantId, name);
+        map.set(tenantId, `${baseName}${subLabel}`);
       }
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
@@ -163,10 +168,11 @@ export const BackupList: React.FC<BackupListProps> = ({
       if (searchQuery.trim() !== '') {
         const q = searchQuery.toLowerCase();
         const schoolName = (b.Tenant?.name || '').toLowerCase();
+        const subdomain = (b.Tenant?.subdomain || '').toLowerCase();
         const tenantId = (b.tenant_id || '').toLowerCase();
         const backupId = (b.id || '').toLowerCase();
         const checksum = ((b as any).checksum_sha256 || '').toLowerCase();
-        if (!schoolName.includes(q) && !tenantId.includes(q) && !backupId.includes(q) && !checksum.includes(q)) {
+        if (!schoolName.includes(q) && !subdomain.includes(q) && !tenantId.includes(q) && !backupId.includes(q) && !checksum.includes(q)) {
           return false;
         }
       }
@@ -216,10 +222,16 @@ export const BackupList: React.FC<BackupListProps> = ({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono tracking-tight">
-              <span>ID: {b.tenant_id ? `${b.tenant_id.substring(0, 16)}...` : 'system'}</span>
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono tracking-tight flex-wrap">
+              {b.Tenant?.subdomain && (
+                <span className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded font-bold border border-indigo-200/70 dark:border-indigo-800/70">
+                  <Globe size={9} />
+                  {b.Tenant.subdomain}.absenta.id
+                </span>
+              )}
+              <span>ID: {b.tenant_id ? `${b.tenant_id.substring(0, 8)}...` : 'system'}</span>
               {(b as any).file_path?.includes('.absenta') && (
-                <span className="bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-1.5 py-0.2 rounded font-bold">
+                <span className="bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded font-bold">
                   .absenta
                 </span>
               )}
@@ -375,10 +387,22 @@ export const BackupList: React.FC<BackupListProps> = ({
                 variant="outline" 
                 onClick={() => onRestore(b)}
                 className="h-8 px-2.5 text-xs font-bold text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/60 hover:bg-amber-50 dark:hover:bg-amber-950/30 flex items-center gap-1.5 cursor-pointer shadow-xs"
-                title="Pulihkan Snapshot ke Sekolah Ini atau Sekolah Lain"
+                title="Pulihkan (timpa) data ke sekolah yang sudah ada"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Pulihkan</span>
+              </Button>
+            )}
+            {b.status === 'READY' && onClone && b.tenant_id !== 'system' && Boolean(b.file_path?.includes('.absenta')) && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onClone(b)}
+                className="h-8 px-2.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                title="Kloning langsung menjadi tenant baru (misal smkn1pld-demo) tanpa download-upload"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Kloning</span>
               </Button>
             )}
           </div>
@@ -465,10 +489,21 @@ export const BackupList: React.FC<BackupListProps> = ({
                 size="xs"
                 variant="outline"
                 onClick={() => onRestore(b)}
-                className="h-7 px-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 cursor-pointer"
+                className="h-7 px-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/60 hover:bg-amber-50 dark:hover:bg-amber-950/30 cursor-pointer"
               >
                 <RotateCcw size={11} className="mr-1" />
                 Pulih
+              </Button>
+            )}
+            {b.status === 'READY' && onClone && b.tenant_id !== 'system' && Boolean(b.file_path?.includes('.absenta')) && (
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => onClone(b)}
+                className="h-7 px-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 cursor-pointer"
+              >
+                <Copy size={11} className="mr-1" />
+                Kloning
               </Button>
             )}
           </div>

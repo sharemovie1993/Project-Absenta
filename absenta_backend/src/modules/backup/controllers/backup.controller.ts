@@ -33,6 +33,77 @@ export interface ModelRestoreSummary {
 
 import { PassThrough } from 'stream';
 
+async function streamToBuffer(body: any): Promise<Buffer> {
+  if (!body) return Buffer.alloc(0);
+  if (typeof body.transformToByteArray === 'function') {
+    const arr = await body.transformToByteArray();
+    return Buffer.from(arr);
+  }
+  if (typeof body.pipe === 'function') {
+    const chunks: Buffer[] = [];
+    for await (const chunk of body) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  }
+  return Buffer.alloc(0);
+}
+
+async function readBackupArchiveBuffer(backup: { id: string; file_path: string }): Promise<Buffer> {
+  if (backup.file_path && backup.file_path.startsWith('s3://')) {
+    const withoutPrefix = backup.file_path.replace('s3://', '');
+    const slashIndex = withoutPrefix.indexOf('/');
+    const bucket = withoutPrefix.substring(0, slashIndex);
+    const key = withoutPrefix.substring(slashIndex + 1);
+
+    const s3Client = new S3Client({
+      endpoint: process.env.S3_BACKUP_ENDPOINT || process.env.S3_ENDPOINT || 'http://localhost:9000',
+      region: process.env.S3_REGION || 'us-east-1',
+      credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY || 'minioadmin',
+        secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin'
+      },
+      forcePathStyle: true
+    });
+
+    try {
+      const s3Res = await s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+      return await streamToBuffer(s3Res.Body);
+    } catch (s3Err: any) {
+      const isNotFound = s3Err?.name === 'NoSuchKey' || s3Err?.$metadata?.httpStatusCode === 404;
+      if (isNotFound) {
+        await prisma.tenantBackup.update({
+          where: { id: backup.id },
+          data: { status: BackupStatus.PURGED }
+        }).catch(() => {});
+        const err: any = new Error('Berkas fisik arsip tidak ditemukan di penyimpanan MinIO/S3 (berkas telah dibersihkan atau kedaluwarsa)');
+        err.statusCode = 404;
+        throw err;
+      }
+      throw s3Err;
+    }
+  }
+
+  const storageBase = process.env.STORAGE_LOCAL_DIR
+    ? path.resolve(process.env.STORAGE_LOCAL_DIR)
+    : process.cwd();
+  const candidates = [
+    path.isAbsolute(backup.file_path) ? backup.file_path : path.resolve(storageBase, 'backups', backup.file_path),
+    path.resolve(storageBase, backup.file_path)
+  ];
+  const found = candidates.find((p) => fs.existsSync(p));
+  if (!found) {
+    await prisma.tenantBackup.update({
+      where: { id: backup.id },
+      data: { status: BackupStatus.PURGED }
+    }).catch(() => {});
+    const err: any = new Error('Berkas fisik arsip tidak ditemukan pada disk server');
+    err.statusCode = 404;
+    throw err;
+  }
+  return fs.readFileSync(found);
+}
+
 export class BackupController {
   static async list(req: any, reply: any) {
       const tenantId = req.tenantId || req.dataScope?.tenantId;
@@ -217,6 +288,62 @@ export class BackupController {
       } catch (e: any) {
           return reply.status(500).send({ success: false, message: 'Failed to queue restore job: ' + e.message });
       }
+  }
+
+  /**
+   * Kloning langsung arsip snapshot .absenta yang sudah ada di server ke tenant & subdomain baru
+   * tanpa harus mengunduh dan mengunggah ulang paket cadangan.
+   */
+  static async cloneFromArchive(req: any, reply: any) {
+    try {
+      const { id } = req.params;
+      const targetSubdomain = String(req.body?.targetSubdomain || '').trim().toLowerCase();
+      const targetName = req.body?.targetName ? String(req.body.targetName).trim() : undefined;
+
+      if (!targetSubdomain || !/^[a-z0-9-]+$/.test(targetSubdomain)) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Subdomain target wajib diisi dengan huruf kecil, angka, atau tanda hubung (-).'
+        });
+      }
+
+      const backup = await backupService.getBackupById(id);
+      if (!backup) {
+        return reply.status(404).send({ success: false, message: 'Arsip cadangan tidak ditemukan di database.' });
+      }
+      if (backup.status === BackupStatus.PURGED) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Arsip cadangan ini telah dibersihkan/kedaluwarsa sehingga tidak dapat dikloning.'
+        });
+      }
+      if (!backup.file_path?.includes('.absenta')) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Snapshot format lama (.json.gz) tidak mendukung kloning langsung. Buat snapshot baru (.absenta) terlebih dahulu.'
+        });
+      }
+
+      const buffer = await readBackupArchiveBuffer(backup);
+      console.log(`[BackupController.cloneFromArchive] Kloning snapshot ${id} -> ${targetSubdomain}...`);
+
+      const result = await migrationBundleService.restoreBundle(buffer, {
+        targetSubdomain,
+        targetName,
+        cloneMode: true,
+        isInitialFreshSetup: false,
+        clearExisting: false
+      });
+
+      return reply.send({ success: true, data: result, message: result.message });
+    } catch (error: any) {
+      console.error('Error cloning backup archive:', error);
+      const statusCode = error?.statusCode && Number.isInteger(error.statusCode) ? error.statusCode : 500;
+      return reply.status(statusCode).send({
+        success: false,
+        message: error?.message || 'Gagal mengkloning arsip cadangan.'
+      });
+    }
   }
 
   static async exportTenantData(req: any, reply: any) {

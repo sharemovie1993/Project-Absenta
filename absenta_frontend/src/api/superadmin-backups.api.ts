@@ -31,6 +31,12 @@ export const backupApi = {
   restore: async (id: string, newTenantId: string) => {
     return requestWithFallback<StandardApiResponse>('post', `/admin/backups/${id}/restore`, { data: { newTenantId } });
   },
+  cloneSnapshot: async (id: string, payload: { targetSubdomain: string; targetName?: string }) => {
+    const res = await axios.post(`/admin/backups/${id}/clone`, payload, {
+      timeout: 600000 // 10 menit untuk dataset besar + aset MinIO
+    });
+    return res.data;
+  },
   downloadBlob: async (id: string) => {
     const response = await axios.get(`/admin/backups/${id}/download`, {
       responseType: 'blob'

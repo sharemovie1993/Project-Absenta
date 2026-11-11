@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { z } from 'zod';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   Database, 
   RefreshCw, 
@@ -8,13 +8,15 @@ import {
   Archive,
   AlertTriangle,
   Zap,
-  Info,
   Loader2,
   UploadCloud,
   DownloadCloud,
   Layers,
   Camera,
-  AlertOctagon
+  AlertOctagon,
+  Copy,
+  Globe,
+  CheckCircle2
 } from 'lucide-react';
 import { 
   SectionCard,
@@ -48,7 +50,9 @@ const restoreSchema = z.object({
 });
 
 export const BackupsPage: React.FC = React.memo(() => {
+  const queryClient = useQueryClient();
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
+  const [cloneModalOpen, setCloneModalOpen] = useState(false);
   const [migrationModalOpen, setMigrationModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [replicationModalOpen, setReplicationModalOpen] = useState(false);
@@ -58,6 +62,10 @@ export const BackupsPage: React.FC = React.memo(() => {
   const [newTenantId, setNewTenantId] = useState('');
   const [restoreMode, setRestoreMode] = useState<'SAME_TENANT' | 'DIFFERENT_TENANT'>('SAME_TENANT');
   const [isRestoring, setIsRestoring] = useState(false);
+  const [cloneTargetSubdomain, setCloneTargetSubdomain] = useState('');
+  const [cloneTargetName, setCloneTargetName] = useState('');
+  const [isCloning, setIsCloning] = useState(false);
+  const [cloneSuccessResult, setCloneSuccessResult] = useState<{ targetSubdomain?: string; targetName?: string; message?: string } | null>(null);
 
   const tenantsQuery = useQuery({
     queryKey: ['superadmin-all-tenants-simple'],
@@ -142,6 +150,66 @@ export const BackupsPage: React.FC = React.memo(() => {
     setRestoreModalOpen(true);
   }, []);
 
+  const handleCloneClick = useCallback((backup: Backup) => {
+    setSelectedBackup(backup);
+    const sourceSub = (backup.Tenant?.subdomain || backup.Tenant?.name || 'sekolah')
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    setCloneTargetSubdomain(`${sourceSub || 'tenant'}-demo`);
+    setCloneTargetName(`${backup.Tenant?.name || 'Tenant'} (Demo)`);
+    setCloneSuccessResult(null);
+    setCloneModalOpen(true);
+  }, []);
+
+  const confirmClone = useCallback(async () => {
+    if (!selectedBackup) return;
+    const cleanSub = cloneTargetSubdomain.trim().toLowerCase();
+    const cleanName = cloneTargetName.trim();
+    const sourceSub = (selectedBackup.Tenant?.subdomain || '').toLowerCase();
+
+    if (!cleanSub || !/^[a-z0-9-]+$/.test(cleanSub)) {
+      toast.error('Subdomain target hanya boleh berisi huruf kecil, angka, dan tanda hubung (-).');
+      return;
+    }
+    if (sourceSub && cleanSub === sourceSub) {
+      toast.error(`Subdomain target harus berbeda dari sekolah sumber (${sourceSub}).`);
+      return;
+    }
+    if (!cleanName) {
+      toast.error('Nama sekolah demo wajib diisi.');
+      return;
+    }
+
+    setIsCloning(true);
+    try {
+      const res = await backupApi.cloneSnapshot(selectedBackup.id, {
+        targetSubdomain: cleanSub,
+        targetName: cleanName
+      });
+      if (res?.success) {
+        setCloneSuccessResult({
+          targetSubdomain: res.data?.targetSubdomain || cleanSub,
+          targetName: res.data?.targetName || cleanName,
+          message: res.message
+        });
+        toast.success(`Tenant kloning ${cleanSub}.absenta.id berhasil dibuat!`);
+        await loadBackups();
+        queryClient.invalidateQueries({ queryKey: ['tenants'] });
+        queryClient.invalidateQueries({ queryKey: ['tenants-statistics'] });
+        queryClient.invalidateQueries({ queryKey: ['superadmin-all-tenants-simple'] });
+      } else {
+        toast.error(res?.message || 'Kloning snapshot gagal');
+      }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal mengkloning snapshot');
+    } finally {
+      setIsCloning(false);
+    }
+  }, [selectedBackup, cloneTargetSubdomain, cloneTargetName, loadBackups, queryClient]);
+
   const confirmRestore = useCallback(async () => {
     if (!selectedBackup) return;
     const parsed = restoreSchema.safeParse({ tenantId: newTenantId });
@@ -202,13 +270,13 @@ export const BackupsPage: React.FC = React.memo(() => {
   ], []);
 
   const instruction = useMemo(() => ({
-    title: 'Panduan Arsip & Cadangan',
-    description: 'Kelola cadangan database dan arsip data sekolah untuk keamanan dan pemulihan bencana.',
+    title: 'Panduan Arsip & Kloning Tenant',
+    description: 'Kelola cadangan data sekolah, unduh arsip, atau kloning tenant produksi menjadi tenant demo untuk simulasi sosialisasi.',
     items: [
-      { text: 'Daftar arsip menampilkan cadangan yang siap diunduh atau dipulihkan.' },
-      { text: 'Anda dapat memulihkan cadangan ke tenant kosong untuk keperluan audit atau migrasi.' },
-      { text: 'Pastikan untuk mengunduh cadangan penting secara berkala ke penyimpanan eksternal.' },
-      { text: 'Status READY menandakan snapshot siap digunakan untuk pemulihan instan.' }
+      { text: 'Buat Snapshot: menyimpan cadangan arsip (.absenta) tenant pilihan ke server penyimpanan.' },
+      { text: 'Kloning (tombol di baris arsip): menggandakan snapshot langsung ke subdomain baru (misal smkn1pld-demo) tanpa mengubah data & lisensi produksi.' },
+      { text: 'Pulihkan (tombol di baris arsip): menimpa ulang/rollback data ke sekolah yang sudah ada.' },
+      { text: 'Import / Kloning File & Export (.absenta): untuk mengunggah atau mengunduh arsip antar server.' }
     ]
   }), []);
 
@@ -247,10 +315,11 @@ export const BackupsPage: React.FC = React.memo(() => {
                 variant="toolbarOutline"
                 size="toolbar"
                 onClick={() => setMigrationModalOpen(true)}
-                className="gap-1.5 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs whitespace-nowrap shrink-0 sm:shrink"
+                className="gap-1.5 border-indigo-200 dark:border-indigo-900 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 text-xs whitespace-nowrap shrink-0 sm:shrink"
+                title="Unggah file .absenta dari komputer untuk pemulihan atau kloning ke tenant baru"
               >
                 <UploadCloud size={13} />
-                <span>Import Paket</span>
+                <span>Import / Kloning File</span>
               </Button>
               <Button 
                 type="button"
@@ -311,9 +380,10 @@ export const BackupsPage: React.FC = React.memo(() => {
                   size="toolbar"
                   onClick={() => setExportModalOpen(true)}
                   className="gap-1.5 border-emerald-200 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-xs whitespace-nowrap shrink-0 sm:shrink"
+                  title="Ekspor & unduh arsip lengkap sekolah menjadi berkas .absenta"
                 >
                   <DownloadCloud size={13} />
-                  <span>Export</span>
+                  <span>Export (.absenta)</span>
                 </Button>
               )}
               <Button 
@@ -350,6 +420,7 @@ export const BackupsPage: React.FC = React.memo(() => {
               onRefresh={loadBackups}
               onDownload={handleDownload}
               onRestore={handleRestoreClick}
+              onClone={handleCloneClick}
             />
           </Suspense>
         </SectionCard>
@@ -420,9 +491,9 @@ export const BackupsPage: React.FC = React.memo(() => {
                       : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  <span className="text-xs block">Salin ke Sekolah Lain</span>
+                  <span className="text-xs block">Salin ke Sekolah Existing</span>
                   <span className="text-[10px] font-normal opacity-80 block">
-                    Kloning ke tenant lain
+                    Timpa ke tenant terdaftar
                   </span>
                 </button>
               </div>
@@ -444,7 +515,7 @@ export const BackupsPage: React.FC = React.memo(() => {
                   className="w-full max-w-full min-w-0"
                 />
                 <p className="text-[10px] text-slate-400">
-                  Disarankan memilih tenant baru atau kosong untuk mencegah konflik data.
+                  Ingin membuat tenant demo baru tanpa membuat tenant dulu? Gunakan tombol <strong className="text-indigo-600 dark:text-indigo-400">Kloning</strong> langsung pada baris arsip.
                 </p>
               </div>
             ) : (
@@ -485,7 +556,7 @@ export const BackupsPage: React.FC = React.memo(() => {
               </Button>
               <Button 
                 type="button"
-                variant="default"
+                variant="primary"
                 onClick={confirmRestore} 
                 disabled={!newTenantId || isRestoring}
                 className="h-9 text-xs font-bold gap-1.5 bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
@@ -495,6 +566,156 @@ export const BackupsPage: React.FC = React.memo(() => {
               </Button>
             </div>
           </div>
+        </Modal>
+
+        <Modal
+          isOpen={cloneModalOpen}
+          onClose={() => !isCloning && setCloneModalOpen(false)}
+          title="Kloning Snapshot ke Tenant Baru"
+          className="max-w-lg w-full"
+          contentClassName="p-4 sm:p-6 w-full max-w-full min-w-0"
+        >
+          {cloneSuccessResult ? (
+            <div className="space-y-4 text-center py-2">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                  Kloning Tenant Berhasil!
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {cloneSuccessResult.message || `Seluruh data sekolah berhasil dikloning ke tenant "${cloneSuccessResult.targetName}".`}
+                </p>
+              </div>
+              {cloneSuccessResult.targetSubdomain && (
+                <div className="p-3 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 text-xs">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 block">Alamat Subdomain Baru</span>
+                  <span className="font-mono font-bold text-indigo-700 dark:text-indigo-300">
+                    https://{cloneSuccessResult.targetSubdomain}.absenta.id
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-center pt-2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => setCloneModalOpen(false)}
+                  className="h-9 px-5 text-xs font-bold cursor-pointer"
+                >
+                  Selesai
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 text-xs w-full max-w-full min-w-0">
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-900/70 rounded-xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center shrink-0">
+                    <Copy size={17} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Arsip Sumber</span>
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
+                      {selectedBackup?.Tenant?.name || 'Sekolah'}
+                    </h4>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                      {selectedBackup?.Tenant?.subdomain && (
+                        <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                          {selectedBackup.Tenant.subdomain}.absenta.id
+                        </span>
+                      )}
+                      <span>
+                        {selectedBackup?.snapshot_date ? formatDateTime(selectedBackup.snapshot_date) : '-'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <Badge variant="outline" className="font-mono text-[10px] shrink-0">
+                  {selectedBackup?.file_size_bytes ? `${(parseInt(selectedBackup.file_size_bytes) / 1024 / 1024).toFixed(2)} MB` : ''}
+                </Badge>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="cloneTargetSubdomain" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Subdomain Tenant Baru <span className="text-rose-500">*</span>
+                </Label>
+                <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/30">
+                  <Globe className="w-3.5 h-3.5 text-slate-400 ml-3 shrink-0" />
+                  <Input
+                    id="cloneTargetSubdomain"
+                    type="text"
+                    value={cloneTargetSubdomain}
+                    onChange={(e) => setCloneTargetSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                    placeholder="smkn1pld-demo"
+                    disabled={isCloning}
+                    className="border-0 focus-visible:ring-0 font-mono text-xs h-9"
+                  />
+                  <span className="px-3 text-[11px] font-mono font-semibold text-slate-400 bg-slate-50 dark:bg-slate-900 h-9 flex items-center border-l border-slate-200 dark:border-slate-800 shrink-0">
+                    .absenta.id
+                  </span>
+                </div>
+                {selectedBackup?.Tenant?.subdomain && cloneTargetSubdomain.trim().toLowerCase() === selectedBackup.Tenant.subdomain.toLowerCase() && (
+                  <p className="text-[10px] text-rose-500 font-semibold">
+                    Subdomain kloning tidak boleh sama dengan sekolah produksi asal ({selectedBackup.Tenant.subdomain}).
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="cloneTargetName" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Nama Sekolah / Label Tenant Baru <span className="text-rose-500">*</span>
+                </Label>
+                <Input
+                  id="cloneTargetName"
+                  type="text"
+                  value={cloneTargetName}
+                  onChange={(e) => setCloneTargetName(e.target.value)}
+                  placeholder="SMKN 1 Plered (Demo)"
+                  disabled={isCloning}
+                  className="text-xs h-9"
+                />
+              </div>
+
+              <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-900/40 rounded-xl flex items-start gap-2.5 text-indigo-900 dark:text-indigo-200">
+                <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                <div className="text-[11px] leading-relaxed">
+                  <span className="font-bold block">Aman untuk Data & Lisensi Produksi</span>
+                  <p className="text-[10px] text-indigo-700 dark:text-indigo-300">
+                    Sistem akan otomatis membuat tenant baru dengan UUID mandiri, menyalin data & akun guru/siswa, serta melewati re-bind lisensi dan custom domain sekolah asal.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setCloneModalOpen(false)}
+                  disabled={isCloning}
+                  className="h-9 text-xs cursor-pointer"
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={confirmClone}
+                  disabled={
+                    isCloning ||
+                    !cloneTargetSubdomain.trim() ||
+                    !cloneTargetName.trim() ||
+                    (Boolean(selectedBackup?.Tenant?.subdomain) &&
+                      cloneTargetSubdomain.trim().toLowerCase() === selectedBackup?.Tenant?.subdomain?.toLowerCase())
+                  }
+                  className="h-9 text-xs font-bold gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
+                >
+                  {isCloning ? <Loader2 className="animate-spin w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {isCloning ? 'Mengkloning...' : 'Kloning Sekarang'}
+                </Button>
+              </div>
+            </div>
+          )}
         </Modal>
 
         <MigrationWizardModal
