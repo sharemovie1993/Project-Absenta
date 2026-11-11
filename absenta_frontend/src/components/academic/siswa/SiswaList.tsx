@@ -370,13 +370,13 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   // Check if user can send parent access
   const canSendAccess = !readOnly && can('academic.students.send.access.token');
 
-  // Fetch kelas list for filter
+  // Fetch kelas list for filter (hanya kelas aktif)
   useEffect(() => {
     const fetchKelas = async () => {
       try {
-        const res = await getKelasList(1, 100, '', '', jurusanId || '');
+        const res = await getKelasList(1, 1000, '', '', jurusanId || '', '', 'true');
         if (res.success) {
-          setKelasList(res.data);
+          setKelasList((res.data || []).filter((k: any) => k?.is_active !== false));
         }
       } catch (err) {
         console.error('Failed to fetch kelas list', err);

@@ -26,6 +26,7 @@ export interface ApiGradeRecord {
   sumatif_1?: number | null;
   sumatif_2?: number | null;
   sumatif_3?: number | null;
+  sumatif_4?: number | null;
   sumatif_akhir?: number | null;
   nilai_akhir_sumatif?: number | null;
   rata_rata_sumatif?: number | null;
@@ -159,6 +160,7 @@ export function useScoreSheetManager({
             sumatif_1: found.sumatif_1 ?? null,
             sumatif_2: found.sumatif_2 ?? null,
             sumatif_3: found.sumatif_3 ?? null,
+            sumatif_4: found.sumatif_4 ?? null,
             sumatif_akhir: found.sumatif_akhir ?? found.nilai_akhir_sumatif ?? null,
             deskripsi_cp: found.deskripsi_cp ?? found.capaian_kompetensi ?? found.catatan_deskripsi ?? found.deskripsi ?? '',
             nilai: found.nilai ?? found.nilai_rapor_final ?? null,
@@ -173,6 +175,7 @@ export function useScoreSheetManager({
           sumatif_1: null,
           sumatif_2: null,
           sumatif_3: null,
+          sumatif_4: null,
           sumatif_akhir: null,
           deskripsi_cp: '',
           nilai: null,
@@ -191,6 +194,7 @@ export function useScoreSheetManager({
               p.sumatif_1 === n.sumatif_1 &&
               p.sumatif_2 === n.sumatif_2 &&
               p.sumatif_3 === n.sumatif_3 &&
+              p.sumatif_4 === n.sumatif_4 &&
               p.sumatif_akhir === n.sumatif_akhir &&
               p.deskripsi_cp === n.deskripsi_cp &&
               p.nilai === n.nilai &&
@@ -217,7 +221,7 @@ export function useScoreSheetManager({
       if (!updated[index]) return prev;
 
       // Range check for numeric score fields
-      if (['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_akhir', 'nilai'].includes(field as string)) {
+      if (['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_4', 'sumatif_akhir', 'nilai'].includes(field as string)) {
         if (val !== '' && val !== null && val !== undefined) {
           const num = parseFloat(String(val));
           if (!isNaN(num) && (num < 0 || num > 100)) {
@@ -253,7 +257,7 @@ export function useScoreSheetManager({
   // Keyboard Grid Navigation
   const handleKeyDownGrid = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>, rowIndex: number, colIndex: number) => {
     const totalRows = scores.length;
-    const maxCols = entryMode === 'sumatif' ? 5 : 2;
+    const maxCols = entryMode === 'sumatif' ? 6 : 2;
 
     if (e.key === 'ArrowDown' || e.key === 'Enter') {
       if (rowIndex < totalRows - 1) {
@@ -374,6 +378,7 @@ export function useScoreSheetManager({
           sumatif_1: s.sumatif_1 !== null && s.sumatif_1 !== '' ? Number(s.sumatif_1) : null,
           sumatif_2: s.sumatif_2 !== null && s.sumatif_2 !== '' ? Number(s.sumatif_2) : null,
           sumatif_3: s.sumatif_3 !== null && s.sumatif_3 !== '' ? Number(s.sumatif_3) : null,
+          sumatif_4: s.sumatif_4 !== null && s.sumatif_4 !== '' ? Number(s.sumatif_4) : null,
           sumatif_akhir: s.sumatif_akhir !== null && s.sumatif_akhir !== '' ? Number(s.sumatif_akhir) : null,
           nilai_akhir_sumatif: s.sumatif_akhir !== null && s.sumatif_akhir !== '' ? Number(s.sumatif_akhir) : null,
           nilai_rapor_final:

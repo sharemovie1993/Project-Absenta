@@ -173,6 +173,7 @@ export class NilaiRemedialService {
         sumatif_1: true,
         sumatif_2: true,
         sumatif_3: true,
+        sumatif_4: true,
         nilai_akhir_sumatif: true,
         nilai_rapor_final: true,
         catatan_deskripsi: true,
@@ -239,6 +240,7 @@ export class NilaiRemedialService {
             sumatif_1: null,
             sumatif_2: null,
             sumatif_3: null,
+            sumatif_4: null,
             sumatif_akhir: null,
             status: 'unassessed',
             catatan: 'Belum ada asesmen atau nilai tersimpan.',
@@ -269,6 +271,7 @@ export class NilaiRemedialService {
               sumatif_1: grade.sumatif_1,
               sumatif_2: grade.sumatif_2,
               sumatif_3: grade.sumatif_3,
+              sumatif_4: grade.sumatif_4,
               sumatif_akhir: grade.nilai_akhir_sumatif,
               status: 'needs_remedial',
               catatan: `Nilai akhir ${finalScore} berada di bawah KKM (${kkmThreshold}).`,
@@ -295,6 +298,7 @@ export class NilaiRemedialService {
               sumatif_1: grade.sumatif_1,
               sumatif_2: grade.sumatif_2,
               sumatif_3: grade.sumatif_3,
+              sumatif_4: grade.sumatif_4,
               sumatif_akhir: grade.nilai_akhir_sumatif,
               status: 'completed',
               catatan: grade.catatan_deskripsi || 'Tuntas KKM',
@@ -339,6 +343,7 @@ export class NilaiRemedialService {
       sumatif_1?: number | null;
       sumatif_2?: number | null;
       sumatif_3?: number | null;
+      sumatif_4?: number | null;
       sumatif_akhir?: number | null;
       nilai_rapor_final?: number | null;
       nilai_remedial?: number | null;
@@ -411,9 +416,10 @@ export class NilaiRemedialService {
     const s1 = data.sumatif_1 !== undefined && data.sumatif_1 !== null && !isNaN(Number(data.sumatif_1)) ? Number(data.sumatif_1) : null;
     const s2 = data.sumatif_2 !== undefined && data.sumatif_2 !== null && !isNaN(Number(data.sumatif_2)) ? Number(data.sumatif_2) : null;
     const s3 = data.sumatif_3 !== undefined && data.sumatif_3 !== null && !isNaN(Number(data.sumatif_3)) ? Number(data.sumatif_3) : null;
+    const s4 = data.sumatif_4 !== undefined && data.sumatif_4 !== null && !isNaN(Number(data.sumatif_4)) ? Number(data.sumatif_4) : null;
     const sas = data.sumatif_akhir !== undefined && data.sumatif_akhir !== null && !isNaN(Number(data.sumatif_akhir)) ? Number(data.sumatif_akhir) : null;
 
-    const sumatifList = [s1, s2, s3].filter((v): v is number => v !== null);
+    const sumatifList = [s1, s2, s3, s4].filter((v): v is number => v !== null);
     let rataRataSumatif: number | null = null;
     if (sumatifList.length > 0) {
       const sum = sumatifList.reduce((acc, curr) => acc + curr, 0);
@@ -484,6 +490,7 @@ export class NilaiRemedialService {
         sumatif_1: s1,
         sumatif_2: s2,
         sumatif_3: s3,
+        sumatif_4: s4,
         rata_rata_sumatif: rataRataSumatif,
         nilai_akhir_sumatif: sas,
         nilai_rapor_final: finalRaporScore,
@@ -501,6 +508,7 @@ export class NilaiRemedialService {
         sumatif_1: s1,
         sumatif_2: s2,
         sumatif_3: s3,
+        sumatif_4: s4,
         rata_rata_sumatif: rataRataSumatif,
         nilai_akhir_sumatif: sas,
         nilai_rapor_final: finalRaporScore,

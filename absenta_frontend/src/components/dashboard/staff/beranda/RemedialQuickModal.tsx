@@ -36,6 +36,7 @@ export interface RadarRemedialItem {
   sumatif_1?: number | null;
   sumatif_2?: number | null;
   sumatif_3?: number | null;
+  sumatif_4?: number | null;
   sumatif_akhir?: number | null;
   status: 'needs_remedial' | 'unassessed' | 'completed';
   catatan?: string;
@@ -71,6 +72,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
   const [s1, setS1] = useState<string>('');
   const [s2, setS2] = useState<string>('');
   const [s3, setS3] = useState<string>('');
+  const [s4, setS4] = useState<string>('');
   const [sas, setSas] = useState<string>('');
   const [catatan, setCatatan] = useState<string>('');
   const [showMatrixModal, setShowMatrixModal] = useState<boolean>(false);
@@ -80,12 +82,14 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
       setS1(item.sumatif_1 !== null && item.sumatif_1 !== undefined ? String(item.sumatif_1) : '');
       setS2(item.sumatif_2 !== null && item.sumatif_2 !== undefined ? String(item.sumatif_2) : '');
       setS3(item.sumatif_3 !== null && item.sumatif_3 !== undefined ? String(item.sumatif_3) : '');
+      setS4(item.sumatif_4 !== null && item.sumatif_4 !== undefined ? String(item.sumatif_4) : '');
       setSas(item.sumatif_akhir !== null && item.sumatif_akhir !== undefined ? String(item.sumatif_akhir) : '');
       setCatatan(item.status === 'completed' && item.catatan ? item.catatan : 'Tuntas Remedial Sumatif');
     } else {
       setS1('');
       setS2('');
       setS3('');
+      setS4('');
       setSas('');
       setCatatan('');
     }
@@ -96,9 +100,10 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
     const v1 = s1 !== '' && !isNaN(Number(s1)) ? Number(s1) : null;
     const v2 = s2 !== '' && !isNaN(Number(s2)) ? Number(s2) : null;
     const v3 = s3 !== '' && !isNaN(Number(s3)) ? Number(s3) : null;
+    const v4 = s4 !== '' && !isNaN(Number(s4)) ? Number(s4) : null;
     const vSas = sas !== '' && !isNaN(Number(sas)) ? Number(sas) : null;
 
-    const list = [v1, v2, v3].filter((v): v is number => v !== null);
+    const list = [v1, v2, v3, v4].filter((v): v is number => v !== null);
     let avgSum: number | null = null;
     if (list.length > 0) {
       avgSum = Number((list.reduce((acc, curr) => acc + curr, 0) / list.length).toFixed(1));
@@ -120,7 +125,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
       nilaiRaporFinal: finalScore,
       isTuntas: tuntas,
     };
-  }, [s1, s2, s3, sas, kkm]);
+  }, [s1, s2, s3, s4, sas, kkm]);
 
   const submitMutation = useMutation({
     mutationFn: async () => {
@@ -129,6 +134,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
       const numS1 = s1 !== '' ? Number(s1) : null;
       const numS2 = s2 !== '' ? Number(s2) : null;
       const numS3 = s3 !== '' ? Number(s3) : null;
+      const numS4 = s4 !== '' ? Number(s4) : null;
       const numSas = sas !== '' ? Number(sas) : null;
 
       const payload = {
@@ -140,6 +146,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
         sumatif_1: numS1,
         sumatif_2: numS2,
         sumatif_3: numS3,
+        sumatif_4: numS4,
         sumatif_akhir: numSas,
         nilai_rapor_final: nilaiRaporFinal,
         catatan_remedial: catatan.trim(),
@@ -153,6 +160,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
         sumatif_1: z.number().min(0).max(100).nullable(),
         sumatif_2: z.number().min(0).max(100).nullable(),
         sumatif_3: z.number().min(0).max(100).nullable(),
+        sumatif_4: z.number().min(0).max(100).nullable(),
         sumatif_akhir: z.number().min(0).max(100).nullable(),
         nilai_rapor_final: z.number().min(0).max(100).nullable(),
         catatan_remedial: z.string().max(255).optional(),
@@ -331,7 +339,7 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {/* Sumatif 1 */}
             <div className={`p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition-all ${
               !readOnly ? 'focus-within:border-purple-500 focus-within:ring-1 focus-within:ring-purple-500' : 'opacity-90'
@@ -391,6 +399,27 @@ export const RemedialQuickModal: React.FC<RemedialQuickModalProps> = React.memo(
                 onChange={(e) => setS3(e.target.value)}
                 placeholder="0-100"
                 aria-label="Nilai Sumatif 3"
+                className="w-full text-base font-bold text-slate-900 dark:text-white bg-transparent focus:outline-none disabled:cursor-not-allowed"
+              />
+            </div>
+
+            {/* Sumatif 4 */}
+            <div className={`p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition-all ${
+              !readOnly ? 'focus-within:border-purple-500 focus-within:ring-1 focus-within:ring-purple-500' : 'opacity-90'
+            }`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Sumatif 4</span>
+                {renderStatusBadge(s4)}
+              </div>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={s4}
+                disabled={readOnly}
+                onChange={(e) => setS4(e.target.value)}
+                placeholder="0-100"
+                aria-label="Nilai Sumatif 4"
                 className="w-full text-base font-bold text-slate-900 dark:text-white bg-transparent focus:outline-none disabled:cursor-not-allowed"
               />
             </div>

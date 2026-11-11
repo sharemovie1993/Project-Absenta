@@ -163,7 +163,11 @@ export interface CoopAttendanceItem {
   };
 }
 
-const RatMeetingPage: React.FC = React.memo(() => {
+export interface RatMeetingPageProps {
+  hideLayout?: boolean;
+}
+
+const RatMeetingPage: React.FC<RatMeetingPageProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const confirm = useConfirm();
@@ -470,10 +474,10 @@ const RatMeetingPage: React.FC = React.memo(() => {
 
   return (
     <AcademicPageLayout
-      title="Rapat Anggota Tahunan (RAT) & e-Voting"
-      description="Pelaksanaan musyawarah kekuasaan tertinggi koperasi berlandaskan asas One Member One Vote dan pemantauan kuorum sah real-time."
+      title={hideLayout ? undefined : "Rapat Anggota Tahunan (RAT) & e-Voting"}
+      description={hideLayout ? undefined : "Pelaksanaan musyawarah kekuasaan tertinggi koperasi berlandaskan asas One Member One Vote dan pemantauan kuorum sah real-time."}
       hardeningModuleKey={hardeningModuleKey}
-      instruction={{
+      instruction={hideLayout ? undefined : {
         title: 'Panduan Sidang Rapat Anggota Tahunan (RAT)',
         items: [
           'Setiap Anggota Koperasi memiliki hak bicara dan 1 hak suara sah (One Member One Vote) yang dijamin oleh UU Perkoperasian.',

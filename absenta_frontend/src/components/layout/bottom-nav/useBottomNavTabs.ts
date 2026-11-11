@@ -462,7 +462,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       case 'walas':
         return getWalasTabs(waliKelasNama, currentSubtab);
       case 'tu':
-        return getTuTabs(tuTabMeta, currentSubtab, isPendidik);
+        return getTuTabs(tuTabMeta, currentSubtab, isPendidik, (cap) => isAdmin || can(cap));
       case 'kurikulum':
         return getKurikulumTabs(currentSubtab);
       case 'kesiswaan':
@@ -484,7 +484,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       case 'satpam':
         return getSatpamTabs(currentSubtab);
       case 'koperasi':
-        return getKoperasiTabs(currentSubtab);
+        return getKoperasiTabs(currentSubtab, (cap) => isAdmin || can(cap));
       case 'piket':
         return getPiketTabs();
       case 'admin':
@@ -608,6 +608,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     waliKelasNama,
     tuTabMeta,
     teacherDashboards,
+    isAdmin,
+    can,
   ]);
 
   // ── LAYER THEME CONFIGURATION (LAYER 1 VS LAYER 2 ROLE WORKSPACE ECOSYSTEM) ──

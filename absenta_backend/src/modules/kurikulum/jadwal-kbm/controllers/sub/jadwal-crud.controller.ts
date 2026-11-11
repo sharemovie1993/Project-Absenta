@@ -98,6 +98,7 @@ export class JadwalCrudController {
       guru_id,
       guru_pelaksana_id,
       mapel_id,
+      unit_pengajaran_id,
       jenis_kegiatan,
       hari,
       slot_index,
@@ -146,6 +147,34 @@ export class JadwalCrudController {
         return reply.status(400).send({ success: false, message: 'Jam mulai/jam selesai wajib format HH:mm' });
       }
 
+      let resolvedUnitId = unit_pengajaran_id || null;
+      if (resolvedUnitId) {
+        const unit = await prisma.unitPengajaran.findFirst({
+          where: { id: resolvedUnitId, tenant_id: tenantId },
+          include: { GuruMapel: { select: { guru_id: true } } },
+        });
+        if (!unit) {
+          return reply.status(400).send({ success: false, message: 'UnitPengajaran tidak ditemukan pada tenant ini' });
+        }
+        if (!mapel_id) mapel_id = unit.mapel_id;
+        if (!guru_id) guru_id = unit.GuruMapel?.guru_id || unit.guru_id;
+      } else if (mapel_id && guru_id) {
+        const autoUnit = await prisma.unitPengajaran.findFirst({
+          where: {
+            tenant_id: tenantId,
+            tahun_pelajaran_id,
+            semester_id,
+            mapel_id,
+            guru_id,
+            is_active: true,
+            OR: [{ kelas_id }, { kelas_id: null }],
+          },
+          orderBy: [{ kelas_id: 'desc' }, { urutan: 'asc' }],
+          select: { id: true },
+        });
+        if (autoUnit) resolvedUnitId = autoUnit.id;
+      }
+
       const validationResult = await validationService.validateConflict({
         tenant_id: tenantId,
         tahun_pelajaran_id,
@@ -156,6 +185,8 @@ export class JadwalCrudController {
         slot_index: resolvedSlot,
         kelas_id,
         guru_id,
+        guru_pelaksana_id: guru_pelaksana_id || null,
+        unit_pengajaran_id: resolvedUnitId,
       });
 
       if (!validationResult.is_valid) {
@@ -176,6 +207,7 @@ export class JadwalCrudController {
           guru_id,
           guru_pelaksana_id: guru_pelaksana_id || null,
           mapel_id,
+          unit_pengajaran_id: resolvedUnitId,
           jenis_kegiatan: jenis_kegiatan || 'KBM',
           hari,
           slot_index: resolvedSlot,
@@ -186,6 +218,7 @@ export class JadwalCrudController {
           Mapel: { select: { nama_mapel: true } },
           Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
           GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+          UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
           Kelas: { select: { nama_kelas: true } },
         },
       });
@@ -193,6 +226,18 @@ export class JadwalCrudController {
       // Auto-sync sessions for today in background (organic behavior)
       void this.syncSessionsToday(tenantId);
       await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
+
+      // Sync kontributor CBT Bank Soal jika penugasan delegasi aktif ditambahkan
+      if (jadwal.guru_pelaksana_id && jadwal.mapel_id) {
+        void import('@/modules/cbt/services/cbt-bank-soal.service').then(({ CbtBankSoalService }) =>
+          CbtBankSoalService.syncContributorsForMapelDelegationChange(
+            tenantId,
+            jadwal.mapel_id,
+            jadwal.tahun_pelajaran_id,
+            jadwal.semester_id
+          )
+        );
+      }
 
       return reply.send({ success: true, data: jadwal });
     } catch (e: any) {
@@ -213,6 +258,7 @@ export class JadwalCrudController {
       guru_id,
       guru_pelaksana_id,
       mapel_id,
+      unit_pengajaran_id,
       jenis_kegiatan,
       hari,
       slot_index,
@@ -272,6 +318,11 @@ export class JadwalCrudController {
       return reply.status(400).send({ success: false, message: 'Jam mulai/jam selesai wajib format HH:mm' });
     }
 
+    const effectiveGuruPelaksanaId =
+      guru_pelaksana_id === undefined ? existing.guru_pelaksana_id : (guru_pelaksana_id || null);
+    const effectiveUnitId =
+      unit_pengajaran_id === undefined ? existing.unit_pengajaran_id : (unit_pengajaran_id || null);
+
     const validationResult = await validationService.validateConflict({
       tenant_id: tenantId,
       tahun_pelajaran_id: tahun_pelajaran_id || existing.tahun_pelajaran_id,
@@ -282,6 +333,8 @@ export class JadwalCrudController {
       slot_index: resolvedSlot,
       kelas_id: targetKelas,
       guru_id: guru_id === undefined ? existing.guru_id || undefined : guru_id,
+      guru_pelaksana_id: effectiveGuruPelaksanaId,
+      unit_pengajaran_id: effectiveUnitId,
       exclude_jadwal_kbm_id: id,
     });
 
@@ -304,6 +357,7 @@ export class JadwalCrudController {
           guru_id,
           guru_pelaksana_id: guru_pelaksana_id !== undefined ? (guru_pelaksana_id || null) : undefined,
           mapel_id,
+          unit_pengajaran_id: unit_pengajaran_id !== undefined ? (unit_pengajaran_id || null) : undefined,
           jenis_kegiatan,
           hari,
           slot_index: resolvedSlot,
@@ -314,6 +368,7 @@ export class JadwalCrudController {
           Mapel: { select: { nama_mapel: true } },
           Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
           GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+          UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
           Kelas: { select: { nama_kelas: true } },
         },
       });
@@ -321,6 +376,21 @@ export class JadwalCrudController {
       // Auto-sync sessions for today in background (organic behavior)
       void this.syncSessionsToday(tenantId);
       await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
+
+      // Sync kontributor CBT Bank Soal jika guru_pelaksana_id / unit berubah
+      if (
+        jadwal.mapel_id &&
+        (guru_pelaksana_id !== undefined || unit_pengajaran_id !== undefined || guru_id !== undefined)
+      ) {
+        void import('@/modules/cbt/services/cbt-bank-soal.service').then(({ CbtBankSoalService }) =>
+          CbtBankSoalService.syncContributorsForMapelDelegationChange(
+            tenantId,
+            jadwal.mapel_id,
+            jadwal.tahun_pelajaran_id,
+            jadwal.semester_id
+          )
+        );
+      }
 
       return reply.send({ success: true, data: jadwal });
     } catch (e: any) {

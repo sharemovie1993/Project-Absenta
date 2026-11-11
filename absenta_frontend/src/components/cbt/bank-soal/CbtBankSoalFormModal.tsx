@@ -4,6 +4,7 @@ import { useGuruOptions, useMapelOptions, useSemesterOptions } from '@/component
 import { useJenjang } from '@/hooks/useJenjang';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import { kurikulumApi } from '@/api/kurikulum.api';
+import { listTenantUnits } from '@/api/kurikulum/guru-mapel.api';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -185,6 +186,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const [judul, setJudul] = useState('');
   const [guruId, setGuruId] = useState(initialGuruId);
   const [mapelId, setMapelId] = useState(defaultMapelId || '');
+  const [unitPengajaranId, setUnitPengajaranId] = useState<string>(bankSoalToEdit?.unit_pengajaran_id || '');
   const [alokasiMenit, setAlokasiMenit] = useState<number>(90);
   const [acakSoal, setAcakSoal] = useState(true);
   const [acakOpsi, setAcakOpsi] = useState(true);
@@ -192,6 +194,29 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const [selectedColleagueIds, setSelectedColleagueIds] = useState<string[]>([]);
   const [showAllMapels, setShowAllMapels] = useState(isPrivilegedRole || initialScope === 'TERPUSAT_MASSAL');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Ambil data Unit Pengajaran aktif untuk mapel terpilih (membedakan Ujian Resmi Gabungan vs Kuis Unit)
+  const { data: tenantUnitsRes } = useQuery({
+    queryKey: ['kurikulum-units-by-mapel', mapelId],
+    queryFn: () => listTenantUnits({ mapel_id: mapelId, is_active: true }).catch(() => null),
+    enabled: isOpen && !!mapelId,
+  });
+
+  const availableUnits = useMemo(() => {
+    const units = tenantUnitsRes?.data || [];
+    const seen = new Map<string, { id: string; nama_unit: string; guru_nama?: string; guru_id?: string | null }>();
+    units.forEach((u) => {
+      if (u.id && !seen.has(u.id)) {
+        seen.set(u.id, {
+          id: u.id,
+          nama_unit: u.nama_unit,
+          guru_nama: u.Guru?.nama_guru,
+          guru_id: u.guru_id,
+        });
+      }
+    });
+    return Array.from(seen.values());
+  }, [tenantUnitsRes?.data]);
 
   // Ambil data penugasan mapel guru yang sedang dipilih (hanya relevan di mode Mandiri Guru)
   const { data: teacherAssignedMapels, isLoading: isAssignedMapelsLoading } = useQuery({
@@ -266,12 +291,17 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setJudul(bankSoalToEdit.judul);
       setGuruId(bankSoalToEdit.guru_id);
       setMapelId(bankSoalToEdit.mapel_id);
+      setUnitPengajaranId(bankSoalToEdit.unit_pengajaran_id || '');
       setTingkat(bankSoalToEdit.tingkat);
       setAlokasiMenit(bankSoalToEdit.alokasi_menit);
       setAcakSoal(bankSoalToEdit.acak_soal);
       setAcakOpsi(bankSoalToEdit.acak_opsi);
       setIsShared(bankSoalToEdit.status === 'PUBLISHED' || Boolean(bankSoalToEdit.is_shared));
-      setSelectedColleagueIds(getMgmpSharedTeacherIds(bankSoalToEdit.id, user?.tenant_id));
+      setSelectedColleagueIds(
+        getMgmpSharedTeacherIds(bankSoalToEdit, user?.tenant_id).filter(
+          (id) => id !== bankSoalToEdit.guru_id
+        )
+      );
       setShowAllMapels(true);
 
       const detected = findMatchingAsesmenType(bankSoalToEdit.kode_bank, officialAsesmenTypes);
@@ -299,6 +329,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setJudul('');
       setGuruId(initialGuruId);
       setMapelId(defaultMapelId || '');
+      setUnitPengajaranId('');
       setTingkat(autoDetectedTingkat);
       setAlokasiMenit(90);
       setAcakSoal(true);
@@ -411,12 +442,15 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         judul: judul.trim(),
         guru_id: guruId,
         mapel_id: mapelId,
+        unit_pengajaran_id: unitPengajaranId || null,
         tingkat,
         alokasi_menit: Number(alokasiMenit),
         acak_soal: acakSoal,
         acak_opsi: acakOpsi,
         status: (scope === 'TERPUSAT_MASSAL' || isShared ? 'PUBLISHED' : 'DRAFT') as 'PUBLISHED' | 'DRAFT',
         is_shared: scope === 'TERPUSAT_MASSAL' ? true : isShared,
+        contributor_guru_ids: selectedColleagueIds,
+        auto_sync_kolaborasi: !unitPengajaranId,
       };
 
       if (bankSoalToEdit) {
@@ -736,6 +770,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 value={mapelId}
                 onChange={(newMapelId) => {
                   setMapelId(newMapelId);
+                  setUnitPengajaranId('');
                   if (scope === 'TERPUSAT_MASSAL') {
                     triggerAutoFillMassal(newMapelId, tingkat, jenisKegiatanMassal);
                   }
@@ -749,6 +784,69 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 }
                 aria-label="Pilih Mata Pelajaran"
               />
+
+              {/* Pilihan Target Mapel Induk (Kolaborasi Resmi) vs Unit Pengajaran Spesifik */}
+              {mapelId && availableUnits.length > 0 && (
+                <div className="mt-2 p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/70 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                      <Layers size={12} className="text-indigo-600 dark:text-indigo-400" />
+                      <span>Cakupan Unit Pengajaran</span>
+                    </span>
+                    <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+                      {availableUnits.length} Unit Aktif
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setUnitPengajaranId('')}
+                      className={cn(
+                        'p-2 rounded-lg border text-left transition-all cursor-pointer',
+                        !unitPengajaranId
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
+                      )}
+                    >
+                      <div className="text-[11px] font-bold flex items-center justify-between gap-1">
+                        <span>Gabungan Mapel Induk</span>
+                        <span className={cn(
+                          'text-[9px] px-1.5 py-0.2 rounded-full font-bold',
+                          !unitPengajaranId ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
+                        )}>
+                          Kolaborasi
+                        </span>
+                      </div>
+                      <p className={cn('text-[10px] mt-0.5', !unitPengajaranId ? 'text-indigo-100' : 'text-slate-500')}>
+                        Semua guru unit &amp; delegasi otomatis mendapat akses kontributor soal.
+                      </p>
+                    </button>
+                    <div className={cn(
+                      'p-2 rounded-lg border transition-all',
+                      unitPengajaranId
+                        ? 'bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-400 dark:border-indigo-700'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                    )}>
+                      <label htmlFor="form-unit-pengajaran" className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                        Atau Kuis / Ujian Khusus Unit:
+                      </label>
+                      <select
+                        id="form-unit-pengajaran"
+                        value={unitPengajaranId}
+                        onChange={(e) => setUnitPengajaranId(e.target.value)}
+                        className="w-full text-[11px] font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      >
+                        <option value="">-- Gunakan Mapel Induk (Kolaborasi) --</option>
+                        {availableUnits.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.nama_unit}{u.guru_nama ? ` — ${u.guru_nama}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 4. Tingkat Kelas (Terproteksi Anti Human-Error) */}

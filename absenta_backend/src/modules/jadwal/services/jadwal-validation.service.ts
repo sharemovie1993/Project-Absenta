@@ -18,6 +18,8 @@ export interface ValidationParams {
   // Resources
   kelas_id?: string;
   guru_id?: string;
+  guru_pelaksana_id?: string | null;
+  unit_pengajaran_id?: string | null;
   
   // Exclusions (for edit scenarios)
   exclude_jadwal_kbm_id?: string;
@@ -68,28 +70,30 @@ export class JadwalValidationService {
       }
     }
 
-    // 2. Check Teacher Conflict
-    if (params.guru_id) {
-      const teacherConflict = await this.checkTeacherConflict(params);
+    // 2. Check Teacher Conflict using Effective Teacher (guru_pelaksana_id ?? unitPengajaran.guru_id ?? guru_id)
+    const effectiveGuruId = await this.resolveEffectiveGuruId(params);
+    if (effectiveGuruId) {
+      const effectiveParams = { ...params, guru_id: effectiveGuruId };
+      const teacherConflict = await this.checkTeacherConflict(effectiveParams);
       if (teacherConflict) {
         return {
           is_valid: false,
           error: {
             code: 'GURU_CONFLICT',
-            message: `Guru memiliki jadwal lain pada jam ${jam_mulai} - ${jam_selesai}`,
+            message: `Guru pengajar efektif memiliki jadwal lain pada jam ${jam_mulai} - ${jam_selesai}`,
             details: teacherConflict,
           },
         };
       }
 
       // 3. Check Teacher Max Hours (Per-day limit: Senin 10 JP, Selasa-Kamis 12 JP, Jumat 6 JP)
-      const maxHoursExceeded = await this.checkTeacherMaxHours(params);
+      const maxHoursExceeded = await this.checkTeacherMaxHours(effectiveParams);
       if (maxHoursExceeded) {
         return {
           is_valid: false,
           error: {
             code: 'GURU_MAX_HOURS_EXCEEDED',
-            message: `Guru mengajar melebihi batas maksimal ${maxHoursExceeded.max_jp} jam pelajaran (${maxHoursExceeded.max_minutes} menit) pada hari ${params.hari}. Akumulasi saat ini: ${maxHoursExceeded.current_minutes} menit.`,
+            message: `Guru pengajar efektif melebihi batas maksimal ${maxHoursExceeded.max_jp} jam pelajaran (${maxHoursExceeded.max_minutes} menit) pada hari ${params.hari}. Akumulasi saat ini: ${maxHoursExceeded.current_minutes} menit.`,
             details: maxHoursExceeded,
           },
         };
@@ -190,24 +194,55 @@ export class JadwalValidationService {
     return null;
   }
 
+  private async resolveEffectiveGuruId(params: ValidationParams): Promise<string | undefined> {
+    if (params.guru_pelaksana_id) return params.guru_pelaksana_id;
+    if (params.unit_pengajaran_id) {
+      const unit = await prisma.unitPengajaran.findFirst({
+        where: { id: params.unit_pengajaran_id, tenant_id: params.tenant_id },
+        select: { guru_id: true },
+      });
+      if (unit?.guru_id) return unit.guru_id;
+    }
+    return params.guru_id;
+  }
+
+  private buildEffectiveTeacherWhere(effectiveGuruId: string) {
+    return {
+      OR: [
+        { guru_pelaksana_id: effectiveGuruId },
+        {
+          guru_pelaksana_id: null,
+          UnitPengajaran: { is: { guru_id: effectiveGuruId } },
+        },
+        {
+          guru_pelaksana_id: null,
+          unit_pengajaran_id: null,
+          guru_id: effectiveGuruId,
+        },
+      ],
+    };
+  }
+
   private async checkTeacherConflict(params: ValidationParams) {
-    // A. Check against JadwalKBM
+    const effectiveGuruId = params.guru_id!;
+    // A. Check against JadwalKBM (Effective Teacher)
     const templateConflict = await prisma.jadwalKBM.findFirst({
       where: {
         tenant_id: params.tenant_id,
         tahun_pelajaran_id: params.tahun_pelajaran_id,
         semester_id: params.semester_id,
         hari: params.hari,
-        guru_id: params.guru_id, // Same Teacher
         id: params.exclude_jadwal_kbm_id ? { not: params.exclude_jadwal_kbm_id } : undefined,
         // Overlap Logic
         jam_mulai: { lt: params.jam_selesai },
         jam_selesai: { gt: params.jam_mulai },
+        ...this.buildEffectiveTeacherWhere(effectiveGuruId),
       },
       include: {
         Kelas: true,
         Mapel: true,
         MasterRuangan: true,
+        UnitPengajaran: { select: { nama_unit: true } },
       },
     });
 
@@ -216,13 +251,15 @@ export class JadwalValidationService {
         source: 'TEMPLATE',
         id: templateConflict.id,
         kelas: templateConflict.Kelas.nama_kelas,
-        mapel: templateConflict.Mapel?.nama_mapel || 'N/A',
+        mapel: templateConflict.UnitPengajaran?.nama_unit
+          ? `${templateConflict.Mapel?.nama_mapel || 'N/A'} — ${templateConflict.UnitPengajaran.nama_unit}`
+          : templateConflict.Mapel?.nama_mapel || 'N/A',
         ruangan: templateConflict.MasterRuangan?.nama_ruangan || 'N/A',
         waktu: `${templateConflict.jam_mulai} - ${templateConflict.jam_selesai}`,
       };
     }
 
-    // B. Check against SesiAbsensi (Only if specific date is provided - MANUAL context)
+    // B. Check against SesiAbsensi (Effective Teacher)
     if (params.tanggal) {
       const startOfDay = new Date(params.tanggal);
       startOfDay.setHours(0, 0, 0, 0);
@@ -236,7 +273,6 @@ export class JadwalValidationService {
       const sesiConflict = await prisma.sesiAbsensi.findFirst({
         where: {
           tenant_id: params.tenant_id,
-          guru_id: params.guru_id, // Same Teacher
           tanggal: {
             gte: startOfDay,
             lte: endOfDay,
@@ -245,6 +281,7 @@ export class JadwalValidationService {
           // Overlap Logic
           waktu_mulai: { lt: checkEnd },
           waktu_selesai: { gt: checkStart },
+          ...this.buildEffectiveTeacherWhere(effectiveGuruId),
         },
         include: {
           Kelas: true,
@@ -305,15 +342,16 @@ export class JadwalValidationService {
 
     let totalExistingMinutes = 0;
 
-    // A. Check in JadwalKBM
+    // A. Check in JadwalKBM (Effective Teacher)
+    const effectiveGuruId = params.guru_id!;
     const templates = await prisma.jadwalKBM.findMany({
       where: {
         tenant_id: params.tenant_id,
         tahun_pelajaran_id: params.tahun_pelajaran_id,
         semester_id: params.semester_id,
         hari: params.hari,
-        guru_id: params.guru_id,
         id: params.exclude_jadwal_kbm_id ? { not: params.exclude_jadwal_kbm_id } : undefined,
+        ...this.buildEffectiveTeacherWhere(effectiveGuruId),
       },
     });
 
@@ -324,7 +362,7 @@ export class JadwalValidationService {
       if (duration > 0) totalExistingMinutes += duration;
     }
 
-    // B. Check in SesiAbsensi (Manual KBM context)
+    // B. Check in SesiAbsensi (Manual KBM context, Effective Teacher)
     if (params.tanggal) {
       const startOfDay = new Date(params.tanggal);
       startOfDay.setHours(0, 0, 0, 0);
@@ -334,12 +372,12 @@ export class JadwalValidationService {
       const sesis = await prisma.sesiAbsensi.findMany({
         where: {
           tenant_id: params.tenant_id,
-          guru_id: params.guru_id,
           tanggal: {
             gte: startOfDay,
             lte: endOfDay,
           },
           id: params.exclude_sesi_id ? { not: params.exclude_sesi_id } : undefined,
+          ...this.buildEffectiveTeacherWhere(effectiveGuruId),
         },
       });
 

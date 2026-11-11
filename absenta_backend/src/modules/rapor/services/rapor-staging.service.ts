@@ -913,7 +913,8 @@ export class RaporStagingService {
               sc.nilai_akhir !== null ||
               sc.sumatif_1 !== null ||
               sc.sumatif_2 !== null ||
-              sc.sumatif_3 !== null)
+              sc.sumatif_3 !== null ||
+              sc.sumatif_4 !== null)
           ) {
             activeSubjectsSet.add(subName);
           }
@@ -1330,6 +1331,7 @@ export class RaporStagingService {
             const s1 = sumatifScore?.sumatif_1 ?? null;
             const s2 = sumatifScore?.sumatif_2 ?? null;
             const s3 = sumatifScore?.sumatif_3 ?? null;
+            const s4 = sumatifScore?.sumatif_4 ?? null;
             const avg = sumatifScore?.rata_rata ?? null;
             const sumAkhir = sumatifScore?.nilai_akhir ?? null;
             const cpText = cpGrade?.capaian_kompetensi || '';
@@ -1342,6 +1344,7 @@ export class RaporStagingService {
               s1 !== null ||
               s2 !== null ||
               s3 !== null ||
+              s4 !== null ||
               Boolean(cpText && cpText.trim() !== '');
 
             if (!hasScore) {
@@ -1352,13 +1355,13 @@ export class RaporStagingService {
             if (activeSumberNilai === 'MURNI_CP_MANUAL') {
               nilaiFinal = cpGrade?.nilai_rapor ?? avg ?? sumAkhir ?? s1 ?? 0;
             } else {
+              const validSumatifs = [s1, s2, s3, s4].filter((v): v is number => v !== null);
               const sumatifComputed =
                 sumAkhir ??
                 avg ??
-                ([s1, s2, s3].some((v) => v !== null)
+                (validSumatifs.length > 0
                   ? Math.round(
-                      ([s1, s2, s3].filter((v): v is number => v !== null)).reduce((a, b) => a + b, 0) /
-                        [s1, s2, s3].filter((v) => v !== null).length
+                      validSumatifs.reduce((a, b) => a + b, 0) / validSumatifs.length
                     )
                   : null);
               nilaiFinal = sumatifComputed ?? cpGrade?.nilai_rapor ?? 0;
@@ -1384,6 +1387,7 @@ export class RaporStagingService {
                 sumatif_1: s1,
                 sumatif_2: s2,
                 sumatif_3: s3,
+                sumatif_4: s4,
                 rata_rata_sumatif: avg,
                 nilai_akhir_sumatif: sumAkhir,
                 nilai_rapor_final: nilaiFinal,
@@ -1395,6 +1399,7 @@ export class RaporStagingService {
                 sumatif_1: s1,
                 sumatif_2: s2,
                 sumatif_3: s3,
+                sumatif_4: s4,
                 rata_rata_sumatif: avg,
                 nilai_akhir_sumatif: sumAkhir,
                 nilai_rapor_final: nilaiFinal,

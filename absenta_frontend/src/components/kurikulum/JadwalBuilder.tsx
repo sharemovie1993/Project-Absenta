@@ -27,7 +27,8 @@ import {
 } from '../../api/attendance/jadwalKBM.api';
 import { useUnifiedScheduleData } from '../../hooks/attendance/useUnifiedScheduleData';
 import { getMapelColor } from '../../utils/mapelColorHelper';
-import { listGuruMapel } from '../../api/kurikulum/guru-mapel.api';
+import { listGuruMapel, listUnitPengajaran } from '../../api/kurikulum/guru-mapel.api';
+import type { UnitPengajaran } from '../../types/academic';
 import { type DropdownOption } from '../../api/dropdown.api';
 import { getMyTenant } from '../../api/tenants.api';
 import { cn } from '../../lib/utils';
@@ -123,6 +124,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   // Paint payload
   const [paintMapelId, setPaintMapelId] = useState<string>('');
   const [paintGuruId, setPaintGuruId] = useState<string>('');
+  const [paintUnitId, setPaintUnitId] = useState<string>('');
 
   // Conflict Resolver State
   const [activeConflictDetails, setActiveConflictDetails] = useState<ConflictDetails | null>(null);
@@ -143,6 +145,48 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     enabled: !!tahunPelajaranId && !!semesterId,
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: allUnitsRes } = useQuery({
+    queryKey: ['unit-pengajaran-builder', tahunPelajaranId, semesterId],
+    queryFn: () => listUnitPengajaran({
+      tahun_pelajaran_id: tahunPelajaranId,
+      semester_id: semesterId,
+    }).catch(() => null),
+    enabled: !!tahunPelajaranId && !!semesterId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const allUnitsList: UnitPengajaran[] = useMemo(() => {
+    return Array.isArray(allUnitsRes?.data) ? allUnitsRes.data : [];
+  }, [allUnitsRes]);
+
+  const matchingPaintUnits = useMemo(() => {
+    if (!paintMapelId) return [];
+    return allUnitsList.filter((u) => {
+      if (u.mapel_id !== paintMapelId) return false;
+      if (selectedKelasId && u.GuruMapel?.kelas_id && u.GuruMapel.kelas_id !== selectedKelasId) return false;
+      if (paintGuruId && u.guru_id !== paintGuruId) return false;
+      return true;
+    });
+  }, [allUnitsList, paintMapelId, selectedKelasId, paintGuruId]);
+
+  const unitSelectOptions: DropdownOption[] = useMemo(() => {
+    return matchingPaintUnits.map((u) => ({
+      value: u.id,
+      label: `${u.Mapel?.nama_mapel || 'Mapel'}${u.nama_unit ? ` — ${u.nama_unit}` : ''} (${u.Guru?.nama_guru || 'Guru'})`,
+    }));
+  }, [matchingPaintUnits]);
+
+  useEffect(() => {
+    if (matchingPaintUnits.length === 0) {
+      if (paintUnitId) setPaintUnitId('');
+      return;
+    }
+    const stillValid = matchingPaintUnits.some((u) => u.id === paintUnitId);
+    if (!stillValid) {
+      setPaintUnitId(matchingPaintUnits[0].id);
+    }
+  }, [matchingPaintUnits, paintUnitId]);
 
   const assignedGuruIds = useMemo(() => {
     if (allGuruMapelRes?.success && Array.isArray(allGuruMapelRes.data)) {
@@ -889,6 +933,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           jam_selesai: slot.end,
           mapel_id: paintMapelId,
           guru_id: paintGuruId,
+          unit_pengajaran_id: paintUnitId || undefined,
           jenis_kegiatan: 'KBM'
         };
 
@@ -898,6 +943,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           const mapelObj = mapelList.find(m => m.id === paintMapelId);
           const guruObj = guruList.find(g => g.id === paintGuruId);
           const kelasObj = kelasList.find(k => k.value === targetKelasId);
+          const unitObj = matchingPaintUnits.find(u => u.id === paintUnitId);
           
           const newSlot: JadwalKBM = {
             id: res.data.id,
@@ -912,6 +958,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             jenis_kegiatan: 'KBM',
             mapel_id: paintMapelId,
             guru_id: paintGuruId,
+            unit_pengajaran_id: paintUnitId || res.data.unit_pengajaran_id || null,
+            UnitPengajaran: unitObj ? { id: unitObj.id, nama_unit: unitObj.nama_unit, guru_id: unitObj.guru_id, Guru: unitObj.Guru } : (res.data.UnitPengajaran || null),
             Mapel: mapelObj ? { nama_mapel: mapelObj.nama_mapel, kode_mapel: mapelObj.kode_mapel || '' } : undefined,
             Guru: guruObj ? { id: guruObj.id, User: { full_name: guruObj.nama_guru } } : undefined,
             Kelas: kelasObj ? { id: kelasObj.value, nama_kelas: kelasObj.label.split(' - ')[0] } : undefined
@@ -975,6 +1023,10 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                   jenis_kegiatan: 'KBM',
                   mapel_id: paintMapelId,
                   guru_id: paintGuruId,
+                  unit_pengajaran_id: paintUnitId || res.data.unit_pengajaran_id || null,
+                  UnitPengajaran: matchingPaintUnits.find(u => u.id === paintUnitId)
+                    ? { id: paintUnitId, nama_unit: matchingPaintUnits.find(u => u.id === paintUnitId)!.nama_unit, guru_id: paintGuruId }
+                    : (res.data.UnitPengajaran || null),
                   Mapel: mapelObj ? { nama_mapel: mapelObj.nama_mapel, kode_mapel: mapelObj.kode_mapel || '' } : undefined,
                   Guru: guruObj ? { id: guruObj.id, User: { full_name: guruObj.nama_guru } } : undefined,
                   Kelas: kelasObj ? { id: kelasObj.value, nama_kelas: kelasObj.label.split(' - ')[0] } : undefined
@@ -1079,6 +1131,9 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           setSelectedGuruId={setSelectedGuruId}
           paintMapelId={paintMapelId}
           setPaintMapelId={setPaintMapelId}
+          paintUnitId={paintUnitId}
+          setPaintUnitId={setPaintUnitId}
+          unitSelectOptions={unitSelectOptions}
           guruMapelSelectOptions={guruMapelSelectOptions}
           masterGridHari={masterGridHari}
           setMasterGridHari={setMasterGridHari}

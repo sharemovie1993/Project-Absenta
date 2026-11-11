@@ -48,34 +48,54 @@ export class SesiGuard {
         if (guruRecord) {
           if (!request.body) request.body = {};
 
-          // Jika guru_id dikirim dan berbeda dengan user saat ini, periksa apakah dia ditugaskan sebagai guru_pelaksana_id
+          // Jika guru_id dikirim dan berbeda dengan user saat ini, periksa apakah dia ditugaskan sebagai guru_pelaksana_id atau Guru UnitPengajaran
           if (guru_id && String(guru_id) !== String(guruRecord.id)) {
             const cleanJadwalId = request.body.jadwal_kbm_id ? String(request.body.jadwal_kbm_id).replace(/^sched_/, '') : null;
             let isDelegated = false;
+            let isUnitTeacher = false;
+            let resolvedUnitId: string | null = request.body.unit_pengajaran_id || null;
 
             if (cleanJadwalId) {
               const jadwal = await (prisma as any).jadwalKBM.findFirst({
                 where: {
                   id: cleanJadwalId,
                   tenant_id: tenantId,
-                  guru_id: String(guru_id),
-                  guru_pelaksana_id: guruRecord.id,
                 },
-                select: { id: true }
+                select: {
+                  id: true,
+                  guru_id: true,
+                  guru_pelaksana_id: true,
+                  unit_pengajaran_id: true,
+                  UnitPengajaran: { select: { guru_id: true } },
+                },
               });
-              if (jadwal) isDelegated = true;
+              if (jadwal) {
+                if (!resolvedUnitId && jadwal.unit_pengajaran_id) resolvedUnitId = jadwal.unit_pengajaran_id;
+                if (jadwal.guru_pelaksana_id && String(jadwal.guru_pelaksana_id) === String(guruRecord.id)) {
+                  isDelegated = true;
+                } else if (jadwal.UnitPengajaran?.guru_id && String(jadwal.UnitPengajaran.guru_id) === String(guruRecord.id)) {
+                  isUnitTeacher = true;
+                }
+              }
             }
 
-            if (!isDelegated) {
-              reply.status(403).send({ success: false, message: 'Forbidden: Anda bukan pengampu resmi atau pelaksana KBM yang ditugaskan.' });
+            if (!isDelegated && !isUnitTeacher) {
+              reply.status(403).send({ success: false, message: 'Forbidden: Anda bukan pengampu resmi, guru unit, atau pelaksana KBM yang ditugaskan.' });
               return;
             }
 
-            // Tercatat sebagai sesi delegasi operasional
-            request.body.guru_id = guru_id; // Pengampu resmi (SK)
-            request.body.guru_pelaksana_id = guruRecord.id; // Pelaksana riil lapangan
-            request.body.is_delegasi = true;
-            return; // Allowed for Teaching Proxy
+            if (resolvedUnitId) request.body.unit_pengajaran_id = resolvedUnitId;
+
+            if (isDelegated) {
+              // Tercatat sebagai sesi delegasi operasional
+              request.body.guru_id = guru_id; // Pengampu resmi (SK)
+              request.body.guru_pelaksana_id = guruRecord.id; // Pelaksana riil lapangan
+              request.body.is_delegasi = true;
+              return; // Allowed for Teaching Proxy
+            }
+
+            request.body.guru_id = guruRecord.id;
+            return; // Allowed for Unit Teacher
           }
 
           request.body.guru_id = guruRecord.id;
@@ -130,15 +150,39 @@ export class SesiGuard {
         return; 
     }
 
-    let sesi: any = await prisma.sesiAbsensi.findFirst({ where: { id, tenant_id: tenantId }, select: { id: true, kelas_id: true, guru_id: true } });
+    let sesi: any = await (prisma as any).sesiAbsensi.findFirst({
+      where: { id, tenant_id: tenantId },
+      select: {
+        id: true,
+        kelas_id: true,
+        guru_id: true,
+        guru_pelaksana_id: true,
+        unit_pengajaran_id: true,
+        UnitPengajaran: { select: { guru_id: true } },
+      },
+    });
     if (!sesi && typeof id === 'string' && (id.startsWith('sched_') || id.startsWith('sched-'))) {
       const cleanJadwalId = id.replace(/^(sched-hist-|sched_|sched-)/, '');
-      const jadwal = await prisma.jadwalKBM.findFirst({
+      const jadwal = await (prisma as any).jadwalKBM.findFirst({
         where: { id: cleanJadwalId, tenant_id: tenantId },
-        select: { id: true, kelas_id: true, guru_id: true }
+        select: {
+          id: true,
+          kelas_id: true,
+          guru_id: true,
+          guru_pelaksana_id: true,
+          unit_pengajaran_id: true,
+          UnitPengajaran: { select: { guru_id: true } },
+        },
       });
       if (jadwal) {
-        sesi = { id, kelas_id: jadwal.kelas_id, guru_id: jadwal.guru_id };
+        sesi = {
+          id,
+          kelas_id: jadwal.kelas_id,
+          guru_id: jadwal.guru_id,
+          guru_pelaksana_id: jadwal.guru_pelaksana_id,
+          unit_pengajaran_id: jadwal.unit_pengajaran_id,
+          UnitPengajaran: jadwal.UnitPengajaran,
+        };
       }
     }
 
@@ -172,9 +216,14 @@ export class SesiGuard {
           }
         }
 
-        // 1. Jika Guru adalah pengajar di sesi ini, berikan akses penuh (tap, close, update, journal, delete)
-        if (guruRecord && String(sesi.guru_id || '') === String(guruRecord.id)) {
-            return; // Allowed
+        // 1. Jika Guru adalah pengajar di sesi ini (guru SK, pelaksana delegasi, atau guru UnitPengajaran), berikan akses penuh
+        if (
+          guruRecord &&
+          (String(sesi.guru_id || '') === String(guruRecord.id) ||
+            String(sesi.guru_pelaksana_id || '') === String(guruRecord.id) ||
+            String(sesi.UnitPengajaran?.guru_id || '') === String(guruRecord.id))
+        ) {
+          return; // Allowed
         }
 
         // 2. Jika Guru adalah Petugas Sesi (asisten/piket), berikan akses jika kelasnya sesuai

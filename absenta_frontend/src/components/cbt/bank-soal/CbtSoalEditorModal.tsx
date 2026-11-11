@@ -20,7 +20,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { cbtQueryKeys } from '@/api/cbt.api';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
-import type { CbtSoal, OpsiJawaban } from '@/types/cbt.types';
+import type { CbtSoal, CbtUnitPengajaranSummary, OpsiJawaban } from '@/types/cbt.types';
 import { cn } from '@/lib/utils';
 import { getOptionBadgeColor } from '../common/CbtOptionsRenderer';
 import {
@@ -34,6 +34,7 @@ export interface CbtInlineSoalCardProps {
   soal?: CbtSoal | null;
   nomorUrut: number;
   initialRawText?: string;
+  availableUnits?: CbtUnitPengajaranSummary[];
   onSaved: (savedMode: 'stay' | 'add-next') => void;
   onCancel?: () => void;
   onDelete?: () => void;
@@ -60,6 +61,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
   soal,
   nomorUrut: initialNomorUrut,
   initialRawText,
+  availableUnits = [],
   onSaved,
   onCancel,
   onDelete,
@@ -67,6 +69,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const [nomorUrut, setNomorUrut] = useState<number>(soal?.nomor_urut || initialNomorUrut);
+  const [unitPengajaranId, setUnitPengajaranId] = useState<string>(soal?.unit_pengajaran_id || '');
   const [kontenPertanyaan, setKontenPertanyaan] = useState(soal?.konten_pertanyaan || '');
   const [gambarStimulusUrl, setGambarStimulusUrl] = useState<string | null>(
     soal?.gambar_stimulus_url || null
@@ -125,6 +128,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
 
   useEffect(() => {
     setNomorUrut(soal?.nomor_urut || initialNomorUrut);
+    setUnitPengajaranId(soal?.unit_pengajaran_id || '');
     setKontenPertanyaan(soal?.konten_pertanyaan || '');
     setGambarStimulusUrl(soal?.gambar_stimulus_url || null);
     setBobot(Number(soal?.bobot) || 1.0);
@@ -855,6 +859,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
 
       const payload = {
         nomor_urut: mode === 'duplicate' ? Number(nomorUrut) + 1 : Number(nomorUrut),
+        unit_pengajaran_id: unitPengajaranId || null,
         jenis_soal: 'PG' as const,
         konten_pertanyaan: trimmedQuestion || 'Perhatikan gambar berikut:',
         gambar_stimulus_url: gambarStimulusUrl,
@@ -1275,6 +1280,23 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
             />
             <span className="text-[11px] text-slate-500">Poin</span>
           </div>
+
+          {availableUnits.length > 0 && (
+            <select
+              value={unitPengajaranId}
+              onChange={(e) => setUnitPengajaranId(e.target.value)}
+              aria-label="Unit Pengajaran Butir Soal"
+              className="max-w-[190px] text-[11px] font-semibold px-2 py-1 rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50/70 dark:bg-sky-950/40 text-sky-800 dark:text-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+              title="Tagging unit materi untuk analisis nilai per unit"
+            >
+              <option value="">Umum / Semua Unit</option>
+              {availableUnits.map((u) => (
+                <option key={u.id} value={u.id}>
+                  Unit: {u.nama_unit}{u.Guru?.nama_guru ? ` (${u.Guru.nama_guru})` : ''}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-1.5 pt-1 sm:pt-0">

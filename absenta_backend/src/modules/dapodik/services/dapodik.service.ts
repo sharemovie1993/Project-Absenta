@@ -80,6 +80,7 @@ export interface ReconciliationReport {
     cachedAt: string;
     totalCached: number;
     sourceMode: 'LIVE' | 'STAGING';
+    fallbackReason?: string;
   };
   stagingMeta?: StagingStorageMeta;
   students: ReconciledStudent[];
@@ -337,6 +338,81 @@ export class DapodikService {
    * Melakukan test koneksi (Handshake) ke Web Service Dapodik lokal (port 5774).
    * Memanggil /WebService/getSekolah?npsn=...
    */
+  /**
+   * Mem-parsing respons Web Service Dapodik secara defensif.
+   * Menangani kasus khas PHP/Symfony Dapodik yang sering mengembalikan HTTP 200
+   * dengan body string berisi header HTTP mentah (misal: "HTTP/1.0 403 Forbidden\r\n...\r\n\r\n{...}")
+   * atau JSON berkonten text/html, serta menolak payload error ({ success: false }).
+   */
+  private parseDapodikPayload(rawData: unknown, httpStatus?: number): any {
+    let embeddedStatus: number | undefined;
+    let parsed: any = rawData;
+
+    if (typeof rawData === 'string') {
+      let cleaned = rawData.replace(/^\uFEFF/, '').trim();
+
+      // Tangani header HTTP mentah yang ikut tercetak di dalam body oleh Web Service Dapodik
+      const httpHeaderMatch = cleaned.match(/^HTTP\/\d\.\d\s+(\d{3})\b/i);
+      if (httpHeaderMatch) {
+        embeddedStatus = parseInt(httpHeaderMatch[1], 10);
+        const separatorIdx = cleaned.search(/\r?\n\r?\n/);
+        if (separatorIdx !== -1) {
+          cleaned = cleaned.slice(separatorIdx).trim();
+        } else {
+          const jsonStartIdx = cleaned.search(/[\{\[]/);
+          if (jsonStartIdx !== -1) {
+            cleaned = cleaned.slice(jsonStartIdx).trim();
+          }
+        }
+      }
+
+      if (!cleaned) {
+        const err: any = new Error(
+          `Web Service Dapodik mengembalikan respons kosong${embeddedStatus ? ` (HTTP ${embeddedStatus})` : ''}.`
+        );
+        err.httpCode = embeddedStatus || httpStatus;
+        throw err;
+      }
+
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        const preview = cleaned.slice(0, 180).replace(/\s+/g, ' ');
+        const err: any = new Error(
+          `Respons Web Service Dapodik bukan JSON yang valid${embeddedStatus ? ` (HTTP ${embeddedStatus})` : ''}: ${preview}`
+        );
+        err.httpCode = embeddedStatus || httpStatus;
+        throw err;
+      }
+    }
+
+    if (!parsed || typeof parsed !== 'object') {
+      const err: any = new Error('Format respons Web Service Dapodik tidak dikenali.');
+      err.httpCode = embeddedStatus || httpStatus;
+      throw err;
+    }
+
+    const effectiveCode =
+      (typeof parsed.http_code === 'number' ? parsed.http_code : undefined) ||
+      embeddedStatus ||
+      (httpStatus && httpStatus >= 400 ? httpStatus : undefined);
+
+    if (parsed.success === false || (effectiveCode !== undefined && effectiveCode >= 400)) {
+      const dapodikMsg = parsed.message || parsed.status_code || 'Permintaan ditolak oleh Web Service Dapodik.';
+      const serverIp = this.getServerNetworkInfo().primaryIp;
+      const err: any = new Error(
+        effectiveCode === 401 || effectiveCode === 403
+          ? `Autentikasi/Akses ditolak Dapodik (HTTP ${effectiveCode}): ${dapodikMsg}. Pastikan IP Server (${serverIp}) sudah terdaftar pada whitelist Web Service Dapodik dan Token valid.`
+          : `Web Service Dapodik mengembalikan error${effectiveCode ? ` (HTTP ${effectiveCode})` : ''}: ${dapodikMsg}`
+      );
+      err.httpCode = effectiveCode;
+      err.dapodikDetails = parsed;
+      throw err;
+    }
+
+    return parsed;
+  }
+
   async testConnection(tenantId: string, customConfig?: DapodikConfigDto) {
     let host = customConfig?.dapodik_host;
     let npsn = customConfig?.npsn;
@@ -369,7 +445,15 @@ export class DapodikService {
         timeout: 8000, // 8 detik
       });
 
-      // Update status di database jika konfigurasi tersimpan
+      const resData = this.parseDapodikPayload(response.data, response.status);
+      let schoolPayload = resData;
+      if (resData && Array.isArray(resData.rows) && resData.rows.length > 0) {
+        schoolPayload = resData.rows[0];
+      } else if (resData && typeof resData === 'object' && resData.sekolah_id) {
+        schoolPayload = resData;
+      }
+
+      // Update status di database HANYA setelah payload Dapodik tervalidasi sukses
       await prisma.dapodikConfig.updateMany({
         where: { tenant_id: tenantId },
         data: {
@@ -377,14 +461,6 @@ export class DapodikService {
           last_status: 'SUCCESS',
         },
       });
-
-      const resData = response.data;
-      let schoolPayload = resData;
-      if (resData && Array.isArray(resData.rows) && resData.rows.length > 0) {
-        schoolPayload = resData.rows[0];
-      } else if (resData && typeof resData === 'object' && resData.sekolah_id) {
-        schoolPayload = resData;
-      }
 
       return {
         success: true,
@@ -409,13 +485,17 @@ export class DapodikService {
         },
       });
 
+      const serverIp = this.getServerNetworkInfo().primaryIp;
+      const statusCode = err.httpCode || err.response?.status;
       let errorMsg = 'Gagal terhubung ke Web Service Dapodik.';
       if (err.code === 'ECONNREFUSED') {
         errorMsg = `Koneksi ditolak di ${cleanHost}. Pastikan aplikasi Dapodik di komputer operator aktif dan Web Service di port 5774 running.`;
       } else if (err.code === 'ETIMEDOUT' || err.code === 'ECONNABORTED') {
-        errorMsg = `Koneksi timeout ke ${cleanHost}. Pastikan komputer server Absenta (10.10.10.116) dapat menjangkau IP komputer Dapodik dalam jaringan LAN yang sama.`;
-      } else if (err.response?.status === 401 || err.response?.status === 403) {
-        errorMsg = `Autentikasi ditolak (Status ${err.response.status}). Periksa kembali apakah Token valid dan IP Server (${this.getServerNetworkInfo().primaryIp}) sudah terdaftar di whitelist Dapodik.`;
+        errorMsg = `Koneksi timeout ke ${cleanHost}. Pastikan komputer server Absenta (${serverIp}) dapat menjangkau IP komputer Dapodik dalam jaringan LAN yang sama.`;
+      } else if (err.dapodikDetails) {
+        errorMsg = err.message;
+      } else if (statusCode === 401 || statusCode === 403) {
+        errorMsg = `Autentikasi ditolak (Status ${statusCode}). Periksa kembali apakah Token valid dan IP Server (${serverIp}) sudah terdaftar di whitelist Dapodik.`;
       } else if (err.message) {
         errorMsg = err.message;
       }
@@ -424,7 +504,7 @@ export class DapodikService {
         success: false,
         message: errorMsg,
         targetUrl,
-        details: err.response?.data || null,
+        details: err.dapodikDetails || err.response?.data || null,
       };
     }
   }
@@ -471,6 +551,7 @@ export class DapodikService {
     let isFromCache = false;
     let cachedAtDate = new Date();
     let effectiveSourceMode: 'LIVE' | 'STAGING' = sourceMode;
+    let fallbackReason: string | undefined;
 
     const existingCache = DapodikService.studentCache.get(tenantId);
     const hasValidCache = Boolean(
@@ -520,28 +601,37 @@ export class DapodikService {
             timeout: 20000,
           });
 
-          if (response.data && Array.isArray(response.data.rows)) {
-            dapodikRows = response.data.rows;
-          } else if (Array.isArray(response.data)) {
-            dapodikRows = response.data;
-          } else if (response.data && Array.isArray(response.data.data)) {
-            dapodikRows = response.data.data;
+          const parsedPayload = this.parseDapodikPayload(response.data, response.status);
+
+          if (parsedPayload && Array.isArray(parsedPayload.rows)) {
+            dapodikRows = parsedPayload.rows;
+          } else if (Array.isArray(parsedPayload)) {
+            dapodikRows = parsedPayload;
+          } else if (parsedPayload && Array.isArray(parsedPayload.data)) {
+            dapodikRows = parsedPayload.data;
+          } else {
+            throw new Error(
+              'Web Service Dapodik tidak mengembalikan daftar peserta didik (array rows/data tidak ditemukan).'
+            );
           }
 
           cachedAtDate = new Date();
           effectiveSourceMode = 'LIVE';
 
-          // 1. Simpan ke in-memory snapshot cache
-          DapodikService.studentCache.set(tenantId, {
-            fetchedAt: cachedAtDate,
-            rows: dapodikRows,
-            npsn: cleanNpsn,
-            host: cleanHost,
-          });
+          // Simpan cache & Staging HANYA jika data siswa valid (> 0), agar snapshot Staging tidak tertimpa data kosong!
+          if (dapodikRows.length > 0) {
+            // 1. Simpan ke in-memory snapshot cache
+            DapodikService.studentCache.set(tenantId, {
+              fetchedAt: cachedAtDate,
+              rows: dapodikRows,
+              npsn: cleanNpsn,
+              host: cleanHost,
+            });
 
-          // 2. OTOMATIS PERSIST KE PLATFORM STAGING STORAGE (Disk JSON)
-          // Menjamin saat komputer Dapodik mati sewaktu-waktu, data tetap aman tersimpan 24/7 di platform!
-          DapodikService.saveStagingSnapshot(tenantId, dapodikRows, cleanNpsn, cleanHost);
+            // 2. OTOMATIS PERSIST KE PLATFORM STAGING STORAGE (Disk JSON)
+            // Menjamin saat komputer Dapodik mati sewaktu-waktu, data tetap aman tersimpan 24/7 di platform!
+            DapodikService.saveStagingSnapshot(tenantId, dapodikRows, cleanNpsn, cleanHost);
+          }
 
           // Update status di database jika berhasil
           await prisma.dapodikConfig.updateMany({
@@ -552,19 +642,32 @@ export class DapodikService {
             },
           });
         } catch (err: any) {
-          // Jika fetch fresh live gagal (misal komputer Dapodik mati), otomatis fallback ke Staging Storage Platform!
-          if (stagingSnapshot && stagingSnapshot.rows.length > 0) {
-            dapodikRows = stagingSnapshot.rows;
-            isFromCache = true;
-            cachedAtDate = stagingSnapshot.savedAt;
-            effectiveSourceMode = 'STAGING';
-          } else if (hasValidCache && existingCache) {
-            dapodikRows = existingCache.rows;
-            isFromCache = true;
-            cachedAtDate = existingCache.fetchedAt;
-            effectiveSourceMode = 'STAGING';
+          await prisma.dapodikConfig.updateMany({
+            where: { tenant_id: tenantId },
+            data: {
+              last_status: err.code === 'ECONNABORTED' ? 'TIMEOUT' : 'FAILED',
+            },
+          });
+
+          // Jika user eksplisit klik "Tarik Data Baru" (forceRefresh=true), langsung tampilkan error asli (jangan menyembunyikan kegagalan di balik fallback staging)
+          if (!forceRefresh) {
+            if (stagingSnapshot && stagingSnapshot.rows.length > 0) {
+              dapodikRows = stagingSnapshot.rows;
+              isFromCache = true;
+              cachedAtDate = stagingSnapshot.savedAt;
+              effectiveSourceMode = 'STAGING';
+              fallbackReason = err.message || 'Gagal menghubungi Web Service Dapodik';
+            } else if (hasValidCache && existingCache) {
+              dapodikRows = existingCache.rows;
+              isFromCache = true;
+              cachedAtDate = existingCache.fetchedAt;
+              effectiveSourceMode = 'STAGING';
+              fallbackReason = err.message || 'Gagal menghubungi Web Service Dapodik';
+            } else {
+              throw new Error(err.message || `Komputer Dapodik (${cleanHost}) tidak dapat dihubungi dan belum ada snapshot di Staging Platform.`);
+            }
           } else {
-            throw new Error(`Komputer Dapodik (${cleanHost}) tidak dapat dihubungi dan belum ada snapshot di Staging Platform: ${err.message || 'Koneksi bermasalah'}`);
+            throw new Error(err.message || `Gagal menarik data fresh dari Web Service Dapodik (${cleanHost}).`);
           }
         }
       }
@@ -800,6 +903,7 @@ export class DapodikService {
         cachedAt: cachedAtDate.toISOString(),
         totalCached: dapodikRows.length,
         sourceMode: effectiveSourceMode,
+        ...(fallbackReason ? { fallbackReason } : {}),
       },
       stagingMeta,
       students: resultList,

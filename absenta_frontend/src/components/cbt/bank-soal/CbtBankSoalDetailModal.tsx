@@ -11,10 +11,12 @@ import {
   BookOpen,
   Rocket,
   X,
+  Layers,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
-import type { CbtBankSoal, CbtSoal } from '@/types/cbt.types';
+import { listTenantUnits } from '@/api/kurikulum/guru-mapel.api';
+import type { CbtBankSoal, CbtSoal, CbtUnitPengajaranSummary } from '@/types/cbt.types';
 import { CbtContentRenderer } from '../common/CbtContentRenderer';
 import { CbtOptionsRenderer } from '../common/CbtOptionsRenderer';
 import { CbtInlineSoalCard } from './CbtSoalEditorModal';
@@ -44,6 +46,53 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
   const [activeCardId, setActiveCardId] = useState<string | 'NEW' | null>(null);
   const [droppedDraftText, setDroppedDraftText] = useState<string | null>(null);
   const [isDragOverAddBtn, setIsDragOverAddBtn] = useState(false);
+  const [filterUnitId, setFilterUnitId] = useState<string>('ALL');
+
+  useEffect(() => {
+    setFilterUnitId('ALL');
+  }, [isOpen, bankSoal?.id]);
+
+  // Ambil daftar Unit Pengajaran aktif untuk mapel kolaborasi (dipakai sebagai tag & filter butir soal)
+  const { data: tenantUnitsRes } = useQuery({
+    queryKey: ['kurikulum-units-by-mapel', bankSoal?.mapel_id || ''],
+    queryFn: () =>
+      bankSoal?.mapel_id
+        ? listTenantUnits({ mapel_id: bankSoal.mapel_id, is_active: true }).catch(() => null)
+        : Promise.resolve(null),
+    enabled: Boolean(
+      isOpen &&
+        bankSoal?.mapel_id &&
+        !bankSoal.unit_pengajaran_id &&
+        (!bankSoal.available_units || bankSoal.available_units.length === 0)
+    ),
+  });
+
+  const availableUnits: CbtUnitPengajaranSummary[] = useMemo(() => {
+    if (bankSoal?.unit_pengajaran_id) return [];
+    if (Array.isArray(bankSoal?.available_units) && bankSoal.available_units.length > 0) {
+      return bankSoal.available_units;
+    }
+    const raw = tenantUnitsRes?.data || [];
+    const seen = new Map<string, CbtUnitPengajaranSummary>();
+    raw.forEach((u) => {
+      if (u.id && !seen.has(u.id)) {
+        seen.set(u.id, {
+          id: u.id,
+          nama_unit: u.nama_unit,
+          kode_unit: u.kode_unit,
+          guru_id: u.guru_id,
+          Guru: u.Guru ? { id: u.Guru.id, nama_guru: u.Guru.nama_guru } : null,
+        });
+      }
+    });
+    return Array.from(seen.values());
+  }, [bankSoal?.unit_pengajaran_id, bankSoal?.available_units, tenantUnitsRes?.data]);
+
+  const unitMap = useMemo(() => {
+    const map = new Map<string, CbtUnitPengajaranSummary>();
+    availableUnits.forEach((u) => map.set(u.id, u));
+    return map;
+  }, [availableUnits]);
 
   // Fetch list of questions for this bank
   const { data: soalList = [], isLoading, refetch } = useQuery({
@@ -62,6 +111,14 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
   const totalPoin = useMemo(() => {
     return soalList.reduce((acc, curr) => acc + (Number(curr.bobot) || 1), 0);
   }, [soalList]);
+
+  const filteredSoalList = useMemo(() => {
+    if (filterUnitId === 'ALL') return soalList;
+    if (filterUnitId === 'UNASSIGNED') {
+      return soalList.filter((s) => !s.unit_pengajaran_id);
+    }
+    return soalList.filter((s) => s.unit_pengajaran_id === filterUnitId);
+  }, [soalList, filterUnitId]);
 
   // Delete question mutation
   const deleteMutation = useMutation({
@@ -125,8 +182,18 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                   <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/50">
                     {bankSoal.kode_bank}
                   </span>
+                  {bankSoal.kolaborasi_badge && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                      {bankSoal.kolaborasi_badge}
+                    </span>
+                  )}
+                  {bankSoal.UnitPengajaran && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                      Unit: {bankSoal.UnitPengajaran.nama_unit}
+                    </span>
+                  )}
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
-                    {bankSoal.Mapel?.nama_mapel || 'Mata Pelajaran'}
+                    {bankSoal.display_mapel || bankSoal.Mapel?.nama_mapel || 'Mata Pelajaran'}
                   </span>
                   <span className="text-xs text-slate-400">•</span>
                   <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -184,6 +251,55 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Filter Unit Pengajaran (Khusus Bank Soal Kolaborasi Mapel Induk) */}
+          {availableUnits.length > 0 && soalList.length > 0 && (
+            <div className="px-3.5 py-2 sm:px-6 bg-slate-50/90 dark:bg-slate-900/80 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
+              <Layers size={12} className="text-sky-600 dark:text-sky-400 shrink-0 mr-1" />
+              <button
+                type="button"
+                onClick={() => setFilterUnitId('ALL')}
+                className={cn(
+                  'px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer border',
+                  filterUnitId === 'ALL'
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
+                )}
+              >
+                Semua Unit ({soalList.length})
+              </button>
+              {availableUnits.map((unit) => {
+                const count = soalList.filter((s) => s.unit_pengajaran_id === unit.id).length;
+                return (
+                  <button
+                    key={unit.id}
+                    type="button"
+                    onClick={() => setFilterUnitId(unit.id)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer border',
+                      filterUnitId === unit.id
+                        ? 'bg-sky-600 text-white border-sky-600'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-300'
+                    )}
+                  >
+                    {unit.nama_unit} ({count})
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setFilterUnitId('UNASSIGNED')}
+                className={cn(
+                  'px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer border',
+                  filterUnitId === 'UNASSIGNED'
+                    ? 'bg-slate-700 text-white border-slate-700'
+                    : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                )}
+              >
+                Umum ({soalList.filter((s) => !s.unit_pengajaran_id).length})
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── 2. SCROLLABLE LIVE FORM STREAM (1 LAYAR KE BAWAH) ── */}
@@ -208,8 +324,11 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                 )}
 
                 {/* Daftar Soal Live Berurutan ke Bawah */}
-                {soalList.map((soal, index) => {
+                {filteredSoalList.map((soal, index) => {
                   const isEditingThisCard = !readOnly && activeCardId === soal.id;
+                  const taggedUnit =
+                    soal.UnitPengajaran ||
+                    (soal.unit_pengajaran_id ? unitMap.get(soal.unit_pengajaran_id) : null);
 
                   if (isEditingThisCard) {
                     return (
@@ -218,6 +337,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                         bankSoalId={bankSoal.id}
                         soal={soal}
                         nomorUrut={soal.nomor_urut || index + 1}
+                        availableUnits={availableUnits}
                         onSaved={() => {
                           setActiveCardId(null);
                           refetch();
@@ -249,6 +369,11 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                           <span className="text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
                             Soal #{soal.nomor_urut || index + 1}
                           </span>
+                          {taggedUnit && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800 whitespace-nowrap">
+                              Unit: {taggedUnit.nama_unit}
+                            </span>
+                          )}
                           {!readOnly && (
                             <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:inline whitespace-nowrap">
                               (Klik untuk edit langsung)
@@ -328,6 +453,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                         soal={null}
                         nomorUrut={soalList.length + 1}
                         initialRawText={droppedDraftText || undefined}
+                        availableUnits={availableUnits}
                         onSaved={(mode) => {
                           setDroppedDraftText(null);
                           refetch();

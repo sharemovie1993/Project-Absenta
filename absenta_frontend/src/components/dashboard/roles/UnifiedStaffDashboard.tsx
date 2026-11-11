@@ -111,9 +111,7 @@ const SatpamDashboard = React.lazy(() => import('./SatpamDashboard').then(m => (
 
 // Executive Principal Dashboard — dirender di tab Overview Eksekutif untuk KEPALA_SEKOLAH
 const KepalaSekolahDashboard = React.lazy(() => import('./KepalaSekolahDashboard').then(m => ({ default: m.KepalaSekolahDashboard })));
-// Kepegawaian Dashboard — dirender di tab TU Kepegawaian
-const KepegawaianDashboard = React.lazy(() => import('./KepegawaianDashboard').then(m => ({ default: m.KepegawaianDashboard })));
-// Tata Usaha Dashboard — unified command center untuk TU
+// Tata Usaha Dashboard — unified capability-driven command center untuk seluruh jabatan TU
 const TataUsahaDashboard = React.lazy(() => import('./TataUsahaDashboard').then(m => ({ default: m.TataUsahaDashboard })));
 
 const CatatPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
@@ -1054,9 +1052,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'p5_projek', label: 'Dashboard P5', icon: Sparkles });
     }
 
-    // 10. Tab Tata Usaha Sesuai Spesialisasi Fungsional
-    if ((isTUKepegawaian || isTU || isTUKepala || isTUPersuratan || (isAdminRole && !isKepsek)) && !isKepsek) {
-      list.push({ id: 'kepegawaian', label: 'Dashboard TU', icon: Building });
+    // 10. Tab Tata Usaha Terpadu (1 Shell Capability-Driven untuk seluruh 5 jabatan TU)
+    if ((isTU || isTUKepala || isTUPersuratan || isTUKepegawaian || isTUKeuangan || isTUSarpras || (isAdminRole && !isKepsek)) && !isKepsek) {
+      list.push({ id: 'kepegawaian', label: tuTabMeta.label || 'Dashboard TU', icon: Building });
     }
 
     // 11. Piket & Gerbang: Murni hanya untuk guru yang terdaftar dalam jadwal piket atau petugas keamanan gerbang
@@ -1095,7 +1093,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isPembimbingPkl,
     isKaprog,
     isFasilitatorP5Actual,
+    isTUKepala,
+    isTUPersuratan,
     isTUKepegawaian,
+    isTUKeuangan,
+    isTUSarpras,
     isTU,
     tuTabMeta,
     isPiketGuruActual,
@@ -1119,7 +1121,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     // Tab binaan, kaprog, kepegawaian, pembimbing_pkl, dan kelola (piket) valid jika user memiliki peran tersebut
     if (activeTab === 'binaan' && (isWaliKelas || Boolean(waliKelasId))) return;
     if (activeTab === 'kaprog' && isKaprog) return;
-    if (activeTab === 'kepegawaian' && (isTUKepala || isTUPersuratan || isTUKepegawaian || isTU)) return;
+    if (activeTab === 'kepegawaian' && (isTUKepala || isTUPersuratan || isTUKepegawaian || isTUKeuangan || isTUSarpras || isTU || isAdminRole)) return;
     if (activeTab === 'pembimbing_pkl' && isPembimbingPkl) return;
     if (activeTab === 'kelola' && (isPiketGuruActual || isPureGerbangStaff)) return;
 
@@ -1130,7 +1132,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
       const fallback = tabs.some(t => t.id === defaultTabId) ? defaultTabId : tabs[0].id;
       setSearchParams({ tab: fallback }, { replace: true });
     }
-  }, [tabs, activeTab, defaultTabId, setSearchParams, isWaliKelas, waliKelasId, isKaprog, isTUKepala, isTUPersuratan, isTUKepegawaian, isTU, isPembimbingPkl, isPiketGuruActual, isPureGerbangStaff]);
+  }, [tabs, activeTab, defaultTabId, setSearchParams, isWaliKelas, waliKelasId, isKaprog, isTUKepala, isTUPersuratan, isTUKepegawaian, isTUKeuangan, isTUSarpras, isTU, isAdminRole, isPembimbingPkl, isPiketGuruActual, isPureGerbangStaff]);
 
   // ── 6. Quick Actions ──────────────────────────────────────────────────────────
   const quickActions = useMemo(() => {
@@ -1766,11 +1768,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
             className={cn("w-full min-w-0", activeTab === 'kepegawaian' ? "block" : "hidden")}
           >
             <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
-              {isTUKepala || isTUPersuratan || isTU ? (
-                <TataUsahaDashboard user={user} />
-              ) : (
-                <KepegawaianDashboard user={user} />
-              )}
+              <TataUsahaDashboard user={user} />
             </Suspense>
           </div>
           </EcosystemProvider>

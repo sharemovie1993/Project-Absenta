@@ -108,6 +108,11 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                             <div className="text-[9px] font-extrabold uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
                               {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                             </div>
+                            {item.UnitPengajaran?.nama_unit ? (
+                              <div className="text-[7.5px] font-bold text-indigo-600 dark:text-indigo-400 leading-tight truncate">
+                                {item.UnitPengajaran.nama_unit}
+                              </div>
+                            ) : null}
                             <div className="text-[8px] font-mono font-bold text-slate-500 dark:text-slate-400 leading-none mt-0.5">
                               {displayStart && displayEnd ? `${displayStart} - ${displayEnd}` : ''}
                             </div>
@@ -117,6 +122,11 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                             <div className="text-[9.5px] font-black uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
                               {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                             </div>
+                            {item.UnitPengajaran?.nama_unit ? (
+                              <div className="text-[7.5px] font-bold text-indigo-600 dark:text-indigo-400 leading-tight truncate">
+                                {item.UnitPengajaran.nama_unit}
+                              </div>
+                            ) : null}
                             <div className="text-[8.5px] font-bold text-slate-600 dark:text-slate-400 leading-tight truncate">
                               {item.isForeign
                                 ? `Oleh: ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru Lain'}`
@@ -219,6 +229,7 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
         if (
           nextItem &&
           String(nextItem.mapel_id || '') === String(item.mapel_id || '') &&
+          String(nextItem.unit_pengajaran_id || '') === String(item.unit_pengajaran_id || '') &&
           String(nextItem.guru_id || '') === String(item.guru_id || '') &&
           String(nextItem.kelas_id || '') === String(item.kelas_id || '') &&
           String(nextItem.jenis_kegiatan || '').toUpperCase() === String(item.jenis_kegiatan || '').toUpperCase()
@@ -323,6 +334,11 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                 <div className="text-[10px] font-extrabold uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
                   {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                 </div>
+                {item.UnitPengajaran?.nama_unit ? (
+                  <div className="text-[8px] font-bold text-indigo-600 dark:text-indigo-400 leading-tight truncate">
+                    {item.UnitPengajaran.nama_unit}
+                  </div>
+                ) : null}
                 <div className="text-[8.5px] font-bold text-slate-600 dark:text-slate-400 leading-tight truncate">
                   {item.Guru?.nama_guru || item.Guru?.User?.full_name || (item.guru_id ? 'Guru Terjadwal' : '(Belum Set Guru)')}
                 </div>
@@ -335,6 +351,11 @@ export const SingleGridTimetable: React.FC<Props> = React.memo(({
                 <div className="text-[10px] font-black uppercase text-slate-800 dark:text-slate-100 leading-tight truncate">
                   {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                 </div>
+                {item.UnitPengajaran?.nama_unit ? (
+                  <div className="text-[8px] font-bold text-indigo-600 dark:text-indigo-400 leading-tight truncate">
+                    {item.UnitPengajaran.nama_unit}
+                  </div>
+                ) : null}
                 <div className="text-[8.5px] font-bold text-slate-600 dark:text-slate-400 leading-tight truncate">
                   {item.isForeign
                     ? `Oleh: ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru Lain'}`

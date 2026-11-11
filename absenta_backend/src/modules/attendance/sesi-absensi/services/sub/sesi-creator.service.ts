@@ -241,23 +241,69 @@ export class SesiCreatorService {
       }
     }
 
-    // 🛡️ IDEMPOTENCY GUARD: Prevent duplicate session creation for same schedule slot & date
+    // 🛡️ Resolve JadwalKBM reference early so unit_pengajaran_id & idempotency guard stay aligned
     const cleanJadwalKbmId = payload.jadwal_kbm_id ? String(payload.jadwal_kbm_id).replace(/^sched_/, '') : null;
+    let validJadwalKbmId: string | null = null;
+    let fallbackJamSelesai: string | null = null;
+    let fallbackJamMulai: string | null = null;
+    let jadwalUnitPengajaranId: string | null = null;
+    let jadwalGuruPelaksanaId: string | null = null;
+
+    if (cleanJadwalKbmId) {
+      try {
+        const existingJadwal = await (prisma as any).jadwalKBM.findUnique({
+          where: { id: cleanJadwalKbmId },
+          select: {
+            id: true,
+            jam_mulai: true,
+            jam_selesai: true,
+            unit_pengajaran_id: true,
+            guru_pelaksana_id: true,
+          },
+        });
+        if (existingJadwal) {
+          validJadwalKbmId = existingJadwal.id;
+          fallbackJamSelesai = existingJadwal.jam_selesai;
+          fallbackJamMulai = existingJadwal.jam_mulai;
+          jadwalUnitPengajaranId = existingJadwal.unit_pengajaran_id || null;
+          jadwalGuruPelaksanaId = existingJadwal.guru_pelaksana_id || null;
+        }
+      } catch {
+        validJadwalKbmId = null;
+      }
+    }
+
+    const resolvedUnitPengajaranId: string | null = payload.unit_pengajaran_id || jadwalUnitPengajaranId || null;
+
+    // 🛡️ IDEMPOTENCY GUARD: Prevent duplicate session creation for same schedule slot / unit & date
     const startOfDay = new Date(sessionDate);
     startOfDay.setUTCHours(0, 0, 0, 0);
     const endOfDay = new Date(sessionDate);
     endOfDay.setUTCHours(23, 59, 59, 999);
 
-    const matchingSesis = await prisma.sesiAbsensi.findMany({
+    const matchingSesis = await (prisma.sesiAbsensi as any).findMany({
       where: {
         tenant_id: tenantId,
         tanggal: { gte: startOfDay, lte: endOfDay },
         OR: [
-          ...(cleanJadwalKbmId ? [{ jadwal_kbm_id: cleanJadwalKbmId }] : []),
-          ...(kelas_id && mapel_id ? [{ kelas_id, mapel_id, jenis_kegiatan: 'KBM' }] : [])
-        ]
+          ...(validJadwalKbmId ? [{ jadwal_kbm_id: validJadwalKbmId }] : []),
+          ...(kelas_id && mapel_id
+            ? [
+                {
+                  kelas_id,
+                  mapel_id,
+                  jenis_kegiatan: 'KBM',
+                  ...(resolvedUnitPengajaranId
+                    ? { unit_pengajaran_id: resolvedUnitPengajaranId }
+                    : guru_id
+                    ? { guru_id }
+                    : {}),
+                },
+              ]
+            : []),
+        ],
       },
-      orderBy: { waktu_mulai: 'asc' }
+      orderBy: { waktu_mulai: 'asc' },
     });
 
     const existingSesi = matchingSesis[0] || null;
@@ -320,27 +366,7 @@ export class SesiCreatorService {
     const isFutureSchedule = parsedStart.getTime() - now.getTime() > 15 * 60 * 1000;
     const initialStatus = finalFotoUrl ? 'BERLANGSUNG' : isFutureSchedule ? 'MENDATANG' : 'BERLANGSUNG';
 
-    // 🛡️ Safely resolve foreign key for jadwal_kbm_id (strip sched_ prefix & verify DB existence)
-    let validJadwalKbmId: string | null = null;
-    let fallbackJamSelesai: string | null = null;
-    let fallbackJamMulai: string | null = null;
-
-    if (payload.jadwal_kbm_id) {
-      const cleanJadwalId = String(payload.jadwal_kbm_id).replace(/^sched_/, '');
-      try {
-        const existingJadwal = await (prisma as any).jadwalKBM.findUnique({
-          where: { id: cleanJadwalId },
-          select: { id: true, jam_mulai: true, jam_selesai: true }
-        });
-        if (existingJadwal) {
-          validJadwalKbmId = existingJadwal.id;
-          fallbackJamSelesai = existingJadwal.jam_selesai;
-          fallbackJamMulai = existingJadwal.jam_mulai;
-        }
-      } catch (e) {
-        validJadwalKbmId = null;
-      }
-    }
+    // jadwalKbmId & fallback times already resolved above
 
     // 🛡️ Resolve fallback waktu_selesai dari JadwalKegiatan jika jadwal_kbm_id tidak ada
     if (!fallbackJamSelesai && payload.jadwal_kegiatan_id) {
@@ -387,14 +413,15 @@ export class SesiCreatorService {
       }
     }
 
-    const isDelegasi = Boolean(payload.is_delegasi);
-    const guruPelaksanaId = payload.guru_pelaksana_id || null;
+    const guruPelaksanaId = payload.guru_pelaksana_id || jadwalGuruPelaksanaId || null;
+    const isDelegasi = Boolean(payload.is_delegasi || guruPelaksanaId);
 
     const sesi = await (prisma.sesiAbsensi as any).create({
       data: {
         tenant_id: tenantId,
         jadwal_kbm_id: validJadwalKbmId,
         jadwal_kegiatan_id: payload.jadwal_kegiatan_id || null,
+        unit_pengajaran_id: resolvedUnitPengajaranId,
         kelas_id,
         mapel_id: mapel_id || null,
         guru_id: validGuruId,

@@ -372,6 +372,7 @@ export class NilaiCrudService {
         sumatif_1?: number | null;
         sumatif_2?: number | null;
         sumatif_3?: number | null;
+        sumatif_4?: number | null;
         nilai_akhir_sumatif?: number | null;
         sumatif_akhir?: number | null;
         capaian_kompetensi?: string | null;
@@ -441,7 +442,7 @@ export class NilaiCrudService {
     const operations = data.scores.map((item) => {
       const saId = saMap.get(item.siswa_id) || null;
       // Calculate Rata-rata Sumatif
-      const sumatifList = [item.sumatif_1, item.sumatif_2, item.sumatif_3].filter(
+      const sumatifList = [item.sumatif_1, item.sumatif_2, item.sumatif_3, item.sumatif_4].filter(
         (v): v is number => v !== undefined && v !== null && !isNaN(v)
       );
 
@@ -489,6 +490,7 @@ export class NilaiCrudService {
           sumatif_1: item.sumatif_1 ?? null,
           sumatif_2: item.sumatif_2 ?? null,
           sumatif_3: item.sumatif_3 ?? null,
+          sumatif_4: item.sumatif_4 ?? null,
           rata_rata_sumatif: rataRataSumatif,
           nilai_akhir_sumatif: nilaiAkhir,
           ...(saId ? { siswa_akademik_id: saId } : {}),
@@ -507,6 +509,7 @@ export class NilaiCrudService {
           sumatif_1: item.sumatif_1 ?? null,
           sumatif_2: item.sumatif_2 ?? null,
           sumatif_3: item.sumatif_3 ?? null,
+          sumatif_4: item.sumatif_4 ?? null,
           rata_rata_sumatif: rataRataSumatif,
           nilai_akhir_sumatif: nilaiAkhir,
           nilai_rapor_final: nilaiRaporFinal,

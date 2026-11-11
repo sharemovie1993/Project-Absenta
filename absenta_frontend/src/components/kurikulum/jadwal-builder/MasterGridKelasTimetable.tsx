@@ -147,6 +147,7 @@ export const MasterGridKelasTimetable: React.FC<Props> = React.memo(({
                             String(nextItem.kelas_id || '') === String(item.kelas_id || '') &&
                             String(nextItem.guru_id || '') === String(item.guru_id || '') &&
                             String(nextItem.mapel_id || '') === String(item.mapel_id || '') &&
+                            String(nextItem.unit_pengajaran_id || '') === String(item.unit_pengajaran_id || '') &&
                             String(nextItem.jenis_kegiatan || '').toUpperCase() === String(item.jenis_kegiatan || '').toUpperCase()
                           ) {
                             colSpan++;
@@ -178,11 +179,12 @@ export const MasterGridKelasTimetable: React.FC<Props> = React.memo(({
                               <div
                                 className={`w-full h-full p-1 rounded-lg border border-l-2 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
                                 style={{ borderLeftColor: mapelStyle?.dotHex }}
-                                title={`${day} Jam ${slotIdx}${colSpan > 1 ? `-${slotIdx + colSpan - 1}` : ''}: ${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'} (${colSpan} JP)`}
+                                title={`${day} Jam ${slotIdx}${colSpan > 1 ? `-${slotIdx + colSpan - 1}` : ''}: ${item.Mapel?.nama_mapel || item.jenis_kegiatan}${item.UnitPengajaran?.nama_unit ? ` (${item.UnitPengajaran.nama_unit})` : ''} - ${item.Guru?.nama_guru || 'Guru'} (${colSpan} JP)`}
                               >
                                 <div className="flex items-center justify-between gap-0.5 px-0.5">
                                   <span className="font-extrabold text-[9px] text-slate-800 dark:text-slate-100 truncate leading-none">
                                     {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                                    {item.UnitPengajaran?.nama_unit ? ` • ${item.UnitPengajaran.nama_unit}` : ''}
                                   </span>
                                   {!item.asc_id && (
                                     <span className="text-[6.5px] font-black px-1 rounded bg-amber-500 text-white border border-amber-600 shadow-sm">
@@ -228,6 +230,7 @@ export const MasterGridKelasTimetable: React.FC<Props> = React.memo(({
                             String(nextItem.kelas_id || '') === String(item.kelas_id || '') &&
                             String(nextItem.guru_id || '') === String(item.guru_id || '') &&
                             String(nextItem.mapel_id || '') === String(item.mapel_id || '') &&
+                            String(nextItem.unit_pengajaran_id || '') === String(item.unit_pengajaran_id || '') &&
                             String(nextItem.jenis_kegiatan || '').toUpperCase() === String(item.jenis_kegiatan || '').toUpperCase()
                           ) {
                             colSpan++;
@@ -259,11 +262,12 @@ export const MasterGridKelasTimetable: React.FC<Props> = React.memo(({
                               <div
                                 className={`w-full h-full p-1.5 rounded-xl border border-l-4 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
                                 style={{ borderLeftColor: mapelStyle?.dotHex }}
-                                title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'} (${colSpan} JP)`}
+                                title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan}${item.UnitPengajaran?.nama_unit ? ` (${item.UnitPengajaran.nama_unit})` : ''} - ${item.Guru?.nama_guru || 'Guru'} (${colSpan} JP)`}
                               >
                                 <div className="flex items-center justify-between gap-1">
                                   <span className="font-extrabold text-[10px] text-slate-800 dark:text-slate-100 truncate">
                                     {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                                    {item.UnitPengajaran?.nama_unit ? ` • ${item.UnitPengajaran.nama_unit}` : ''}
                                   </span>
                                   {colSpan > 1 && (
                                     <span className="text-[8px] font-black px-1 py-0.5 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300">

@@ -57,6 +57,12 @@ const RAPOR_SLOTS: Array<{
     desc: 'Ujian Harian / Lingkup Materi 3',
   },
   {
+    key: 'sumatif_4',
+    shortLabel: 'SUM 4',
+    title: 'Sumatif 4 (SUM 4)',
+    desc: 'Ujian Harian / Lingkup Materi 4 (atau Unit 4 Kolaborasi)',
+  },
+  {
     key: 'sumatif_akhir',
     shortLabel: 'SUM AKHIR',
     title: 'Sumatif Akhir (SUM AKHIR)',
@@ -150,6 +156,8 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
         setTargetSlot('sumatif_2');
       } else if (lower.includes('sumatif 3') || lower.includes('uh 3')) {
         setTargetSlot('sumatif_3');
+      } else if (lower.includes('sumatif 4') || lower.includes('uh 4')) {
+        setTargetSlot('sumatif_4');
       } else {
         setTargetSlot('sumatif_1');
       }

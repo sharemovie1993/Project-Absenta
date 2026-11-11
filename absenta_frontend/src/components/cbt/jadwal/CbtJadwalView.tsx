@@ -210,6 +210,8 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
               ? 'SUM 2'
               : targetSlot === 'sumatif_3'
               ? 'SUM 3'
+              : targetSlot === 'sumatif_4'
+              ? 'SUM 4'
               : targetSlot === 'sumatif_akhir'
               ? 'SUM AKHIR'
               : null;
@@ -292,18 +294,39 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         title: 'Mata Pelajaran',
         label: 'Mata Pelajaran',
         className: 'min-w-[170px]',
-        render: (_val: unknown, row: CbtJadwalUjian) => (
-          <div className="space-y-0.5">
-            <span className="font-semibold text-xs text-indigo-600 dark:text-indigo-400 block line-clamp-1">
-              {row.BankSoal?.Mapel?.nama_mapel || '-'}
-            </span>
-            {row.BankSoal?.tingkat && (
-              <span className="text-[10px] font-bold text-slate-400">
-                Kelas {row.BankSoal.tingkat}
-              </span>
-            )}
-          </div>
-        ),
+        render: (_val: unknown, row: CbtJadwalUjian) => {
+          const badge = row.kolaborasi_badge || row.BankSoal?.kolaborasi_badge;
+          const unitNama = row.BankSoal?.UnitPengajaran?.nama_unit;
+          const mapelLabel =
+            row.display_mapel ||
+            row.BankSoal?.display_mapel ||
+            row.BankSoal?.Mapel?.nama_mapel ||
+            '-';
+          return (
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-semibold text-xs text-indigo-600 dark:text-indigo-400 line-clamp-1">
+                  {mapelLabel}
+                </span>
+                {badge && (
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    {badge}
+                  </span>
+                )}
+                {unitNama && (
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                    Unit
+                  </span>
+                )}
+              </div>
+              {row.BankSoal?.tingkat && (
+                <span className="text-[10px] font-bold text-slate-400">
+                  Kelas {row.BankSoal.tingkat}
+                </span>
+              )}
+            </div>
+          );
+        },
       },
       {
         key: 'token',
@@ -462,7 +485,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                     setIsTransferModalOpen(true);
                   }}
                   className="text-xs h-7 px-2 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold bg-indigo-50/60 hover:bg-indigo-100 cursor-pointer"
-                  title="Transfer Nilai Hasil CBT ke Slot Rapor (SUM 1, SUM 2, SUM 3, SUM AKHIR)"
+                  title="Transfer Nilai Hasil CBT ke Slot Rapor (SUM 1, SUM 2, SUM 3, SUM 4, SUM AKHIR)"
                 >
                   <ArrowRightLeft size={12} className="mr-1" />
                   <span>Transfer Rapor</span>
@@ -662,7 +685,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           emptyMessage="Belum ada jadwal ujian dibuat"
           titleKey="nama_sesi"
           badgeKey="status"
-          subtitleKey="BankSoal.Mapel.nama_mapel"
+          subtitleKey="display_mapel"
           metaKey="token_ujian"
           pagination={{
             currentPage: page,

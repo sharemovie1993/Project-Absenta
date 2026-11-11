@@ -46,6 +46,18 @@ export async function cbtRoutes(fastify: any) {
     preHandler: [requireCapability('cbt.bank.manage', cbtGuruExempt), determineDataScope()],
   }, CbtBankSoalController.duplicate);
 
+  fastify.get('/bank-soal/:id/kontributor', {
+    preHandler: [requireCapability('cbt.bank.view', cbtGuruExempt), determineDataScope()],
+  }, CbtBankSoalController.listContributors);
+
+  fastify.put('/bank-soal/:id/kontributor', {
+    preHandler: [requireCapability('cbt.bank.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtBankSoalController.updateContributors);
+
+  fastify.post('/bank-soal/:id/kontributor/sync', {
+    preHandler: [requireCapability('cbt.bank.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtBankSoalController.syncContributors);
+
   // ==========================================
   // 2. BUTIR SOAL ROUTES
   // ==========================================

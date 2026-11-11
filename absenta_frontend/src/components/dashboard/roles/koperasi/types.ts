@@ -9,7 +9,10 @@ export type KoperasiTabId =
   | 'anggota'
   | 'produk'
   | 'shu'
-  | 'akuntansi';
+  | 'akuntansi'
+  | 'aset'
+  | 'rat'
+  | 'tiket';
 
 export interface KoperasiNavTabItem {
   id: KoperasiTabId;

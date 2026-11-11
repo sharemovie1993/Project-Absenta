@@ -14,14 +14,18 @@ interface PendingLoanItem {
 interface CoopApprovalHubProps {
   pendingLoans?: PendingLoanItem[];
   pendingMembers?: PendingMembersData;
+  showLoans?: boolean;
+  showMembers?: boolean;
 }
 
 export const CoopApprovalHub: React.FC<CoopApprovalHubProps> = React.memo(({
   pendingLoans = [],
   pendingMembers,
+  showLoans = true,
+  showMembers = true,
 }) => {
-  const membersCount = pendingMembers?.count || 0;
-  const loansCount = pendingLoans.length;
+  const membersCount = showMembers ? (pendingMembers?.count || 0) : 0;
+  const loansCount = showLoans ? pendingLoans.length : 0;
 
   // Jika tidak ada antrean aksi yang tertunda, jangan tampilkan apapun untuk menjaga layar tetap bersih
   if (loansCount === 0 && membersCount === 0) {

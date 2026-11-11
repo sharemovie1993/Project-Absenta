@@ -38,14 +38,25 @@ export class CbtJadwalService {
       andConditions.push({ bank_soal_id: query.bank_soal_id });
     }
     if (query.guru_id) {
-      // Dapatkan penugasan kelas dan mapel guru (GuruMapel) agar jadwal paralel MGMP yang menargetkan kelas binaan dapat dipantau
-      const assignedGuruMapel = await prisma.guruMapel.findMany({
-        where: { tenant_id: tenantId, guru_id: query.guru_id },
-        select: { mapel_id: true, kelas_id: true },
-      });
+      // Dapatkan penugasan kelas dan mapel guru (GuruMapel, UnitPengajaran, maupun Delegasi Pelaksana)
+      const [assignedGuruMapel, assignedUnits, delegatedJadwals] = await Promise.all([
+        prisma.guruMapel.findMany({
+          where: { tenant_id: tenantId, guru_id: query.guru_id },
+          select: { mapel_id: true, kelas_id: true },
+        }),
+        prisma.unitPengajaran.findMany({
+          where: { tenant_id: tenantId, guru_id: query.guru_id, is_active: true },
+          select: { mapel_id: true, kelas_id: true },
+        }),
+        prisma.jadwalKBM.findMany({
+          where: { tenant_id: tenantId, guru_pelaksana_id: query.guru_id },
+          select: { mapel_id: true, kelas_id: true },
+        }),
+      ]);
 
       const orConditions: Prisma.CbtJadwalUjianWhereInput[] = [
         { BankSoal: { guru_id: query.guru_id } },
+        { BankSoal: { Kontributor: { some: { guru_id: query.guru_id, tenant_id: tenantId } } } },
         {
           setting_keamanan: {
             path: ['created_by_guru_id'],
@@ -72,16 +83,24 @@ export class CbtJadwalService {
         },
       ];
 
-      if (assignedGuruMapel.length > 0) {
-        for (const gm of assignedGuruMapel) {
-          if (gm.mapel_id && gm.kelas_id) {
+      const pushMapelKelasFilter = (rows: Array<{ mapel_id?: string | null; kelas_id?: string | null }>) => {
+        for (const row of rows) {
+          if (row.mapel_id && row.kelas_id) {
             orConditions.push({
-              BankSoal: { mapel_id: gm.mapel_id },
-              target_kelas_ids: { array_contains: [gm.kelas_id] },
+              BankSoal: { mapel_id: row.mapel_id },
+              target_kelas_ids: { array_contains: [row.kelas_id] },
+            });
+          } else if (row.mapel_id) {
+            orConditions.push({
+              BankSoal: { mapel_id: row.mapel_id },
             });
           }
         }
-      }
+      };
+
+      pushMapelKelasFilter(assignedGuruMapel);
+      pushMapelKelasFilter(assignedUnits);
+      pushMapelKelasFilter(delegatedJadwals);
 
       andConditions.push({
         OR: orConditions,
@@ -99,7 +118,7 @@ export class CbtJadwalService {
     const where: Prisma.CbtJadwalUjianWhereInput =
       andConditions.length === 1 ? andConditions[0] : { AND: andConditions };
 
-    const [total, items] = await Promise.all([
+    const [total, rawItems] = await Promise.all([
       prisma.cbtJadwalUjian.count({ where }),
       prisma.cbtJadwalUjian.findMany({
         where,
@@ -116,8 +135,22 @@ export class CbtJadwalService {
               tingkat: true,
               jumlah_soal: true,
               mapel_id: true,
+              unit_pengajaran_id: true,
+              tahun_pelajaran_id: true,
+              semester_id: true,
               Mapel: { select: { id: true, nama_mapel: true } },
               Guru: { select: { id: true, nama_guru: true, nip: true } },
+              UnitPengajaran: {
+                select: {
+                  id: true,
+                  nama_unit: true,
+                  guru_id: true,
+                  Guru: { select: { id: true, nama_guru: true } },
+                },
+              },
+              Kontributor: {
+                select: { guru_id: true, unit_pengajaran_id: true },
+              },
             },
           },
           TahunPelajaran: { select: { id: true, tahun: true, is_active: true } },
@@ -126,6 +159,37 @@ export class CbtJadwalService {
         },
       }),
     ]);
+
+    const mapelIds = Array.from(new Set(rawItems.map((it) => it.BankSoal?.mapel_id).filter(Boolean) as string[]));
+    const collabGm = mapelIds.length > 0
+      ? await prisma.guruMapel.findMany({
+          where: { tenant_id: tenantId, mapel_id: { in: mapelIds }, teaching_mode: 'COLLABORATION' },
+          select: { mapel_id: true, tahun_pelajaran_id: true, semester_id: true },
+        })
+      : [];
+
+    const items = rawItems.map((it) => {
+      const bank = it.BankSoal;
+      const isCollabMapel = Boolean(
+        bank?.mapel_id &&
+          collabGm.some(
+            (gm) =>
+              gm.mapel_id === bank.mapel_id &&
+              (!it.tahun_pelajaran_id || gm.tahun_pelajaran_id === it.tahun_pelajaran_id)
+          )
+      );
+      const isKuisUnit = Boolean(bank?.unit_pengajaran_id);
+      const unitNama = bank?.UnitPengajaran?.nama_unit || null;
+      const baseMapel = bank?.Mapel?.nama_mapel || '-';
+      const isKolaborasiResmi = !isKuisUnit && isCollabMapel;
+      return {
+        ...it,
+        is_kolaborasi: isKolaborasiResmi,
+        kolaborasi_badge: isKolaborasiResmi ? 'Kolaborasi' : null,
+        display_mapel: isKuisUnit && unitNama ? `${baseMapel} — ${unitNama}` : baseMapel,
+        unit_nama: unitNama,
+      };
+    });
 
     return {
       items,
@@ -149,6 +213,18 @@ export class CbtJadwalService {
           include: {
             Mapel: { select: { nama_mapel: true, kode_mapel: true } },
             Guru: { select: { nama_guru: true, nip: true } },
+            UnitPengajaran: {
+              select: {
+                id: true,
+                nama_unit: true,
+                guru_id: true,
+                target_sumatif_slot: true,
+                Guru: { select: { id: true, nama_guru: true } },
+              },
+            },
+            Kontributor: {
+              select: { guru_id: true, unit_pengajaran_id: true },
+            },
           },
         },
         TahunPelajaran: { select: { id: true, tahun: true, is_active: true } },
@@ -419,6 +495,7 @@ export class CbtJadwalService {
       | 'sumatif_1'
       | 'sumatif_2'
       | 'sumatif_3'
+      | 'sumatif_4'
       | 'sumatif_akhir'
       | undefined;
 
@@ -507,10 +584,11 @@ export class CbtJadwalService {
     const sum1 = targetSlot === 'sumatif_1' ? cbtScore : (existing?.sumatif_1 ?? null);
     const sum2 = targetSlot === 'sumatif_2' ? cbtScore : (existing?.sumatif_2 ?? null);
     const sum3 = targetSlot === 'sumatif_3' ? cbtScore : (existing?.sumatif_3 ?? null);
+    const sum4 = targetSlot === 'sumatif_4' ? cbtScore : (existing?.sumatif_4 ?? null);
     const nilaiAkhir =
       targetSlot === 'sumatif_akhir' ? cbtScore : (existing?.nilai_akhir_sumatif ?? null);
 
-    const sumatifList = [sum1, sum2, sum3].filter(
+    const sumatifList = [sum1, sum2, sum3, sum4].filter(
       (v): v is number => v !== undefined && v !== null && !isNaN(v)
     );
 
@@ -548,6 +626,7 @@ export class CbtJadwalService {
         sumatif_1: sum1,
         sumatif_2: sum2,
         sumatif_3: sum3,
+        sumatif_4: sum4,
         rata_rata_sumatif: rataRataSumatif,
         nilai_akhir_sumatif: nilaiAkhir,
         nilai_rapor_final: nilaiRaporFinal,
@@ -564,6 +643,7 @@ export class CbtJadwalService {
         sumatif_1: sum1,
         sumatif_2: sum2,
         sumatif_3: sum3,
+        sumatif_4: sum4,
         rata_rata_sumatif: rataRataSumatif,
         nilai_akhir_sumatif: nilaiAkhir,
         nilai_rapor_final: nilaiRaporFinal,
@@ -621,6 +701,7 @@ export class CbtJadwalService {
       prisma.cbtJadwalUjian.findFirst({
         where: { id: jadwalId, tenant_id: tenantId },
         select: {
+          bank_soal_id: true,
           durasi_menit: true,
           tanggal_selesai: true,
           setting_keamanan: true,
@@ -670,6 +751,45 @@ export class CbtJadwalService {
       } catch {}
     }
 
+    // Ambil struktur butir soal per UnitPengajaran (untuk breakdown nilai per unit pada ujian kolaborasi)
+    const bankSoalQuestions = jadwal?.bank_soal_id
+      ? await prisma.cbtSoal.findMany({
+          where: {
+            tenant_id: tenantId,
+            bank_soal_id: jadwal.bank_soal_id,
+            unit_pengajaran_id: { not: null },
+          },
+          select: {
+            id: true,
+            bobot: true,
+            kunci_jawaban: true,
+            unit_pengajaran_id: true,
+            UnitPengajaran: {
+              select: {
+                id: true,
+                nama_unit: true,
+                guru_id: true,
+                Guru: { select: { nama_guru: true } },
+              },
+            },
+          },
+        })
+      : [];
+
+    const hasUnitTaggedQuestions = bankSoalQuestions.length > 0;
+    const soalMetaById = new Map(
+      bankSoalQuestions.map((q) => [
+        q.id,
+        {
+          unitId: q.unit_pengajaran_id!,
+          unitName: q.UnitPengajaran?.nama_unit || 'Unit',
+          guruName: q.UnitPengajaran?.Guru?.nama_guru || null,
+          bobot: Number(q.bobot) || 1,
+          kunci: String(q.kunci_jawaban || '').trim().toUpperCase(),
+        },
+      ])
+    );
+
     const processedItems = await Promise.all(
       items.map(async (item) => {
         let dynamicSisaWaktu = item.sisa_waktu_detik;
@@ -711,6 +831,64 @@ export class CbtJadwalService {
           lastSyncTimestamp = rSession.last_sync;
         }
 
+        // Hitung breakdown skor per UnitPengajaran (khusus ujian kolaborasi dengan soal tagged unit)
+        let unitScores: Array<{
+          unit_pengajaran_id: string;
+          nama_unit: string;
+          guru_nama: string | null;
+          benar: number;
+          total_soal: number;
+          bobot_diperoleh: number;
+          bobot_total: number;
+          skor: number;
+        }> | undefined = undefined;
+
+        if (hasUnitTaggedQuestions) {
+          const answerMap = new Map<string, string>();
+          if (Array.isArray(effectiveJawabanJson)) {
+            for (const ans of effectiveJawabanJson as any[]) {
+              if (ans?.soal_id) {
+                answerMap.set(ans.soal_id, String(ans.jawaban_siswa || '').trim().toUpperCase());
+              }
+            }
+          }
+
+          const agg = new Map<
+            string,
+            { nama_unit: string; guru_nama: string | null; benar: number; total_soal: number; bobot_diperoleh: number; bobot_total: number }
+          >();
+
+          for (const [soalId, meta] of soalMetaById.entries()) {
+            const bucket = agg.get(meta.unitId) || {
+              nama_unit: meta.unitName,
+              guru_nama: meta.guruName,
+              benar: 0,
+              total_soal: 0,
+              bobot_diperoleh: 0,
+              bobot_total: 0,
+            };
+            bucket.total_soal += 1;
+            bucket.bobot_total += meta.bobot;
+            const studentAns = answerMap.get(soalId) || '';
+            if (studentAns && studentAns === meta.kunci) {
+              bucket.benar += 1;
+              bucket.bobot_diperoleh += meta.bobot;
+            }
+            agg.set(meta.unitId, bucket);
+          }
+
+          unitScores = Array.from(agg.entries()).map(([unitId, b]) => ({
+            unit_pengajaran_id: unitId,
+            nama_unit: b.nama_unit,
+            guru_nama: b.guru_nama,
+            benar: b.benar,
+            total_soal: b.total_soal,
+            bobot_diperoleh: Number(b.bobot_diperoleh.toFixed(2)),
+            bobot_total: Number(b.bobot_total.toFixed(2)),
+            skor: b.bobot_total > 0 ? Number(((b.bobot_diperoleh / b.bobot_total) * 100).toFixed(2)) : 0,
+          }));
+        }
+
         return {
           ...item,
           sisa_waktu_detik: dynamicSisaWaktu,
@@ -718,6 +896,7 @@ export class CbtJadwalService {
           status_sinkron: liveStatusSinkron,
           last_sync_timestamp: lastSyncTimestamp,
           jawaban_json: effectiveJawabanJson,
+          ...(unitScores ? { unit_scores: unitScores } : {}),
           Siswa: item.Siswa
             ? {
                 ...item.Siswa,
@@ -929,7 +1108,7 @@ export class CbtJadwalService {
     tenantId: string,
     jadwalId: string,
     payload: {
-      target_slot: 'sumatif_1' | 'sumatif_2' | 'sumatif_3' | 'sumatif_akhir';
+      target_slot: 'sumatif_1' | 'sumatif_2' | 'sumatif_3' | 'sumatif_4' | 'sumatif_akhir';
       tahun_pelajaran_id: string;
       semester_id: string;
       mapel_id?: string;
@@ -1089,6 +1268,8 @@ export class CbtJadwalService {
             ? existing.sumatif_2
             : payload.target_slot === 'sumatif_3'
             ? existing.sumatif_3
+            : payload.target_slot === 'sumatif_4'
+            ? existing.sumatif_4
             : existing.nilai_akhir_sumatif;
 
         if (currentSlotVal !== null && currentSlotVal !== undefined) {
@@ -1100,10 +1281,11 @@ export class CbtJadwalService {
       const sum1 = payload.target_slot === 'sumatif_1' ? cbtScore : (existing?.sumatif_1 ?? null);
       const sum2 = payload.target_slot === 'sumatif_2' ? cbtScore : (existing?.sumatif_2 ?? null);
       const sum3 = payload.target_slot === 'sumatif_3' ? cbtScore : (existing?.sumatif_3 ?? null);
+      const sum4 = payload.target_slot === 'sumatif_4' ? cbtScore : (existing?.sumatif_4 ?? null);
       const nilaiAkhir =
         payload.target_slot === 'sumatif_akhir' ? cbtScore : (existing?.nilai_akhir_sumatif ?? null);
 
-      const sumatifList = [sum1, sum2, sum3].filter(
+      const sumatifList = [sum1, sum2, sum3, sum4].filter(
         (v): v is number => v !== undefined && v !== null && !isNaN(v)
       );
 
@@ -1143,6 +1325,7 @@ export class CbtJadwalService {
             sumatif_1: sum1,
             sumatif_2: sum2,
             sumatif_3: sum3,
+            sumatif_4: sum4,
             rata_rata_sumatif: rataRataSumatif,
             nilai_akhir_sumatif: nilaiAkhir,
             nilai_rapor_final: nilaiRaporFinal,
@@ -1159,6 +1342,7 @@ export class CbtJadwalService {
             sumatif_1: sum1,
             sumatif_2: sum2,
             sumatif_3: sum3,
+            sumatif_4: sum4,
             rata_rata_sumatif: rataRataSumatif,
             nilai_akhir_sumatif: nilaiAkhir,
             nilai_rapor_final: nilaiRaporFinal,

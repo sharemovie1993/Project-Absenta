@@ -46,6 +46,10 @@ export class CbtTestEngineService {
       where: { tenant_id: tenantId, kelas_id: kelasId },
       include: {
         Guru: { select: { id: true, nama_guru: true } },
+        UnitPengajaran: {
+          where: { is_active: true },
+          select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } },
+        },
       },
     });
     CbtTestEngineService.guruMapelCache.set(cacheKey, { data, exp: now + 300000 }); // 5 menit
@@ -104,12 +108,21 @@ export class CbtTestEngineService {
             select: {
               id: true,
               mapel_id: true,
+              unit_pengajaran_id: true,
               kode_bank: true,
               judul: true,
               tingkat: true,
               jumlah_soal: true,
               Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
               Guru: { select: { id: true, nama_guru: true } },
+              UnitPengajaran: {
+                select: {
+                  id: true,
+                  nama_unit: true,
+                  guru_id: true,
+                  Guru: { select: { id: true, nama_guru: true } },
+                },
+              },
             },
           },
           Peserta: {
@@ -180,11 +193,20 @@ export class CbtTestEngineService {
       standardClassRoomMap.set(k.id, { slot_ruang: slotCode, nama_ruang: roomName });
     });
 
-    // 3. Pemetaan Guru Mapel Kelas Siswa (Smart Class Teacher Resolution untuk Bank Soal MGMP)
+    // 3. Pemetaan Guru Mapel Kelas Siswa (Smart Class Teacher & Collaboration Mapel Resolution)
     const classTeacherByMapelId = new Map<string, string>();
+    const collabMapelIdSet = new Set<string>();
+    const collabTeachersByMapelId = new Map<string, string[]>();
     for (const gm of classGuruMapels) {
       if (gm.mapel_id && gm.Guru?.nama_guru) {
         classTeacherByMapelId.set(gm.mapel_id, gm.Guru.nama_guru);
+      }
+      if (gm.teaching_mode === 'COLLABORATION' && gm.mapel_id) {
+        collabMapelIdSet.add(gm.mapel_id);
+        const unitTeachers = (gm.UnitPengajaran || [])
+          .map((u: any) => u.Guru?.nama_guru)
+          .filter(Boolean);
+        collabTeachersByMapelId.set(gm.mapel_id, Array.from(new Set(unitTeachers)));
       }
     }
 
@@ -253,10 +275,25 @@ export class CbtTestEngineService {
           resolvedNamaRuang = 'Ruang 01';
         }
 
-        // Resolusi Guru Pengampu Kelas: Siswa melihat guru kelasnya sendiri, bukan pembuat bank soal MGMP
+        // Resolusi Guru Pengampu Kelas & Jenis Sesi (Ujian Resmi Kolaborasi vs Kuis Unit Mandiri)
         const targetMapelId = j.BankSoal?.mapel_id || (j.BankSoal?.Mapel as any)?.id;
+        const unitId = j.BankSoal?.unit_pengajaran_id || null;
+        const unitNama = j.BankSoal?.UnitPengajaran?.nama_unit || null;
+        const unitTeacherName = j.BankSoal?.UnitPengajaran?.Guru?.nama_guru || null;
+        const baseMapel = j.BankSoal?.Mapel?.nama_mapel || '-';
+        const isCollabMapel = Boolean(targetMapelId && collabMapelIdSet.has(targetMapelId));
+        const isKolaborasi = !unitId && isCollabMapel;
+        const isKuisUnit = Boolean(unitId);
+
+        const collabTeamNames = targetMapelId ? collabTeachersByMapelId.get(targetMapelId) || [] : [];
         const classSubjectTeacher = targetMapelId ? classTeacherByMapelId.get(targetMapelId) : null;
-        const resolvedGuru = classSubjectTeacher || j.BankSoal?.Guru?.nama_guru || null;
+        const resolvedGuru = isKuisUnit
+          ? unitTeacherName || classSubjectTeacher || j.BankSoal?.Guru?.nama_guru || null
+          : isKolaborasi && collabTeamNames.length > 1
+          ? `Tim ${baseMapel} (${collabTeamNames.join(', ')})`
+          : classSubjectTeacher || j.BankSoal?.Guru?.nama_guru || null;
+
+        const displayMapel = isKuisUnit && unitNama ? `${baseMapel} — ${unitNama}` : baseMapel;
 
         const isRemedial = Boolean(sec.is_remedial);
         const isTokenless = isRemedial && sec.tokenless !== false;
@@ -264,7 +301,12 @@ export class CbtTestEngineService {
         return {
           id: j.id,
           nama_sesi: j.nama_sesi,
-          mapel: j.BankSoal?.Mapel?.nama_mapel || '-',
+          mapel: displayMapel,
+          mapel_induk: baseMapel,
+          unit_pengajaran_id: unitId,
+          unit_nama: unitNama,
+          is_kolaborasi: isKolaborasi,
+          kolaborasi_badge: isKolaborasi ? 'Kolaborasi' : null,
           kode_mapel: j.BankSoal?.Mapel?.kode_mapel || null,
           kode_bank: j.BankSoal?.kode_bank || null,
           judul_bank: j.BankSoal?.judul || '-',

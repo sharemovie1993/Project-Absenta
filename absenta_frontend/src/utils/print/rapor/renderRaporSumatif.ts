@@ -112,20 +112,23 @@ export const renderOfficialSumatifPage = (
   });
 
   const buildRow = (m: any, idx: number) => {
-    const hasSumatif = m.sumatif_1 != null || m.sumatif_2 != null || m.sumatif_3 != null;
+    const hasSumatif = m.sumatif_1 != null || m.sumatif_2 != null || m.sumatif_3 != null || m.sumatif_4 != null;
 
     let s1 = '';
     let s2 = '';
     let s3 = '';
+    let s4 = '';
 
     if (hasSumatif) {
       s1 = m.sumatif_1 != null ? String(m.sumatif_1) : '';
       s2 = m.sumatif_2 != null ? String(m.sumatif_2) : '';
       s3 = m.sumatif_3 != null ? String(m.sumatif_3) : '';
+      s4 = m.sumatif_4 != null ? String(m.sumatif_4) : '';
     } else if (m.nilai_components && Array.isArray(m.nilai_components) && m.nilai_components.length > 0) {
       s1 = m.nilai_components[0]?.nilai != null ? String(m.nilai_components[0].nilai) : (m.nilai_akhir ? String(m.nilai_akhir) : '');
       s2 = m.nilai_components[1]?.nilai != null ? String(m.nilai_components[1].nilai) : '';
       s3 = m.nilai_components[2]?.nilai != null ? String(m.nilai_components[2].nilai) : '';
+      s4 = m.nilai_components[3]?.nilai != null ? String(m.nilai_components[3].nilai) : '';
     } else if (m.nilai_akhir && m.nilai_akhir > 0) {
       s1 = String(m.nilai_akhir);
     }
@@ -140,7 +143,7 @@ export const renderOfficialSumatifPage = (
       rerata,
       {
         content: '',
-        sumatifData: { s1, s2, s3 },
+        sumatifData: { s1, s2, s3, s4 },
       },
     ];
   };
@@ -217,23 +220,23 @@ export const renderOfficialSumatifPage = (
         const sumatif = rawCell?.sumatifData;
         if (sumatif) {
           const cell = data.cell;
-          const slotWidth = cell.width / 3;
+          const hasS4 = Boolean(sumatif.s4);
+          const slotCount = hasS4 ? 4 : 3;
+          const slotWidth = cell.width / slotCount;
           const textY = cell.y + (cell.height / 2) + 1.1;
 
           doc.setFont('Helvetica', 'normal');
-          doc.setFontSize(7.6);
+          doc.setFontSize(hasS4 ? 7.0 : 7.6);
           doc.setTextColor(0, 0, 0);
 
-          // Slot 1 (Bagi rata persis 1/3 lebar kolom)
-          doc.text(`Nilai  :  ${sumatif.s1}`, cell.x + 2, textY);
-          doc.text(',', cell.x + slotWidth - 2.5, textY);
-
-          // Slot 2 (Bagi rata persis 1/3 lebar kolom)
-          doc.text(`Nilai  :  ${sumatif.s2}`, cell.x + slotWidth + 2, textY);
-          doc.text(',', cell.x + (2 * slotWidth) - 2.5, textY);
-
-          // Slot 3 (Bagi rata persis 1/3 lebar kolom)
-          doc.text(`Nilai  :  ${sumatif.s3}`, cell.x + (2 * slotWidth) + 2, textY);
+          const slots = hasS4 ? [sumatif.s1, sumatif.s2, sumatif.s3, sumatif.s4] : [sumatif.s1, sumatif.s2, sumatif.s3];
+          const labelPrefix = hasS4 ? 'N:' : 'Nilai  :  ';
+          slots.forEach((val, idx) => {
+            doc.text(`${labelPrefix}${val}`, cell.x + idx * slotWidth + 1.5, textY);
+            if (idx < slots.length - 1) {
+              doc.text(',', cell.x + (idx + 1) * slotWidth - 2.0, textY);
+            }
+          });
         }
       }
     },

@@ -42,8 +42,23 @@ const Dashboard: React.FC = React.memo(() => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
 
-  const { isKoperasi, isKoperasiHead, isKoperasiFinance, isKoperasiStore, isAdmin } = useCapabilities();
-  const isKoperasiStaff = isAdmin || isKoperasi || isKoperasiHead || isKoperasiFinance || isKoperasiStore;
+  const {
+    isKoperasi,
+    isKoperasiHead,
+    isKoperasiFinance,
+    isKoperasiSecretary,
+    isKoperasiAuditor,
+    isKoperasiStore,
+    isAdmin,
+  } = useCapabilities();
+  const isKoperasiStaff =
+    isAdmin ||
+    isKoperasi ||
+    isKoperasiHead ||
+    isKoperasiFinance ||
+    isKoperasiSecretary ||
+    isKoperasiAuditor ||
+    isKoperasiStore;
   const isGuruOrSiswa = !isKoperasiStaff;
 
   const queryClient = useQueryClient();

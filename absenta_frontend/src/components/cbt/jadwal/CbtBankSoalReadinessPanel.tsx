@@ -132,7 +132,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
 
   // ── 2. Rekonsiliasi Otomatis & Pemodelan Data Teori vs Realisasi ──
   const { auditedTeachers, mapelPaketTeoriList, stats } = useMemo(() => {
-    const mgmpSharedMap = getAllMgmpSharedMap(tenantId);
+    const mgmpSharedMap = getAllMgmpSharedMap(tenantId, bankList);
     const nudgeHistory = getNudgeHistory(tenantId);
 
     const directBankMap = new Map<string, CbtBankSoal>();
@@ -444,7 +444,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
 
   const handleCopyUncreatedTeachers = () => {
     if (guruBelumList.length === 0) {
-      toast.info('Semua guru sudah menyerahkan bank soal');
+      toast.success('Semua guru sudah menyerahkan bank soal');
       return;
     }
     const lines = [

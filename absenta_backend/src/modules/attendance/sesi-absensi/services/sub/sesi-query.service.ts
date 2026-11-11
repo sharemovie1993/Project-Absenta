@@ -209,7 +209,8 @@ export class SesiQueryService {
     if (targetGuruId) {
       where.OR = [
         { guru_id: targetGuruId },
-        { guru_pelaksana_id: targetGuruId }
+        { guru_pelaksana_id: targetGuruId },
+        { UnitPengajaran: { guru_id: targetGuruId } },
       ];
     }
 
@@ -349,6 +350,7 @@ export class SesiQueryService {
         mapel_id: true,
         guru_id: true,
         guru_pelaksana_id: true,
+        unit_pengajaran_id: true,
         is_delegasi: true,
         jadwal_kbm_id: true,
         jadwal_kegiatan_id: true,
@@ -361,6 +363,7 @@ export class SesiQueryService {
         created_at: true,
         Kelas: { select: { id: true, nama_kelas: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+        UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
         Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
         GuruPelaksana: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
         AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true, catatan: true } },
@@ -421,6 +424,9 @@ export class SesiQueryService {
         ProgresMateri: item.ProgresMateri || null,
         kelas_nama: item.Kelas?.nama_kelas || null,
         mapel_nama: item.Mapel?.nama_mapel || item.Mapel?.kode_mapel || null,
+        unit_pengajaran_id: item.unit_pengajaran_id || null,
+        UnitPengajaran: item.UnitPengajaran || null,
+        unit_nama: item.UnitPengajaran?.nama_unit || null,
         guru_nama: item.Guru?.nama_guru || null,
         guru_no_hp: item.Guru?.no_hp || null,
         guru_pengganti_nama: item.GuruPelaksana?.nama_guru || null,
@@ -475,7 +481,8 @@ export class SesiQueryService {
     if (schedTargetGuruId) {
       scheduleWhere.OR = [
         { guru_id: schedTargetGuruId },
-        { guru_pelaksana_id: schedTargetGuruId }
+        { guru_pelaksana_id: schedTargetGuruId },
+        { UnitPengajaran: { guru_id: schedTargetGuruId } },
       ];
     }
 
@@ -485,6 +492,7 @@ export class SesiQueryService {
         include: {
           Kelas: { select: { id: true, nama_kelas: true } },
           Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+          UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
           Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
           GuruPelaksana: { select: { id: true, nama_guru: true, nip: true, no_hp: true } }
         },
@@ -536,6 +544,8 @@ export class SesiQueryService {
         const isSameGroup = prev &&
           prev.kelas_id === item.kelas_id &&
           prev.guru_id === item.guru_id &&
+          String(prev.guru_pelaksana_id || '') === String(item.guru_pelaksana_id || '') &&
+          String(prev.unit_pengajaran_id || '') === String(item.unit_pengajaran_id || '') &&
           prev.mapel_id === item.mapel_id &&
           prev.jenis_kegiatan === item.jenis_kegiatan &&
           isConsecutive;
@@ -552,6 +562,8 @@ export class SesiQueryService {
             kelas_id: item.kelas_id,
             mapel_id: item.mapel_id,
             guru_id: item.guru_id,
+            unit_pengajaran_id: item.unit_pengajaran_id || null,
+            UnitPengajaran: item.UnitPengajaran || null,
             jam_mulai: item.jam_mulai,
             jam_selesai: item.jam_selesai,
             jam_ke_start: item.slot_index,
@@ -577,12 +589,17 @@ export class SesiQueryService {
       !ps.jadwal_kegiatan_id && (!ps.jenis_kegiatan || String(ps.jenis_kegiatan).toUpperCase() === 'KBM');
 
     const unifiedList = mergedRanges.map((mRange: any) => {
+      const sameUnit = (ps: any) =>
+        !ps.unit_pengajaran_id && !mRange.unit_pengajaran_id
+          ? ps.guru_id === mRange.guru_id
+          : String(ps.unit_pengajaran_id || '') === String(mRange.unit_pengajaran_id || '');
+
       // Find matching physical session:
-      // Priority 1 = Matches schedule link OR (kelas_id + mapel_id) with active (BERLANGSUNG) or completed (SELESAI) status
+      // Priority 1 = Matches schedule link OR (kelas_id + mapel_id + unit_pengajaran_id) with active (BERLANGSUNG) or completed (SELESAI) status
       let physicalMatch = physicalSessions.find((ps: any) => {
         if (matchedPhysicalIds.has(ps.id) || !isKbmPhysical(ps)) return false;
         const matchesSchedule = ps.jadwal_kbm_id && mRange.schedule_ids.includes(ps.jadwal_kbm_id);
-        const matchesClassMapel = ps.kelas_id === mRange.kelas_id && ps.mapel_id === mRange.mapel_id;
+        const matchesClassMapel = ps.kelas_id === mRange.kelas_id && ps.mapel_id === mRange.mapel_id && sameUnit(ps);
         const isStarted = ps.status === 'BERLANGSUNG' || Boolean(ps.foto_kegiatan) || ps.status === 'SELESAI';
         return (matchesSchedule || matchesClassMapel) && isStarted;
       });
@@ -595,11 +612,11 @@ export class SesiQueryService {
         });
       }
 
-      // Priority 3 = Fallback match by kelas_id and mapel_id
+      // Priority 3 = Fallback match by kelas_id, mapel_id, and unit
       if (!physicalMatch) {
         physicalMatch = physicalSessions.find((ps: any) => {
           if (matchedPhysicalIds.has(ps.id) || !isKbmPhysical(ps)) return false;
-          return ps.kelas_id === mRange.kelas_id && ps.mapel_id === mRange.mapel_id;
+          return ps.kelas_id === mRange.kelas_id && ps.mapel_id === mRange.mapel_id && sameUnit(ps);
         });
       }
 
@@ -622,6 +639,9 @@ export class SesiQueryService {
           jam_ke_start: mRange.jam_ke_start,
           jam_ke_end: mRange.jam_ke_end,
           jam_label: jLabel,
+          unit_pengajaran_id: physicalMatch.unit_pengajaran_id || mRange.unit_pengajaran_id || null,
+          UnitPengajaran: physicalMatch.UnitPengajaran || mRange.UnitPengajaran || null,
+          unit_nama: physicalMatch.UnitPengajaran?.nama_unit || mRange.UnitPengajaran?.nama_unit || physicalMatch.unit_nama || null,
           GuruPelaksana: physicalMatch.GuruPelaksana || mRange.GuruPelaksana || null,
           guru_pelaksana_id: physicalMatch.guru_pelaksana_id || mRange.guru_pelaksana_id || null,
           guru_pengganti_nama: physicalMatch.GuruPelaksana?.nama_guru || mRange.GuruPelaksana?.nama_guru || physicalMatch.guru_pengganti_nama || null,
@@ -644,6 +664,9 @@ export class SesiQueryService {
         kelas_id: mRange.kelas_id,
         mapel_id: mRange.mapel_id,
         guru_id: mRange.guru_id,
+        unit_pengajaran_id: mRange.unit_pengajaran_id || null,
+        UnitPengajaran: mRange.UnitPengajaran || null,
+        unit_nama: mRange.UnitPengajaran?.nama_unit || null,
         jadwal_kbm_id: mRange.id,
         jenis_kegiatan: 'KBM',
         tanggal: new Date(`${dateStr}T00:00:00.000${tzOffset}`),
@@ -685,13 +708,13 @@ export class SesiQueryService {
       }
     });
 
-    // Merge multiple session/schedule fragments belonging to the same lesson block (kelas, guru, mapel)
+    // Merge multiple session/schedule fragments belonging to the same lesson block (kelas, guru, mapel, unit)
     const blockMap = new Map<string, any[]>();
     unifiedList.forEach((item: any) => {
       const isActivity = !!item.jadwal_kegiatan_id || (item.jenis_kegiatan && String(item.jenis_kegiatan).toUpperCase() !== 'KBM');
       const key = isActivity
         ? `activity_${item.id}`
-        : `${item.kelas_id || 'no_kelas'}_${item.guru_id || 'no_guru'}_${item.mapel_id || 'no_mapel'}`;
+        : `${item.kelas_id || 'no_kelas'}_${item.guru_id || 'no_guru'}_${item.mapel_id || 'no_mapel'}_${item.unit_pengajaran_id || 'no_unit'}`;
       if (!blockMap.has(key)) blockMap.set(key, []);
       blockMap.get(key)!.push(item);
     });

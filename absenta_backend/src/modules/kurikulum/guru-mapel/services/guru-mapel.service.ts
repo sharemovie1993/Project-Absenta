@@ -1,7 +1,9 @@
 import { prisma } from '@/utils/prisma';
+import { TeachingMode } from '@prisma/client';
 import { RoleName } from '../../../../constants/enums';
 import { isSystemSuperAdmin } from '../../../../utils/rbac';
 import { findBestMatch } from '../../../../utils/normalization';
+import { resolveAcademicContextForTenant, UnitInput } from './unit-pengajaran.service';
 
 export interface CreateGuruMapelInput {
   guru_id: string;
@@ -10,6 +12,8 @@ export interface CreateGuruMapelInput {
   jurusan_id?: string | null;
   tahun_pelajaran_id?: string | null;
   semester_id?: string | null;
+  teaching_mode?: TeachingMode;
+  units?: UnitInput[];
 }
 
 export interface GuruMapelResponse {
@@ -65,8 +69,15 @@ export class GuruMapelService {
       include: {
         Guru: { select: { id: true, nama_guru: true, max_jp: true, no_hp: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
-        Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+        Kelas: { select: { id: true, nama_kelas: true, tingkat: true, jurusan_id: true } },
         Jurusan: { select: { id: true, nama: true } },
+        UnitPengajaran: {
+          include: {
+            Guru: { select: { id: true, nama_guru: true } },
+            _count: { select: { JadwalKBM: true, SesiAbsensi: true } },
+          },
+          orderBy: [{ urutan: 'asc' }, { created_at: 'asc' }],
+        },
       },
       orderBy: { created_at: 'desc' },
     });
@@ -88,8 +99,15 @@ export class GuruMapelService {
           include: {
             Guru: { select: { id: true, nama_guru: true, max_jp: true, no_hp: true } },
             Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
-            Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+            Kelas: { select: { id: true, nama_kelas: true, tingkat: true, jurusan_id: true } },
             Jurusan: { select: { id: true, nama: true } },
+            UnitPengajaran: {
+              include: {
+                Guru: { select: { id: true, nama_guru: true } },
+                _count: { select: { JadwalKBM: true, SesiAbsensi: true } },
+              },
+              orderBy: [{ urutan: 'asc' }, { created_at: 'asc' }],
+            },
           },
           orderBy: { created_at: 'desc' },
         })) as unknown as GuruMapelResponse[];
@@ -116,18 +134,21 @@ export class GuruMapelService {
       throw new Error('Mapel tidak ditemukan');
     }
 
-    let tpId = input.tahun_pelajaran_id || null;
-    let semId = input.semester_id || null;
+    const academicCtx = await resolveAcademicContextForTenant(
+      tenantId,
+      input.tahun_pelajaran_id,
+      input.semester_id
+    );
+    const tpId = academicCtx.tahun_pelajaran_id;
+    const semId = academicCtx.semester_id;
 
-    if (!tpId || !semId) {
-      const activeTp = await prisma.tahunPelajaran.findFirst({
-        where: { tenant_id: tenantId, is_active: true }
+    let resolvedJurusanId = input.jurusan_id || null;
+    if (!resolvedJurusanId && input.kelas_id) {
+      const cls = await prisma.kelas.findFirst({
+        where: { id: input.kelas_id, tenant_id: tenantId },
+        select: { jurusan_id: true },
       });
-      const activeSem = await prisma.semester.findFirst({
-        where: { tenant_id: tenantId, is_active: true, tahun_pelajaran_id: activeTp?.id }
-      });
-      if (!tpId) tpId = activeTp?.id || null;
-      if (!semId) semId = activeSem?.id || null;
+      resolvedJurusanId = cls?.jurusan_id || null;
     }
 
     // Prevent duplicate assignment
@@ -146,22 +167,72 @@ export class GuruMapelService {
       throw new Error('Penugasan guru mapel sudah ada');
     }
 
-    const created = await prisma.guruMapel.create({
-      data: {
-        tenant_id: tenantId,
-        guru_id: input.guru_id,
-        mapel_id: input.mapel_id,
-        kelas_id: input.kelas_id || null,
-        jurusan_id: input.jurusan_id || null,
-        tahun_pelajaran_id: tpId,
-        semester_id: semId,
-      },
-      include: {
-        Guru: { select: { id: true, nama_guru: true } },
-        Mapel: { select: { id: true, nama_mapel: true } },
-        Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
-        Jurusan: { select: { id: true, nama: true } },
-      },
+    const teachingMode: TeachingMode =
+      input.teaching_mode === 'COLLABORATION' || (input.units && input.units.length > 1)
+        ? 'COLLABORATION'
+        : 'SINGLE';
+
+    const unitPayloads =
+      teachingMode === 'COLLABORATION' && input.units && input.units.length > 0
+        ? input.units
+        : [
+            {
+              nama_unit: teachingMode === 'COLLABORATION' ? 'Unit 1' : null,
+              guru_id: input.guru_id,
+              jp_alokasi: input.units?.[0]?.jp_alokasi ?? 2,
+              target_sumatif_slot: input.units?.[0]?.target_sumatif_slot ?? null,
+              urutan: 1,
+            },
+          ];
+
+    const created = await prisma.$transaction(async (tx) => {
+      const gm = await tx.guruMapel.create({
+        data: {
+          tenant_id: tenantId,
+          guru_id: input.guru_id,
+          mapel_id: input.mapel_id,
+          kelas_id: input.kelas_id || null,
+          jurusan_id: input.jurusan_id || null,
+          tahun_pelajaran_id: tpId,
+          semester_id: semId,
+          teaching_mode: teachingMode,
+        },
+      });
+
+      for (let i = 0; i < unitPayloads.length; i += 1) {
+        const u = unitPayloads[i];
+        await tx.unitPengajaran.create({
+          data: {
+            tenant_id: tenantId,
+            tahun_pelajaran_id: tpId,
+            semester_id: semId,
+            guru_mapel_id: gm.id,
+            mapel_id: input.mapel_id,
+            kelas_id: input.kelas_id || null,
+            jurusan_id: resolvedJurusanId,
+            nama_unit: u.nama_unit ?? (teachingMode === 'COLLABORATION' ? `Unit ${i + 1}` : null),
+            guru_id: u.guru_id || input.guru_id,
+            jp_alokasi: Math.max(1, Number(u.jp_alokasi ?? 2)),
+            target_sumatif_slot: u.target_sumatif_slot || null,
+            urutan: u.urutan ?? i + 1,
+            is_active: true,
+          },
+        });
+      }
+
+      return tx.guruMapel.findFirst({
+        where: { id: gm.id, tenant_id: tenantId },
+        include: {
+          Guru: { select: { id: true, nama_guru: true } },
+          Mapel: { select: { id: true, nama_mapel: true } },
+          Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+          Jurusan: { select: { id: true, nama: true } },
+          UnitPengajaran: {
+            include: { Guru: { select: { id: true, nama_guru: true } } },
+            orderBy: [{ urutan: 'asc' }],
+          },
+        },
+      });
     });
 
     const { cacheInvalidationService } = await import('../../../../utils/cache-invalidation.service');
@@ -267,6 +338,8 @@ export class GuruMapelService {
       guru_id: { not: null },
       mapel_id: { not: null },
       jenis_kegiatan: 'KBM',
+      // Jadwal yang sudah terikat UnitPengajaran (kolaborasi / impor aSc) tidak perlu membuat GuruMapel duplikat
+      unit_pengajaran_id: null,
     };
     if (tahunPelajaranId) whereKbm.tahun_pelajaran_id = tahunPelajaranId;
     if (semesterId) whereKbm.semester_id = semesterId;
@@ -344,9 +417,56 @@ export class GuruMapelService {
       }));
 
     if (toInsert.length > 0) {
-      await prisma.guruMapel.createMany({
-        data: toInsert,
-        skipDuplicates: true
+      await prisma.$transaction(async (tx) => {
+        for (const item of toInsert) {
+          const fallbackCtx =
+            item.tahun_pelajaran_id && item.semester_id
+              ? { tahun_pelajaran_id: item.tahun_pelajaran_id, semester_id: item.semester_id }
+              : await resolveAcademicContextForTenant(tenantId, item.tahun_pelajaran_id, item.semester_id);
+
+          const createdGm = await tx.guruMapel.create({
+            data: {
+              tenant_id: tenantId,
+              guru_id: item.guru_id,
+              mapel_id: item.mapel_id,
+              kelas_id: item.kelas_id,
+              jurusan_id: item.jurusan_id,
+              tahun_pelajaran_id: fallbackCtx.tahun_pelajaran_id,
+              semester_id: fallbackCtx.semester_id,
+              teaching_mode: 'SINGLE',
+            },
+          });
+
+          const createdUnit = await tx.unitPengajaran.create({
+            data: {
+              tenant_id: tenantId,
+              tahun_pelajaran_id: fallbackCtx.tahun_pelajaran_id,
+              semester_id: fallbackCtx.semester_id,
+              guru_mapel_id: createdGm.id,
+              mapel_id: item.mapel_id,
+              kelas_id: item.kelas_id,
+              jurusan_id: item.jurusan_id,
+              nama_unit: null,
+              guru_id: item.guru_id,
+              jp_alokasi: 2,
+              urutan: 1,
+              is_active: true,
+            },
+          });
+
+          await tx.jadwalKBM.updateMany({
+            where: {
+              tenant_id: tenantId,
+              guru_id: item.guru_id,
+              mapel_id: item.mapel_id,
+              ...(item.kelas_id ? { kelas_id: item.kelas_id } : {}),
+              tahun_pelajaran_id: fallbackCtx.tahun_pelajaran_id,
+              semester_id: fallbackCtx.semester_id,
+              unit_pengajaran_id: null,
+            },
+            data: { unit_pengajaran_id: createdUnit.id },
+          });
+        }
       });
       const { cacheInvalidationService } = await import('../../../../utils/cache-invalidation.service');
       await cacheInvalidationService.invalidateBebanGuruCache(tenantId);

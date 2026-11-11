@@ -821,11 +821,12 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             {autoTransferRapor && (
               <div className="space-y-1.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
                 <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Masukkan ke kolom nilai mana?</p>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-5 gap-2">
                   {([
                     { key: 'sumatif_1', label: 'SUM 1' },
                     { key: 'sumatif_2', label: 'SUM 2' },
                     { key: 'sumatif_3', label: 'SUM 3' },
+                    { key: 'sumatif_4', label: 'SUM 4' },
                     { key: 'sumatif_akhir', label: 'SUM AKHIR' },
                   ] as { key: CbtRaporSlot; label: string }[]).map((slot) => {
                     const active = targetRaporSlot === slot.key;

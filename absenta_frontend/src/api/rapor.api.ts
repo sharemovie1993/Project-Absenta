@@ -41,7 +41,7 @@ export const raporApi = {
     const response = await api.post('/rapor/nilai/bulk', data);
     return response.data;
   },
-  upsertBatchSumatifNilai: async (data: { mapel_id: string; tahun_pelajaran_id: string; semester_id: string; scores: Array<{ siswa_id: string; sumatif_1?: number | null; sumatif_2?: number | null; sumatif_3?: number | null; nilai_akhir_sumatif?: number | null; capaian_kompetensi?: string | null }> }) => {
+  upsertBatchSumatifNilai: async (data: { mapel_id: string; tahun_pelajaran_id: string; semester_id: string; scores: Array<{ siswa_id: string; sumatif_1?: number | null; sumatif_2?: number | null; sumatif_3?: number | null; sumatif_4?: number | null; nilai_akhir_sumatif?: number | null; capaian_kompetensi?: string | null }> }) => {
     const response = await api.post('/rapor/nilai/sumatif-batch', data);
     return response.data;
   },
@@ -114,6 +114,7 @@ export const raporApi = {
     sumatif_1?: number | null;
     sumatif_2?: number | null;
     sumatif_3?: number | null;
+    sumatif_4?: number | null;
     sumatif_akhir?: number | null;
     nilai_rapor_final?: number | null;
     nilai_remedial?: number | null;
@@ -700,6 +701,7 @@ export interface RaporStagingDetail extends RaporStagingItem {
       sumatif_1?: number | null;
       sumatif_2?: number | null;
       sumatif_3?: number | null;
+      sumatif_4?: number | null;
       rata_rata?: number | null;
       nilai_akhir?: number | null;
     }>;

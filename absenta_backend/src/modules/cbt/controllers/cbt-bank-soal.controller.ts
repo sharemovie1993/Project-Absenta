@@ -8,6 +8,7 @@ import {
   updateSoalPgSchema,
   bulkImportSoalSchema,
   parseGoogleFormSchema,
+  updateBankContributorsSchema,
 } from '../schemas/cbt.schema';
 import { z } from 'zod';
 
@@ -89,6 +90,50 @@ export class CbtBankSoalController {
     }
   }
 
+  static async listContributors(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { id } = req.params;
+      const result = await CbtBankSoalService.listContributors(tenant_id, id);
+      return sendResponse(reply, 200, true, 'Daftar kontributor bank soal berhasil diambil', result);
+    } catch (error: any) {
+      return sendError(reply, 404, error.message || 'Gagal mengambil daftar kontributor');
+    }
+  }
+
+  static async updateContributors(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { id } = req.params;
+      const parsed = updateBankContributorsSchema.parse(req.body || {});
+      const manualContributors = [
+        ...(parsed.contributors || []),
+        ...(parsed.guru_ids || []).map((guru_id) => ({ guru_id, unit_pengajaran_id: null })),
+      ];
+      const result = await CbtBankSoalService.syncCollaborationContributors(tenant_id, id, {
+        manualContributors,
+        replaceExisting: true,
+      });
+      return sendResponse(reply, 200, true, 'Daftar kontributor bank soal berhasil diperbarui', result);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return sendError(reply, 400, error.errors.map((e) => e.message).join(', '));
+      }
+      return sendError(reply, 400, error.message || 'Gagal memperbarui kontributor bank soal');
+    }
+  }
+
+  static async syncContributors(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { id } = req.params;
+      const result = await CbtBankSoalService.syncCollaborationContributors(tenant_id, id);
+      return sendResponse(reply, 200, true, 'Kontributor kolaborasi & delegasi berhasil disinkronkan', result);
+    } catch (error: any) {
+      return sendError(reply, 400, error.message || 'Gagal menyinkronkan kontributor bank soal');
+    }
+  }
+
   // Question Items
   static async listQuestions(req: any, reply: any) {
     try {
@@ -106,13 +151,14 @@ export class CbtBankSoalController {
       const { tenant_id } = req.user!;
       const { id } = req.params; // bank_soal_id
       const parsed = createSoalPgSchema.parse(req.body);
-      const result = await CbtBankSoalService.createQuestion(tenant_id, id, parsed);
+      const result = await CbtBankSoalService.createQuestion(tenant_id, id, parsed, req.user);
       return sendResponse(reply, 201, true, 'Butir soal berhasil ditambahkan', result);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return sendError(reply, 400, error.errors.map((e) => e.message).join(', '));
       }
-      return sendError(reply, 400, error.message || 'Gagal menambahkan butir soal');
+      const status = String(error?.message || '').startsWith('Akses ditolak') ? 403 : 400;
+      return sendError(reply, status, error.message || 'Gagal menambahkan butir soal');
     }
   }
 
@@ -121,13 +167,14 @@ export class CbtBankSoalController {
       const { tenant_id } = req.user!;
       const { questionId } = req.params;
       const parsed = updateSoalPgSchema.parse(req.body);
-      const result = await CbtBankSoalService.updateQuestion(tenant_id, questionId, parsed);
+      const result = await CbtBankSoalService.updateQuestion(tenant_id, questionId, parsed, req.user);
       return sendResponse(reply, 200, true, 'Butir soal berhasil diperbarui', result);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return sendError(reply, 400, error.errors.map((e) => e.message).join(', '));
       }
-      return sendError(reply, 400, error.message || 'Gagal memperbarui butir soal');
+      const status = String(error?.message || '').startsWith('Akses ditolak') ? 403 : 400;
+      return sendError(reply, status, error.message || 'Gagal memperbarui butir soal');
     }
   }
 
@@ -135,10 +182,11 @@ export class CbtBankSoalController {
     try {
       const { tenant_id } = req.user!;
       const { questionId } = req.params;
-      const result = await CbtBankSoalService.deleteQuestion(tenant_id, questionId);
+      const result = await CbtBankSoalService.deleteQuestion(tenant_id, questionId, req.user);
       return sendResponse(reply, 200, true, 'Butir soal berhasil dihapus', result);
     } catch (error: any) {
-      return sendError(reply, 400, error.message || 'Gagal menghapus butir soal');
+      const status = String(error?.message || '').startsWith('Akses ditolak') ? 403 : 400;
+      return sendError(reply, status, error.message || 'Gagal menghapus butir soal');
     }
   }
 
@@ -147,13 +195,14 @@ export class CbtBankSoalController {
       const { tenant_id } = req.user!;
       const { id } = req.params; // bank_soal_id
       const parsed = bulkImportSoalSchema.parse(req.body);
-      const result = await CbtBankSoalService.bulkImportQuestions(tenant_id, id, parsed.items);
+      const result = await CbtBankSoalService.bulkImportQuestions(tenant_id, id, parsed.items, req.user);
       return sendResponse(reply, 201, true, 'Berhasil mengimpor butir soal', result);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return sendError(reply, 400, error.errors.map((e) => e.message).join(', '));
       }
-      return sendError(reply, 400, error.message || 'Gagal mengimpor butir soal');
+      const status = String(error?.message || '').startsWith('Akses ditolak') ? 403 : 400;
+      return sendError(reply, status, error.message || 'Gagal mengimpor butir soal');
     }
   }
 

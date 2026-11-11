@@ -1,5 +1,6 @@
 import { appLogger } from '@/utils/app-logger';
 import { guruMapelService, CreateGuruMapelInput } from '../services/guru-mapel.service';
+import { unitPengajaranService, KurikulumPolicyError } from '../services/unit-pengajaran.service';
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
 
@@ -39,7 +40,7 @@ export class GuruMapelController {
         return { success: false, message: 'Unauthorized' };
       }
 
-      const { guru_id, mapel_id, kelas_id, jurusan_id, tahun_pelajaran_id, semester_id } = request.body || {};
+      const { guru_id, mapel_id, kelas_id, jurusan_id, tahun_pelajaran_id, semester_id, teaching_mode, units } = request.body || {};
       if (!guru_id || !mapel_id) {
         reply.status(400);
         return { success: false, message: 'guru_id and mapel_id are required' };
@@ -51,9 +52,11 @@ export class GuruMapelController {
         kelas_id: kelas_id || null, 
         jurusan_id: jurusan_id || null,
         tahun_pelajaran_id: tahun_pelajaran_id || null,
-        semester_id: semester_id || null
+        semester_id: semester_id || null,
+        teaching_mode,
+        units,
       };
-      const created = await guruMapelService.assignMapelToGuru(user.tenantId, input);
+      const created = await guruMapelService.assignMapelToGuru(request.tenantId || user.tenantId, input);
 
       reply.status(201);
       return { success: true, message: 'Assignment created successfully', data: created };
@@ -171,6 +174,210 @@ export class GuruMapelController {
     } catch (error: any) {
       appLogger.error({ err: error }, 'Controller error syncFromJadwal');
       return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  private handlePolicyError(reply: any, error: unknown, fallbackMessage: string) {
+    if (error instanceof KurikulumPolicyError) {
+      reply.status(error.statusCode);
+      return {
+        success: false,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+      };
+    }
+    const msg = error instanceof Error ? error.message : fallbackMessage;
+    reply.status(500);
+    return { success: false, message: msg };
+  }
+
+  async getPolicy(request: any, reply: any) {
+    try {
+      const user = request.user;
+      const tenantId = request.tenantId || user?.tenantId;
+      if (!user || !tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      const data = await unitPengajaranService.getKurikulumPolicy(tenantId);
+      return reply.status(200).send({ success: true, data });
+    } catch (error) {
+      appLogger.error({ err: error }, 'Controller error getPolicy');
+      return this.handlePolicyError(reply, error, 'Gagal memuat kebijakan kurikulum');
+    }
+  }
+
+  async setPolicy(request: any, reply: any) {
+    try {
+      const user = request.user;
+      const tenantId = request.tenantId || user?.tenantId;
+      if (!user || !tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      const { kurikulum_lock_mid_semester_split } = request.body || {};
+      const data = await unitPengajaranService.setKurikulumPolicy(tenantId, Boolean(kurikulum_lock_mid_semester_split));
+      return reply.status(200).send({ success: true, message: 'Kebijakan kurikulum berhasil diperbarui.', data });
+    } catch (error) {
+      appLogger.error({ err: error }, 'Controller error setPolicy');
+      return this.handlePolicyError(reply, error, 'Gagal memperbarui kebijakan kurikulum');
+    }
+  }
+
+  async listTenantUnits(request: any, reply: any) {
+    try {
+      const user = request.user;
+      const tenantId = request.tenantId || user?.tenantId;
+      if (!user || !tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      const q = request.query || {};
+      const data = await unitPengajaranService.listUnitsByTenant(tenantId, {
+        tahun_pelajaran_id: q.tahun_pelajaran_id,
+        semester_id: q.semester_id,
+        kelas_id: q.kelas_id,
+        jurusan_id: q.jurusan_id,
+        mapel_id: q.mapel_id,
+        guru_id: q.guru_id,
+        is_active: q.is_active === undefined ? true : String(q.is_active) !== 'false',
+      });
+      return reply.status(200).send({ success: true, data });
+    } catch (error) {
+      appLogger.error({ err: error }, 'Controller error listTenantUnits');
+      return this.handlePolicyError(reply, error, 'Gagal memuat daftar unit pengajaran');
+    }
+  }
+
+  async getUnitsForGuruMapel(request: any, reply: any) {
+    try {
+      const user = request.user;
+      const tenantId = request.tenantId || user?.tenantId;
+      if (!user || !tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      const { id } = request.params;
+      const data = await unitPengajaranService.getUnitsForGuruMapel(tenantId, id);
+      return reply.status(200).send({ success: true, data });
+    } catch (error) {
+      appLogger.error({ err: error }, 'Controller error getUnitsForGuruMapel');
+      return this.handlePolicyError(reply, error, 'Gagal memuat detail unit pengajaran');
+    }
+  }
+
+  async switchMode(request: any, reply: any) {
+    try {
+      const user = request.user;
+      const tenantId = request.tenantId || user?.tenantId;
+      if (!user || !tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      const { id } = request.params;
+      const { teaching_mode, units, confirmMidSemesterSplit } = request.body || {};
+      if (!teaching_mode || !['SINGLE', 'COLLABORATION'].includes(teaching_mode)) {
+        return reply.status(400).send({ success: false, message: 'teaching_mode harus SINGLE atau COLLABORATION' });
+      }
+      const data = await unitPengajaranService.switchTeachingMode(tenantId, id, {
+        teaching_mode,
+        units,
+        confirmMidSemesterSplit: Boolean(confirmMidSemesterSplit),
+      });
+      return reply.status(200).send({ success: true, message: 'Mode pengajaran berhasil diperbarui.', data });
+    } catch (error) {
+      appLogger.error({ err: error }, 'Controller error switchMode');
+      return this.handlePolicyError(reply, error, 'Gagal mengubah mode pengajaran');
+    }
+  }
+
+  async createUnit(request: any, reply: any) {
+    try {
+      const user = request.user;
+      const tenantId = request.tenantId || user?.tenantId;
+      if (!user || !tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      const { id } = request.params;
+      const { nama_unit, guru_id, jp_alokasi, target_sumatif_slot, urutan, is_active } = request.body || {};
+      if (!guru_id) return reply.status(400).send({ success: false, message: 'guru_id wajib dipilih' });
+      const data = await unitPengajaranService.createUnit(tenantId, id, {
+        nama_unit,
+        guru_id,
+        jp_alokasi,
+        target_sumatif_slot,
+        urutan,
+        is_active,
+      });
+      return reply.status(201).send({ success: true, message: 'Unit pengajaran ditambahkan.', data });
+    } catch (error) {
+      appLogger.error({ err: error }, 'Controller error createUnit');
+      return this.handlePolicyError(reply, error, 'Gagal menambah unit pengajaran');
+    }
+  }
+
+  async updateUnit(request: any, reply: any) {
+    try {
+      const user = request.user;
+      const tenantId = request.tenantId || user?.tenantId;
+      if (!user || !tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      const { unitId } = request.params;
+      const data = await unitPengajaranService.updateUnit(tenantId, unitId, request.body || {});
+      return reply.status(200).send({ success: true, message: 'Unit pengajaran diperbarui.', data });
+    } catch (error) {
+      appLogger.error({ err: error }, 'Controller error updateUnit');
+      return this.handlePolicyError(reply, error, 'Gagal memperbarui unit pengajaran');
+    }
+  }
+
+  async removeUnit(request: any, reply: any) {
+    try {
+      const user = request.user;
+      const tenantId = request.tenantId || user?.tenantId;
+      if (!user || !tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      const { unitId } = request.params;
+      const data = await unitPengajaranService.removeUnit(tenantId, unitId);
+      return reply.status(200).send({ success: true, message: 'Unit pengajaran dihapus.', data });
+    } catch (error) {
+      appLogger.error({ err: error }, 'Controller error removeUnit');
+      return this.handlePolicyError(reply, error, 'Gagal menghapus unit pengajaran');
+    }
+  }
+
+  async copyUnitsToClasses(request: any, reply: any) {
+    try {
+      const user = request.user;
+      const tenantId = request.tenantId || user?.tenantId;
+      if (!user || !tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      const { id } = request.params;
+      const { target_kelas_ids } = request.body || {};
+      const data = await unitPengajaranService.copyUnitsToClasses(tenantId, id, target_kelas_ids);
+      return reply.status(200).send({
+        success: true,
+        message: `Konfigurasi unit disalin ke ${data.copied_classes} kelas.`,
+        data,
+      });
+    } catch (error) {
+      appLogger.error({ err: error }, 'Controller error copyUnitsToClasses');
+      return this.handlePolicyError(reply, error, 'Gagal menyalin konfigurasi unit ke kelas paralel');
+    }
+  }
+
+  async copyUnitsFromSemester(request: any, reply: any) {
+    try {
+      const user = request.user;
+      const tenantId = request.tenantId || user?.tenantId;
+      if (!user || !tenantId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      const {
+        source_tahun_pelajaran_id,
+        source_semester_id,
+        target_tahun_pelajaran_id,
+        target_semester_id,
+      } = request.body || {};
+      if (!source_tahun_pelajaran_id || !source_semester_id || !target_tahun_pelajaran_id || !target_semester_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'source_tahun_pelajaran_id, source_semester_id, target_tahun_pelajaran_id, dan target_semester_id wajib diisi',
+        });
+      }
+      const data = await unitPengajaranService.copyUnitsFromSemester(tenantId, {
+        source_tahun_pelajaran_id,
+        source_semester_id,
+        target_tahun_pelajaran_id,
+        target_semester_id,
+      });
+      return reply.status(200).send({
+        success: true,
+        message: `Berhasil menyalin ${data.created_count} konfigurasi plotting & unit pengajaran.`,
+        data,
+      });
+    } catch (error) {
+      appLogger.error({ err: error }, 'Controller error copyUnitsFromSemester');
+      return this.handlePolicyError(reply, error, 'Gagal menyalin konfigurasi dari semester sebelumnya');
     }
   }
 }

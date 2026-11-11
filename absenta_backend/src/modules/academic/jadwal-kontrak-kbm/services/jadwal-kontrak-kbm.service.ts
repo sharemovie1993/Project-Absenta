@@ -11,6 +11,8 @@ export interface ListJadwalKontrakKbmFilters {
 
 export interface UpdateJadwalKontrakKbmInput {
   guru_id?: string | null;
+  guru_pelaksana_id?: string | null;
+  unit_pengajaran_id?: string | null;
   mapel_id?: string | null;
   jumlah_kartu?: number;
   durasi_jp?: number;
@@ -22,6 +24,16 @@ export interface UpdateJadwalKontrakKbmInput {
 const includeRelations = {
   Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
   Guru: { select: { id: true, nama_guru: true } },
+  GuruPelaksana: { select: { id: true, nama_guru: true } },
+  UnitPengajaran: {
+    select: {
+      id: true,
+      nama_unit: true,
+      guru_id: true,
+      jp_alokasi: true,
+      Guru: { select: { id: true, nama_guru: true } },
+    },
+  },
   Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
   TahunPelajaran: { select: { id: true, tahun: true } },
   Semester: { select: { id: true, nama_semester: true } },
@@ -48,6 +60,9 @@ export class JadwalKontrakKbmService {
       data = data.filter(
         (d: any) =>
           d.Guru?.nama_guru?.toLowerCase().includes(q) ||
+          d.GuruPelaksana?.nama_guru?.toLowerCase().includes(q) ||
+          d.UnitPengajaran?.nama_unit?.toLowerCase().includes(q) ||
+          d.UnitPengajaran?.Guru?.nama_guru?.toLowerCase().includes(q) ||
           d.Mapel?.nama_mapel?.toLowerCase().includes(q) ||
           d.Kelas?.nama_kelas?.toLowerCase().includes(q),
       );
@@ -60,10 +75,20 @@ export class JadwalKontrakKbmService {
     const record = await prisma.jadwalKontrakKbm.findFirst({ where: { id, tenant_id: tenantId } });
     if (!record) throw new Error('Kontrak KBM tidak ditemukan.');
 
+    if (input.unit_pengajaran_id) {
+      const unit = await prisma.unitPengajaran.findFirst({
+        where: { id: input.unit_pengajaran_id, tenant_id: tenantId },
+        select: { id: true },
+      });
+      if (!unit) throw new Error('Unit pengajaran tidak ditemukan pada tenant ini.');
+    }
+
     return prisma.jadwalKontrakKbm.update({
       where: { id },
       data: {
         guru_id: input.guru_id !== undefined ? input.guru_id : undefined,
+        guru_pelaksana_id: input.guru_pelaksana_id !== undefined ? input.guru_pelaksana_id : undefined,
+        unit_pengajaran_id: input.unit_pengajaran_id !== undefined ? input.unit_pengajaran_id : undefined,
         mapel_id: input.mapel_id !== undefined ? input.mapel_id : undefined,
         jumlah_kartu: input.jumlah_kartu,
         durasi_jp: input.durasi_jp,

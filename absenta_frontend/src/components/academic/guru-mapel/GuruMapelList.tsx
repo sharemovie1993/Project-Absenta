@@ -6,8 +6,9 @@ import { Loader } from '../../ui/Loader';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Input } from '../../ui/Input';
 import { SectionCard } from '../../ui/SectionCard';
-import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download, Layers, Calendar, ChevronDown, Clock } from 'lucide-react';
-import { listGuruMapel, removeGuruMapel, assignGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
+import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download, Layers, Calendar, ChevronDown, Clock, Lock, Unlock } from 'lucide-react';
+import { listGuruMapel, removeGuruMapel, assignGuruMapel, getKurikulumPolicy, updateKurikulumPolicy } from '../../../api/kurikulum/guru-mapel.api';
+import { GuruMapelUnitModal } from './GuruMapelUnitModal';
 import { kurikulumApi } from '../../../api/kurikulum.api';
 import type { GuruMapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
@@ -86,6 +87,9 @@ const GuruMapelList = React.memo<Props>(({
   const [jurusanDropdown, setJurusanDropdown] = useState<DropdownOption[]>([]);
   const [kelasDropdown, setKelasDropdown] = useState<DropdownOption[]>([]);
   const [updatingScopeId, setUpdatingScopeId] = useState<string | null>(null);
+  const [unitModalItem, setUnitModalItem] = useState<GuruMapel | null>(null);
+  const [lockMidSemesterSplit, setLockMidSemesterSplit] = useState<boolean>(false);
+  const [savingPolicy, setSavingPolicy] = useState<boolean>(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
@@ -93,6 +97,34 @@ const GuruMapelList = React.memo<Props>(({
   const canManage = useMemo(() => {
     return isAdmin || isKurikulum || can('academic.teaching.manage');
   }, [isAdmin, isKurikulum, can]);
+
+  useEffect(() => {
+    getKurikulumPolicy()
+      .then((res) => {
+        if (res?.data) {
+          setLockMidSemesterSplit(Boolean(res.data.kurikulum_lock_mid_semester_split));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleToggleLockPolicy = useCallback(async () => {
+    try {
+      setSavingPolicy(true);
+      const next = !lockMidSemesterSplit;
+      const res = await updateKurikulumPolicy({ kurikulum_lock_mid_semester_split: next });
+      setLockMidSemesterSplit(Boolean(res.data?.kurikulum_lock_mid_semester_split ?? next));
+      toast.success(
+        next
+          ? 'Mode Ketat aktif: Pemecahan mapel tengah semester terkunci bila sudah ada jadwal/sesi.'
+          : 'Mode Fleksibel (Split Forward) aktif: Pemecahan mapel tengah semester diizinkan dengan konfirmasi.'
+      );
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || e?.message || 'Gagal memperbarui kebijakan kurikulum');
+    } finally {
+      setSavingPolicy(false);
+    }
+  }, [lockMidSemesterSplit]);
 
   const [bebanGuruMap, setBebanGuruMap] = useState<Map<string, {
     current_jp: number;
@@ -518,17 +550,38 @@ const GuruMapelList = React.memo<Props>(({
       render: (_: any, gm: GuruMapel) => {
         const mapelName = gm.Mapel?.nama_mapel || '-';
         const colorStyle = getMapelColor(mapelName);
+        const activeUnits = (gm.UnitPengajaran || []).filter((u) => u.is_active !== false);
+        const isCollab = gm.teaching_mode === 'COLLABORATION' || activeUnits.length > 1;
 
         return (
-          <div className="flex items-center gap-2">
-            <span
-              className="w-3 h-3 rounded-full shrink-0 shadow-sm border border-white/20"
-              style={{ backgroundColor: colorStyle.dotHex }}
-              title={`Warna aSC TimeTables: ${mapelName}`}
-            />
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold border ${colorStyle.badge}`}>
-              {mapelName}
-            </span>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className="w-3 h-3 rounded-full shrink-0 shadow-sm border border-white/20"
+                style={{ backgroundColor: colorStyle.dotHex }}
+                title={`Warna aSC TimeTables: ${mapelName}`}
+              />
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold border ${colorStyle.badge}`}>
+                {mapelName}
+              </span>
+              {isCollab && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800">
+                  <Layers className="w-3 h-3" /> Kolaborasi ({activeUnits.length} Unit)
+                </span>
+              )}
+            </div>
+            {isCollab && activeUnits.length > 0 && (
+              <div className="flex flex-wrap gap-1 pl-5">
+                {activeUnits.map((u) => (
+                  <span
+                    key={u.id}
+                    className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold text-slate-600 dark:text-slate-300"
+                  >
+                    {u.nama_unit || 'Unit'}: {u.Guru?.nama_guru?.split(',')[0] || '-'} ({u.jp_alokasi} JP)
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         );
       }
@@ -616,6 +669,16 @@ const GuruMapelList = React.memo<Props>(({
         <div className="flex items-center gap-1.5">
           {canManage && (
             <>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setUnitModalItem(gm)}
+                className="h-8 px-2 text-[11px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 border border-indigo-200/80 dark:border-indigo-900/60 rounded-lg flex items-center gap-1.5 transition-all"
+                title="Konfigurasi Unit Pengajaran / Mode Kolaborasi Sub-Materi"
+              >
+                <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                Unit
+              </Button>
               <Button
                 size="sm"
                 variant="ghost"
@@ -845,6 +908,27 @@ const GuruMapelList = React.memo<Props>(({
                    >
                      <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                    </Button>
+
+                   {canManage && (
+                     <Button
+                       variant="toolbarOutline"
+                       size="toolbar"
+                       onClick={handleToggleLockPolicy}
+                       disabled={savingPolicy}
+                       title="Kebijakan Multi-Tenant: apakah pecah mapel tengah semester dikunci (ketat) atau diperbolehkan dengan Split Forward"
+                       className={`rounded-xl text-xs ${
+                         lockMidSemesterSplit
+                           ? 'border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300'
+                           : 'border-emerald-200 bg-emerald-50/70 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300'
+                       }`}
+                     >
+                       {lockMidSemesterSplit ? (
+                         <><Lock className="w-3.5 h-3.5 mr-1.5" /> Split Tengah Smt: Ketat</>
+                       ) : (
+                         <><Unlock className="w-3.5 h-3.5 mr-1.5" /> Split Tengah Smt: Fleksibel</>
+                       )}
+                     </Button>
+                   )}
                 </div>
               }
               toolbarRight={
@@ -873,6 +957,16 @@ const GuruMapelList = React.memo<Props>(({
             />
           </div>
         )}
+
+      <GuruMapelUnitModal
+        guruMapel={unitModalItem}
+        isOpen={Boolean(unitModalItem)}
+        onClose={() => setUnitModalItem(null)}
+        onSuccess={() => {
+          invalidateJadwalCache();
+          fetchData();
+        }}
+      />
     </div>
   );
 });

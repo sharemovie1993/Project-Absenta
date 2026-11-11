@@ -266,6 +266,38 @@ export interface Jurusan {
 }
 
 // Supporting types
+export type TeachingMode = 'SINGLE' | 'COLLABORATION';
+export type SumatifSlot = 'sumatif_1' | 'sumatif_2' | 'sumatif_3' | 'sumatif_4';
+
+export interface UnitPengajaran {
+  id: string;
+  tenant_id: string;
+  tahun_pelajaran_id: string;
+  semester_id: string;
+  guru_mapel_id: string;
+  mapel_id: string;
+  kelas_id?: string | null;
+  jurusan_id?: string | null;
+  nama_unit?: string | null;
+  guru_id: string;
+  jp_alokasi: number;
+  target_sumatif_slot?: SumatifSlot | string | null;
+  urutan: number;
+  is_active: boolean;
+  Guru?: { id: string; nama_guru: string; max_jp?: number };
+  Mapel?: { id: string; nama_mapel: string; kode_mapel?: string };
+  Kelas?: { id: string; nama_kelas: string; tingkat?: number | string | null; jurusan_id?: string | null };
+  Jurusan?: { id: string; nama: string; kode?: string | null };
+  GuruMapel?: { id: string; guru_id: string; teaching_mode: TeachingMode };
+  _count?: {
+    JadwalKBM?: number;
+    SesiAbsensi?: number;
+    JadwalKontrakKbm?: number;
+    CbtBankSoal?: number;
+    CbtSoal?: number;
+  };
+}
+
 export interface GuruMapel {
   id: string;
   tenant_id: string;
@@ -273,14 +305,18 @@ export interface GuruMapel {
   mapel_id: string;
   kelas_id?: string | null;
   jurusan_id?: string | null;
+  tahun_pelajaran_id?: string | null;
+  semester_id?: string | null;
+  teaching_mode?: TeachingMode;
   created_at: Date;
   updated_at: Date;
   
   // Relations
   Guru?: Guru;
   Mapel?: Mapel;
-  Kelas?: { id: string; nama_kelas: string; tingkat?: number | string | null };
+  Kelas?: { id: string; nama_kelas: string; tingkat?: number | string | null; jurusan_id?: string | null };
   Jurusan?: { id: string; nama: string };
+  UnitPengajaran?: UnitPengajaran[];
 }
 
 export interface KelasMapel {

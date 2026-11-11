@@ -29,6 +29,7 @@ import { formatDate } from '../../utils/date.utils';
 import type { CoopAssetItem, CoopAssetSummary, CoopAssetFormData } from '@/components/cooperative/assets/types';
 import { CoopAssetMobileDeck } from '@/components/cooperative/assets/CoopAssetMobileDeck';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { useSocket } from '@/hooks/useSocket';
 import { invalidateAccountingCaches, COOP_QUERY_KEYS } from '@/lib/coopQueryKeys';
 
@@ -43,11 +44,20 @@ const assetFilterSchema = z.object({
 const AssetFormModal = lazy(() => import('@/components/cooperative/assets/AssetFormModal').then(m => ({ default: m.AssetFormModal })));
 const AssetDetailModal = lazy(() => import('@/components/cooperative/assets/AssetDetailModal').then(m => ({ default: m.AssetDetailModal })));
 
-const AssetsPage: React.FC = React.memo(() => {
+export interface AssetsPageProps {
+  hideLayout?: boolean;
+}
+
+const AssetsPage: React.FC<AssetsPageProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const isMobile = useIsMobile();
   const { subscribe, unsubscribe, isConnected } = useSocket();
+  const { can, isAdmin } = useCapabilities();
+  const canCreateAsset = isAdmin || can('cooperative.assets.create') || can('cooperative.assets.manage');
+  const canUpdateAsset = isAdmin || can('cooperative.assets.update') || can('cooperative.assets.manage');
+  const canDeleteAsset = isAdmin || can('cooperative.assets.delete') || can('cooperative.assets.manage');
+  const canPostLedger = isAdmin || can('cooperative.assets.create') || can('cooperative.assets.manage');
 
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
@@ -382,42 +392,48 @@ const AssetsPage: React.FC = React.memo(() => {
           >
             <Eye size={13} />
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 w-7 p-0 rounded-lg text-indigo-600 dark:text-indigo-400"
-            onClick={() => handleOpenEdit(row)}
-            title="Ubah Data Aset"
-          >
-            <Edit size={13} />
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 w-7 p-0 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50"
-            onClick={() => handleDelete(row.id, row.name)}
-            title="Hapus Aset"
-          >
-            <Trash2 size={13} />
-          </Button>
+          {canUpdateAsset && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 w-7 p-0 rounded-lg text-indigo-600 dark:text-indigo-400"
+              onClick={() => handleOpenEdit(row)}
+              title="Ubah Data Aset"
+            >
+              <Edit size={13} />
+            </Button>
+          )}
+          {canDeleteAsset && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 w-7 p-0 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50"
+              onClick={() => handleDelete(row.id, row.name)}
+              title="Hapus Aset"
+            >
+              <Trash2 size={13} />
+            </Button>
+          )}
         </div>
       ),
     }
-  ], [handleDelete, handleOpenDetail, handleOpenEdit]);
+  ], [handleDelete, handleOpenDetail, handleOpenEdit, canUpdateAsset, canDeleteAsset]);
 
   return (
     <PremiumFeatureGate moduleName="KOPERASI" featureName="Aset Koperasi">
       <AcademicPageLayout
-        title="Inventaris Aset Koperasi"
-        description="Pencatatan aktiva tetap, peralatan kasir, etalase toko, dan sarana operasional milik koperasi sekolah"
+        title={hideLayout ? undefined : "Inventaris Aset Koperasi"}
+        description={hideLayout ? undefined : "Pencatatan aktiva tetap, peralatan kasir, etalase toko, dan sarana operasional milik koperasi sekolah"}
         hardeningModuleKey="coop_assets"
-        breadcrumbs={breadcrumbs}
+        breadcrumbs={hideLayout ? undefined : breadcrumbs}
         topSlot={
-          <div className="space-y-3">
-            <WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />
-          </div>
+          hideLayout ? undefined : (
+            <div className="space-y-3">
+              <WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />
+            </div>
+          )
         }
-        instruction={{
+        instruction={hideLayout ? undefined : {
           title: 'Panduan Inventaris Aset Tetap Koperasi',
           description: 'Kelola aktiva tetap milik koperasi yang dibeli dari dana modal/cadangan anggota.',
           items: [
@@ -537,54 +553,58 @@ const AssetsPage: React.FC = React.memo(() => {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
-                    {isAlreadyDepreciated ? (
+                  {canPostLedger && (
+                    <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
+                      {isAlreadyDepreciated ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled
+                          className="gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 cursor-default opacity-100 font-semibold text-xs flex-1 sm:flex-initial justify-center"
+                          title={`Penyusutan periode ${deprStatusQuery.data?.period} telah dibukukan (${deprStatusQuery.data?.voucherNumber}) senilai Rp ${Math.round(deprStatusQuery.data?.totalDepreciation || 0).toLocaleString('id-ID')}`}
+                        >
+                          <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
+                          <span>Penyusutan Bulan Ini Selesai</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleRunDepreciation}
+                          disabled={depreciationMutation.isPending || deprStatusQuery.isLoading}
+                          className="gap-1.5 border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-semibold flex-1 sm:flex-initial justify-center"
+                          title="Hitung dan posting beban penyusutan garis lurus bulan ini"
+                        >
+                          <Calculator size={14} className={depreciationMutation.isPending ? 'animate-spin' : 'text-indigo-600 dark:text-indigo-400'} />
+                          <span>{depreciationMutation.isPending ? 'Menghitung...' : 'Hitung Penyusutan'}</span>
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled
-                        className="gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 cursor-default opacity-100 font-semibold text-xs flex-1 sm:flex-initial justify-center"
-                        title={`Penyusutan periode ${deprStatusQuery.data?.period} telah dibukukan (${deprStatusQuery.data?.voucherNumber}) senilai Rp ${Math.round(deprStatusQuery.data?.totalDepreciation || 0).toLocaleString('id-ID')}`}
+                        onClick={handleSyncToLedger}
+                        disabled={syncMutation.isPending}
+                        className="gap-1.5 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex-1 sm:flex-initial justify-center"
                       >
-                        <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
-                        <span>Penyusutan Bulan Ini Selesai</span>
+                        <RefreshCw size={14} className={syncMutation.isPending ? 'animate-spin' : ''} />
+                        <span>{syncMutation.isPending ? 'Menyinkronkan...' : 'Sinkron ke Neraca'}</span>
                       </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleRunDepreciation}
-                        disabled={depreciationMutation.isPending || deprStatusQuery.isLoading}
-                        className="gap-1.5 border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-semibold flex-1 sm:flex-initial justify-center"
-                        title="Hitung dan posting beban penyusutan garis lurus bulan ini"
-                      >
-                        <Calculator size={14} className={depreciationMutation.isPending ? 'animate-spin' : 'text-indigo-600 dark:text-indigo-400'} />
-                        <span>{depreciationMutation.isPending ? 'Menghitung...' : 'Hitung Penyusutan'}</span>
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleSyncToLedger}
-                      disabled={syncMutation.isPending}
-                      className="gap-1.5 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex-1 sm:flex-initial justify-center"
-                    >
-                      <RefreshCw size={14} className={syncMutation.isPending ? 'animate-spin' : ''} />
-                      <span>{syncMutation.isPending ? 'Menyinkronkan...' : 'Sinkron ke Neraca'}</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={() => {
-                        setSelectedAsset(null);
-                        setIsFormOpen(true);
-                      }}
-                      className="hidden sm:inline-flex gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
-                    >
-                      <Plus size={14} />
-                      <span>Tambah Aset</span>
-                    </Button>
-                  </div>
+                      {canCreateAsset && (
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          onClick={() => {
+                            setSelectedAsset(null);
+                            setIsFormOpen(true);
+                          }}
+                          className="hidden sm:inline-flex gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+                        >
+                          <Plus size={14} />
+                          <span>Tambah Aset</span>
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Table Data Master vs Adaptive Mobile Deck */}

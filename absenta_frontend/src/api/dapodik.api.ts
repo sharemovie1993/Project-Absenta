@@ -70,6 +70,7 @@ export interface ReconciliationReport {
     cachedAt: string;
     totalCached: number;
     sourceMode?: 'LIVE' | 'STAGING';
+    fallbackReason?: string;
   };
   stagingMeta?: StagingStorageMeta;
   students: ReconciledStudent[];

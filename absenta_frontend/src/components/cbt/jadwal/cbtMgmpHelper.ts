@@ -48,9 +48,28 @@ export interface MapelPaketTeoriItem {
 const STORAGE_PREFIX = 'cbt_mgmp_shared_teachers_';
 const NUDGE_STORAGE_PREFIX = 'cbt_nudge_history_';
 
-export function getMgmpSharedTeacherIds(bankId: string, tenantId = 'default'): string[] {
+/**
+ * Mengambil daftar ID guru kontributor/MGMP untuk Bank Soal.
+ * Sumber kebenaran utama berasal dari relasi DB (`bank.Kontributor`),
+ * dengan fallback ke localStorage untuk kompatibilitas data lama.
+ */
+export function getMgmpSharedTeacherIds(
+  bankOrId: string | CbtBankSoal,
+  tenantId = 'default'
+): string[] {
+  if (typeof bankOrId !== 'string') {
+    const dbIds = (bankOrId.Kontributor || [])
+      .filter((c) => c.can_edit_soal !== false)
+      .map((c) => c.guru_id)
+      .filter(Boolean);
+    if (dbIds.length > 0) {
+      return Array.from(new Set(dbIds));
+    }
+    return getMgmpSharedTeacherIds(bankOrId.id, tenantId);
+  }
+
   try {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${tenantId}_${bankId}`);
+    const raw = localStorage.getItem(`${STORAGE_PREFIX}${tenantId}_${bankOrId}`);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -68,7 +87,14 @@ export function setMgmpSharedTeacherIds(bankId: string, teacherIds: string[], te
   }
 }
 
-export function getAllMgmpSharedMap(tenantId = 'default'): Record<string, string[]> {
+/**
+ * Membangun map `{ [bankId]: guruId[] }` dari daftar Bank Soal DB terlebih dahulu,
+ * lalu melengkapi fallback legacy localStorage bila belum ada di DB.
+ */
+export function getAllMgmpSharedMap(
+  tenantId = 'default',
+  bankSoals?: CbtBankSoal[]
+): Record<string, string[]> {
   const result: Record<string, string[]> = {};
   try {
     const keyPrefix = `${STORAGE_PREFIX}${tenantId}_`;
@@ -78,13 +104,31 @@ export function getAllMgmpSharedMap(tenantId = 'default'): Record<string, string
         const bankId = key.replace(keyPrefix, '');
         const val = localStorage.getItem(key);
         if (val) {
-          result[bankId] = JSON.parse(val);
+          const parsed = JSON.parse(val);
+          if (Array.isArray(parsed)) {
+            result[bankId] = parsed;
+          }
         }
       }
     }
   } catch {
     // ignore
   }
+
+  if (Array.isArray(bankSoals)) {
+    for (const bank of bankSoals) {
+      if (Array.isArray(bank.Kontributor) && bank.Kontributor.length > 0) {
+        result[bank.id] = Array.from(
+          new Set(
+            bank.Kontributor.filter((c) => c.can_edit_soal !== false)
+              .map((c) => c.guru_id)
+              .filter(Boolean)
+          )
+        );
+      }
+    }
+  }
+
   return result;
 }
 

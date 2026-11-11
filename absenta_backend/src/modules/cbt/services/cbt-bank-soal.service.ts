@@ -12,14 +12,144 @@ export interface QueryBankSoalDto {
   status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   mapel_id?: string;
   guru_id?: string;
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
+  unit_pengajaran_id?: string;
   include_shared?: boolean;
 }
 
 export class CbtBankSoalService {
+  private static readonly bankInclude = {
+    Guru: {
+      select: { id: true, nama_guru: true, nip: true },
+    },
+    Mapel: {
+      select: { id: true, nama_mapel: true, kode_mapel: true },
+    },
+    UnitPengajaran: {
+      select: {
+        id: true,
+        nama_unit: true,
+        guru_id: true,
+        target_sumatif_slot: true,
+        Guru: { select: { id: true, nama_guru: true } },
+      },
+    },
+    TahunPelajaran: {
+      select: { id: true, tahun: true },
+    },
+    Semester: {
+      select: { id: true, nama_semester: true },
+    },
+    Kontributor: {
+      include: {
+        Guru: { select: { id: true, nama_guru: true, nip: true } },
+        UnitPengajaran: { select: { id: true, nama_unit: true, target_sumatif_slot: true } },
+      },
+      orderBy: { created_at: 'asc' as const },
+    },
+    _count: {
+      select: { Soal: true, JadwalUjian: true },
+    },
+  };
+
+  private static async resolveAcademicContext(
+    tenantId: string,
+    tpId?: string | null,
+    semId?: string | null
+  ): Promise<{ tahun_pelajaran_id: string | null; semester_id: string | null }> {
+    let resolvedTpId = tpId || null;
+    let resolvedSemId = semId || null;
+
+    if (!resolvedTpId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+      resolvedTpId = activeTp?.id || null;
+    }
+
+    if (!resolvedSemId && resolvedTpId) {
+      const activeSem = await prisma.semester.findFirst({
+        where: { tenant_id: tenantId, tahun_pelajaran_id: resolvedTpId, is_active: true },
+        select: { id: true },
+      });
+      resolvedSemId = activeSem?.id || null;
+    }
+
+    return { tahun_pelajaran_id: resolvedTpId, semester_id: resolvedSemId };
+  }
+
+  private static async enrichBankCollaborationMeta(tenantId: string, banks: any[]) {
+    if (!banks || banks.length === 0) return banks;
+
+    const mapelIds = Array.from(new Set(banks.map((b) => b.mapel_id).filter(Boolean)));
+    const collabRecords = mapelIds.length > 0
+      ? await prisma.guruMapel.findMany({
+          where: {
+            tenant_id: tenantId,
+            mapel_id: { in: mapelIds },
+            teaching_mode: 'COLLABORATION',
+          },
+          select: {
+            mapel_id: true,
+            tahun_pelajaran_id: true,
+            semester_id: true,
+            UnitPengajaran: {
+              where: { is_active: true },
+              orderBy: { urutan: 'asc' },
+              select: {
+                id: true,
+                nama_unit: true,
+                guru_id: true,
+                target_sumatif_slot: true,
+                urutan: true,
+                Guru: { select: { id: true, nama_guru: true } },
+              },
+            },
+          },
+        })
+      : [];
+
+    return banks.map((bank) => {
+      const matchingCollab = collabRecords.filter(
+        (gm) =>
+          gm.mapel_id === bank.mapel_id &&
+          (!bank.tahun_pelajaran_id || gm.tahun_pelajaran_id === bank.tahun_pelajaran_id) &&
+          (!bank.semester_id || gm.semester_id === bank.semester_id)
+      );
+
+      const isCollabMapel = matchingCollab.length > 0;
+      const unitsMap = new Map<string, any>();
+      for (const gm of matchingCollab) {
+        for (const u of gm.UnitPengajaran || []) {
+          if (!unitsMap.has(u.id)) {
+            unitsMap.set(u.id, u);
+          }
+        }
+      }
+
+      const unitNama = bank.UnitPengajaran?.nama_unit || null;
+      const baseMapel = bank.Mapel?.nama_mapel || '-';
+      const isKuisUnit = Boolean(bank.unit_pengajaran_id);
+      const isKolaborasiResmi = !isKuisUnit && isCollabMapel;
+
+      return {
+        ...bank,
+        is_kolaborasi_mapel: isCollabMapel,
+        is_kolaborasi_resmi: isKolaborasiResmi,
+        is_kuis_unit: isKuisUnit,
+        display_mapel: isKuisUnit && unitNama ? `${baseMapel} — ${unitNama}` : baseMapel,
+        kolaborasi_badge: isKolaborasiResmi ? 'Kolaborasi' : null,
+        available_units: Array.from(unitsMap.values()),
+      };
+    });
+  }
+
   /**
    * Mengambil daftar Bank Soal dengan paginasi dan filter
-   * Jika guru_id diberikan dan include_shared !== false, sertakan pula Bank Soal Bersama (PUBLISHED)
-   * dari guru lain yang se-mapel dan setingkat.
+   * Jika guru_id diberikan dan include_shared !== false, sertakan pula Bank Soal Bersama (PUBLISHED),
+   * kontributor kolaborasi DB (`CbtBankSoalKontributor`), serta delegasi `guru_pelaksana_id` aktif.
    */
   static async list(tenantId: string, query: QueryBankSoalDto) {
     const page = Math.max(1, Number(query.page || 1));
@@ -52,6 +182,19 @@ export class CbtBankSoalService {
     if (query.mapel_id) {
       andConditions.push({ mapel_id: query.mapel_id });
     }
+    if (query.tahun_pelajaran_id) {
+      andConditions.push({
+        OR: [{ tahun_pelajaran_id: query.tahun_pelajaran_id }, { tahun_pelajaran_id: null }],
+      });
+    }
+    if (query.semester_id) {
+      andConditions.push({
+        OR: [{ semester_id: query.semester_id }, { semester_id: null }],
+      });
+    }
+    if (query.unit_pengajaran_id) {
+      andConditions.push({ unit_pengajaran_id: query.unit_pengajaran_id });
+    }
     if (query.search) {
       andConditions.push({
         OR: [
@@ -63,73 +206,104 @@ export class CbtBankSoalService {
 
     if (query.guru_id) {
       if (query.include_shared === false) {
-        andConditions.push({ guru_id: query.guru_id });
-      } else {
-        // Cari mapel & tingkat yang diampu guru ini di kurikulum
-        const assignments = await prisma.guruMapel.findMany({
-          where: {
-            tenant_id: tenantId,
-            guru_id: query.guru_id,
-          },
-          include: {
-            Kelas: {
-              select: { tingkat: true },
-            },
-          },
+        andConditions.push({
+          OR: [
+            { guru_id: query.guru_id },
+            { Kontributor: { some: { guru_id: query.guru_id, tenant_id: tenantId } } },
+          ],
         });
+      } else {
+        // Cari mapel & tingkat yang diampu guru ini di kurikulum (SK GuruMapel, UnitPengajaran, atau Delegasi Pelaksana)
+        const [assignments, unitAssignments, delegatedJadwals] = await Promise.all([
+          prisma.guruMapel.findMany({
+            where: {
+              tenant_id: tenantId,
+              guru_id: query.guru_id,
+            },
+            include: {
+              Kelas: {
+                select: { tingkat: true },
+              },
+            },
+          }),
+          prisma.unitPengajaran.findMany({
+            where: {
+              tenant_id: tenantId,
+              guru_id: query.guru_id,
+              is_active: true,
+            },
+            select: {
+              mapel_id: true,
+              Kelas: { select: { tingkat: true } },
+            },
+          }),
+          prisma.jadwalKBM.findMany({
+            where: {
+              tenant_id: tenantId,
+              guru_pelaksana_id: query.guru_id,
+            },
+            select: {
+              mapel_id: true,
+              Kelas: { select: { tingkat: true } },
+            },
+          }),
+        ]);
 
         const assignedMapelIds = Array.from(
-          new Set(assignments.map((a) => a.mapel_id).filter(Boolean))
+          new Set(
+            [
+              ...assignments.map((a) => a.mapel_id),
+              ...unitAssignments.map((u) => u.mapel_id),
+              ...delegatedJadwals.map((j) => j.mapel_id),
+            ].filter((id): id is string => Boolean(id))
+          )
         );
 
         const assignedTingkats = new Set<string>(['SEMUA']);
-        for (const a of assignments) {
-          const rawTingkat = String(a.Kelas?.tingkat || '').toUpperCase().trim();
+        const collectTingkat = (rawTingkatVal: unknown) => {
+          const rawTingkat = String(rawTingkatVal || '').toUpperCase().trim();
           if (rawTingkat === '10' || rawTingkat === 'X') assignedTingkats.add('X');
           else if (rawTingkat === '11' || rawTingkat === 'XI') assignedTingkats.add('XI');
           else if (rawTingkat === '12' || rawTingkat === 'XII') assignedTingkats.add('XII');
-        }
+        };
+        assignments.forEach((a) => collectTingkat(a.Kelas?.tingkat));
+        unitAssignments.forEach((u) => collectTingkat(u.Kelas?.tingkat));
+        delegatedJadwals.forEach((j) => collectTingkat(j.Kelas?.tingkat));
+
+        const orConditions: Prisma.CbtBankSoalWhereInput[] = [
+          { guru_id: query.guru_id },
+          { Kontributor: { some: { guru_id: query.guru_id, tenant_id: tenantId } } },
+        ];
 
         if (assignedMapelIds.length > 0) {
-          const sharedCondition: Prisma.CbtBankSoalWhereInput = {
+          orConditions.push({
             status: 'PUBLISHED',
             mapel_id: { in: assignedMapelIds },
             ...(assignedTingkats.size > 1
               ? { tingkat: { in: Array.from(assignedTingkats) } }
               : {}),
-          };
-          andConditions.push({
-            OR: [{ guru_id: query.guru_id }, sharedCondition],
           });
-        } else {
-          andConditions.push({ guru_id: query.guru_id });
         }
+
+        andConditions.push({ OR: orConditions });
       }
     }
 
     const where: Prisma.CbtBankSoalWhereInput =
       andConditions.length === 1 ? andConditions[0] : { AND: andConditions };
 
-    const [total, items] = await Promise.all([
+    const [total, rawItems] = await Promise.all([
       prisma.cbtBankSoal.count({ where }),
       prisma.cbtBankSoal.findMany({
         where,
         skip,
         take: limit,
         orderBy: { created_at: 'desc' },
-        include: {
-          Guru: {
-            select: { id: true, nama_guru: true, nip: true },
-          },
-          Mapel: {
-            select: { id: true, nama_mapel: true, kode_mapel: true },
-          },
-          _count: {
-            select: { Soal: true, JadwalUjian: true },
-          },
-        },
+        include: this.bankInclude,
       }),
     ]);
+
+    const items = await this.enrichBankCollaborationMeta(tenantId, rawItems);
 
     return {
       items,
@@ -143,33 +317,358 @@ export class CbtBankSoalService {
   }
 
   /**
-   * Mengambil detail Bank Soal beserta relasi
+   * Mengambil detail Bank Soal beserta relasi & kontributor
    */
   static async getById(tenantId: string, id: string) {
     const bankSoal = await prisma.cbtBankSoal.findFirst({
       where: { id, tenant_id: tenantId },
-      include: {
-        Guru: {
-          select: { id: true, nama_guru: true, nip: true },
-        },
-        Mapel: {
-          select: { id: true, nama_mapel: true, kode_mapel: true },
-        },
-        _count: {
-          select: { Soal: true, JadwalUjian: true },
-        },
-      },
+      include: this.bankInclude,
     });
 
     if (!bankSoal) {
       throw new Error('Bank soal tidak ditemukan');
     }
 
-    return bankSoal;
+    const [enriched] = await this.enrichBankCollaborationMeta(tenantId, [bankSoal]);
+    return enriched;
   }
 
   /**
-   * Membuat Bank Soal baru
+   * Sinkronisasi & Auto-Registrasi Kontributor Bank Soal di Database (`CbtBankSoalKontributor`):
+   * - Jika bank adalah bank resmi gabungan/kolaborasi (`unit_pengajaran_id = null`), otomatis mendaftarkan:
+   *   1) Semua guru UnitPengajaran aktif pada Mapel Induk + TP/Semester yang sesuai
+   *   2) Semua `guru_pelaksana_id` (Delegasi) aktif pada JadwalKBM Mapel tersebut
+   *   3) Opsional: daftar kontributor manual tambahan
+   */
+  static async syncCollaborationContributors(
+    tenantId: string,
+    bankSoalId: string,
+    options?: {
+      manualContributors?: Array<{ guru_id: string; unit_pengajaran_id?: string | null }>;
+      replaceExisting?: boolean;
+    }
+  ) {
+    const bank = await prisma.cbtBankSoal.findFirst({
+      where: { id: bankSoalId, tenant_id: tenantId },
+      select: {
+        id: true,
+        guru_id: true,
+        mapel_id: true,
+        tahun_pelajaran_id: true,
+        semester_id: true,
+        unit_pengajaran_id: true,
+      },
+    });
+    if (!bank) {
+      throw new Error('Bank soal tidak ditemukan');
+    }
+
+    const { tahun_pelajaran_id: tpId, semester_id: semId } = await this.resolveAcademicContext(
+      tenantId,
+      bank.tahun_pelajaran_id,
+      bank.semester_id
+    );
+
+    const desiredMap = new Map<string, string | null>(); // guru_id -> unit_pengajaran_id
+
+    if (options?.manualContributors) {
+      for (const c of options.manualContributors) {
+        if (c.guru_id) {
+          desiredMap.set(c.guru_id, c.unit_pengajaran_id ?? null);
+        }
+      }
+    }
+
+    // Auto-registrasi guru UnitPengajaran & Delegasi saat mode Kolaborasi/Combined (unit_pengajaran_id === null)
+    if (!bank.unit_pengajaran_id && !options?.replaceExisting) {
+      const [collabUnits, activeDelegations] = await Promise.all([
+        prisma.unitPengajaran.findMany({
+          where: {
+            tenant_id: tenantId,
+            mapel_id: bank.mapel_id,
+            is_active: true,
+            ...(tpId ? { tahun_pelajaran_id: tpId } : {}),
+            ...(semId ? { semester_id: semId } : {}),
+            GuruMapel: { teaching_mode: 'COLLABORATION' },
+          },
+          select: { id: true, guru_id: true },
+        }),
+        prisma.jadwalKBM.findMany({
+          where: {
+            tenant_id: tenantId,
+            mapel_id: bank.mapel_id,
+            ...(tpId ? { tahun_pelajaran_id: tpId } : {}),
+            ...(semId ? { semester_id: semId } : {}),
+            guru_pelaksana_id: { not: null },
+          },
+          select: { guru_pelaksana_id: true, unit_pengajaran_id: true },
+        }),
+      ]);
+
+      for (const u of collabUnits) {
+        if (u.guru_id && !desiredMap.has(u.guru_id)) {
+          desiredMap.set(u.guru_id, u.id);
+        }
+      }
+      for (const d of activeDelegations) {
+        if (d.guru_pelaksana_id && !desiredMap.has(d.guru_pelaksana_id)) {
+          desiredMap.set(d.guru_pelaksana_id, d.unit_pengajaran_id ?? null);
+        }
+      }
+    } else if (bank.unit_pengajaran_id && !options?.replaceExisting) {
+      // Kuis Unit: sinkronkan delegasi guru pelaksana pada unit ini (jika ada)
+      const [unit, unitDelegations] = await Promise.all([
+        prisma.unitPengajaran.findFirst({
+          where: { id: bank.unit_pengajaran_id, tenant_id: tenantId },
+          select: { id: true, guru_id: true },
+        }),
+        prisma.jadwalKBM.findMany({
+          where: {
+            tenant_id: tenantId,
+            unit_pengajaran_id: bank.unit_pengajaran_id,
+            guru_pelaksana_id: { not: null },
+          },
+          select: { guru_pelaksana_id: true },
+        }),
+      ]);
+      if (unit?.guru_id && unit.guru_id !== bank.guru_id && !desiredMap.has(unit.guru_id)) {
+        desiredMap.set(unit.guru_id, unit.id);
+      }
+      for (const d of unitDelegations) {
+        if (d.guru_pelaksana_id && !desiredMap.has(d.guru_pelaksana_id)) {
+          desiredMap.set(d.guru_pelaksana_id, bank.unit_pengajaran_id);
+        }
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (options?.replaceExisting) {
+        const keepGuruIds = Array.from(desiredMap.keys());
+        await tx.cbtBankSoalKontributor.deleteMany({
+          where: {
+            tenant_id: tenantId,
+            bank_soal_id: bankSoalId,
+            ...(keepGuruIds.length > 0 ? { guru_id: { notIn: keepGuruIds } } : {}),
+          },
+        });
+      }
+
+      for (const [guruId, unitId] of desiredMap.entries()) {
+        await tx.cbtBankSoalKontributor.upsert({
+          where: {
+            bank_soal_id_guru_id: {
+              bank_soal_id: bankSoalId,
+              guru_id: guruId,
+            },
+          },
+          create: {
+            tenant_id: tenantId,
+            bank_soal_id: bankSoalId,
+            guru_id: guruId,
+            unit_pengajaran_id: unitId,
+          },
+          update: {
+            ...(unitId ? { unit_pengajaran_id: unitId } : {}),
+          },
+        });
+      }
+    });
+
+    return this.listContributors(tenantId, bankSoalId);
+  }
+
+  /**
+   * Sync otomatis kontributor CBT ketika `JadwalKBM.guru_pelaksana_id` atau `UnitPengajaran` berubah.
+   */
+  static async syncContributorsForMapelDelegationChange(
+    tenantId: string,
+    mapelId: string,
+    tahunPelajaranId?: string | null,
+    semesterId?: string | null
+  ) {
+    const banks = await prisma.cbtBankSoal.findMany({
+      where: {
+        tenant_id: tenantId,
+        mapel_id: mapelId,
+        ...(tahunPelajaranId
+          ? { OR: [{ tahun_pelajaran_id: tahunPelajaranId }, { tahun_pelajaran_id: null }] }
+          : {}),
+        ...(semesterId
+          ? { OR: [{ semester_id: semesterId }, { semester_id: null }] }
+          : {}),
+      },
+      select: { id: true },
+    });
+
+    for (const b of banks) {
+      await this.syncCollaborationContributors(tenantId, b.id).catch((err) => {
+        console.warn('[CbtBankSoalService] Gagal sinkronisasi kontributor bank soal:', b.id, err?.message);
+      });
+    }
+    return { synced_banks: banks.length };
+  }
+
+  /**
+   * Daftar kontributor DB + kandidat guru UnitPengajaran/Delegasi pada Mapel Bank Soal ini.
+   */
+  static async listContributors(tenantId: string, bankSoalId: string) {
+    const bank = await prisma.cbtBankSoal.findFirst({
+      where: { id: bankSoalId, tenant_id: tenantId },
+      select: {
+        id: true,
+        guru_id: true,
+        mapel_id: true,
+        tahun_pelajaran_id: true,
+        semester_id: true,
+        unit_pengajaran_id: true,
+      },
+    });
+    if (!bank) {
+      throw new Error('Bank soal tidak ditemukan');
+    }
+
+    const { tahun_pelajaran_id: tpId, semester_id: semId } = await this.resolveAcademicContext(
+      tenantId,
+      bank.tahun_pelajaran_id,
+      bank.semester_id
+    );
+
+    const [contributors, eligibleUnits, delegatedSchedules] = await Promise.all([
+      prisma.cbtBankSoalKontributor.findMany({
+        where: { tenant_id: tenantId, bank_soal_id: bankSoalId },
+        include: {
+          Guru: { select: { id: true, nama_guru: true, nip: true } },
+          UnitPengajaran: { select: { id: true, nama_unit: true, target_sumatif_slot: true } },
+        },
+        orderBy: { created_at: 'asc' },
+      }),
+      prisma.unitPengajaran.findMany({
+        where: {
+          tenant_id: tenantId,
+          mapel_id: bank.mapel_id,
+          is_active: true,
+          ...(tpId ? { tahun_pelajaran_id: tpId } : {}),
+          ...(semId ? { semester_id: semId } : {}),
+        },
+        include: {
+          Guru: { select: { id: true, nama_guru: true, nip: true } },
+        },
+        orderBy: { urutan: 'asc' },
+      }),
+      prisma.jadwalKBM.findMany({
+        where: {
+          tenant_id: tenantId,
+          mapel_id: bank.mapel_id,
+          ...(tpId ? { tahun_pelajaran_id: tpId } : {}),
+          ...(semId ? { semester_id: semId } : {}),
+          guru_pelaksana_id: { not: null },
+        },
+        select: {
+          guru_pelaksana_id: true,
+          unit_pengajaran_id: true,
+          GuruPelaksana: { select: { id: true, nama_guru: true, nip: true } },
+        },
+      }),
+    ]);
+
+    return {
+      bank_soal_id: bankSoalId,
+      contributors,
+      eligible_units: eligibleUnits,
+      delegated_teachers: delegatedSchedules
+        .filter((d) => Boolean(d.GuruPelaksana))
+        .map((d) => ({
+          guru_id: d.guru_pelaksana_id!,
+          unit_pengajaran_id: d.unit_pengajaran_id,
+          Guru: d.GuruPelaksana!,
+        })),
+    };
+  }
+
+  /**
+   * Verifikasi apakah user/guru berhak mengelola (tambah/edit/hapus) butir soal pada Bank Soal ini:
+   * - ADMIN / SUPERADMIN / KURIKULUM / KEPSEK diizinkan penuh
+   * - Pemilik (`CbtBankSoal.guru_id`), Kontributor terdaftar di `CbtBankSoalKontributor`,
+   *   guru `UnitPengajaran`, atau guru delegasi (`guru_pelaksana_id`) aktif diizinkan edit soal
+   */
+  private static async assertQuestionEditAccess(
+    tenantId: string,
+    bankSoal: { id: string; guru_id: string; mapel_id: string; unit_pengajaran_id?: string | null },
+    user?: { roleName?: string; guru_profile?: { id: string } | null }
+  ) {
+    if (!user) return;
+    const roleUpper = String(user.roleName || '').toUpperCase();
+    if (['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'KEPSEK'].includes(roleUpper)) return;
+
+    const guruId = user.guru_profile?.id;
+    if (!guruId) return;
+    if (bankSoal.guru_id === guruId) return;
+
+    const [kontributor, unitTeach, delegated] = await Promise.all([
+      prisma.cbtBankSoalKontributor.findFirst({
+        where: { tenant_id: tenantId, bank_soal_id: bankSoal.id, guru_id: guruId },
+        select: { id: true },
+      }),
+      bankSoal.unit_pengajaran_id
+        ? prisma.unitPengajaran.findFirst({
+            where: { id: bankSoal.unit_pengajaran_id, tenant_id: tenantId, guru_id: guruId, is_active: true },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+      prisma.jadwalKBM.findFirst({
+        where: { tenant_id: tenantId, mapel_id: bankSoal.mapel_id, guru_pelaksana_id: guruId },
+        select: { id: true },
+      }),
+    ]);
+
+    if (!kontributor && !unitTeach && !delegated) {
+      throw new Error(
+        'Akses ditolak: Hanya pemilik, kontributor kolaborasi, atau guru delegasi aktif pada mapel ini yang dapat mengelola butir soal.'
+      );
+    }
+  }
+
+  /**
+   * Validasi & resolusi `unit_pengajaran_id` untuk sebuah butir soal
+   */
+  private static async resolveQuestionUnitId(
+    tenantId: string,
+    bank: { id: string; mapel_id: string; unit_pengajaran_id?: string | null },
+    requestedUnitId?: string | null,
+    user?: { guru_profile?: { id: string } | null }
+  ): Promise<string | null> {
+    if (requestedUnitId !== undefined) {
+      if (!requestedUnitId) return null;
+      const unit = await prisma.unitPengajaran.findFirst({
+        where: { id: requestedUnitId, tenant_id: tenantId, mapel_id: bank.mapel_id },
+        select: { id: true },
+      });
+      if (!unit) {
+        throw new Error('Unit Pengajaran butir soal tidak valid atau berbeda mata pelajaran.');
+      }
+      return unit.id;
+    }
+
+    if (bank.unit_pengajaran_id) {
+      return bank.unit_pengajaran_id;
+    }
+
+    const guruId = user?.guru_profile?.id;
+    if (guruId) {
+      const contrib = await prisma.cbtBankSoalKontributor.findFirst({
+        where: { tenant_id: tenantId, bank_soal_id: bank.id, guru_id: guruId },
+        select: { unit_pengajaran_id: true },
+      });
+      if (contrib?.unit_pengajaran_id) {
+        return contrib.unit_pengajaran_id;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Membuat Bank Soal baru (termasuk binding TP/Semester/Unit & Auto-Sync Kontributor DB)
    */
   static async create(tenantId: string, data: any) {
     // Validasi duplikasi kode bank dalam tenant yang sama
@@ -184,14 +683,33 @@ export class CbtBankSoalService {
       throw new Error(`Kode bank soal '${data.kode_bank}' sudah digunakan.`);
     }
 
+    if (data.unit_pengajaran_id) {
+      const unit = await prisma.unitPengajaran.findFirst({
+        where: { id: data.unit_pengajaran_id, tenant_id: tenantId },
+        select: { id: true, mapel_id: true },
+      });
+      if (!unit) {
+        throw new Error('Unit Pengajaran tidak ditemukan pada tenant ini.');
+      }
+      if (unit.mapel_id !== data.mapel_id) {
+        throw new Error('Unit Pengajaran harus berasal dari mata pelajaran induk yang sama.');
+      }
+    }
+
+    const { tahun_pelajaran_id: resolvedTpId, semester_id: resolvedSemId } =
+      await this.resolveAcademicContext(tenantId, data.tahun_pelajaran_id, data.semester_id);
+
     const resolvedStatus =
       data.status || (data.is_shared ? 'PUBLISHED' : 'DRAFT');
 
-    return prisma.cbtBankSoal.create({
+    const created = await prisma.cbtBankSoal.create({
       data: {
         tenant_id: tenantId,
         guru_id: data.guru_id,
         mapel_id: data.mapel_id,
+        tahun_pelajaran_id: resolvedTpId,
+        semester_id: resolvedSemId,
+        unit_pengajaran_id: data.unit_pengajaran_id || null,
         kode_bank: data.kode_bank.toUpperCase().trim(),
         judul: data.judul.trim(),
         tingkat: data.tingkat,
@@ -201,18 +719,31 @@ export class CbtBankSoalService {
         acak_opsi: data.acak_opsi ?? true,
         status: resolvedStatus,
       },
-      include: {
-        Guru: { select: { nama_guru: true } },
-        Mapel: { select: { nama_mapel: true } },
-      },
+      include: this.bankInclude,
     });
+
+    const manualContribs: Array<{ guru_id: string; unit_pengajaran_id?: string | null }> = [
+      ...(Array.isArray(data.contributors) ? data.contributors : []),
+      ...((Array.isArray(data.contributor_guru_ids) ? data.contributor_guru_ids : []).map((gid: string) => ({
+        guru_id: gid,
+        unit_pengajaran_id: null,
+      }))),
+    ];
+
+    if (manualContribs.length > 0 || data.auto_sync_kolaborasi !== false) {
+      await this.syncCollaborationContributors(tenantId, created.id, {
+        manualContributors: manualContribs,
+      });
+    }
+
+    return this.getById(tenantId, created.id);
   }
 
   /**
    * Mengupdate Bank Soal
    */
   static async update(tenantId: string, id: string, data: any) {
-    await this.getById(tenantId, id);
+    const existingBank = await this.getById(tenantId, id);
 
     if (data.kode_bank) {
       const duplicate = await prisma.cbtBankSoal.findFirst({
@@ -227,6 +758,17 @@ export class CbtBankSoalService {
       }
     }
 
+    const effectiveMapelId = data.mapel_id || existingBank.mapel_id;
+    if (data.unit_pengajaran_id) {
+      const unit = await prisma.unitPengajaran.findFirst({
+        where: { id: data.unit_pengajaran_id, tenant_id: tenantId },
+        select: { id: true, mapel_id: true },
+      });
+      if (!unit || unit.mapel_id !== effectiveMapelId) {
+        throw new Error('Unit Pengajaran tidak valid untuk mata pelajaran bank soal ini.');
+      }
+    }
+
     const resolvedStatus =
       data.status !== undefined
         ? data.status
@@ -236,11 +778,14 @@ export class CbtBankSoalService {
           : 'DRAFT'
         : undefined;
 
-    const updated = await prisma.cbtBankSoal.update({
+    await prisma.cbtBankSoal.update({
       where: { id },
       data: {
         ...(data.guru_id ? { guru_id: data.guru_id } : {}),
         ...(data.mapel_id ? { mapel_id: data.mapel_id } : {}),
+        ...(data.tahun_pelajaran_id !== undefined ? { tahun_pelajaran_id: data.tahun_pelajaran_id } : {}),
+        ...(data.semester_id !== undefined ? { semester_id: data.semester_id } : {}),
+        ...(data.unit_pengajaran_id !== undefined ? { unit_pengajaran_id: data.unit_pengajaran_id } : {}),
         ...(data.kode_bank ? { kode_bank: data.kode_bank.toUpperCase().trim() } : {}),
         ...(data.judul ? { judul: data.judul.trim() } : {}),
         ...(data.tingkat ? { tingkat: data.tingkat } : {}),
@@ -252,10 +797,26 @@ export class CbtBankSoalService {
       },
     });
 
+    if (Array.isArray(data.contributors) || Array.isArray(data.contributor_guru_ids)) {
+      const manualContribs: Array<{ guru_id: string; unit_pengajaran_id?: string | null }> = [
+        ...(Array.isArray(data.contributors) ? data.contributors : []),
+        ...((Array.isArray(data.contributor_guru_ids) ? data.contributor_guru_ids : []).map((gid: string) => ({
+          guru_id: gid,
+          unit_pengajaran_id: null,
+        }))),
+      ];
+      await this.syncCollaborationContributors(tenantId, id, {
+        manualContributors: manualContribs,
+        replaceExisting: true,
+      });
+    } else if (data.unit_pengajaran_id !== undefined || data.mapel_id !== undefined) {
+      await this.syncCollaborationContributors(tenantId, id);
+    }
+
     // Invalidate Redis bundle cache jadwal aktif agar perubahan parameter langsung berlaku
     await this.invalidateActiveJadwalBundleCaches(tenantId, id);
 
-    return updated;
+    return this.getById(tenantId, id);
   }
 
   /**
@@ -284,6 +845,9 @@ export class CbtBankSoalService {
           tenant_id: tenantId,
           guru_id: ownerGuruId,
           mapel_id: source.mapel_id,
+          tahun_pelajaran_id: source.tahun_pelajaran_id,
+          semester_id: source.semester_id,
+          unit_pengajaran_id: source.unit_pengajaran_id,
           kode_bank: newCode,
           judul: `${source.judul} (Salinan)`,
           tingkat: source.tingkat,
@@ -305,6 +869,7 @@ export class CbtBankSoalService {
           data: source.Soal.map((s, idx) => ({
             tenant_id: tenantId,
             bank_soal_id: clonedBank.id,
+            unit_pengajaran_id: s.unit_pengajaran_id,
             nomor_urut: s.nomor_urut || idx + 1,
             jenis_soal: s.jenis_soal,
             konten_pertanyaan: s.konten_pertanyaan,
@@ -472,7 +1037,7 @@ export class CbtBankSoalService {
   // ==========================================
 
   /**
-   * Mengambil seluruh butir soal dari suatu Bank Soal
+   * Mengambil seluruh butir soal dari suatu Bank Soal (termasuk metadata UnitPengajaran soal)
    */
   static async listQuestions(tenantId: string, bankSoalId: string) {
     await this.getById(tenantId, bankSoalId);
@@ -482,15 +1047,33 @@ export class CbtBankSoalService {
         tenant_id: tenantId,
         bank_soal_id: bankSoalId,
       },
+      include: {
+        UnitPengajaran: {
+          select: {
+            id: true,
+            nama_unit: true,
+            guru_id: true,
+            target_sumatif_slot: true,
+            Guru: { select: { id: true, nama_guru: true } },
+          },
+        },
+      },
       orderBy: { nomor_urut: 'asc' },
     });
   }
 
   /**
-   * Menambahkan satu butir soal ke Bank Soal
+   * Menambahkan satu butir soal ke Bank Soal (mendukung tagging `unit_pengajaran_id` & akses kontributor)
    */
-  static async createQuestion(tenantId: string, bankSoalId: string, data: any) {
-    await this.getById(tenantId, bankSoalId);
+  static async createQuestion(tenantId: string, bankSoalId: string, data: any, user?: any) {
+    const bank = await this.getById(tenantId, bankSoalId);
+    await this.assertQuestionEditAccess(tenantId, bank, user);
+    const resolvedUnitId = await this.resolveQuestionUnitId(
+      tenantId,
+      bank,
+      data.unit_pengajaran_id,
+      user
+    );
 
     // Dapatkan nomor urut tertinggi jika nomor_urut tidak ditentukan
     let nomorUrut = data.nomor_urut;
@@ -508,6 +1091,7 @@ export class CbtBankSoalService {
         data: {
           tenant_id: tenantId,
           bank_soal_id: bankSoalId,
+          unit_pengajaran_id: resolvedUnitId,
           nomor_urut: nomorUrut,
           jenis_soal: 'PG',
           konten_pertanyaan: data.konten_pertanyaan,
@@ -516,6 +1100,16 @@ export class CbtBankSoalService {
           opsi_jawaban_json: data.opsi_jawaban_json,
           kunci_jawaban: data.kunci_jawaban,
           pembahasan: data.pembahasan || null,
+        },
+        include: {
+          UnitPengajaran: {
+            select: {
+              id: true,
+              nama_unit: true,
+              guru_id: true,
+              Guru: { select: { id: true, nama_guru: true } },
+            },
+          },
         },
       });
 
@@ -541,13 +1135,30 @@ export class CbtBankSoalService {
   /**
    * Mengupdate butir soal (sekaligus membersihkan file gambar lama jika diganti/dihapus)
    */
-  static async updateQuestion(tenantId: string, questionId: string, data: any) {
+  static async updateQuestion(tenantId: string, questionId: string, data: any, user?: any) {
     const existing = await prisma.cbtSoal.findFirst({
       where: { id: questionId, tenant_id: tenantId },
+      include: {
+        BankSoal: {
+          select: { id: true, guru_id: true, mapel_id: true, unit_pengajaran_id: true },
+        },
+      },
     });
 
     if (!existing) {
       throw new Error('Butir soal tidak ditemukan');
+    }
+
+    await this.assertQuestionEditAccess(tenantId, existing.BankSoal, user);
+
+    let unitUpdate: string | null | undefined = undefined;
+    if (data.unit_pengajaran_id !== undefined) {
+      unitUpdate = await this.resolveQuestionUnitId(
+        tenantId,
+        existing.BankSoal,
+        data.unit_pengajaran_id,
+        user
+      );
     }
 
     const oldUrls = this.extractMediaUrlsFromSoalList([existing]);
@@ -555,6 +1166,7 @@ export class CbtBankSoalService {
     const updated = await prisma.cbtSoal.update({
       where: { id: questionId },
       data: {
+        ...(unitUpdate !== undefined ? { unit_pengajaran_id: unitUpdate } : {}),
         ...(data.nomor_urut !== undefined ? { nomor_urut: data.nomor_urut } : {}),
         ...(data.konten_pertanyaan ? { konten_pertanyaan: data.konten_pertanyaan } : {}),
         ...(data.gambar_stimulus_url !== undefined ? { gambar_stimulus_url: data.gambar_stimulus_url } : {}),
@@ -562,6 +1174,16 @@ export class CbtBankSoalService {
         ...(data.opsi_jawaban_json ? { opsi_jawaban_json: data.opsi_jawaban_json } : {}),
         ...(data.kunci_jawaban ? { kunci_jawaban: data.kunci_jawaban } : {}),
         ...(data.pembahasan !== undefined ? { pembahasan: data.pembahasan } : {}),
+      },
+      include: {
+        UnitPengajaran: {
+          select: {
+            id: true,
+            nama_unit: true,
+            guru_id: true,
+            Guru: { select: { id: true, nama_guru: true } },
+          },
+        },
       },
     });
 
@@ -581,14 +1203,21 @@ export class CbtBankSoalService {
   /**
    * Menghapus butir soal beserta file gambarnya di Storage Engine
    */
-  static async deleteQuestion(tenantId: string, questionId: string) {
+  static async deleteQuestion(tenantId: string, questionId: string, user?: any) {
     const existing = await prisma.cbtSoal.findFirst({
       where: { id: questionId, tenant_id: tenantId },
+      include: {
+        BankSoal: {
+          select: { id: true, guru_id: true, mapel_id: true, unit_pengajaran_id: true },
+        },
+      },
     });
 
     if (!existing) {
       throw new Error('Butir soal tidak ditemukan');
     }
+
+    await this.assertQuestionEditAccess(tenantId, existing.BankSoal, user);
 
     const candidateMediaUrls = this.extractMediaUrlsFromSoalList([existing]);
 
@@ -620,8 +1249,10 @@ export class CbtBankSoalService {
   /**
    * Bulk Import butir soal (misal dari hasil parser Excel / Word)
    */
-  static async bulkImportQuestions(tenantId: string, bankSoalId: string, items: any[]) {
-    await this.getById(tenantId, bankSoalId);
+  static async bulkImportQuestions(tenantId: string, bankSoalId: string, items: any[], user?: any) {
+    const bank = await this.getById(tenantId, bankSoalId);
+    await this.assertQuestionEditAccess(tenantId, bank, user);
+    const defaultUnitId = await this.resolveQuestionUnitId(tenantId, bank, undefined, user);
 
     const result = await prisma.$transaction(async (tx) => {
       // Dapatkan nomor urut awal
@@ -636,10 +1267,14 @@ export class CbtBankSoalService {
       const createdItems = [];
       for (const item of items) {
         currentOrder++;
+        const itemUnitId = item.unit_pengajaran_id !== undefined
+          ? (item.unit_pengajaran_id || null)
+          : defaultUnitId;
         const created = await tx.cbtSoal.create({
           data: {
             tenant_id: tenantId,
             bank_soal_id: bankSoalId,
+            unit_pengajaran_id: itemUnitId,
             nomor_urut: item.nomor_urut || currentOrder,
             jenis_soal: 'PG',
             konten_pertanyaan: item.konten_pertanyaan,

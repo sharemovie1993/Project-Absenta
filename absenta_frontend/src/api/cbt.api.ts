@@ -1,5 +1,6 @@
 import api from '../lib/axiosInstance';
 import type {
+  CbtBankContributorsResponse,
   CbtBankSoal,
   CbtSoal,
   CbtJadwalUjian,
@@ -24,6 +25,10 @@ export const cbtQueryKeys = {
     id !== undefined
       ? ([...cbtQueryKeys.all, 'bank-soal-detail', id] as const)
       : ([...cbtQueryKeys.all, 'bank-soal-detail'] as const),
+  bankSoalContributors: (id?: string) =>
+    id !== undefined
+      ? ([...cbtQueryKeys.all, 'bank-soal-contributors', id] as const)
+      : ([...cbtQueryKeys.all, 'bank-soal-contributors'] as const),
   soalList: (bankSoalId?: string) =>
     bankSoalId !== undefined
       ? ([...cbtQueryKeys.all, 'soal-list', bankSoalId] as const)
@@ -87,6 +92,32 @@ export const cbtApi = {
     const res = await api.post(`/cbt/bank-soal/${id}/duplicate`, {
       ...(guruId ? { guru_id: guruId } : {}),
     });
+    return res.data?.data as CbtBankSoal;
+  },
+
+  getBankContributors: async (id: string) => {
+    const res = await api.get(`/cbt/bank-soal/${id}/kontributor`);
+    return res.data?.data as CbtBankContributorsResponse;
+  },
+
+  updateBankContributors: async (
+    id: string,
+    payload: {
+      guru_ids?: string[];
+      contributors?: Array<{
+        guru_id: string;
+        unit_pengajaran_id?: string | null;
+        peran?: 'KOORDINATOR' | 'KONTRIBUTOR';
+        can_edit_soal?: boolean;
+      }>;
+    }
+  ) => {
+    const res = await api.put(`/cbt/bank-soal/${id}/kontributor`, payload);
+    return res.data?.data as CbtBankSoal;
+  },
+
+  syncBankContributors: async (id: string) => {
+    const res = await api.post(`/cbt/bank-soal/${id}/kontributor/sync`);
     return res.data?.data as CbtBankSoal;
   },
 

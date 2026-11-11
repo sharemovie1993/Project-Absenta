@@ -161,6 +161,7 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
         const isSameGroup = prev && prev.hari === item.hari && prev.kelas_id === item.kelas_id &&
           String(prev.guru_id || '') === String(item.guru_id || '') &&
           String(prev.guru_pelaksana_id || '') === String(item.guru_pelaksana_id || '') &&
+          String(prev.unit_pengajaran_id || '') === String(item.unit_pengajaran_id || '') &&
           String(prev.mapel_id || '') === String(item.mapel_id || '') && isConsecutive;
 
         if (isSameGroup) {
@@ -173,7 +174,8 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
             id: item.id, schedule_ids: [item.id], tenant_id: item.tenant_id, kelas_id: item.kelas_id,
             hari: item.hari, slot_start: item.slot_index ?? 0, slot_end: item.slot_index ?? 0, jp_count: 1,
             jam_mulai: item.jam_mulai, jam_selesai: item.jam_selesai, mapel_id: item.mapel_id, guru_id: item.guru_id,
-            guru_pelaksana_id: item.guru_pelaksana_id || null, Mapel: item.Mapel, Guru: item.Guru,
+            guru_pelaksana_id: item.guru_pelaksana_id || null, unit_pengajaran_id: item.unit_pengajaran_id || null,
+            Mapel: item.Mapel, UnitPengajaran: item.UnitPengajaran || null, Guru: item.Guru,
             GuruPelaksana: item.GuruPelaksana, Kelas: item.Kelas,
           });
         }
@@ -200,10 +202,12 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
 
       if (query) {
         const mapel = item.Mapel?.nama_mapel?.toLowerCase() || '';
+        const unit = item.UnitPengajaran?.nama_unit?.toLowerCase() || '';
         const guru = (item.Guru?.nama_guru || item.Guru?.User?.full_name || '').toLowerCase();
+        const unitGuru = (item.UnitPengajaran?.Guru?.nama_guru || '').toLowerCase();
         const pelaksana = (item.GuruPelaksana?.nama_guru || item.GuruPelaksana?.User?.full_name || '').toLowerCase();
         const kelas = item.Kelas?.nama_kelas?.toLowerCase() || '';
-        return mapel.includes(query) || guru.includes(query) || pelaksana.includes(query) || kelas.includes(query);
+        return mapel.includes(query) || unit.includes(query) || guru.includes(query) || unitGuru.includes(query) || pelaksana.includes(query) || kelas.includes(query);
       }
 
       return true;
@@ -315,11 +319,19 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
       key: 'mapel',
       label: 'Mata Pelajaran',
       render: (_val: unknown, item: JadwalDelegasiBlock) => (
-        <div className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-200">
-          <div className="p-1 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 shrink-0">
+        <div className="flex items-start gap-2 font-medium text-slate-700 dark:text-slate-200">
+          <div className="p-1 mt-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 shrink-0">
             <BookOpen className="w-3.5 h-3.5" />
           </div>
-          <span className="truncate max-w-[210px] text-sm font-semibold">{item.Mapel?.nama_mapel || '-'}</span>
+          <div className="min-w-0">
+            <div className="truncate max-w-[210px] text-sm font-semibold">{item.Mapel?.nama_mapel || '-'}</div>
+            {item.UnitPengajaran?.nama_unit ? (
+              <div className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 truncate max-w-[210px]">
+                Unit: {item.UnitPengajaran.nama_unit}
+                {item.UnitPengajaran.Guru?.nama_guru ? ` (${item.UnitPengajaran.Guru.nama_guru})` : ''}
+              </div>
+            ) : null}
+          </div>
         </div>
       ),
     },
@@ -431,6 +443,11 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
             </div>
             <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">
               {item.Mapel?.nama_mapel || '-'}
+              {item.UnitPengajaran?.nama_unit ? (
+                <span className="ml-1.5 text-[10px] text-slate-600 dark:text-slate-300 font-medium">
+                  — {item.UnitPengajaran.nama_unit}
+                </span>
+              ) : null}
             </div>
           </div>
           <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${

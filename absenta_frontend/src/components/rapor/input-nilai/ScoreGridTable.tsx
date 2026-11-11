@@ -66,7 +66,7 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
 
     // Deteksi cerdas: apakah baris nilai didominasi nilai rapor tersimpan langsung (As-Is tanpa sumatif)
     const asIsCount = scores.filter((sc) => {
-      const hasSumatif = Boolean(sc.sumatif_1 || sc.sumatif_2 || sc.sumatif_3 || sc.sumatif_akhir);
+      const hasSumatif = Boolean(sc.sumatif_1 || sc.sumatif_2 || sc.sumatif_3 || sc.sumatif_4 || sc.sumatif_akhir);
       const hasFinal = sc.nilai_rapor_final !== undefined && sc.nilai_rapor_final !== null && sc.nilai_rapor_final !== '';
       return !hasSumatif && hasFinal;
     }).length;
@@ -307,6 +307,7 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                     <th className="py-3 px-2 text-center w-16">Sum 1</th>
                     <th className="py-3 px-2 text-center w-16">Sum 2</th>
                     <th className="py-3 px-2 text-center w-16">Sum 3</th>
+                    <th className="py-3 px-2 text-center w-16">Sum 4</th>
                     <th className="py-3 px-2 text-center w-20 bg-slate-100 dark:bg-slate-800/80">Rata2 Sum</th>
                     <th className="py-3 px-2 text-center w-20">Sum Akhir</th>
                     <th className={cn(
@@ -363,8 +364,9 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                 const s1 = parseFloat(sc.sumatif_1 as string) || 0;
                 const s2 = parseFloat(sc.sumatif_2 as string) || 0;
                 const s3 = parseFloat(sc.sumatif_3 as string) || 0;
-                const cnt = (sc.sumatif_1 ? 1 : 0) + (sc.sumatif_2 ? 1 : 0) + (sc.sumatif_3 ? 1 : 0);
-                const avg = cnt > 0 ? (s1 + s2 + s3) / cnt : 0;
+                const s4 = parseFloat(sc.sumatif_4 as string) || 0;
+                const cnt = (sc.sumatif_1 ? 1 : 0) + (sc.sumatif_2 ? 1 : 0) + (sc.sumatif_3 ? 1 : 0) + (sc.sumatif_4 ? 1 : 0);
+                const avg = cnt > 0 ? (s1 + s2 + s3 + s4) / cnt : 0;
                 
                 const sAkhir = parseFloat(sc.sumatif_akhir as string) || 0;
                 const hasSAkhir = sc.sumatif_akhir !== undefined && sc.sumatif_akhir !== null && sc.sumatif_akhir !== '';
@@ -447,12 +449,31 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                             placeholder={isReadOnly ? '-' : '0-100'}
                           />
                         </td>
+                        <td className="py-1.5 px-1">
+                          <input
+                            id={`input-grid-${idx}-3`}
+                            aria-label={`Sumatif 4 untuk ${sc.nama}`}
+                            type="text"
+                            inputMode="decimal"
+                            disabled={isReadOnly}
+                            readOnly={isReadOnly}
+                            value={sc.sumatif_4 ?? ''}
+                            onChange={(e) => onScoreChange(idx, 'sumatif_4', e.target.value)}
+                            onKeyDown={(e) => onKeyDownGrid(e, idx, 3)}
+                            className={`w-full text-center border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 font-mono font-bold ${
+                              isReadOnly
+                                ? 'cursor-default select-text'
+                                : 'focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all'
+                            } ${getScoreInputStyle(sc.sumatif_4)}`}
+                            placeholder={isReadOnly ? '-' : '0-100'}
+                          />
+                        </td>
                         <td className="py-2 px-2 text-center font-mono font-bold bg-slate-50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300">
                           {cnt > 0 ? avg.toFixed(1) : '-'}
                         </td>
                         <td className="py-1.5 px-1">
                           <input
-                            id={`input-grid-${idx}-3`}
+                            id={`input-grid-${idx}-4`}
                             aria-label={`Sumatif Akhir untuk ${sc.nama}`}
                             type="text"
                             inputMode="decimal"
@@ -460,7 +481,7 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                             readOnly={isReadOnly}
                             value={sc.sumatif_akhir ?? ''}
                             onChange={(e) => onScoreChange(idx, 'sumatif_akhir', e.target.value)}
-                            onKeyDown={(e) => onKeyDownGrid(e, idx, 3)}
+                            onKeyDown={(e) => onKeyDownGrid(e, idx, 4)}
                             className={`w-full text-center border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 font-mono font-bold ${
                               isReadOnly
                                 ? 'cursor-default select-text'
@@ -497,14 +518,14 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                         <td className="py-1.5 px-3">
                           <div className="flex items-center gap-1">
                             <textarea
-                              id={`input-grid-${idx}-4`}
+                              id={`input-grid-${idx}-5`}
                               aria-label={`Capaian Kompetensi untuk ${sc.nama}`}
                               rows={2}
                               disabled={isReadOnly}
                               readOnly={isReadOnly}
                               value={sc.deskripsi_cp ?? ''}
                               onChange={(e) => onScoreChange(idx, 'deskripsi_cp', e.target.value)}
-                              onKeyDown={(e) => onKeyDownGrid(e, idx, 4)}
+                              onKeyDown={(e) => onKeyDownGrid(e, idx, 5)}
                               placeholder={isReadOnly ? '(Belum diisi oleh guru pengampu)' : 'Deskripsi Capaian Kompetensi (CP)...'}
                               className={`w-full text-xs border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 ${
                                 isReadOnly

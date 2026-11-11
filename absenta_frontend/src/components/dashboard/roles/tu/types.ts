@@ -11,12 +11,18 @@ export type TuTabId =
   | 'dkn'
   | 'kepegawaian'
   | 'dapodik'
+  | 'keuangan-spp'
+  | 'sarpras-inventaris'
+  | 'sarpras-peminjaman'
+  | 'sarpras-perbaikan'
+  | 'sarpras-denah'
   | 'struktur_organisasi';
 
 export interface TuNavTabItem {
   id: TuTabId;
   label: string;
   shortLabel?: string;
+  category?: 'persuratan' | 'administrasi' | 'keuangan' | 'sarpras';
   icon: React.ComponentType<{ className?: string }>;
   badge?: number | string;
 }

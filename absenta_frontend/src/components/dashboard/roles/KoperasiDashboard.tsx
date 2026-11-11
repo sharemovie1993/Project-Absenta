@@ -2,25 +2,25 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  LayoutDashboard,
   Receipt,
-  Wallet,
   PiggyBank,
-  Users,
-  Package,
-  TrendingUp,
-  BookOpen,
   ArrowLeft,
   SlidersHorizontal,
   RefreshCw,
   Tv,
+  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import api from '@/lib/axiosInstance';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { KoperasiDashboardSkeleton } from './koperasi/KoperasiDashboardSkeleton';
-import type { KoperasiTabId, KoperasiNavTabItem } from './koperasi/types';
+import type { KoperasiTabId } from './koperasi/types';
+import {
+  getKoperasiNavTabs,
+  getVisibleKoperasiCategories,
+} from './koperasi/koperasiNavigation.config';
 import type { CoopManagementStats } from '@/components/cooperative/dashboard/types';
 import type { Announcement, CriticalStockItem } from '@/components/cooperative/types';
 import toast from 'react-hot-toast';
@@ -34,9 +34,12 @@ import { KoperasiAnggotaTab } from './koperasi/tabs/KoperasiAnggotaTab';
 import { KoperasiProdukTab } from './koperasi/tabs/KoperasiProdukTab';
 import { KoperasiShuTab } from './koperasi/tabs/KoperasiShuTab';
 import { KoperasiAkuntansiTab } from './koperasi/tabs/KoperasiAkuntansiTab';
-import { 
-  UniversalMobileSubtabSidebar, 
-  useMobileSubtabSidebar 
+import { KoperasiAsetTab } from './koperasi/tabs/KoperasiAsetTab';
+import { KoperasiRatTab } from './koperasi/tabs/KoperasiRatTab';
+import { KoperasiTiketTab } from './koperasi/tabs/KoperasiTiketTab';
+import {
+  UniversalMobileSubtabSidebar,
+  useMobileSubtabSidebar,
 } from './common/UniversalMobileSubtabSidebar';
 
 export interface KoperasiDashboardProps {
@@ -53,66 +56,107 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as KoperasiTabId | null;
 
-  const validTabs: KoperasiTabId[] = [
-    'ringkasan',
-    'pos',
-    'simpanan',
-    'pinjaman',
-    'anggota',
-    'produk',
-    'shu',
-    'akuntansi',
-  ];
+  const {
+    can,
+    isAdmin,
+    isKoperasiHead,
+    isKoperasiFinance,
+    isKoperasiSecretary,
+    isKoperasiStore,
+    isKoperasiAuditor,
+  } = useCapabilities();
+
+  const canCoopCap = useCallback(
+    (capability: string) => isAdmin || can(capability),
+    [isAdmin, can]
+  );
+
+  // Identitas Jabatan Koperasi Dinamis (1 Unified Capability-Driven Shell)
+  const koperasiIdentity = useMemo(() => {
+    const activeRoles: string[] = [];
+    if (isKoperasiHead) activeRoles.push('Ketua Koperasi');
+    if (isKoperasiFinance) activeRoles.push('Bendahara Koperasi');
+    if (isKoperasiSecretary) activeRoles.push('Sekretaris Koperasi');
+    if (isKoperasiStore) activeRoles.push('Manajer Toko');
+    if (isKoperasiAuditor) activeRoles.push('Pengawas Koperasi');
+
+    const isPureAuditor =
+      isKoperasiAuditor &&
+      !isAdmin &&
+      !isKoperasiHead &&
+      !isKoperasiFinance &&
+      !isKoperasiSecretary &&
+      !isKoperasiStore;
+
+    if (isKoperasiHead) {
+      return {
+        unitTitle: 'Dashboard Ketua Koperasi',
+        subtitle: 'Pengawasan Eksekutif, Approval Pinjaman & Keanggotaan, SHU, dan Tata Kelola',
+        sidebarTitle: 'Ketua',
+        sidebarCode: 'KETUA KOP',
+        isReadOnlyAuditor: false,
+      };
+    }
+    if (isKoperasiFinance && activeRoles.length === 1) {
+      return {
+        unitTitle: 'Dashboard Bendahara Koperasi',
+        subtitle: 'Simpan Pinjam, Pencairan Kredit, Pembukuan Akuntansi, dan Kalkulasi SHU',
+        sidebarTitle: 'Bendahara',
+        sidebarCode: 'BENDAHARA',
+        isReadOnlyAuditor: false,
+      };
+    }
+    if (isKoperasiSecretary && activeRoles.length === 1) {
+      return {
+        unitTitle: 'Dashboard Sekretaris Koperasi',
+        subtitle: 'Registrasi Anggota, Inventaris Aset, Sidang RAT, Pengumuman & Tiket Aduan',
+        sidebarTitle: 'Sekretaris',
+        sidebarCode: 'SEKRETARIS',
+        isReadOnlyAuditor: false,
+      };
+    }
+    if (isKoperasiStore && activeRoles.length === 1) {
+      return {
+        unitTitle: 'Dashboard Toko & Kasir Koperasi',
+        subtitle: 'Operasional Kasir POS, Katalog Produk, Stok Minimarket, Supplier & Voucher',
+        sidebarTitle: 'Manajer Toko',
+        sidebarCode: 'TOKO KOP',
+        isReadOnlyAuditor: false,
+      };
+    }
+    if (isPureAuditor) {
+      return {
+        unitTitle: 'Dashboard Pengawas Koperasi',
+        subtitle: 'Audit Independen Simpan Pinjam, Laporan Keuangan, Aset & SHU (Mode Baca Saja)',
+        sidebarTitle: 'Pengawas',
+        sidebarCode: 'PENGAWAS',
+        isReadOnlyAuditor: true,
+      };
+    }
+
+    return {
+      unitTitle: 'Dashboard Koperasi',
+      subtitle:
+        activeRoles.length > 0
+          ? activeRoles.join(' • ')
+          : 'Simpan Pinjam, Kasir Minimarket, Sisa Hasil Usaha & Pembukuan Akuntansi',
+      sidebarTitle: 'Koperasi',
+      sidebarCode: 'KOPERASI',
+      isReadOnlyAuditor: false,
+    };
+  }, [
+    isAdmin,
+    isKoperasiHead,
+    isKoperasiFinance,
+    isKoperasiSecretary,
+    isKoperasiStore,
+    isKoperasiAuditor,
+  ]);
 
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('koperasi');
-
-  // Active Tab State
-  const [activeTab, setActiveTab] = useState<KoperasiTabId>(() => {
-    if (subtabParam && validTabs.includes(subtabParam)) {
-      return subtabParam;
-    }
-    return 'ringkasan';
-  });
-
-  // Keep-Alive Cache: Instant 0ms Tab Switching
-  const [visitedTabs, setVisitedTabs] = useState<Set<KoperasiTabId>>(() => new Set([activeTab]));
-
-  useEffect(() => {
-    if (subtabParam && validTabs.includes(subtabParam)) {
-      setActiveTab((curr) => (curr !== subtabParam ? subtabParam : curr));
-      setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
-    } else if (!subtabParam) {
-      setActiveTab('ringkasan');
-      setVisitedTabs((prev) => (prev.has('ringkasan') ? prev : new Set(prev).add('ringkasan')));
-    }
-  }, [subtabParam]);
-
-  const handleTabSelect = useCallback(
-    (tabId: KoperasiTabId) => {
-      setActiveTab(tabId);
-      setVisitedTabs((prev) => (prev.has(tabId) ? prev : new Set(prev).add(tabId)));
-
-      const currentSubtab = searchParams.get('subtab') || 'ringkasan';
-      if (currentSubtab !== tabId) {
-        setSearchParams(
-          (prev) => {
-            const next = new URLSearchParams(prev);
-            if (tabId === 'ringkasan') {
-              next.delete('subtab');
-            } else {
-              next.set('subtab', tabId);
-            }
-            return next;
-          },
-          { replace: true }
-        );
-      }
-    },
-    [searchParams, setSearchParams]
-  );
+  const { isMobileSidebarOpen, setIsMobileSidebarOpen } = useMobileSubtabSidebar('koperasi');
 
   // Academic Filter SSOT
   const academicFilter = useAcademicFilter({
@@ -122,6 +166,11 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
 
   const semNama = academicFilter.selectedSemesterNama || '';
   const tpTahun = academicFilter.selectedTahunPelajaranNama || '';
+
+  const canFetchInventoryStock =
+    canCoopCap('cooperative.store.products.view.list') ||
+    canCoopCap('cooperative.store.view.catalog') ||
+    canCoopCap('cooperative.store.inventory.manage');
 
   // Data Queries
   const { data: stats = null, isLoading: loadingStats } = useQuery<CoopManagementStats | null>({
@@ -165,68 +214,94 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
         return [];
       }
     },
+    enabled: canFetchInventoryStock,
     staleTime: 5 * 60 * 1000,
   });
 
-  // Navigation Items Desktop Sidebar
-  const navTabs: KoperasiNavTabItem[] = useMemo(
-    () => [
-      {
-        id: 'ringkasan',
-        label: 'Ringkasan',
-        shortLabel: 'Ringkasan',
-        icon: LayoutDashboard,
-      },
-      {
-        id: 'pos',
-        label: 'Kasir',
-        shortLabel: 'Kasir',
-        icon: Receipt,
-      },
-      {
-        id: 'simpanan',
-        label: 'Simpanan',
-        shortLabel: 'Simpanan',
-        icon: Wallet,
-      },
-      {
-        id: 'pinjaman',
-        label: 'Pinjaman',
-        shortLabel: 'Pinjaman',
-        icon: PiggyBank,
-        badge: (stats?.dueInstallments ?? 0) > 0 ? `${stats?.dueInstallments}` : undefined,
-        badgeColor: 'bg-amber-500 text-white',
-      },
-      {
-        id: 'anggota',
-        label: 'Anggota',
-        shortLabel: 'Anggota',
-        icon: Users,
-        badge: (stats?.pendingMembers?.count ?? 0) > 0 ? `${stats?.pendingMembers?.count}` : undefined,
-        badgeColor: 'bg-blue-500 text-white',
-      },
-      {
-        id: 'produk',
-        label: 'Katalog',
-        shortLabel: 'Katalog',
-        icon: Package,
-        badge: criticalStock.length > 0 ? `${criticalStock.length}` : undefined,
-        badgeColor: 'bg-rose-500 text-white',
-      },
-      {
-        id: 'shu',
-        label: 'SHU',
-        shortLabel: 'SHU',
-        icon: TrendingUp,
-      },
-      {
-        id: 'akuntansi',
-        label: 'Akuntansi',
-        shortLabel: 'Akuntansi',
-        icon: BookOpen,
-      },
-    ],
-    [stats?.dueInstallments, stats?.pendingMembers?.count, criticalStock.length]
+  // Navigation Items Desktop Sidebar & Mobile Sheet (Filtered by Canonical Capabilities)
+  const navBadges = useMemo(
+    () => ({
+      dueInstallments: stats?.dueInstallments ?? 0,
+      pendingMembers: stats?.pendingMembers?.count ?? 0,
+      criticalStock: criticalStock.length,
+      openTickets: stats?.openTickets ?? 0,
+    }),
+    [stats?.dueInstallments, stats?.pendingMembers?.count, criticalStock.length, stats?.openTickets]
+  );
+
+  const navTabs = useMemo(
+    () => getKoperasiNavTabs(navBadges, canCoopCap),
+    [navBadges, canCoopCap]
+  );
+
+  const visibleCategories = useMemo(
+    () => getVisibleKoperasiCategories(navTabs),
+    [navTabs]
+  );
+
+  const allowedTabIds = useMemo(() => new Set(navTabs?.map((t) => t.id)), [navTabs]);
+
+  // Active Tab State (Strictly validated against permitted capabilities)
+  const [activeTab, setActiveTab] = useState<KoperasiTabId>(() => {
+    if (subtabParam && allowedTabIds.has(subtabParam)) {
+      return subtabParam;
+    }
+    return navTabs[0]?.id || 'ringkasan';
+  });
+
+  // Keep-Alive Cache: Instant 0ms Tab Switching
+  const [visitedTabs, setVisitedTabs] = useState<Set<KoperasiTabId>>(() => new Set([activeTab]));
+
+  useEffect(() => {
+    if (navTabs.length === 0) return;
+
+    const firstAllowed = navTabs[0]?.id || 'ringkasan';
+    if (subtabParam && allowedTabIds.has(subtabParam)) {
+      setActiveTab((curr) => (curr !== subtabParam ? subtabParam : curr));
+      setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
+    } else if (!subtabParam || !allowedTabIds.has(subtabParam)) {
+      setActiveTab(firstAllowed);
+      setVisitedTabs((prev) => (prev.has(firstAllowed) ? prev : new Set(prev).add(firstAllowed)));
+      if (subtabParam && !allowedTabIds.has(subtabParam)) {
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            if (firstAllowed === 'ringkasan') {
+              next.delete('subtab');
+            } else {
+              next.set('subtab', firstAllowed);
+            }
+            return next;
+          },
+          { replace: true }
+        );
+      }
+    }
+  }, [subtabParam, allowedTabIds, navTabs, setSearchParams]);
+
+  const handleTabSelect = useCallback(
+    (tabId: KoperasiTabId) => {
+      if (!allowedTabIds.has(tabId)) return;
+      setActiveTab(tabId);
+      setVisitedTabs((prev) => (prev.has(tabId) ? prev : new Set(prev).add(tabId)));
+
+      const currentSubtab = searchParams.get('subtab') || 'ringkasan';
+      if (currentSubtab !== tabId) {
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            if (tabId === 'ringkasan') {
+              next.delete('subtab');
+            } else {
+              next.set('subtab', tabId);
+            }
+            return next;
+          },
+          { replace: true }
+        );
+      }
+    },
+    [allowedTabIds, searchParams, setSearchParams]
   );
 
   const handleRefresh = async () => {
@@ -279,14 +354,20 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                    Dashboard Koperasi
+                    {koperasiIdentity.unitTitle}
                   </h1>
+                  {koperasiIdentity.isReadOnlyAuditor && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800">
+                      <ShieldCheck size={11} />
+                      <span>Mode Pengawas (Read-Only)</span>
+                    </span>
+                  )}
                   <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate hidden sm:inline">
                     &bull; {tpTahun ? `TP ${tpTahun}` : ''} {semNama}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate hidden md:block">
-                  Simpan Pinjam, Kasir Minimarket, Sisa Hasil Usaha & Pembukuan Akuntansi
+                  {koperasiIdentity.subtitle}
                 </p>
               </div>
             </div>
@@ -346,17 +427,18 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
 
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
         <UniversalMobileSubtabSidebar
-            isOpen={isMobileSidebarOpen}
-            onClose={() => setIsMobileSidebarOpen(false)}
-            title="Dashboard Koperasi"
-            subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
-            roleBadge="KOPERASI"
-            scope="koperasi"
-            roleIcon={Receipt}
-            tabs={navTabs}
-            activeTab={activeTab}
-            onSelectTab={(tabId) => handleTabSelect(tabId as KoperasiTabId)}
-          />
+          isOpen={isMobileSidebarOpen}
+          onClose={() => setIsMobileSidebarOpen(false)}
+          title={koperasiIdentity.unitTitle}
+          subtitle={`${tpTahun ? `TP ${tpTahun}` : 'Aktif'} • ${semNama}`}
+          roleBadge={koperasiIdentity.sidebarCode}
+          scope="koperasi"
+          roleIcon={Receipt}
+          tabs={navTabs}
+          activeTab={activeTab}
+          onSelectTab={(tabId) => handleTabSelect(tabId as KoperasiTabId)}
+          categories={visibleCategories}
+        />
 
         {/* 2. Desktop 2-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
@@ -373,16 +455,16 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
                     Ekonomi Sekolah
                   </span>
                   <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase">
-                    Koperasi
+                    {koperasiIdentity.sidebarTitle}
                   </h2>
                 </div>
               </div>
 
               {/* Badge Info Periode */}
               <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                <span className="font-medium">Periode Aktif</span>
-                <span className="font-bold text-slate-700 dark:text-slate-200 text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md truncate max-w-[120px]">
-                  {tpTahun ? `TP ${tpTahun}` : 'Aktif'}
+                <span className="font-medium">Jabatan</span>
+                <span className="font-bold text-slate-700 dark:text-slate-200 font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md truncate max-w-[120px]">
+                  {koperasiIdentity.sidebarCode}
                 </span>
               </div>
             </div>
@@ -395,7 +477,7 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
 
             {/* Navigasi Menu Vertikal Sidebar */}
             <nav className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
-              {navTabs.map((tab) => {
+              {navTabs?.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
@@ -410,14 +492,14 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                     )}
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <Icon className="w-4 h-4 shrink-0" />
-                      <span>{tab.label}</span>
+                      <span className="truncate">{tab.label}</span>
                     </div>
                     {tab.badge && (
                       <span
                         className={cn(
-                          'px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none',
+                          'px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none shrink-0',
                           isActive ? 'bg-white/20 text-white' : tab.badgeColor || 'bg-slate-200 text-slate-700'
                         )}
                       >
@@ -430,10 +512,10 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
             </nav>
           </aside>
 
-          {/* Right Column: Dynamic Subtab Viewports (Keep-Alive Cache) */}
+          {/* Right Column: Dynamic Subtab Viewports (Keep-Alive Cache, Strictly Capability-Gated) */}
           <main className="min-w-0 flex-1 space-y-4">
             {/* TAB 1: BERANDA RINGKASAN KOPERASI */}
-            {visitedTabs.has('ringkasan') && (
+            {allowedTabIds.has('ringkasan') && visitedTabs.has('ringkasan') && (
               <div
                 role="tabpanel"
                 aria-hidden={activeTab !== 'ringkasan'}
@@ -446,12 +528,13 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
                   criticalStockLoading={criticalStockLoading}
                   loading={loadingStats}
                   onTabSelect={handleTabSelect}
+                  canAccess={canCoopCap}
                 />
               </div>
             )}
 
             {/* TAB 2: KASIR POINT OF SALE (POS) */}
-            {visitedTabs.has('pos') && (
+            {allowedTabIds.has('pos') && visitedTabs.has('pos') && (
               <div
                 role="tabpanel"
                 aria-hidden={activeTab !== 'pos'}
@@ -462,7 +545,7 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
             )}
 
             {/* TAB 3: SIMPANAN ANGGOTA */}
-            {visitedTabs.has('simpanan') && (
+            {allowedTabIds.has('simpanan') && visitedTabs.has('simpanan') && (
               <div
                 role="tabpanel"
                 aria-hidden={activeTab !== 'simpanan'}
@@ -473,7 +556,7 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
             )}
 
             {/* TAB 4: PINJAMAN & KREDIT */}
-            {visitedTabs.has('pinjaman') && (
+            {allowedTabIds.has('pinjaman') && visitedTabs.has('pinjaman') && (
               <div
                 role="tabpanel"
                 aria-hidden={activeTab !== 'pinjaman'}
@@ -484,7 +567,7 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
             )}
 
             {/* TAB 5: BUKU ANGGOTA */}
-            {visitedTabs.has('anggota') && (
+            {allowedTabIds.has('anggota') && visitedTabs.has('anggota') && (
               <div
                 role="tabpanel"
                 aria-hidden={activeTab !== 'anggota'}
@@ -495,7 +578,7 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
             )}
 
             {/* TAB 6: KATALOG & STOK */}
-            {visitedTabs.has('produk') && (
+            {allowedTabIds.has('produk') && visitedTabs.has('produk') && (
               <div
                 role="tabpanel"
                 aria-hidden={activeTab !== 'produk'}
@@ -506,7 +589,7 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
             )}
 
             {/* TAB 7: SISA HASIL USAHA (SHU) */}
-            {visitedTabs.has('shu') && (
+            {allowedTabIds.has('shu') && visitedTabs.has('shu') && (
               <div
                 role="tabpanel"
                 aria-hidden={activeTab !== 'shu'}
@@ -517,13 +600,46 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
             )}
 
             {/* TAB 8: BUKU AKUNTANSI */}
-            {visitedTabs.has('akuntansi') && (
+            {allowedTabIds.has('akuntansi') && visitedTabs.has('akuntansi') && (
               <div
                 role="tabpanel"
                 aria-hidden={activeTab !== 'akuntansi'}
                 className={cn('w-full min-w-0', activeTab === 'akuntansi' ? 'block' : 'hidden')}
               >
                 <KoperasiAkuntansiTab />
+              </div>
+            )}
+
+            {/* TAB 9: INVENTARIS ASET KOPERASI */}
+            {allowedTabIds.has('aset') && visitedTabs.has('aset') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'aset'}
+                className={cn('w-full min-w-0', activeTab === 'aset' ? 'block' : 'hidden')}
+              >
+                <KoperasiAsetTab />
+              </div>
+            )}
+
+            {/* TAB 10: SIDANG RAT & E-VOTING */}
+            {allowedTabIds.has('rat') && visitedTabs.has('rat') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'rat'}
+                className={cn('w-full min-w-0', activeTab === 'rat' ? 'block' : 'hidden')}
+              >
+                <KoperasiRatTab />
+              </div>
+            )}
+
+            {/* TAB 11: TIKET & ADUAN KOPERASI */}
+            {allowedTabIds.has('tiket') && visitedTabs.has('tiket') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'tiket'}
+                className={cn('w-full min-w-0', activeTab === 'tiket' ? 'block' : 'hidden')}
+              >
+                <KoperasiTiketTab />
               </div>
             )}
           </main>

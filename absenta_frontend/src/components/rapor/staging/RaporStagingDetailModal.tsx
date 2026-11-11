@@ -10,6 +10,7 @@ export interface LocalSumatifScore {
   sumatif_1?: number | null;
   sumatif_2?: number | null;
   sumatif_3?: number | null;
+  sumatif_4?: number | null;
   rata_rata?: number | null;
   nilai_akhir?: number | null;
 }
@@ -163,7 +164,7 @@ export const RaporStagingDetailModal: React.FC<RaporStagingDetailModalProps> = R
                                   {scoredSubjects?.map(([mapel, sc]) => (
                                     <span
                                       key={mapel}
-                                      title={`Rincian Komponen Nilai ${mapel}:\n• Sumatif 1: ${sc.sumatif_1 ?? '-'}\n• Sumatif 2: ${sc.sumatif_2 ?? '-'}\n• Sumatif 3: ${sc.sumatif_3 ?? '-'}\n• Rata-rata: ${sc.rata_rata ?? '-'}\n• Nilai Akhir Sumatif: ${sc.nilai_akhir ?? '-'}`}
+                                      title={`Rincian Komponen Nilai ${mapel}:\n• Sumatif 1: ${sc.sumatif_1 ?? '-'}\n• Sumatif 2: ${sc.sumatif_2 ?? '-'}\n• Sumatif 3: ${sc.sumatif_3 ?? '-'}\n• Sumatif 4: ${sc.sumatif_4 ?? '-'}\n• Rata-rata: ${sc.rata_rata ?? '-'}\n• Nilai Akhir Sumatif: ${sc.nilai_akhir ?? '-'}`}
                                       className="bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 border border-slate-200/60 dark:border-slate-700/60 px-2 py-0.5 rounded-md text-[11px] inline-flex items-center gap-1 cursor-help transition-colors"
                                     >
                                       <strong className="text-slate-700 dark:text-slate-300">{mapel}</strong>

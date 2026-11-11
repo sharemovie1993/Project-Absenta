@@ -5,7 +5,17 @@ export interface EntityMapping {
   name: string;
   code?: string;
   target_id?: string;
-  action: 'MATCH' | 'CREATE' | 'IGNORE';
+  parent_mapel_id?: string;
+  unit_name?: string;
+  action: 'MATCH' | 'CREATE' | 'IGNORE' | 'UNIT_OF_PARENT';
+}
+
+export interface LessonMappingInput {
+  asc_lesson_id: string;
+  sk_guru_id?: string | null;
+  guru_pelaksana_id?: string | null;
+  unit_name?: string | null;
+  target_sumatif_slot?: number | null;
 }
 
 export interface MatchAnalysisItem {
@@ -19,6 +29,27 @@ export interface MatchAnalysisItem {
   matched_jurusan_nama?: string | null;
   matched_jurusan_kode?: string | null;
   total_siswa_aktif?: number;
+  saved_action?: string | null;
+  saved_target_id?: string | null;
+  saved_parent_mapel_id?: string | null;
+  saved_unit_name?: string | null;
+  suggested_parent_mapel_id?: string | null;
+  suggested_parent_mapel_name?: string | null;
+  suggested_unit_name?: string | null;
+}
+
+export interface AscLessonAnalysisItem {
+  asc_lesson_id: string;
+  subject_asc_id: string;
+  subject_name: string;
+  class_asc_ids: string[];
+  class_names: string[];
+  teacher_asc_ids: string[];
+  teacher_names: string[];
+  periods_per_week: number;
+  periods_per_card: number;
+  is_team_teaching: boolean;
+  saved_lesson_mapping?: LessonMappingInput | null;
 }
 
 export interface AscDbClassItem {
@@ -46,6 +77,8 @@ export interface AscAnalysisResult {
   teachers: MatchAnalysisItem[];
   classes: MatchAnalysisItem[];
   subjects: MatchAnalysisItem[];
+  lessons?: AscLessonAnalysisItem[];
+  has_saved_history?: boolean;
   db_teachers: { id: string; name: string }[];
   db_classes: AscDbClassItem[];
   db_subjects: { id: string; name: string; code?: string }[];
@@ -59,6 +92,7 @@ export interface ExecuteImportPayload {
   teacher_mappings: EntityMapping[];
   class_mappings: EntityMapping[];
   subject_mappings: EntityMapping[];
+  lesson_mappings?: LessonMappingInput[];
 }
 
 export async function analyzeAscXml(

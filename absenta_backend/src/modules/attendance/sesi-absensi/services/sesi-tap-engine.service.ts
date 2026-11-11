@@ -129,13 +129,16 @@ export class SesiTapEngineService {
             targetSemId = activeSem?.id || (await prisma.semester.findFirst({ where: { tenant_id: tenantId }, select: { id: true } }))?.id || 'default-sem';
           }
 
-          const createdSesi = await prisma.sesiAbsensi.create({
+          const createdSesi = await (prisma.sesiAbsensi as any).create({
             data: {
               tenant_id: tenantId,
               jadwal_kbm_id: jadwal.id,
+              unit_pengajaran_id: (jadwal as any).unit_pengajaran_id || null,
               kelas_id: jadwal.kelas_id,
               mapel_id: jadwal.mapel_id,
               guru_id: validGuruId,
+              guru_pelaksana_id: (jadwal as any).guru_pelaksana_id || null,
+              is_delegasi: Boolean((jadwal as any).guru_pelaksana_id),
               tahun_pelajaran_id: targetTpId,
               semester_id: targetSemId,
               jenis_kegiatan: 'KBM',
@@ -467,13 +470,16 @@ export class SesiTapEngineService {
           }
 
           // Materialize physical session
-          sesi = await prisma.sesiAbsensi.create({
+          sesi = await (prisma.sesiAbsensi as any).create({
             data: {
               tenant_id: tenantId,
               jadwal_kbm_id: jadwal.id,
+              unit_pengajaran_id: (jadwal as any).unit_pengajaran_id || null,
               kelas_id: jadwal.kelas_id,
               mapel_id: jadwal.mapel_id,
               guru_id: validGuruId,
+              guru_pelaksana_id: (jadwal as any).guru_pelaksana_id || null,
+              is_delegasi: Boolean((jadwal as any).guru_pelaksana_id),
               tahun_pelajaran_id: targetTpId,
               semester_id: targetSemId,
               jenis_kegiatan: 'KBM',

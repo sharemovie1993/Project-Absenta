@@ -23,9 +23,17 @@ const NON_FINAL_GRADES = new Set([
   '10', '11', 'X', 'XI'
 ]);
 
+const contributorInputSchema = z.object({
+  guru_id: z.string().uuid('ID Guru kontributor tidak valid'),
+  unit_pengajaran_id: z.string().uuid('ID Unit Pengajaran kontributor tidak valid').nullable().optional(),
+});
+
 const bankSoalBaseSchema = z.object({
   guru_id: z.string().uuid('ID Guru tidak valid'),
   mapel_id: z.string().uuid('ID Mapel tidak valid'),
+  tahun_pelajaran_id: z.string().uuid('ID Tahun Pelajaran tidak valid').nullable().optional(),
+  semester_id: z.string().uuid('ID Semester tidak valid').nullable().optional(),
+  unit_pengajaran_id: z.string().uuid('ID Unit Pengajaran tidak valid').nullable().optional(),
   kode_bank: z.string().min(2, 'Kode bank soal minimal 2 karakter').max(50),
   judul: z.string().min(3, 'Judul bank soal minimal 3 karakter').max(200),
   tingkat: z.enum(VALID_CBT_TINGKAT),
@@ -35,6 +43,9 @@ const bankSoalBaseSchema = z.object({
   acak_opsi: z.boolean().default(true),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
   is_shared: z.boolean().optional(),
+  contributor_guru_ids: z.array(z.string().uuid()).optional(),
+  contributors: z.array(contributorInputSchema).optional(),
+  auto_sync_kolaborasi: z.boolean().optional(),
 });
 
 /**
@@ -96,7 +107,15 @@ export const queryBankSoalSchema = z.object({
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
   mapel_id: z.string().optional(),
   guru_id: z.string().optional(),
+  tahun_pelajaran_id: z.string().optional(),
+  semester_id: z.string().optional(),
+  unit_pengajaran_id: z.string().optional(),
   include_shared: z.coerce.boolean().optional().default(true),
+});
+
+export const updateBankContributorsSchema = z.object({
+  guru_ids: z.array(z.string().uuid()).optional(),
+  contributors: z.array(contributorInputSchema).optional(),
 });
 
 export const createSoalPgSchema = z.object({
@@ -108,6 +127,7 @@ export const createSoalPgSchema = z.object({
   opsi_jawaban_json: z.array(opsiPilihanSchema).min(2, 'Minimal 2 opsi pilihan jawaban (A & B)'),
   kunci_jawaban: z.enum(['A', 'B', 'C', 'D', 'E']),
   pembahasan: z.string().nullable().optional(),
+  unit_pengajaran_id: z.string().uuid('ID Unit Pengajaran tidak valid').nullable().optional(),
 });
 
 export const updateSoalPgSchema = createSoalPgSchema.partial();
@@ -128,7 +148,7 @@ export const settingKeamananSchema = z.object({
   shuffle_options: z.boolean().default(true),
   show_result_instant: z.boolean().default(false),
   auto_transfer_rapor: z.boolean().default(false),
-  target_rapor_slot: z.enum(['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_akhir']).nullable().optional(),
+  target_rapor_slot: z.enum(['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_4', 'sumatif_akhir']).nullable().optional(),
   created_by_guru_id: z.string().uuid().nullable().optional(),
   ruang_ujian: z.string().max(120).nullable().optional(),
   pengawas_1_id: z.string().nullable().optional(),
@@ -247,7 +267,7 @@ export const submitExamFinalSchema = z.object({
 });
 
 export const transferNilaiRaporSchema = z.object({
-  target_slot: z.enum(['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_akhir']),
+  target_slot: z.enum(['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_4', 'sumatif_akhir']),
   tahun_pelajaran_id: z.string().uuid('ID Tahun Pelajaran tidak valid'),
   semester_id: z.string().uuid('ID Semester tidak valid'),
   mapel_id: z.string().uuid('ID Mapel tidak valid').optional(),

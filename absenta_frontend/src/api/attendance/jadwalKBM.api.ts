@@ -15,10 +15,23 @@ export interface JadwalKBM {
   mapel_id?: string;
   guru_id?: string;
   guru_pelaksana_id?: string | null;
+  unit_pengajaran_id?: string | null;
   Mapel?: {
+    id?: string;
     nama_mapel: string;
     kode_mapel: string;
   };
+  UnitPengajaran?: {
+    id: string;
+    nama_unit?: string | null;
+    guru_id: string;
+    jp_alokasi?: number | null;
+    target_sumatif_slot?: number | null;
+    Guru?: {
+      id: string;
+      nama_guru?: string;
+    };
+  } | null;
   Guru?: {
     id: string;
     nama_guru?: string;
@@ -50,6 +63,7 @@ export interface CreateJadwalPayload {
   mapel_id?: string;
   guru_id?: string;
   guru_pelaksana_id?: string | null;
+  unit_pengajaran_id?: string | null;
   jenis_kegiatan: string;
 }
 

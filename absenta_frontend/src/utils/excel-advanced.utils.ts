@@ -173,7 +173,7 @@ export const generateStyledExcelTemplate = async (opts: StyledGradeTemplateOptio
   sheet.addRow([]);
 
   // Column Headers
-  const headers = ['NO', 'NIS', 'NAMA SISWA', 'SUMATIF 1', 'SUMATIF 2', 'SUMATIF 3', 'SUMATIF AKHIR', 'CAPAIAN KOMPETENSI (CP)'];
+  const headers = ['NO', 'NIS', 'NAMA SISWA', 'SUMATIF 1', 'SUMATIF 2', 'SUMATIF 3', 'SUMATIF 4', 'SUMATIF AKHIR', 'CAPAIAN KOMPETENSI (CP)'];
   const headerRow = sheet.addRow(headers);
   headerRow.height = 24;
   headerRow.eachCell((cell) => {
@@ -190,13 +190,13 @@ export const generateStyledExcelTemplate = async (opts: StyledGradeTemplateOptio
 
   // Student Rows
   opts.students.forEach((s, idx) => {
-    const row = sheet.addRow([idx + 1, s.nis, s.nama, '', '', '', '', '']);
+    const row = sheet.addRow([idx + 1, s.nis, s.nama, '', '', '', '', '', '']);
     row.height = 20;
     row.getCell(1).alignment = { horizontal: 'center' };
     row.getCell(2).alignment = { horizontal: 'center' };
     row.getCell(2).numFmt = '@';
 
-    for (let c = 1; c <= 8; c++) {
+    for (let c = 1; c <= 9; c++) {
       row.getCell(c).border = {
         top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
         bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
@@ -213,8 +213,9 @@ export const generateStyledExcelTemplate = async (opts: StyledGradeTemplateOptio
   sheet.getColumn(4).width = 12;
   sheet.getColumn(5).width = 12;
   sheet.getColumn(6).width = 12;
-  sheet.getColumn(7).width = 14;
-  sheet.getColumn(8).width = 50;
+  sheet.getColumn(7).width = 12;
+  sheet.getColumn(8).width = 14;
+  sheet.getColumn(9).width = 50;
 
   const buffer = await workbook.xlsx.writeBuffer();
   return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });

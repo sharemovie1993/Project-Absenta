@@ -150,7 +150,7 @@ export class NilaiExcelService {
       },
     });
 
-    const nilaiMap = new Map<string, { finalVal: number; cp: string; s1?: number | null; s2?: number | null; s3?: number | null; sAkhir?: number | null }>();
+    const nilaiMap = new Map<string, { finalVal: number; cp: string; s1?: number | null; s2?: number | null; s3?: number | null; s4?: number | null; sAkhir?: number | null }>();
     listNilai.forEach((n) => {
       nilaiMap.set(n.siswa_id, {
         finalVal: n.nilai_rapor_final ?? n.nilai ?? 0,
@@ -158,6 +158,7 @@ export class NilaiExcelService {
         s1: n.sumatif_1,
         s2: n.sumatif_2,
         s3: n.sumatif_3,
+        s4: n.sumatif_4,
         sAkhir: n.nilai_akhir_sumatif,
       });
     });
@@ -197,6 +198,7 @@ export class NilaiExcelService {
         'SUMATIF 1': rec?.s1 ?? '',
         'SUMATIF 2': rec?.s2 ?? '',
         'SUMATIF 3': rec?.s3 ?? '',
+        'SUMATIF 4': rec?.s4 ?? '',
         'SUMATIF AKHIR': rec?.sAkhir ?? '',
         'NILAI RAPOR': rec?.finalVal ?? 0,
       };
@@ -359,6 +361,7 @@ export class NilaiExcelService {
         const s1 = parseNum(row['sumatif_1'] || row['Sumatif 1'] || row['SUMATIF 1'] || row['Sum 1'] || row['SUM 1']);
         const s2 = parseNum(row['sumatif_2'] || row['Sumatif 2'] || row['SUMATIF 2'] || row['Sum 2'] || row['SUM 2']);
         const s3 = parseNum(row['sumatif_3'] || row['Sumatif 3'] || row['SUMATIF 3'] || row['Sum 3'] || row['SUM 3']);
+        const s4 = parseNum(row['sumatif_4'] || row['Sumatif 4'] || row['SUMATIF 4'] || row['Sum 4'] || row['SUM 4']);
         const nAkhir = parseNum(
           row['nilai_akhir_sumatif'] ||
           row['Nilai Akhir Sumatif'] ||
@@ -370,7 +373,7 @@ export class NilaiExcelService {
           row['SUM AKHIR']
         );
 
-        const sList = [s1, s2, s3].filter((v): v is number => v !== null);
+        const sList = [s1, s2, s3, s4].filter((v): v is number => v !== null);
         let rata: number | null = null;
         if (sList.length > 0) {
           rata = Number((sList.reduce((a, b) => a + b, 0) / sList.length).toFixed(2));
@@ -399,6 +402,7 @@ export class NilaiExcelService {
               sumatif_1: s1,
               sumatif_2: s2,
               sumatif_3: s3,
+              sumatif_4: s4,
               nilai_akhir_sumatif: nAkhir,
               rata_rata_sumatif: rata,
               nilai_rapor_final: finalScore,
@@ -419,6 +423,7 @@ export class NilaiExcelService {
               sumatif_1: s1,
               sumatif_2: s2,
               sumatif_3: s3,
+              sumatif_4: s4,
               nilai_akhir_sumatif: nAkhir,
               rata_rata_sumatif: rata,
               nilai_rapor_final: finalScore,

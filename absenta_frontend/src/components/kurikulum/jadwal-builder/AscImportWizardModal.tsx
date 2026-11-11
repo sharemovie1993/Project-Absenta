@@ -23,7 +23,8 @@ import {
   analyzeAscXml, 
   executeAscImport, 
   type AscAnalysisResult, 
-  type EntityMapping 
+  type EntityMapping,
+  type LessonMappingInput
 } from '../../../api/academic/ascImporter.api';
 import { cn } from '../../../lib/utils';
 import { getTahunPelajaranList } from '../../../api/academic/tahunPelajaran.api';
@@ -83,8 +84,10 @@ const isJurusanConflict = (xmlJurusan: string | null, targetDbClass: any): boole
 };
 
 interface SavedMappingPref {
-  action: 'MATCH' | 'CREATE' | 'IGNORE';
+  action: 'MATCH' | 'CREATE' | 'IGNORE' | 'UNIT_OF_PARENT';
   target_id?: string;
+  parent_mapel_id?: string;
+  unit_name?: string;
 }
 
 interface SavedMappingMap {
@@ -111,17 +114,22 @@ const saveMappingsToStorage = (
   try {
     const data: SavedMappingMap = { teachers: {}, classes: {}, subjects: {} };
     Object.values(teachers).forEach(t => {
-      const entry = { action: t.action, target_id: t.target_id };
+      const entry: SavedMappingPref = { action: t.action, target_id: t.target_id };
       data.teachers[t.name.toLowerCase().trim()] = entry;
       data.teachers[t.asc_id] = entry;
     });
     Object.values(classes).forEach(c => {
-      const entry = { action: c.action, target_id: c.target_id };
+      const entry: SavedMappingPref = { action: c.action, target_id: c.target_id };
       data.classes[c.name.toLowerCase().trim()] = entry;
       data.classes[c.asc_id] = entry;
     });
     Object.values(subjects).forEach(s => {
-      const entry = { action: s.action, target_id: s.target_id };
+      const entry: SavedMappingPref = {
+        action: s.action,
+        target_id: s.target_id,
+        parent_mapel_id: s.parent_mapel_id,
+        unit_name: s.unit_name,
+      };
       data.subjects[s.name.toLowerCase().trim()] = entry;
       data.subjects[s.asc_id] = entry;
     });
@@ -204,13 +212,15 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
   const targetSemName = selectedSem?.nama_semester || 'Memuat...';
 
   // Tab State in Step 2
-  const [activeTab, setActiveTab] = useState<'GURU' | 'KELAS' | 'MAPEL'>('GURU');
+  const [activeTab, setActiveTab] = useState<'GURU' | 'KELAS' | 'MAPEL' | 'DELEGASI'>('GURU');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Editable User Mappings
   const [teacherMappings, setTeacherMappings] = useState<Record<string, EntityMapping>>({});
   const [classMappings, setClassMappings] = useState<Record<string, EntityMapping>>({});
   const [subjectMappings, setSubjectMappings] = useState<Record<string, EntityMapping>>({});
+  const [lessonMappings, setLessonMappings] = useState<Record<string, LessonMappingInput>>({});
+  const [onlyMappedLessons, setOnlyMappedLessons] = useState(false);
 
   const mappingStats = useMemo(() => {
     const teachersList = Object.values(teacherMappings);
@@ -244,6 +254,8 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
     setTeacherMappings({});
     setClassMappings({});
     setSubjectMappings({});
+    setLessonMappings({});
+    setOnlyMappedLessons(false);
   };
 
   const handleClose = () => {
@@ -338,18 +350,40 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
         });
         setClassMappings(initClasses);
 
-        // Initialize Subject Mappings with persistent memory restore
+        // Initialize Subject Mappings (prioritize DB saved history / suggested UNIT_OF_PARENT, then localStorage)
         const initSubjects: Record<string, EntityMapping> = {};
         res.data.subjects.forEach(s => {
           const keyName = s.name.toLowerCase().trim();
           const savedPref = saved.subjects[s.asc_id] || saved.subjects[keyName];
-          if (savedPref) {
+          if (s.saved_action === 'UNIT_OF_PARENT' && (s.saved_parent_mapel_id || s.saved_target_id)) {
+            initSubjects[s.asc_id] = {
+              asc_id: s.asc_id,
+              name: s.name,
+              code: s.code,
+              action: 'UNIT_OF_PARENT',
+              target_id: s.saved_parent_mapel_id || s.saved_target_id || undefined,
+              parent_mapel_id: s.saved_parent_mapel_id || s.saved_target_id || undefined,
+              unit_name: s.saved_unit_name || s.suggested_unit_name || s.name,
+            };
+          } else if (savedPref) {
             initSubjects[s.asc_id] = {
               asc_id: s.asc_id,
               name: s.name,
               code: s.code,
               target_id: savedPref.target_id || (s.matched_db_id || undefined),
+              parent_mapel_id: savedPref.parent_mapel_id,
+              unit_name: savedPref.unit_name,
               action: savedPref.action,
+            };
+          } else if (s.suggested_parent_mapel_id && !s.matched_db_id) {
+            initSubjects[s.asc_id] = {
+              asc_id: s.asc_id,
+              name: s.name,
+              code: s.code,
+              action: 'UNIT_OF_PARENT',
+              target_id: s.suggested_parent_mapel_id,
+              parent_mapel_id: s.suggested_parent_mapel_id,
+              unit_name: s.suggested_unit_name || s.name,
             };
           } else {
             initSubjects[s.asc_id] = {
@@ -362,6 +396,15 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
           }
         });
         setSubjectMappings(initSubjects);
+
+        // Initialize Lesson Mappings from backend DB history
+        const initLessons: Record<string, LessonMappingInput> = {};
+        (res.data.lessons || []).forEach(l => {
+          if (l.saved_lesson_mapping) {
+            initLessons[l.asc_lesson_id] = { ...l.saved_lesson_mapping };
+          }
+        });
+        setLessonMappings(initLessons);
 
         console.log('✅ [aSc Import Wizard] Pre-Execution Mappings Initialized:', {
           teachers: Object.keys(initTeachers).length,
@@ -385,7 +428,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
     }
   };
 
-  const handleBulkSetAction = (tab: 'GURU' | 'KELAS' | 'MAPEL', action: 'CHECK_ALL' | 'UNCHECK_ALL') => {
+  const handleBulkSetAction = (tab: 'GURU' | 'KELAS' | 'MAPEL' | 'DELEGASI', action: 'CHECK_ALL' | 'UNCHECK_ALL') => {
     if (tab === 'GURU') {
       setTeacherMappings(prev => {
         const next = { ...prev };
@@ -537,6 +580,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
       teacher_mappings: Object.values(teacherMappings),
       class_mappings: Object.values(classMappings),
       subject_mappings: Object.values(subjectMappings),
+      lesson_mappings: Object.values(lessonMappings),
     };
 
     console.log('🚀 [aSc Import Wizard] Executing Import Payload:', {
@@ -812,6 +856,19 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                   <BookOpen className="w-4 h-4" />
                   Pemetaan Mapel ({Object.keys(subjectMappings).length})
                 </button>
+
+                <button
+                  onClick={() => { setActiveTab('DELEGASI'); setSearchQuery(''); }}
+                  className={cn(
+                    "px-4 py-2.5 text-xs font-bold flex items-center gap-2 border-b-2 transition-all",
+                    activeTab === 'DELEGASI'
+                      ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30"
+                      : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  )}
+                >
+                  <Layers className="w-4 h-4" />
+                  Delegasi &amp; Unit ({analysis.lessons?.length || 0})
+                </button>
               </div>
 
               {/* Search Filter */}
@@ -828,41 +885,43 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
             </div>
 
             {/* Toolbar Kontrol Masal & Memori Presisten */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl text-xs border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-700 dark:text-slate-300">Aksi Masal ({activeTab}):</span>
-                <button
-                  type="button"
-                  onClick={() => handleBulkSetAction(activeTab, 'CHECK_ALL')}
-                  className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Centang Semua ({activeTab})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleBulkSetAction(activeTab, 'UNCHECK_ALL')}
-                  className="px-2.5 py-1 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
-                >
-                  🚫 Abaikan Semua ({activeTab})
-                </button>
-              </div>
+            {activeTab !== 'DELEGASI' && (
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl text-xs border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-700 dark:text-slate-300">Aksi Masal ({activeTab}):</span>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkSetAction(activeTab, 'CHECK_ALL')}
+                    className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Centang Semua ({activeTab})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBulkSetAction(activeTab, 'UNCHECK_ALL')}
+                    className="px-2.5 py-1 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                  >
+                    🚫 Abaikan Semua ({activeTab})
+                  </button>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-                  Check/Uncheck tersimpan otomatis untuk pengujian selanjutnya
-                </span>
-                <button
-                  type="button"
-                  onClick={handleResetSavedPreferences}
-                  className="px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 font-medium underline cursor-pointer"
-                  title="Hapus memori pilihan yang tersimpan di browser dan kembalikan ke default auto-match"
-                >
-                  Reset Memori Pilihan
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                    Check/Uncheck tersimpan otomatis untuk pengujian selanjutnya
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleResetSavedPreferences}
+                    className="px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 font-medium underline cursor-pointer"
+                    title="Hapus memori pilihan yang tersimpan di browser dan kembalikan ke default auto-match"
+                  >
+                    Reset Memori Pilihan
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* TAB CONTENT TABLES */}
             <div className="max-h-80 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl">
@@ -1188,6 +1247,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                       .map((s) => {
                         const currentMap = subjectMappings[s.asc_id] || { action: 'CREATE', asc_id: s.asc_id, name: s.name };
                         const isIgnored = currentMap.action === 'IGNORE';
+                        const isUnitOfParent = currentMap.action === 'UNIT_OF_PARENT';
                         return (
                           <tr key={s.asc_id} className={cn("hover:bg-slate-50 dark:hover:bg-slate-800/50", isIgnored && "opacity-60 bg-slate-50/50 dark:bg-slate-950/20")}>
                             <td className="py-2.5 px-3 text-center">
@@ -1220,6 +1280,10 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                                 <Badge className="bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 text-[10px]">
                                   🚫 Diabaikan (Jangan Impor)
                                 </Badge>
+                              ) : isUnitOfParent ? (
+                                <Badge className="bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 text-[10px]">
+                                  🔗 Unit dari Mapel Induk Dapodik
+                                </Badge>
                               ) : s.match_status === 'EXACT_MATCH' ? (
                                 <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px]">
                                   ✓ Cocok di DB Master ({s.matched_db_name})
@@ -1230,19 +1294,37 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                                 </Badge>
                               )}
                             </td>
-                            <td className="py-2.5 px-4">
+                            <td className="py-2.5 px-4 space-y-2">
                               <select
-                                value={isIgnored ? '__IGNORE__' : currentMap.target_id || '__CREATE__'}
+                                value={
+                                  isIgnored
+                                    ? '__IGNORE__'
+                                    : isUnitOfParent
+                                    ? '__UNIT_OF_PARENT__'
+                                    : currentMap.target_id || '__CREATE__'
+                                }
                                 onChange={(e) => {
                                   const val = e.target.value;
                                   setSubjectMappings(prev => {
                                     const next = { ...prev };
                                     if (val === '__IGNORE__') {
-                                      next[s.asc_id] = { ...next[s.asc_id], target_id: undefined, action: 'IGNORE' };
+                                      next[s.asc_id] = { ...next[s.asc_id], target_id: undefined, parent_mapel_id: undefined, action: 'IGNORE' };
                                     } else if (val === '__CREATE__') {
-                                      next[s.asc_id] = { ...next[s.asc_id], target_id: undefined, action: 'CREATE' };
+                                      next[s.asc_id] = { ...next[s.asc_id], target_id: undefined, parent_mapel_id: undefined, action: 'CREATE' };
+                                    } else if (val === '__UNIT_OF_PARENT__') {
+                                      const fallbackParentId =
+                                        currentMap.parent_mapel_id ||
+                                        s.suggested_parent_mapel_id ||
+                                        analysis.db_subjects[0]?.id;
+                                      next[s.asc_id] = {
+                                        ...next[s.asc_id],
+                                        action: 'UNIT_OF_PARENT',
+                                        parent_mapel_id: fallbackParentId,
+                                        target_id: fallbackParentId,
+                                        unit_name: currentMap.unit_name || s.suggested_unit_name || s.name,
+                                      };
                                     } else {
-                                      next[s.asc_id] = { ...next[s.asc_id], target_id: val, action: 'MATCH' };
+                                      next[s.asc_id] = { ...next[s.asc_id], target_id: val, parent_mapel_id: undefined, action: 'MATCH' };
                                     }
                                     saveMappingsToStorage(teacherMappings, classMappings, next);
                                     return next;
@@ -1252,12 +1334,15 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                                   "w-full text-xs rounded-lg border p-1.5",
                                   isIgnored
                                     ? "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold"
+                                    : isUnitOfParent
+                                    ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 text-indigo-800 dark:text-indigo-200 font-bold"
                                     : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
                                 )}
                               >
                                 <option value="__IGNORE__">🚫 Abaikan / Jangan Impor Mapel Ini</option>
                                 <option value="__CREATE__">➕ Buat Mapel Baru "{s.name}"</option>
-                                <optgroup label="Arahkan ke Master Mapel yang Ada:">
+                                <option value="__UNIT_OF_PARENT__">🔗 Petakan sebagai Unit dari Mapel Induk (Kolaborasi)</option>
+                                <optgroup label="Arahkan Langsung ke Master Mapel yang Ada:">
                                   {analysis.db_subjects.map(dbs => (
                                     <option key={dbs.id} value={dbs.id}>
                                       {dbs.name}
@@ -1265,12 +1350,197 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                                   ))}
                                 </optgroup>
                               </select>
+
+                              {isUnitOfParent && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-2 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800">
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-indigo-700 dark:text-indigo-300 mb-0.5">
+                                      Mapel Induk Dapodik:
+                                    </label>
+                                    <select
+                                      value={currentMap.parent_mapel_id || currentMap.target_id || ''}
+                                      onChange={(e) => {
+                                        const pid = e.target.value;
+                                        setSubjectMappings(prev => {
+                                          const next = {
+                                            ...prev,
+                                            [s.asc_id]: {
+                                              ...prev[s.asc_id],
+                                              action: 'UNIT_OF_PARENT' as const,
+                                              parent_mapel_id: pid,
+                                              target_id: pid,
+                                            },
+                                          };
+                                          saveMappingsToStorage(teacherMappings, classMappings, next);
+                                          return next;
+                                        });
+                                      }}
+                                      className="w-full text-[11px] rounded border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 p-1 text-slate-800 dark:text-slate-100"
+                                    >
+                                      <option value="">-- Pilih Mapel Induk --</option>
+                                      {analysis.db_subjects.map(dbs => (
+                                        <option key={dbs.id} value={dbs.id}>
+                                          {dbs.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-indigo-700 dark:text-indigo-300 mb-0.5">
+                                      Nama Unit / Sub-Materi:
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={currentMap.unit_name || ''}
+                                      placeholder="Misal: CNC, Bubut, Kelistrikan"
+                                      onChange={(e) => {
+                                        const uName = e.target.value;
+                                        setSubjectMappings(prev => {
+                                          const next = {
+                                            ...prev,
+                                            [s.asc_id]: {
+                                              ...prev[s.asc_id],
+                                              unit_name: uName,
+                                            },
+                                          };
+                                          saveMappingsToStorage(teacherMappings, classMappings, next);
+                                          return next;
+                                        });
+                                      }}
+                                      className="w-full text-[11px] rounded border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 p-1 text-slate-800 dark:text-slate-100"
+                                    />
+                                  </div>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         );
                       })}
                   </tbody>
                 </table>
+              )}
+
+              {activeTab === 'DELEGASI' && (
+                <div className="space-y-2 p-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-2 py-1.5 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl text-[11px] text-indigo-900 dark:text-indigo-200">
+                    <span>
+                      Atur <strong>Guru SK Resmi (Dapodik)</strong> &amp; <strong>Pengajar Pelaksana (Delegasi)</strong> atau beri <strong>Nama Unit Kolaborasi</strong> per pelajaran XML. Kosongkan jika mengajar langsung sesuai SK.
+                    </span>
+                    <label className="inline-flex items-center gap-1.5 font-semibold cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={onlyMappedLessons}
+                        onChange={(e) => setOnlyMappedLessons(e.target.checked)}
+                        className="rounded border-slate-300"
+                      />
+                      Hanya tampilkan yg sudah diatur / team teaching
+                    </label>
+                  </div>
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700">
+                      <tr>
+                        <th className="py-2 px-3">Pelajaran XML (Mapel / Kelas / JP)</th>
+                        <th className="py-2 px-3">Guru XML</th>
+                        <th className="py-2 px-3">Guru SK Resmi (Dapodik)</th>
+                        <th className="py-2 px-3">Pengajar Pelaksana (Delegasi)</th>
+                        <th className="py-2 px-3">Unit / Sub-Materi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                      {(analysis.lessons || [])
+                        .filter((l) => {
+                          const sMap = subjectMappings[l.subject_asc_id];
+                          if (sMap?.action === 'IGNORE') return false;
+                          const q = searchQuery.trim().toLowerCase();
+                          if (q) {
+                            const hay = `${l.subject_name} ${l.class_names.join(' ')} ${l.teacher_names.join(' ')}`.toLowerCase();
+                            if (!hay.includes(q)) return false;
+                          }
+                          if (onlyMappedLessons) {
+                            const lm = lessonMappings[l.asc_lesson_id];
+                            const hasCustom = Boolean(lm?.guru_pelaksana_id || lm?.sk_guru_id || lm?.unit_name || l.is_team_teaching || sMap?.action === 'UNIT_OF_PARENT');
+                            if (!hasCustom) return false;
+                          }
+                          return true;
+                        })
+                        .slice(0, 150)
+                        .map((l) => {
+                          const lm = lessonMappings[l.asc_lesson_id] || { asc_lesson_id: l.asc_lesson_id };
+                          const sMap = subjectMappings[l.subject_asc_id];
+                          const defaultUnitName = sMap?.action === 'UNIT_OF_PARENT' ? (sMap.unit_name || sMap.name) : '';
+                          return (
+                            <tr key={l.asc_lesson_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                              <td className="py-2 px-3">
+                                <div className="font-bold text-slate-800 dark:text-slate-100">{l.subject_name}</div>
+                                <div className="text-[10px] text-slate-500">
+                                  {l.class_names.join(', ') || '-'} • {l.periods_per_week} JP
+                                  {l.is_team_teaching && (
+                                    <span className="ml-1.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold">
+                                      Multi-Guru
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-2 px-3 text-[11px] text-slate-600 dark:text-slate-300">
+                                {l.teacher_names.join(', ') || '-'}
+                              </td>
+                              <td className="py-2 px-3">
+                                <select
+                                  value={lm.sk_guru_id || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value || null;
+                                    setLessonMappings(prev => ({
+                                      ...prev,
+                                      [l.asc_lesson_id]: { ...lm, asc_lesson_id: l.asc_lesson_id, sk_guru_id: val },
+                                    }));
+                                  }}
+                                  className="w-full text-[11px] rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1"
+                                >
+                                  <option value="">-- Sesuai Guru XML --</option>
+                                  {analysis.db_teachers.map(dbt => (
+                                    <option key={dbt.id} value={dbt.id}>{dbt.name}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="py-2 px-3">
+                                <select
+                                  value={lm.guru_pelaksana_id || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value || null;
+                                    setLessonMappings(prev => ({
+                                      ...prev,
+                                      [l.asc_lesson_id]: { ...lm, asc_lesson_id: l.asc_lesson_id, guru_pelaksana_id: val },
+                                    }));
+                                  }}
+                                  className="w-full text-[11px] rounded border border-amber-300 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/30 p-1"
+                                >
+                                  <option value="">-- Sama dengan Guru SK --</option>
+                                  {analysis.db_teachers.map(dbt => (
+                                    <option key={dbt.id} value={dbt.id}>{dbt.name}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="py-2 px-3">
+                                <input
+                                  type="text"
+                                  value={lm.unit_name ?? defaultUnitName}
+                                  placeholder={defaultUnitName || 'Unit / Sub-materi'}
+                                  onChange={(e) => {
+                                    const val = e.target.value || null;
+                                    setLessonMappings(prev => ({
+                                      ...prev,
+                                      [l.asc_lesson_id]: { ...lm, asc_lesson_id: l.asc_lesson_id, unit_name: val },
+                                    }));
+                                  }}
+                                  className="w-full text-[11px] rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-1"
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
 
@@ -1418,6 +1688,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                 </div>
                 <div className="text-[11px] text-slate-500 space-y-0.5 border-t border-slate-100 dark:border-slate-800 pt-2 font-medium">
                   <div className="flex justify-between"><span>Sesuai Database:</span> <span className="font-bold text-emerald-600">{executionResult?.total_mapel_matched || 0}</span></div>
+                  <div className="flex justify-between"><span>Unit Induk Dapodik:</span> <span className="font-bold text-indigo-600">{executionResult?.total_mapel_unit_of_parent || 0}</span></div>
                   <div className="flex justify-between"><span>Dibuat Baru:</span> <span className="font-bold text-amber-600">{executionResult?.total_mapel_created || 0}</span></div>
                 </div>
               </div>
@@ -1431,8 +1702,8 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                   {executionResult?.total_cards || 0} <span className="text-xs font-normal text-emerald-600">slot</span>
                 </div>
                 <div className="text-[11px] text-emerald-700 dark:text-emerald-400 space-y-0.5 border-t border-emerald-200 dark:border-emerald-800/60 pt-2 font-medium">
-                  <div className="flex justify-between"><span>Kontrak KBM:</span> <span className="font-bold">{executionResult?.total_kontrak || 0} Kontrak</span></div>
-                  <div className="flex justify-between"><span>Pola Jam Bel:</span> <span className="font-bold">Day-Pattern Sync</span></div>
+                  <div className="flex justify-between"><span>Kontrak &amp; Unit:</span> <span className="font-bold">{executionResult?.total_kontrak || 0} / {executionResult?.total_units_synced || 0}</span></div>
+                  <div className="flex justify-between"><span>Delegasi Aktif:</span> <span className="font-bold">{executionResult?.total_delegated_lessons || 0} Pelajaran</span></div>
                 </div>
               </div>
             </div>

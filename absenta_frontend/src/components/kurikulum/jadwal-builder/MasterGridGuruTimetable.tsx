@@ -156,6 +156,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                             String(nextTeacherSlots[0].kelas_id || '') === String(firstItem.kelas_id || '') &&
                             String(nextTeacherSlots[0].guru_id || '') === String(firstItem.guru_id || '') &&
                             String(nextTeacherSlots[0].mapel_id || '') === String(firstItem.mapel_id || '') &&
+                            String(nextTeacherSlots[0].unit_pengajaran_id || '') === String(firstItem.unit_pengajaran_id || '') &&
                             String(nextTeacherSlots[0].jenis_kegiatan || '').toUpperCase() === String(firstItem.jenis_kegiatan || '').toUpperCase()
                           ) {
                             colSpan++;
@@ -196,7 +197,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                               <div
                                 className={`w-full h-full p-1 rounded-lg border border-l-2 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
                                 style={{ borderLeftColor: mapelStyle?.dotHex }}
-                                title={`${day} Jam ${slotIdx}${colSpan > 1 ? `-${slotIdx + colSpan - 1}` : ''}: ${item.Mapel?.nama_mapel || item.jenis_kegiatan} - Kelas ${item.Kelas?.nama_kelas} (${colSpan} JP)`}
+                                title={`${day} Jam ${slotIdx}${colSpan > 1 ? `-${slotIdx + colSpan - 1}` : ''}: ${item.Mapel?.nama_mapel || item.jenis_kegiatan}${item.UnitPengajaran?.nama_unit ? ` (${item.UnitPengajaran.nama_unit})` : ''} - Kelas ${item.Kelas?.nama_kelas} (${colSpan} JP)`}
                               >
                                 <div className="flex items-center justify-between gap-0.5 px-0.5">
                                   <span className="font-black text-[9px] text-indigo-700 dark:text-indigo-300 truncate leading-none">
@@ -215,6 +216,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                                 </div>
                                 <span className="text-[8px] font-extrabold text-slate-700 dark:text-slate-200 truncate mt-0.5 leading-none">
                                   {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                                  {item.UnitPengajaran?.nama_unit ? ` • ${item.UnitPengajaran.nama_unit}` : ''}
                                 </span>
                               </div>
                             ) : (
@@ -252,6 +254,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                             String(nextTeacherSlots[0].kelas_id || '') === String(firstItem.kelas_id || '') &&
                             String(nextTeacherSlots[0].guru_id || '') === String(firstItem.guru_id || '') &&
                             String(nextTeacherSlots[0].mapel_id || '') === String(firstItem.mapel_id || '') &&
+                            String(nextTeacherSlots[0].unit_pengajaran_id || '') === String(firstItem.unit_pengajaran_id || '') &&
                             String(nextTeacherSlots[0].jenis_kegiatan || '').toUpperCase() === String(firstItem.jenis_kegiatan || '').toUpperCase()
                           ) {
                             colSpan++;
@@ -292,7 +295,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                               <div
                                 className={`w-full h-full p-1.5 rounded-xl border border-l-4 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
                                 style={{ borderLeftColor: mapelStyle?.dotHex }}
-                                title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - Kelas ${item.Kelas?.nama_kelas} (${colSpan} JP)`}
+                                title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan}${item.UnitPengajaran?.nama_unit ? ` (${item.UnitPengajaran.nama_unit})` : ''} - Kelas ${item.Kelas?.nama_kelas} (${colSpan} JP)`}
                               >
                                 <div className="flex items-center justify-between gap-1">
                                   <span className="font-black text-[10px] text-indigo-700 dark:text-indigo-300 truncate">
@@ -306,6 +309,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
                                 </div>
                                 <span className="text-[9px] font-extrabold text-slate-700 dark:text-slate-200 truncate mt-0.5">
                                   {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
+                                  {item.UnitPengajaran?.nama_unit ? ` • ${item.UnitPengajaran.nama_unit}` : ''}
                                 </span>
                               </div>
                             ) : (

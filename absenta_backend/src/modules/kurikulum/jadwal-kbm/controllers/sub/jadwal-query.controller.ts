@@ -320,9 +320,13 @@ export class JadwalQueryController {
       hari: targetHari,
     };
     
-    // If Guru, filter by their own ID. If Siswa, filter by their Kelas.
+    // If Guru, filter by Effective Teacher (guru_pelaksana_id ?? UnitPengajaran.guru_id ?? guru_id). If Siswa, filter by their Kelas.
     if (roleName === RoleName.GURU) {
-      scheduleWhere.guru_id = ctx.guru?.id;
+      scheduleWhere.OR = [
+        { guru_pelaksana_id: ctx.guru?.id },
+        { guru_pelaksana_id: null, UnitPengajaran: { is: { guru_id: ctx.guru?.id } } },
+        { guru_pelaksana_id: null, unit_pengajaran_id: null, guru_id: ctx.guru?.id },
+      ];
     } else {
       scheduleWhere.kelas_id = ctx.kelasId;
     }
@@ -346,6 +350,8 @@ export class JadwalQueryController {
       include: {
         Mapel: { select: { nama_mapel: true, kode_mapel: true } },
         Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+        GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+        UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
         Kelas: { select: { id: true, nama_kelas: true } },
       },
       orderBy: [{ jam_mulai: 'asc' }],
@@ -359,6 +365,8 @@ export class JadwalQueryController {
         include: {
           Mapel: { select: { nama_mapel: true, kode_mapel: true } },
           Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+          GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+          UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
           Kelas: { select: { id: true, nama_kelas: true } },
         },
         orderBy: [{ jam_mulai: 'asc' }],
@@ -732,12 +740,18 @@ export class JadwalQueryController {
         tenant_id: tenantId,
         tahun_pelajaran_id: tahunPelajaran.id,
         semester_id: semester.id,
-        guru_id: targetGuruId,
+        OR: [
+          { guru_pelaksana_id: targetGuruId },
+          { guru_pelaksana_id: null, UnitPengajaran: { is: { guru_id: targetGuruId } } },
+          { guru_pelaksana_id: null, unit_pengajaran_id: null, guru_id: targetGuruId },
+        ],
         ...(hari ? { hari } : {}),
       },
       include: {
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
         Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+        GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+        UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
         Kelas: { select: { id: true, nama_kelas: true } },
       },
       orderBy: [
@@ -763,6 +777,8 @@ export class JadwalQueryController {
       include: {
         Mapel: { select: { nama_mapel: true, kode_mapel: true } },
         Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+        GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+        UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
         Kelas: { select: { id: true, nama_kelas: true } },
       },
       orderBy: [
@@ -826,6 +842,7 @@ export class JadwalQueryController {
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
         Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+        UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
         Kelas: { select: { id: true, nama_kelas: true } },
       },
       orderBy: [

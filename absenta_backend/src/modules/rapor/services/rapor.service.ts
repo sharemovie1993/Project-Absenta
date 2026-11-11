@@ -263,6 +263,7 @@ export class RaporService {
       sumatif_1?: number | null;
       sumatif_2?: number | null;
       sumatif_3?: number | null;
+      sumatif_4?: number | null;
       rata_rata_sumatif?: number | null;
       nilai_akhir_sumatif?: number | null;
     }> = {};
@@ -306,6 +307,7 @@ export class RaporService {
         sumatif_1: null,
         sumatif_2: null,
         sumatif_3: null,
+        sumatif_4: null,
         rata_rata_sumatif: null,
         nilai_akhir_sumatif: null,
       };
@@ -349,6 +351,7 @@ export class RaporService {
         if (n.sumatif_1 !== null && n.sumatif_1 !== undefined) mapelGrades[primaryId].sumatif_1 = n.sumatif_1;
         if (n.sumatif_2 !== null && n.sumatif_2 !== undefined) mapelGrades[primaryId].sumatif_2 = n.sumatif_2;
         if (n.sumatif_3 !== null && n.sumatif_3 !== undefined) mapelGrades[primaryId].sumatif_3 = n.sumatif_3;
+        if (n.sumatif_4 !== null && n.sumatif_4 !== undefined) mapelGrades[primaryId].sumatif_4 = n.sumatif_4;
         if (n.rata_rata_sumatif !== null && n.rata_rata_sumatif !== undefined) mapelGrades[primaryId].rata_rata_sumatif = n.rata_rata_sumatif;
         if (n.nilai_akhir_sumatif !== null && n.nilai_akhir_sumatif !== undefined) mapelGrades[primaryId].nilai_akhir_sumatif = n.nilai_akhir_sumatif;
       } else if (strukturList.length === 0) {
@@ -377,6 +380,7 @@ export class RaporService {
           if (n.sumatif_1 !== null && n.sumatif_1 !== undefined) mapelGrades[targetId].sumatif_1 = n.sumatif_1;
           if (n.sumatif_2 !== null && n.sumatif_2 !== undefined) mapelGrades[targetId].sumatif_2 = n.sumatif_2;
           if (n.sumatif_3 !== null && n.sumatif_3 !== undefined) mapelGrades[targetId].sumatif_3 = n.sumatif_3;
+          if (n.sumatif_4 !== null && n.sumatif_4 !== undefined) mapelGrades[targetId].sumatif_4 = n.sumatif_4;
           if (n.rata_rata_sumatif !== null && n.rata_rata_sumatif !== undefined) mapelGrades[targetId].rata_rata_sumatif = n.rata_rata_sumatif;
           if (n.nilai_akhir_sumatif !== null && n.nilai_akhir_sumatif !== undefined) mapelGrades[targetId].nilai_akhir_sumatif = n.nilai_akhir_sumatif;
         }
@@ -1129,7 +1133,7 @@ export class RaporService {
 
     const studentGradesRaw: Record<
       string,
-      Record<string, { finalScore: number; sumatif1?: number; sumatif2?: number; sumatif3?: number; rataSumatif?: number; nilaiAkhir?: number; CP?: string }>
+      Record<string, { finalScore: number; sumatif1?: number; sumatif2?: number; sumatif3?: number; sumatif4?: number; rataSumatif?: number; nilaiAkhir?: number; CP?: string }>
     > = {};
 
     listSiswa.forEach((s) => {
@@ -1150,6 +1154,7 @@ export class RaporService {
           sumatif1: n.sumatif_1 ?? undefined,
           sumatif2: n.sumatif_2 ?? undefined,
           sumatif3: n.sumatif_3 ?? undefined,
+          sumatif4: n.sumatif_4 ?? undefined,
           rataSumatif: n.rata_rata_sumatif ?? undefined,
           nilaiAkhir: n.nilai_akhir_sumatif ?? undefined,
           CP: n.capaian_kompetensi ?? undefined,

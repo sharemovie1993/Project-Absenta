@@ -15,6 +15,8 @@ export interface GeneratedSlot {
   mapel_id: string;
   mapel_name: string;
   mapel_kode: string;
+  unit_pengajaran_id?: string | null;
+  unit_nama?: string | null;
   guru_id: string | null;
   guru_name: string;
   hari: Hari;
@@ -28,6 +30,8 @@ export interface UnplacedCard {
   kelas_name: string;
   mapel_id: string;
   mapel_name: string;
+  unit_pengajaran_id?: string | null;
+  unit_nama?: string | null;
   guru_id: string | null;
   guru_name: string;
   reason: string;
@@ -127,10 +131,22 @@ export class TimetableSolverService {
       });
     });
 
-    // 4. Fetch Guru-Mapel Assignments with Scopes (Kelas / Jurusan / Global)
+    // 4. Fetch Guru-Mapel Assignments with Scopes (Kelas / Jurusan / Global) & Active UnitPengajaran
     const guruMapels = await prisma.guruMapel.findMany({
       where: { tenant_id: tenantId },
-      select: { guru_id: true, mapel_id: true, kelas_id: true, jurusan_id: true }
+      select: {
+        id: true,
+        guru_id: true,
+        mapel_id: true,
+        kelas_id: true,
+        jurusan_id: true,
+        teaching_mode: true,
+        UnitPengajaran: {
+          where: { tenant_id: tenantId, tahun_pelajaran_id, semester_id, is_active: true },
+          orderBy: [{ urutan: 'asc' }],
+          select: { id: true, nama_unit: true, guru_id: true, jp_alokasi: true },
+        },
+      },
     });
 
     // 5. Fetch Existing JadwalKBM if not overwriting
@@ -140,7 +156,8 @@ export class TimetableSolverService {
         tahun_pelajaran_id,
         semester_id,
         ...(kelas_ids && kelas_ids.length > 0 ? { kelas_id: { in: kelas_ids } } : {})
-      }
+      },
+      include: { UnitPengajaran: { select: { guru_id: true } } },
     });
 
     const classOccupied = new Map<string, boolean>();
@@ -167,9 +184,10 @@ export class TimetableSolverService {
     if (!overwrite_existing) {
       existingJadwal.forEach(j => {
         classOccupied.set(`${j.kelas_id}_${j.hari}_${j.slot_index}`, true);
-        if (j.guru_id) {
-          teacherOccupied.set(`${j.guru_id}_${j.hari}_${j.slot_index}`, true);
-          teacherJpCount.set(j.guru_id, (teacherJpCount.get(j.guru_id) || 0) + 1);
+        const effTeacher = j.guru_pelaksana_id || j.UnitPengajaran?.guru_id || j.guru_id;
+        if (effTeacher) {
+          teacherOccupied.set(`${effTeacher}_${j.hari}_${j.slot_index}`, true);
+          teacherJpCount.set(effTeacher, (teacherJpCount.get(effTeacher) || 0) + 1);
         }
       });
     }
@@ -180,7 +198,7 @@ export class TimetableSolverService {
       include: { Mapel: true }
     });
 
-    // 7. Build Subject-Class Decks (Grouping total JP per subject per class)
+    // 7. Build Subject-Class Decks (Grouping total JP per subject/unit per class)
     interface SubjectDeck {
       id: string;
       kelas_id: string;
@@ -188,6 +206,9 @@ export class TimetableSolverService {
       mapel_id: string;
       mapel_name: string;
       mapel_kode: string;
+      unit_pengajaran_id: string | null;
+      unit_nama: string | null;
+      sk_guru_id: string | null;
       total_jp: number;
       eligible_teacher_ids: string[];
     }
@@ -204,26 +225,39 @@ export class TimetableSolverService {
       for (const st of matchingStruktur) {
         if (!st.Mapel) continue;
         
-        // 3-Level Priority Selection for Teachers:
-        // Priority 1: Match specific kelas_id
-        let eligibleTeachers = guruMapels
-          .filter(gm => gm.mapel_id === st.mapel_id && gm.kelas_id === kelas.id)
-          .map(gm => gm.guru_id);
-
-        // Priority 2: Match specific jurusan_id
-        if (eligibleTeachers.length === 0 && kelas.jurusan_id) {
-          eligibleTeachers = guruMapels
-            .filter(gm => gm.mapel_id === st.mapel_id && !gm.kelas_id && gm.jurusan_id === kelas.jurusan_id)
-            .map(gm => gm.guru_id);
+        // 3-Level Priority Selection for GuruMapel:
+        let matchedGms = guruMapels.filter(gm => gm.mapel_id === st.mapel_id && gm.kelas_id === kelas.id);
+        if (matchedGms.length === 0 && kelas.jurusan_id) {
+          matchedGms = guruMapels.filter(gm => gm.mapel_id === st.mapel_id && !gm.kelas_id && gm.jurusan_id === kelas.jurusan_id);
+        }
+        if (matchedGms.length === 0) {
+          matchedGms = guruMapels.filter(gm => gm.mapel_id === st.mapel_id && !gm.kelas_id && !gm.jurusan_id);
         }
 
-        // Priority 3: Fallback to Global (no kelas_id and no jurusan_id)
-        if (eligibleTeachers.length === 0) {
-          eligibleTeachers = guruMapels
-            .filter(gm => gm.mapel_id === st.mapel_id && !gm.kelas_id && !gm.jurusan_id)
-            .map(gm => gm.guru_id);
+        // Check if COLLABORATION GuruMapel exists with > 1 active UnitPengajaran
+        const collabGm = matchedGms.find(gm => gm.teaching_mode === 'COLLABORATION' && gm.UnitPengajaran.length > 1);
+        if (collabGm) {
+          for (const unit of collabGm.UnitPengajaran) {
+            deckCounter++;
+            decks.push({
+              id: `deck_${deckCounter}`,
+              kelas_id: kelas.id,
+              kelas_name: kelas.nama_kelas,
+              mapel_id: st.mapel_id,
+              mapel_name: st.Mapel.nama_mapel,
+              mapel_kode: st.Mapel.kode_mapel || '',
+              unit_pengajaran_id: unit.id,
+              unit_nama: unit.nama_unit,
+              sk_guru_id: collabGm.guru_id,
+              total_jp: unit.jp_alokasi || 2,
+              eligible_teacher_ids: [unit.guru_id],
+            });
+          }
+          continue;
         }
 
+        const eligibleTeachers = matchedGms.map(gm => gm.guru_id);
+        const firstUnitId = matchedGms[0]?.UnitPengajaran?.[0]?.id || null;
         const totalJp = st.jp_per_minggu || 2;
         deckCounter++;
 
@@ -234,6 +268,9 @@ export class TimetableSolverService {
           mapel_id: st.mapel_id,
           mapel_name: st.Mapel.nama_mapel,
           mapel_kode: st.Mapel.kode_mapel || '',
+          unit_pengajaran_id: firstUnitId,
+          unit_nama: null,
+          sk_guru_id: null,
           total_jp: totalJp,
           eligible_teacher_ids: eligibleTeachers
         });
@@ -425,7 +462,9 @@ export class TimetableSolverService {
               mapel_id: deck.mapel_id,
               mapel_name: deck.mapel_name,
               mapel_kode: deck.mapel_kode,
-              guru_id: assignedTeacherId,
+              unit_pengajaran_id: deck.unit_pengajaran_id,
+              unit_nama: deck.unit_nama,
+              guru_id: deck.sk_guru_id || assignedTeacherId,
               guru_name: assignedTeacherName,
               hari: day,
               slot_index: slotIdx,
@@ -476,7 +515,9 @@ export class TimetableSolverService {
                 mapel_id: deck.mapel_id,
                 mapel_name: deck.mapel_name,
                 mapel_kode: deck.mapel_kode,
-                guru_id: assignedTeacherId,
+                unit_pengajaran_id: deck.unit_pengajaran_id,
+                unit_nama: deck.unit_nama,
+                guru_id: deck.sk_guru_id || assignedTeacherId,
                 guru_name: assignedTeacherName,
                 hari: day,
                 slot_index: slotIdx,
@@ -495,7 +536,9 @@ export class TimetableSolverService {
               kelas_name: deck.kelas_name,
               mapel_id: deck.mapel_id,
               mapel_name: deck.mapel_name,
-              guru_id: assignedTeacherId,
+              unit_pengajaran_id: deck.unit_pengajaran_id,
+              unit_nama: deck.unit_nama,
+              guru_id: deck.sk_guru_id || assignedTeacherId,
               guru_name: assignedTeacherName,
               reason: deck.eligible_teacher_ids.length === 0 
                 ? 'Belum ada guru yang dipetakan untuk mapel ini' 
@@ -553,6 +596,7 @@ export class TimetableSolverService {
           semester_id,
           kelas_id: s.kelas_id,
           mapel_id: s.mapel_id,
+          unit_pengajaran_id: s.unit_pengajaran_id || undefined,
           guru_id: s.guru_id || undefined,
           hari: s.hari,
           slot_index: s.slot_index,

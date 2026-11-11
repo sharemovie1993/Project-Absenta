@@ -52,7 +52,11 @@ interface Ticket {
   _count?: { messages: number };
 }
 
-export const Tickets: React.FC = React.memo(() => {
+export interface TicketsProps {
+  hideLayout?: boolean;
+}
+
+export const Tickets: React.FC<TicketsProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const isMobile = useIsMobile();
@@ -338,13 +342,15 @@ export const Tickets: React.FC = React.memo(() => {
     >
       <InfraErrorBoundary>
         <AcademicPageLayout
-          title="Pusat Aduan & Bantuan Koperasi"
+          title={hideLayout ? undefined : "Pusat Aduan & Bantuan Koperasi"}
           description={
-            canManage && activeTab === 'manage'
-              ? 'Triage, monitor respon SLA, dan selesaikan keluhan serta pertanyaan seluruh anggota koperasi.'
-              : 'Pantau riwayat keluhan, ajukan bantuan, dan cek balasan dari pengurus koperasi.'
+            hideLayout
+              ? undefined
+              : canManage && activeTab === 'manage'
+                ? 'Triage, monitor respon SLA, dan selesaikan keluhan serta pertanyaan seluruh anggota koperasi.'
+                : 'Pantau riwayat keluhan, ajukan bantuan, dan cek balasan dari pengurus koperasi.'
           }
-          breadcrumbs={breadcrumbs}
+          breadcrumbs={hideLayout ? undefined : breadcrumbs}
           hardeningModuleKey="coop_tickets"
           topSlot={
             <div className="flex items-center justify-end gap-2">
@@ -359,7 +365,7 @@ export const Tickets: React.FC = React.memo(() => {
               </Button>
             </div>
           }
-          instruction={{
+          instruction={hideLayout ? undefined : {
             title: canManage && activeTab === 'manage' ? 'Panduan Pengurus Aduan' : 'Panduan Aduan Anggota',
             description: canManage && activeTab === 'manage'
               ? 'Kelola tiket yang masuk dari seluruh anggota koperasi dengan respon cepat dan tanggap.'

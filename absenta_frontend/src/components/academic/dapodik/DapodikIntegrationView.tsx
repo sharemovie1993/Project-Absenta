@@ -154,6 +154,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     queryFn: () => getDapodikStudentComparison(compareOptions, false, sourceMode),
     enabled: Boolean(configData?.data?.is_configured),
     staleTime: 5 * 60 * 1000, // 5 menit cache di client
+    retry: false,
   });
 
   const primaryServerIp = serverInfoData?.data?.primaryIp || '10.10.10.116';
@@ -164,13 +165,24 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     const toastId = toast.loading('Sedang menghubungi Web Service Dapodik port 5774...');
     try {
       const res = await getDapodikStudentComparison(compareOptions, true, 'LIVE');
-      // Perbarui cache TanStack Query
-      queryClient.setQueryData(['dapodik-student-comparison', compareOptions, sourceMode], res);
+      // Perbarui cache TanStack Query untuk mode LIVE dan sinkronkan mode tampilan
+      queryClient.setQueryData(['dapodik-student-comparison', compareOptions, 'LIVE'], res);
+      if (sourceMode !== 'LIVE') {
+        setSourceMode('LIVE');
+      }
       queryClient.invalidateQueries({ queryKey: ['dapodik-config'] });
-      toast.success(
-        `Berhasil menarik ${res.data.summary.totalDapodik} data siswa dari Dapodik & disimpan ke Staging Platform!`,
-        { id: toastId }
-      );
+
+      if (res.data.summary.totalDapodik > 0) {
+        toast.success(
+          `Berhasil menarik ${res.data.summary.totalDapodik} data siswa dari Dapodik & disimpan ke Staging Platform!`,
+          { id: toastId }
+        );
+      } else {
+        toast.warning(
+          'Web Service Dapodik merespons 0 data siswa. Periksa NPSN, semester aktif, atau status data di aplikasi Dapodik.',
+          { id: toastId }
+        );
+      }
     } catch (err: any) {
       toast.error(
         err?.response?.data?.message || err?.message || 'Gagal menarik data dari Web Service Dapodik',
@@ -524,16 +536,16 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
           {/* ═══════════════════════════════════════════════════════════════════
               1. HEADER UTAMA RAMPING (ZERO-NOISE & HIGH-DENSITY ACTION STRIP)
           ═══════════════════════════════════════════════════════════════════ */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs text-xs">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs text-xs">
             {/* Sisi Kiri: Status Lembaga & Snapshot */}
             <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0 max-w-full">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 <span className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[240px]">
                   {configForm.school_name || `NPSN ${configForm.npsn}`}
                 </span>
-                <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
-                <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+                <span className="text-slate-300 dark:text-slate-700 hidden sm:inline shrink-0">•</span>
+                <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline truncate">
                   {configForm.dapodik_host}
                 </span>
               </div>
@@ -650,6 +662,26 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
               </Button>
             </div>
           </div>
+
+          {cacheInfo?.fallbackReason && (
+            <div className="flex items-start justify-between gap-3 px-3.5 py-2 rounded-xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Mode Live gagal, otomatis menampilkan Snapshot Staging Platform: </span>
+                  <span className="text-amber-800 dark:text-amber-300">{cacheInfo.fallbackReason}</span>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsConnectionModalOpen(true)}
+                className="h-6 px-2 text-[11px] shrink-0 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 hover:bg-amber-100/70"
+              >
+                Cek Koneksi &amp; IP
+              </Button>
+            </div>
+          )}
 
           {/* ═══════════════════════════════════════════════════════════════════
               2. BENTO STATS CARDS (RINGKAS & ZERO NOISE)
@@ -935,10 +967,18 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
               <div className="p-8 text-center space-y-3">
                 <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto" />
                 <h4 className="font-bold text-sm text-slate-900 dark:text-white">Gagal Memuat Komparasi Data</h4>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                <p className="text-xs text-slate-500 max-w-lg mx-auto">
                   {(comparisonError as any)?.response?.data?.message || (comparisonError as any)?.message || 'Terjadi kesalahan sistem.'}
                 </p>
-                <div className="flex items-center justify-center gap-2 pt-1">
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsConnectionModalOpen(true)}
+                    className="h-7 text-xs gap-1.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300"
+                  >
+                    <Key className="w-3.5 h-3.5" /> Atur Koneksi &amp; Whitelist IP
+                  </Button>
                   {sourceMode === 'LIVE' && (
                     <Button
                       size="sm"

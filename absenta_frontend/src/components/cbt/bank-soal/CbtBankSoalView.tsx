@@ -227,6 +227,17 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                 <Badge variant="outline" className="text-[10px] font-bold">
                   Tingkat {row.tingkat}
                 </Badge>
+                {row.kolaborasi_badge && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    <Users size={10} />
+                    <span>{row.kolaborasi_badge}</span>
+                  </span>
+                )}
+                {row.UnitPengajaran && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                    Unit: {row.UnitPengajaran.nama_unit}
+                  </span>
+                )}
                 {isFromColleague ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60">
                     <Users size={10} />
@@ -260,8 +271,15 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         label: 'Mata Pelajaran',
         className: 'min-w-[180px]',
         render: (_val: unknown, row: CbtBankSoal) => (
-          <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-            {row.Mapel?.nama_mapel || '-'}
+          <div className="space-y-0.5">
+            <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              {row.display_mapel || row.Mapel?.nama_mapel || '-'}
+            </div>
+            {row.UnitPengajaran?.Guru?.nama_guru && (
+              <div className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                Pengampu Unit: {row.UnitPengajaran.Guru.nama_guru}
+              </div>
+            )}
           </div>
         ),
       },
@@ -308,6 +326,11 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         className: 'min-w-[220px] text-right',
         render: (_val: unknown, row: CbtBankSoal) => {
           const isFromColleague = Boolean(currentGuruId && row.guru_id !== currentGuruId);
+          const isContributor = Boolean(
+            currentGuruId &&
+            row.Kontributor?.some((c) => c.guru_id === currentGuruId && c.can_edit_soal !== false)
+          );
+          const canManageSoal = !readOnly && (!isFromColleague || isContributor);
           const questionCount = row.jumlah_soal || row._count?.Soal || 0;
           return (
             <div className="flex items-center justify-end gap-1 flex-nowrap" onClick={(e) => e.stopPropagation()}>
@@ -322,7 +345,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                 className="text-xs h-7 px-2.5 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold rounded-lg cursor-pointer flex items-center gap-1"
               >
                 <Eye size={13} />
-                <span>{isFromColleague || readOnly ? 'Lihat Soal' : 'Kelola Soal'}</span>
+                <span>{canManageSoal ? (isFromColleague ? 'Kontribusi Soal' : 'Kelola Soal') : 'Lihat Soal'}</span>
               </Button>
 
               {!readOnly && !isFromColleague && questionCount > 0 && (
@@ -464,6 +487,11 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           renderCard={(item: CbtBankSoal) => {
             const isSharedBank = item.status === 'PUBLISHED';
             const isFromColleague = Boolean(currentGuruId && item.guru_id !== currentGuruId);
+            const isContributor = Boolean(
+              currentGuruId &&
+              item.Kontributor?.some((c) => c.guru_id === currentGuruId && c.can_edit_soal !== false)
+            );
+            const canManageSoal = !readOnly && (!isFromColleague || isContributor);
             const questionCount = item.jumlah_soal || item._count?.Soal || 0;
 
             return (
@@ -481,6 +509,16 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                         Tingkat {item.tingkat}
                       </span>
+                      {item.kolaborasi_badge && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          {item.kolaborasi_badge}
+                        </span>
+                      )}
+                      {item.UnitPengajaran && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                          Unit: {item.UnitPengajaran.nama_unit}
+                        </span>
+                      )}
                     </div>
                     <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mt-1 leading-tight line-clamp-2">
                       {item.judul}
@@ -517,7 +555,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                       {isFromColleague ? `Penyusun: ${item.Guru?.nama_guru || 'Koordinator MGMP'}` : 'Mata Pelajaran'}
                     </span>
                     <p className="font-semibold text-slate-800 dark:text-slate-200 truncate mt-0.5">
-                      {item.Mapel?.nama_mapel || '-'}
+                      {item.display_mapel || item.Mapel?.nama_mapel || '-'}
                     </p>
                   </div>
                   <div className="text-right shrink-0 pl-2.5 border-l border-slate-200 dark:border-slate-700">
@@ -552,7 +590,9 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                       className="w-full py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                     >
                       <Eye size={14} />
-                      <span>Lihat Butir Soal ({questionCount} Soal)</span>
+                      <span>
+                        {canManageSoal ? 'Kontribusi & Kelola Soal' : `Lihat Butir Soal (${questionCount} Soal)`}
+                      </span>
                     </button>
                   </div>
                 ) : (
@@ -674,7 +714,14 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
             setSelectedBankSoal(null);
           }}
           bankSoal={selectedBankSoal}
-          readOnly={readOnly || Boolean(currentGuruId && selectedBankSoal.guru_id !== currentGuruId)}
+          readOnly={
+            readOnly ||
+            Boolean(
+              currentGuruId &&
+              selectedBankSoal.guru_id !== currentGuruId &&
+              !selectedBankSoal.Kontributor?.some((c) => c.guru_id === currentGuruId && c.can_edit_soal !== false)
+            )
+          }
           onAktifkanUjian={(b) => {
             setIsDetailModalOpen(false);
             handleOpenJadwalModal(b);

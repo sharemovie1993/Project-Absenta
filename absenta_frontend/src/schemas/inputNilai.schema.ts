@@ -7,6 +7,7 @@ export const ScoreInputSchema = z.object({
   sumatif_1: z.union([z.number(), z.string(), z.null()]).optional(),
   sumatif_2: z.union([z.number(), z.string(), z.null()]).optional(),
   sumatif_3: z.union([z.number(), z.string(), z.null()]).optional(),
+  sumatif_4: z.union([z.number(), z.string(), z.null()]).optional(),
   sumatif_akhir: z.union([z.number(), z.string(), z.null()]).optional(),
   deskripsi_cp: z.string().nullable().optional(),
   nilai: z.union([z.number(), z.string(), z.null()]).optional(),

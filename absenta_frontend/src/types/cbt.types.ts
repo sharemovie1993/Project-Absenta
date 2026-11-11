@@ -8,10 +8,55 @@ export interface OpsiJawaban {
   gambar_url?: string | null;
 }
 
+export interface CbtUnitPengajaranSummary {
+  id: string;
+  nama_unit: string;
+  kode_unit?: string | null;
+  guru_id?: string | null;
+  Guru?: {
+    id: string;
+    nama_guru: string;
+    nip?: string | null;
+  } | null;
+}
+
+export interface CbtBankSoalKontributor {
+  id: string;
+  bank_soal_id: string;
+  guru_id: string;
+  unit_pengajaran_id?: string | null;
+  peran?: 'KOORDINATOR' | 'KONTRIBUTOR' | string;
+  can_edit_soal?: boolean;
+  Guru?: {
+    id: string;
+    nama_guru: string;
+    nip?: string | null;
+  } | null;
+  UnitPengajaran?: {
+    id: string;
+    nama_unit: string;
+    kode_unit?: string | null;
+  } | null;
+}
+
+export interface CbtBankContributorsResponse {
+  bank_soal_id: string;
+  contributors: CbtBankSoalKontributor[];
+  eligible_units: CbtUnitPengajaranSummary[];
+  delegated_teachers: Array<{
+    guru_id: string;
+    nama_guru: string;
+    nip?: string | null;
+    unit_pengajaran_id?: string | null;
+    nama_unit?: string | null;
+  }>;
+}
+
 export interface CbtSoal {
   id: string;
   tenant_id?: string;
   bank_soal_id: string;
+  unit_pengajaran_id?: string | null;
   nomor_urut: number;
   jenis_soal: 'PG';
   konten_pertanyaan: string;
@@ -22,6 +67,7 @@ export interface CbtSoal {
   pembahasan?: string | null;
   created_at?: string;
   updated_at?: string;
+  UnitPengajaran?: CbtUnitPengajaranSummary | null;
 }
 
 export interface CbtBankSoal {
@@ -29,6 +75,9 @@ export interface CbtBankSoal {
   tenant_id?: string;
   guru_id: string;
   mapel_id: string;
+  tahun_pelajaran_id?: string | null;
+  semester_id?: string | null;
+  unit_pengajaran_id?: string | null;
   kode_bank: string;
   judul: string;
   tingkat: 'X' | 'XI' | 'XII' | 'SEMUA';
@@ -50,14 +99,31 @@ export interface CbtBankSoal {
     id: string;
     nama_mapel: string;
     kode_mapel: string;
+    teaching_mode?: 'SINGLE' | 'COLLABORATION';
   };
+  UnitPengajaran?: CbtUnitPengajaranSummary | null;
+  Kontributor?: CbtBankSoalKontributor[];
+  is_kolaborasi_mapel?: boolean;
+  is_kolaborasi_resmi?: boolean;
+  is_kuis_unit?: boolean;
+  display_mapel?: string;
+  kolaborasi_badge?: string | null;
+  available_units?: CbtUnitPengajaranSummary[];
+  contributor_guru_ids?: string[];
+  contributors?: Array<{
+    guru_id: string;
+    unit_pengajaran_id?: string | null;
+    peran?: string;
+    can_edit_soal?: boolean;
+  }>;
+  auto_sync_kolaborasi?: boolean;
   _count?: {
     Soal: number;
     JadwalUjian: number;
   };
 }
 
-export type CbtRaporSlot = 'sumatif_1' | 'sumatif_2' | 'sumatif_3' | 'sumatif_akhir';
+export type CbtRaporSlot = 'sumatif_1' | 'sumatif_2' | 'sumatif_3' | 'sumatif_4' | 'sumatif_akhir';
 
 export interface CbtSettingKeamanan {
   lock_device?: boolean;
@@ -110,6 +176,20 @@ export interface CbtJadwalUjian {
   _count?: {
     Peserta: number;
   };
+  display_mapel?: string;
+  kolaborasi_badge?: string | null;
+  is_kolaborasi?: boolean;
+}
+
+export interface CbtPesertaUnitScore {
+  unit_pengajaran_id: string;
+  nama_unit: string;
+  guru_nama?: string | null;
+  benar: number;
+  total_soal: number;
+  bobot_diperoleh: number;
+  bobot_total: number;
+  skor: number;
 }
 
 export interface CbtPesertaUjian {
@@ -151,6 +231,7 @@ export interface CbtPesertaUjian {
       nama_kelas: string;
     } | null;
   };
+  unit_scores?: CbtPesertaUnitScore[];
 }
 
 export interface CbtStudentAnswerItem {
@@ -166,6 +247,11 @@ export interface CbtStudentExamItem {
   id: string;
   nama_sesi: string;
   mapel: string;
+  mapel_induk?: string;
+  unit_pengajaran_id?: string | null;
+  unit_nama?: string | null;
+  is_kolaborasi?: boolean;
+  kolaborasi_badge?: string | null;
   kode_mapel?: string | null;
   kode_bank?: string | null;
   judul_bank: string;

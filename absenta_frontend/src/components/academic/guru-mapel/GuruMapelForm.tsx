@@ -3,18 +3,19 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Alert, ModalFooter } from '../../ui';
-import { Save, X, RefreshCw } from 'lucide-react';
+import { Save, X, RefreshCw, Layers } from 'lucide-react';
 import { getGuruList } from '../../../api/academic/guru.api';
 import { getMapelList } from '../../../api/academic/mapel.api';
 import { getJurusanList } from '../../../api/academic/jurusan.api';
 import { getKelasForDropdown } from '../../../api/dropdown.api';
 import { assignGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
-import type { Guru, Mapel } from '../../../types/academic';
+import type { Guru, Mapel, TeachingMode } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { guruMapelSchema, type GuruMapelFormValues } from '../../../schemas/academic/guru-mapel.schema';
 
 // Modular Sections
 import { GuruMapelAssignmentSection } from './form/GuruMapelAssignmentSection';
+import { UnitPengajaranEditor, type EditableUnitDraft } from './UnitPengajaranEditor';
 
 interface Props {
   onSuccess?: () => void;
@@ -35,10 +36,16 @@ export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
   const [scopeMode, setScopeMode] = useState<'GLOBAL' | 'JURUSAN' | 'KELAS'>('GLOBAL');
   const [scopeJurusanId, setScopeJurusanId] = useState<string>('');
   const [scopeKelasId, setScopeKelasId] = useState<string>('');
+  const [teachingMode, setTeachingMode] = useState<TeachingMode>('SINGLE');
+  const [unitDrafts, setUnitDrafts] = useState<EditableUnitDraft[]>([
+    { nama_unit: 'Sub-Materi 1', guru_id: '', jp_alokasi: 2, target_sumatif_slot: 'sumatif_1', is_active: true },
+    { nama_unit: 'Sub-Materi 2', guru_id: '', jp_alokasi: 2, target_sumatif_slot: 'sumatif_2', is_active: true },
+  ]);
 
   const {
     control,
     handleSubmit,
+    watch,
     formState: { errors }
   } = useForm<GuruMapelFormValues>({
     resolver: zodResolver(guruMapelSchema),
@@ -47,6 +54,7 @@ export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
       mapel_id: ''
     }
   });
+  const watchedGuruId = watch('guru_id');
 
   useEffect(() => {
     const loadOptions = async () => {
@@ -75,10 +83,29 @@ export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
     try {
       setSubmitting(true);
       setError(null);
+      if (teachingMode === 'COLLABORATION') {
+        const missing = unitDrafts.find((u) => !u.guru_id || !u.nama_unit.trim());
+        if (missing) {
+          setError('Setiap unit kolaborasi wajib memiliki Nama Sub-Materi dan Guru Pengampu.');
+          return;
+        }
+      }
+
       const payload = {
         ...data,
         jurusan_id: scopeMode === 'JURUSAN' ? scopeJurusanId || null : null,
         kelas_id: scopeMode === 'KELAS' ? scopeKelasId || null : null,
+        teaching_mode: teachingMode,
+        units:
+          teachingMode === 'COLLABORATION'
+            ? unitDrafts.map((u, idx) => ({
+                nama_unit: u.nama_unit.trim(),
+                guru_id: u.guru_id,
+                jp_alokasi: Number(u.jp_alokasi || 2),
+                target_sumatif_slot: u.target_sumatif_slot || null,
+                urutan: idx + 1,
+              }))
+            : undefined,
       };
       const res = await assignGuruMapel(payload);
       if (res.success) {
@@ -119,6 +146,50 @@ export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
           setScopeKelasId={setScopeKelasId}
           loading={loadingOptions}
         />
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-indigo-500" />
+              <div>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Mode Kolaborasi / Pecah Sub-Materi
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Aktifkan bila 1 mapel Dapodik diajar bersama beberapa guru sub-materi.
+                </p>
+              </div>
+            </div>
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={teachingMode === 'COLLABORATION'}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setTeachingMode(checked ? 'COLLABORATION' : 'SINGLE');
+                  if (checked && watchedGuruId) {
+                    setUnitDrafts((prev) =>
+                      prev.map((u, idx) => (idx === 0 && !u.guru_id ? { ...u, guru_id: watchedGuruId } : u))
+                    );
+                  }
+                }}
+                className="w-4 h-4 accent-indigo-600 rounded"
+              />
+              <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                {teachingMode === 'COLLABORATION' ? 'Aktif' : 'Normal (Single)'}
+              </span>
+            </label>
+          </div>
+
+          {teachingMode === 'COLLABORATION' && (
+            <UnitPengajaranEditor
+              units={unitDrafts}
+              onChange={setUnitDrafts}
+              guruOptions={guruOptions}
+              defaultGuruId={watchedGuruId}
+            />
+          )}
+        </div>
 
         <ModalFooter className="pt-6 border-t border-slate-100 dark:border-slate-800 gap-3">
           <Button

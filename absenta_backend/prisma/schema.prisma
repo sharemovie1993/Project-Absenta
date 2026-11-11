@@ -186,6 +186,8 @@ model Tenant {
   CbtJadwalUjian           CbtJadwalUjian[]
   CbtPesertaUjian          CbtPesertaUjian[]
   DenahSpasial             DenahSpasial[]
+  UnitPengajaran           UnitPengajaran[]
+  CbtBankSoalKontributor   CbtBankSoalKontributor[]
 }
 
 enum BackupStatus {
@@ -794,6 +796,7 @@ model Jurusan {
   StrukturKurikulum     StrukturKurikulum[]
   Siswa                 Siswa[]
   GuruMapel             GuruMapel[]
+  UnitPengajaran        UnitPengajaran[]
   SettingDeskripsiPkl   SettingDeskripsiPkl[]
 
   @@unique([tenant_id, kode])
@@ -849,6 +852,7 @@ model Kelas {
   PrestasiSiswa             PrestasiSiswa[]
   sarprasLocations          SarprasLocation[]
   GuruMapel                 GuruMapel[]
+  UnitPengajaran            UnitPengajaran[]
   RaporSiswa                RaporSiswa[]
   AbsensiKejadianKhusus     AbsensiKejadianKhusus[]
   JurnalWaliKelas           JurnalWaliKelas[]
@@ -916,8 +920,9 @@ model Guru {
   LogAksesGerbang       LogAksesGerbang[]
   GuruTimeOff           GuruTimeOff[]
   JadwalPiketGuru       JadwalPiketGuru[]
-  JadwalKontrakKbm      JadwalKontrakKbm[]
-  PermohonanIzinGuru    PermohonanIzinGuru[]
+  JadwalKontrakKbm         JadwalKontrakKbm[]
+  JadwalKontrakKbmPelaksana JadwalKontrakKbm[]        @relation("JadwalKontrakKbmPelaksana")
+  PermohonanIzinGuru       PermohonanIzinGuru[]
   PermohonanInvalGuru   PermohonanIzinGuru[]       @relation("GuruInvalPermohonan")
 
   Member                 Member?
@@ -927,6 +932,8 @@ model Guru {
   pembinaUtamaUpacara    JadwalPembinaUpacara[]     @relation("PembinaUtamaUpacara")
   pembinaPenggantiUpacara JadwalPembinaUpacara[]    @relation("PembinaPenggantiUpacara")
   CbtBankSoal             CbtBankSoal[]
+  UnitPengajaran          UnitPengajaran[]
+  CbtBankSoalKontributor  CbtBankSoalKontributor[]
 
   @@index([tenant_id])
   @@index([tenant_id, no_rfid])
@@ -954,6 +961,7 @@ model Mapel {
   JadwalKontrakKbm       JadwalKontrakKbm[]
   AlurTujuanPembelajaran AlurTujuanPembelajaran[]
   CbtBankSoal            CbtBankSoal[]
+  UnitPengajaran         UnitPengajaran[]
 
   @@unique([tenant_id, kode_mapel])
   @@index([tenant_id])
@@ -992,6 +1000,8 @@ model TahunPelajaran {
   JadwalKontrakKbm       JadwalKontrakKbm[]
   AlurTujuanPembelajaran AlurTujuanPembelajaran[]
   CbtJadwalUjian         CbtJadwalUjian[]
+  CbtBankSoal            CbtBankSoal[]
+  UnitPengajaran         UnitPengajaran[]
   AcademicPlenoSession   AcademicPlenoSession[]
   SettingDeskripsiPkl    SettingDeskripsiPkl[]
   OrganizationalAssignments OrganizationalAssignment[]
@@ -1031,6 +1041,8 @@ model Semester {
   JadwalKontrakKbm       JadwalKontrakKbm[]
   AlurTujuanPembelajaran AlurTujuanPembelajaran[]
   CbtJadwalUjian         CbtJadwalUjian[]
+  CbtBankSoal            CbtBankSoal[]
+  UnitPengajaran         UnitPengajaran[]
   AcademicPlenoSession   AcademicPlenoSession[]
 
   @@index([tenant_id])
@@ -1210,10 +1222,12 @@ model SesiAbsensi {
   sumber_sesi        SumberSesi      @default(MANUAL)
   jadwal_kbm_id      String?
   jadwal_kegiatan_id String?
+  unit_pengajaran_id String?
   keterangan         String?         @db.Text
   foto_kegiatan      String?         @db.Text
   JadwalKBM          JadwalKBM?      @relation(fields: [jadwal_kbm_id], references: [id])
   JadwalKegiatan     JadwalKegiatan? @relation(fields: [jadwal_kegiatan_id], references: [id])
+  UnitPengajaran     UnitPengajaran? @relation(fields: [unit_pengajaran_id], references: [id], onDelete: SetNull)
   created_at         DateTime        @default(now()) @db.Timestamptz
   updated_at         DateTime        @updatedAt @db.Timestamptz
   created_by_user_id String?
@@ -1237,6 +1251,7 @@ model SesiAbsensi {
   @@index([tenant_id, kelas_id, tahun_pelajaran_id, semester_id])
   @@index([tenant_id, created_by_user_id])
   @@index([tenant_id, tahun_pelajaran_id])
+  @@index([unit_pengajaran_id])
 }
 
 // SiswaAkademik (Registrasi Siswa)
@@ -1867,8 +1882,13 @@ model PlanChangeRequest {
   @@index([status, effective_date])
 }
 
+enum TeachingMode {
+  SINGLE
+  COLLABORATION
+}
+
 model GuruMapel {
-  id                 String   @id @default(uuid())
+  id                 String       @id @default(uuid())
   tenant_id          String
   guru_id            String
   mapel_id           String
@@ -1876,15 +1896,17 @@ model GuruMapel {
   jurusan_id         String?
   tahun_pelajaran_id String?
   semester_id        String?
-  created_at         DateTime @default(now())
+  teaching_mode      TeachingMode @default(SINGLE)
+  created_at         DateTime     @default(now())
 
-  Guru           Guru            @relation(fields: [guru_id], references: [id])
-  Mapel          Mapel           @relation(fields: [mapel_id], references: [id])
-  Kelas          Kelas?          @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
-  Jurusan        Jurusan?        @relation(fields: [jurusan_id], references: [id], onDelete: Cascade)
-  TahunPelajaran TahunPelajaran? @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
-  Semester       Semester?       @relation(fields: [semester_id], references: [id], onDelete: Cascade)
-  Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Guru           Guru             @relation(fields: [guru_id], references: [id])
+  Mapel          Mapel            @relation(fields: [mapel_id], references: [id])
+  Kelas          Kelas?           @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
+  Jurusan        Jurusan?         @relation(fields: [jurusan_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran?  @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+  Semester       Semester?        @relation(fields: [semester_id], references: [id], onDelete: Cascade)
+  Tenant         Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  UnitPengajaran UnitPengajaran[]
 
   @@index([tenant_id])
   @@index([tenant_id, guru_id])
@@ -1893,6 +1915,47 @@ model GuruMapel {
   @@index([tenant_id, tahun_pelajaran_id, semester_id])
   @@index([kelas_id])
   @@index([jurusan_id])
+}
+
+model UnitPengajaran {
+  id                  String   @id @default(uuid())
+  tenant_id           String
+  tahun_pelajaran_id  String
+  semester_id         String
+  guru_mapel_id       String
+  mapel_id            String
+  kelas_id            String?
+  jurusan_id          String?
+  nama_unit           String?
+  guru_id             String
+  jp_alokasi          Int      @default(2)
+  target_sumatif_slot String?
+  urutan              Int      @default(1)
+  is_active           Boolean  @default(true)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  Tenant                 Tenant                   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran         TahunPelajaran           @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+  Semester               Semester                 @relation(fields: [semester_id], references: [id], onDelete: Cascade)
+  GuruMapel              GuruMapel                @relation(fields: [guru_mapel_id], references: [id], onDelete: Cascade)
+  Mapel                  Mapel                    @relation(fields: [mapel_id], references: [id], onDelete: Cascade)
+  Kelas                  Kelas?                   @relation(fields: [kelas_id], references: [id], onDelete: SetNull)
+  Jurusan                Jurusan?                 @relation(fields: [jurusan_id], references: [id], onDelete: SetNull)
+  Guru                   Guru                     @relation(fields: [guru_id], references: [id])
+  JadwalKBM              JadwalKBM[]
+  JadwalKontrakKbm       JadwalKontrakKbm[]
+  SesiAbsensi            SesiAbsensi[]
+  CbtBankSoal            CbtBankSoal[]
+  CbtSoal                CbtSoal[]
+  CbtBankSoalKontributor CbtBankSoalKontributor[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, tahun_pelajaran_id, semester_id])
+  @@index([tenant_id, tahun_pelajaran_id, semester_id, mapel_id])
+  @@index([guru_mapel_id])
+  @@index([guru_id])
+  @@index([kelas_id])
 }
 
 model GuruTimeOff {
@@ -2372,12 +2435,13 @@ model JadwalKBM {
   jam_selesai String // Format "HH:mm" (24-hour)
 
   // Konten
-  mapel_id          String? // Nullable
-  guru_id           String? // Nullable (Guru SK / Resmi)
-  guru_pelaksana_id String? // Nullable (Pengajar Riil Lapangan / Delegasi)
-  jenis_kegiatan    String  @default("KBM")
-  ruangan_id        String? // Nullable (referensi ke MasterRuangan)
-  asc_id            String? // Referensi card ID dari XML aSc TimeTables
+  mapel_id           String? // Nullable
+  unit_pengajaran_id String? // Referensi ke UnitPengajaran (Level 1-3)
+  guru_id            String? // Nullable (Guru SK / Resmi)
+  guru_pelaksana_id  String? // Nullable (Pengajar Riil Lapangan / Delegasi)
+  jenis_kegiatan     String  @default("KBM")
+  ruangan_id         String? // Nullable (referensi ke MasterRuangan)
+  asc_id             String? // Referensi card ID dari XML aSc TimeTables
 
   // Metadata
   created_at         DateTime @default(now())
@@ -2385,25 +2449,26 @@ model JadwalKBM {
   created_by_user_id String?
 
   // Relations
-  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id])
-  Semester       Semester       @relation(fields: [semester_id], references: [id])
-  Kelas          Kelas          @relation(fields: [kelas_id], references: [id])
-  Mapel          Mapel?         @relation(fields: [mapel_id], references: [id])
-  Guru           Guru?          @relation(fields: [guru_id], references: [id])
-  GuruPelaksana  Guru?          @relation("JadwalKBMPelaksana", fields: [guru_pelaksana_id], references: [id])
-  MasterRuangan  MasterRuangan? @relation(fields: [ruangan_id], references: [id])
+  Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran  @relation(fields: [tahun_pelajaran_id], references: [id])
+  Semester       Semester        @relation(fields: [semester_id], references: [id])
+  Kelas          Kelas           @relation(fields: [kelas_id], references: [id])
+  Mapel          Mapel?          @relation(fields: [mapel_id], references: [id])
+  UnitPengajaran UnitPengajaran? @relation(fields: [unit_pengajaran_id], references: [id], onDelete: SetNull)
+  Guru           Guru?           @relation(fields: [guru_id], references: [id])
+  GuruPelaksana  Guru?           @relation("JadwalKBMPelaksana", fields: [guru_pelaksana_id], references: [id])
+  MasterRuangan  MasterRuangan?  @relation(fields: [ruangan_id], references: [id])
 
   // Relation ke Instance Sesi (One-to-Many)
   SesiAbsensi SesiAbsensi[]
 
   // Constraints
   @@unique([kelas_id, tahun_pelajaran_id, semester_id, hari, slot_index])
-  @@unique([guru_id, tahun_pelajaran_id, semester_id, hari, jam_mulai, jam_selesai])
   @@index([tenant_id, tahun_pelajaran_id, semester_id])
   @@index([tenant_id, tahun_pelajaran_id, semester_id, guru_id])
   @@index([tenant_id, tahun_pelajaran_id, semester_id, kelas_id])
   @@index([tenant_id, guru_id, mapel_id])
+  @@index([unit_pengajaran_id])
   @@index([kelas_id, hari])
   @@index([guru_id, hari])
 }
@@ -2434,7 +2499,9 @@ model JadwalKontrakKbm {
   semester_id        String
   kelas_id           String
   guru_id            String?
+  guru_pelaksana_id  String?
   mapel_id           String?
+  unit_pengajaran_id String?
   ruangan_id         String?
 
   jumlah_kartu  Int     @default(1)
@@ -2448,17 +2515,20 @@ model JadwalKontrakKbm {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id])
-  Semester       Semester       @relation(fields: [semester_id], references: [id])
-  Kelas          Kelas          @relation(fields: [kelas_id], references: [id])
-  Mapel          Mapel?         @relation(fields: [mapel_id], references: [id])
-  Guru           Guru?          @relation(fields: [guru_id], references: [id])
-  MasterRuangan  MasterRuangan? @relation(fields: [ruangan_id], references: [id])
+  Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran  @relation(fields: [tahun_pelajaran_id], references: [id])
+  Semester       Semester        @relation(fields: [semester_id], references: [id])
+  Kelas          Kelas           @relation(fields: [kelas_id], references: [id])
+  Mapel          Mapel?          @relation(fields: [mapel_id], references: [id])
+  UnitPengajaran UnitPengajaran? @relation(fields: [unit_pengajaran_id], references: [id], onDelete: SetNull)
+  Guru           Guru?           @relation(fields: [guru_id], references: [id])
+  GuruPelaksana  Guru?           @relation("JadwalKontrakKbmPelaksana", fields: [guru_pelaksana_id], references: [id])
+  MasterRuangan  MasterRuangan?  @relation(fields: [ruangan_id], references: [id])
 
   @@index([tenant_id, tahun_pelajaran_id, semester_id])
   @@index([tenant_id, kelas_id])
   @@index([tenant_id, guru_id])
+  @@index([unit_pengajaran_id])
 }
 
 model AscImportLog {
@@ -4735,6 +4805,7 @@ model NilaiSiswa {
   sumatif_1           Float?
   sumatif_2           Float?
   sumatif_3           Float?
+  sumatif_4           Float?
   rata_rata_sumatif   Float?
   nilai_akhir_sumatif Float?
   nilai_rapor_final   Float?
@@ -5758,38 +5829,66 @@ enum CbtPesertaStatus {
 }
 
 model CbtBankSoal {
-  id              String        @id @default(uuid())
-  tenant_id       String
-  guru_id         String
-  mapel_id        String
-  kode_bank       String
-  judul           String
-  tingkat         String        // 'X' | 'XI' | 'XII' | 'SEMUA'
-  jurusan         String?       // Nama jurusan atau null untuk semua jurusan
-  jumlah_soal     Int           @default(0)
-  alokasi_menit   Int           @default(90)
-  acak_soal       Boolean       @default(true)
-  acak_opsi       Boolean       @default(true)
-  status          CbtBankStatus @default(DRAFT)
-  created_at      DateTime      @default(now())
-  updated_at      DateTime      @updatedAt
+  id                 String        @id @default(uuid())
+  tenant_id          String
+  guru_id            String
+  mapel_id           String
+  tahun_pelajaran_id String?
+  semester_id        String?
+  unit_pengajaran_id String?
+  kode_bank          String
+  judul              String
+  tingkat            String        // 'X' | 'XI' | 'XII' | 'SEMUA'
+  jurusan            String?       // Nama jurusan atau null untuk semua jurusan
+  jumlah_soal        Int           @default(0)
+  alokasi_menit      Int           @default(90)
+  acak_soal          Boolean       @default(true)
+  acak_opsi          Boolean       @default(true)
+  status             CbtBankStatus @default(DRAFT)
+  created_at         DateTime      @default(now())
+  updated_at         DateTime      @updatedAt
 
-  Tenant          Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Guru            Guru          @relation(fields: [guru_id], references: [id], onDelete: Cascade)
-  Mapel           Mapel         @relation(fields: [mapel_id], references: [id], onDelete: Cascade)
+  Tenant          Tenant                   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Guru            Guru                     @relation(fields: [guru_id], references: [id], onDelete: Cascade)
+  Mapel           Mapel                    @relation(fields: [mapel_id], references: [id], onDelete: Cascade)
+  TahunPelajaran  TahunPelajaran?          @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: SetNull)
+  Semester        Semester?                @relation(fields: [semester_id], references: [id], onDelete: SetNull)
+  UnitPengajaran  UnitPengajaran?          @relation(fields: [unit_pengajaran_id], references: [id], onDelete: SetNull)
   Soal            CbtSoal[]
   JadwalUjian     CbtJadwalUjian[]
+  Kontributor     CbtBankSoalKontributor[]
 
   @@unique([tenant_id, kode_bank])
   @@index([tenant_id])
+  @@index([tenant_id, tahun_pelajaran_id, semester_id])
   @@index([guru_id])
   @@index([mapel_id])
+  @@index([unit_pengajaran_id])
+}
+
+model CbtBankSoalKontributor {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  bank_soal_id       String
+  guru_id            String
+  unit_pengajaran_id String?
+  created_at         DateTime @default(now())
+
+  Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  BankSoal       CbtBankSoal     @relation(fields: [bank_soal_id], references: [id], onDelete: Cascade)
+  Guru           Guru            @relation(fields: [guru_id], references: [id], onDelete: Cascade)
+  UnitPengajaran UnitPengajaran? @relation(fields: [unit_pengajaran_id], references: [id], onDelete: SetNull)
+
+  @@unique([bank_soal_id, guru_id])
+  @@index([tenant_id])
+  @@index([guru_id])
 }
 
 model CbtSoal {
   id                   String       @id @default(uuid())
   tenant_id            String
   bank_soal_id         String
+  unit_pengajaran_id   String?
   nomor_urut           Int          @default(1)
   jenis_soal           CbtJenisSoal @default(PG)
   konten_pertanyaan    String       @db.Text
@@ -5801,12 +5900,14 @@ model CbtSoal {
   created_at           DateTime     @default(now())
   updated_at           DateTime     @updatedAt
 
-  Tenant               Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  BankSoal             CbtBankSoal  @relation(fields: [bank_soal_id], references: [id], onDelete: Cascade)
+  Tenant               Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  BankSoal             CbtBankSoal     @relation(fields: [bank_soal_id], references: [id], onDelete: Cascade)
+  UnitPengajaran       UnitPengajaran? @relation(fields: [unit_pengajaran_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([bank_soal_id])
   @@index([bank_soal_id, nomor_urut])
+  @@index([unit_pengajaran_id])
 }
 
 model CbtJadwalUjian {

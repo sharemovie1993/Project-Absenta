@@ -5,6 +5,7 @@ export interface StudentScoreItem {
   sumatif_1?: number | string | null;
   sumatif_2?: number | string | null;
   sumatif_3?: number | string | null;
+  sumatif_4?: number | string | null;
   sumatif_akhir?: number | string | null;
   deskripsi_cp?: string | null;
   nilai?: number | string | null;

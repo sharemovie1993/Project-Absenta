@@ -6,8 +6,18 @@ export interface EntityMappingInput {
   asc_id: string;
   name: string;
   code?: string;
-  target_id?: string; // Existing DB ID or null if create new
-  action: 'MATCH' | 'CREATE' | 'IGNORE';
+  target_id?: string; // Existing DB ID, or parent_mapel_id when action === 'UNIT_OF_PARENT'
+  parent_mapel_id?: string;
+  unit_name?: string;
+  action: 'MATCH' | 'CREATE' | 'IGNORE' | 'UNIT_OF_PARENT';
+}
+
+export interface LessonMappingInput {
+  asc_lesson_id: string;
+  sk_guru_id?: string | null;
+  guru_pelaksana_id?: string | null;
+  unit_name?: string | null;
+  target_sumatif_slot?: number | null;
 }
 
 export interface ExecuteAscImportInput {
@@ -17,9 +27,19 @@ export interface ExecuteAscImportInput {
   teacher_mappings: EntityMappingInput[];
   class_mappings: EntityMappingInput[];
   subject_mappings: EntityMappingInput[];
+  lesson_mappings?: LessonMappingInput[];
   xml_content: string;
   user_id?: string;
 }
+
+interface SavedMappingHistory {
+  teachers?: Record<string, { action: string; target_id?: string }>;
+  classes?: Record<string, { action: string; target_id?: string }>;
+  subjects?: Record<string, { action: string; target_id?: string; parent_mapel_id?: string; unit_name?: string }>;
+  lessons?: Record<string, LessonMappingInput>;
+}
+
+const ASC_MAPPING_HISTORY_CONFIG_KEY = 'asc_dapodik_mapping_history';
 
 export class AscImporterService {
   private static normalizeName(str: string): string {
@@ -33,6 +53,116 @@ export class AscImporterService {
     if (!name) return null;
     const match = name.match(/\b(TKRO|TKR|TBSM|TSM|TO|TE|TM|TPM|TP|TOI|TAV|TITL|TKJ|TJKT|RPL|PPLG|DKV|AKL|AK|MPLB|OTKP|BDP|PM|KUL|TBG|HTL|PHT|ATPH|APHP)\b/i);
     return match ? match[1].toUpperCase() : null;
+  }
+
+  static async loadMappingHistory(tenantId: string): Promise<SavedMappingHistory> {
+    try {
+      const cfg = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: ASC_MAPPING_HISTORY_CONFIG_KEY },
+        select: { value: true },
+      });
+      if (!cfg?.value) return {};
+      const parsed = JSON.parse(cfg.value);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  static async saveMappingHistory(tenantId: string, input: ExecuteAscImportInput): Promise<void> {
+    try {
+      const existing = await this.loadMappingHistory(tenantId);
+      const history: SavedMappingHistory = {
+        teachers: { ...(existing.teachers || {}) },
+        classes: { ...(existing.classes || {}) },
+        subjects: { ...(existing.subjects || {}) },
+        lessons: { ...(existing.lessons || {}) },
+      };
+
+      for (const tm of input.teacher_mappings || []) {
+        if (tm.action === 'MATCH' && tm.target_id) {
+          const entry = { action: tm.action, target_id: tm.target_id };
+          history.teachers![String(tm.asc_id)] = entry;
+          history.teachers![this.normalizeName(tm.name)] = entry;
+        }
+      }
+      for (const cm of input.class_mappings || []) {
+        if (cm.action === 'MATCH' && cm.target_id) {
+          const entry = { action: cm.action, target_id: cm.target_id };
+          history.classes![String(cm.asc_id)] = entry;
+          history.classes![this.normalizeName(cm.name)] = entry;
+        }
+      }
+      for (const sm of input.subject_mappings || []) {
+        if (sm.action === 'MATCH' || sm.action === 'UNIT_OF_PARENT') {
+          const entry = {
+            action: sm.action,
+            target_id: sm.target_id,
+            parent_mapel_id: sm.parent_mapel_id || (sm.action === 'UNIT_OF_PARENT' ? sm.target_id : undefined),
+            unit_name: sm.unit_name,
+          };
+          history.subjects![String(sm.asc_id)] = entry;
+          history.subjects![this.normalizeName(sm.name)] = entry;
+        }
+      }
+      for (const lm of input.lesson_mappings || []) {
+        if (lm.asc_lesson_id && (lm.guru_pelaksana_id || lm.sk_guru_id || lm.unit_name || lm.target_sumatif_slot)) {
+          history.lessons![String(lm.asc_lesson_id)] = {
+            asc_lesson_id: String(lm.asc_lesson_id),
+            sk_guru_id: lm.sk_guru_id || null,
+            guru_pelaksana_id: lm.guru_pelaksana_id || null,
+            unit_name: lm.unit_name || null,
+            target_sumatif_slot: lm.target_sumatif_slot || null,
+          };
+        }
+      }
+
+      const serialized = JSON.stringify(history);
+      const existingRow = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: ASC_MAPPING_HISTORY_CONFIG_KEY },
+        select: { id: true },
+      });
+      if (existingRow) {
+        await prisma.config.update({ where: { id: existingRow.id }, data: { value: serialized } });
+      } else {
+        await prisma.config.create({
+          data: {
+            tenant_id: tenantId,
+            key: ASC_MAPPING_HISTORY_CONFIG_KEY,
+            value: serialized,
+            description: 'Riwayat pemetaan aSc TimeTables XML Dapodik (unit-to-parent & delegasi)',
+          },
+        });
+      }
+    } catch (err) {
+      console.warn('[AscImporter] Failed to save mapping history:', err);
+    }
+  }
+
+  static detectParentAndUnit(
+    xmlName: string,
+    dbSubjects: Array<{ id: string; nama_mapel: string; kode_mapel?: string | null }>
+  ): { parent_mapel_id: string; parent_mapel_name: string; unit_name: string } | null {
+    const raw = String(xmlName || '').trim();
+    if (!raw) return null;
+
+    // 1. Delimiter pattern: "Parent - Unit", "Parent: Unit", "Parent / Unit", or "Parent (Unit)"
+    const delimMatch = raw.match(/^(.+?)\s*(?:-|:|\/)\s*(.+)$/) || raw.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+    if (delimMatch) {
+      const prefix = delimMatch[1].trim();
+      const suffix = delimMatch[2].trim();
+      const normPrefix = this.normalizeName(prefix);
+      const parent = dbSubjects.find(
+        (m) =>
+          this.normalizeName(m.nama_mapel) === normPrefix ||
+          (m.kode_mapel && this.normalizeName(m.kode_mapel) === normPrefix)
+      );
+      if (parent && suffix) {
+        return { parent_mapel_id: parent.id, parent_mapel_name: parent.nama_mapel, unit_name: suffix };
+      }
+    }
+
+    return null;
   }
 
   static parseXml(xmlContent: string) {
@@ -247,11 +377,14 @@ export class AscImporterService {
   ) {
     const timetable = this.parseXml(xmlContent);
 
-    // 1. Fetch DB master entities
-    const dbGurus = await prisma.guru.findMany({ where: { tenant_id: tenantId } });
-    const dbClasses = await prisma.kelas.findMany({ where: { tenant_id: tenantId }, include: { Jurusan: true } });
-    const dbJurusans = await prisma.jurusan.findMany({ where: { tenant_id: tenantId } });
-    const dbSubjects = await prisma.mapel.findMany({ where: { tenant_id: tenantId } });
+    // 1. Fetch DB master entities & saved Dapodik mapping history
+    const [dbGurus, dbClasses, dbJurusans, dbSubjects, savedHistory] = await Promise.all([
+      prisma.guru.findMany({ where: { tenant_id: tenantId } }),
+      prisma.kelas.findMany({ where: { tenant_id: tenantId }, include: { Jurusan: true } }),
+      prisma.jurusan.findMany({ where: { tenant_id: tenantId } }),
+      prisma.mapel.findMany({ where: { tenant_id: tenantId } }),
+      this.loadMappingHistory(tenantId),
+    ]);
 
     // 1.5. Ambil data registrasi SiswaAkademik aktif untuk konteks tahun pelajaran sasaran
     const studentCountMap = new Map<string, number>();
@@ -405,12 +538,19 @@ export class AscImporterService {
       a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
     );
 
-    // 5. Match Subjects
+    // 5. Match Subjects (including saved UNIT_OF_PARENT history & smart parent/unit detection)
+    const subjectNameMap = new Map<string, string>();
     const subjectAnalysis = xmlSubjectsArr.map((s: any) => {
       const xmlId = String(s.id);
       const xmlName = String(s.name || '');
       const xmlCode = String(s.short || '');
       const normXmlName = this.normalizeName(xmlName);
+      subjectNameMap.set(xmlId, xmlName);
+
+      const saved =
+        savedHistory.subjects?.[xmlId] ||
+        savedHistory.subjects?.[normXmlName] ||
+        null;
 
       const exactMatch = dbSubjects.find(
         (m: any) =>
@@ -419,6 +559,11 @@ export class AscImporterService {
           (m.asc_id && String(m.asc_id) === xmlId)
       );
 
+      const detectedUnit = !exactMatch ? this.detectParentAndUnit(xmlName, dbSubjects) : null;
+      const savedParent = saved?.parent_mapel_id
+        ? dbSubjects.find((m: any) => m.id === saved.parent_mapel_id)
+        : null;
+
       return {
         asc_id: xmlId,
         name: xmlName,
@@ -426,6 +571,41 @@ export class AscImporterService {
         matched_db_id: exactMatch?.id || null,
         matched_db_name: exactMatch?.nama_mapel || null,
         match_status: exactMatch ? 'EXACT_MATCH' : 'NEW_CREATE',
+        saved_action: saved?.action || (detectedUnit ? 'UNIT_OF_PARENT' : null),
+        saved_target_id: saved?.target_id || detectedUnit?.parent_mapel_id || null,
+        saved_parent_mapel_id: savedParent?.id || detectedUnit?.parent_mapel_id || null,
+        saved_unit_name: saved?.unit_name || detectedUnit?.unit_name || null,
+        suggested_parent_mapel_id: detectedUnit?.parent_mapel_id || null,
+        suggested_parent_mapel_name: detectedUnit?.parent_mapel_name || null,
+        suggested_unit_name: detectedUnit?.unit_name || null,
+      };
+    });
+
+    // 6. Build Lesson Analysis (untuk pemetaan SK vs Delegasi & Unit Kolaborasi per Pelajaran)
+    const xmlTeacherNameMap = new Map<string, string>();
+    for (const t of teacherAnalysis) xmlTeacherNameMap.set(t.asc_id, t.name);
+    const xmlClassNameMap = new Map<string, string>();
+    for (const c of classAnalysis) xmlClassNameMap.set(c.asc_id, c.name);
+
+    const lessonAnalysis = xmlLessonsArr.map((les: any) => {
+      const ascLessonId = String(les.id);
+      const classIdsArr = String(les.classids || '').split(',').map(s => s.trim()).filter(Boolean);
+      const teacherIdsArr = String(les.teacherids || '').split(',').map(s => s.trim()).filter(Boolean);
+      const subjectIdStr = String(les.subjectid || '').trim();
+      const savedLesson = savedHistory.lessons?.[ascLessonId] || null;
+
+      return {
+        asc_lesson_id: ascLessonId,
+        subject_asc_id: subjectIdStr,
+        subject_name: subjectNameMap.get(subjectIdStr) || subjectIdStr,
+        class_asc_ids: classIdsArr,
+        class_names: classIdsArr.map((cid) => xmlClassNameMap.get(cid) || cid),
+        teacher_asc_ids: teacherIdsArr,
+        teacher_names: teacherIdsArr.map((tid) => xmlTeacherNameMap.get(tid) || tid),
+        periods_per_week: Number(les.periodsperweek) || Number(les.periodspercard) || 1,
+        periods_per_card: Number(les.periodspercard) || 1,
+        is_team_teaching: teacherIdsArr.length > 1,
+        saved_lesson_mapping: savedLesson,
       };
     });
 
@@ -440,6 +620,8 @@ export class AscImporterService {
       teachers: teacherAnalysis,
       classes: classAnalysis,
       subjects: subjectAnalysis,
+      lessons: lessonAnalysis,
+      has_saved_history: Boolean(savedHistory.subjects || savedHistory.lessons),
       db_teachers: dbGurus.map((g: any) => ({ id: g.id, name: g.nama_guru })),
       db_classes: dbClasses.map((c: any) => {
         const studentCount = studentCountMap.get(c.id) || 0;
@@ -563,10 +745,28 @@ export class AscImporterService {
         }
       }
 
-      // 3. Resolve / Auto-Create Subjects Map
-      const subjectIdMap = new Map<string, string>(); // asc_id -> db_id
+      // 3. Resolve / Auto-Create Subjects Map & UNIT_OF_PARENT Mapping
+      const subjectIdMap = new Map<string, string>(); // asc_id -> db mapel_id (parent Dapodik)
+      const subjectUnitMetaMap = new Map<string, { parentMapelId: string; unitName: string }>();
       for (const sm of input.subject_mappings) {
-        if (sm.action === 'MATCH' && sm.target_id) {
+        if (sm.action === 'UNIT_OF_PARENT') {
+          const parentId = sm.parent_mapel_id || sm.target_id;
+          if (!parentId) {
+            throw new Error(`Mapel "${sm.name}" dipilih sebagai Unit dari Mapel Induk, tetapi Mapel Induk belum dipilih.`);
+          }
+          const parentMapel = await tx.mapel.findFirst({
+            where: { id: parentId, tenant_id: tenantId },
+            select: { id: true },
+          });
+          if (!parentMapel) {
+            throw new Error(`Mapel Induk untuk "${sm.name}" tidak ditemukan pada tenant ini.`);
+          }
+          subjectIdMap.set(String(sm.asc_id), parentMapel.id);
+          subjectUnitMetaMap.set(String(sm.asc_id), {
+            parentMapelId: parentMapel.id,
+            unitName: (sm.unit_name || sm.name || '').trim(),
+          });
+        } else if (sm.action === 'MATCH' && sm.target_id) {
           subjectIdMap.set(String(sm.asc_id), sm.target_id);
         } else if (sm.action === 'CREATE') {
           const existingMapel = await tx.mapel.findFirst({
@@ -701,8 +901,29 @@ export class AscImporterService {
       const xmlSubjectsArr = Array.isArray(xmlSubjectsRaw) ? xmlSubjectsRaw : [xmlSubjectsRaw];
       const xmlLessonsRaw = timetable.lessons?.lesson || [];
       const xmlLessonsArr = Array.isArray(xmlLessonsRaw) ? xmlLessonsRaw : [xmlLessonsRaw];
+      const lessonMappingMap = new Map<string, LessonMappingInput>();
+      for (const lm of input.lesson_mappings || []) {
+        if (lm.asc_lesson_id) lessonMappingMap.set(String(lm.asc_lesson_id), lm);
+      }
+
       const lessonMetaMap = new Map<string, any>(); // asc_lesson_id -> lesson record
       const kontrakBatch: any[] = [];
+
+      // Group unit specs per (kelas_id, parent_mapel_id) to atomically sync GuruMapel & UnitPengajaran
+      interface UnitSpec {
+        kontrakIndices: number[];
+        ascLessonId: string;
+        kelasId: string;
+        mapelId: string;
+        skGuruId: string;
+        unitGuruId: string;
+        pelaksanaGuruId: string | null;
+        unitName: string | null;
+        isCollab: boolean;
+        periodsPerWeek: number;
+        targetSumatifSlot: number | null;
+      }
+      const groupMap = new Map<string, UnitSpec[]>();
 
       for (const les of xmlLessonsArr) {
         const ascLessonId = String(les.id);
@@ -748,7 +969,16 @@ export class AscImporterService {
           }
         }
 
-        const targetTeacherId = teacherIdsArr.map(tId => teacherIdMap.get(tId)).find(Boolean) || null;
+        const lm = lessonMappingMap.get(ascLessonId);
+        const unitMeta = subjectUnitMetaMap.get(subjectIdStr);
+        const xmlGuruId = teacherIdsArr.map(tId => teacherIdMap.get(tId)).find(Boolean) || null;
+        const unitName = (lm?.unit_name ?? unitMeta?.unitName ?? '').trim() || null;
+        const isExplicitCollab = Boolean(unitMeta || lm?.unit_name);
+        const skGuruId = lm?.sk_guru_id || xmlGuruId;
+        const pelaksanaGuruId = lm?.guru_pelaksana_id || null;
+        const unitGuruId = isExplicitCollab ? (xmlGuruId || skGuruId) : skGuruId;
+        const targetTeacherId = unitGuruId || skGuruId;
+
         const targetClassIds = classIdsArr
           .filter(cId => !ignoredClassAscIds.has(cId))
           .map(cId => classIdMap.get(cId))
@@ -770,15 +1000,20 @@ export class AscImporterService {
           subjectIdStr.toUpperCase().includes('PEMBIASAAN') ||
           subjectIdStr.toUpperCase().includes('UPACARA');
 
+        const classUnitMap = new Map<string, string>(); // classId -> unitPengajaranId
+
         for (const targetClassId of targetClassIds) {
           const kontrakId = crypto.randomUUID();
+          const kIdx = kontrakBatch.length;
           kontrakBatch.push({
             id: kontrakId,
             tenant_id: tenantId,
             tahun_pelajaran_id: input.tahun_pelajaran_id,
             semester_id: input.semester_id,
             kelas_id: targetClassId,
-            guru_id: targetTeacherId,
+            guru_id: isExplicitCollab ? (unitGuruId || skGuruId) : skGuruId,
+            guru_pelaksana_id: pelaksanaGuruId,
+            unit_pengajaran_id: null as string | null,
             mapel_id: targetSubjectId,
             jumlah_kartu: countCards,
             durasi_jp: periodsPerCard,
@@ -787,15 +1022,160 @@ export class AscImporterService {
             is_pembiasaan: isPembiasaan,
             asc_lesson_id: ascLessonId,
           });
+
+          if (!isPembiasaan && targetSubjectId && skGuruId && unitGuruId) {
+            const gKey = `${targetClassId}::${targetSubjectId}`;
+            const list = groupMap.get(gKey) || [];
+            list.push({
+              kontrakIndices: [kIdx],
+              ascLessonId,
+              kelasId: targetClassId,
+              mapelId: targetSubjectId,
+              skGuruId,
+              unitGuruId,
+              pelaksanaGuruId,
+              unitName,
+              isCollab: isExplicitCollab,
+              periodsPerWeek,
+              targetSumatifSlot: lm?.target_sumatif_slot ?? null,
+            });
+            groupMap.set(gKey, list);
+          }
         }
 
         lessonMetaMap.set(ascLessonId, {
           classIds: targetClassIds,
           guruId: targetTeacherId,
+          guruPelaksanaId: pelaksanaGuruId,
+          effectiveGuruId: pelaksanaGuruId || targetTeacherId,
           mapelId: targetSubjectId,
           periodsPerCard,
+          periodsPerWeek,
           isPembiasaan,
+          classUnitMap,
         });
+      }
+
+      // 5.5 Upsert GuruMapel & UnitPengajaran per (kelas_id, mapel_id), reusing historical unit IDs
+      let totalUnitsSynced = 0;
+      const kelasMetaMap = new Map<string, { jurusan_id: string | null }>();
+      const allTargetKelasIds = Array.from(new Set(Array.from(groupMap.values()).flatMap((l) => l.map((s) => s.kelasId))));
+      if (allTargetKelasIds.length > 0) {
+        const kelasRows = await tx.kelas.findMany({
+          where: { id: { in: allTargetKelasIds }, tenant_id: tenantId },
+          select: { id: true, jurusan_id: true },
+        });
+        for (const k of kelasRows) kelasMetaMap.set(k.id, { jurusan_id: k.jurusan_id });
+      }
+
+      for (const [, specs] of groupMap.entries()) {
+        const first = specs[0];
+        const distinctUnitKeys = new Set(specs.map((s) => `${(s.unitName || '').toLowerCase()}::${s.unitGuruId}`));
+        const isCollaboration = specs.some((s) => s.isCollab) || distinctUnitKeys.size > 1;
+        const teachingMode = isCollaboration ? 'COLLABORATION' : 'SINGLE';
+        const totalJpGroup = specs.reduce((acc, s) => acc + s.periodsPerWeek, 0);
+
+        // Reuse existing GuruMapel for this (kelas, mapel, TP, semester) when possible
+        let gm = await tx.guruMapel.findFirst({
+          where: {
+            tenant_id: tenantId,
+            mapel_id: first.mapelId,
+            kelas_id: first.kelasId,
+            tahun_pelajaran_id: input.tahun_pelajaran_id,
+            semester_id: input.semester_id,
+          },
+          include: { UnitPengajaran: true },
+        });
+
+        if (!gm) {
+          gm = await tx.guruMapel.create({
+            data: {
+              tenant_id: tenantId,
+              guru_id: first.skGuruId,
+              mapel_id: first.mapelId,
+              kelas_id: first.kelasId,
+              jurusan_id: kelasMetaMap.get(first.kelasId)?.jurusan_id || null,
+              tahun_pelajaran_id: input.tahun_pelajaran_id,
+              semester_id: input.semester_id,
+              alokasi_jam: totalJpGroup,
+              teaching_mode: teachingMode,
+            },
+            include: { UnitPengajaran: true },
+          });
+        } else {
+          gm = await tx.guruMapel.update({
+            where: { id: gm.id },
+            data: {
+              guru_id: first.skGuruId,
+              alokasi_jam: totalJpGroup,
+              teaching_mode: teachingMode,
+            },
+            include: { UnitPengajaran: true },
+          });
+        }
+
+        // Deduplicate unit specs within the same (kelas, mapel) group
+        const existingUnits: any[] = [...(gm.UnitPengajaran || [])];
+        const unitKeyToId = new Map<string, string>();
+        let orderIdx = 1;
+
+        for (const spec of specs) {
+          const uKey = `${(spec.unitName || '').toLowerCase()}::${spec.unitGuruId}`;
+          let resolvedUnitId = unitKeyToId.get(uKey);
+
+          if (!resolvedUnitId) {
+            const matchedExisting = existingUnits.find((eu) => {
+              const euName = String(eu.nama_unit || '').trim().toLowerCase();
+              const specName = String(spec.unitName || '').trim().toLowerCase();
+              if (teachingMode === 'SINGLE' && existingUnits.length === 1 && !specName) return true;
+              return euName === specName && eu.guru_id === spec.unitGuruId;
+            });
+
+            if (matchedExisting) {
+              await tx.unitPengajaran.update({
+                where: { id: matchedExisting.id },
+                data: {
+                  guru_id: spec.unitGuruId,
+                  nama_unit: spec.unitName,
+                  jp_alokasi: spec.periodsPerWeek,
+                  target_sumatif_slot: spec.targetSumatifSlot ?? matchedExisting.target_sumatif_slot,
+                  urutan: orderIdx,
+                  is_active: true,
+                },
+              });
+              resolvedUnitId = matchedExisting.id;
+            } else {
+              const createdUnit = await tx.unitPengajaran.create({
+                data: {
+                  tenant_id: tenantId,
+                  tahun_pelajaran_id: input.tahun_pelajaran_id,
+                  semester_id: input.semester_id,
+                  guru_mapel_id: gm.id,
+                  mapel_id: spec.mapelId,
+                  kelas_id: spec.kelasId,
+                  jurusan_id: kelasMetaMap.get(spec.kelasId)?.jurusan_id || null,
+                  nama_unit: spec.unitName,
+                  guru_id: spec.unitGuruId,
+                  jp_alokasi: spec.periodsPerWeek,
+                  target_sumatif_slot: spec.targetSumatifSlot ?? null,
+                  urutan: orderIdx,
+                  is_active: true,
+                },
+              });
+              existingUnits.push(createdUnit);
+              resolvedUnitId = createdUnit.id;
+            }
+            unitKeyToId.set(uKey, resolvedUnitId!);
+            orderIdx += 1;
+            totalUnitsSynced += 1;
+          }
+
+          for (const kIdx of spec.kontrakIndices) {
+            if (kontrakBatch[kIdx]) kontrakBatch[kIdx].unit_pengajaran_id = resolvedUnitId;
+          }
+          const lesMeta = lessonMetaMap.get(spec.ascLessonId);
+          if (lesMeta) lesMeta.classUnitMap.set(spec.kelasId, resolvedUnitId!);
+        }
       }
 
       if (kontrakBatch.length > 0) {
@@ -877,7 +1257,8 @@ export class AscImporterService {
               }
 
               const classKey = `${targetClassId}_${dayName}_${absSlotIdx}`;
-              const guruKey = lessonMeta.guruId ? `${lessonMeta.guruId}_${dayName}_${absSlotIdx}` : null;
+              const effectiveGuru = lessonMeta.effectiveGuruId || lessonMeta.guruId;
+              const guruKey = effectiveGuru ? `${effectiveGuru}_${dayName}_${absSlotIdx}` : null;
 
               if (usedClassSlots.has(classKey)) {
                 continue;
@@ -896,6 +1277,8 @@ export class AscImporterService {
                 semester_id: input.semester_id,
                 kelas_id: targetClassId,
                 guru_id: lessonMeta.guruId,
+                guru_pelaksana_id: lessonMeta.guruPelaksanaId || null,
+                unit_pengajaran_id: lessonMeta.classUnitMap?.get(targetClassId) || null,
                 mapel_id: lessonMeta.mapelId,
                 hari: dayName as any,
                 slot_index: absSlotIdx,
@@ -949,9 +1332,12 @@ export class AscImporterService {
 
           total_mapel_matched: input.subject_mappings.filter(s => s.action === 'MATCH').length,
           total_mapel_created: input.subject_mappings.filter(s => s.action === 'CREATE').length,
+          total_mapel_unit_of_parent: input.subject_mappings.filter(s => s.action === 'UNIT_OF_PARENT').length,
           total_mapel_ignored: input.subject_mappings.filter(s => s.action === 'IGNORE').length,
           total_mapel: subjectIdMap.size,
 
+          total_units_synced: totalUnitsSynced,
+          total_delegated_lessons: (input.lesson_mappings || []).filter(l => Boolean(l.guru_pelaksana_id)).length,
           total_kontrak: kontrakBatch.length,
           total_cards: cardsBatch.length,
         },
@@ -961,12 +1347,37 @@ export class AscImporterService {
       maxWait: 10000,
     });
 
+    // Save mapping history for zero-rework re-imports (UNIT_OF_PARENT & Delegation)
+    await this.saveMappingHistory(tenantId, input);
+
     // Auto-sync into GuruMapel so CBT, Rapor, and Curriculum modules stay in sync
     try {
       const { guruMapelService } = await import('@/modules/kurikulum/guru-mapel/services/guru-mapel.service');
       await guruMapelService.syncFromJadwalKbm(tenantId, input.tahun_pelajaran_id, input.semester_id);
     } catch (syncErr: any) {
       console.warn('[AscImporter] Non-fatal auto-sync to GuruMapel warning:', syncErr.message);
+    }
+
+    // Auto-sync CBT Bank Soal Contributors untuk mapel yang memiliki unit/delegasi aktif
+    try {
+      const { CbtBankSoalService } = await import('@/modules/cbt/services/cbt-bank-soal.service');
+      const existingBanks = await prisma.cbtBankSoal.findMany({
+        where: { tenant_id: tenantId },
+        select: { mapel_id: true },
+        distinct: ['mapel_id'],
+      });
+      for (const b of existingBanks) {
+        if (b.mapel_id) {
+          await CbtBankSoalService.syncContributorsForMapelDelegationChange(
+            tenantId,
+            b.mapel_id,
+            input.tahun_pelajaran_id,
+            input.semester_id
+          );
+        }
+      }
+    } catch (cbtSyncErr: any) {
+      console.warn('[AscImporter] Non-fatal auto-sync CBT contributors warning:', cbtSyncErr.message);
     }
 
     // Invalidate Jadwal KBM Cache

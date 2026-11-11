@@ -1,7 +1,6 @@
 import type { CbtBankSoal, CbtJadwalUjian } from '@/types/cbt.types';
 import { localDateTimeInputToISO } from '@/utils/attendance/time';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
-import { getAllMgmpSharedMap } from './cbtMgmpHelper';
 import { detectNodeTingkat } from '@/components/spasial/denahTingkatHelper';
 
 // ==========================================

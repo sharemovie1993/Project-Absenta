@@ -58,6 +58,7 @@ import { getHubinMobileChildren } from '@/components/dashboard/roles/hubin/hubin
 import { getSarprasMobileChildren } from '@/components/dashboard/roles/sarpras/sarprasNavigation.config';
 import { getBpbkMobileChildren } from '@/components/dashboard/roles/bpbk/bpbkNavigation.config';
 import { getBkkMobileChildren } from '@/components/dashboard/roles/bkk/bkkNavigation.config';
+import { getKoperasiMobileChildren } from '@/components/dashboard/roles/koperasi/koperasiNavigation.config';
 
 export interface MobileBottomSubItem {
   id: string;
@@ -815,7 +816,12 @@ export function getWalasTabs(waliKelasNama: string, currentSubtab: string | null
   ];
 }
 
-export function getTuTabs(tuTabMeta: any, currentSubtab: string | null, isPendidik: boolean): MobileBottomTabItem[] {
+export function getTuTabs(
+  tuTabMeta: any,
+  currentSubtab: string | null,
+  isPendidik: boolean,
+  canFn?: (cap: string) => boolean
+): MobileBottomTabItem[] {
   return [
     {
       id: 'portal_back',
@@ -841,7 +847,7 @@ export function getTuTabs(tuTabMeta: any, currentSubtab: string | null, isPendid
       badge: tuTabMeta.badge,
       targetPath: '/dashboard?tab=kepegawaian',
       isActive: (p, t) => t === 'kepegawaian' && Boolean(currentSubtab && !['beranda', 'surat-masuk', 'surat-keluar', 'buku-induk'].includes(currentSubtab)),
-      children: getTuMobileChildren(),
+      children: getTuMobileChildren(canFn),
     },
     {
       id: 'tu_surat_keluar',
@@ -1339,8 +1345,47 @@ export function getToolmanTabs(currentSubtab?: string): MobileBottomTabItem[] {
   ];
 }
 
-export function getKoperasiTabs(currentSubtab?: string): MobileBottomTabItem[] {
-  return [
+export function getKoperasiTabs(
+  currentSubtab?: string,
+  canFn?: (capability: string) => boolean
+): MobileBottomTabItem[] {
+  const canPos = !canFn || canFn('cooperative.store.orders.manage') || canFn('coop.pos.access');
+  const canSavings =
+    !canFn ||
+    canFn('cooperative.savings.view.list') ||
+    canFn('cooperative.savings.deposit') ||
+    canFn('cooperative.savings.withdraw');
+  const canMembers =
+    !canFn ||
+    canFn('cooperative.members.view.list') ||
+    canFn('cooperative.members.create') ||
+    canFn('cooperative.members.manage');
+
+  const menuChildren = getKoperasiMobileChildren(canFn)
+    .filter((child) => {
+      if (child.id === 'ringkasan') return false;
+      if (canPos && child.id === 'pos') return false;
+      if (canSavings && child.id === 'simpanan') return false;
+      if (!canPos && !canSavings && canMembers && child.id === 'anggota') return false;
+      return true;
+    })
+    ?.map((child) => ({
+      id: child.id,
+      label: child.shortLabel || child.label,
+      icon: child.icon,
+      targetPath: child.targetPath,
+      color: child.color,
+    }));
+
+  menuChildren.push({
+    id: 'tv-page',
+    label: 'TV',
+    icon: Activity,
+    targetPath: '/cooperative/dashboard',
+    color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+  });
+
+  const tabs: MobileBottomTabItem[] = [
     {
       id: 'portal_back',
       label: 'Kembali ke Portal',
@@ -1363,33 +1408,55 @@ export function getKoperasiTabs(currentSubtab?: string): MobileBottomTabItem[] {
       shortLabel: 'Menu',
       icon: LayoutGrid,
       targetPath: '/dashboard?tab=koperasi',
-      isActive: (p, t) => t === 'koperasi' && Boolean(currentSubtab && !['ringkasan', 'pos', 'simpanan'].includes(currentSubtab)),
-      children: [
-        { id: 'pinjaman', label: 'Pinjaman', icon: HandCoins, targetPath: '/dashboard?tab=koperasi&subtab=pinjaman', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-        { id: 'anggota', label: 'Anggota', icon: Users, targetPath: '/dashboard?tab=koperasi&subtab=anggota', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
-        { id: 'produk', label: 'Katalog', icon: Package, targetPath: '/dashboard?tab=koperasi&subtab=produk', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
-        { id: 'shu', label: 'SHU', icon: FileSpreadsheet, targetPath: '/dashboard?tab=koperasi&subtab=shu', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-        { id: 'akuntansi', label: 'Akuntansi', icon: BookOpen, targetPath: '/dashboard?tab=koperasi&subtab=akuntansi', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
-        { id: 'tv-page', label: 'TV', icon: Activity, targetPath: '/cooperative/dashboard', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-      ],
+      isActive: (p, t) =>
+        t === 'koperasi' &&
+        Boolean(
+          currentSubtab &&
+            ![
+              'ringkasan',
+              ...(canPos ? ['pos'] : []),
+              ...(canSavings ? ['simpanan'] : []),
+              ...(!canPos && !canSavings && canMembers ? ['anggota'] : []),
+            ].includes(currentSubtab)
+        ),
+      children: menuChildren,
     },
-    {
+  ];
+
+  if (canPos) {
+    tabs.push({
       id: 'coop_pos',
       label: 'Kasir POS Toko',
       shortLabel: 'Kasir',
       icon: ShoppingCart,
       targetPath: '/dashboard?tab=koperasi&subtab=pos',
       isActive: (p, t) => (t === 'koperasi' && currentSubtab === 'pos') || p.startsWith('/cooperative/pos'),
-    },
-    {
+    });
+  }
+
+  if (canSavings) {
+    tabs.push({
       id: 'coop_savings',
       label: 'Simpanan Anggota',
       shortLabel: 'Simpanan',
       icon: PiggyBank,
       targetPath: '/dashboard?tab=koperasi&subtab=simpanan',
-      isActive: (p, t) => (t === 'koperasi' && currentSubtab === 'simpanan') || p.startsWith('/cooperative/savings'),
-    },
-  ];
+      isActive: (p, t) =>
+        (t === 'koperasi' && currentSubtab === 'simpanan') || p.startsWith('/cooperative/savings'),
+    });
+  } else if (canMembers) {
+    tabs.push({
+      id: 'coop_members',
+      label: 'Data Anggota',
+      shortLabel: 'Anggota',
+      icon: Users,
+      targetPath: '/dashboard?tab=koperasi&subtab=anggota',
+      isActive: (p, t) =>
+        (t === 'koperasi' && currentSubtab === 'anggota') || p.startsWith('/cooperative/members'),
+    });
+  }
+
+  return tabs;
 }
 
 export function getPiketTabs(): MobileBottomTabItem[] {

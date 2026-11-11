@@ -36,6 +36,9 @@ interface Props {
   setSelectedGuruId: (id: string) => void;
   paintMapelId?: string;
   setPaintMapelId?: (id: string) => void;
+  paintUnitId?: string;
+  setPaintUnitId?: (id: string) => void;
+  unitSelectOptions?: DropdownOption[];
   guruMapelSelectOptions?: DropdownOption[];
   masterGridHari: string;
   setMasterGridHari: (day: string) => void;
@@ -64,6 +67,9 @@ export const JadwalBuilderHeader: React.FC<Props> = React.memo(({
   setSelectedGuruId,
   paintMapelId,
   setPaintMapelId,
+  paintUnitId,
+  setPaintUnitId,
+  unitSelectOptions = [],
   guruMapelSelectOptions = [],
   masterGridHari,
   setMasterGridHari,
@@ -317,6 +323,16 @@ export const JadwalBuilderHeader: React.FC<Props> = React.memo(({
               searchPlaceholder="Cari Kelas Tujuan..."
               className="w-[240px] md:w-[320px]"
             />
+            {unitSelectOptions.length > 0 && setPaintUnitId && (
+              <SearchableSelect
+                value={paintUnitId || ''}
+                onValueChange={setPaintUnitId}
+                options={unitSelectOptions}
+                placeholder="Pilih Unit / Sub-Materi..."
+                searchPlaceholder="Cari Unit Pengajaran..."
+                className="w-[240px] md:w-[300px]"
+              />
+            )}
           </div>
         )}
 

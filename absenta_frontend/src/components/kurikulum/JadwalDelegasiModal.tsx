@@ -16,10 +16,20 @@ export interface JadwalDelegasiBlock {
   mapel_id?: string;
   guru_id?: string;
   guru_pelaksana_id?: string | null;
+  unit_pengajaran_id?: string | null;
   Mapel?: {
     nama_mapel: string;
     kode_mapel: string;
   };
+  UnitPengajaran?: {
+    id: string;
+    nama_unit?: string | null;
+    guru_id: string;
+    Guru?: {
+      id: string;
+      nama_guru?: string;
+    };
+  } | null;
   Guru?: {
     id: string;
     nama_guru?: string;
@@ -85,8 +95,23 @@ export function JadwalDelegasiModal({
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Mata Pelajaran:</span>
-                <span className="font-bold text-slate-700 dark:text-slate-200">{selectedJadwal.Mapel?.nama_mapel}</span>
+                <span className="font-bold text-slate-700 dark:text-slate-200 text-right">
+                  {selectedJadwal.Mapel?.nama_mapel}
+                  {selectedJadwal.UnitPengajaran?.nama_unit ? (
+                    <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
+                      Unit: {selectedJadwal.UnitPengajaran.nama_unit}
+                    </span>
+                  ) : null}
+                </span>
               </div>
+              {selectedJadwal.UnitPengajaran?.Guru?.nama_guru && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Guru Unit:</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    {selectedJadwal.UnitPengajaran.Guru.nama_guru}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">Jadwal:</span>
                 <div className="text-right">

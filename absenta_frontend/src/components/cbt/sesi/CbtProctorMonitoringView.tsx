@@ -604,7 +604,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
         const rawScore = remedialAudit?.raw_remedial_score;
 
         return (
-          <div className="inline-flex flex-col items-center">
+          <div className="inline-flex flex-col items-center gap-1">
             <span className="font-black text-xs px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
               {Number(row.nilai_akhir).toFixed(1)}
             </span>
@@ -612,6 +612,19 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
               <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5 whitespace-nowrap">
                 (Murni: {Number(rawScore).toFixed(1)})
               </span>
+            )}
+            {Array.isArray(row.unit_scores) && row.unit_scores.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-1 max-w-[200px]">
+                {row.unit_scores.map((u) => (
+                  <span
+                    key={u.unit_pengajaran_id}
+                    className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/70 whitespace-nowrap"
+                    title={`${u.nama_unit}${u.guru_nama ? ` (${u.guru_nama})` : ''}: ${u.benar}/${u.total_soal} benar`}
+                  >
+                    {u.nama_unit}: {Number(u.skor).toFixed(0)}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         );
@@ -1115,6 +1128,18 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                       </span>
                     )}
                   </div>
+                  {p.status === 'FINISHED' && Array.isArray(p.unit_scores) && p.unit_scores.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {p.unit_scores.map((u) => (
+                        <span
+                          key={u.unit_pengajaran_id}
+                          className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/70"
+                        >
+                          {u.nama_unit}: {Number(u.skor).toFixed(0)} ({u.benar}/{u.total_soal})
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">

@@ -185,11 +185,11 @@ export async function generateSessionsForTenantDirect(
         const shiftConfig = await loadShiftConfig(tenantId);
         const enrichedSchedules = enrichJadwalWithDayTimes(schedules, shiftConfig, hariEnum);
 
-        // Group and merge into 1 continuous session per class + guru + mapel + jenis_kegiatan for the day
+        // Group and merge into 1 continuous session per class + guru + pelaksana + mapel + unit + jenis_kegiatan for the day
         const grouped: Record<string, typeof enrichedSchedules> = {};
         for (const s of enrichedSchedules) {
           if (!s.mapel_id && !s.guru_id) continue;
-          const key = `${s.kelas_id}-${s.guru_id || 'none'}-${s.mapel_id || 'none'}-${s.jenis_kegiatan || 'KBM'}`;
+          const key = `${s.kelas_id}-${s.guru_id || 'none'}-${(s as any).guru_pelaksana_id || 'none'}-${s.mapel_id || 'none'}-${(s as any).unit_pengajaran_id || 'none'}-${s.jenis_kegiatan || 'KBM'}`;
           if (!grouped[key]) grouped[key] = [];
           grouped[key].push(s);
         }
@@ -221,23 +221,28 @@ export async function generateSessionsForTenantDirect(
           const startSelesai = new Date(new Date(`${dateStr}T${schedule.jam_selesai}:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
           const tanggalTgl = new Date(new Date(`${dateStr}T00:00:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
 
-          const existing = await prisma.sesiAbsensi.findFirst({
+          const existing = await (prisma.sesiAbsensi as any).findFirst({
             where: {
               tenant_id: tenantId,
               kelas_id: schedule.kelas_id,
               guru_id: schedule.guru_id,
               mapel_id: schedule.mapel_id,
+              unit_pengajaran_id: (schedule as any).unit_pengajaran_id || null,
               waktu_mulai: startMulai,
               tanggal: tanggalTgl
             }
           });
 
           if (!existing) {
-            const created = await prisma.sesiAbsensi.create({
+            const pelaksanaId = (schedule as any).guru_pelaksana_id || null;
+            const created = await (prisma.sesiAbsensi as any).create({
               data: {
                 tenant_id: tenantId,
                 kelas_id: schedule.kelas_id,
                 guru_id: schedule.guru_id,
+                guru_pelaksana_id: pelaksanaId,
+                is_delegasi: Boolean(pelaksanaId),
+                unit_pengajaran_id: (schedule as any).unit_pengajaran_id || null,
                 mapel_id: schedule.mapel_id,
                 semester_id: schedule.semester_id,
                 tahun_pelajaran_id: schedule.tahun_pelajaran_id,

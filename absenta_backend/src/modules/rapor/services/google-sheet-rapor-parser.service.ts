@@ -23,6 +23,7 @@ export interface StudentSumatifScoreItem {
   sumatif_1: number | null;
   sumatif_2: number | null;
   sumatif_3: number | null;
+  sumatif_4: number | null;
   rata_rata: number | null;
   nilai_akhir: number | null;
 }
@@ -515,6 +516,7 @@ export class GoogleSheetRaporParserService {
         const s1 = parseFloat(row[cols.sumatif_1]);
         const s2 = parseFloat(row[cols.sumatif_2]);
         const s3 = parseFloat(row[cols.sumatif_3]);
+        const s4 = parseFloat(row[cols.sumatif_4]);
         const avg = parseFloat(row[cols.rata_rata]);
         const akhir = parseFloat(row[cols.nilai_akhir]);
 
@@ -522,6 +524,7 @@ export class GoogleSheetRaporParserService {
           sumatif_1: !isNaN(s1) ? s1 : null,
           sumatif_2: !isNaN(s2) ? s2 : null,
           sumatif_3: !isNaN(s3) ? s3 : null,
+          sumatif_4: !isNaN(s4) ? s4 : null,
           rata_rata: !isNaN(avg) ? avg : null,
           nilai_akhir: !isNaN(akhir) ? akhir : null,
         };

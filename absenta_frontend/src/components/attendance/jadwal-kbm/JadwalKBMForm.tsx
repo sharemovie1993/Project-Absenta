@@ -11,6 +11,8 @@ import {
   type CreateJadwalPayload,
   type JadwalKBM
 } from '../../../api/attendance/jadwalKBM.api';
+import { listUnitPengajaran } from '../../../api/kurikulum/guru-mapel.api';
+import type { UnitPengajaran } from '../../../types/academic';
 import { getMyTenant } from '../../../api/tenants.api';
 import { LogService } from '../../../utils/LogService';
 import { HARI_LIST } from '../../../constants/day.constants';
@@ -29,6 +31,7 @@ export const JadwalKBMForm: React.FC<Props> = React.memo(({ onSuccess, onCancel,
   const queryClient = useQueryClient();
   const [mapelOptions, setMapelOptions] = useState<{ value: string; label: string }[]>([]);
   const [guruOptions, setGuruOptions] = useState<{ value: string; label: string }[]>([]);
+  const [unitList, setUnitList] = useState<UnitPengajaran[]>([]);
   const [loadingResources, setLoadingResources] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [jenisOptions, setJenisOptions] = useState<Array<{ value: string; label: string; tipe: string }>>([]);
@@ -85,6 +88,7 @@ export const JadwalKBMForm: React.FC<Props> = React.memo(({ onSuccess, onCancel,
       mapel_id: initialData?.mapel_id,
       guru_id: initialData?.guru_id,
       guru_pelaksana_id: initialData?.guru_pelaksana_id || '',
+      unit_pengajaran_id: initialData?.unit_pengajaran_id || '',
       tahun_pelajaran_id: initialData?.tahun_pelajaran_id || tahunPelajaranId || '',
       semester_id: initialData?.semester_id || semesterId || '',
       kelas_id: initialData?.kelas_id || kelasId || '',
@@ -99,14 +103,19 @@ export const JadwalKBMForm: React.FC<Props> = React.memo(({ onSuccess, onCancel,
     const loadResources = async () => {
       setLoadingResources(true);
       try {
-        const [mapelRes, guruRes, jenisRes] = await Promise.all([
+        const [mapelRes, guruRes, jenisRes, unitRes] = await Promise.all([
           mapelApi.getAll({ limit: 100 }),
           guruApi.getAll({ limit: 200 }),
-          jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 })
+          jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 }),
+          listUnitPengajaran({
+            tahun_pelajaran_id: tahunPelajaranId || initialData?.tahun_pelajaran_id,
+            semester_id: semesterId || initialData?.semester_id,
+          }).catch(() => ({ success: false, data: [] as UnitPengajaran[] })),
         ]);
         
         setMapelOptions((mapelRes.data || []).map((m: any) => ({ value: m.id, label: `${m.nama_mapel} (${m.kode})` })));
         setGuruOptions((guruRes.data || []).map((g: any) => ({ value: g.id, label: `${g.nama_guru || g.User?.full_name || 'Guru'}${g.jenis_ptk === 'TENAGA_KEPENDIDIKAN' ? ' (Staf TU)' : ''}` })));
+        setUnitList(Array.isArray(unitRes?.data) ? unitRes.data : []);
         const jenisMaster: JenisKegiatanMaster[] = jenisRes.data || [];
         const filtered = jenisMaster
           .filter(j => j.aktif)
@@ -154,16 +163,19 @@ export const JadwalKBMForm: React.FC<Props> = React.memo(({ onSuccess, onCancel,
       if (['APEL', 'DUHA', 'PEMBIASAAN', 'UPACARA'].includes(tipeNow)) {
         delete payload.mapel_id;
         delete payload.guru_id;
+        delete payload.unit_pengajaran_id;
       } else if (tipeNow === 'JURUSAN') {
         if (!payload.guru_id) {
           setErrorMsg('Guru wajib diisi untuk kegiatan JURUSAN');
           return;
         }
+        payload.unit_pengajaran_id = payload.unit_pengajaran_id || null;
       } else if (tipeNow.startsWith('KBM')) {
         if (!payload.mapel_id || !payload.guru_id) {
           setErrorMsg('Mapel dan Guru wajib diisi untuk KBM');
           return;
         }
+        payload.unit_pengajaran_id = payload.unit_pengajaran_id || null;
       }
 
       if (initialData?.id) {
@@ -285,7 +297,10 @@ export const JadwalKBMForm: React.FC<Props> = React.memo(({ onSuccess, onCancel,
                     render={({ field }) => (
                       <SearchableSelect
                         value={field.value}
-                        onValueChange={field.onChange}
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                          setValue('unit_pengajaran_id', '');
+                        }}
                         options={mapelOptions}
                         placeholder="Pilih Mata Pelajaran"
                         triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
@@ -293,6 +308,50 @@ export const JadwalKBMForm: React.FC<Props> = React.memo(({ onSuccess, onCancel,
                     )}
                   />
                 </div>
+
+                {(() => {
+                  const selectedMapelId = watch('mapel_id');
+                  const targetKelasId = watch('kelas_id');
+                  const matchingUnits = unitList.filter(
+                    (u) =>
+                      u.mapel_id === selectedMapelId &&
+                      (!targetKelasId || !u.GuruMapel?.kelas_id || u.GuruMapel.kelas_id === targetKelasId),
+                  );
+                  if (matchingUnits.length === 0) return null;
+                  const unitSelectOpts = matchingUnits.map((u) => ({
+                    value: u.id,
+                    label: `${u.Mapel?.nama_mapel || 'Mapel'}${u.nama_unit ? ` — ${u.nama_unit}` : ''} (${u.Guru?.nama_guru || 'Guru'})`,
+                  }));
+                  return (
+                    <div className="space-y-2 md:col-span-2 group">
+                      <Label className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-tighter">
+                        Unit Pengajaran / Sub-Materi (Opsional / Kolaborasi)
+                      </Label>
+                      <Controller
+                        name="unit_pengajaran_id"
+                        control={control}
+                        render={({ field }) => (
+                          <SearchableSelect
+                            value={field.value || ''}
+                            onValueChange={(val) => {
+                              field.onChange(val || null);
+                              const chosen = matchingUnits.find((u) => u.id === val);
+                              if (chosen?.guru_id) {
+                                setValue('guru_id', chosen.guru_id);
+                              }
+                            }}
+                            options={[
+                              { value: '', label: '-- Otomatis / Tanpa Pilih Unit Spesifik --' },
+                              ...unitSelectOpts,
+                            ]}
+                            placeholder="Pilih Unit Pengajaran (jika kolaborasi / paralel)"
+                            triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-indigo-50/40 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 rounded-xl"
+                          />
+                        )}
+                      />
+                    </div>
+                  );
+                })()}
 
                 <div className="space-y-2 md:col-span-2 group">
                   <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">

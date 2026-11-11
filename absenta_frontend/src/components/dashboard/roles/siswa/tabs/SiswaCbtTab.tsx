@@ -660,9 +660,16 @@ export const SiswaCbtTab: React.FC = () => {
                     {/* Header: Mapel & Status Hari H */}
                     <div className="flex items-start justify-between gap-2.5">
                       <div className="min-w-0 flex-1">
-                        <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug">
-                          {subjectName}
-                        </h4>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug">
+                            {subjectName}
+                          </h4>
+                          {(item.kolaborasi_badge || item.is_kolaborasi) && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              {item.kolaborasi_badge || 'Kolaborasi'}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex-wrap">
                           <span className="font-semibold text-slate-700 dark:text-slate-300">{resolveSesiLabel(item)}</span>
                           <span>•</span>
@@ -756,8 +763,15 @@ export const SiswaCbtTab: React.FC = () => {
 
                     {/* Hero Title: Mata Pelajaran (Fokus Utama Siswa) */}
                     <div className="space-y-0.5">
-                      <div className="text-[10px] font-black uppercase tracking-wider text-violet-600 dark:text-violet-400">
-                        Mata Pelajaran
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-violet-600 dark:text-violet-400">
+                          {item.unit_nama ? 'Kuis / Ujian Unit' : 'Mata Pelajaran'}
+                        </span>
+                        {(item.kolaborasi_badge || item.is_kolaborasi) && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            {item.kolaborasi_badge || 'Kolaborasi'}
+                          </span>
+                        )}
                       </div>
                       <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">
                         {subjectName}
@@ -815,9 +829,16 @@ export const SiswaCbtTab: React.FC = () => {
                   {/* Baris 1: Nama Mapel (Kiri) & Badge Status (Kanan) */}
                   <div className="flex items-start justify-between gap-2.5">
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug">
-                        {subjectName}
-                      </h4>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug">
+                          {subjectName}
+                        </h4>
+                        {(item.kolaborasi_badge || item.is_kolaborasi) && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            {item.kolaborasi_badge || 'Kolaborasi'}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex-wrap">
                         {item.nama_sesi && item.nama_sesi !== subjectName && (
                           <span className="truncate max-w-[180px] sm:max-w-none font-medium">{item.nama_sesi}</span>
