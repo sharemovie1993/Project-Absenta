@@ -28,7 +28,7 @@ import {
   normalizeRoleToScope,
   type UniversalSubtabItem 
 } from '@/components/dashboard/roles/common/subtabSidebarStore';
-const UniversalMobileSubtabSidebar = React.lazy(() => import('@/components/dashboard/roles/common/UniversalMobileSubtabSidebar').then(m => ({ default: m.UniversalMobileSubtabSidebar })));
+import { UniversalMobileSubtabSidebar } from '@/components/dashboard/roles/common/UniversalMobileSubtabSidebar';
 import { 
   type MobileBottomSubItem, 
   type MobileBottomTabItem, 
@@ -71,9 +71,14 @@ export const BottomNavigation: React.FC = React.memo(() => {
   const isSidebarOpen = useMobileSubtabSidebarStore((state) => state.isOpen);
   const registeredScopes = useMobileSubtabSidebarStore((state) => state.registeredScopes);
 
-  // Tutup subtab sidebar saat rute atau parameter berubah (mencegah sidebar menggantung)
+  // Tutup subtab sidebar saat rute atau parameter berubah setelah mount (mencegah sidebar tertutup saat mount awal)
+  const prevNavLocationRef = React.useRef(`${location.pathname}${location.search}`);
   useEffect(() => {
-    useMobileSubtabSidebarStore.getState().close();
+    const nextLocationKey = `${location.pathname}${location.search}`;
+    if (prevNavLocationRef.current !== nextLocationKey) {
+      prevNavLocationRef.current = nextLocationKey;
+      useMobileSubtabSidebarStore.getState().close();
+    }
   }, [location.pathname, location.search]);
 
   // Hitung index tombol sentral (elevasi mengambang ala Notch / FAB di tengah)
@@ -351,36 +356,34 @@ export const BottomNavigation: React.FC = React.memo(() => {
   return (
     <>
       {/* ── SUBKOMPONEN 1: DRAWER SISI KIRI UNIVERSAL FALLBACK (JIKA HALAMAN TIDAK MEMILIKI DRAWER MANDIRI) ── */}
-      {!hasMountedDrawer && isSidebarOpen && (
-        <React.Suspense fallback={null}>
-          <UniversalMobileSubtabSidebar
-            isOpen={isSidebarOpen}
-            onClose={() => useMobileSubtabSidebarStore.getState().close()}
-            title={fallbackHeader.title}
-            subtitle={fallbackHeader.subtitle}
-            roleBadge={fallbackHeader.roleBadge}
-            roleIcon={fallbackHeader.roleIcon}
-            logoUrl={fallbackHeader.logoUrl}
-            scope={activeEcosystem}
-            side="left"
-            isFallback={true}
-            tabs={fallbackDrawerTabs}
-            categories={fallbackCategories}
-            activeTab={
-              currentSubtab ||
-              (currentTab === 'action_hub'
-                ? 'tugas'
-                : currentTab === 'jadwal'
-                ? 'jadwal'
-                : currentTab === 'manual_presensi'
-                ? 'manual_presensi'
-                : activeEcosystem === 'kaprog'
-                ? 'beranda'
-                : 'ringkasan')
-            }
-            onSelectTab={handleSelectFallbackTab}
-          />
-        </React.Suspense>
+      {!hasMountedDrawer && (
+        <UniversalMobileSubtabSidebar
+          isOpen={isSidebarOpen}
+          onClose={() => useMobileSubtabSidebarStore.getState().close()}
+          title={fallbackHeader.title}
+          subtitle={fallbackHeader.subtitle}
+          roleBadge={fallbackHeader.roleBadge}
+          roleIcon={fallbackHeader.roleIcon}
+          logoUrl={fallbackHeader.logoUrl}
+          scope={activeEcosystem}
+          side="left"
+          isFallback={true}
+          tabs={fallbackDrawerTabs}
+          categories={fallbackCategories}
+          activeTab={
+            currentSubtab ||
+            (currentTab === 'action_hub'
+              ? 'tugas'
+              : currentTab === 'jadwal'
+              ? 'jadwal'
+              : currentTab === 'manual_presensi'
+              ? 'manual_presensi'
+              : activeEcosystem === 'kaprog'
+              ? 'beranda'
+              : 'ringkasan')
+          }
+          onSelectTab={handleSelectFallbackTab}
+        />
       )}
 
       {/* ── SUBKOMPONEN 2: BILAH NAVIGASI BAWAH SELULER (EDGE-TO-EDGE DOCKED NOTCH WITH ELEVATED FAB) ── */}

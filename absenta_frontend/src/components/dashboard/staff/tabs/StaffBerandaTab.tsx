@@ -26,8 +26,6 @@ import {
   Rocket,
 } from 'lucide-react';
 import { 
-  UniversalMobileSubtabSidebar, 
-  useMobileSubtabSidebar,
   UniversalEcosystemTopbar,
   type UniversalSubtabItem 
 } from '@/components/dashboard/roles/common';
@@ -166,8 +164,6 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     }, { replace: true });
   }, [setSearchParams]);
 
-  // Mobile Subtab Sidebar Drawer State (Terkoneksi ke FAB / Tombol Elevasi Tengah Menu)
-  const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('portal');
 
   // Presensi Kehadiran Guru Bulan Ini
   const { data: rekapGuruRes, isLoading: loadingRekap } = useQuery({
@@ -621,20 +617,6 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
       {/* ────────────────────────────────────────────────────────────────── */}
       {isActualTeachingStaff ? (
         <div className="w-full max-w-full min-w-0">
-          {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
-          <UniversalMobileSubtabSidebar
-            isOpen={isMobileSidebarOpen}
-            onClose={() => setIsMobileSidebarOpen(false)}
-            title={guruNama || 'Ruang Pendidik'}
-            subtitle={`Beban Mengajar ${(teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0)}/${(teacherBeban?.max_jp ?? 24)} JP`}
-            roleBadge="GURU PENGAJAR"
-            scope="portal"
-            roleIcon={BookOpen}
-            tabs={navTabs}
-            activeTab={activeSubTab}
-            onSelectTab={(tabId) => handleSubTabChange(tabId as TeacherSubTabId)}
-            categories={navCategories}
-          />
 
           {/* ── 1. UNIVERSAL ECOSYSTEM TOPBAR (Standar Industri Absenta: Ruang Pendidik) ── */}
           <UniversalEcosystemTopbar

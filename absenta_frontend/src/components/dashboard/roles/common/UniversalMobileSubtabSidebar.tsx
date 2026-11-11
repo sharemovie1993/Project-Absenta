@@ -128,8 +128,13 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
 
   const isEffectivelyOpen = Boolean(isOpen && isActive !== false && isScopeMatch);
 
-  // Auto-close jika URL berubah saat drawer sedang terbuka (mencegah drawer menggantung saat navigasi)
+  const prevLocationKeyRef = React.useRef(`${location.pathname}${location.search}`);
+
+  // Auto-close hanya jika URL benar-benar berubah setelah komponen ter-mount (mencegah menutup seketika saat baru dibuka)
   useEffect(() => {
+    const nextLocationKey = `${location.pathname}${location.search}`;
+    if (prevLocationKeyRef.current === nextLocationKey) return;
+    prevLocationKeyRef.current = nextLocationKey;
     if (isOpen) {
       onClose();
     }
