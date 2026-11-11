@@ -245,7 +245,7 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
                     {systemConfig?.app_name || 'Sistem Absensi'}
                   </span>
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                    Workspace Portal
+                    {isSystemSuperAdmin(user?.role, user?.tenant_id) ? 'Platform Console' : 'Workspace Portal'}
                   </span>
                 </div>
               </Link>

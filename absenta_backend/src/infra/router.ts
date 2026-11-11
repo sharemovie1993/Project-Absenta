@@ -312,6 +312,9 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { tenantRoutes } = await import('../modules/tenant/routes/tenant.routes');
       await fastify.register(tenantRoutes, { prefix: '/tenants' });
 
+      const { superadminIntelligenceRoutes } = await import('../modules/superadmin/routes/intelligence.routes');
+      await fastify.register(superadminIntelligenceRoutes, { prefix: '/superadmin/intelligence' });
+
       fastify.get('/me/tenant', {
         preHandler: [requireCapability('core.sekolah.view.profile')],
         handler: async (request: any, reply: any) => {

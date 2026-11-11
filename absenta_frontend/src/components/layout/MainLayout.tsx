@@ -16,6 +16,7 @@ import { Loader } from '@/components/ui/Loader';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { PendingPaymentBlocker } from '../billing/PendingPaymentBlocker';
 import { resolveSmartDashboardMode } from '@/helpers/dashboardModeHelper';
+import { isSystemSuperAdmin } from '@/utils/rbac';
 
 // Lazy load heavy layout components to improve TBT
 const InAppSidebar = React.lazy(() => import('./InAppSidebar').then(module => ({ default: module.InAppSidebar })));
@@ -67,9 +68,11 @@ function MainLayoutContent() {
   }, []);
 
   const isSiswa = typeof user?.role === 'string' ? user.role === 'SISWA' : ((user?.role as any)?.name === 'SISWA' || (user as any)?.roleName === 'SISWA');
+  const isSuperAdmin = isSystemSuperAdmin(user?.role, user?.tenant_id);
   const isDashboardPage = location.pathname === '/dashboard' || location.pathname === '/' || location.pathname === '/apps';
   const isCbtExamRoom = location.pathname.startsWith('/cbt/ruang-ujian');
   const activeApp = getActiveApp(location.pathname);
+  const showDesktopSidebar = !isMobile && !isTvMode && !isCbtExamRoom && (isSuperAdmin || (Boolean(activeApp) && !isDashboardPage));
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('absenta_sidebar_collapsed') === 'true';
@@ -139,7 +142,7 @@ function MainLayoutContent() {
             onMenuClick={() => {
               if (isMobile) {
                 setIsMobileMenuOpen(!isMobileMenuOpen);
-              } else if (activeApp) {
+              } else if (activeApp || isSuperAdmin) {
                 handleToggleSidebarCollapse();
               }
             }} 
@@ -189,7 +192,7 @@ function MainLayoutContent() {
         )}>
           <div className={cn(
             "w-full gap-4 items-start transition-all duration-500",
-            isTvMode || !activeApp || isDashboardPage || isCbtExamRoom
+            !showDesktopSidebar
               ? "grid grid-cols-1"
               : isSidebarCollapsed
               ? `grid grid-cols-1 lg:grid-cols-[64px_1fr] ${showInstruction ? 'xl:grid-cols-[64px_1fr_300px]' : ''}`
@@ -197,7 +200,7 @@ function MainLayoutContent() {
           )}>
             
             {/* Contextual In-App Sidebar (Desktop Grid-Integrated) */}
-            {!isMobile && !isTvMode && !isCbtExamRoom && activeApp && !isDashboardPage && (
+            {showDesktopSidebar && (
               <aside className={cn(
                 "hidden lg:block flex-shrink-0 transition-all duration-300",
                 isSidebarCollapsed ? "w-16" : "w-64"

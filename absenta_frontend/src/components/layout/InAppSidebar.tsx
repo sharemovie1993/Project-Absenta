@@ -8,6 +8,7 @@ import { getActiveApp, type AbsentaApp } from '@/config/absentaAppsRegistry';
 import { getSidebarMenu, MENU_QUERY_KEY, type SidebarMenuItem } from '@/api/menu.api';
 import { iconForName } from '@/lib/iconForName';
 import { useAuthStore } from '@/store/authStore';
+import { isSystemSuperAdmin } from '@/utils/rbac';
 import { cn } from '@/lib/utils';
 import Tooltip from '../ui/Tooltip';
 
@@ -37,8 +38,9 @@ export function InAppSidebar({
 }: InAppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
   const authToken = token || (typeof window !== 'undefined' ? (localStorage.getItem('access_token') || localStorage.getItem('token')) : null);
+  const isSuperAdmin = isSystemSuperAdmin(user?.role, user?.tenant_id);
 
   // 1. Dapatkan metadata aplikasi kanonikal yang sedang aktif berdasarkan URL
   const activeApp = useMemo(() => {
@@ -62,6 +64,79 @@ export function InAppSidebar({
 
   // 3. Ekstraksi menu yang relevan dengan domain aplikasi aktif secara rekursif (Dengan Pemisah Divider Klaster)
   const subMenuItems = useMemo<ParsedMenuItem[]>(() => {
+    // Platform Superadmin Console: tampilkan seluruh menu PLATFORM tanpa disaring activeApp sekolah
+    if (isSuperAdmin) {
+      const items: ParsedMenuItem[] = [
+        {
+          id: 'platform-dashboard',
+          label: 'Ringkasan Platform',
+          path: '/dashboard',
+          icon: iconForName('LayoutDashboard', Home),
+          isDivider: false,
+        },
+      ];
+
+      const pushNode = (node: any, defaultIcon: any = Home) => {
+        const rawPath = String(node.path || node.route || node.url || '').trim();
+        const normPath = rawPath.toLowerCase();
+        const isDivider = node.type === 'divider' || node.name === 'divider' || node.name === '---';
+        if (isDivider) {
+          if (items.length > 0 && !items[items.length - 1].isDivider) {
+            items.push({ id: String(node.id || `div-${items.length}`), label: '---', path: '', icon: null, isDivider: true });
+          }
+          return;
+        }
+        const hasValidPath = normPath && normPath !== '#' && !normPath.startsWith('menu:');
+        if (hasValidPath && !items.some(u => !u.isDivider && u.path.toLowerCase() === normPath)) {
+          const rawName = String(node.name || node.label || node.title || '').trim();
+          const cleanLabel = rawName.replace(/^\d+\.\s*/, '');
+          items.push({
+            id: String(node.id || rawPath),
+            label: cleanLabel,
+            path: rawPath,
+            icon: iconForName(node.icon || cleanLabel, defaultIcon),
+            badge: node.badge,
+            isDivider: false,
+          });
+        }
+      };
+
+      if (rawMenu.length > 0) {
+        for (const rootNode of rawMenu as any[]) {
+          const childNodes = rootNode.children || rootNode.items || rootNode.subMenus;
+          if (rootNode.path) {
+            pushNode(rootNode);
+          }
+          if (Array.isArray(childNodes) && childNodes.length > 0) {
+            if (items.length > 0 && !items[items.length - 1].isDivider) {
+              items.push({
+                id: `div-${rootNode.id || rootNode.name || items.length}`,
+                label: String(rootNode.name || '---').toUpperCase(),
+                path: '',
+                icon: null,
+                isDivider: true,
+              });
+            }
+            for (const child of childNodes) {
+              pushNode(child);
+            }
+          }
+        }
+      } else {
+        // Fallback minimal saat menu DB kosong agar Superadmin tetap dapat bernavigasi
+        pushNode({ id: 'sa-tenants', name: 'Kelola Tenant', path: '/tenants', icon: 'Users' });
+        pushNode({ id: 'sa-backups', name: 'Cadangan Sistem', path: '/superadmin/backups', icon: 'Archive' });
+        pushNode({ id: 'sa-roles', name: 'Hak Akses', path: '/management/roles', icon: 'UserCog' });
+        pushNode({ id: 'sa-menus', name: 'Kelola Menu', path: '/management/menus', icon: 'Sliders' });
+        pushNode({ id: 'sa-support', name: 'Tiket Bantuan', path: '/support', icon: 'MessageSquare' });
+      }
+
+      while (items.length > 0 && items[items.length - 1].isDivider) {
+        items.pop();
+      }
+      return items;
+    }
+
     if (!activeApp || rawMenu.length === 0) return [];
 
     const appPrefixes = activeApp.pathPrefixes.map(p => p.toLowerCase());
@@ -214,9 +289,9 @@ export function InAppSidebar({
     }
 
     return result;
-  }, [rawMenu, activeApp]);
+  }, [rawMenu, activeApp, isSuperAdmin]);
 
-  if (!activeApp) {
+  if (!activeApp && !isSuperAdmin) {
     return null;
   }
 
@@ -245,28 +320,38 @@ export function InAppSidebar({
         </div>
       )}
 
-      {/* 2. Pintasan Kembali ke Portal Utama */}
-      <div className="px-2 pt-2 pb-1">
-        {(!isCollapsed || isMobileDrawer) ? (
-          <Link
-            to="/dashboard"
-            onClick={isMobileDrawer ? onClose : undefined}
-            className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors"
-          >
-            <Home className="h-4 w-4 text-slate-400" />
-            <span>Beranda Portal</span>
-          </Link>
-        ) : (
-          <Tooltip content="Beranda Portal" side="right">
+      {/* 2. Pintasan Kembali ke Portal Utama / Header Platform Superadmin */}
+      {isSuperAdmin ? (
+        (!isCollapsed || isMobileDrawer) && (
+          <div className="px-4 pt-3 pb-1.5">
+            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600 dark:text-indigo-400">
+              Platform Console
+            </span>
+          </div>
+        )
+      ) : (
+        <div className="px-2 pt-2 pb-1">
+          {(!isCollapsed || isMobileDrawer) ? (
             <Link
               to="/dashboard"
-              className="flex items-center justify-center h-10 w-10 mx-auto rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors"
+              onClick={isMobileDrawer ? onClose : undefined}
+              className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
-              <Home className="h-4 w-4" />
+              <Home className="h-4 w-4 text-slate-400" />
+              <span>Beranda Portal</span>
             </Link>
-          </Tooltip>
-        )}
-      </div>
+          ) : (
+            <Tooltip content="Beranda Portal" side="right">
+              <Link
+                to="/dashboard"
+                className="flex items-center justify-center h-10 w-10 mx-auto rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                <Home className="h-4 w-4" />
+              </Link>
+            </Tooltip>
+          )}
+        </div>
+      )}
 
       <div className="my-1 border-t border-slate-100 dark:border-slate-800/80 mx-2" />
 
@@ -296,6 +381,16 @@ export function InAppSidebar({
                   key={item.id || `divider-${index}`} 
                   className="my-2 w-7 mx-auto border-t border-slate-200 dark:border-slate-700/80" 
                 />
+              );
+            }
+            if (isSuperAdmin && item.label && item.label !== '---') {
+              return (
+                <div key={item.id || `divider-${index}`} className="pt-3 pb-1 px-3">
+                  <div className="border-t border-slate-200/80 dark:border-slate-800 mb-2" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    {item.label}
+                  </span>
+                </div>
               );
             }
             return (

@@ -484,6 +484,7 @@ async function main() {
   ];
 
   const PLATFORM_NAV_ITEMS: NavItem[] = [
+    { label: 'Ringkasan Platform', icon: 'LayoutDashboard', path: '/dashboard', required_capability: 'superadmin.tenants.manage', order: 95 },
     { label: 'Kelola Tenant', icon: 'Users', path: '/tenants', required_capability: 'superadmin.tenants.manage', order: 100 },
     {
       label: 'Helpdesk & Support',

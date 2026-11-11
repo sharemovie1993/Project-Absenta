@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutGrid, Home, Sparkles, ExternalLink } from 'lucide-react';
+import { LayoutGrid, Home, Sparkles, ExternalLink, LayoutDashboard, Users, Archive, BookOpen, Shield, Sliders, MessageSquare } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { isSystemSuperAdmin } from '@/utils/rbac';
 import { ABSENTA_APPS_REGISTRY, getVisibleApps, getActiveApp, type AbsentaApp } from '@/config/absentaAppsRegistry';
 import { getUserPositionCodes } from '@/helpers/portalNavigationHelper';
 import { cn } from '@/lib/utils';
@@ -28,10 +29,92 @@ export function AppLauncherDropdown() {
   }, [subscription?.features]);
 
   const userPositions = useMemo(() => getUserPositionCodes(user), [user]);
+  const isSuperAdmin = useMemo(() => isSystemSuperAdmin(user?.role, user?.tenant_id), [user?.role, user?.tenant_id]);
 
-  const visibleApps = useMemo(() => {
+  const visibleApps = useMemo<AbsentaApp[]>(() => {
+    if (isSuperAdmin) {
+      return [
+        {
+          id: 'platform-dashboard',
+          name: 'Ringkasan',
+          description: 'Platform Intelligence & Analytics',
+          icon: LayoutDashboard,
+          iconName: 'LayoutDashboard',
+          color: { bg: 'bg-blue-500/10 dark:bg-blue-500/20', text: 'text-blue-600 dark:text-blue-400', badge: '', hover: '', gradient: '' },
+          defaultPath: '/dashboard',
+          pathPrefixes: ['/dashboard', '/superadmin/intelligence'],
+          category: 'PLATFORM',
+        },
+        {
+          id: 'platform-tenants',
+          name: 'Kelola Tenant',
+          description: 'Manajemen Sekolah & Langganan',
+          icon: Users,
+          iconName: 'Users',
+          color: { bg: 'bg-emerald-500/10 dark:bg-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400', badge: '', hover: '', gradient: '' },
+          defaultPath: '/tenants',
+          pathPrefixes: ['/tenants'],
+          category: 'PLATFORM',
+        },
+        {
+          id: 'platform-backups',
+          name: 'Cadangan',
+          description: 'Backup, Restore & Smart Clone',
+          icon: Archive,
+          iconName: 'Archive',
+          color: { bg: 'bg-indigo-500/10 dark:bg-indigo-500/20', text: 'text-indigo-600 dark:text-indigo-400', badge: '', hover: '', gradient: '' },
+          defaultPath: '/superadmin/backups',
+          pathPrefixes: ['/superadmin/backups'],
+          category: 'INFRASTRUKTUR',
+        },
+        {
+          id: 'platform-presets',
+          name: 'Preset Mapel',
+          description: 'Master Kurikulum & Preset Global',
+          icon: BookOpen,
+          iconName: 'BookOpen',
+          color: { bg: 'bg-amber-500/10 dark:bg-amber-500/20', text: 'text-amber-600 dark:text-amber-400', badge: '', hover: '', gradient: '' },
+          defaultPath: '/superadmin/mapel-presets',
+          pathPrefixes: ['/superadmin/mapel-presets', '/superadmin/topik-presets', '/superadmin/jurusan-presets'],
+          category: 'PRESET',
+        },
+        {
+          id: 'platform-roles',
+          name: 'Hak Akses',
+          description: 'Role & Capability Matrix',
+          icon: Shield,
+          iconName: 'Shield',
+          color: { bg: 'bg-purple-500/10 dark:bg-purple-500/20', text: 'text-purple-600 dark:text-purple-400', badge: '', hover: '', gradient: '' },
+          defaultPath: '/management/roles',
+          pathPrefixes: ['/management/roles'],
+          category: 'SECURITY',
+        },
+        {
+          id: 'platform-menus',
+          name: 'Kelola Menu',
+          description: 'Navigasi Sidebar & RBAC',
+          icon: Sliders,
+          iconName: 'Sliders',
+          color: { bg: 'bg-slate-500/10 dark:bg-slate-500/20', text: 'text-slate-600 dark:text-slate-400', badge: '', hover: '', gradient: '' },
+          defaultPath: '/management/menus',
+          pathPrefixes: ['/management/menus'],
+          category: 'SECURITY',
+        },
+        {
+          id: 'platform-support',
+          name: 'Support',
+          description: 'Tiket Bantuan Sekolah',
+          icon: MessageSquare,
+          iconName: 'MessageSquare',
+          color: { bg: 'bg-rose-500/10 dark:bg-rose-500/20', text: 'text-rose-600 dark:text-rose-400', badge: '', hover: '', gradient: '' },
+          defaultPath: '/support',
+          pathPrefixes: ['/support'],
+          category: 'SUPPORT',
+        },
+      ];
+    }
     return getVisibleApps(userCapabilities, activeFeatures, roleName, userPositions);
-  }, [userCapabilities, activeFeatures, roleName, userPositions]);
+  }, [isSuperAdmin, userCapabilities, activeFeatures, roleName, userPositions]);
 
   const currentApp = useMemo(() => {
     return getActiveApp(location.pathname);
@@ -134,7 +217,9 @@ export function AppLauncherDropdown() {
               <div className="grid grid-cols-3 gap-1.5 sm:gap-2 max-h-[60vh] sm:max-h-[380px] overflow-y-auto overscroll-contain p-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
                 {visibleApps.map((app) => {
                   const IconComponent = app.icon;
-                  const isCurrentActive = currentApp?.id === app.id;
+                  const isCurrentActive = isSuperAdmin
+                    ? app.pathPrefixes.some(p => location.pathname.toLowerCase().startsWith(p.toLowerCase()))
+                    : currentApp?.id === app.id;
 
                   return (
                     <button
