@@ -1,6 +1,6 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { X, Printer, Download, Loader2, ZoomIn, ZoomOut, RotateCcw, Globe } from 'lucide-react';
-import { PrintDocumentSheet, PrintHeader } from '@/components/ui';
+import { PrintDocumentSheet, PrintHeader, SendDocumentWaButton } from '@/components/ui';
 import { DenahMapGuideLayer } from './DenahMapGuideLayer';
 import toast from 'react-hot-toast';
 import type { DenahElementNode, DenahSpasial, DenahMapGuideConfig } from '../../types/spasial.types';
@@ -291,6 +291,12 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
               )}
               Unduh PDF
             </button>
+            <SendDocumentWaButton
+              targetRef={printContentRef}
+              orientation="landscape"
+              defaultFileName={`Denah_${denah.nama_denah || 'Lokasi'}.pdf`}
+              defaultCaption={`Berikut kami lampirkan dokumen denah ${denah.nama_denah || ''}.`}
+            />
             <button
               type="button"
               onClick={onClose}

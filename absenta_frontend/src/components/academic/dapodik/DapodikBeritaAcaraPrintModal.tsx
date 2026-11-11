@@ -456,6 +456,16 @@ export const DapodikBeritaAcaraPrintModal: React.FC<DapodikBeritaAcaraPrintModal
       }
       onDownloadPdf={handleDownloadPdf}
       downloadPdfText={isExportingPdf ? 'Memproses...' : 'Unduh PDF'}
+      defaultWaFilename={
+        selectedTemplate === 'lppd_usia'
+          ? `BA_VERVAL_USIA_LPPD_DAPODIK_${npsn || 'SEKOLAH'}.pdf`
+          : `BA_REKONSILIASI_DAPODIK_${npsn || 'SEKOLAH'}.pdf`
+      }
+      defaultWaCaption={
+        selectedTemplate === 'lppd_usia'
+          ? `Yth. Bapak/Ibu, terlampir Berita Acara Verval Data Usia Siswa Dapodik (LPPD) ${sekolahData?.nama || tenantInfo.name || ''} per tanggal ${cutoffDateText}.`
+          : `Yth. Bapak/Ibu, terlampir Berita Acara Rekonsiliasi Data Dapodik – Absenta ${sekolahData?.nama || tenantInfo.name || ''}.`
+      }
       onPrint={() => window.print()}
       printButtonText="Cetak"
       size="5xl"

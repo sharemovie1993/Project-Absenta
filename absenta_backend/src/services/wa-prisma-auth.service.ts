@@ -2,11 +2,33 @@
  * wa-prisma-auth.service.ts
  * Database Auth Store untuk Baileys WhatsApp Gateway menggunakan Prisma.
  * Menggantikan file auth fisik lokal (useMultiFileAuthState) dengan tabel PostgreSQL `wa_auth_sessions`.
- * Memastikan 100% isolasi data multi-tenant dan zero physical file lock di VPS.
+ * Mendukung sesi level Sekolah/Tenant maupun sesi level User yang Login (key prefix `user:<userId>:`).
  */
 
-import { initAuthCreds, BufferJSON, proto, AuthenticationCreds, SignalDataTypeMap } from '@whiskeysockets/baileys';
+import type { AuthenticationCreds, SignalDataTypeMap } from '@whiskeysockets/baileys';
 import { prisma } from '../utils/prisma';
+
+export function parseWaSessionKey(sessionKey: string): {
+  tenantId: string;
+  userId: string | null;
+  keyPrefix: string;
+} {
+  const raw = String(sessionKey || '').trim();
+  const sep = '::user::';
+  const idx = raw.indexOf(sep);
+  if (idx > 0) {
+    const tenantId = raw.slice(0, idx);
+    const userId = raw.slice(idx + sep.length).trim();
+    if (tenantId && userId) {
+      return { tenantId, userId, keyPrefix: `user:${userId}:` };
+    }
+  }
+  return { tenantId: raw, userId: null, keyPrefix: '' };
+}
+
+export function buildUserWaSessionKey(tenantId: string, userId: string): string {
+  return `${tenantId}::user::${userId}`;
+}
 
 export interface PrismaAuthState {
   state: {
@@ -20,36 +42,42 @@ export interface PrismaAuthState {
   clearAuth: () => Promise<void>;
 }
 
-export async function usePrismaAuthState(tenantId: string): Promise<PrismaAuthState> {
+export async function usePrismaAuthState(sessionKey: string): Promise<PrismaAuthState> {
+  const { initAuthCreds, BufferJSON, proto } = await import('@whiskeysockets/baileys');
+  const { tenantId, userId, keyPrefix } = parseWaSessionKey(sessionKey);
+  const toDbKey = (keyId: string) => (keyPrefix ? `${keyPrefix}${keyId}` : keyId);
+
   const readKey = async (keyId: string) => {
+    const dbKey = toDbKey(keyId);
     try {
       const row = await prisma.waAuthSession.findUnique({
-        where: { tenant_id_key_id: { tenant_id: tenantId, key_id: keyId } },
+        where: { tenant_id_key_id: { tenant_id: tenantId, key_id: dbKey } },
       });
       if (!row) return null;
       return JSON.parse(row.value, BufferJSON.reviver);
     } catch (e: any) {
-      console.warn(`[WA-PrismaAuth:${tenantId}] Error reading key ${keyId}:`, e.message);
+      console.warn(`[WA-PrismaAuth:${sessionKey}] Error reading key ${dbKey}:`, e.message);
       return null;
     }
   };
 
   const writeKey = async (keyId: string, value: any) => {
+    const dbKey = toDbKey(keyId);
     try {
       if (value === null || value === undefined) {
         await prisma.waAuthSession.deleteMany({
-          where: { tenant_id: tenantId, key_id: keyId },
+          where: { tenant_id: tenantId, key_id: dbKey },
         });
       } else {
         const serialized = JSON.stringify(value, BufferJSON.replacer);
         await prisma.waAuthSession.upsert({
-          where: { tenant_id_key_id: { tenant_id: tenantId, key_id: keyId } },
-          create: { tenant_id: tenantId, key_id: keyId, value: serialized },
+          where: { tenant_id_key_id: { tenant_id: tenantId, key_id: dbKey } },
+          create: { tenant_id: tenantId, key_id: dbKey, value: serialized },
           update: { value: serialized },
         });
       }
     } catch (e: any) {
-      console.error(`[WA-PrismaAuth:${tenantId}] Error writing key ${keyId}:`, e.message);
+      console.error(`[WA-PrismaAuth:${sessionKey}] Error writing key ${dbKey}:`, e.message);
     }
   };
 
@@ -95,9 +123,12 @@ export async function usePrismaAuthState(tenantId: string): Promise<PrismaAuthSt
       await writeKey('creds', creds);
     },
     clearAuth: async () => {
-      console.log(`[WA-PrismaAuth:${tenantId}] Clear database auth session rows.`);
+      console.log(`[WA-PrismaAuth:${sessionKey}] Clear database auth session rows.`);
       await prisma.waAuthSession.deleteMany({
-        where: { tenant_id: tenantId },
+        where: {
+          tenant_id: tenantId,
+          key_id: userId ? { startsWith: keyPrefix } : { not: { startsWith: 'user:' } },
+        },
       });
     },
   };

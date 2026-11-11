@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Download, Loader2, Printer, CheckCircle2, ShieldCheck, FileText, FileSpreadsheet, CheckSquare } from 'lucide-react';
 import { Modal, Button, Badge } from '../../ui';
 import { PrintHeader } from '../../ui/PrintHeader';
+import { SendDocumentWaButton } from '../../ui/SendDocumentWaModal';
 import { useAuthStore } from '../../../store/authStore';
 import { sekolahApi, type Sekolah } from '../../../api/academic/sekolah.api';
 import { getTenantById } from '../../../api/tenants.api';
@@ -328,6 +329,15 @@ export default React.memo(function PerangkatAjarPdfPreviewModal({
               <FileSpreadsheet size={14} className="mr-1.5 text-blue-600" />
               📄 Ekspor ke Word (.doc)
             </Button>
+
+            {!previewPdfState.loading && (
+              <SendDocumentWaButton
+                targetSelector="#printable-official-document"
+                orientation={isMacroDoc ? 'landscape' : 'portrait'}
+                defaultFileName={`${item?.judul || previewPdfState.title || 'Perangkat_Ajar'}.pdf`}
+                defaultCaption={`Terlampir dokumen perangkat ajar: ${item?.judul || previewPdfState.title || ''}.`}
+              />
+            )}
 
             <Button
               type="button"

@@ -178,8 +178,33 @@ export function useMobileSubtabSidebar(scopeOrInitialState?: string | boolean) {
     return checkScopeMatchesUrlTab(normalizedScope, currentTab);
   }, [normalizedScope, location.pathname, currentTab]);
 
+  useEffect(() => {
+    if (initialOpen && isScopeActive) {
+      openStore(normalizedScope);
+    }
+  }, [initialOpen, isScopeActive, openStore, normalizedScope]);
+
+  // Tutup sidebar saat unmount untuk mencegah sidebar menggantung
+  useEffect(() => {
+    return () => {
+      closeStore();
+    };
+  }, [closeStore]);
+
+  const isMobileSidebarOpen = useMemo(() => {
+    if (!isOpen) return false;
+    if (!isScopeActive) return false;
+    if (activeScope && normalizedScope && activeScope !== normalizedScope) return false;
+    return true;
+  }, [isOpen, isScopeActive, activeScope, normalizedScope]);
+
   return {
-    isOpen,
+    isMobileSidebarOpen,
+    setIsMobileSidebarOpen: (openState: boolean) => (openState ? openStore(normalizedScope) : closeStore()),
+    openMobileSidebar: () => openStore(normalizedScope),
+    closeMobileSidebar: closeStore,
+    toggleMobileSidebar: () => toggleStore(normalizedScope),
+    isOpen: isMobileSidebarOpen,
     isScopeActive,
     activeScope,
     open: () => openStore(normalizedScope),

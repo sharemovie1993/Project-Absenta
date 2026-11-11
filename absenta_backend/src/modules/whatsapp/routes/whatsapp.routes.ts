@@ -3,6 +3,25 @@ import { waWebhookController } from '../controllers/wa-webhook.controller';
 import { waChatLogController } from '../controllers/wa-chat-log.controller';
 import { determineDataScope } from '../../../middlewares/dataScope';
 import { requireCapability } from '../../../middlewares/requireCapability';
+import { RoleName } from '../../../constants/enums';
+
+/**
+ * Mengizinkan seluruh staf/operator/guru/pimpinan sekolah terautentikasi (non-SISWA)
+ * mengirim dokumen resmi hasil Universal Document Printing via WhatsApp Gateway sekolah.
+ */
+const requireStaffDocumentSender = async (request: any, reply: any) => {
+  const user = request.user;
+  if (!user) {
+    return reply.status(401).send({ code: 'UNAUTHORIZED', message: 'Unauthorized' });
+  }
+  const roleName = String(user.roleName || user.Role?.name || '').trim().toUpperCase();
+  if (roleName === RoleName.SISWA) {
+    return reply.status(403).send({
+      code: 'FORBIDDEN',
+      message: 'Siswa tidak diizinkan mengirim dokumen melalui WhatsApp Gateway sekolah.',
+    });
+  }
+};
 
 const whatsappController = new WhatsappController();
 
@@ -106,6 +125,38 @@ export async function whatsappRoutes(fastify: any) {
   fastify.delete('/groups/cache', {
     preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
     handler: whatsappController.invalidateGroupsCache.bind(whatsappController),
+  });
+
+  // GET /whatsapp/document-targets - Status WA & daftar grup untuk modal kirim dokumen Universal Printing
+  fastify.get('/document-targets', {
+    preHandler: [requireStaffDocumentSender, determineDataScope()],
+    handler: whatsappController.getDocumentTargets.bind(whatsappController),
+  });
+
+  // POST/GET /whatsapp/user-session/* - Tautkan / cek status / putuskan sesi WA pribadi user yang sedang login
+  fastify.post('/user-session/connect', {
+    preHandler: [requireStaffDocumentSender, determineDataScope()],
+    handler: whatsappController.connectUserSession.bind(whatsappController),
+  });
+  fastify.get('/user-session/status', {
+    preHandler: [requireStaffDocumentSender, determineDataScope()],
+    handler: whatsappController.getUserSessionStatus.bind(whatsappController),
+  });
+  fastify.post('/user-session/disconnect', {
+    preHandler: [requireStaffDocumentSender, determineDataScope()],
+    handler: whatsappController.disconnectUserSession.bind(whatsappController),
+  });
+
+  // GET /whatsapp/document-recipients - Direktori nomor WA biodata Guru, Siswa & Orang Tua/Wali
+  fastify.get('/document-recipients', {
+    preHandler: [requireStaffDocumentSender, determineDataScope()],
+    handler: whatsappController.getDocumentRecipients.bind(whatsappController),
+  });
+
+  // POST /whatsapp/send-document - Kirim file PDF/dokumen Universal Document Printing ke nomor WA / Grup WA
+  fastify.post('/send-document', {
+    preHandler: [requireStaffDocumentSender, determineDataScope()],
+    handler: whatsappController.sendDocument.bind(whatsappController),
   });
 }
 

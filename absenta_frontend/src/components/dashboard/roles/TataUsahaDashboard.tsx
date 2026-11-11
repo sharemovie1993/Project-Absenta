@@ -220,7 +220,7 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
   const visibleCategories = useMemo(() => getVisibleTuCategories(navTabs), [navTabs]);
   const allowedTabIds = useMemo(() => new Set<TuTabId>(navTabs?.map((t) => t.id) || []), [navTabs]);
 
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as TuTabId | null;
 
   // Active Tab State (Divalidasi terhadap tab yang boleh diakses user)
@@ -238,19 +238,35 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
     if (subtabParam && allowedTabIds.has(subtabParam)) {
       setActiveTab((curr) => (curr !== subtabParam ? subtabParam : curr));
       setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
-    } else if (!subtabParam || !allowedTabIds.has(activeTab)) {
+    } else if (!subtabParam || !allowedTabIds.has(subtabParam)) {
       setActiveTab('beranda');
       setVisitedTabs((prev) => (prev.has('beranda') ? prev : new Set(prev).add('beranda')));
     }
-  }, [subtabParam, allowedTabIds, activeTab]);
+  }, [subtabParam, allowedTabIds]);
 
   const handleTabSelect = useCallback(
     (tabId: TuTabId) => {
       if (!allowedTabIds.has(tabId)) return;
       setActiveTab(tabId);
       setVisitedTabs((prev) => (prev.has(tabId) ? prev : new Set(prev).add(tabId)));
+
+      const currentSubtab = (searchParams.get('subtab') as TuTabId | null) || 'beranda';
+      if (currentSubtab !== tabId) {
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            if (tabId === 'beranda') {
+              next.delete('subtab');
+            } else {
+              next.set('subtab', tabId);
+            }
+            return next;
+          },
+          { replace: true }
+        );
+      }
     },
-    [allowedTabIds]
+    [allowedTabIds, searchParams, setSearchParams]
   );
 
   // Floating Modals State (1-Click Action Center)

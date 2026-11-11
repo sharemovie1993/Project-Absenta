@@ -97,5 +97,13 @@ export {
   type DocumentSignatureLayout,
 } from './UniversalDocumentSignatures';
 
+export {
+  SendDocumentWaModal,
+  SendDocumentWaButton,
+  type SendDocumentWaModalProps,
+  type SendDocumentWaButtonProps,
+  type WaCustomPdfGenerator,
+} from './SendDocumentWaModal';
+
 export * from './hub';
 

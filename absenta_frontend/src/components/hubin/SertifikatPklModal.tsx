@@ -16,7 +16,7 @@ import {
   SlidersHorizontal 
 } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { PrintHeader } from '../ui/PrintHeader';
+import { PrintHeader, SendDocumentWaButton } from '../ui/PrintHeader';
 import { hubinApi } from '../../api/hubin.api';
 import { getMyTenant } from '../../api/tenants.api';
 import { useAuthStore } from '../../store/authStore';
@@ -253,21 +253,25 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
     window.print();
   };
 
+  const buildSertifikatDoc = async () => {
+    const pdfMode = activeTab === 'FRONT' ? 'front_only' : activeTab === 'BACK' ? 'back_only' : 'all';
+    const [logoDaerahBase64, logoSekolahBase64] = await Promise.all([
+      resolveCoverImageBase64(tenantInfoForKop.logo_daerah_url),
+      resolveCoverImageBase64(tenantInfoForKop.logo_url),
+    ]);
+    return generateSertifikatPdf(certData, {
+      mode: pdfMode,
+      logoDaerahBase64,
+      logoSekolahBase64,
+      showDudiName,
+      showPicName,
+    });
+  };
+
   const handleDownloadPdf = async () => {
     try {
       setIsDownloadingPdf(true);
-      const pdfMode = activeTab === 'FRONT' ? 'front_only' : activeTab === 'BACK' ? 'back_only' : 'all';
-      const [logoDaerahBase64, logoSekolahBase64] = await Promise.all([
-        resolveCoverImageBase64(tenantInfoForKop.logo_daerah_url),
-        resolveCoverImageBase64(tenantInfoForKop.logo_url),
-      ]);
-      const doc = await generateSertifikatPdf(certData, { 
-        mode: pdfMode,
-        logoDaerahBase64,
-        logoSekolahBase64,
-        showDudiName,
-        showPicName,
-      });
+      const doc = await buildSertifikatDoc();
       doc.save(`Sertifikat_PKL_${certData.siswa.nama_siswa.replace(/\s+/g, '_')}.pdf`);
       toast.success('File PDF Sertifikat berhasil diunduh!');
     } catch (e) {
@@ -434,6 +438,19 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
             )}
             Unduh PDF
           </Button>
+
+          <SendDocumentWaButton
+            onGenerateWaPdf={async () => {
+              const doc = await buildSertifikatDoc();
+              return {
+                blob: doc.output('blob'),
+                fileName: `Sertifikat_PKL_${certData.siswa.nama_siswa.replace(/\s+/g, '_')}.pdf`,
+              };
+            }}
+            defaultFileName={`Sertifikat_PKL_${certData.siswa.nama_siswa.replace(/\s+/g, '_')}.pdf`}
+            defaultCaption={`Selamat, terlampir Sertifikat Praktik Kerja Lapangan (PKL) atas nama ${certData.siswa.nama_siswa}.`}
+            className="rounded-xl"
+          />
 
           <Button
             type="button"

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, Button, Badge } from '../../ui';
-import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
+import { UniversalDocumentSignatures, SendDocumentWaButton } from '@/components/ui/PrintHeader';
 import { Printer, Copy, Check, FileCheck, ShieldCheck, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { CoopResolutionItem } from '../../../pages/cooperative/RatMeetingPage';
@@ -128,6 +128,12 @@ ${resolution.summary}
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
               {copied ? 'Tersalin' : 'Salin Naskah'}
             </Button>
+            <SendDocumentWaButton
+              targetSelector="#printable-rat-resolution"
+              orientation="portrait"
+              defaultFileName="Surat_Ketetapan_RAT.pdf"
+              defaultCaption="Yth. Pengurus/Anggota, terlampir Surat Ketetapan Rapat Anggota Tahunan (TAP RAT)."
+            />
             <Button
               type="button"
               variant="primary"
@@ -193,7 +199,10 @@ ${resolution.summary}
         </div>
 
         {/* PRINTABLE LEGAL DOCUMENT CONTAINER */}
-        <div className="p-8 md:p-12 rounded-xl bg-white text-slate-900 border border-slate-200 shadow-sm font-serif space-y-6 print:shadow-none print:border-none print:p-0">
+        <div
+          id="printable-rat-resolution"
+          className="p-8 md:p-12 rounded-xl bg-white text-slate-900 border border-slate-200 shadow-sm font-serif space-y-6 print:shadow-none print:border-none print:p-0"
+        >
           {/* HEADER: KOP SURAT RESMI KOPERASI (TERINTEGRASI PENGATURAN KOPERASI) */}
           <CoopDocumentKop
             coopNameFallback={coopName}

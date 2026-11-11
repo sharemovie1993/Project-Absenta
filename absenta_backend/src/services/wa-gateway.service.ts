@@ -17,6 +17,16 @@ export const waGatewayService = {
   async sendMessageToJid(tenantId: string, jidTarget: string, pesan: string): Promise<boolean> {
     return callMasterViaRpc('sendMessageToJid', tenantId, [jidTarget, pesan]);
   },
+  async sendDocument(
+    tenantId: string,
+    target: string,
+    fileBase64: string,
+    fileName: string,
+    mimetype = 'application/pdf',
+    caption = '',
+  ): Promise<boolean> {
+    return callMasterViaRpc('sendDocument', tenantId, [target, fileBase64, fileName, mimetype, caption]);
+  },
   async sendMessageSoft(tenantId: string, nomor: string | null | undefined, pesan: string, source?: string): Promise<void> {
     return waGatewayServiceLocal.sendMessageSoft(tenantId, nomor, pesan, source);
   },

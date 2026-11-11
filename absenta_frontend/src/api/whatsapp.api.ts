@@ -179,3 +179,94 @@ export const sendWaGreetingBulk = async (payload: { role?: string; search?: stri
   return response.data as { success: boolean; sentCount: number; message: string };
 };
 
+export interface WaSessionSummary {
+  status: string;
+  connected: boolean;
+  phoneNumber?: string | null;
+  qr?: string | null;
+  groups: WaGroupItem[];
+}
+
+export interface WaDocumentTargetsResponse {
+  status: string;
+  connected: boolean;
+  phoneNumber?: string | null;
+  groups: WaGroupItem[];
+  warning?: string;
+  gateway?: WaSessionSummary & {
+    providerName?: string;
+    externalActive?: boolean;
+    platformFallbackAvailable?: boolean;
+  };
+  userSession?: WaSessionSummary;
+}
+
+export interface SendWaDocumentPayload {
+  to: string;
+  fileBase64: string;
+  fileName: string;
+  mimetype?: string;
+  caption?: string;
+  senderMode?: 'AUTO' | 'GATEWAY' | 'PLATFORM' | 'USER';
+}
+
+export type WaDocumentRecipientType = 'GURU' | 'SISWA' | 'ORTU';
+
+export interface WaDocumentRecipientItem {
+  id: string;
+  recipientType: WaDocumentRecipientType;
+  name: string;
+  phone: string;
+  normalizedPhone: string;
+  subtitle: string;
+  studentName?: string;
+  kelasName?: string;
+}
+
+export const getWaDocumentTargets = async (refresh = false): Promise<WaDocumentTargetsResponse> => {
+  const response = await axiosInstance.get('/whatsapp/document-targets', {
+    params: refresh ? { refresh: 'true' } : undefined,
+  });
+  return response.data?.data ?? {
+    status: 'disconnected',
+    connected: false,
+    phoneNumber: null,
+    groups: [],
+  };
+};
+
+export const connectWaUserSession = async (): Promise<Omit<WaSessionSummary, 'groups'>> => {
+  const response = await axiosInstance.post('/whatsapp/user-session/connect');
+  return response.data?.data ?? { status: 'disconnected', connected: false, phoneNumber: null, qr: null };
+};
+
+export const getWaUserSessionStatus = async (): Promise<Omit<WaSessionSummary, 'groups'>> => {
+  const response = await axiosInstance.get('/whatsapp/user-session/status');
+  return response.data?.data ?? { status: 'disconnected', connected: false, phoneNumber: null, qr: null };
+};
+
+export const disconnectWaUserSession = async (): Promise<{ success: boolean; message: string }> => {
+  const response = await axiosInstance.post('/whatsapp/user-session/disconnect');
+  return response.data;
+};
+
+export const getWaDocumentRecipients = async (params: {
+  type?: 'ALL' | WaDocumentRecipientType;
+  search?: string;
+  limit?: number;
+} = {}): Promise<WaDocumentRecipientItem[]> => {
+  const response = await axiosInstance.get('/whatsapp/document-recipients', { params });
+  return Array.isArray(response.data?.data) ? response.data.data : [];
+};
+
+export const sendWaDocument = async (payload: SendWaDocumentPayload) => {
+  const response = await axiosInstance.post('/whatsapp/send-document', payload, {
+    timeout: 60000,
+  });
+  return response.data as {
+    success: boolean;
+    message: string;
+    data?: { sent: boolean; target: string; fileName: string; provider: string };
+  };
+};
+

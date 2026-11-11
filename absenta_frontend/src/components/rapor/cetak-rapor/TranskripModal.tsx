@@ -17,7 +17,7 @@ import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
 import { LegerStudent, TranskripNilaiData } from '../../../types/cetakRapor.types';
 import { useIsMobile } from '../../../hooks/useIsMobile';
-import { usePrintHeaderData } from '@/components/ui';
+import { usePrintHeaderData, SendDocumentWaButton } from '@/components/ui';
 import { generatePdfTranskripNilai } from '@/utils/print/modules/pdfTranskripNilai';
 import { normalizeStudentIdentity } from '@/utils/academic/academicIdentityNormalizer';
 import { toast } from 'sonner';
@@ -55,67 +55,73 @@ export const TranskripModal: React.FC<TranskripModalProps> = React.memo(({
     { index: 6, label: 'Smt 6' },
   ];
 
-  const handleDownloadPdf = () => {
+  const buildTranskripPdf = async () => {
+    const studentIdentity = normalizeStudentIdentity({
+      ...(selectedStudent || {}),
+      ...(data?.siswa || {}),
+    });
+
+    const printPayload = {
+      sekolah: {
+        nama: tenantInfo.name || 'SEKOLAH MENENGAH KEJURUAN',
+        alamat: tenantInfo.address || '',
+        kota: (rawSekolah as any)?.kota || 'Kota',
+        telepon: tenantInfo.phone,
+        email: tenantInfo.email,
+        website: tenantInfo.website,
+        kepala_sekolah: (rawSekolah as any)?.kepala_sekolah || 'Kepala Sekolah',
+        nip_kepala: (rawSekolah as any)?.nip_kepala || '-',
+        nama_dinas_atas: tenantInfo.nama_dinas_atas,
+        nama_dinas_bawah: tenantInfo.nama_dinas_bawah,
+        nama_cabang_dinas: tenantInfo.nama_cabang_dinas,
+      },
+      siswa: {
+        id: studentIdentity.id,
+        nama_siswa: studentIdentity.nama,
+        nis: studentIdentity.nis,
+        nisn: studentIdentity.nisn,
+        tempat_lahir: studentIdentity.tempatLahir || '-',
+        tanggal_lahir: studentIdentity.tanggalLahir || '-',
+        kelas: studentIdentity.namaKelas,
+        jurusan: studentIdentity.namaJurusan,
+        program_keahlian: studentIdentity.programKeahlian,
+      },
+      headers: headers.map((h: any) => ({ index: h.index, label: h.label, sublabel: h.sublabel || '' })),
+      mata_pelajaran: (data.transkrip || data.mata_pelajaran || []).map((m: any) => ({
+        mapel_id: m.mapel_id,
+        mapel_name: m.mapel_name || m.nama_mapel,
+        kode_mapel: m.kode_mapel,
+        kelompok_mapel: m.kelompok_mapel,
+        nilai_per_semester: m.nilai_per_semester,
+        rata_rata_mapel: m.rata_rata_mapel ?? m.rata_rata ?? 0,
+      })),
+      ringkasan: {
+        rata_rata_ijazah: data.ringkasan?.rata_rata_ijazah || data.rata_rata_ijazah_kumulatif || 0,
+        total_mapel: data.ringkasan?.total_mapel || (data.transkrip || []).length,
+        status_kelulusan: data.ringkasan?.status_kelulusan || 'MEMENUHI KRITERIA',
+        nomor_ijazah: data.ringkasan?.nomor_ijazah,
+        nilai_ukk: data.ringkasan?.nilai_ukk,
+        nilai_pkl: data.ringkasan?.nilai_pkl,
+      },
+      options: {
+        logoDaerahBase64,
+        logoSekolahBase64,
+      },
+    };
+
+    const { blobUrl, filename } = generatePdfTranskripNilai(printPayload);
+    const blob = await fetch(blobUrl).then((r) => r.blob());
+    return { blob, blobUrl, fileName: filename };
+  };
+
+  const handleDownloadPdf = async () => {
     if (!data) return;
     try {
       setIsExportingPdf(true);
-      const studentIdentity = normalizeStudentIdentity({
-        ...(selectedStudent || {}),
-        ...(data.siswa || {}),
-      });
-
-      const printPayload = {
-        sekolah: {
-          nama: tenantInfo.name || 'SEKOLAH MENENGAH KEJURUAN',
-          alamat: tenantInfo.address || '',
-          kota: (rawSekolah as any)?.kota || 'Kota',
-          telepon: tenantInfo.phone,
-          email: tenantInfo.email,
-          website: tenantInfo.website,
-          kepala_sekolah: (rawSekolah as any)?.kepala_sekolah || 'Kepala Sekolah',
-          nip_kepala: (rawSekolah as any)?.nip_kepala || '-',
-          nama_dinas_atas: tenantInfo.nama_dinas_atas,
-          nama_dinas_bawah: tenantInfo.nama_dinas_bawah,
-          nama_cabang_dinas: tenantInfo.nama_cabang_dinas,
-        },
-        siswa: {
-          id: studentIdentity.id,
-          nama_siswa: studentIdentity.nama,
-          nis: studentIdentity.nis,
-          nisn: studentIdentity.nisn,
-          tempat_lahir: studentIdentity.tempatLahir || '-',
-          tanggal_lahir: studentIdentity.tanggalLahir || '-',
-          kelas: studentIdentity.namaKelas,
-          jurusan: studentIdentity.namaJurusan,
-          program_keahlian: studentIdentity.programKeahlian,
-        },
-        headers: headers.map((h: any) => ({ index: h.index, label: h.label, sublabel: h.sublabel || '' })),
-        mata_pelajaran: (data.transkrip || data.mata_pelajaran || []).map((m: any) => ({
-          mapel_id: m.mapel_id,
-          mapel_name: m.mapel_name || m.nama_mapel,
-          kode_mapel: m.kode_mapel,
-          kelompok_mapel: m.kelompok_mapel,
-          nilai_per_semester: m.nilai_per_semester,
-          rata_rata_mapel: m.rata_rata_mapel ?? m.rata_rata ?? 0,
-        })),
-        ringkasan: {
-          rata_rata_ijazah: data.ringkasan?.rata_rata_ijazah || data.rata_rata_ijazah_kumulatif || 0,
-          total_mapel: data.ringkasan?.total_mapel || (data.transkrip || []).length,
-          status_kelulusan: data.ringkasan?.status_kelulusan || 'MEMENUHI KRITERIA',
-          nomor_ijazah: data.ringkasan?.nomor_ijazah,
-          nilai_ukk: data.ringkasan?.nilai_ukk,
-          nilai_pkl: data.ringkasan?.nilai_pkl,
-        },
-        options: {
-          logoDaerahBase64,
-          logoSekolahBase64,
-        },
-      };
-
-      const { blobUrl, filename } = generatePdfTranskripNilai(printPayload);
+      const { blobUrl, fileName } = await buildTranskripPdf();
       const a = document.createElement('a');
       a.href = blobUrl;
-      a.download = filename;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -179,6 +185,17 @@ export const TranskripModal: React.FC<TranskripModalProps> = React.memo(({
               {isExportingPdf ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
               <span>Unduh PDF</span>
             </Button>
+            {data && (
+              <SendDocumentWaButton
+                onGenerateWaPdf={async () => {
+                  const res = await buildTranskripPdf();
+                  return { blob: res.blob, fileName: res.fileName };
+                }}
+                defaultFileName={`Transkrip_${selectedStudent.nama_siswa.replace(/\s+/g, '_')}.pdf`}
+                defaultCaption={`Yth. Bapak/Ibu, berikut kami lampirkan Transkrip Nilai Kumulatif ananda ${selectedStudent.nama_siswa}.`}
+                className="rounded-xl"
+              />
+            )}
             <Button
               variant="outline"
               size="sm"

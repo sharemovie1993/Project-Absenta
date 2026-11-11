@@ -18,6 +18,7 @@ import { waChatbotResolverService, persistLidMapping } from '@/modules/whatsapp/
 import { getRedisConnection } from '@/queue/redis';
 import { createRedisConnection } from '@/infra/redis/redisClient';
 import { appLogger } from '@/utils/app-logger';
+import { parseWaSessionKey } from '../wa-prisma-auth.service';
 
 // ─── WA Groups Redis Cache ─────────────────────────────────────────────────────
 export { getRedisConnection } from '@/queue/redis';
@@ -57,8 +58,9 @@ export interface WaConnectionState {
 
 async function getTenantDbCredsInfo(tenantId: string): Promise<{ hasCreds: boolean; savedNumber: string | null }> {
   try {
+    const parsed = parseWaSessionKey(tenantId);
     const credsRow = await prisma.waAuthSession.findUnique({
-      where: { tenant_id_key_id: { tenant_id: tenantId, key_id: 'creds' } },
+      where: { tenant_id_key_id: { tenant_id: parsed.tenantId, key_id: `${parsed.keyPrefix}creds` } },
       select: { value: true },
     });
     if (credsRow?.value) {
@@ -360,8 +362,9 @@ async function connectTenant(tenantId: string): Promise<void> {
     }
   });
 
-  // ── Inbound Chatbot Event Listener ──
+  // ── Inbound Chatbot Event Listener (khusus WA Sekolah/Tenant, bukan WA Pribadi User) ──
   sock.ev.on('messages.upsert', async (m: any) => {
+    if (parseWaSessionKey(tenantId).userId) return;
     try {
       if (m.type !== 'notify') return;
       for (const msg of m.messages) {
@@ -437,6 +440,7 @@ async function generateQRBase64(qrString: string): Promise<string | null> {
   }
 }
 async function syncStatusToDB(tenantId: string, status: string, number: string | null) {
+  if (parseWaSessionKey(tenantId).userId) return;
   try {
     await prisma.waTenantConnection.upsert({
       where: { tenant_id: tenantId },
@@ -449,6 +453,111 @@ async function syncStatusToDB(tenantId: string, status: string, number: string |
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
+
+/**
+ * Normalisasi target penerima WA menjadi JID Baileys yang valid:
+ * - JID lengkap (mengandung '@', misal 120363xxx@g.us atau 628xxx@s.whatsapp.net) dipertahankan.
+ * - Nomor HP (08xxx / +628xxx / 628xxx) dinormalisasi menjadi 628xxx@s.whatsapp.net.
+ */
+export function resolveWaTargetJid(target: string): string {
+  const trimmed = String(target || '').trim();
+  if (!trimmed) {
+    throw new Error('Nomor tujuan atau JID WhatsApp wajib diisi.');
+  }
+  if (trimmed.includes('@')) {
+    return trimmed;
+  }
+  let formatted = trimmed.replace(/[^0-9]/g, '');
+  if (formatted.startsWith('0')) {
+    formatted = '62' + formatted.substring(1);
+  }
+  if (formatted.length < 8) {
+    throw new Error('Nomor WhatsApp tujuan tidak valid (minimal 8 digit).');
+  }
+  return `${formatted}@s.whatsapp.net`;
+}
+
+async function ensureConnectedSocketEntry(tenantId: string) {
+  let entry = pool.get(tenantId);
+  if (!entry || entry.status !== 'connected' || !entry.sock) {
+    const { hasCreds } = await getTenantDbCredsInfo(tenantId);
+    if (hasCreds && isMasterInstance()) {
+      console.log(`[WA-Pool:${tenantId}] Auto-restoring WA socket connection from DB creds before sending...`);
+      try {
+        await connectTenant(tenantId);
+        for (let i = 0; i < 15; i++) {
+          entry = pool.get(tenantId);
+          if (entry && entry.status === 'connected' && entry.sock) break;
+          await new Promise(r => setTimeout(r, 200));
+        }
+      } catch (err: any) {
+        console.error(`[WA-Pool:${tenantId}] Auto-restore before send failed:`, err.message);
+      }
+    }
+  }
+
+  if (!entry || entry.status !== 'connected' || !entry.sock) {
+    throw new Error(`WA Gateway tenant ${tenantId} belum terhubung. Silakan scan QR di menu Pengaturan WhatsApp.`);
+  }
+  return entry;
+}
+
+async function sendBaileysPayloadWithRetry(
+  tenantId: string,
+  jid: string,
+  payload: any,
+  timeoutMs: number,
+  logTarget: string,
+): Promise<boolean> {
+  let entry = await ensureConnectedSocketEntry(tenantId);
+
+  const sendOnce = async (sock: any) => {
+    const sendPromise = sock.sendMessage(jid, payload);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT_SEND')), timeoutMs)
+    );
+    await Promise.race([sendPromise, timeoutPromise]);
+  };
+
+  try {
+    await sendOnce(entry.sock);
+    console.log(`[WA-Pool:${tenantId}] Terkirim ke ${logTarget}`);
+    return true;
+  } catch (err: any) {
+    const msg = String(err?.message || '').toLowerCase();
+    const isClosedOrTimeout = err?.message === 'TIMEOUT_SEND' || msg.includes('closed') || msg.includes('disconnect');
+    if (!isClosedOrTimeout) {
+      throw err;
+    }
+
+    console.warn(`[WA-Pool:${tenantId}] Pengiriman WA terputus (${err.message}). Memulai reconnect otomatis dari DB creds...`);
+    try {
+      entry.sock?.end(undefined);
+    } catch (_) {}
+    entry.sock = null;
+    entry.status = 'connecting';
+    await syncStatusToDB(tenantId, 'connecting', null);
+
+    try {
+      await connectTenant(tenantId);
+      for (let i = 0; i < 15; i++) {
+        entry = pool.get(tenantId);
+        if (entry && entry.status === 'connected' && entry.sock) break;
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      if (entry && entry.status === 'connected' && entry.sock) {
+        await sendOnce(entry.sock);
+        console.log(`[WA-Pool:${tenantId}] Terkirim ke ${logTarget} setelah auto-reconnect!`);
+        return true;
+      }
+    } catch (reconnectErr: any) {
+      console.error(`[WA-Pool:${tenantId}] Auto-reconnect retry failed:`, reconnectErr.message);
+    }
+
+    throw new Error('Koneksi WhatsApp Gateway sedang memuat ulang (reconnecting). Silakan coba kirim sekali lagi atau pastikan status WA Connected di menu Konfigurasi WA.');
+  }
+}
 
 // ─── Local WA Gateway Implementation ─────────────────────────────────────────
 
@@ -466,119 +575,53 @@ export const waGatewayServiceLocal = {
    * Melempar Error jika belum connected (agar caller bisa gracefully skip).
    */
   async sendMessage(tenantId: string, nomor: string, pesan: string): Promise<boolean> {
-    let entry = pool.get(tenantId);
-    if (!entry || entry.status !== 'connected' || !entry.sock) {
-      const { hasCreds } = await getTenantDbCredsInfo(tenantId);
-      if (hasCreds && isMasterInstance()) {
-        console.log(`[WA-Pool:${tenantId}] Auto-restoring WA socket connection from DB creds before sending message...`);
-        try {
-          await connectTenant(tenantId);
-          for (let i = 0; i < 15; i++) {
-            entry = pool.get(tenantId);
-            if (entry && entry.status === 'connected' && entry.sock) break;
-            await new Promise(r => setTimeout(r, 200));
-          }
-        } catch (err: any) {
-          console.error(`[WA-Pool:${tenantId}] Auto-restore before send failed:`, err.message);
-        }
-      }
-    }
-
-    if (!entry || entry.status !== 'connected' || !entry.sock) {
-      throw new Error(`WA Gateway tenant ${tenantId} belum terhubung.`);
-    }
-    let formattedNumber = nomor.replace(/[^0-9]/g, '');
-    if (formattedNumber.startsWith('0')) {
-      formattedNumber = '62' + formattedNumber.substring(1);
-    }
-    const jid = formattedNumber + '@s.whatsapp.net';
-    
-    // Gunakan Promise.race dengan timeout 5 detik untuk mendeteksi koneksi mati (zombie socket)
-    const sendPromise = entry.sock.sendMessage(jid, { text: pesan });
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('TIMEOUT_SEND')), 5000)
-    );
-
-    try {
-      await Promise.race([sendPromise, timeoutPromise]);
-      console.log(`[WA-Pool:${tenantId}] Pesan terkirim ke ${nomor}`);
-      return true;
-    } catch (err: any) {
-      const isClosedOrTimeout = err.message === 'TIMEOUT_SEND' || String(err.message).toLowerCase().includes('closed') || String(err.message).toLowerCase().includes('disconnect');
-      if (isClosedOrTimeout) {
-        console.warn(`[WA-Pool:${tenantId}] Pengiriman WA terputus (${err.message}). Memulai reconnect otomatis dari DB creds...`);
-        try {
-          entry.sock?.end(undefined);
-        } catch (_) {}
-        entry.sock = null;
-        entry.status = 'connecting';
-        await syncStatusToDB(tenantId, 'connecting', null);
-        
-        try {
-          await connectTenant(tenantId);
-          for (let i = 0; i < 15; i++) {
-            entry = pool.get(tenantId);
-            if (entry && entry.status === 'connected' && entry.sock) break;
-            await new Promise(r => setTimeout(r, 200));
-          }
-
-          if (entry && entry.status === 'connected' && entry.sock) {
-            await entry.sock.sendMessage(jid, { text: pesan });
-            console.log(`[WA-Pool:${tenantId}] Pesan terkirim ke ${nomor} setelah auto-reconnect!`);
-            return true;
-          }
-        } catch (reconnectErr: any) {
-          console.error(`[WA-Pool:${tenantId}] Auto-reconnect retry failed:`, reconnectErr.message);
-        }
-
-        throw new Error('Koneksi WhatsApp Gateway sedang memuat ulang (reconnecting). Silakan coba klik Kirim WA sekali lagi atau pastikan status WA Connected di menu Konfigurasi WA.');
-      }
-      throw err;
-    }
+    const jid = resolveWaTargetJid(nomor);
+    return sendBaileysPayloadWithRetry(tenantId, jid, { text: pesan }, 5000, nomor);
   },
 
   /**
    * Kirim pesan WA langsung ke JID tertentu (bisa Nomor Individual atau WhatsApp Group JID e.g. 120363xxx@g.us).
    */
   async sendMessageToJid(tenantId: string, jidTarget: string, pesan: string): Promise<boolean> {
-    let entry = pool.get(tenantId);
-    if (!entry || entry.status !== 'connected' || !entry.sock) {
-      const { hasCreds } = await getTenantDbCredsInfo(tenantId);
-      if (hasCreds && isMasterInstance()) {
-        console.log(`[WA-Pool:${tenantId}] Auto-restoring WA socket connection from DB creds before sending to JID...`);
-        try {
-          await connectTenant(tenantId);
-          for (let i = 0; i < 15; i++) {
-            entry = pool.get(tenantId);
-            if (entry && entry.status === 'connected' && entry.sock) break;
-            await new Promise(r => setTimeout(r, 200));
-          }
-        } catch (err: any) {
-          console.error(`[WA-Pool:${tenantId}] Auto-restore before sendToJid failed:`, err.message);
-        }
-      }
-    }
+    const jid = resolveWaTargetJid(jidTarget);
+    return sendBaileysPayloadWithRetry(tenantId, jid, { text: pesan }, 8000, jid);
+  },
 
-    if (!entry || entry.status !== 'connected' || !entry.sock) {
-      throw new Error(`WA Gateway tenant ${tenantId} belum terhubung.`);
+  /**
+   * Kirim file dokumen (PDF / Lampiran) via WA ke nomor individual maupun Group JID.
+   * Menerima fileBase64 (aman untuk Redis cluster RPC antar worker PM2).
+   */
+  async sendDocument(
+    tenantId: string,
+    target: string,
+    fileBase64: string,
+    fileName: string,
+    mimetype = 'application/pdf',
+    caption = '',
+  ): Promise<boolean> {
+    const jid = resolveWaTargetJid(target);
+    const cleanBase64 = String(fileBase64 || '').replace(/^data:[^;]+;base64,/, '').trim();
+    if (!cleanBase64) {
+      throw new Error('Payload dokumen (fileBase64) kosong.');
     }
+    const documentBuffer = Buffer.from(cleanBase64, 'base64');
+    if (!documentBuffer.length) {
+      throw new Error('Buffer dokumen tidak valid atau kosong.');
+    }
+    const safeFileName = (fileName || 'dokumen.pdf').trim().replace(/[\\/:*?"<>|]/g, '_');
 
-    const sendPromise = entry.sock.sendMessage(jidTarget, { text: pesan });
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('TIMEOUT_SEND')), 8000)
+    return sendBaileysPayloadWithRetry(
+      tenantId,
+      jid,
+      {
+        document: documentBuffer,
+        mimetype: mimetype || 'application/pdf',
+        fileName: safeFileName,
+        ...(caption ? { caption } : {}),
+      },
+      25000,
+      `dokumen "${safeFileName}" -> ${jid}`,
     );
-
-    try {
-      await Promise.race([sendPromise, timeoutPromise]);
-      console.log(`[WA-Pool:${tenantId}] Pesan terkirim ke JID ${jidTarget}`);
-      return true;
-    } catch (err: any) {
-      if (err.message === 'TIMEOUT_SEND') {
-        console.warn(`[WA-Pool:${tenantId}] Pengiriman WA timeout ke JID ${jidTarget}`);
-        throw new Error('Pengiriman pesan ke Grup WA timeout (8 detik). Pastikan koneksi WA aktif.');
-      }
-      throw err;
-    }
   },
 
   async sendMessageSoft(tenantId: string, nomor: string | null | undefined, pesan: string, source?: string): Promise<void> {
@@ -931,6 +974,8 @@ async function executeLocalMethod(method: string, tenantId: string, args: any[] 
       return waGatewayServiceLocal.sendMessage(tenantId, args[0], args[1]);
     case 'sendMessageToJid':
       return waGatewayServiceLocal.sendMessageToJid(tenantId, args[0], args[1]);
+    case 'sendDocument':
+      return waGatewayServiceLocal.sendDocument(tenantId, args[0], args[1], args[2], args[3], args[4]);
     case 'getParticipatingGroups':
       return waGatewayServiceLocal.getParticipatingGroups(tenantId, args[0]);
     case 'getStatus':
@@ -960,23 +1005,33 @@ export async function callMasterViaRpc(method: string, tenantId: string, args: a
 
   const reqId = randomUUID();
   const resChannel = `wa:cluster:rpc:res:${reqId}`;
+  const rpcTimeoutMs = method === 'sendDocument' ? 35000 : 15000;
 
   return new Promise(async (resolve, reject) => {
+    let sub: any = null;
+    const cleanupSub = async () => {
+      if (!sub) return;
+      const targetSub = sub;
+      sub = null;
+      try {
+        await targetSub.unsubscribe(resChannel);
+        await targetSub.quit();
+      } catch (_) {}
+    };
+
     const timer = setTimeout(() => {
+      void cleanupSub();
       reject(new Error('Koneksi WA ke Master Instance 0 timeout. Silakan coba lagi.'));
-    }, 15000);
+    }, rpcTimeoutMs);
 
     try {
-      const sub = typeof redis.duplicate === 'function' ? redis.duplicate() : createRedisConnection();
+      sub = typeof redis.duplicate === 'function' ? redis.duplicate() : createRedisConnection();
       await sub.subscribe(resChannel);
       
       sub.on('message', async (chan: string, msgStr: string) => {
         if (chan === resChannel) {
           clearTimeout(timer);
-          try {
-            await sub.unsubscribe(resChannel);
-            await sub.quit();
-          } catch (_) {}
+          await cleanupSub();
 
           try {
             const { result, error } = JSON.parse(msgStr);
@@ -992,6 +1047,7 @@ export async function callMasterViaRpc(method: string, tenantId: string, args: a
       await rpcPubClient.publish('wa:cluster:rpc:req', payload);
     } catch (err: any) {
       clearTimeout(timer);
+      await cleanupSub();
       reject(err);
     }
   });

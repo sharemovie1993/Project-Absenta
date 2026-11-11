@@ -15,6 +15,7 @@ import {
   Loader2,
   LayoutTemplate,
   ChevronDown,
+  MessageCircle,
 } from 'lucide-react';
 import { getMyTenant, type Tenant } from '@/api/tenants.api';
 import { sekolahApi, type Sekolah } from '@/api/academic/sekolah.api';
@@ -22,6 +23,8 @@ import { useAuthStore } from '@/store/authStore';
 import { DEFAULT_JABAR_LOGO_SVG, resolveCoverImageBase64 } from '@/utils/print/rapor/raporShared';
 import { Modal } from './Modal';
 import { Button } from './Button';
+import { SendDocumentWaModal, type WaCustomPdfGenerator } from './SendDocumentWaModal';
+import { sanitizePdfFileName } from '@/utils/print/capturePrintSheetsToPdf';
 import { cn } from '@/lib/utils';
 
 // ============================================================================
@@ -790,7 +793,30 @@ export interface DocumentTemplateOption {
   badge?: string;
 }
 
-export interface UniversalDocumentModalProps {
+export interface UniversalDocumentWaProps {
+  /** Mengaktifkan tombol "Kirim WA" otomatis pada Universal Document Printing Engine (default: true). */
+  allowSendWa?: boolean;
+  /** Opsional: generator PDF khusus jika modal tidak memakai `.print-sheet` standar atau ingin custom PDF. */
+  onGenerateWaPdf?: WaCustomPdfGenerator;
+  /** Opsional: nama file default PDF saat dikirim lewat WhatsApp. */
+  defaultWaFilename?: string;
+  /** Opsional: caption pengantar default saat dikirim lewat WhatsApp. */
+  defaultWaCaption?: string;
+  /** Opsional: nomor HP atau JID penerima default. */
+  defaultWaRecipient?: string;
+}
+
+function resolveDefaultWaFilename(defaultWaFilename?: string, title?: React.ReactNode): string {
+  if (defaultWaFilename && defaultWaFilename.trim()) {
+    return sanitizePdfFileName(defaultWaFilename);
+  }
+  if (typeof title === 'string' && title.trim()) {
+    return sanitizePdfFileName(title);
+  }
+  return 'Dokumen_Resmi.pdf';
+}
+
+export interface UniversalDocumentModalProps extends UniversalDocumentWaProps {
   isOpen: boolean;
   onClose: () => void;
   title?: React.ReactNode;
@@ -869,6 +895,11 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
   printButtonText = 'Cetak',
   extraActions,
   subHeader,
+  allowSendWa = true,
+  onGenerateWaPdf,
+  defaultWaFilename,
+  defaultWaCaption,
+  defaultWaRecipient,
   children,
   size = '5xl',
 }) => {
@@ -883,7 +914,9 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
 
   const [zoomMode, setZoomMode] = useState<'fit' | 'original'>('fit');
   const [showMobileOptions, setShowMobileOptions] = useState<boolean>(false);
+  const [isSendWaOpen, setIsSendWaOpen] = useState<boolean>(false);
   const deskRef = useRef<HTMLDivElement | null>(null);
+  const resolvedWaFilename = resolveDefaultWaFilename(defaultWaFilename, title);
 
   const handleToggleOrientation = () => {
     const next = activeOrientation === 'portrait' ? 'landscape' : 'portrait';
@@ -947,6 +980,20 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>{downloadPdfText}</span>
+                </Button>
+              )}
+
+              {allowSendWa && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsSendWaOpen(true)}
+                  className="text-xs gap-1 h-7.5 px-2 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                  title="Kirim PDF dokumen ini melalui WhatsApp"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>WA</span>
                 </Button>
               )}
             </div>
@@ -1291,6 +1338,21 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
               </Button>
             )}
 
+            {/* Kirim ke WhatsApp Button (Universal) */}
+            {allowSendWa && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsSendWaOpen(true)}
+                className="text-xs gap-1.5 h-8 px-2.5 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 font-semibold"
+                title="Kirim file PDF dokumen ini langsung ke WhatsApp"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>Kirim WA</span>
+              </Button>
+            )}
+
             {/* Direct Print Button */}
             <Button
               type="button"
@@ -1406,6 +1468,19 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
           {children}
         </PrintDeskCanvas>
       </div>
+
+      {allowSendWa && (
+        <SendDocumentWaModal
+          isOpen={isSendWaOpen}
+          onClose={() => setIsSendWaOpen(false)}
+          deskRef={deskRef}
+          orientation={activeOrientation}
+          defaultFileName={resolvedWaFilename}
+          defaultCaption={defaultWaCaption}
+          defaultRecipient={defaultWaRecipient}
+          onGenerateWaPdf={onGenerateWaPdf}
+        />
+      )}
     </Modal>
   );
 };
@@ -1414,7 +1489,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
 // 8. UNIVERSAL DOCUMENT TAB: UniversalDocumentTab (PIONEER MODEL)
 // ============================================================================
 
-export interface UniversalDocumentTabProps {
+export interface UniversalDocumentTabProps extends UniversalDocumentWaProps {
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
   orientation?: 'portrait' | 'landscape';
@@ -1483,6 +1558,11 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
   printButtonText = 'Cetak Dokumen',
   extraActions,
   subHeader,
+  allowSendWa = true,
+  onGenerateWaPdf,
+  defaultWaFilename,
+  defaultWaCaption,
+  defaultWaRecipient,
   children,
 }) => {
   const [internalOrientation, setInternalOrientation] = useState<'portrait' | 'landscape'>(initialOrientation);
@@ -1495,7 +1575,9 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
   const activeLogoSekolah = externalShowLogoSekolah !== undefined ? externalShowLogoSekolah : internalLogoSekolah;
 
   const [zoomMode, setZoomMode] = useState<'fit' | 'original'>('fit');
+  const [isSendWaOpen, setIsSendWaOpen] = useState<boolean>(false);
   const deskRef = useRef<HTMLDivElement | null>(null);
+  const resolvedWaFilename = resolveDefaultWaFilename(defaultWaFilename, title);
 
   const handleToggleOrientation = () => {
     const next = activeOrientation === 'portrait' ? 'landscape' : 'portrait';
@@ -1658,6 +1740,20 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
             </Button>
           )}
 
+          {allowSendWa && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsSendWaOpen(true)}
+              className="text-xs gap-1.5 h-8 px-2.5 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 font-semibold"
+              title="Kirim file PDF dokumen ini langsung ke WhatsApp"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span>Kirim WA</span>
+            </Button>
+          )}
+
           <Button
             type="button"
             size="sm"
@@ -1763,6 +1859,19 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
       >
         {children}
       </PrintDeskCanvas>
+
+      {allowSendWa && (
+        <SendDocumentWaModal
+          isOpen={isSendWaOpen}
+          onClose={() => setIsSendWaOpen(false)}
+          deskRef={deskRef}
+          orientation={activeOrientation}
+          defaultFileName={resolvedWaFilename}
+          defaultCaption={defaultWaCaption}
+          defaultRecipient={defaultWaRecipient}
+          onGenerateWaPdf={onGenerateWaPdf}
+        />
+      )}
     </div>
   );
 };
@@ -1771,6 +1880,14 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
 export const PrintDocumentCanvas = PrintDocumentSheet;
 export const UniversalPrintModal = UniversalDocumentModal;
 export const UniversalPrintTab = UniversalDocumentTab;
+
+export {
+  SendDocumentWaModal,
+  SendDocumentWaButton,
+  type SendDocumentWaModalProps,
+  type SendDocumentWaButtonProps,
+  type WaCustomPdfGenerator,
+} from './SendDocumentWaModal';
 
 export {
   UniversalDocumentSignatures,

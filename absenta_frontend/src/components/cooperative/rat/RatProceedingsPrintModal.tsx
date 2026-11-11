@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Badge } from '../../ui';
-import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
+import { UniversalDocumentSignatures, SendDocumentWaButton } from '@/components/ui/PrintHeader';
 import { Printer, Copy, Check, BookOpen, Users, CheckCircle2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axiosInstance';
@@ -123,6 +123,12 @@ export const RatProceedingsPrintModal: React.FC<RatProceedingsPrintModalProps> =
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Tersalin' : 'Salin Naskah'}</span>
             </Button>
+            <SendDocumentWaButton
+              targetSelector="#printable-rat-proceedings"
+              orientation="portrait"
+              defaultFileName={`Risalah_RAT_${docData?.meeting?.fiscalYear || new Date().getFullYear()}.pdf`}
+              defaultCaption="Yth. Pengurus/Anggota, terlampir Risalah Lengkap Sidang RAT Koperasi."
+            />
             <Button
               type="button"
               size="toolbar"

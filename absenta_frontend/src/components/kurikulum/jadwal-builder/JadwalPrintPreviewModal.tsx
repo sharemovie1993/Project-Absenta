@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { X, Printer, Download, Filter, BookOpen, User, School, CheckCircle2, Calendar, Sparkles } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { SearchableSelect } from '../../ui/SearchableSelect';
+import { SendDocumentWaButton } from '../../ui/SendDocumentWaModal';
 import { cn } from '../../../lib/utils';
 import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
@@ -319,6 +320,13 @@ export const JadwalPrintPreviewModal: React.FC<Props> = React.memo(({
                 <Download size={14} />
                 <span>{isGeneratingPdf ? 'Memproses PDF...' : 'Unduh File PDF'}</span>
               </Button>
+              <SendDocumentWaButton
+                targetRef={printAreaRef}
+                orientation="landscape"
+                defaultFileName={`Jadwal_Pelajaran_${mode}.pdf`}
+                defaultCaption="Berikut kami lampirkan dokumen Jadwal Pelajaran resmi."
+                className="rounded-xl"
+              />
             </div>
           </div>
 
