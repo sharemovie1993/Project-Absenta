@@ -17,6 +17,13 @@ export interface Backup {
   }
 }
 
+export interface ImportBundleOptions {
+  targetTenantId?: string;
+  targetSubdomain?: string;
+  targetName?: string;
+  cloneMode?: boolean;
+}
+
 export const backupApi = {
   list: async () => {
     return requestWithFallback<StandardApiResponse<Backup[]>>('get', '/admin/backups', {});
@@ -50,10 +57,20 @@ export const backupApi = {
     });
     return res.data;
   },
-  importBundle: async (file: File, targetTenantId?: string) => {
+  importBundle: async (file: File, options?: string | ImportBundleOptions) => {
     const formData = new FormData();
     formData.append('file', file);
-    const params = targetTenantId ? { targetTenantId } : {};
+
+    const opts: ImportBundleOptions = typeof options === 'string'
+      ? { targetTenantId: options }
+      : (options || {});
+
+    const params: Record<string, any> = {};
+    if (opts.targetTenantId) params.targetTenantId = opts.targetTenantId;
+    if (opts.targetSubdomain) params.targetSubdomain = opts.targetSubdomain;
+    if (opts.targetName) params.targetName = opts.targetName;
+    if (opts.cloneMode !== undefined) params.cloneMode = opts.cloneMode;
+
     const res = await axios.post('/admin/backups/import-bundle', formData, {
       params,
       headers: { 'Content-Type': 'multipart/form-data' },

@@ -346,12 +346,43 @@ export class BackupController {
         return reply.status(400).send({ success: false, message: 'Berkas .absenta wajib diunggah' });
       }
 
-      const targetTenantId = req.query?.targetTenantId || req.body?.targetTenantId || req.tenantId || req.dataScope?.tenantId || req.user?.tenantId || req.user?.tenant_id;
+      const fields: Record<string, any> = filePart.fields || {};
+      const readField = (key: string): any => {
+        const f = fields[key];
+        if (f && typeof f === 'object' && 'value' in f) return f.value;
+        return undefined;
+      };
+
+      const cloneModeRaw = req.query?.cloneMode ?? readField('cloneMode') ?? req.body?.cloneMode;
+      const cloneMode = cloneModeRaw === true || cloneModeRaw === 'true' || cloneModeRaw === '1' || cloneModeRaw === 1;
+
+      const targetSubdomain = (
+        req.query?.targetSubdomain ||
+        readField('targetSubdomain') ||
+        req.body?.targetSubdomain
+      )?.toString().trim();
+
+      const targetName = (
+        req.query?.targetName ||
+        readField('targetName') ||
+        req.body?.targetName
+      )?.toString().trim();
+
+      // Saat cloneMode aktif tanpa targetTenantId eksplisit, jangan jatuh ke tenantId milik admin/system yang sedang login
+      const rawTargetTenantId = req.query?.targetTenantId || readField('targetTenantId') || req.body?.targetTenantId;
+      const fallbackTenantId = (cloneMode || targetSubdomain)
+        ? undefined
+        : (req.tenantId || req.dataScope?.tenantId || req.user?.tenantId || req.user?.tenant_id);
+      const targetTenantId = rawTargetTenantId || fallbackTenantId;
+
       const buffer = await filePart.toBuffer();
 
-      console.log(`[BackupController] Memulai restorasi bundle ke tenant ${targetTenantId || 'auto'}...`);
+      console.log(`[BackupController] Memulai restorasi bundle (cloneMode=${cloneMode}, targetSubdomain=${targetSubdomain || 'auto'}, targetTenantId=${targetTenantId || 'auto'})...`);
       const result = await migrationBundleService.restoreBundle(buffer, {
         targetTenantId,
+        targetSubdomain,
+        targetName,
+        cloneMode,
         isInitialFreshSetup: false,
         clearExisting: false
       });
@@ -359,7 +390,13 @@ export class BackupController {
       return reply.send({ success: true, data: result, message: result.message });
     } catch (error: any) {
       console.error('Error importing bundle:', error);
-      return reply.status(500).send({ success: false, message: 'Gagal memulihkan berkas .absenta: ' + (error?.message || 'Error') });
+      const statusCode = error?.statusCode && Number.isInteger(error.statusCode) ? error.statusCode : 500;
+      return reply.status(statusCode).send({
+        success: false,
+        message: statusCode === 400
+          ? error.message
+          : ('Gagal memulihkan berkas .absenta: ' + (error?.message || 'Error'))
+      });
     }
   }
 

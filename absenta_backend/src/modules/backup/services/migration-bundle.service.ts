@@ -60,9 +60,22 @@ export interface ExportBundleOptions {
 
 export interface RestoreBundleOptions {
   targetTenantId?: string;
+  targetSubdomain?: string;
+  targetName?: string;
+  cloneMode?: boolean;
   isInitialFreshSetup?: boolean;
   clearExisting?: boolean;
 }
+
+interface CloneContext {
+  isCloning: boolean;
+  effectiveTenantId: string;
+  sourceTenantId: string;
+  idMap: Map<string, string>;
+  cloneTag: string;
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export interface RestoreProgressUpdate {
   stage: 'manifest' | 'database' | 'storage' | 'finalizing';
@@ -97,26 +110,69 @@ function getTenantWhereClause(modelName: string, tenantId: string, depth = 0): R
   return null;
 }
 
-function sanitizeRowForModel(modelName: string, rawRow: Record<string, any>, tenantId: string): Record<string, any> {
+function sanitizeRowForModel(
+  modelName: string,
+  rawRow: Record<string, any>,
+  tenantId: string,
+  cloneCtx?: CloneContext
+): Record<string, any> {
   const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
   if (!dmmfModel) return rawRow;
 
   const cleanData: Record<string, any> = {};
+  const isCloning = cloneCtx?.isCloning || false;
+  const idMap = cloneCtx?.idMap;
+  const sourceTenantId = cloneCtx?.sourceTenantId;
+  const cloneTag = cloneCtx?.cloneTag || 'clone';
 
   for (const field of dmmfModel.fields) {
     if (field.kind !== 'scalar' && field.kind !== 'enum') continue;
 
-    const val = rawRow[field.name];
+    let val = rawRow[field.name];
     if (val === undefined || val === null) {
-      if (field.name === 'tenant_id') cleanData.tenant_id = tenantId;
+      if (field.name === 'tenant_id' || field.name === 'tenantId') {
+        cleanData[field.name] = tenantId;
+      }
       continue;
     }
 
-    if (field.name === 'tenant_id') {
-      cleanData.tenant_id = tenantId;
+    if (field.name === 'tenant_id' || field.name === 'tenantId') {
+      cleanData[field.name] = tenantId;
+      continue;
     } else if (field.name === 'actor_tenant_id') {
       cleanData.actor_tenant_id = tenantId;
-    } else if (field.type === 'DateTime') {
+      continue;
+    } else if (field.name === 'restored_to_tenant_id') {
+      cleanData.restored_to_tenant_id = tenantId;
+      continue;
+    }
+
+    if (isCloning) {
+      // 1. Remap UUID primary & foreign keys via idMap
+      if (typeof val === 'string' && idMap?.has(val)) {
+        val = idMap.get(val)!;
+      }
+
+      // 2. Rewrite tenant-scoped storage/media paths referencing sourceTenantId
+      if (typeof val === 'string' && sourceTenantId && UUID_PATTERN.test(sourceTenantId) && val.includes(sourceTenantId)) {
+        val = val.split(sourceTenantId).join(tenantId);
+      }
+
+      // 3. Suffix global @unique non-UUID columns to prevent cross-tenant collisions on shared DB
+      if (modelName === 'SarprasAsset' && field.name === 'kode' && typeof val === 'string' && val.trim()) {
+        val = `${val.trim()}-${cloneTag}`;
+      } else if (modelName === 'AttendanceDevice' && field.name === 'device_id' && typeof val === 'string' && val.trim()) {
+        val = `${val.trim()}-${cloneTag}`;
+      } else if (modelName === 'SertifikatUkk' && field.name === 'nomor_sertifikat' && typeof val === 'string' && val.trim()) {
+        val = `${val.trim()}-${cloneTag}`;
+      } else if (modelName === 'KelulusanSiswa' && field.name === 'nomor_skl' && typeof val === 'string' && val.trim()) {
+        val = `${val.trim()}-${cloneTag}`;
+      } else if (modelName === 'ParentAccessToken' && field.name === 'token' && typeof val === 'string') {
+        val = crypto.randomBytes(32).toString('hex');
+      }
+    }
+
+    if (field.type === 'DateTime') {
       try {
         const d = new Date(val);
         if (!isNaN(d.getTime())) cleanData[field.name] = d;
@@ -521,7 +577,15 @@ export class MigrationBundleService {
     buffer: Buffer, 
     options: RestoreBundleOptions = {},
     progressCallback?: (progress: RestoreProgressUpdate) => void
-  ): Promise<{ success: boolean; manifest: MigrationManifest; restoredTables: Record<string, number>; message: string }> {
+  ): Promise<{
+    success: boolean;
+    manifest: MigrationManifest;
+    restoredTables: Record<string, number>;
+    targetSubdomain?: string;
+    targetTenantId?: string;
+    isCloned?: boolean;
+    message: string;
+  }> {
     const reportProgress = (p: RestoreProgressUpdate) => {
       if (progressCallback) progressCallback(p);
     };
@@ -545,27 +609,79 @@ export class MigrationBundleService {
 
     const dataTables = JSON.parse(dbEntry.getData().toString('utf8')) as Record<string, any[]>;
 
-    // Dapatkan target tenant
-    let effectiveTenantId = options.targetTenantId || manifest.source_tenant.id;
+    const sourceTenant = manifest.source_tenant || ({} as any);
+    const tenantTableRecord = (dataTables['Tenant'] && dataTables['Tenant'][0]) || {};
+    const sourceTenantId = sourceTenant.id || tenantTableRecord.id;
+    const sourceSubdomain = (sourceTenant.subdomain || tenantTableRecord.subdomain || '').trim().toLowerCase();
+
+    const requestedSubdomain = options.targetSubdomain?.trim().toLowerCase();
+    const requestedName = options.targetName?.trim();
+    const isExplicitClone = options.cloneMode === true;
+
+    const isCloning =
+      isExplicitClone ||
+      (!!requestedSubdomain && requestedSubdomain !== sourceSubdomain) ||
+      (!!options.targetTenantId && options.targetTenantId !== sourceTenantId);
+
+    // Validasi subdomain target ketika cloning
+    let effectiveSubdomain = requestedSubdomain || sourceSubdomain || 'sekolah';
+    if (isCloning) {
+      if (!requestedSubdomain) {
+        effectiveSubdomain = `${sourceSubdomain || 'tenant'}-demo`;
+      }
+      if (!/^[a-z0-9-]+$/.test(effectiveSubdomain)) {
+        const err: any = new Error('Format subdomain tidak valid. Hanya huruf kecil, angka, dan tanda hubung (-) yang diperbolehkan.');
+        err.statusCode = 400;
+        throw err;
+      }
+      if (sourceSubdomain && effectiveSubdomain === sourceSubdomain) {
+        const err: any = new Error(`Subdomain untuk kloning tidak boleh sama dengan subdomain asal ("${sourceSubdomain}"). Gunakan subdomain baru seperti "${sourceSubdomain}-demo".`);
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const conflictingTenant = await this.prisma.tenant.findUnique({
+        where: { subdomain: effectiveSubdomain }
+      });
+      if (conflictingTenant && conflictingTenant.id !== options.targetTenantId) {
+        const err: any = new Error(`Subdomain "${effectiveSubdomain}" sudah terdaftar untuk tenant "${conflictingTenant.name}". Gunakan subdomain lain yang masih tersedia.`);
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+
+    // Dapatkan target tenant ID
+    let effectiveTenantId = isCloning
+      ? (options.targetTenantId && options.targetTenantId !== sourceTenantId ? options.targetTenantId : crypto.randomUUID())
+      : (options.targetTenantId || sourceTenantId);
+
+    const effectiveName = isCloning
+      ? (requestedName || (sourceTenant.name ? `${sourceTenant.name} (Demo)` : 'Tenant Demo'))
+      : (requestedName || sourceTenant.name || tenantTableRecord.name || 'Tenant Pulih');
 
     reportProgress({
       stage: 'manifest',
       processed: 10,
       total: 100,
       percentage: 15,
-      message: `Menyiapkan & menyinkronkan profil tenant "${manifest.source_tenant.name}" di sistem...`
+      message: isCloning
+        ? `Menyiapkan tenant kloning "${effectiveName}" (${effectiveSubdomain}.absenta.id)...`
+        : `Menyiapkan & menyinkronkan profil tenant "${effectiveName}" di sistem...`
     });
 
-    // Susun data tenant dari manifest & dataTables['Tenant']
-    const sourceTenant = manifest.source_tenant || ({} as any);
-    const tenantTableRecord = (dataTables['Tenant'] && dataTables['Tenant'][0]) || {};
+    const rewritePathIfClone = (val: any) => {
+      if (isCloning && typeof val === 'string' && sourceTenantId && UUID_PATTERN.test(sourceTenantId) && val.includes(sourceTenantId)) {
+        return val.split(sourceTenantId).join(effectiveTenantId);
+      }
+      return val;
+    };
 
     const tenantPayload: Record<string, any> = {
-      name: sourceTenant.name || tenantTableRecord.name || 'Tenant Pulih',
-      subdomain: sourceTenant.subdomain || tenantTableRecord.subdomain || 'sekolah',
-      custom_domain: sourceTenant.custom_domain || tenantTableRecord.custom_domain || null,
+      name: effectiveName,
+      subdomain: effectiveSubdomain,
+      custom_domain: isCloning ? null : (sourceTenant.custom_domain || tenantTableRecord.custom_domain || null),
       status: sourceTenant.status || tenantTableRecord.status || 'ACTIVE',
-      logo_url: sourceTenant.logo_url || tenantTableRecord.logo_url || null,
+      logo_url: rewritePathIfClone(sourceTenant.logo_url || tenantTableRecord.logo_url || null),
     };
 
     if (sourceTenant.jam_masuk_default || tenantTableRecord.jam_masuk_default) {
@@ -607,8 +723,8 @@ export class MigrationBundleService {
         where: { id: effectiveTenantId }
       });
 
-      // Jika ID tidak ditemukan, cari berdasarkan subdomain untuk menghindari bentrok unik
-      if (!existingTenant && tenantPayload.subdomain) {
+      // Pada mode restore biasa (non-cloning), jika ID tidak ditemukan, cari berdasarkan subdomain
+      if (!isCloning && !existingTenant && tenantPayload.subdomain) {
         existingTenant = await this.prisma.tenant.findUnique({
           where: { subdomain: tenantPayload.subdomain }
         });
@@ -634,6 +750,9 @@ export class MigrationBundleService {
       }
     } catch (err: any) {
       console.warn(`[MigrationBundle] Notice upserting tenant profile:`, err?.message || err);
+      if (isCloning) {
+        throw new Error(`Gagal membuat tenant kloning "${effectiveSubdomain}": ${err?.message || 'Error database'}`);
+      }
       try {
         delete tenantPayload.subdomain;
         delete tenantPayload.custom_domain;
@@ -644,6 +763,33 @@ export class MigrationBundleService {
       } catch (_) {}
     }
 
+    // Pre-pass UUID remapper untuk mode kloning agar seluruh PK & FK antar-tabel konsisten
+    const idMap = new Map<string, string>();
+    if (isCloning) {
+      for (const [tableName, rows] of Object.entries(dataTables)) {
+        if (tableName === 'Tenant') continue;
+        if (!Array.isArray(rows)) continue;
+        for (const r of rows) {
+          if (typeof r?.id === 'string' && UUID_PATTERN.test(r.id) && !idMap.has(r.id)) {
+            idMap.set(r.id, crypto.randomUUID());
+          }
+        }
+      }
+      console.log(`[MigrationBundle] 🧬 Clone mode aktif -> ${effectiveSubdomain} (${effectiveTenantId}). Memetakan ${idMap.size} UUID baru...`);
+    }
+
+    const cloneCtx: CloneContext | undefined = isCloning
+      ? {
+          isCloning: true,
+          effectiveTenantId,
+          sourceTenantId,
+          idMap,
+          cloneTag: effectiveSubdomain.replace(/[^a-z0-9-]/g, '').slice(0, 24) || 'clone'
+        }
+      : undefined;
+
+    const skipModelsOnClone = new Set(['Tenant', 'RefreshToken', 'ParentPushSubscription']);
+
     const models = getDynamicTenantModels();
     const restoredCounts: Record<string, number> = {};
 
@@ -652,6 +798,8 @@ export class MigrationBundleService {
 
     // Restore Database Models
     for (const modelName of models) {
+      if (isCloning && skipModelsOnClone.has(modelName)) continue;
+
       let rows: any[] | undefined = dataTables[modelName];
       if (!rows) {
         const matchedKey = Object.keys(dataTables).find(k => k.toLowerCase() === modelName.toLowerCase());
@@ -683,7 +831,26 @@ export class MigrationBundleService {
         await Promise.all(
           chunk.map(async (rawRow: any) => {
             try {
-              const cleanData = sanitizeRowForModel(modelName, rawRow, effectiveTenantId);
+              // Penanganan khusus Role saat cloning: gunakan ulang role jika nama sudah ada pada tenant target
+              if (isCloning && modelName === 'Role' && rawRow.name) {
+                const existingRole = await this.prisma.role.findFirst({
+                  where: {
+                    OR: [
+                      { tenant_id: effectiveTenantId, name: rawRow.name },
+                      { tenant_id: null, name: rawRow.name }
+                    ]
+                  }
+                });
+                if (existingRole) {
+                  if (typeof rawRow.id === 'string') {
+                    idMap.set(rawRow.id, existingRole.id);
+                  }
+                  count++;
+                  return;
+                }
+              }
+
+              const cleanData = sanitizeRowForModel(modelName, rawRow, effectiveTenantId, cloneCtx);
 
               // Perlakuan khusus tabel Config agar tidak duplikat untuk key yang sama
               if (modelName === 'Config' && cleanData.key) {
@@ -703,37 +870,70 @@ export class MigrationBundleService {
                 }
               }
 
-              const uniqueWhere = buildModelUniqueWhere(modelName, cleanData);
-              if (uniqueWhere) {
-                await pModel.upsert({
-                  where: uniqueWhere,
+              // Perlakuan khusus model 1:1 per tenant saat cloning ke tenant yang sudah sempat terinisialisasi
+              if (isCloning && modelName === 'StudentCardConfig') {
+                await this.prisma.studentCardConfig.upsert({
+                  where: { tenant_id: effectiveTenantId },
                   update: cleanData,
-                  create: cleanData
+                  create: cleanData as any
                 });
-              } else {
+                count++;
+                return;
+              }
+              if (isCloning && modelName === 'ShuConfig') {
+                await this.prisma.shuConfig.upsert({
+                  where: { tenantId: effectiveTenantId },
+                  update: cleanData,
+                  create: cleanData as any
+                });
+                count++;
+                return;
+              }
+
+              if (isCloning) {
                 await pModel.create({ data: cleanData });
+              } else {
+                const uniqueWhere = buildModelUniqueWhere(modelName, cleanData);
+                if (uniqueWhere) {
+                  await pModel.upsert({
+                    where: uniqueWhere,
+                    update: cleanData,
+                    create: cleanData
+                  });
+                } else {
+                  await pModel.create({ data: cleanData });
+                }
               }
               count++;
             } catch (err: any) {
               // Retry jika terjadi foreign key mismatch pada user/relasi sekunder
               try {
-                const cleanData = sanitizeRowForModel(modelName, rawRow, effectiveTenantId);
-                if (cleanData.uploaded_by_user_id || cleanData.created_by_user_id) {
+                const cleanData = sanitizeRowForModel(modelName, rawRow, effectiveTenantId, cloneCtx);
+                if (cleanData.uploaded_by_user_id || cleanData.created_by_user_id || cleanData.supervisor_id) {
                   delete cleanData.uploaded_by_user_id;
                   delete cleanData.created_by_user_id;
-                  const retryWhere = buildModelUniqueWhere(modelName, cleanData);
-                  if (retryWhere) {
-                    await pModel.upsert({
-                      where: retryWhere,
-                      update: cleanData,
-                      create: cleanData
-                    });
-                  } else {
+                  delete cleanData.supervisor_id;
+                  if (isCloning) {
                     await pModel.create({ data: cleanData });
+                  } else {
+                    const retryWhere = buildModelUniqueWhere(modelName, cleanData);
+                    if (retryWhere) {
+                      await pModel.upsert({
+                        where: retryWhere,
+                        update: cleanData,
+                        create: cleanData
+                      });
+                    } else {
+                      await pModel.create({ data: cleanData });
+                    }
                   }
                   count++;
+                } else {
+                  console.warn(`[MigrationBundle] Notice inserting ${modelName}:`, err?.message);
                 }
-              } catch (_) {}
+              } catch (retryErr: any) {
+                console.warn(`[MigrationBundle] Notice retry ${modelName}:`, retryErr?.message);
+              }
             }
           })
         );
@@ -769,6 +969,10 @@ export class MigrationBundleService {
           storageKey = entry.entryName.substring('storage/'.length);
         } else {
           storageKey = entry.entryName.replace(/^storage\//, '');
+        }
+
+        if (isCloning && sourceTenantId && UUID_PATTERN.test(sourceTenantId) && storageKey.includes(sourceTenantId)) {
+          storageKey = storageKey.split(sourceTenantId).join(effectiveTenantId);
         }
 
         const fileData = entry.getData();
@@ -809,45 +1013,49 @@ export class MigrationBundleService {
       message: 'Pemulihan data berhasil diselesaikan!'
     });
 
-    // 1. 🔄 Re-bind Lisensi Produk / Entitlements secara otomatis ke Server Tujuan
+    // 1. 🔄 Re-bind Lisensi Produk / Entitlements secara otomatis ke Server Tujuan (Hanya untuk Disaster Recovery / non-clone)
     let bundledEntitlements: any[] = [];
-    try {
-      const entEntry = zip.getEntry('entitlements.json');
-      if (entEntry) {
-        const entJsonStr = entEntry.getData().toString('utf8');
-        bundledEntitlements = JSON.parse(entJsonStr);
-        if (Array.isArray(bundledEntitlements) && bundledEntitlements.length > 0) {
-          const targetHostKey = process.env.LICENSE_KEY || '';
-          const targetScenario = getDeployScenario();
-          const sourceScenario = manifest.source_scenario || 'unknown';
-          const tenantSlug = manifest.source_tenant.subdomain || manifest.source_tenant.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
-          const npsn = manifest.source_tenant.npsn || undefined;
-          const entitlementKeys = bundledEntitlements.map((e: any) => e.license_key).filter(Boolean);
+    if (!isCloning) {
+      try {
+        const entEntry = zip.getEntry('entitlements.json');
+        if (entEntry) {
+          const entJsonStr = entEntry.getData().toString('utf8');
+          bundledEntitlements = JSON.parse(entJsonStr);
+          if (Array.isArray(bundledEntitlements) && bundledEntitlements.length > 0) {
+            const targetHostKey = process.env.LICENSE_KEY || '';
+            const targetScenario = getDeployScenario();
+            const sourceScenario = manifest.source_scenario || 'unknown';
+            const tenantSlug = effectiveSubdomain || manifest.source_tenant.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+            const npsn = manifest.source_tenant.npsn || undefined;
+            const entitlementKeys = bundledEntitlements.map((e: any) => e.license_key).filter(Boolean);
 
-          console.log(`[MigrationBundle] 🔄 Memulai re-binding ${entitlementKeys.length} lisensi produk ke server tujuan (${targetScenario})...`);
-          const rebindRes = await rebindTenantEntitlements({
-            target_host_key: targetHostKey,
-            tenant_slug: tenantSlug,
-            npsn,
-            target_scenario: targetScenario as any,
-            source_scenario: sourceScenario,
-            entitlement_keys: entitlementKeys
-          });
-          console.log(`[MigrationBundle] ✅ Re-binding berhasil:`, rebindRes.message);
+            console.log(`[MigrationBundle] 🔄 Memulai re-binding ${entitlementKeys.length} lisensi produk ke server tujuan (${targetScenario})...`);
+            const rebindRes = await rebindTenantEntitlements({
+              target_host_key: targetHostKey,
+              tenant_slug: tenantSlug,
+              npsn,
+              target_scenario: targetScenario as any,
+              source_scenario: sourceScenario,
+              entitlement_keys: entitlementKeys
+            });
+            console.log(`[MigrationBundle] ✅ Re-binding berhasil:`, rebindRes.message);
+          }
         }
+      } catch (rebindErr: any) {
+        console.warn('[MigrationBundle] Re-binding lisensi produk pasca-restore notice:', rebindErr.message);
       }
-    } catch (rebindErr: any) {
-      console.warn('[MigrationBundle] Re-binding lisensi produk pasca-restore notice:', rebindErr.message);
+    } else {
+      console.log(`[MigrationBundle] Clone mode: melewati re-bind entitlements asal agar lisensi tenant produksi (${sourceSubdomain}) tetap aman.`);
     }
 
     // 2. 🛡️ Sinkronisasi Subscription Patuh Model Komersial (Tanpa Bypass 2030)
     try {
-      // Ambil data lisensi terkini langsung dari Server Lisensi
+      // Ambil data lisensi terkini langsung dari Server Lisensi berdasarkan subdomain efektif
       let liveEntitlements: any[] = [];
       try {
         const targetHostKey = process.env.LICENSE_KEY || '';
-        const tenantSlug = manifest.source_tenant.subdomain || manifest.source_tenant.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
-        const npsn = manifest.source_tenant.npsn || undefined;
+        const tenantSlug = effectiveSubdomain || effectiveName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        const npsn = isCloning ? undefined : (manifest.source_tenant.npsn || undefined);
         liveEntitlements = await fetchTenantProducts({
           server_license_key: targetHostKey,
           tenant_slug: tenantSlug,
@@ -858,7 +1066,7 @@ export class MigrationBundleService {
         console.warn('[MigrationBundle] Gagal fetchTenantProducts live saat pemulihan:', liveErr.message);
       }
 
-      const allEntitlements = [...bundledEntitlements, ...liveEntitlements];
+      const allEntitlements = isCloning ? liveEntitlements : [...bundledEntitlements, ...liveEntitlements];
 
       // Periksa apakah tenant memiliki paket lengkap yang aktif
       const paketLengkapEnt = allEntitlements.find((e: any) => {
@@ -1042,7 +1250,12 @@ export class MigrationBundleService {
       success: true,
       manifest,
       restoredTables: restoredCounts,
-      message: `Berhasil memulihkan tenant ${manifest.source_tenant.name} (${mediaProcessed} file media & ${Object.values(restoredCounts).reduce((a, b) => a + b, 0)} rekaman data).`
+      targetSubdomain: effectiveSubdomain,
+      targetTenantId: effectiveTenantId,
+      isCloned: isCloning,
+      message: isCloning
+        ? `Berhasil mengkloning tenant "${manifest.source_tenant.name}" ke tenant baru "${effectiveName}" (${effectiveSubdomain}.absenta.id) dengan ${mediaProcessed} file media & ${Object.values(restoredCounts).reduce((a, b) => a + b, 0)} rekaman data.`
+        : `Berhasil memulihkan tenant ${manifest.source_tenant.name} (${mediaProcessed} file media & ${Object.values(restoredCounts).reduce((a, b) => a + b, 0)} rekaman data).`
     };
   }
 }
