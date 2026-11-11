@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import axios from 'axios';
 import { prisma } from '@/utils/prisma';
+import { storageService } from '@/infra/storage/storage.service';
 import { createSiswaCommand } from '@/modules/academic/siswa/services/commands/create-siswa.command';
 
 export interface ServerNetworkInfo {
@@ -63,6 +64,8 @@ export interface StagingStorageMeta {
   npsn: string | null;
   host: string | null;
   fileSizeBytes: number;
+  storageDriver?: 's3' | 'local';
+  storageKey?: string;
 }
 
 export interface ReconciliationReport {
@@ -102,51 +105,70 @@ export class DapodikService {
   >();
 
   /**
-   * Direktori Persistent Storage untuk Staging Dapodik di Platform.
-   * Disimpan per Tenant dalam bentuk file JSON terenkripsi/terisolasi.
+   * Key Object Storage (S3/MinIO atau Local Disk sesuai STORAGE_DRIVER) untuk Staging Dapodik per Tenant.
    */
-  private static getStagingStorageDir(): string {
-    const dir = path.resolve(process.cwd(), 'storage', 'dapodik');
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    return dir;
+  private static getStagingStorageKey(tenantId: string): string {
+    const safeTenant = tenantId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    return `storage/dapodik/staging_${safeTenant}.json`;
   }
 
-  private static getStagingFilePath(tenantId: string): string {
-    const safeTenant = tenantId.replace(/[^a-zA-Z0-9_-]/g, '_');
-    return path.join(DapodikService.getStagingStorageDir(), `staging_${safeTenant}.json`);
+  private static getLegacyLocalStagingPath(key: string): string {
+    return path.resolve(process.cwd(), key);
   }
 
   /**
-   * Membaca Metadata Snapshot Staging yang tersimpan di platform
+   * Migrasi otomatis satu kali jika snapshot lama masih berada di disk lokal VPS saat driver aktif adalah S3.
    */
-  static getStagingMeta(tenantId: string): StagingStorageMeta {
-    const filePath = DapodikService.getStagingFilePath(tenantId);
-    if (!fs.existsSync(filePath)) {
-      return {
-        exists: false,
-        savedAt: null,
-        totalStudents: 0,
-        npsn: null,
-        host: null,
-        fileSizeBytes: 0,
-      };
-    }
+  private static async promoteLegacyLocalStagingIfNeeded(key: string): Promise<void> {
+    if (storageService.getDriverName() !== 's3') return;
+    const legacyPath = DapodikService.getLegacyLocalStagingPath(key);
+    if (!fs.existsSync(legacyPath)) return;
 
     try {
-      const stats = fs.statSync(filePath);
-      const raw = fs.readFileSync(filePath, 'utf8');
-      const parsed = JSON.parse(raw);
-      return {
-        exists: true,
-        savedAt: parsed.savedAt || stats.mtime.toISOString(),
-        totalStudents: Array.isArray(parsed.rows) ? parsed.rows.length : 0,
-        npsn: parsed.npsn || null,
-        host: parsed.host || null,
-        fileSizeBytes: stats.size,
-      };
+      const legacyBuffer = await fs.promises.readFile(legacyPath);
+      const parsed = JSON.parse(legacyBuffer.toString('utf8'));
+      const existingS3Keys = await storageService.listObjects(key);
+      let s3Confirmed = existingS3Keys.includes(key);
+
+      if (!s3Confirmed && Array.isArray(parsed?.rows) && parsed.rows.length > 0) {
+        await storageService.uploadBuffer(key, legacyBuffer, {
+          contentType: 'application/json',
+        });
+        s3Confirmed = true;
+      }
+
+      if (s3Confirmed || (Array.isArray(parsed?.rows) && parsed.rows.length === 0)) {
+        await fs.promises.unlink(legacyPath).catch(() => {});
+      }
+    } catch (err: any) {
+      console.warn('[DapodikService] Gagal memigrasikan snapshot staging lokal ke S3:', err?.message || err);
+    }
+  }
+
+  private static async readStagingPayload(
+    tenantId: string
+  ): Promise<{ parsed: any; fileSizeBytes: number; key: string } | null> {
+    const key = DapodikService.getStagingStorageKey(tenantId);
+    await DapodikService.promoteLegacyLocalStagingIfNeeded(key);
+
+    try {
+      const buffer = await storageService.readFileBuffer(key);
+      const parsed = JSON.parse(buffer.toString('utf8'));
+      return { parsed, fileSizeBytes: buffer.length, key };
     } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Membaca Metadata Snapshot Staging yang tersimpan di platform (S3/Object Storage atau Local)
+   */
+  static async getStagingMeta(tenantId: string): Promise<StagingStorageMeta> {
+    const key = DapodikService.getStagingStorageKey(tenantId);
+    const driver = storageService.getDriverName();
+    const loaded = await DapodikService.readStagingPayload(tenantId);
+
+    if (!loaded) {
       return {
         exists: false,
         savedAt: null,
@@ -154,15 +176,34 @@ export class DapodikService {
         npsn: null,
         host: null,
         fileSizeBytes: 0,
+        storageDriver: driver,
+        storageKey: key,
       };
     }
+
+    const { parsed, fileSizeBytes } = loaded;
+    return {
+      exists: true,
+      savedAt: parsed.savedAt || null,
+      totalStudents: Array.isArray(parsed.rows) ? parsed.rows.length : 0,
+      npsn: parsed.npsn || null,
+      host: parsed.host || null,
+      fileSizeBytes,
+      storageDriver: driver,
+      storageKey: key,
+    };
   }
 
   /**
-   * Menyimpan Snapshot Siswa Dapodik ke Persistent Staging Storage
+   * Menyimpan Snapshot Siswa Dapodik ke Persistent Staging Storage (mengikuti StorageService: S3 / Local)
    */
-  static saveStagingSnapshot(tenantId: string, rows: any[], npsn?: string, host?: string): StagingStorageMeta {
-    const filePath = DapodikService.getStagingFilePath(tenantId);
+  static async saveStagingSnapshot(
+    tenantId: string,
+    rows: any[],
+    npsn?: string,
+    host?: string
+  ): Promise<StagingStorageMeta> {
+    const key = DapodikService.getStagingStorageKey(tenantId);
     const savedAt = new Date().toISOString();
     const payload = {
       tenantId,
@@ -172,8 +213,10 @@ export class DapodikService {
       totalStudents: rows.length,
       rows,
     };
-    fs.writeFileSync(filePath, JSON.stringify(payload), 'utf8');
-    const stats = fs.statSync(filePath);
+    const buffer = Buffer.from(JSON.stringify(payload), 'utf8');
+    const uploaded = await storageService.uploadBuffer(key, buffer, {
+      contentType: 'application/json',
+    });
 
     return {
       exists: true,
@@ -181,34 +224,30 @@ export class DapodikService {
       totalStudents: rows.length,
       npsn: npsn || null,
       host: host || null,
-      fileSizeBytes: stats.size,
+      fileSizeBytes: uploaded.sizeBytes,
+      storageDriver: storageService.getDriverName(),
+      storageKey: uploaded.key,
     };
   }
 
   /**
-   * Mengambil Snapshot Siswa Dapodik dari Persistent Staging Storage
+   * Mengambil Snapshot Siswa Dapodik dari Persistent Staging Storage (mengikuti StorageService: S3 / Local)
    */
-  static loadStagingSnapshot(tenantId: string): { rows: any[]; savedAt: Date; npsn?: string; host?: string } | null {
-    const filePath = DapodikService.getStagingFilePath(tenantId);
-    if (!fs.existsSync(filePath)) {
+  static async loadStagingSnapshot(
+    tenantId: string
+  ): Promise<{ rows: any[]; savedAt: Date; npsn?: string; host?: string } | null> {
+    const loaded = await DapodikService.readStagingPayload(tenantId);
+    if (!loaded || !Array.isArray(loaded.parsed?.rows)) {
       return null;
     }
 
-    try {
-      const raw = fs.readFileSync(filePath, 'utf8');
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed.rows)) {
-        return null;
-      }
-      return {
-        rows: parsed.rows,
-        savedAt: parsed.savedAt ? new Date(parsed.savedAt) : fs.statSync(filePath).mtime,
-        npsn: parsed.npsn,
-        host: parsed.host,
-      };
-    } catch {
-      return null;
-    }
+    const { parsed } = loaded;
+    return {
+      rows: parsed.rows,
+      savedAt: parsed.savedAt ? new Date(parsed.savedAt) : new Date(),
+      npsn: parsed.npsn,
+      host: parsed.host,
+    };
   }
 
   /**
@@ -510,16 +549,84 @@ export class DapodikService {
   }
 
   /**
+   * Menarik data peserta didik langsung dari Web Service Dapodik port 5774,
+   * memvalidasi payload, serta menyimpannya ke in-memory cache dan Staging Storage.
+   */
+  private async fetchLiveDapodikRows(
+    tenantId: string,
+    cleanHost: string,
+    cleanNpsn: string,
+    cleanToken: string
+  ): Promise<{ rows: any[]; fetchedAt: Date }> {
+    try {
+      const studentUrl = `${cleanHost}/WebService/getPesertaDidik?npsn=${cleanNpsn}`;
+      const response = await axios.get(studentUrl, {
+        headers: {
+          Authorization: `Bearer ${cleanToken}`,
+          Accept: 'application/json',
+        },
+        timeout: 20000,
+      });
+
+      const parsedPayload = this.parseDapodikPayload(response.data, response.status);
+      let rows: any[];
+
+      if (parsedPayload && Array.isArray(parsedPayload.rows)) {
+        rows = parsedPayload.rows;
+      } else if (Array.isArray(parsedPayload)) {
+        rows = parsedPayload;
+      } else if (parsedPayload && Array.isArray(parsedPayload.data)) {
+        rows = parsedPayload.data;
+      } else {
+        throw new Error(
+          'Web Service Dapodik tidak mengembalikan daftar peserta didik (array rows/data tidak ditemukan).'
+        );
+      }
+
+      const fetchedAt = new Date();
+
+      // Simpan cache & Staging HANYA jika data siswa valid (> 0), agar snapshot Staging tidak tertimpa data kosong!
+      if (rows.length > 0) {
+        DapodikService.studentCache.set(tenantId, {
+          fetchedAt,
+          rows,
+          npsn: cleanNpsn,
+          host: cleanHost,
+        });
+        await DapodikService.saveStagingSnapshot(tenantId, rows, cleanNpsn, cleanHost);
+      }
+
+      await prisma.dapodikConfig.updateMany({
+        where: { tenant_id: tenantId },
+        data: {
+          last_sync_at: fetchedAt,
+          last_status: 'SUCCESS',
+        },
+      });
+
+      return { rows, fetchedAt };
+    } catch (err: any) {
+      await prisma.dapodikConfig.updateMany({
+        where: { tenant_id: tenantId },
+        data: {
+          last_status: err.code === 'ECONNABORTED' ? 'TIMEOUT' : 'FAILED',
+        },
+      });
+      throw err;
+    }
+  }
+
+  /**
    * Menjalankan Diff Engine: Komparasi Siswa Dapodik vs Siswa Absenta.
    * Mendukung mode:
-   * - 'LIVE': Mengambil fresh dari server Dapodik port 5774 (fallback ke staging/memory jika gagal)
-   * - 'STAGING': Mengambil dari penyimpanan lokal platform (tanpa perlu menyalakan komputer Dapodik)
+   * - 'STAGING' (Default): Mengambil dari penyimpanan lokal platform dulu; jika lokal kosong, otomatis tarik Live dari port 5774
+   * - 'LIVE': Mengambil fresh dari server Dapodik port 5774 (fallback ke staging/memory jika gagal saat non-refresh)
    */
   async compareStudents(
     tenantId: string,
     options?: CompareOptions,
     forceRefresh = false,
-    sourceMode: 'LIVE' | 'STAGING' = 'LIVE'
+    sourceMode: 'LIVE' | 'STAGING' = 'STAGING'
   ): Promise<ReconciliationReport> {
     const opt: Required<CompareOptions> = {
       checkNama: options?.checkNama ?? true,
@@ -562,10 +669,10 @@ export class DapodikService {
       existingCache.host === cleanHost
     );
 
-    const stagingSnapshot = DapodikService.loadStagingSnapshot(tenantId);
+    const stagingSnapshot = await DapodikService.loadStagingSnapshot(tenantId);
 
     if (sourceMode === 'STAGING') {
-      // MODE STAGING PLATFORM: Utamakan persistent storage di platform
+      // MODE STAGING PLATFORM (LOKAL DULU): Gunakan snapshot lokal bila ada; jika lokal masih kosong, otomatis tarik Live!
       if (stagingSnapshot && stagingSnapshot.rows.length > 0) {
         dapodikRows = stagingSnapshot.rows;
         isFromCache = true;
@@ -576,10 +683,19 @@ export class DapodikService {
         isFromCache = true;
         cachedAtDate = existingCache.fetchedAt;
         effectiveSourceMode = 'STAGING';
-        // Auto simpan ke disk staging
-        DapodikService.saveStagingSnapshot(tenantId, existingCache.rows, cleanNpsn, cleanHost);
+        await DapodikService.saveStagingSnapshot(tenantId, existingCache.rows, cleanNpsn, cleanHost);
       } else {
-        throw new Error('Belum ada snapshot Dapodik yang tersimpan di Staging Platform. Silakan lakukan "Tarik Data Baru (Live)" terlebih dahulu saat komputer Dapodik menyala.');
+        try {
+          const live = await this.fetchLiveDapodikRows(tenantId, cleanHost, cleanNpsn, cleanToken);
+          dapodikRows = live.rows;
+          cachedAtDate = live.fetchedAt;
+          effectiveSourceMode = 'LIVE';
+          isFromCache = false;
+        } catch (err: any) {
+          throw new Error(
+            `Belum ada snapshot Dapodik di Staging Lokal dan penarikan otomatis Live gagal: ${err.message || 'Koneksi bermasalah'}`
+          );
+        }
       }
     } else {
       // MODE LIVE DAPODIK: Ambil langsung dari port 5774
@@ -592,63 +708,11 @@ export class DapodikService {
       } else {
         // Tarik fresh dari Dapodik Web Service
         try {
-          const studentUrl = `${cleanHost}/WebService/getPesertaDidik?npsn=${cleanNpsn}`;
-          const response = await axios.get(studentUrl, {
-            headers: {
-              Authorization: `Bearer ${cleanToken}`,
-              Accept: 'application/json',
-            },
-            timeout: 20000,
-          });
-
-          const parsedPayload = this.parseDapodikPayload(response.data, response.status);
-
-          if (parsedPayload && Array.isArray(parsedPayload.rows)) {
-            dapodikRows = parsedPayload.rows;
-          } else if (Array.isArray(parsedPayload)) {
-            dapodikRows = parsedPayload;
-          } else if (parsedPayload && Array.isArray(parsedPayload.data)) {
-            dapodikRows = parsedPayload.data;
-          } else {
-            throw new Error(
-              'Web Service Dapodik tidak mengembalikan daftar peserta didik (array rows/data tidak ditemukan).'
-            );
-          }
-
-          cachedAtDate = new Date();
+          const live = await this.fetchLiveDapodikRows(tenantId, cleanHost, cleanNpsn, cleanToken);
+          dapodikRows = live.rows;
+          cachedAtDate = live.fetchedAt;
           effectiveSourceMode = 'LIVE';
-
-          // Simpan cache & Staging HANYA jika data siswa valid (> 0), agar snapshot Staging tidak tertimpa data kosong!
-          if (dapodikRows.length > 0) {
-            // 1. Simpan ke in-memory snapshot cache
-            DapodikService.studentCache.set(tenantId, {
-              fetchedAt: cachedAtDate,
-              rows: dapodikRows,
-              npsn: cleanNpsn,
-              host: cleanHost,
-            });
-
-            // 2. OTOMATIS PERSIST KE PLATFORM STAGING STORAGE (Disk JSON)
-            // Menjamin saat komputer Dapodik mati sewaktu-waktu, data tetap aman tersimpan 24/7 di platform!
-            DapodikService.saveStagingSnapshot(tenantId, dapodikRows, cleanNpsn, cleanHost);
-          }
-
-          // Update status di database jika berhasil
-          await prisma.dapodikConfig.updateMany({
-            where: { tenant_id: tenantId },
-            data: {
-              last_sync_at: cachedAtDate,
-              last_status: 'SUCCESS',
-            },
-          });
         } catch (err: any) {
-          await prisma.dapodikConfig.updateMany({
-            where: { tenant_id: tenantId },
-            data: {
-              last_status: err.code === 'ECONNABORTED' ? 'TIMEOUT' : 'FAILED',
-            },
-          });
-
           // Jika user eksplisit klik "Tarik Data Baru" (forceRefresh=true), langsung tampilkan error asli (jangan menyembunyikan kegagalan di balik fallback staging)
           if (!forceRefresh) {
             if (stagingSnapshot && stagingSnapshot.rows.length > 0) {
@@ -893,7 +957,7 @@ export class DapodikService {
       absentaOnlyCount: resultList.filter((s) => s.status === 'ABSENTA_ONLY').length,
     };
 
-    const stagingMeta = DapodikService.getStagingMeta(tenantId);
+    const stagingMeta = await DapodikService.getStagingMeta(tenantId);
 
     return {
       summary,

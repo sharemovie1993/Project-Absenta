@@ -12,7 +12,7 @@ import {
   HelpCircle, Search, ArrowRight, Database, Server, HardDrive,
   SlidersHorizontal, Settings2,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock, Sparkles,
-  Printer, Bookmark, User, ExternalLink, X, ShieldCheck
+  Printer, Bookmark, User, ExternalLink, X, ShieldCheck, Wrench
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,10 +34,13 @@ import {
   type CompareOptions,
 } from '@/api/dapodik.api';
 import { DAPODIK_AUDIT_TEMPLATES, type DapodikAuditTemplate } from './dapodikAuditTemplates';
-import { DapodikBeritaAcaraPrintModal } from './DapodikBeritaAcaraPrintModal';
+import { DapodikBeritaAcaraPrintModal, type DapodikPrintTemplateId } from './DapodikBeritaAcaraPrintModal';
 import { DapodikConnectionModal } from './DapodikConnectionModal';
 import { DapodikCriteriaModal } from './DapodikCriteriaModal';
 import { DapodikRombelMappingModal } from './DapodikRombelMappingModal';
+import { DapodikToolsModal, type DapodikToolKey } from './DapodikToolsModal';
+import { DapodikLppdUsiaModal } from './DapodikLppdUsiaModal';
+import { getTodayIsoDate } from '@/utils/dapodik/dapodikAgeStats';
 
 export interface UniversalDapodikIntegrationViewProps {
   hideLayout?: boolean;
@@ -50,6 +53,10 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
   const [isCriteriaModalOpen, setIsCriteriaModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
+  const [isLppdUsiaModalOpen, setIsLppdUsiaModalOpen] = useState(false);
+  const [printModalTemplate, setPrintModalTemplate] = useState<DapodikPrintTemplateId>('rekon_absenta');
+  const [lppdCutoffDate, setLppdCutoffDate] = useState<string>(getTodayIsoDate());
   const [isRombelMappingModalOpen, setIsRombelMappingModalOpen] = useState(false);
   const [selectedSiswaDetailId, setSelectedSiswaDetailId] = useState<string | null>(null);
 
@@ -92,8 +99,8 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   // Audit Template State
   const [activeTemplateId, setActiveTemplateId] = useState<string>('full_audit');
 
-  // Source Mode: 'LIVE' (Real-time port 5774) vs 'STAGING' (Snapshot Platform di Server Absenta)
-  const [sourceMode, setSourceMode] = useState<'LIVE' | 'STAGING'>('LIVE');
+  // Source Mode: Default 'STAGING' (Lokal dulu; jika lokal kosong, backend otomatis tarik Live) vs 'LIVE' (Real-time port 5774)
+  const [sourceMode, setSourceMode] = useState<'LIVE' | 'STAGING'>('STAGING');
 
   // Selection State
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
@@ -165,8 +172,9 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     const toastId = toast.loading('Sedang menghubungi Web Service Dapodik port 5774...');
     try {
       const res = await getDapodikStudentComparison(compareOptions, true, 'LIVE');
-      // Perbarui cache TanStack Query untuk mode LIVE dan sinkronkan mode tampilan
+      // Perbarui cache TanStack Query untuk mode LIVE & STAGING (karena tarikan fresh otomatis tersimpan ke Staging)
       queryClient.setQueryData(['dapodik-student-comparison', compareOptions, 'LIVE'], res);
+      queryClient.setQueryData(['dapodik-student-comparison', compareOptions, 'STAGING'], res);
       if (sourceMode !== 'LIVE') {
         setSourceMode('LIVE');
       }
@@ -275,6 +283,11 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
 
   const summary = comparisonData?.data?.summary;
   const cacheInfo = comparisonData?.data?.cacheInfo;
+
+  const totalDapodikSourceCount = useMemo(
+    () => students.filter((s) => Boolean(s.dapodikRaw) && s.status !== 'ABSENTA_ONLY').length,
+    [students]
+  );
 
   // Helper Ekstraksi Tingkat Siswa
   const getStudentTingkat = useCallback((s: ReconciledStudent): string => {
@@ -554,11 +567,15 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 px-2 py-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
                   <Clock className="w-3 h-3 text-slate-400" />
                   <span>Snapshot: <strong>{formattedCacheTime}</strong></span>
-                  {cacheInfo?.sourceMode === 'STAGING' || sourceMode === 'STAGING' ? (
+                  {cacheInfo?.sourceMode === 'LIVE' ? (
+                    cacheInfo?.isFromCache ? (
+                      <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">(In-Memory Live)</span>
+                    ) : (
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">(Live Port 5774 • Tersimpan ke Staging)</span>
+                    )
+                  ) : (
                     <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">(Staging Platform)</span>
-                  ) : cacheInfo?.isFromCache ? (
-                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">(In-Memory)</span>
-                  ) : null}
+                  )}
                 </div>
               )}
 
@@ -635,11 +652,26 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 Kriteria Audit ({activeCriteriaCount})
               </Button>
 
-              {/* Cetak Berita Acara Resmi */}
+              {/* Pusat Tools & Utilitas Dapodik (Rekap LPPD, Cetak Berita Acara, dll) */}
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setIsPrintModalOpen(true)}
+                onClick={() => setIsToolsModalOpen(true)}
+                className="h-7 px-2.5 text-[11px] font-bold gap-1.5 border-indigo-200 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+                title="Buka Tools & Utilitas Integrasi Dapodik"
+              >
+                <Wrench className="w-3.5 h-3.5 text-indigo-500" />
+                Tools
+              </Button>
+
+              {/* Cetak Berita Acara Rekonsiliasi */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setPrintModalTemplate('rekon_absenta');
+                  setIsPrintModalOpen(true);
+                }}
                 disabled={!summary || isLoadingComparison}
                 className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                 title="Cetak Berita Acara Rekonsiliasi Data"
@@ -1189,16 +1221,19 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
         setCompareOptions={setCompareOptions}
       />
 
-      {/* ─── MODAL 3: CETAK BERITA ACARA RESMI (PDF / WYSIWYG) ─── */}
+      {/* ─── MODAL 3: CETAK BERITA ACARA RESMI (PDF / WYSIWYG + UNIVERSAL SIGNATURE) ─── */}
       <DapodikBeritaAcaraPrintModal
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
         summary={summary}
         students={students}
         templateName={activeTemplate?.name || 'Audit Kustom'}
+        initialTemplate={printModalTemplate}
+        initialReferenceDate={lppdCutoffDate}
         dapodikHost={configForm.dapodik_host}
         npsn={configForm.npsn}
         lastCheckAt={comparisonData?.data?.lastCheckAt}
+        sourceMode={cacheInfo?.sourceMode || sourceMode}
       />
 
       {/* ─── MODAL 4: DETAIL INTIP RAW COMPARISON ─── */}
@@ -1373,6 +1408,35 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
           );
         }}
         isSubmitting={syncMutation.isPending}
+      />
+      {/* ─── MODAL 8: PUSAT TOOLS & UTILITAS DAPODIK ─── */}
+      <DapodikToolsModal
+        isOpen={isToolsModalOpen}
+        onClose={() => setIsToolsModalOpen(false)}
+        totalDapodikStudents={totalDapodikSourceCount}
+        hasComparisonData={Boolean(summary)}
+        onSelectTool={(toolKey: DapodikToolKey) => {
+          if (toolKey === 'lppdUsia') {
+            setIsLppdUsiaModalOpen(true);
+          } else if (toolKey === 'beritaAcaraRekon') {
+            setPrintModalTemplate('rekon_absenta');
+            setIsPrintModalOpen(true);
+          }
+        }}
+      />
+
+      {/* ─── MODAL 9: REKAP DATA SISWA MENURUT USIA (VERVAL LPPD • DAPODIK) ─── */}
+      <DapodikLppdUsiaModal
+        isOpen={isLppdUsiaModalOpen}
+        onClose={() => setIsLppdUsiaModalOpen(false)}
+        students={students}
+        referenceDate={lppdCutoffDate}
+        onChangeReferenceDate={setLppdCutoffDate}
+        sourceMode={cacheInfo?.sourceMode || sourceMode}
+        onOpenPrintModal={() => {
+          setPrintModalTemplate('lppd_usia');
+          setIsPrintModalOpen(true);
+        }}
       />
     </div>
   );

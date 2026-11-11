@@ -117,7 +117,7 @@ export const dapodikController = {
       };
 
       const forceRefresh = q.force_refresh === 'true' || q.force_refresh === true;
-      const sourceMode: 'LIVE' | 'STAGING' = (q.source_mode || 'LIVE').toUpperCase() === 'STAGING' ? 'STAGING' : 'LIVE';
+      const sourceMode: 'LIVE' | 'STAGING' = (q.source_mode || 'STAGING').toUpperCase() === 'LIVE' ? 'LIVE' : 'STAGING';
 
       const report = await dapodikService.compareStudents(tenantId, options, forceRefresh, sourceMode);
       return reply.status(200).send({
@@ -139,7 +139,7 @@ export const dapodikController = {
     try {
       const user = request.user!;
       const tenantId = user.tenantId || user.tenant_id;
-      const meta = DapodikService.getStagingMeta(tenantId);
+      const meta = await DapodikService.getStagingMeta(tenantId);
       return reply.status(200).send({
         success: true,
         data: meta,

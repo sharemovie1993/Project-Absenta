@@ -60,6 +60,8 @@ export interface StagingStorageMeta {
   npsn: string | null;
   host: string | null;
   fileSizeBytes: number;
+  storageDriver?: 's3' | 'local';
+  storageKey?: string;
 }
 
 export interface ReconciliationReport {

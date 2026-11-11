@@ -624,7 +624,9 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
       isOpen={isOpen}
       onClose={handleClose}
       title="Wizard Impor Jadwal aSc TimeTables (.XML)"
-      maxWidth="5xl"
+      maxWidth="full"
+      className="lg:max-w-[98vw] lg:h-[95vh] lg:max-h-[95vh]"
+      contentClassName="lg:max-h-[calc(95vh-76px)]"
     >
       <div className="space-y-6">
         {/* Stepper Header */}
@@ -924,7 +926,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
             )}
 
             {/* TAB CONTENT TABLES */}
-            <div className="max-h-80 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl">
+            <div className="max-h-80 lg:max-h-[calc(95vh-360px)] min-h-[320px] overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl">
               {activeTab === 'GURU' && (
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700">
