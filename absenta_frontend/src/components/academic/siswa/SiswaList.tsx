@@ -43,6 +43,7 @@ import { useIsMobile } from '../../../hooks/useIsMobile';
 import { useJenjang } from '../../../hooks/useJenjang';
 
 import { SiswaBulkPasswordModal } from './SiswaBulkPasswordModal';
+import { ExcelCompareKelasModal } from './ExcelCompareKelasModal';
 import { ParentAccessModal, ParentAccessData } from './ParentAccessModal';
 
 // Lazy load Table to improve mobile performance (TBT)
@@ -123,6 +124,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isWaNormalizeOpen, setIsWaNormalizeOpen] = useState(false);
   const [isBulkPasswordOpen, setIsBulkPasswordOpen] = useState(false);
+  const [isExcelCompareOpen, setIsExcelCompareOpen] = useState(false);
 
   // State Modal Copy-Paste Magic Token & Link Akses Ortu
   const [parentAccessModalData, setParentAccessModalData] = useState<{
@@ -2475,6 +2477,23 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
           else if (key === 'photoStudio') setIsPhotoStudioOpen(true);
           else if (key === 'waNormalize') setIsWaNormalizeOpen(true);
           else if (key === 'bulkPassword') setIsBulkPasswordOpen(true);
+          else if (key === 'excelCompare') setIsExcelCompareOpen(true);
+        }}
+      />
+
+      <ExcelCompareKelasModal
+        isOpen={isExcelCompareOpen}
+        onClose={() => setIsExcelCompareOpen(false)}
+        kelasList={kelasList}
+        initialKelasId={filterKelas}
+        isKelasDisabled={isKelasDisabled}
+        jurusanId={jurusanId}
+        tahunPelajaranId={tahunPelajaranId}
+        semesterId={semesterId}
+        canEdit={canManage && !readOnly}
+        onDataUpdated={() => {
+          invalidateSiswaCache();
+          refetch();
         }}
       />
 

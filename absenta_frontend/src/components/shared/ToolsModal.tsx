@@ -9,10 +9,11 @@ import {
   PhoneCall, 
   ChevronRight,
   ShieldCheck,
-  KeyRound
+  KeyRound,
+  ArrowRightLeft
 } from 'lucide-react';
 
-export type ToolKey = 'analysis' | 'generateCode' | 'rfidPairing' | 'photoStudio' | 'waNormalize' | 'bulkPassword';
+export type ToolKey = 'analysis' | 'generateCode' | 'rfidPairing' | 'photoStudio' | 'waNormalize' | 'bulkPassword' | 'excelCompare';
 
 interface ToolsModalProps {
   isOpen: boolean;
@@ -84,6 +85,14 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
       color: 'text-teal-500 bg-teal-500/10 border-teal-500/20 dark:bg-teal-500/20',
       badge: 'Baru',
     },
+    ...(isSiswa ? [{
+      key: 'excelCompare' as ToolKey,
+      title: 'Cek & Bandingkan Kelas (Excel)',
+      description: 'Tempel 3 kolom (NISN, NIS, Nama) dari Excel untuk mengecek kecocokan 1 kelas.',
+      icon: ArrowRightLeft,
+      color: 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20 dark:bg-indigo-500/20',
+      badge: 'Cek Kelas',
+    }] : []),
   ];
 
   return (

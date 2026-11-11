@@ -74,7 +74,7 @@ export interface CreateTenantRequest {
   absensi_mode?: AbsensiMode;
   domain?: string; // Mapped to subdomain
   subdomain?: string;
-  custom_domain?: string;
+  custom_domain?: string | null;
   logo_url?: string;
   logo_daerah_url?: string;
   address?: string;
@@ -109,7 +109,7 @@ export interface UpdateTenantRequest {
   absensi_mode?: AbsensiMode;
   domain?: string; // Mapped to subdomain
   subdomain?: string;
-  custom_domain?: string;
+  custom_domain?: string | null;
   logo_url?: string;
   logo_daerah_url?: string;
   address?: string;

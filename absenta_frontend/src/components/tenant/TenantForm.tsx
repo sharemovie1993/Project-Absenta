@@ -83,7 +83,7 @@ const TenantForm: React.FC<TenantFormProps> = ({ tenantId, onSuccess, onCancel }
           absensi_mode: formData.absensi_mode,
           domain: formData.subdomain || undefined,
           subdomain: formData.subdomain || undefined,
-          custom_domain: formData.custom_domain || undefined,
+          custom_domain: formData.custom_domain?.trim() || null,
           logo_url: formData.logo_url || undefined,
           status: formData.status
         };
@@ -243,9 +243,9 @@ const TenantForm: React.FC<TenantFormProps> = ({ tenantId, onSuccess, onCancel }
               value={formData.status}
               onValueChange={(val) => setFormData(prev => ({ ...prev, status: val }))}
               options={[
-                { label: 'Aktif', value: 'active' },
-                { label: 'Tidak Aktif', value: 'inactive' },
-                { label: 'Ditangguhkan', value: 'suspended' }
+                { label: 'Aktif', value: 'ACTIVE' },
+                { label: 'Tidak Aktif', value: 'INACTIVE' },
+                { label: 'Ditangguhkan', value: 'SUSPENDED' }
               ]}
               placeholder="Pilih Status"
               searchPlaceholder="Cari status..."

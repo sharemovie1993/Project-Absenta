@@ -422,6 +422,79 @@ export async function rebindTenantEntitlements(params: RebindTenantParams): Prom
   return data;
 }
 
+export interface SyncTenantMetadataParams {
+  server_license_key: string;
+  deploy_scenario?: string;
+  old_name?: string | null;
+  new_name?: string | null;
+  old_subdomain?: string | null;
+  new_subdomain?: string | null;
+  old_custom_domain?: string | null;
+  custom_domain?: string | null;
+  status?: string | null;
+  npsn?: string | null;
+}
+
+export interface SyncTenantMetadataResult {
+  synced: boolean;
+  conflict: boolean;
+  caddy_synced: boolean;
+  updated_licenses?: number;
+  updated_subscriptions?: number;
+  message?: string;
+}
+
+/** Sinkronkan perubahan metadata tenant (nama, subdomain, custom_domain, status) ke Server Lisensi & Caddy */
+export async function syncTenantMetadataToLicenseServer(
+  params: SyncTenantMetadataParams
+): Promise<SyncTenantMetadataResult> {
+  try {
+    const res = await fetch(`${LICENSE_SERVER_URL}/api/license/tenant/sync-metadata`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+      signal: AbortSignal.timeout(10000)
+    });
+    const data = (await res.json().catch(() => ({}))) as any;
+
+    if (res.status === 409) {
+      return {
+        synced: false,
+        conflict: true,
+        caddy_synced: false,
+        message: data.message || 'Subdomain atau custom domain sudah digunakan di Server Lisensi.'
+      };
+    }
+
+    if (!res.ok || !data.success) {
+      console.warn(`[licenseClient] syncTenantMetadata HTTP ${res.status}:`, data.message);
+      return {
+        synced: false,
+        conflict: false,
+        caddy_synced: false,
+        message: data.message || `HTTP ${res.status}`
+      };
+    }
+
+    return {
+      synced: true,
+      conflict: false,
+      caddy_synced: Boolean(data.data?.caddy_synced),
+      updated_licenses: data.data?.updated_licenses ?? 0,
+      updated_subscriptions: data.data?.updated_subscriptions ?? 0,
+      message: data.message
+    };
+  } catch (err: any) {
+    console.warn('[licenseClient] syncTenantMetadata offline/error:', err.message);
+    return {
+      synced: false,
+      conflict: false,
+      caddy_synced: false,
+      message: err.message
+    };
+  }
+}
+
 // =========================================================================
 // SKKNI CLOUD CATALOG CLIENT (Single Source of Truth dari Server Lisensi)
 // =========================================================================

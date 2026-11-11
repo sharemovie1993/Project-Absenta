@@ -6,6 +6,36 @@ import { auditLogService } from '../../audit/services/audit-log.service';
 import { strukturOrganisasiService } from '../../academic/struktur-organisasi/services/struktur-organisasi.service';
 import { tenantEntitlementService } from '../../billing/services/tenant-entitlement.service';
 import { ensureTenantBaseRoles } from '../../../database/seeds/seed_policies';
+import { checkSlugAvailability, syncTenantMetadataToLicenseServer } from '@/services/licenseClient';
+import { getDeployScenario } from '../../../utils/deployScenario';
+
+const RESERVED_SUBDOMAINS = new Set([
+  'www', 'api', 'admin', 'app', 'mail', 'ftp', 'cdn', 'static', 'assets',
+  'auth', 'login', 'license', 'billing', 'support', 'help', 'docs', 'blog',
+  'status', 'system'
+]);
+
+function normalizeSubdomainInput(raw: string): string {
+  const clean = raw.trim().toLowerCase();
+  if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(clean) || clean.length < 3) {
+    throw new Error('Format subdomain tidak valid (minimal 3 karakter huruf kecil, angka, atau strip "-").');
+  }
+  if (RESERVED_SUBDOMAINS.has(clean)) {
+    throw new Error(`Subdomain "${clean}" dicadangkan oleh sistem dan tidak dapat digunakan.`);
+  }
+  return clean;
+}
+
+function normalizeCustomDomainInput(raw: string | null | undefined): string | null | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null) return null;
+  const trimmed = raw.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  if (!trimmed) return null;
+  if (!/^([a-z0-9-]+\.)+[a-z]{2,}$/.test(trimmed)) {
+    throw new Error('Format custom domain tidak valid (contoh: absensi.smkn1.sch.id).');
+  }
+  return trimmed;
+}
 
 
 
@@ -22,7 +52,7 @@ export interface UpdateTenantInput {
   absensi_mode?: 'SIMPLE' | 'MULTI_SESI';
   subdomain?: string;
   domain?: string;
-  custom_domain?: string;
+  custom_domain?: string | null;
   logo_url?: string;
   status?: string;
   jam_masuk_default?: string;
@@ -447,6 +477,63 @@ export class TenantService {
       (coreInput as any).subdomain = domain;
     }
 
+    if ((coreInput as any).status && typeof (coreInput as any).status === 'string') {
+      (coreInput as any).status = (coreInput as any).status.trim().toUpperCase();
+    }
+
+    // Normalisasi & validasi subdomain jika dikirim/diubah
+    if (coreInput.subdomain !== undefined) {
+      const normalizedSub = coreInput.subdomain.trim()
+        ? (tenantId === 'system'
+            ? coreInput.subdomain.trim().toLowerCase()
+            : normalizeSubdomainInput(coreInput.subdomain))
+        : null;
+      (coreInput as any).subdomain = normalizedSub;
+
+      if (normalizedSub && normalizedSub !== existingTenant.subdomain) {
+        const subExists = await prisma.tenant.findFirst({
+          where: {
+            subdomain: normalizedSub,
+            id: { not: tenantId }
+          }
+        });
+        if (subExists) {
+          throw new Error(`Subdomain '${normalizedSub}' sudah digunakan oleh tenant lain.`);
+        }
+
+        // Verifikasi ketersediaan global ke Server Lisensi pusat (jika tidak memakai LICENSE_KEY scoped sync)
+        if (!process.env.LICENSE_KEY) {
+          try {
+            const globCheck = await checkSlugAvailability(normalizedSub);
+            if (!globCheck.available) {
+              throw new Error(`Subdomain '${normalizedSub}' sudah terdaftar/digunakan di Server Lisensi pusat.`);
+            }
+          } catch (err: any) {
+            if (err.message?.includes('Server Lisensi pusat')) throw err;
+            console.warn(`[TenantService.updateTenant] Gagal cek global slug '${normalizedSub}':`, err.message);
+          }
+        }
+      }
+    }
+
+    // Normalisasi & validasi custom_domain jika dikirim/diubah
+    if (coreInput.custom_domain !== undefined) {
+      const normalizedCustom = normalizeCustomDomainInput(coreInput.custom_domain);
+      (coreInput as any).custom_domain = normalizedCustom;
+
+      if (normalizedCustom && normalizedCustom !== existingTenant.custom_domain) {
+        const customExists = await prisma.tenant.findFirst({
+          where: {
+            custom_domain: normalizedCustom,
+            id: { not: tenantId }
+          }
+        });
+        if (customExists) {
+          throw new Error(`Custom domain '${normalizedCustom}' sudah digunakan oleh tenant lain.`);
+        }
+      }
+    }
+
     // Helper to upsert settings into general Config table
     const upsertConfig = async (key: string, value: string) => {
       const existing = await prisma.config.findFirst({
@@ -645,6 +732,66 @@ export class TenantService {
       }
     });
 
+    if (input.name && input.name !== existingTenant.name) {
+      await prisma.sekolah.updateMany({
+        where: { tenant_id: tenantId },
+        data: { nama: input.name }
+      }).catch(() => {});
+    }
+
+    // Sinkronkan perubahan identitas/routing tenant ke Server Lisensi & Caddy
+    let licenseSyncInfo: { synced: boolean; caddy_synced: boolean; message?: string } | undefined;
+    const nameChanged = tenant.name !== existingTenant.name;
+    const subdomainChanged = tenant.subdomain !== existingTenant.subdomain;
+    const customDomainChanged = tenant.custom_domain !== existingTenant.custom_domain;
+    const statusChanged = tenant.status !== existingTenant.status;
+
+    if ((nameChanged || subdomainChanged || customDomainChanged || statusChanged) && process.env.LICENSE_KEY) {
+      const sekolahRow = await prisma.sekolah.findFirst({
+        where: { tenant_id: tenantId },
+        select: { npsn: true }
+      }).catch(() => null);
+
+      const syncResult = await syncTenantMetadataToLicenseServer({
+        server_license_key: process.env.LICENSE_KEY.trim(),
+        deploy_scenario: getDeployScenario(),
+        old_name: existingTenant.name,
+        new_name: tenant.name,
+        old_subdomain: existingTenant.subdomain,
+        new_subdomain: tenant.subdomain,
+        old_custom_domain: existingTenant.custom_domain,
+        custom_domain: coreInput.custom_domain !== undefined ? tenant.custom_domain : undefined,
+        status: tenant.status,
+        npsn: sekolahRow?.npsn || null
+      });
+
+      if (syncResult.conflict) {
+        // Rollback perubahan lokal agar tetap konsisten dengan Server Lisensi
+        await prisma.tenant.update({
+          where: { id: tenantId },
+          data: {
+            name: existingTenant.name,
+            subdomain: existingTenant.subdomain,
+            custom_domain: existingTenant.custom_domain,
+            status: existingTenant.status
+          }
+        }).catch(() => {});
+        if (nameChanged) {
+          await prisma.sekolah.updateMany({
+            where: { tenant_id: tenantId },
+            data: { nama: existingTenant.name }
+          }).catch(() => {});
+        }
+        throw new Error(syncResult.message || 'Subdomain atau custom domain sudah digunakan di Server Lisensi.');
+      }
+
+      licenseSyncInfo = {
+        synced: syncResult.synced,
+        caddy_synced: syncResult.caddy_synced,
+        message: syncResult.message
+      };
+    }
+
     // Query configs to return freshly updated values
     const configs = await prisma.config.findMany({
       where: {
@@ -763,6 +910,7 @@ export class TenantService {
       // Hybrid Kepala Sekolah values
       kepala_sekolah: currentKepsekNama || null,
       nip_kepala: currentKepsekNip || null,
+      license_sync: licenseSyncInfo,
     } as any;
   }
 
