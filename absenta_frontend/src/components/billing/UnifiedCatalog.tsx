@@ -18,7 +18,8 @@ import {
   FilterX,
   AlertTriangle,
   CloudOff,
-  RefreshCw
+  RefreshCw,
+  HeartHandshake
 } from 'lucide-react';
 
 import { Button } from '../ui';
@@ -56,6 +57,7 @@ const CATEGORY_TABS = [
   { id: 'KOPERASI', label: 'Koperasi & POS', icon: ShoppingBag },
   { id: 'HUBIN', label: 'Hubin & PKL', icon: Briefcase },
   { id: 'SARPRAS', label: 'Sarpras & Aset', icon: Package },
+  { id: 'BPBK', label: 'BP/BK & Konseling', icon: HeartHandshake },
   { id: 'WHATSAPP', label: 'WhatsApp Gateway', icon: MessageCircle },
   { id: 'HARDWARE', label: 'Server & Hardware', icon: Server },
 ];
@@ -218,11 +220,30 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
   const allGroupedProducts = useMemo(() => {
     if (!catalogPlans || !Array.isArray(catalogPlans)) return [];
 
-    // Filter out Academic Core / CORE plans entirely from the catalog
+    const hasPaketLengkapMulti = catalogPlans.some((p: any) =>
+      String(p.id || '').toUpperCase().startsWith('PAKET_LENGKAP_MULTI_')
+    );
+
+    // Filter out Academic Core / CORE plans, free activation licenses, and legacy SW_SAAS_/SW_ONPREM_ SKUs from the catalog
     const nonCorePlans = catalogPlans.filter((p: any) => {
+      const id = String(p.id || '').toUpperCase();
       const code = String(p.code || p.service_code || '').toUpperCase();
       const name = String(p.name || '').toUpperCase();
-      return !code.includes('CORE') && !name.includes('CORE_PLATFORM') && !name.includes('ACADEMIC CORE');
+      if (
+        code.includes('CORE') ||
+        name.includes('CORE_PLATFORM') ||
+        name.includes('ACADEMIC CORE') ||
+        id.includes('FREE_LICENSE') ||
+        id.startsWith('SW_SAAS_') ||
+        id.startsWith('SW_ONPREM_')
+      ) {
+        return false;
+      }
+      // Paket Lengkap All-in-One di katalog menggunakan bundel komplit Multi-Sesi (PAKET_LENGKAP_MULTI_*)
+      if (hasPaketLengkapMulti && id.startsWith('PAKET_LENGKAP_SIMPLE_')) {
+        return false;
+      }
+      return true;
     });
 
     const products: Record<string, any> = {};
@@ -243,7 +264,7 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
             .replace(/\s+/g, ' ')
             .trim();
 
-      const moduleName = p.module?.name || 'Layanan';
+      let moduleName = p.module?.name || 'Layanan';
       const planMode = p.absensi_mode || (p.name.includes('Multi') ? 'MULTI_SESI' : 'SIMPLE');
 
       let groupKey = p.module_id ? `${p.module_id}-${planMode}` : `${cleanBaseName}-${planMode}`;
@@ -297,10 +318,18 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
         groupKey = resolveServiceCatalogGroupKey(p);
         if (groupKey === 'SAAS_GROUP_PAKET_LENGKAP') {
           categoryKey = 'PAKET_LENGKAP';
+          moduleName = 'PAKET LENGKAP';
           cleanBaseName = 'Paket Lengkap All-in-One Platform Absenta';
           imageUrl = '/assets/modules/absensi.png';
           cleanDescription = 'Bundling komplit seluruh modul: Presensi Multi-Sesi, POS Koperasi, Hubin PKL, Sarpras, & WA Gateway.';
           highlightBadge = 'Semua Modul Termasuk';
+        } else if (groupKey === 'SAAS_GROUP_BPBK') {
+          categoryKey = 'BPBK';
+          moduleName = 'BP/BK & Konseling';
+          cleanBaseName = 'Modul Bimbingan & Konseling (BP/BK)';
+          imageUrl = '/assets/modules/absensi-simple.png';
+          cleanDescription = 'Manajemen kasus siswa, poin pelanggaran & prestasi, konseling digital, home visit, & panggilan orang tua.';
+          highlightBadge = 'EWS & Pembinaan Siswa';
         } else if (groupKey === 'SAAS_GROUP_WHATSAPP') {
           categoryKey = 'WHATSAPP';
           cleanBaseName = 'WhatsApp Service & Broadcast Pengingat';
@@ -347,9 +376,9 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
           categoryKey: categoryKey,
           baseName: cleanBaseName || p.name,
           module: isHardware ? cleanBaseName : moduleName,
-          module_id: p.module_id,
-          icon: isHardware ? (groupKey.includes('DELL') || groupKey.includes('MINI') ? 'Server' : groupKey.includes('NETWORK') ? 'Wifi' : groupKey.includes('PVC') ? 'CreditCard' : 'Scan') : (p.module?.icon || (groupKey.includes('WHATSAPP') ? 'MessageCircle' : groupKey.includes('HUBIN') ? 'Briefcase' : 'Package')),
-          service_code: p.service_code,
+          module_id: groupKey === 'SAAS_GROUP_PAKET_LENGKAP' ? 'PAKET_LENGKAP' : (groupKey === 'SAAS_GROUP_BPBK' ? 'BPBK' : p.module_id),
+          icon: isHardware ? (groupKey.includes('DELL') || groupKey.includes('MINI') ? 'Server' : groupKey.includes('NETWORK') ? 'Wifi' : groupKey.includes('PVC') ? 'CreditCard' : 'Scan') : (p.module?.icon || (groupKey.includes('PAKET_LENGKAP') ? 'Sparkles' : groupKey.includes('BPBK') ? 'HeartHandshake' : groupKey.includes('WHATSAPP') ? 'MessageCircle' : groupKey.includes('HUBIN') ? 'Briefcase' : 'Package')),
+          service_code: groupKey === 'SAAS_GROUP_PAKET_LENGKAP' ? 'PAKET_LENGKAP' : (groupKey === 'SAAS_GROUP_BPBK' ? 'BPBK' : p.service_code),
           mode: planMode,
           isHardware: isHardware,
           imageUrl: imageUrl,
@@ -728,11 +757,18 @@ const ProductCatalogCard: React.FC<ProductCatalogCardProps> = ({
 
   // Lowest starting price in the group
   const lowestPrice = useMemo(() => {
-    const prices = group.variants.map((v: any) =>
+    const monthlyVariants = !isHardware
+      ? group.variants.filter((v: any) => {
+          const p = String(v.billing_period || '').toUpperCase();
+          return p === 'MONTH' || p === 'MONTHLY';
+        })
+      : [];
+    const targetVariants = monthlyVariants.length > 0 ? monthlyVariants : group.variants;
+    const prices = targetVariants.map((v: any) =>
       (v.price_onetime && v.price_onetime > 0) ? v.price_onetime : (v.price_monthly || v.price_yearly || 0)
     ).filter((p: number) => p > 0);
     return prices.length > 0 ? Math.min(...prices) : 0;
-  }, [group.variants]);
+  }, [group.variants, isHardware]);
 
   const IconComp = getServiceIcon(group.service_code, group.icon);
 

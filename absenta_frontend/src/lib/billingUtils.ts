@@ -4,7 +4,8 @@ import {
   FileText, 
   Package, 
   LayoutGrid, 
-  Sparkles 
+  Sparkles,
+  HeartHandshake
 } from 'lucide-react';
 import { iconForName, isValidIconName } from './iconForName';
 
@@ -28,6 +29,7 @@ export const getServiceIcon = (code: string | undefined | null, moduleIcon?: str
   if (c.includes('RAPOR')) return FileText;
   if (c.includes('INVENTORY') || c.includes('SARPRAS')) return Package;
   if (c.includes('HUBIN')) return LayoutGrid;
+  if (c.includes('BPBK') || c.includes('BIMBINGAN') || c.includes('KONSELING')) return HeartHandshake;
   if (c.includes('PAKET_LENGKAP')) return Sparkles;
   return Package;
 };
@@ -68,6 +70,15 @@ export const getServiceTheme = (code: string | undefined | null) => {
       glow: 'shadow-amber-500/20',
       iconBg: 'bg-amber-600',
       text: 'text-amber-600'
+    };
+  }
+  if (c.includes('BPBK') || c.includes('BIMBINGAN') || c.includes('KONSELING')) {
+    return {
+      color: 'rose',
+      gradient: 'from-rose-600/20 via-rose-500/5 to-transparent',
+      glow: 'shadow-rose-500/20',
+      iconBg: 'bg-rose-600',
+      text: 'text-rose-600'
     };
   }
   if (c.includes('WHATSAPP')) {
@@ -269,6 +280,7 @@ export const resolveServiceCatalogGroupKey = (itemOrSlug: any): string => {
     if (s.includes('HUBIN') || s.includes('PKL') || s.includes('INDUSTRI')) return 'SAAS_GROUP_HUBIN';
     if (s.includes('KOPERASI') || s.includes('COOPERATIVE') || s.includes('KANTIN')) return 'SAAS_GROUP_KOPERASI';
     if (s.includes('SARPRAS') || s.includes('INVENTORY') || s.includes('ASET')) return 'SAAS_GROUP_SARPRAS';
+    if (s.includes('BPBK') || s.includes('BIMBINGAN') || s.includes('KONSELING')) return 'SAAS_GROUP_BPBK';
     if (s.includes('MULTI')) return 'SAAS_GROUP_ABSENSI_MULTI';
     if (s.includes('ABSENSI') || s.includes('PRESENSI')) return 'SAAS_GROUP_ABSENSI_SIMPLE';
     if (s.includes('DELL') || s.includes('SERVER')) return 'HW_GROUP_DELL_SERVER';
@@ -302,7 +314,21 @@ export const resolveServiceCatalogGroupKey = (itemOrSlug: any): string => {
     return `HW_${plan.module_id || plan.id || 'DEVICE'}`;
   }
 
-  // 2. Paket Lengkap (All-in-One)
+  // 2. Bimbingan & Konseling (BP/BK) — check before generic fallbacks so BPBK never falls into PAKET_LENGKAP
+  if (
+    nameUpper.includes('BIMBINGAN') ||
+    nameUpper.includes('KONSELING') ||
+    nameUpper.includes('BP/BK') ||
+    nameUpper.includes('BPBK') ||
+    idUpper.includes('BIMBINGAN') ||
+    idUpper.includes('BPBK') ||
+    serviceCodeUpper === 'BPBK' ||
+    moduleUpper === 'BPBK'
+  ) {
+    return 'SAAS_GROUP_BPBK';
+  }
+
+  // 3. Paket Lengkap (All-in-One)
   if (
     isCompleteBundlePlan(itemOrSlug) ||
     isCompleteBundlePlan(plan) ||
@@ -315,34 +341,38 @@ export const resolveServiceCatalogGroupKey = (itemOrSlug: any): string => {
     return 'SAAS_GROUP_PAKET_LENGKAP';
   }
 
-  // 3. WhatsApp Gateway
+  // 4. WhatsApp Gateway
   if (nameUpper.includes('WHATSAPP') || idUpper.includes('WHATSAPP') || serviceCodeUpper === 'WHATSAPP' || moduleUpper === 'WHATSAPP') {
     return 'SAAS_GROUP_WHATSAPP';
   }
 
-  // 4. Hubungan Industri (Hubin & PKL)
+  // 5. Hubungan Industri (Hubin & PKL)
   if (nameUpper.includes('HUBUNGAN INDUSTRI') || nameUpper.includes('HUBIN') || nameUpper.includes('PKL') || idUpper.includes('HUBIN') || serviceCodeUpper === 'HUBIN' || moduleUpper === 'HUBIN') {
     return 'SAAS_GROUP_HUBIN';
   }
 
-  // 5. Koperasi Sekolah & POS Kantin
+  // 6. Koperasi Sekolah & POS Kantin
   if (nameUpper.includes('KOPERASI') || idUpper.includes('KOPERASI') || serviceCodeUpper === 'KOPERASI' || moduleUpper === 'KOPERASI' || serviceCodeUpper === 'COOPERATIVE') {
     return 'SAAS_GROUP_KOPERASI';
   }
 
-  // 6. Sarana Prasarana & Inventory
+  // 7. Sarana Prasarana & Inventory
   if (nameUpper.includes('SARANA PRASARANA') || nameUpper.includes('SARPRAS') || nameUpper.includes('INVENTORY') || idUpper.includes('SARPRAS') || serviceCodeUpper === 'SARPRAS' || moduleUpper === 'SARPRAS') {
     return 'SAAS_GROUP_SARPRAS';
   }
 
-  // 7. Presensi Multi-Sesi
+  // 8. Presensi Multi-Sesi
   if (nameUpper.includes('MULTI') || modeUpper === 'MULTI_SESI' || idUpper.includes('MULTI')) {
     return 'SAAS_GROUP_ABSENSI_MULTI';
   }
 
-  // 8. Presensi Standar / Simple
+  // 9. Presensi Standar / Simple
   if (nameUpper.includes('ABSENSI') || serviceCodeUpper === 'ABSENSI' || moduleUpper === 'ABSENSI' || nameUpper.includes('PRESENSI')) {
     return 'SAAS_GROUP_ABSENSI_SIMPLE';
+  }
+
+  if (moduleUpper || serviceCodeUpper) {
+    return `SAAS_GROUP_${moduleUpper || serviceCodeUpper}`;
   }
 
   return 'SAAS_GROUP_PAKET_LENGKAP';

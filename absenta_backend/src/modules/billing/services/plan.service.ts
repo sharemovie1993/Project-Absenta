@@ -97,10 +97,12 @@ export class PlanService {
         const localModules = await prisma.module.findMany();
 
         const MODULE_META: Record<string, { name: string; icon: string }> = {
-          SERVER_HARDWARE:   { name: 'Server Node',       icon: 'Server'      },
-          NETWORK_HARDWARE:  { name: 'Network Wi-Fi 6',   icon: 'Wifi'        },
-          ABSENSI_HARDWARE:  { name: 'Biometrik & RFID',  icon: 'Fingerprint' },
-          PHYSICAL_SERVICE:  { name: 'Kartu & Cetak',     icon: 'CreditCard'  },
+          PAKET_LENGKAP:     { name: 'PAKET LENGKAP',     icon: 'Sparkles'       },
+          BPBK:              { name: 'BP/BK & Konseling', icon: 'HeartHandshake' },
+          SERVER_HARDWARE:   { name: 'Server Node',       icon: 'Server'         },
+          NETWORK_HARDWARE:  { name: 'Network Wi-Fi 6',   icon: 'Wifi'           },
+          ABSENSI_HARDWARE:  { name: 'Biometrik & RFID',  icon: 'Fingerprint'    },
+          PHYSICAL_SERVICE:  { name: 'Kartu & Cetak',     icon: 'CreditCard'     },
         };
 
         const mappedPlans = res.data.data.map((plan: any) => {

@@ -96,26 +96,60 @@ export function ServiceDetailContent() {
 
   // 2. Grouping Logic
   const groupedProducts = useMemo(() => {
-    const plans = plansQuery.data || [];
+    const rawPlans = plansQuery.data || [];
+    const hasPaketLengkapMulti = rawPlans.some((p: Plan) =>
+      String(p.id || '').toUpperCase().startsWith('PAKET_LENGKAP_MULTI_')
+    );
+    const plans = rawPlans.filter((p: Plan) => {
+      const id = String(p.id || '').toUpperCase();
+      const code = String(p.serviceCode || p.service_code || '').toUpperCase();
+      const name = String(p.name || '').toUpperCase();
+      if (
+        code.includes('CORE') ||
+        name.includes('CORE_PLATFORM') ||
+        name.includes('ACADEMIC CORE') ||
+        id.includes('FREE_LICENSE') ||
+        id.startsWith('SW_SAAS_') ||
+        id.startsWith('SW_ONPREM_')
+      ) {
+        return false;
+      }
+      if (hasPaketLengkapMulti && id.startsWith('PAKET_LENGKAP_SIMPLE_')) {
+        return false;
+      }
+      return true;
+    });
+
     const products: Record<string, GroupedProduct> = {};
 
     plans.forEach((p: Plan) => {
       const size = extractPlanSizeLabel(p);
       const groupKey = resolveServiceCatalogGroupKey(p);
       const isPaketLengkap = groupKey === 'SAAS_GROUP_PAKET_LENGKAP';
+      const isBpbk = groupKey === 'SAAS_GROUP_BPBK';
 
       const baseName = isPaketLengkap
         ? 'Paket Lengkap All-in-One Platform Absenta'
-        : (p.name || '')
-            .replace(/\((Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\)/gi, '')
-            .replace(/\b(Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\b/gi, '')
-            .replace(/-/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
+        : isBpbk
+          ? 'Modul Bimbingan & Konseling (BP/BK)'
+          : (p.name || '')
+              .replace(/\((Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\)/gi, '')
+              .replace(/\b(Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\b/gi, '')
+              .replace(/-/g, '')
+              .replace(/\s+/g, ' ')
+              .trim();
           
-      const moduleName = p.module?.name || (isPaketLengkap ? 'Paket Komplit' : 'Layanan');
+      const moduleName = isPaketLengkap
+        ? 'PAKET LENGKAP'
+        : isBpbk
+          ? 'BP/BK & Konseling'
+          : (p.module?.name || 'Layanan');
       const mode = p.absensi_mode || 'STANDARD';
-      const serviceCode = String(p.serviceCode || p.service_code || p.moduleId || p.module_id || '').toUpperCase();
+      const serviceCode = isPaketLengkap
+        ? 'PAKET_LENGKAP'
+        : isBpbk
+          ? 'BPBK'
+          : String(p.serviceCode || p.service_code || p.moduleId || p.module_id || '').toUpperCase();
       const legacyKey = serviceCode || `${baseName}-${mode}`;
       
       if (!products[groupKey]) {
@@ -123,10 +157,10 @@ export function ServiceDetailContent() {
           id: groupKey,
           baseName,
           mode,
-          module: p.module?.name || moduleName,
-          icon: p.module?.icon || (isPaketLengkap ? 'Sparkles' : 'Package'),
+          module: moduleName,
+          icon: p.module?.icon || (isPaketLengkap ? 'Sparkles' : isBpbk ? 'HeartHandshake' : 'Package'),
           service_code: serviceCode,
-          module_id: p.module_id || p.moduleId || '',
+          module_id: isPaketLengkap ? 'PAKET_LENGKAP' : isBpbk ? 'BPBK' : (p.module_id || p.moduleId || ''),
           variants: [],
           sizes: [],
           periods: []

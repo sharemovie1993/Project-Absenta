@@ -141,15 +141,25 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
   const priceYearly = Number(selectedPlan?.price_yearly || 0);
   const priceOnetime = Number(selectedPlan?.price_onetime || 0);
 
+  const regularMonthlyPrice = useMemo(() => {
+    if (isHardware || !group?.variants) return priceMonthly;
+    const monthVariant = group.variants.find((v: any) => {
+      const vSize = extractSizeLabel(v);
+      const vPeriod = v.billing_period === 'YEARLY' ? 'YEAR' : (v.billing_period === 'MONTHLY' ? 'MONTH' : v.billing_period);
+      return vSize.toLowerCase() === selectedSize.toLowerCase() && vPeriod === 'MONTH';
+    });
+    return Number(monthVariant?.price_monthly || priceMonthly || 0);
+  }, [group?.variants, isHardware, selectedSize, priceMonthly]);
+
   const displayPrice = isHardware
     ? (priceOnetime || priceMonthly || 0)
     : (selectedPeriod === 'YEAR'
-        ? (priceYearly > 0 ? priceYearly : Math.round(priceMonthly * 12 * 0.8))
-        : priceMonthly
+        ? (priceYearly > 0 ? priceYearly : Math.round(regularMonthlyPrice * 12 * 0.8))
+        : (regularMonthlyPrice || priceMonthly)
       );
 
-  const yearlySavings = !isHardware && selectedPeriod === 'YEAR' && priceMonthly > 0
-    ? ((priceMonthly * 12) - displayPrice)
+  const yearlySavings = !isHardware && selectedPeriod === 'YEAR' && regularMonthlyPrice > 0
+    ? Math.max(0, (regularMonthlyPrice * 12) - displayPrice)
     : 0;
 
   // Unit Cost Calculation per student
