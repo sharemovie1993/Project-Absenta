@@ -49,8 +49,8 @@ interface ExcelCompareKelasModalProps {
 }
 
 const COLUMN_ORDER_OPTIONS: { label: string; value: ExcelCompareColumnOrder }[] = [
-  { label: 'NISN → NIS → NAMA', value: 'NISN_NIS_NAMA' },
   { label: 'NIS → NISN → NAMA', value: 'NIS_NISN_NAMA' },
+  { label: 'NISN → NIS → NAMA', value: 'NISN_NIS_NAMA' },
   { label: 'NAMA → NISN → NIS', value: 'NAMA_NISN_NIS' },
 ];
 
@@ -70,7 +70,7 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
 }) => {
   const confirm = useConfirm();
   const [selectedKelasId, setSelectedKelasId] = useState(initialKelasId);
-  const [columnOrder, setColumnOrder] = useState<ExcelCompareColumnOrder>('NISN_NIS_NAMA');
+  const [columnOrder, setColumnOrder] = useState<ExcelCompareColumnOrder>('NIS_NISN_NAMA');
   const [rawText, setRawText] = useState('');
   const [onlyAktif, setOnlyAktif] = useState(true);
   const [ignoreCaseNama, setIgnoreCaseNama] = useState(true);
@@ -446,7 +446,7 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
               Cek & Bandingkan Data Kelas dengan Excel
             </h3>
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Salin 3 kolom (NISN, NIS, Nama) dari Excel lalu tempel di sini untuk mencocokkan isi 1 kelas.
+              Salin 3 kolom (NIS, NISN, Nama) dari Excel lalu tempel di sini untuk mencocokkan isi 1 kelas.
             </p>
           </div>
         </div>
@@ -586,7 +586,7 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
             onChange={(e) => setRawText(e.target.value)}
             rows={5}
             placeholder={
-              "Blok 3 kolom (NISN, NIS, Nama) di Excel -> Copy (Ctrl+C) -> Paste di sini (Ctrl+V).\nContoh:\n0081234567\t24251001\tAHMAD FAUZAN\n0087654321\t24251002\tSITI AISYAH"
+              "Blok 3 kolom (NIS, NISN, Nama) di Excel -> Copy (Ctrl+C) -> Paste di sini (Ctrl+V).\nContoh:\n24251001\t0081234567\tAHMAD FAUZAN\n24251002\t0087654321\tSITI AISYAH"
             }
             className="font-mono text-xs rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 leading-relaxed"
           />

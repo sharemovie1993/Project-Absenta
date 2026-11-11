@@ -88,7 +88,7 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
     ...(isSiswa ? [{
       key: 'excelCompare' as ToolKey,
       title: 'Cek & Bandingkan Kelas (Excel)',
-      description: 'Tempel 3 kolom (NISN, NIS, Nama) dari Excel untuk mengecek kecocokan 1 kelas.',
+      description: 'Tempel 3 kolom (NIS, NISN, Nama) dari Excel untuk mengecek kecocokan 1 kelas.',
       icon: ArrowRightLeft,
       color: 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20 dark:bg-indigo-500/20',
       badge: 'Cek Kelas',

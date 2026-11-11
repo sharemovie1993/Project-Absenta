@@ -15,30 +15,30 @@ const makeSiswa = (overrides: Partial<Siswa>): Siswa => ({
 });
 
 describe('siswaExcelCompare', () => {
-  it('parses 3-column Excel TSV without header using default NISN -> NIS -> NAMA order', () => {
-    const raw = "'0081234567\t24251001\tAhmad  Fauzan\n0087654321\t24251002\tSiti Aisyah";
+  it('parses 3-column Excel TSV without header using default NIS -> NISN -> NAMA order', () => {
+    const raw = "'24251001\t0081234567\tAhmad  Fauzan\n24251002\t0087654321\tSiti Aisyah";
     const parsed = parsePastedExcelText(raw);
 
     expect(parsed.headerDetected).toBe(false);
     expect(parsed.rows).toHaveLength(2);
     expect(parsed.rows[0]).toMatchObject({
       rowNumber: 1,
-      nisn: '0081234567',
       nis: '24251001',
+      nisn: '0081234567',
       nama: 'Ahmad Fauzan',
     });
   });
 
-  it('auto-detects header order (NIS | NISN | Nama) and skips leading No column', () => {
+  it('auto-detects header order (NISN | NIS | Nama) and skips leading No column', () => {
     const raw = [
-      'No\tNIS\tNISN\tNama Lengkap',
-      '1\t24251001\t0081234567\tAhmad Fauzan',
-      '2\t24251002\t0087654321\tSiti Aisyah',
+      'No\tNISN\tNIS\tNama Lengkap',
+      '1\t0081234567\t24251001\tAhmad Fauzan',
+      '2\t0087654321\t24251002\tSiti Aisyah',
     ].join('\n');
 
     const parsed = parsePastedExcelText(raw);
     expect(parsed.headerDetected).toBe(true);
-    expect(parsed.detectedOrder).toBe('NIS_NISN_NAMA');
+    expect(parsed.detectedOrder).toBe('NISN_NIS_NAMA');
     expect(parsed.skippedNoColumn).toBe(true);
     expect(parsed.rows).toHaveLength(2);
     expect(parsed.rows[1]).toMatchObject({
@@ -50,10 +50,10 @@ describe('siswaExcelCompare', () => {
 
   it('categorizes COCOK, BEDA_DATA (including leading zero & name typo), HANYA_DI_EXCEL, and HANYA_DI_SISTEM', () => {
     const raw = [
-      '0081234567\t24251001\tAHMAD FAUZAN',       // COCOK (case-insensitive)
-      '0082222222\t24259999\tBudi Santoso',       // BEDA_DATA (NIS beda, match via NISN)
-      '83333333\t24251003\tCitra Lestari',        // BEDA_DATA (NISN beda angka 0 depan)
-      '0084444444\t24251004\tSiswa Baru Excel',   // HANYA_DI_EXCEL
+      '24251001\t0081234567\tAHMAD FAUZAN',       // COCOK (case-insensitive)
+      '24259999\t0082222222\tBudi Santoso',       // BEDA_DATA (NIS beda, match via NISN)
+      '24251003\t83333333\tCitra Lestari',        // BEDA_DATA (NISN beda angka 0 depan)
+      '24251004\t0084444444\tSiswa Baru Excel',   // HANYA_DI_EXCEL
     ].join('\n');
 
     const dbStudents: Siswa[] = [
@@ -88,8 +88,8 @@ describe('siswaExcelCompare', () => {
 
   it('flags duplicate NISN / NIS inside pasted Excel rows', () => {
     const raw = [
-      '0081234567\t24251001\tSiswa A',
-      '0081234567\t24251002\tSiswa B',
+      '24251001\t0081234567\tSiswa A',
+      '24251002\t0081234567\tSiswa B',
     ].join('\n');
 
     const parsed = parsePastedExcelText(raw);

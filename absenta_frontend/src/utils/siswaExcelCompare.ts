@@ -158,13 +158,13 @@ function detectDelimiter(lines: string[]): { char: string; label: 'TAB' | 'SEMIC
 
 function getDefaultColumnMap(order: ExcelCompareColumnOrder, offset = 0): { nisn: number; nis: number; nama: number } {
   switch (order) {
-    case 'NIS_NISN_NAMA':
-      return { nis: offset, nisn: offset + 1, nama: offset + 2 };
+    case 'NISN_NIS_NAMA':
+      return { nisn: offset, nis: offset + 1, nama: offset + 2 };
     case 'NAMA_NISN_NIS':
       return { nama: offset, nisn: offset + 1, nis: offset + 2 };
-    case 'NISN_NIS_NAMA':
+    case 'NIS_NISN_NAMA':
     default:
-      return { nisn: offset, nis: offset + 1, nama: offset + 2 };
+      return { nis: offset, nisn: offset + 1, nama: offset + 2 };
   }
 }
 
@@ -206,7 +206,7 @@ function detectHeaderMapping(cells: string[]): {
 
 export function parsePastedExcelText(
   rawText: string,
-  preferredOrder: ExcelCompareColumnOrder = 'NISN_NIS_NAMA'
+  preferredOrder: ExcelCompareColumnOrder = 'NIS_NISN_NAMA'
 ): ParsedExcelOutput {
   const rawLines = rawText.split(/\r\n|\n|\r/);
   const nonEmptyEntries = rawLines
