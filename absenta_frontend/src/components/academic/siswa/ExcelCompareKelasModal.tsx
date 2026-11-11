@@ -13,15 +13,20 @@ import {
   RefreshCw,
   ArrowRightLeft,
   Check,
-  Sparkles
+  Sparkles,
+  Users,
+  LogOut,
+  GraduationCap
 } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import toast from 'react-hot-toast';
 
 import { Modal, Button, Badge, Textarea, Input, Loader } from '../../ui';
 import { SearchableSelect } from '../../ui/SearchableSelect';
-import { getSiswaList, updateSiswa } from '../../../api/academic/siswa.api';
+import useConfirm from '../../../hooks/useConfirm';
+import { getSiswaList, updateSiswa, deleteSiswa } from '../../../api/academic/siswa.api';
 import type { Kelas, Siswa } from '../../../types/academic';
+import { ExcelCompareBulkModals, type CompareBulkModalType } from './ExcelCompareBulkModals';
 import {
   parsePastedExcelText,
   compareKelasWithExcel,
@@ -63,6 +68,7 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
   canEdit = false,
   onDataUpdated,
 }) => {
+  const confirm = useConfirm();
   const [selectedKelasId, setSelectedKelasId] = useState(initialKelasId);
   const [columnOrder, setColumnOrder] = useState<ExcelCompareColumnOrder>('NISN_NIS_NAMA');
   const [rawText, setRawText] = useState('');
@@ -71,10 +77,17 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
   const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
   const [searchResult, setSearchResult] = useState('');
   const [syncingKey, setSyncingKey] = useState<string | null>(null);
+  const [selectedSiswaIds, setSelectedSiswaIds] = useState<Set<string>>(new Set());
+  const [activeBulkModal, setActiveBulkModal] = useState<CompareBulkModalType>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   useEffect(() => {
     if (isOpen && initialKelasId) {
       setSelectedKelasId(initialKelasId);
+    }
+    if (!isOpen) {
+      setSelectedSiswaIds(new Set());
+      setActiveBulkModal(null);
     }
   }, [isOpen, initialKelasId]);
 
@@ -154,6 +167,112 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
       return fields.some((f) => (f || '').toLowerCase().includes(q));
     });
   }, [comparison, activeTab, searchResult]);
+
+  // Bersihkan ID terpilih yang tidak lagi ada di daftar siswa kelas
+  useEffect(() => {
+    const validIds = new Set(dbStudents.map((s) => s.id));
+    setSelectedSiswaIds((prev) => {
+      if (prev.size === 0) return prev;
+      let changed = false;
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (validIds.has(id)) next.add(id);
+        else changed = true;
+      });
+      return changed ? next : prev;
+    });
+  }, [dbStudents]);
+
+  const visibleSelectableIds = useMemo(
+    () =>
+      filteredResults
+        .map((r) => r.siswa?.id)
+        .filter((id): id is string => Boolean(id)),
+    [filteredResults]
+  );
+
+  const allVisibleSelected = useMemo(
+    () =>
+      visibleSelectableIds.length > 0 &&
+      visibleSelectableIds.every((id) => selectedSiswaIds.has(id)),
+    [visibleSelectableIds, selectedSiswaIds]
+  );
+
+  const toggleSelectOne = useCallback((siswaId: string) => {
+    setSelectedSiswaIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(siswaId)) next.delete(siswaId);
+      else next.add(siswaId);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAllVisible = useCallback(() => {
+    setSelectedSiswaIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        visibleSelectableIds.forEach((id) => next.delete(id));
+      } else {
+        visibleSelectableIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }, [allVisibleSelected, visibleSelectableIds]);
+
+  const selectByStatus = useCallback(
+    (statuses: CompareResultStatus[]) => {
+      if (!comparison) return;
+      const ids = comparison.results
+        .filter((r) => statuses.includes(r.status) && r.siswa?.id)
+        .map((r) => r.siswa!.id);
+      setSelectedSiswaIds(new Set(ids));
+    },
+    [comparison]
+  );
+
+  const handleBulkDeleteSelected = useCallback(async () => {
+    if (!canEdit || selectedSiswaIds.size === 0) return;
+    const ids = Array.from(selectedSiswaIds);
+    const ok = await confirm({
+      title: 'Hapus Siswa Terpilih',
+      description: `Anda yakin ingin menghapus ${ids.length} siswa terpilih dari sistem?`,
+      confirmText: 'Hapus',
+      cancelText: 'Batal',
+      style: 'danger',
+      withProgress: true,
+      progressLabel: `Menghapus ${ids.length} siswa...`,
+    });
+    if (!ok) return;
+
+    setBulkDeleting(true);
+    let successCount = 0;
+    let failCount = 0;
+    try {
+      for (let i = 0; i < ids.length; i++) {
+        try {
+          const res = await deleteSiswa(ids[i]);
+          if (!res.success) failCount++;
+          else successCount++;
+        } catch {
+          failCount++;
+        }
+        confirm.setLoading(true, Math.round(((i + 1) / ids.length) * 100));
+      }
+
+      if (successCount > 0) {
+        toast.success(`Berhasil menghapus ${successCount} siswa.`);
+        setSelectedSiswaIds(new Set());
+        await refetchKelasSiswa();
+        onDataUpdated?.();
+      }
+      if (failCount > 0) {
+        toast.error(`${failCount} siswa gagal dihapus (kemungkinan terikat riwayat absensi/akademik).`);
+      }
+    } finally {
+      setBulkDeleting(false);
+      confirm.setLoading(false);
+    }
+  }, [canEdit, selectedSiswaIds, confirm, refetchKelasSiswa, onDataUpdated]);
 
   const handlePasteClipboard = useCallback(async () => {
     try {
@@ -345,6 +464,7 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
               onValueChange={(val) => {
                 setSelectedKelasId(val);
                 setActiveTab('ALL');
+                setSelectedSiswaIds(new Set());
               }}
               options={kelasOptions}
               placeholder="Pilih kelas yang akan dicek..."
@@ -601,7 +721,7 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
               </button>
             </div>
 
-            {/* Toolbar Hasil: Cari & Ekspor */}
+            {/* Toolbar Hasil: Cari, Seleksi Cepat & Ekspor */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="relative flex-1 min-w-[220px] max-w-sm">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -613,7 +733,19 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
                 />
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {canEdit && comparison.summary.hanyaDiSistem > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => selectByStatus(['HANYA_DI_SISTEM'])}
+                    className="rounded-xl text-xs h-9 border-rose-200 text-rose-700 hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-300"
+                  >
+                    <Check className="w-3.5 h-3.5 mr-1.5" />
+                    Pilih &quot;Hanya di Sistem&quot; ({comparison.summary.hanyaDiSistem})
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="outline"
@@ -638,12 +770,86 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
               </div>
             </div>
 
+            {/* Bulk Aksi Mutasi untuk Siswa Terpilih */}
+            {canEdit && selectedSiswaIds.size > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60">
+                <div className="flex items-center gap-2 text-xs">
+                  <Badge className="bg-indigo-600 text-white border-indigo-600 font-bold">
+                    {selectedSiswaIds.size} siswa terpilih
+                  </Badge>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSiswaIds(new Set())}
+                    className="text-slate-600 dark:text-slate-300 hover:underline font-medium cursor-pointer"
+                  >
+                    Bersihkan pilihan
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setActiveBulkModal('PINDAH_KELAS')}
+                    className="h-8 text-xs rounded-xl border-blue-200 text-blue-700 bg-white dark:bg-slate-950 hover:bg-blue-50 dark:border-blue-900/50 dark:text-blue-300"
+                  >
+                    <Users className="w-3.5 h-3.5 mr-1.5" />
+                    Pindah Kelas ({selectedSiswaIds.size})
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setActiveBulkModal('MUTASI')}
+                    className="h-8 text-xs rounded-xl border-orange-200 text-orange-700 bg-white dark:bg-slate-950 hover:bg-orange-50 dark:border-orange-900/50 dark:text-orange-300"
+                  >
+                    <LogOut className="w-3.5 h-3.5 mr-1.5" />
+                    Mutasi ({selectedSiswaIds.size})
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setActiveBulkModal('LULUS')}
+                    className="h-8 text-xs rounded-xl border-emerald-200 text-emerald-700 bg-white dark:bg-slate-950 hover:bg-emerald-50 dark:border-emerald-900/50 dark:text-emerald-300"
+                  >
+                    <GraduationCap className="w-3.5 h-3.5 mr-1.5" />
+                    Luluskan ({selectedSiswaIds.size})
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="danger"
+                    disabled={bulkDeleting}
+                    onClick={handleBulkDeleteSelected}
+                    className="h-8 text-xs rounded-xl"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                    Hapus ({selectedSiswaIds.size})
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Tabel Hasil Perbandingan */}
             <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-950">
               <div className="max-h-[380px] overflow-auto">
                 <table className="w-full text-xs text-left border-collapse">
                   <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
                     <tr>
+                      {canEdit && (
+                        <th className="px-3 py-2.5 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={allVisibleSelected}
+                            disabled={visibleSelectableIds.length === 0}
+                            onChange={toggleSelectAllVisible}
+                            aria-label="Pilih semua siswa di tampilan"
+                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:opacity-40"
+                          />
+                        </th>
+                      )}
                       <th className="px-3 py-2.5 w-14">Baris</th>
                       <th className="px-3 py-2.5 w-32">Status</th>
                       <th className="px-3 py-2.5">NISN (Excel vs Sistem)</th>
@@ -655,7 +861,7 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                     {filteredResults.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                        <td colSpan={canEdit ? 7 : 6} className="px-4 py-8 text-center text-slate-400">
                           Tidak ada baris yang sesuai filter saat ini.
                         </td>
                       </tr>
@@ -674,11 +880,16 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
                             (row.diffs.nis && Boolean(row.excelRow?.nis)) ||
                             (row.diffs.nama && Boolean(row.excelRow?.nama)));
 
+                        const selectableId = row.siswa?.id;
+                        const isChecked = Boolean(selectableId && selectedSiswaIds.has(selectableId));
+
                         return (
                           <tr
                             key={row.key}
                             className={
-                              row.status === 'BEDA_DATA'
+                              isChecked
+                                ? 'bg-indigo-50/70 dark:bg-indigo-950/30'
+                                : row.status === 'BEDA_DATA'
                                 ? 'bg-amber-50/40 dark:bg-amber-950/10'
                                 : row.status === 'HANYA_DI_EXCEL'
                                 ? 'bg-sky-50/40 dark:bg-sky-950/10'
@@ -687,6 +898,26 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
                                 : ''
                             }
                           >
+                            {canEdit && (
+                              <td className="px-3 py-2.5 text-center align-top">
+                                {selectableId ? (
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => toggleSelectOne(selectableId)}
+                                    aria-label={`Pilih ${row.siswa?.nama_siswa || 'siswa'}`}
+                                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                  />
+                                ) : (
+                                  <span
+                                    className="text-slate-300 dark:text-slate-700"
+                                    title="Siswa belum terdaftar di database kelas ini"
+                                  >
+                                    —
+                                  </span>
+                                )}
+                              </td>
+                            )}
                             <td className="px-3 py-2.5 font-mono text-slate-500 align-top">
                               {row.excelRow ? `#${row.excelRow.rowNumber}` : '-'}
                             </td>
@@ -842,6 +1073,19 @@ export const ExcelCompareKelasModal: React.FC<ExcelCompareKelasModalProps> = ({
           </div>
         ) : null}
       </div>
+
+      <ExcelCompareBulkModals
+        activeModal={activeBulkModal}
+        onClose={() => setActiveBulkModal(null)}
+        selectedSiswaIds={Array.from(selectedSiswaIds)}
+        kelasList={kelasList}
+        currentKelasId={selectedKelasId}
+        onSuccess={async () => {
+          setSelectedSiswaIds(new Set());
+          await refetchKelasSiswa();
+          onDataUpdated?.();
+        }}
+      />
     </Modal>
   );
 };
