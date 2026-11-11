@@ -17,6 +17,7 @@ import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoun
 import type { Column } from '../../components/ui/Table';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
+import axiosInstance from '../../lib/axiosInstance';
 
 const TenantForm = lazy(() => import('../../components/tenant/TenantForm').then(m => ({ default: m.default })));
 const DeleteTenantModal = lazy(() => import('../../components/tenant/DeleteTenantModal').then(m => ({ default: m.DeleteTenantModal })));
@@ -176,6 +177,61 @@ export const TenantsPage: React.FC = React.memo(() => {
     setDeleteModalOpen(true);
   }, []);
 
+  const handleAssistLogin = useCallback(async (tenant: Tenant) => {
+    const ok = await confirm({
+      title: 'Assist Login',
+      description: `Apakah Anda yakin ingin masuk ke sistem atas nama Administrator Sekolah dari "${tenant.name}"?`,
+      confirmText: 'Ya, Assist Login',
+      cancelText: 'Batal',
+      style: 'info'
+    });
+
+    if (!ok) return;
+
+    const toastId = toast.loading('Menyiapkan sesi bantuan...');
+    try {
+      const currentStorage = localStorage.getItem('auth-storage');
+      if (currentStorage && !localStorage.getItem('support_auth_state')) {
+        localStorage.setItem('support_auth_state', currentStorage);
+      }
+
+      const response = await axiosInstance.post('/auth/impersonate', { tenantId: tenant.id });
+
+      if (response.data?.success) {
+        const { user: impersonatedUser, token, refreshToken } = response.data.data;
+
+        localStorage.setItem('access_token', token);
+        localStorage.setItem('refresh_token', refreshToken);
+        if (impersonatedUser.tenant_id) {
+          localStorage.setItem('tenant_id', impersonatedUser.tenant_id);
+        }
+
+        const newAuthStorage = {
+          state: {
+            isAuthenticated: true,
+            user: impersonatedUser,
+            subscription: null,
+            token,
+            refreshToken,
+            tenantId: impersonatedUser.tenant_id || null,
+            tenantMode: impersonatedUser.tenant?.absensi_mode ?? null,
+          },
+          version: 0,
+        };
+        localStorage.setItem('auth-storage', JSON.stringify(newAuthStorage));
+
+        toast.success(`Berhasil assist login sebagai Admin "${tenant.name}"`, { id: toastId });
+        window.location.href = '/';
+      } else {
+        toast.error(response.data?.message || 'Gagal menyiapkan sesi bantuan', { id: toastId });
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      const msg = e.response?.data?.message || e.message || 'Gagal terhubung ke server';
+      toast.error(msg, { id: toastId });
+    }
+  }, [confirm]);
+
   const handleConfirmDelete = useCallback(() => {
     if (deleteTarget) {
       deleteMutation.mutate(deleteTarget.id);
@@ -257,6 +313,18 @@ export const TenantsPage: React.FC = React.memo(() => {
       align: 'right',
       render: (_, row: Tenant) => (
         <div className="flex items-center justify-end gap-1">
+          {isSuperAdmin && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleAssistLogin(row)}
+              className="h-7 w-7 p-0 text-slate-400 hover:text-sky-600 rounded-lg"
+              title="Assist Login"
+            >
+              <ShieldCheck size={13} />
+            </Button>
+          )}
           <Button
             type="button"
             variant="ghost"
@@ -290,7 +358,7 @@ export const TenantsPage: React.FC = React.memo(() => {
         </div>
       )
     }
-  ], [handleViewTenant, handleEditTenant, handleOpenDeleteModal]);
+  ], [handleAssistLogin, handleViewTenant, handleEditTenant, handleOpenDeleteModal, isSuperAdmin]);
 
   const statsList = useMemo(() => [
     {

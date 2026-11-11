@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import {
   Alert,
   AlertDescription,
@@ -273,39 +273,40 @@ export default function AttendancePerformanceSection({
     }
   }, [selectedTenantId, topRiskTenants]);
 
-  const tenantSummaryQueries = useMemo(
-    () =>
-      (topRiskTenants || []).slice(0, 10).map((tenant) => ({
-        tenant,
-        query: {
-          queryKey: ['superadmin', 'intelligence', 'attendance-tenant-summary', tenant.tenantId],
-          queryFn: async () => {
-            const res = await superadminIntelligenceApi.getAttendanceTenantSummary(tenant.tenantId);
-            return res.data;
-          },
-          staleTime: 5 * 60 * 1000,
-        },
-      })),
+  const slicedTenants = useMemo(
+    () => (topRiskTenants || []).slice(0, 10),
     [topRiskTenants]
   );
+
+  const tenantSummaryQueries = useQueries({
+    queries: slicedTenants.map((tenant) => ({
+      queryKey: ['superadmin', 'intelligence', 'attendance-tenant-summary', tenant.tenantId],
+      queryFn: async () => {
+        const res = await superadminIntelligenceApi.getAttendanceTenantSummary(tenant.tenantId);
+        return res.data;
+      },
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
 
   const rows: TenantAttendanceRow[] = [];
   let anyTenantSummaryLoading = false;
 
-  for (const item of tenantSummaryQueries) {
-    const query = useQuery<AttendanceTenantSummaryResponse | undefined>(item.query as any);
+  tenantSummaryQueries.forEach((query, index) => {
+    const tenant = slicedTenants[index];
+    if (!tenant) return;
     if (query.isLoading && !query.data) {
       anyTenantSummaryLoading = true;
     }
     if (query.data) {
       rows.push({
-        tenantId: item.tenant.tenantId,
-        tenantName: item.tenant.tenantName,
+        tenantId: tenant.tenantId,
+        tenantName: tenant.tenantName,
         gateP95: query.data.today.attendance_gate_p95_ms,
         sessionP95: query.data.today.attendance_session_p95_ms,
       });
     }
-  }
+  });
 
   const sortedRows = rows.slice().sort((a, b) => {
     const av = Number.isFinite(a.sessionP95 || 0) ? Number(a.sessionP95 || 0) : 0;
