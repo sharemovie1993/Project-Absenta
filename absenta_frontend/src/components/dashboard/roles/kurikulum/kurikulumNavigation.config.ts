@@ -63,6 +63,7 @@ export const KURIKULUM_SUBTABS_BASE: KurikulumTabDefinition[] = [
   { id: 'rekap_kbm', label: 'Realisasi', shortLabel: 'Realisasi', category: 'operasional', icon: BarChart2, targetPath: '/dashboard?tab=kurikulum&subtab=rekap_kbm', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
   { id: 'perangkat', label: 'Perangkat', shortLabel: 'Perangkat', category: 'operasional', icon: FileText, targetPath: '/dashboard?tab=kurikulum&subtab=perangkat', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
   { id: 'supervisi', label: 'Supervisi', shortLabel: 'Supervisi', category: 'operasional', icon: CheckCircle2, targetPath: '/dashboard?tab=kurikulum&subtab=supervisi', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+  { id: 'evaluasi_kinerja', label: 'Evaluasi Kinerja', shortLabel: 'Evaluasi', category: 'operasional', icon: Award, targetPath: '/dashboard?tab=kurikulum&subtab=evaluasi_kinerja', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'cbt', label: 'Asesmen', shortLabel: 'Asesmen', category: 'operasional', icon: Laptop, targetPath: '/dashboard?tab=kurikulum&subtab=cbt', color: 'bg-sky-50 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400' },
   { id: 'rapor', label: 'Rapor', shortLabel: 'Rapor', category: 'operasional', icon: Award, targetPath: '/dashboard?tab=kurikulum&subtab=rapor', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
 

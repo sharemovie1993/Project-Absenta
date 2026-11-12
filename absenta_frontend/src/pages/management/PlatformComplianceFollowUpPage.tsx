@@ -10,7 +10,8 @@ import {
   Phone,
   Download,
   RefreshCw,
-  TrendingUp
+  TrendingUp,
+  QrCode
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -42,6 +43,9 @@ const TeacherComplianceList = lazy(() =>
 );
 const StudentComplianceList = lazy(() =>
   import('@/components/management/compliance/StudentComplianceList').then((m) => ({ default: m.StudentComplianceList }))
+);
+const RapatSosialisasiPanel = lazy(() =>
+  import('@/components/management/compliance/RapatSosialisasiPanel').then((m) => ({ default: m.RapatSosialisasiPanel }))
 );
 
 export type { TeacherComplianceItem, StudentComplianceItem };
@@ -84,7 +88,7 @@ function sortComplianceItems<T extends TeacherComplianceItem | StudentCompliance
 
 export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'GURU' | 'SISWA' | 'TREND'>('GURU');
+  const [activeTab, setActiveTab] = useState<'GURU' | 'SISWA' | 'TREND' | 'SOSIALISASI'>('GURU');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PASSIVE' | 'DORMANT'>('ALL');
   const [selectedIssueFilter, setSelectedIssueFilter] = useState<string>('ALL');
@@ -426,14 +430,15 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
 
   const toolbarNode = useMemo(() => (
     <div className="flex flex-col w-full gap-4 p-4">
-      {/* Context Switcher Pill (Guru / Siswa / Tren Adopsi) */}
+      {/* Context Switcher Pill (Guru / Siswa / Tren Adopsi / Rapat Sosialisasi) */}
       <TabSwitcher
         activeTab={activeTab}
-        onChange={(val) => setActiveTab(val as 'GURU' | 'SISWA' | 'TREND')}
+        onChange={(val) => setActiveTab(val as 'GURU' | 'SISWA' | 'TREND' | 'SOSIALISASI')}
         tabs={[
           { id: 'GURU', label: `Guru (${filteredTeachers.length})`, icon: Users },
           { id: 'SISWA', label: `Siswa (${filteredStudents.length})`, icon: GraduationCap },
-          { id: 'TREND', label: 'Tren Adopsi', icon: TrendingUp }
+          { id: 'TREND', label: 'Tren Adopsi', icon: TrendingUp },
+          { id: 'SOSIALISASI', label: 'Rapat Sosialisasi', icon: QrCode },
         ]}
       />
 
@@ -604,6 +609,32 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                     </div>
                   }>
                     <ComplianceTrendsView stats={stats} />
+                  </Suspense>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'SOSIALISASI' && (
+              <div className="flex flex-col w-full">
+                <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+                  <TabSwitcher
+                    activeTab={activeTab}
+                    onChange={(val) => setActiveTab(val as 'GURU' | 'SISWA' | 'TREND' | 'SOSIALISASI')}
+                    tabs={[
+                      { id: 'GURU', label: `Guru (${filteredTeachers.length})`, icon: Users },
+                      { id: 'SISWA', label: `Siswa (${filteredStudents.length})`, icon: GraduationCap },
+                      { id: 'TREND', label: 'Tren Adopsi', icon: TrendingUp },
+                      { id: 'SOSIALISASI', label: 'Rapat Sosialisasi', icon: QrCode },
+                    ]}
+                  />
+                </div>
+                <div className="p-4 sm:p-6">
+                  <Suspense fallback={
+                    <div className="flex justify-center items-center py-16 w-full">
+                      <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
+                    </div>
+                  }>
+                    <RapatSosialisasiPanel />
                   </Suspense>
                 </div>
               </div>

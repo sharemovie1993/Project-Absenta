@@ -203,6 +203,7 @@ const ServiceDetailPage = lazy(() => import('./pages/public/ServiceDetailPage'))
 const SuratKeluarQuickApprovePage = lazy(() => import('./pages/public/SuratKeluarQuickApprovePage'));
 const SuratKeluarPublicViewPage = lazy(() => import('./pages/public/SuratKeluarPublicViewPage'));
 const EmailVerificationStatusPage = lazy(() => import('./pages/public/EmailVerificationStatusPage'));
+const PublicSosialisasiPresensiPage = lazy(() => import('./pages/public/PublicSosialisasiPresensiPage'));
 const SubdomainRedirect = lazy(() => import('./pages/auth/SubdomainRedirect'));
 
 const PelanggaranPage = lazy(() => import('./pages/kesiswaan/PelanggaranPage'));
@@ -534,6 +535,8 @@ function App() {
                 <Route path="/surat-keluar/public-view/:token" element={<SuratKeluarPublicViewPage />} />
                 <Route path="/verify-email/status" element={<EmailVerificationStatusPage />} />
                 <Route path="/verify-email/status/:token" element={<EmailVerificationStatusPage />} />
+                <Route path="/portal/sosialisasi-presensi" element={<PublicSosialisasiPresensiPage />} />
+                <Route path="/sosialisasi/presensi" element={<PublicSosialisasiPresensiPage />} />
                 
                 {/* Public School Web Portal (Multi-Tenant & Multi-Jenjang) */}
                 <Route path="/portal" element={<PublicPortalPage />} />

@@ -78,6 +78,7 @@ import { KurikulumWaliKelasTab } from './kurikulum/tabs/KurikulumWaliKelasTab';
 import { KurikulumCbtTab } from './kurikulum/tabs/KurikulumCbtTab';
 import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 const TenantAttendanceForm = React.lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
+const KurikulumEvaluasiKinerjaTab = React.lazy(() => import('./kurikulum/tabs/KurikulumEvaluasiKinerjaTab'));
 
 export interface KurikulumDashboardProps {
   user?: {
@@ -99,6 +100,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
     'rekap_kbm',
     'perangkat',
     'supervisi',
+    'evaluasi_kinerja',
     'cbt',
     'rapor',
     'titimangsa_rapor',
@@ -748,6 +750,30 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
                 supPct={supPct}
                 loading={lSup}
               />
+            </div>
+          )}
+
+          {/* TAB EVALUASI KINERJA (UNIVERSAL ROLE-READY MODAL) */}
+          {visitedTabs.has('evaluasi_kinerja') && (
+            <div
+              key="tab-evaluasi-kinerja"
+              role="tabpanel"
+              aria-hidden={activeTab !== 'evaluasi_kinerja'}
+              className={cn('w-full min-w-0', activeTab === 'evaluasi_kinerja' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Evaluasi Kinerja Guru...</span>
+                  </div>
+                }
+              >
+                <KurikulumEvaluasiKinerjaTab
+                  tahunPelajaranId={resolvedTahunPelajaranId}
+                  semesterId={resolvedSemesterId}
+                />
+              </Suspense>
             </div>
           )}
 

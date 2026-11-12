@@ -254,6 +254,9 @@ export async function registerRoutes(fastify: any, prisma: any) {
           } catch (err: any) {
             console.error('[Public invoice details proxy failed]:', err.message);
           }
+          const { publicSosialisasiRoutes } = await import('../modules/academic/sosialisasi/routes/sosialisasi.routes');
+          await fastify.register(publicSosialisasiRoutes, { prefix: '/public/sosialisasi' });
+
           return reply.status(404).send({ success: false, message: 'Tagihan tidak ditemukan atau sudah kedaluwarsa.' });
         });
       });
