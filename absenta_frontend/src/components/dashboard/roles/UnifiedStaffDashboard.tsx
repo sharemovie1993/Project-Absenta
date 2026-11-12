@@ -116,6 +116,13 @@ const TataUsahaDashboard = React.lazy(() => import('./TataUsahaDashboard').then(
 
 const CatatPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
+const TeacherSosialisasiScanModal = React.lazy(() =>
+  import('../staff/modals/TeacherSosialisasiScanModal').then((m) => ({ default: m.TeacherSosialisasiScanModal }))
+);
+const RapatSosialisasiPanel = React.lazy(() =>
+  import('@/components/management/compliance/RapatSosialisasiPanel').then((m) => ({ default: m.RapatSosialisasiPanel }))
+);
+import { sosialisasiApi, sosialisasiQueryKeys } from '@/api/academic/sosialisasi.api';
 
 // Hooks & APIs
 import { useStaffTimeline } from '../../../hooks/useStaffTimeline';
@@ -183,6 +190,25 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const p5ProjectCount = Math.max(fasilitatorP5Count || 0, myP5ProjectsRes?.data?.length || 0);
 
   const guruId = user?.guru_profile?.id || guruProfile?.id;
+  const [isScanSosialisasiOpen, setIsScanSosialisasiOpen] = useState(false);
+
+  // ── Query Sesi Aktif Rapat Sosialisasi Platform (Universal All Roles & All Dashboards) ──
+  const { data: sosialisasiData, refetch: refetchSosialisasi } = useQuery({
+    queryKey: sosialisasiQueryKeys.active(),
+    queryFn: () => sosialisasiApi.getActiveSession().catch(() => null),
+    staleTime: 60 * 1000,
+  });
+
+  const isSosialisasiActive = sosialisasiData?.session?.status === 'AKTIF';
+  const myAttendanceItem = useMemo(() => {
+    if (!sosialisasiData?.attendees) return null;
+    const currentNip = (user?.guru_profile as any)?.nip || guruProfile?.nip || (user as any)?.nip;
+    return sosialisasiData.attendees.find(
+      (a: any) => (guruId && a.guru_id === guruId) || (currentNip && a.nip === currentNip)
+    );
+  }, [sosialisasiData?.attendees, guruId, guruProfile, user]);
+  const isMyAttendanceDone = Boolean(myAttendanceItem?.is_hadir);
+
   const { timelineItems, isLoading: timelineLoading, refetch: refetchTimeline } = useStaffTimeline(guruId, {
     enabled: !isAdmin && Boolean(guruId),
   });
@@ -934,6 +960,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'kepsek', label: 'Dashboard Kepala Sekolah', icon: Award });
     }
 
+    // 0.1 Tab Rapat Sosialisasi (Universal: Tampil untuk seluruh role pengguna ketika ada rapat aktif)
+    if (isSosialisasiActive) {
+      list.push({
+        id: 'sosialisasi_view',
+        label: isMyAttendanceDone ? 'Sosialisasi (Hadir)' : '⚡ Presensi Sosialisasi',
+        icon: QrCode,
+      });
+    }
+
     // 1. Beranda Guru / Scan Gerbang / Overview Eksekutif Kepsek
     if (isKepsek) {
       list.push({ 
@@ -1142,6 +1177,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isToolman,
     isKabeng,
     isPembinaEskul,
+    isSosialisasiActive,
+    isMyAttendanceDone,
   ]);
 
   useEffect(() => {
@@ -1170,6 +1207,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
   useEffect(() => {
     // Tab binaan, kepsek, kaprog, kepegawaian, pembimbing_pkl, dan kelola (piket) valid jika user memiliki peran tersebut
+    if (activeTab === 'sosialisasi_view' && isSosialisasiActive) return;
     if (activeTab === 'binaan' && (isWaliKelas || Boolean(waliKelasId))) return;
     if (activeTab === 'kepsek' && (isKepsek || isAdminRole)) return;
     if (activeTab === 'kaprog' && (isKaprog || isAdminRole)) return;
@@ -1189,6 +1227,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
   // ── 6. Quick Actions ──────────────────────────────────────────────────────────
   const quickActions = useMemo(() => {
     const actions: QuickAction[] = [];
+
+    if (isSosialisasiActive) {
+      actions.push({
+        label: isMyAttendanceDone ? 'Sosialisasi (Hadir)' : 'Presensi Sosialisasi',
+        icon: QrCode,
+        onClick: () => setIsScanSosialisasiOpen(true),
+        color: 'violet' as any,
+      });
+    }
 
     actions.push({
       label: 'Absensi Kelas',
@@ -1245,12 +1292,46 @@ export const UnifiedStaffDashboard: React.FC = () => {
     }
 
     return actions;
-  }, [timelineItems, navigate, isPendidik, isEffectivePendidik, hasTeachingDuty]);
+  }, [timelineItems, navigate, isPendidik, isEffectivePendidik, hasTeachingDuty, isSosialisasiActive, isMyAttendanceDone]);
 
   // PORTAL MODE REDIRECT
   if (dashboardMode === 'portal') {
     return (
       <>
+        {/* Banner Sosialisasi Global Portal Mode */}
+        {isSosialisasiActive && sosialisasiData?.session && (
+          <div className="mb-4 p-3.5 bg-gradient-to-r from-violet-600/15 via-indigo-600/15 to-purple-600/15 dark:from-violet-950/60 dark:via-indigo-950/60 dark:to-purple-950/50 border border-violet-300 dark:border-violet-700/80 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className={cn(
+                "w-9 h-9 rounded-xl flex items-center justify-center font-bold shrink-0 shadow-xs",
+                isMyAttendanceDone ? "bg-emerald-500 text-white" : "bg-violet-600 text-white"
+              )}>
+                {isMyAttendanceDone ? <CheckCircle2 size={18} /> : <QrCode size={18} />}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 dark:bg-violet-900/60 dark:text-violet-200">
+                    Sosialisasi
+                  </span>
+                  <span className="text-xs font-bold truncate text-slate-900 dark:text-white">
+                    {sosialisasiData.session.nama_acara}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                  {isMyAttendanceDone ? "Status: Sudah Hadir" : "Wajib Presensi • Ketuk tombol scan"}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsScanSosialisasiOpen(true)}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-600 text-white shrink-0 active:scale-95"
+            >
+              {isMyAttendanceDone ? "Status" : "Scan QR"}
+            </button>
+          </div>
+        )}
+
         <StaffPortalAppLauncher
           user={user}
           jabatanLabel={jabatanLabel}
@@ -1310,6 +1391,24 @@ export const UnifiedStaffDashboard: React.FC = () => {
           <React.Suspense fallback={null}>
             <TindakMasalPelanggaranModal isOpen={tindakMasalModalOpen} onClose={() => setTindakMasalModalOpen(false)} />
           </React.Suspense>
+        )}
+
+        {/* Modal Scanner QR Presensi Sosialisasi (Portal Mode) */}
+        {isScanSosialisasiOpen && (
+          <Suspense fallback={null}>
+            <TeacherSosialisasiScanModal
+              isOpen={isScanSosialisasiOpen}
+              onClose={() => setIsScanSosialisasiOpen(false)}
+              guruId={guruId || user?.id || ''}
+              guruNama={guruProfile?.nama_guru || user?.full_name || user?.name || 'Pengguna'}
+              guruNip={guruProfile?.nip || (user?.guru_profile as any)?.nip || (user as any)?.nip}
+              tenantId={user?.tenant_id}
+              activeSession={sosialisasiData?.session}
+              isAlreadyAttended={isMyAttendanceDone}
+              waktuHadir={myAttendanceItem?.waktu_hadir}
+              onSuccess={() => refetchSosialisasi()}
+            />
+          </Suspense>
         )}
       </>
     );
@@ -1446,9 +1545,84 @@ export const UnifiedStaffDashboard: React.FC = () => {
       </div>
 
       {/* ────────────────────────────────────────────────────────────────── */}
+      {/* ── BANNER SOSIALISASI PLATFORM (GLOBAL ACCESS ALL DASHBOARDS) ── */}
+      {/* ────────────────────────────────────────────────────────────────── */}
+      {isSosialisasiActive && sosialisasiData?.session && (
+        <div className="p-3.5 sm:p-4 bg-gradient-to-r from-violet-600/15 via-indigo-600/15 to-purple-600/15 dark:from-violet-950/60 dark:via-indigo-950/60 dark:to-purple-950/50 border border-violet-300 dark:border-violet-700/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 shadow-xs",
+              isMyAttendanceDone ? "bg-emerald-500 text-white" : "bg-violet-600 text-white"
+            )}>
+              {isMyAttendanceDone ? <CheckCircle2 size={22} /> : <QrCode size={22} />}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-violet-100 dark:bg-violet-900/60 text-violet-800 dark:text-violet-200">
+                  Sosialisasi Platform
+                </span>
+                <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                  {sosialisasiData.session.nama_acara}
+                </h4>
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                  isMyAttendanceDone
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse"
+                )}>
+                  {isMyAttendanceDone ? "Sudah Hadir" : "Wajib Presensi"}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                {isMyAttendanceDone
+                  ? `Kehadiran Anda tercatat pada ${myAttendanceItem?.waktu_hadir ? new Date(myAttendanceItem.waktu_hadir).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : 'rapat ini'}`
+                  : `${sosialisasiData.session.tempat} • Pukul ${sosialisasiData.session.waktu_mulai} - ${sosialisasiData.session.waktu_selesai} WIB`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            <button
+              type="button"
+              onClick={() => handleTabChange('sosialisasi_view')}
+              className="px-3 py-2 rounded-xl text-xs font-bold text-violet-700 dark:text-violet-300 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-all cursor-pointer"
+            >
+              Lihat Detail Acara
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsScanSosialisasiOpen(true)}
+              className={cn(
+                "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95",
+                isMyAttendanceDone
+                  ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50"
+                  : "bg-violet-600 hover:bg-violet-500 text-white shadow-md shadow-violet-600/30 font-extrabold"
+              )}
+            >
+              <QrCode size={16} />
+              <span>{isMyAttendanceDone ? "Lihat Status Presensi" : "Scan QR Presensi"}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ────────────────────────────────────────────────────────────────── */}
       {/* TAB CONTENT AREA (Keep-Alive Lazy-Mount Engine: 0ms Switch)       */}
       {/* ────────────────────────────────────────────────────────────────── */}
       <div className="w-full min-w-0">
+        {/* ⚡ TAB RAPAT SOSIALISASI (UNIVERSAL ALL ROLES) */}
+        {visitedTabs.has('sosialisasi_view') && (
+          <div 
+            key="tab-sosialisasi_view"
+            role="tabpanel"
+            aria-hidden={activeTab !== 'sosialisasi_view'}
+            className={cn("w-full min-w-0", activeTab === 'sosialisasi_view' ? "block" : "hidden")}
+          >
+            <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
+              <RapatSosialisasiPanel />
+            </Suspense>
+          </div>
+        )}
         {/* 📌 TAB 1: OVERVIEW EKSEKUTIF (KEPSEK) ATAU BERANDA GURU / STAF */}
         {visitedTabs.has('ringkasan') && (
           <EcosystemProvider ecosystem={isKepsek ? 'kepsek' : isPureGerbangStaff ? 'satpam' : 'portal'} as={React.Fragment}>
@@ -1971,6 +2145,24 @@ export const UnifiedStaffDashboard: React.FC = () => {
         <React.Suspense fallback={null}>
           <TindakMasalPelanggaranModal isOpen={tindakMasalModalOpen} onClose={() => setTindakMasalModalOpen(false)} />
         </React.Suspense>
+      )}
+
+      {/* Modal Scanner QR Presensi Sosialisasi (Universal Semua Role) */}
+      {isScanSosialisasiOpen && (
+        <Suspense fallback={null}>
+          <TeacherSosialisasiScanModal
+            isOpen={isScanSosialisasiOpen}
+            onClose={() => setIsScanSosialisasiOpen(false)}
+            guruId={guruId || user?.id || ''}
+            guruNama={guruProfile?.nama_guru || user?.full_name || user?.name || 'Pengguna'}
+            guruNip={guruProfile?.nip || (user?.guru_profile as any)?.nip || (user as any)?.nip}
+            tenantId={user?.tenant_id}
+            activeSession={sosialisasiData?.session}
+            isAlreadyAttended={isMyAttendanceDone}
+            waktuHadir={myAttendanceItem?.waktu_hadir}
+            onSuccess={() => refetchSosialisasi()}
+          />
+        </Suspense>
       )}
     </div>
   );

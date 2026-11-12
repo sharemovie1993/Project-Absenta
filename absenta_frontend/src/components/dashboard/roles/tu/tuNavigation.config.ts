@@ -247,12 +247,7 @@ export const TU_SUBTABS_BASE: TuTabDefinition[] = [
     icon: Users,
     targetPath: '/dashboard?tab=kepegawaian&subtab=sosialisasi',
     color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400',
-    anyOfCapabilities: [
-      'academic.teachers.manage',
-      'academic.teachers.view.list',
-      'tu.staff.manage',
-      'tu.staff.view.list',
-    ],
+    // Universal Access: Terbuka untuk seluruh staf TU tanpa terkecuali
   },
 ];
 
