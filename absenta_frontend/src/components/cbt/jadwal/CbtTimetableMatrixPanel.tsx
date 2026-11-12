@@ -38,6 +38,7 @@ import {
   loadPersistedMatrixState,
   savePersistedMatrixState,
   reconstructMatrixFromExistingSchedules,
+  getNamaHariIndo,
 } from './cbtOrchestratorHelper';
 import { CbtMultiJurusanModal, JurusanItem } from './CbtMultiJurusanModal';
 import { cn } from '@/lib/utils';
@@ -141,7 +142,10 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     const persisted = loadPersistedMatrixState(tenantId, activeTpId, activeSemId, eventId);
     let effectiveDays =
       persisted?.days && persisted.days.length > 0
-        ? persisted.days
+        ? persisted.days.map((d) => ({
+            ...d,
+            nama_hari: getNamaHariIndo(d.tanggal) || d.nama_hari,
+          }))
         : createDefaultExamDays(defaultTodayStr, 5);
     let effectiveMatrix: TimetableMatrixState = persisted?.matrix ? { ...persisted.matrix } : {};
 
@@ -497,7 +501,11 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
 
   const handleUpdateDayDate = (dayIdx: number, newDate: string) => {
     setDays((prev) =>
-      prev.map((d) => (d.day_index === dayIdx ? { ...d, tanggal: newDate } : d))
+      prev.map((d) => {
+        if (d.day_index !== dayIdx) return d;
+        const computedDayName = getNamaHariIndo(newDate) || d.nama_hari;
+        return { ...d, tanggal: newDate, nama_hari: computedDayName };
+      })
     );
   };
 
@@ -695,13 +703,14 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       const y = nextDate.getFullYear();
       const m = String(nextDate.getMonth() + 1).padStart(2, '0');
       const dt = String(nextDate.getDate()).padStart(2, '0');
+      const dateStr = `${y}-${m}-${dt}`;
 
       return [
         ...prev,
         {
           day_index: prev.length + 1,
-          nama_hari: `Hari ke-${prev.length + 1}`,
-          tanggal: `${y}-${m}-${dt}`,
+          nama_hari: getNamaHariIndo(dateStr) || `Hari ke-${prev.length + 1}`,
+          tanggal: dateStr,
           sessions: last?.sessions || [
             { session_index: 1, nama_sesi: 'Sesi 1', jam_mulai: '07:30', jam_selesai: '09:00', durasi_menit: 90 },
             { session_index: 2, nama_sesi: 'Sesi 2', jam_mulai: '09:30', jam_selesai: '11:00', durasi_menit: 90 },

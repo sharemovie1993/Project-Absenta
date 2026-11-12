@@ -201,10 +201,36 @@ export function groupMappingsByTingkat(
 // 3. DEFAULT TIMETABLE GENERATORS
 // ==========================================
 
+export const INDONESIAN_DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
+
+/**
+ * Mengonversi string format 'YYYY-MM-DD' menjadi nama hari Indonesia yang presisi (kebal timezone UTC shift).
+ */
+export function getNamaHariIndo(dateStr?: string): string {
+  if (!dateStr) return '';
+  const parts = dateStr.trim().split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      const dt = new Date(y, m, d);
+      return INDONESIAN_DAY_NAMES[dt.getDay()] || '';
+    }
+  }
+  const fallbackDate = new Date(dateStr);
+  return !isNaN(fallbackDate.getTime()) ? INDONESIAN_DAY_NAMES[fallbackDate.getDay()] || '' : '';
+}
+
 export function createDefaultExamDays(startDateStr: string, totalDays = 5): ExamDayConfig[] {
   const days: ExamDayConfig[] = [];
-  const baseDate = new Date(startDateStr);
-  const indonesianDays = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const startParts = (startDateStr || '').trim().split('-');
+  let baseDate: Date;
+  if (startParts.length === 3) {
+    baseDate = new Date(parseInt(startParts[0], 10), parseInt(startParts[1], 10) - 1, parseInt(startParts[2], 10));
+  } else {
+    baseDate = new Date(startDateStr);
+  }
 
   let addedDays = 0;
   let offset = 0;
@@ -227,7 +253,7 @@ export function createDefaultExamDays(startDateStr: string, totalDays = 5): Exam
 
     days.push({
       day_index: addedDays + 1,
-      nama_hari: indonesianDays[dayOfWeek],
+      nama_hari: getNamaHariIndo(isoDate) || INDONESIAN_DAY_NAMES[dayOfWeek],
       tanggal: isoDate,
       sessions: [
         {
@@ -587,10 +613,9 @@ export function reconstructMatrixFromExistingSchedules(
 
     let targetDay = workingDays.find((d) => d.tanggal === jDateStr);
     if (!targetDay) {
-      const indonesianDays = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
       targetDay = {
         day_index: workingDays.length + 1,
-        nama_hari: indonesianDays[jDate.getDay()] || `Hari ke-${workingDays.length + 1}`,
+        nama_hari: getNamaHariIndo(jDateStr) || INDONESIAN_DAY_NAMES[jDate.getDay()] || `Hari ke-${workingDays.length + 1}`,
         tanggal: jDateStr,
         sessions: [],
       };
