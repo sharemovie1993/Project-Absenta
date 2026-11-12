@@ -59,6 +59,9 @@ const KepegawaianDashboard = lazy(() =>
 const DapodikIntegrationView = lazy(() =>
   import('@/components/academic/dapodik/DapodikIntegrationView').then((m) => ({ default: m.DapodikIntegrationView }))
 );
+const RapatManagementView = lazy(() =>
+  import('@/components/management/rapat/RapatManagementView').then((m) => ({ default: m.RapatManagementView }))
+);
 
 // Reused Sarpras Universal Tabs untuk TU_SARPRAS & TU_KEPALA
 const SarprasInventarisTab = lazy(() =>
@@ -529,6 +532,14 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
             <div className={activeTab === 'dapodik' ? 'block animate-in fade-in duration-100' : 'hidden'}>
               <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
                 <DapodikIntegrationView hideLayout={true} />
+              </Suspense>
+            </div>
+          )}
+
+          {allowedTabIds.has('rapat') && visitedTabs.has('rapat') && (
+            <div className={activeTab === 'rapat' ? 'block animate-in fade-in duration-100' : 'hidden'}>
+              <Suspense fallback={<div className="py-20 flex justify-center"><Loader /></div>}>
+                <RapatManagementView />
               </Suspense>
             </div>
           )}

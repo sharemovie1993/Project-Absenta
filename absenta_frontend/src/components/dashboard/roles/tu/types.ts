@@ -11,6 +11,7 @@ export type TuTabId =
   | 'dkn'
   | 'kepegawaian'
   | 'dapodik'
+  | 'rapat'
   | 'keuangan-spp'
   | 'sarpras-inventaris'
   | 'sarpras-peminjaman'

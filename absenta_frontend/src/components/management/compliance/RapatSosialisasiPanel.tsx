@@ -19,6 +19,7 @@ import {
   Check,
   AlertCircle,
   ExternalLink,
+  Calendar,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Input, SearchableSelect } from '@/components/ui';
@@ -32,9 +33,13 @@ import {
 import { RapatSosialisasiQrPrintModal } from './RapatSosialisasiQrPrintModal';
 import { RapatSosialisasiBeritaAcaraPrintModal } from './RapatSosialisasiBeritaAcaraPrintModal';
 import { RapatSosialisasiScannerModal } from './RapatSosialisasiScannerModal';
+import { RapatManagementView } from '../rapat/RapatManagementView';
 
 export const RapatSosialisasiPanel: React.FC = () => {
   const queryClient = useQueryClient();
+
+  // Tab State: Global Meetings vs Sesi Sosialisasi Hari Ini
+  const [activeSubTab, setActiveSubTab] = useState<'GLOBAL_RAPAT' | 'SOSIALISASI_TODAY'>('GLOBAL_RAPAT');
 
   // Modal States
   const [isQrPrintOpen, setIsQrPrintOpen] = useState(false);
@@ -241,8 +246,46 @@ export const RapatSosialisasiPanel: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* ── FLIGHT DECK: RINGKASAN STATUS RAPAT SOSIALISASI ── */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-5">
+      {/* ── SUB-TAB NAVIGATOR ── */}
+      <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+          <button
+            onClick={() => setActiveSubTab('GLOBAL_RAPAT')}
+            className={cn(
+              'px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2',
+              activeSubTab === 'GLOBAL_RAPAT'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            )}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Manajemen Seluruh Rapat & Notulen</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('SOSIALISASI_TODAY')}
+            className={cn(
+              'px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2',
+              activeSubTab === 'SOSIALISASI_TODAY'
+                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            )}
+          >
+            <QrCode className="w-4 h-4" />
+            <span>Rapat Sosialisasi Hari Ini (Live)</span>
+            {session?.status === 'AKTIF' && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {activeSubTab === 'GLOBAL_RAPAT' ? (
+        <RapatManagementView />
+      ) : (
+        <>
+          {/* ── FLIGHT DECK: RINGKASAN STATUS RAPAT SOSIALISASI ── */}
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -736,6 +779,8 @@ export const RapatSosialisasiPanel: React.FC = () => {
           />
         </>
       )}
-    </div>
+    </>
+  )}
+</div>
   );
 };

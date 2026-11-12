@@ -174,6 +174,16 @@ export const TU_SUBTABS_BASE: TuTabDefinition[] = [
     color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400',
     anyOfCapabilities: ['academic.dapodik.view', 'academic.dapodik.manage'],
   },
+  {
+    id: 'rapat',
+    label: 'Rapat & Notulen',
+    shortLabel: 'Rapat',
+    category: 'administrasi',
+    icon: Calendar,
+    targetPath: '/dashboard?tab=kepegawaian&subtab=rapat',
+    color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+    anyOfCapabilities: ['academic.teachers.manage', 'tu.staff.view.list', 'correspondence.outbox.view'],
+  },
 
   // 💰 KATEGORI 3: KEUANGAN & SPP SEKOLAH
   {
