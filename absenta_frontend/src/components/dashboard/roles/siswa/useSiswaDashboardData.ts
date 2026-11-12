@@ -180,7 +180,7 @@ export function useSiswaDashboardData(activeTab: string = 'ringkasan') {
         summary: true,
         limit: 100,
       } as any),
-    enabled: !!user && !!studentKelasId && activeTab === 'ringkasan',
+    enabled: !!user && !!studentKelasId && (activeTab === 'ringkasan' || activeTab === 'kehadiran'),
     staleTime: 60000,
   });
 

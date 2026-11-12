@@ -284,6 +284,8 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
       queryClient.invalidateQueries({ queryKey: ['kbm-monitoring'] });
       queryClient.invalidateQueries({ queryKey: ['monitoring-kbm'] });
       queryClient.invalidateQueries({ queryKey: ['guru-jadwal'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-timeline-unified'] });
+      queryClient.invalidateQueries({ queryKey: ['today-kbm-schedule-siswa'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || err?.message || 'Gagal memperbarui delegasi pengajar');

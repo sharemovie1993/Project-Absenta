@@ -555,6 +555,7 @@ export function normalizeFromJadwalKbm(raw: any): KbmItem {
       isFinished: status.isFinished,
       isOverdue: status.isOverdue,
       isUpcoming: status.isUpcoming,
+    isReadyToOpen: status.isReadyToOpen,
       teacherStatus: status.teacherStatus,
     },
     // ── Backward-compatible root-level aliases ──
@@ -563,6 +564,7 @@ export function normalizeFromJadwalKbm(raw: any): KbmItem {
     isOverdue:  status.isOverdue,
     is_overdue: status.isOverdue,
     isUpcoming: status.isUpcoming,
+    isReadyToOpen: status.isReadyToOpen,
     // Legacy kegiatan/mapel field names
     kegiatan:     mapelNama,
     kegiatan_raw: raw.jenis_kegiatan,

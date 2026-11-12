@@ -1241,9 +1241,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
       label: 'Absensi Kelas',
       icon: CheckCircle2,
       onClick: () => {
-        const sesiHariIni = timelineItems.find((item: any) => item.type === 'sesi_mengajar');
-        if (sesiHariIni?.raw) {
-          setSelectedSesi(sesiHariIni.raw);
+        const sesiHariIni = timelineItems.find((item: any) => item.isLive) || timelineItems.find((item: any) => !item.isFinished) || timelineItems[0];
+        const rawSesi = sesiHariIni?.session || sesiHariIni?._raw || sesiHariIni?.raw;
+        if (rawSesi) {
+          setSelectedSesi(rawSesi);
         } else {
           toast('Belum ada sesi KBM aktif. Mengarahkan ke Manajemen Sesi...', { icon: 'ℹ️' });
           navigate('/attendance/ops?tab=sesi');
@@ -1256,9 +1257,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
       label: 'Jurnal KBM',
       icon: BookOpen,
       onClick: () => {
-        const sesiHariIni = timelineItems.find((item: any) => item.type === 'sesi_mengajar');
-        if (sesiHariIni?.raw) {
-          setSessionForJournal(sesiHariIni.raw);
+        const sesiHariIni = timelineItems.find((item: any) => item.isLive) || timelineItems.find((item: any) => !item.isFinished) || timelineItems[0];
+        const rawSesi = sesiHariIni?.session || sesiHariIni?._raw || sesiHariIni?.raw;
+        if (rawSesi) {
+          setSessionForJournal(rawSesi);
           setJournalModalOpen(true);
         } else {
           toast('Belum ada sesi KBM aktif. Mengarahkan ke Manajemen Sesi...', { icon: 'ℹ️' });
@@ -1341,9 +1343,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
           quickActions={quickActions}
           onSwitchToDesktop={() => handleToggleMode('desktop')}
           onOpenJurnalModal={() => {
-            const sesiHariIni = timelineItems.find((item: any) => item.type === 'sesi_mengajar');
-            if (sesiHariIni?.raw) {
-              setSessionForJournal(sesiHariIni.raw);
+            const sesiHariIni = timelineItems.find((item: any) => item.isLive) || timelineItems.find((item: any) => !item.isFinished) || timelineItems[0];
+            const rawSesi = sesiHariIni?.session || sesiHariIni?._raw || sesiHariIni?.raw;
+            if (rawSesi) {
+              setSessionForJournal(rawSesi);
               setJournalModalOpen(true);
             } else {
               toast('Belum ada sesi KBM aktif. Mengarahkan ke Manajemen Sesi...', { icon: 'ℹ️' });
@@ -1351,9 +1354,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
             }
           }}
           onOpenAbsenGuruModal={() => {
-            const sesiHariIni = timelineItems.find((item: any) => item.type === 'sesi_mengajar');
-            if (sesiHariIni?.raw) {
-              setSelectedSesi(sesiHariIni.raw);
+            const sesiHariIni = timelineItems.find((item: any) => item.isLive) || timelineItems.find((item: any) => !item.isFinished) || timelineItems[0];
+            const rawSesi = sesiHariIni?.session || sesiHariIni?._raw || sesiHariIni?.raw;
+            if (rawSesi) {
+              setSelectedSesi(rawSesi);
             } else {
               toast('Belum ada sesi KBM aktif. Mengarahkan ke Absensi Kelas...', { icon: 'ℹ️' });
               navigate('/attendance/ops?tab=sesi');
