@@ -331,7 +331,7 @@ export class DashboardExecutiveService {
 
         const sessionList = Array.isArray(lifecycleRes.data) ? lifecycleRes.data : [];
 
-        const activeClasses = sessionList.filter((s: any) => s.status === 'BERLANGSUNG').length;
+        const activeClasses = sessionList.filter((s: any) => s.status === 'BERLANGSUNG' || s.isLive || s._summary?.isLive).length;
 
         // 2. Teacher Presence & Supervision
         const [totalTeachers, teacherPresent, supervisionCount] = await Promise.all([

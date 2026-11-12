@@ -61,10 +61,12 @@ export const SiswaDocsPanel: React.FC<SiswaDocsPanelProps> = React.memo(({
   const confirm  = useConfirm();
   const queryClient = useQueryClient();
 
-  const { isAdmin, can: capCan } = useCapabilities();
+  const { isAdmin, isWaliKelas, can: capCan } = useCapabilities();
   const canEdit = canManage ??
     (isAdmin ||
+     isWaliKelas ||
      capCan('academic.students.manage') ||
+     capCan('academic.students.update') ||
      capCan('documents.upload'));
 
   const [selectedDoc, setSelectedDoc] = useState<MemberDoc | null>(null);

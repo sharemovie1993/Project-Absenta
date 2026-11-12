@@ -65,6 +65,7 @@ export const WalasSiswaTab: React.FC<WalasSiswaTabProps> = React.memo(({
           hideLayout
           hideHeaderStats
           hideScopeBanner
+          canEdit={true}
           kelasId={kelasId}
           kelasNama={kelasNama}
           tahunPelajaranId={tahunPelajaranId}

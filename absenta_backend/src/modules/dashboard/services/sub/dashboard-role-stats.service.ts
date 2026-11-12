@@ -464,10 +464,12 @@ export class DashboardRoleStatsService {
    * 🆕 Get Sarpras (Inventory) Stats
    */
   async getSarprasStats(tenantId: string) {
-    const [totalAssets, totalLoaned, totalBroken] = await Promise.all([
+    const [totalAssets, totalLoaned, totalBroken, totalRooms, pendingRepairs] = await Promise.all([
       prisma.sarprasAsset.count({ where: { tenant_id: tenantId } }),
       prisma.sarprasLoan.count({ where: { tenant_id: tenantId, status: 'ACTIVE' } }),
-      prisma.sarprasAsset.count({ where: { tenant_id: tenantId, kondisi: 'RUSAK' } })
+      prisma.sarprasAsset.count({ where: { tenant_id: tenantId, kondisi: 'RUSAK' } }),
+      prisma.masterRuangan.count({ where: { tenant_id: tenantId } }),
+      prisma.sarprasAssetRepair.count({ where: { tenant_id: tenantId, status: 'PROSES' } }),
     ]);
 
     const recentLoans = await prisma.sarprasLoan.findMany({
@@ -482,8 +484,14 @@ export class DashboardRoleStatsService {
 
     return {
       totalAssets,
+      total_assets: totalAssets,
       totalLoaned,
+      active_loans: totalLoaned,
       totalBroken,
+      totalRooms,
+      total_rooms: totalRooms,
+      pendingRepairs,
+      pending_repairs: pendingRepairs,
       recentLoans: recentLoans.map(l => ({
         id: l.id,
         asset: l.Asset.nama,
@@ -512,6 +520,8 @@ export class DashboardRoleStatsService {
     return {
       ...tuData,
       suratMasukBulanIni: suratMasukCount,
+      incoming_letters: tuData?.suratMasuk?.baru ?? 0,
+      pending_sign: tuData?.suratKeluar?.draft ?? 0,
     };
   }
 

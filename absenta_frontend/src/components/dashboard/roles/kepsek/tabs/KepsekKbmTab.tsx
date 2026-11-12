@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, CheckCircle, PlayCircle, Award, Activity, Trophy, ArrowUpRight, Laptop } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Users, CheckCircle, PlayCircle, Award, ArrowUpRight, Laptop } from 'lucide-react';
 import { HubCard } from '@/components/ui/hub';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { MonitoringKbmWidget } from '@/components/dashboard/shared/MonitoringKbmWidget';
+import { getSupervisionSchedule } from '@/api/dashboard.api';
 import { UnifiedBlockMetrics } from '../components/UnifiedBlockMetrics';
 
 export interface KepsekKbmTabProps {
@@ -19,6 +21,18 @@ export const KepsekKbmTab: React.FC<KepsekKbmTabProps> = React.memo(({
   onOpenTeacherLeaderboard,
 }) => {
   const navigate = useNavigate();
+
+  const { data: supervisionRes } = useQuery({
+    queryKey: ['kepsek-kbm-supervision'],
+    queryFn: () => getSupervisionSchedule(),
+    staleTime: 60_000,
+  });
+
+  const supervisionList = useMemo(() => {
+    if (Array.isArray(supervisionRes)) return supervisionRes;
+    if (Array.isArray(supervisionRes?.data)) return supervisionRes.data;
+    return [];
+  }, [supervisionRes]);
 
   const guruAttendance = useMemo(
     () => (stats?.total_guru ? Math.round((stats.guru_hadir / stats.total_guru) * 100) : 0),
@@ -58,8 +72,8 @@ export const KepsekKbmTab: React.FC<KepsekKbmTabProps> = React.memo(({
           },
           {
             label: 'Supervisi KBM',
-            value: '98.4%',
-            subtitle: 'Jam efektif tercapai',
+            value: supervisionList.length > 0 ? `${supervisionList.length} Agenda` : `${guruAttendance}%`,
+            subtitle: supervisionList.length > 0 ? 'Pendidik terjadwal' : 'Jam efektif tercapai',
             icon: Award,
             color: 'amber',
             onClick: () => navigate('/kurikulum/supervisi'),
@@ -143,7 +157,7 @@ export const KepsekKbmTab: React.FC<KepsekKbmTabProps> = React.memo(({
       >
         {teacherLeaderboard.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {teacherLeaderboard.slice(0, 5).map((teacher: any, idx: number) => {
+            {teacherLeaderboard?.slice(0, 5)?.map((teacher: any, idx: number) => {
               const rankMedal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
               return (
                 <div

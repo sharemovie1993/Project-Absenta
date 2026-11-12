@@ -44,6 +44,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
   const [lockTeacherScheduling, setLockTeacherScheduling] = useState(true);
   const [tokenRefreshInterval, setTokenRefreshInterval] = useState(15);
   const [strictBrowserGuard, setStrictBrowserGuard] = useState(true);
+  const [enableProctor, setEnableProctor] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -57,8 +58,9 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
       setTipePelaksanaan(event.tipe_pelaksanaan || (event.lock_teacher_scheduling === false ? 'MANDIRI' : 'MASSAL'));
       setKeterangan(event.keterangan || '');
       setLockTeacherScheduling(event.lock_teacher_scheduling ?? true);
-      setTokenRefreshInterval(event.token_refresh_interval ?? 15);
+      setTokenRefreshInterval(event.token_refresh_interval ?? 0);
       setStrictBrowserGuard(event.strict_browser_guard ?? true);
+      setEnableProctor(event.enable_proctor ?? false);
       setIsActive(event.is_active ?? false);
     } else {
       setTpId(defaultTpId || (tpOptions.find((t) => t.is_active)?.value || tpOptions[0]?.value || ''));
@@ -69,8 +71,9 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
       setTipePelaksanaan('MASSAL');
       setKeterangan('');
       setLockTeacherScheduling(true);
-      setTokenRefreshInterval(15);
+      setTokenRefreshInterval(0);
       setStrictBrowserGuard(true);
+      setEnableProctor(false);
       setIsActive(false);
     }
   }, [event, defaultTpId, tpOptions, isOpen]);
@@ -125,6 +128,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
         lock_teacher_scheduling: lockTeacherScheduling,
         token_refresh_interval: Number(tokenRefreshInterval),
         strict_browser_guard: strictBrowserGuard,
+        enable_proctor: enableProctor,
         is_active: isActive,
       };
 
@@ -429,6 +433,24 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
                 checked={strictBrowserGuard}
                 onChange={(e) => setStrictBrowserGuard(e.target.checked)}
                 className="mt-1 h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <UserCheck size={13} className="text-indigo-500" />
+                  Gunakan Proktor / Pengawas 2
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Bawaan nonaktif (hanya Pengawas 1). Aktifkan jika ruangan butuh penugasan Proktor atau Pengawas ke-2.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={enableProctor}
+                onChange={(e) => setEnableProctor(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
               />
             </div>
           </div>

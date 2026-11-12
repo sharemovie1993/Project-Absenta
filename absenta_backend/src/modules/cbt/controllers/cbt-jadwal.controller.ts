@@ -230,4 +230,14 @@ export class CbtJadwalController {
       return sendError(reply, 400, error.message || 'Gagal menghapus jadwal ujian');
     }
   }
+
+  static async bulkDelete(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const result = await CbtJadwalService.bulkDelete(tenant_id, req.body || {});
+      return sendResponse(reply, 200, true, result.message || 'Jadwal ujian berhasil dihapus', result);
+    } catch (error: any) {
+      return sendError(reply, 400, error.message || 'Gagal menghapus jadwal ujian massal');
+    }
+  }
 }

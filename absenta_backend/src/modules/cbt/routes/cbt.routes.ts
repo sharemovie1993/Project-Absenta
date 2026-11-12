@@ -104,6 +104,10 @@ export async function cbtRoutes(fastify: any) {
     preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.bulkCreate);
 
+  fastify.post('/jadwal/bulk-delete', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtJadwalController.bulkDelete);
+
   fastify.patch('/jadwal/bulk-plotting', {
     preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.bulkUpdatePlotting);

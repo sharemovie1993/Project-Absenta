@@ -20,7 +20,7 @@ export const KepsekHubinTab: React.FC<KepsekHubinTabProps> = React.memo(({ hubin
         items={[
           {
             label: 'Siswa PKL Aktif',
-            value: `${hubinData?.data?.active_students || hubinData?.total_pkl || 0} Siswa`,
+            value: `${hubinData?.data?.pklAktif ?? hubinData?.data?.active_students ?? hubinData?.data?.totalSiswaPkl ?? hubinData?.total_pkl ?? 0} Siswa`,
             subtitle: 'Magang di industri',
             icon: Briefcase,
             color: 'teal',
@@ -28,21 +28,21 @@ export const KepsekHubinTab: React.FC<KepsekHubinTabProps> = React.memo(({ hubin
           },
           {
             label: 'Mitra Industri (DUDI)',
-            value: `${hubinData?.data?.total_mitra || 48} PT`,
+            value: `${hubinData?.data?.totalMitra ?? hubinData?.data?.total_mitra ?? hubinData?.totalMitra ?? 0} PT`,
             subtitle: 'MoU aktif berjalan',
             icon: Building,
             color: 'indigo',
           },
           {
             label: 'Lowongan Kerja BKK',
-            value: `${bkkData?.data?.active_jobs || 12} Loker`,
+            value: `${hubinData?.data?.totalLowonganAktif ?? bkkData?.data?.active_jobs ?? bkkData?.active_jobs ?? 0} Loker`,
             subtitle: 'Tersedia untuk alumni',
             icon: Award,
             color: 'cyan',
           },
           {
             label: 'Tracer Study',
-            value: '84.5%',
+            value: `${Math.round(hubinData?.data?.employmentRate ?? hubinData?.employmentRate ?? hubinData?.data?.tracerCoverage ?? 0)}%`,
             subtitle: 'Terserap kerja/usaha',
             icon: TrendingUp,
             color: 'purple',

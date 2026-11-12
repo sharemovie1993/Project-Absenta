@@ -171,7 +171,9 @@ async function upsertTeacherAttendanceOnOpen(
 }
 
 export class SesiQueryService {
-  async list(tenantId: string, _org: any, query: any) {
+  async list(tenantId: string, orgOrQuery?: any, maybeQuery?: any) {
+    const query = (maybeQuery !== undefined ? maybeQuery : orgOrQuery) || {};
+    const _org = maybeQuery !== undefined ? orgOrQuery : {};
     const {
       kelas_id,
       guru_id,
@@ -589,10 +591,18 @@ export class SesiQueryService {
       !ps.jadwal_kegiatan_id && (!ps.jenis_kegiatan || String(ps.jenis_kegiatan).toUpperCase() === 'KBM');
 
     const unifiedList = mergedRanges.map((mRange: any) => {
-      const sameUnit = (ps: any) =>
-        !ps.unit_pengajaran_id && !mRange.unit_pengajaran_id
-          ? ps.guru_id === mRange.guru_id
-          : String(ps.unit_pengajaran_id || '') === String(mRange.unit_pengajaran_id || '');
+      const sameUnit = (ps: any) => {
+        if (ps.unit_pengajaran_id && mRange.unit_pengajaran_id) {
+          return String(ps.unit_pengajaran_id) === String(mRange.unit_pengajaran_id);
+        }
+        // Fallback matching if one or both records don't have unit_pengajaran_id populated
+        const matchesTeacher =
+          ps.guru_id === mRange.guru_id ||
+          (ps.guru_pelaksana_id && ps.guru_pelaksana_id === mRange.guru_pelaksana_id) ||
+          (ps.guru_pelaksana_id && ps.guru_pelaksana_id === mRange.guru_id) ||
+          (mRange.guru_pelaksana_id && ps.guru_id === mRange.guru_pelaksana_id);
+        return Boolean(matchesTeacher);
+      };
 
       // Find matching physical session:
       // Priority 1 = Matches schedule link OR (kelas_id + mapel_id + unit_pengajaran_id) with active (BERLANGSUNG) or completed (SELESAI) status
@@ -697,12 +707,13 @@ export class SesiQueryService {
       };
     });
 
-    // 🛡️ Push physical activity sessions (jadwal_kegiatan_id != null or non-KBM) so they render in Tab 2 (Kegiatan & Pembiasaan).
-    // Unmatched out-of-bounds KBM sessions remain blocked when include_scheduled = true to prevent Live Monitoring pollution.
+    // 🛡️ Push physical activity sessions AND real started/finished sessions that did not match schedule slots.
+    // Unmatched out-of-bounds KBM sessions remain blocked when include_scheduled = true only if never started.
     physicalSessions.forEach((ps: any) => {
       if (!matchedPhysicalIds.has(ps.id)) {
         const isActivitySession = !!ps.jadwal_kegiatan_id || (ps.jenis_kegiatan && String(ps.jenis_kegiatan).toUpperCase() !== 'KBM');
-        if (isActivitySession || !include_scheduled) {
+        const isStartedOrFinished = ps.status === 'BERLANGSUNG' || ps.status === 'SELESAI' || Boolean(ps.foto_kegiatan);
+        if (isActivitySession || isStartedOrFinished || !include_scheduled) {
           unifiedList.push(ps);
         }
       }
@@ -1055,12 +1066,15 @@ export class SesiQueryService {
     return stats;
   }
 
-  async listByTanggal(tenantId: string, tanggal: Date) {
-    const startOfDay = new Date(tanggal);
-    startOfDay.setUTCHours(0, 0, 0, 0);
+  async listByTanggal(tenantId: string, tanggal: Date | string) {
+    const tz = await getTenantTimezone(tenantId);
+    const tzOffset = getTenantOffsetString(tz);
+    const dateStr = typeof tanggal === 'string'
+      ? tanggal.slice(0, 10)
+      : new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(tanggal);
 
-    const endOfDay = new Date(tanggal);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    const startOfDay = new Date(`${dateStr}T00:00:00.000${tzOffset}`);
+    const endOfDay = new Date(`${dateStr}T23:59:59.999${tzOffset}`);
 
     return prisma.sesiAbsensi.findMany({
       where: {

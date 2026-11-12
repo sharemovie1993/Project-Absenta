@@ -11,7 +11,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
 import type { GuruMapel } from '@/types/academic';
-import { cbtQueryKeys } from '@/api/cbt.api';
+import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import { useJenjang } from '@/hooks/useJenjang';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
@@ -51,6 +51,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
   topFlightDeck,
   bankList,
   activeTpId,
+  activeSemId,
   targetTingkat,
   eventName,
   activeEvent,

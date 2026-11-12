@@ -593,9 +593,26 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
               </span>
             </div>
 
-            <p className="text-[10px] text-slate-400 text-center font-medium">
-              Hover foto untuk ubah via kamera atau galeri
-            </p>
+            <div className="flex items-center justify-center gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsWebcamOpen(true)}
+                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-indigo-200/60 dark:border-indigo-800/40"
+                title="Ambil foto via webcam / kamera"
+              >
+                <Camera size={11} />
+                <span>Kamera</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
+                title="Unggah foto dari galeri / file"
+              >
+                <Upload size={11} />
+                <span>Galeri</span>
+              </button>
+            </div>
 
             {/* Nama & Badges Siswa */}
             <div className="text-center space-y-1">

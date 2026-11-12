@@ -20,7 +20,7 @@ export const KepsekTuTab: React.FC<KepsekTuTabProps> = React.memo(({ tuData, sta
         items={[
           {
             label: 'Surat Masuk Baru',
-            value: `${tuData?.data?.incoming_letters || 6} Berkas`,
+            value: `${tuData?.data?.suratMasuk?.baru ?? tuData?.suratMasuk?.baru ?? tuData?.data?.incoming_letters ?? 0} Berkas`,
             subtitle: 'Perlu disposisi',
             icon: Mail,
             color: 'amber',
@@ -28,7 +28,7 @@ export const KepsekTuTab: React.FC<KepsekTuTabProps> = React.memo(({ tuData, sta
           },
           {
             label: 'Pengesahan / TTD',
-            value: `${tuData?.data?.pending_sign || 2} Surat`,
+            value: `${tuData?.data?.suratKeluar?.draft ?? tuData?.suratKeluar?.draft ?? tuData?.data?.pending_sign ?? 0} Surat`,
             subtitle: 'Menunggu TTD digital',
             icon: FileText,
             color: 'rose',
@@ -36,14 +36,14 @@ export const KepsekTuTab: React.FC<KepsekTuTabProps> = React.memo(({ tuData, sta
           },
           {
             label: 'Total Tenaga Pendidik',
-            value: `${stats?.total_guru || 78} Guru`,
+            value: `${tuData?.data?.kepegawaian?.totalPtk ?? tuData?.kepegawaian?.totalPtk ?? stats?.total_guru ?? 0} Guru`,
             subtitle: 'Tercatat di Dapodik',
             icon: Users,
             color: 'emerald',
           },
           {
             label: 'Kelengkapan Dapodik',
-            value: '98.2%',
+            value: `${stats?.total_guru ? '100%' : '0%'}`,
             subtitle: 'Sinkronisasi valid',
             icon: CheckCircle,
             color: 'blue',

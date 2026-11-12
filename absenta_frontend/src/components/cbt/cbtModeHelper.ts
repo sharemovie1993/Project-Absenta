@@ -172,7 +172,7 @@ export function useCbtOperationMode() {
     isMandiri: effectiveMode === 'MANDIRI',
     lockTeacherScheduling: effectiveLockTeacherScheduling,
     activeEvent,
-    tokenRefreshInterval: activeEvent?.token_refresh_interval ?? 15,
+    tokenRefreshInterval: activeEvent?.token_refresh_interval ?? 0,
     strictBrowserGuard: activeEvent?.strict_browser_guard ?? true,
     updateMode,
     updateActiveEvent,

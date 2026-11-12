@@ -19,7 +19,7 @@ export const KepsekSarprasTab: React.FC<KepsekSarprasTabProps> = React.memo(({ s
         items={[
           {
             label: 'Total Aset KIB',
-            value: `${sarprasData?.data?.total_assets || sarprasData?.total_assets || 0} Unit`,
+            value: `${sarprasData?.data?.total_assets ?? sarprasData?.data?.totalAssets ?? sarprasData?.totalAssets ?? sarprasData?.total_assets ?? 0} Unit`,
             subtitle: 'Buku Induk KIB',
             icon: Building,
             color: 'emerald',
@@ -27,21 +27,21 @@ export const KepsekSarprasTab: React.FC<KepsekSarprasTabProps> = React.memo(({ s
           },
           {
             label: 'Ruangan & Lab',
-            value: `${sarprasData?.data?.total_rooms || 32} Ruang`,
+            value: `${sarprasData?.data?.total_rooms ?? sarprasData?.data?.totalRooms ?? sarprasData?.totalRooms ?? sarprasData?.total_rooms ?? 0} Ruang`,
             subtitle: 'Siap pakai & baik',
             icon: Building,
             color: 'indigo',
           },
           {
             label: 'Peminjaman Aktif',
-            value: `${sarprasData?.data?.active_loans || 0} Transaksi`,
+            value: `${sarprasData?.data?.active_loans ?? sarprasData?.data?.totalLoaned ?? sarprasData?.totalLoaned ?? sarprasData?.active_loans ?? 0} Transaksi`,
             subtitle: 'Alat praktik lab',
             icon: Wrench,
             color: 'amber',
           },
           {
             label: 'Usulan Perbaikan',
-            value: `${sarprasData?.data?.pending_repairs || 0} Usulan`,
+            value: `${sarprasData?.data?.pending_repairs ?? sarprasData?.data?.pendingRepairs ?? sarprasData?.pendingRepairs ?? sarprasData?.pending_repairs ?? 0} Usulan`,
             subtitle: 'Butuh persetujuan',
             icon: AlertTriangle,
             color: 'rose',

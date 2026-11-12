@@ -443,16 +443,18 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
       {activeTab === 'fase_3_jadwal' && (
         <CbtTimetableMatrixPanel
           topFlightDeck={flightDeckNode}
-          bankList={readyBankList}
+          bankList={rawBankList}
+          rawGuruMapel={rawGuruMapel}
           roomMappings={roomMappings}
           activeTpId={activeTp?.id}
           activeSemId={activeSemester?.id}
           defaultTodayStr={defaultTodayStr}
-          existingSchedules={jadwalList}
+          existingSchedules={effectiveJadwalList}
           activeEvent={activeEvent}
           eventName={effectiveEventName}
           targetTingkat={effectiveTargetTingkat}
           onSuccessGenerate={() => {
+            refetchBankSoal();
             refetchJadwal();
             setActiveTab('fase_4_pengawas');
           }}

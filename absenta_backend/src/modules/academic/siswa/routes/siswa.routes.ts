@@ -309,7 +309,7 @@ export default async function siswaRoutes(fastify: any) {
   // POST /siswa/:id/documents - Upload document
   fastify.post('/:id/documents', {
     preHandler: [
-      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign', 'academic.students.update'], { exemptRoles: [RoleName.SISWA] }),
+      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign', 'academic.students.update', 'documents.upload'], { exemptRoles: [RoleName.SISWA] }),
       validateSiswaSelfOrAdmin,
       organizationalScopeMiddleware,
       determineDataScope()
@@ -321,7 +321,7 @@ export default async function siswaRoutes(fastify: any) {
   // GET /siswa/:id/documents - List documents
   fastify.get('/:id/documents', {
     preHandler: [
-      requireCapability('academic.students.view.detail', { exemptRoles: [RoleName.SISWA] }),
+      requireCapability(['academic.students.view.detail', 'documents.view.list'], { exemptRoles: [RoleName.SISWA] }),
       validateSiswaSelfOrAdmin,
       organizationalScopeMiddleware,
       determineDataScope()
@@ -333,7 +333,7 @@ export default async function siswaRoutes(fastify: any) {
   // GET /siswa/:id/documents/:docId/download - Download single document
   fastify.get('/:id/documents/:docId/download', {
     preHandler: [
-      requireCapability('academic.students.view.detail', { exemptRoles: [RoleName.SISWA] }),
+      requireCapability(['academic.students.view.detail', 'documents.view.detail'], { exemptRoles: [RoleName.SISWA] }),
       validateSiswaSelfOrAdmin,
       organizationalScopeMiddleware,
       determineDataScope()
@@ -345,7 +345,7 @@ export default async function siswaRoutes(fastify: any) {
   // DELETE /siswa/:id/documents/:docId - Delete document
   fastify.delete('/:id/documents/:docId', {
     preHandler: [
-      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign', 'academic.students.update'], { exemptRoles: [RoleName.SISWA] }),
+      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign', 'academic.students.update', 'documents.delete'], { exemptRoles: [RoleName.SISWA] }),
       validateSiswaSelfOrAdmin,
       organizationalScopeMiddleware,
       determineDataScope()

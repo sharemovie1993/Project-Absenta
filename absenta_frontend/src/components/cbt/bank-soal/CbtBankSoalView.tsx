@@ -203,14 +203,21 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         label: 'Kode & Judul Bank Soal',
         className: 'min-w-[240px]',
         render: (_val: unknown, row: CbtBankSoal) => {
-          const isSharedBank = row.status === 'PUBLISHED';
+          const isSharedBank = row.status === 'PUBLISHED' || Boolean(row.is_shared);
           const isFromColleague = Boolean(currentGuruId && row.guru_id !== currentGuruId);
           const code = (row.kode_bank || '').toUpperCase();
           const isMassalPackage =
+            Boolean(row.is_shared) ||
+            (row.Kontributor && row.Kontributor.length > 0) ||
+            (row.judul && row.judul.trim().startsWith('[')) ||
+            code.startsWith('PSAS-') ||
+            code.startsWith('PSAT-') ||
+            code.startsWith('PSTS-') ||
+            code.startsWith('PSAJ-') ||
+            code.startsWith('UKK-') ||
             code.startsWith('SAS-') ||
             code.startsWith('SAT-') ||
             code.startsWith('STS-') ||
-            code.startsWith('PSAJ-') ||
             code.startsWith('PAS-') ||
             code.startsWith('PAT-') ||
             code.startsWith('PTS-') ||
@@ -245,7 +252,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                   </span>
                 ) : isMassalPackage ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                    🏛️ Paket Terpusat
+                    🏛️ Paket Terpusat (MGMP)
                   </span>
                 ) : isSharedBank ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60">

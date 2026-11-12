@@ -86,7 +86,7 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
 
   // Countdown Timer untuk Rotasi Token Otomatis
-  const tokenIntervalMinutes = activeEvent?.token_refresh_interval ?? 15;
+  const tokenIntervalMinutes = activeEvent?.token_refresh_interval ?? 0;
   const isAutoRotate = tokenIntervalMinutes > 0;
   const [secondsLeft, setSecondsLeft] = useState<number>(() => tokenIntervalMinutes * 60);
 

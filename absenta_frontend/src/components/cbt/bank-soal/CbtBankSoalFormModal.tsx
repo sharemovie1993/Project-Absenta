@@ -112,7 +112,12 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const initialScope: CbtBankSoalScope = useMemo(() => {
     if (bankSoalToEdit) {
       const detected = findMatchingAsesmenType(bankSoalToEdit.kode_bank, officialAsesmenTypes);
-      return detected ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU';
+      const isMassal =
+        Boolean(detected) ||
+        Boolean(bankSoalToEdit.is_shared) ||
+        Boolean(bankSoalToEdit.Kontributor && bankSoalToEdit.Kontributor.length > 0) ||
+        Boolean(bankSoalToEdit.judul?.trim().startsWith('['));
+      return isMassal ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU';
     }
     if (lockedEventKey) return 'TERPUSAT_MASSAL';
     return isPrivilegedRole && !defaultGuruId ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU';
@@ -143,6 +148,12 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     if (bankSoalToEdit) {
       const detected = findMatchingAsesmenType(bankSoalToEdit.kode_bank, officialAsesmenTypes);
       if (detected) return detected.key;
+      const rawJudul = (bankSoalToEdit.judul || '').toUpperCase();
+      for (const t of officialAsesmenTypes) {
+        if (rawJudul.includes(t.key) || (t.aliases && t.aliases.some((a) => rawJudul.includes(a)))) {
+          return t.key;
+        }
+      }
     }
     if (lockedEventKey) return lockedEventKey;
     return detectSmartAsesmenType(activeSemester, defaultInitialTingkat, effectiveTingkatList, jenjang).recommendedKey;
@@ -305,7 +316,23 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setShowAllMapels(true);
 
       const detected = findMatchingAsesmenType(bankSoalToEdit.kode_bank, officialAsesmenTypes);
-      if (detected) setJenisKegiatanMassal(detected.key);
+      const isMassal =
+        Boolean(detected) ||
+        Boolean(bankSoalToEdit.is_shared) ||
+        Boolean(bankSoalToEdit.Kontributor && bankSoalToEdit.Kontributor.length > 0) ||
+        Boolean(bankSoalToEdit.judul?.trim().startsWith('['));
+      setScope(isMassal ? 'TERPUSAT_MASSAL' : 'MANDIRI_GURU');
+      if (detected) {
+        setJenisKegiatanMassal(detected.key);
+      } else if (isMassal) {
+        const rawJudul = (bankSoalToEdit.judul || '').toUpperCase();
+        for (const t of officialAsesmenTypes) {
+          if (rawJudul.includes(t.key) || (t.aliases && t.aliases.some((a) => rawJudul.includes(a)))) {
+            setJenisKegiatanMassal(t.key);
+            break;
+          }
+        }
+      }
     } else {
       setStep(1);
       setScope(initialScope);

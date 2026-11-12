@@ -475,6 +475,7 @@ export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo
     kkmThreshold,
     handleKkmThresholdChange,
     handleScoreChange,
+    handleBulkPaste,
     handleCopyCpToAll,
     handleClearCpAll,
     handleKeyDownGrid,
@@ -688,6 +689,8 @@ export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo
             kkmThreshold={kkmThreshold}
             onKkmThresholdChange={handleKkmThresholdChange}
             onScoreChange={handleScoreChange}
+            onBulkPaste={handleBulkPaste}
+            onBatchScoresChange={setScores}
             onCopyCpToAll={handleCopyCpToAll}
             onClearCpAll={handleClearCpAll}
             onKeyDownGrid={handleKeyDownGrid}

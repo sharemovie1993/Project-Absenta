@@ -15,6 +15,7 @@ import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraError
 import type { ScannedQrPayload } from '@/components/auth/LoginQrScannerModal';
 import { DemoRoleSelector } from '@/components/auth/DemoRoleSelector';
 import { type DemoRoleProfile } from '@/config/demoProfiles.config';
+import { getPublicDemoProfiles, demoQuickLogin } from '@/api/demoProfiles.api';
 import { ServerDomainSetupModal } from '@/components/auth/ServerDomainSetupModal';
 
 const LoginQrScannerModal = React.lazy(() =>
@@ -87,6 +88,7 @@ export default function LoginPage() {
 
   const {
     loginAction,
+    loadUser,
     isAuthenticated,
     isLoading,
     error,
@@ -94,6 +96,14 @@ export default function LoginPage() {
   } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const { data: demoProfilesRes } = useQuery({
+    queryKey: ['public-demo-profiles', tenantIdDev],
+    queryFn: () => getPublicDemoProfiles(tenantIdDev || undefined),
+    staleTime: 1000 * 60 * 5,
+    enabled: isDemoEnvironment,
+  });
+  const customDemoProfiles = demoProfilesRes?.profiles;
 
   const handleScanSuccess = useCallback(async (scannedCode: string, payload?: ScannedQrPayload) => {
     if (payload?.isQuickLogin && payload.identifier && payload.password) {
@@ -373,6 +383,36 @@ export default function LoginPage() {
       toast.loading(`Masuk sebagai ${profile.title}...`, {
         id: 'demo-login'
       });
+
+      // 1. Coba 1-Click Demo Login Backend Endpoint (Mendukung Akun Guru Terpetakan)
+      try {
+        const demoRes = await demoQuickLogin(profile.id, devTenantArg);
+        if (demoRes?.success && demoRes?.data?.token) {
+          const { token, refreshToken, user: authUser } = demoRes.data;
+          localStorage.setItem('access_token', token);
+          if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+          if (authUser?.tenant_id) localStorage.setItem('tenant_id', authUser.tenant_id);
+
+          useAuthStore.setState({
+            token,
+            refreshToken,
+            user: authUser,
+            tenantId: authUser?.tenant_id || null,
+            isAuthenticated: true,
+          });
+
+          await loadUser();
+
+          toast.success(`Selamat datang, ${profile.simulatedName}!`, {
+            id: 'demo-login'
+          });
+          return;
+        }
+      } catch (quickErr) {
+        console.warn('[LoginPage] 1-Click demoLogin fallback ke loginAction:', quickErr);
+      }
+
+      // 2. Fallback jika offline atau akun simulasi lokal
       await loginAction(profile.email, profile.password || 'password123', devTenantArg);
       toast.success(`Selamat datang, ${profile.simulatedName}!`, {
         id: 'demo-login'
@@ -524,6 +564,7 @@ export default function LoginPage() {
               activeLoadingRoleId={activeLoadingRoleId}
               onToggleManualLogin={() => setShowManualLogin(true)}
               onOpenScanner={() => setIsScannerOpen(true)}
+              customProfiles={customDemoProfiles}
             />
           </Card>
 
@@ -615,7 +656,7 @@ export default function LoginPage() {
            <div className="absolute bottom-1/4 left-1/3 w-80 h-80 bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none dark:bg-indigo-600/5" />
 
            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full max-w-lg bg-white/85 dark:bg-slate-900/80 backdrop-blur-xl rounded-[2.5rem] p-6 sm:p-8 lg:p-10 shadow-2xl shadow-slate-200/30 dark:shadow-none border border-white/50 dark:border-slate-800/40 relative z-10">
-             {isDemoEnvironment && !showManualLogin ? <DemoRoleSelector onSelectRole={handleDemoRoleLogin} isLoading={isLoading} activeLoadingRoleId={activeLoadingRoleId} onToggleManualLogin={() => setShowManualLogin(true)} /> : <>
+             {isDemoEnvironment && !showManualLogin ? <DemoRoleSelector onSelectRole={handleDemoRoleLogin} isLoading={isLoading} activeLoadingRoleId={activeLoadingRoleId} onToggleManualLogin={() => setShowManualLogin(true)} customProfiles={customDemoProfiles} /> : <>
                  <div className="flex flex-col items-center lg:items-start text-center lg:text-left mb-6">
                    {tenantLogo ? <motion.img initial={{
                 opacity: 0,

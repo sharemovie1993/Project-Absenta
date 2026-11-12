@@ -254,47 +254,231 @@ export function useScoreSheetManager({
     toast.info('Seluruh Capaian Kompetensi (CP) telah dikosongkan.');
   }, [isReadOnly]);
 
-  // Keyboard Grid Navigation
-  const handleKeyDownGrid = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>, rowIndex: number, colIndex: number) => {
+  // Keyboard Grid Navigation (Excel-style navigation)
+  const handleKeyDownGrid = useCallback((
+    e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
+    rowIndex: number,
+    colIndex: number
+  ) => {
     const totalRows = scores.length;
     const maxCols = entryMode === 'sumatif' ? 6 : 2;
 
-    if (e.key === 'ArrowDown' || e.key === 'Enter') {
+    // 1. ENTER / SHIFT+ENTER: Move Down / Up (Standard Excel behavior)
+    if (e.key === 'Enter') {
+      if (e.shiftKey) {
+        if (rowIndex > 0) {
+          e.preventDefault();
+          const target = document.getElementById(`input-grid-${rowIndex - 1}-${colIndex}`) as HTMLInputElement | HTMLTextAreaElement;
+          target?.focus();
+          target?.select?.();
+        }
+      } else {
+        if (rowIndex < totalRows - 1) {
+          e.preventDefault();
+          const target = document.getElementById(`input-grid-${rowIndex + 1}-${colIndex}`) as HTMLInputElement | HTMLTextAreaElement;
+          target?.focus();
+          target?.select?.();
+        }
+      }
+      return;
+    }
+
+    // 2. TAB / SHIFT+TAB: Move Next / Previous cell across grid
+    if (e.key === 'Tab') {
+      if (e.shiftKey) {
+        if (colIndex > 0) {
+          e.preventDefault();
+          const target = document.getElementById(`input-grid-${rowIndex}-${colIndex - 1}`) as HTMLInputElement | HTMLTextAreaElement;
+          target?.focus();
+          target?.select?.();
+        } else if (rowIndex > 0) {
+          e.preventDefault();
+          const target = document.getElementById(`input-grid-${rowIndex - 1}-${maxCols - 1}`) as HTMLInputElement | HTMLTextAreaElement;
+          target?.focus();
+          target?.select?.();
+        }
+      } else {
+        if (colIndex < maxCols - 1) {
+          e.preventDefault();
+          const target = document.getElementById(`input-grid-${rowIndex}-${colIndex + 1}`) as HTMLInputElement | HTMLTextAreaElement;
+          target?.focus();
+          target?.select?.();
+        } else if (rowIndex < totalRows - 1) {
+          e.preventDefault();
+          const target = document.getElementById(`input-grid-${rowIndex + 1}-0`) as HTMLInputElement | HTMLTextAreaElement;
+          target?.focus();
+          target?.select?.();
+        }
+      }
+      return;
+    }
+
+    // 3. ARROW KEYS
+    if (e.key === 'ArrowDown') {
       if (rowIndex < totalRows - 1) {
         e.preventDefault();
-        const target = document.getElementById(`input-grid-${rowIndex + 1}-${colIndex}`) as HTMLInputElement;
+        const target = document.getElementById(`input-grid-${rowIndex + 1}-${colIndex}`) as HTMLInputElement | HTMLTextAreaElement;
         target?.focus();
         target?.select?.();
       }
     } else if (e.key === 'ArrowUp') {
       if (rowIndex > 0) {
         e.preventDefault();
-        const target = document.getElementById(`input-grid-${rowIndex - 1}-${colIndex}`) as HTMLInputElement;
+        const target = document.getElementById(`input-grid-${rowIndex - 1}-${colIndex}`) as HTMLInputElement | HTMLTextAreaElement;
         target?.focus();
         target?.select?.();
       }
     } else if (e.key === 'ArrowRight') {
       const input = e.currentTarget;
-      if (input.selectionStart === input.selectionEnd) {
+      const isAtEnd = input.selectionEnd === input.value.length;
+      const isAllSelected = input.selectionStart === 0 && input.selectionEnd === input.value.length;
+      if (isAtEnd || isAllSelected) {
         if (colIndex < maxCols - 1) {
           e.preventDefault();
-          const target = document.getElementById(`input-grid-${rowIndex}-${colIndex + 1}`) as HTMLInputElement;
+          const target = document.getElementById(`input-grid-${rowIndex}-${colIndex + 1}`) as HTMLInputElement | HTMLTextAreaElement;
           target?.focus();
           target?.select?.();
         }
       }
     } else if (e.key === 'ArrowLeft') {
       const input = e.currentTarget;
-      if (input.selectionStart === input.selectionEnd && input.selectionStart === 0) {
+      const isAtStart = input.selectionStart === 0;
+      const isAllSelected = input.selectionStart === 0 && input.selectionEnd === input.value.length;
+      if (isAtStart || isAllSelected) {
         if (colIndex > 0) {
           e.preventDefault();
-          const target = document.getElementById(`input-grid-${rowIndex}-${colIndex - 1}`) as HTMLInputElement;
+          const target = document.getElementById(`input-grid-${rowIndex}-${colIndex - 1}`) as HTMLInputElement | HTMLTextAreaElement;
           target?.focus();
           target?.select?.();
         }
       }
     }
   }, [scores.length, entryMode]);
+
+  // Bulk Paste Matrix from Excel / Spreadsheet (Multi-Row & Multi-Column)
+  const handleBulkPaste = useCallback((
+    startRowIndex: number,
+    startColIndex: number,
+    rawClipboardText: string
+  ) => {
+    if (isReadOnly) {
+      toast.error('Tidak dapat menempel nilai: Anda berada dalam Mode Hanya Baca (Read-Only).');
+      return false;
+    }
+
+    if (!rawClipboardText || !rawClipboardText.trim()) {
+      return false;
+    }
+
+    // Standardize newlines and split into rows
+    const rawLines = rawClipboardText
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .split('\n');
+
+    // Remove trailing empty lines commonly generated by Excel
+    while (rawLines.length > 0 && rawLines[rawLines.length - 1].trim() === '') {
+      rawLines.pop();
+    }
+
+    if (rawLines.length === 0) return false;
+
+    // Parse into 2D string matrix
+    const rawMatrix: string[][] = rawLines.map((line) => line.split('\t').map((c) => c.trim()));
+
+    // Detect if pasted data includes student metadata columns (e.g. [No, NIS, Nama, S1, S2, S3, S4, SA, CP])
+    // If the 3rd column (index 2) is a student name (non-numeric text) and length >= 6, we know columns 0..2 are No/NIS/Nama!
+    let effectiveMatrix = rawMatrix;
+    let effectiveStartCol = startColIndex;
+
+    const looksLikeFullRow = rawMatrix.some((row) => 
+      row.length >= 6 && 
+      isNaN(Number(row[2].replace(',', '.'))) && 
+      row[2].length > 2 &&
+      (!isNaN(Number(row[3].replace(',', '.'))) || row[3] === '' || row[3] === '-')
+    );
+
+    if (looksLikeFullRow && startColIndex === 0) {
+      // Slicing out No, NIS, Nama so scores align directly with Sumatif 1 (index 0)
+      effectiveMatrix = rawMatrix.map((row) => (row.length >= 4 ? row.slice(3) : row));
+      effectiveStartCol = 0;
+    }
+
+    // Define editable fields
+    const editableFields: (keyof StudentScoreItem)[] =
+      entryMode === 'sumatif'
+        ? ['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_4', 'sumatif_akhir', 'deskripsi_cp']
+        : ['nilai', 'deskripsi'];
+
+    let updatedRowsCount = 0;
+    let maxColsAffected = 0;
+
+    setScores((prevScores) => {
+      const nextScores = [...prevScores];
+      const maxRows = nextScores.length;
+
+      effectiveMatrix.forEach((rowValues, rOffset) => {
+        const targetRow = startRowIndex + rOffset;
+        if (targetRow >= maxRows) return;
+
+        const currentRowObj = { ...nextScores[targetRow] };
+        let rowModified = false;
+
+        rowValues.forEach((cellVal, cOffset) => {
+          const targetColIndex = effectiveStartCol + cOffset;
+          if (targetColIndex >= editableFields.length) return;
+
+          const field = editableFields[targetColIndex];
+          if (!field) return;
+
+          // Numeric fields: parse and validate
+          if (['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_4', 'sumatif_akhir', 'nilai'].includes(field as string)) {
+            const cleanStr = cellVal.replace(',', '.');
+            if (cleanStr === '' || cleanStr === '-') {
+              currentRowObj[field] = null;
+              rowModified = true;
+            } else {
+              const num = parseFloat(cleanStr);
+              if (!isNaN(num)) {
+                // Clamp between 0 and 100
+                const clamped = Math.max(0, Math.min(100, Math.round(num * 10) / 10));
+                currentRowObj[field] = clamped;
+                rowModified = true;
+              }
+              // Skip if NaN (ignores header text or non-numeric strings)
+            }
+          } else {
+            // Text fields: deskripsi_cp or deskripsi
+            if (cellVal !== undefined) {
+              currentRowObj[field] = cellVal;
+              rowModified = true;
+            }
+          }
+
+          if (cOffset + 1 > maxColsAffected) {
+            maxColsAffected = cOffset + 1;
+          }
+        });
+
+        if (rowModified) {
+          nextScores[targetRow] = currentRowObj;
+          updatedRowsCount++;
+        }
+      });
+
+      return nextScores;
+    });
+
+    if (updatedRowsCount > 0) {
+      toast.success(
+        `Berhasil menempel ${updatedRowsCount} baris × ${maxColsAffected} kolom dari Excel!`,
+        { icon: '📋' }
+      );
+      return true;
+    }
+
+    return false;
+  }, [isReadOnly, entryMode]);
 
   // Color Coding Helper based on subject KKM threshold
   const getScoreInputStyle = useCallback((scoreVal: string | number | null) => {
@@ -553,6 +737,7 @@ export function useScoreSheetManager({
     kkmThreshold,
     handleKkmThresholdChange,
     handleScoreChange,
+    handleBulkPaste,
     handleCopyCpToAll,
     handleClearCpAll,
     handleKeyDownGrid,

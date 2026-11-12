@@ -552,6 +552,29 @@ export class CbtTestEngineService {
       throw err;
     }
 
+    // ── DIAGNOSIS 4B: NASKAH SOAL BELUM DIISI OLEH GURU PENGAMPU (DRAFT BANK SOAL) ──
+    if ((jadwal.BankSoal?.jumlah_soal || 0) === 0) {
+      const actualCount = await prisma.cbtSoal.count({
+        where: { tenant_id: tenantId, bank_soal_id: jadwal.bank_soal_id },
+      });
+      if (actualCount === 0) {
+        const guruLabel = jadwal.BankSoal?.Guru?.nama_guru
+          ? ` oleh guru pengampu (${jadwal.BankSoal.Guru.nama_guru})`
+          : ' oleh guru pengampu';
+        const err: any = new Error(
+          `Naskah butir soal untuk mata pelajaran "${mapelName}" belum diinput atau diterbitkan${guruLabel}. Silakan hubungi Panitia Ujian / Pengawas.`
+        );
+        err.statusCode = 400;
+        err.code = 'EXAM_QUESTIONS_EMPTY';
+        err.details = {
+          token: cleanToken,
+          mapel: mapelName,
+          hint: 'Naskah bank soal masih berstatus 0 butir. Guru pengampu perlu menginput butir soal sebelum ujian dapat dikerjakan siswa.',
+        };
+        throw err;
+      }
+    }
+
     // ── DIAGNOSIS 5: VALIDASI KELAS TARGET (SALAH MASUK KELAS/RUANG) ──
     const targetKelas = (jadwal.target_kelas_ids as string[]) || [];
     if (siswa.kelas_id && targetKelas.length > 0 && !targetKelas.includes(siswa.kelas_id)) {
@@ -914,6 +937,15 @@ export class CbtTestEngineService {
           opsi_jawaban_json: true,
         },
       });
+
+      if (soalList.length === 0) {
+        const err: any = new Error(
+          `Naskah butir soal untuk sesi ujian "${mapelName}" belum diinput oleh guru pengampu. Silakan laporkan kepada pengawas atau panitia CBT.`
+        );
+        err.statusCode = 400;
+        err.code = 'EXAM_QUESTIONS_EMPTY';
+        throw err;
+      }
 
       bundleData = {
         jadwal_id: jadwal.id,

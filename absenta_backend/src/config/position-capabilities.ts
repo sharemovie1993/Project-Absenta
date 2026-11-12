@@ -320,6 +320,12 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.update',
     'academic.students.send.access.token', // Pengiriman token & link aktivasi Parent App untuk siswa binaan
 
+    // Pengelolaan Pas Foto & Dokumen Digital Siswa Binaan
+    'documents.upload',
+    'documents.view.list',
+    'documents.view.detail',
+    'documents.delete',
+
     // Input Izin/Sakit/Dispen dari Ortu & Monitoring Presensi
     'attendance.getNotPresentStudents',   // Cek siswa belum masuk gerbang
     'attendance.markGateAbsence',         // Input Izin/Sakit/Dispen atas laporan ortu
@@ -373,6 +379,12 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.recap.view.daily',
     'attendance.recap.view.monthly',
     'attendance.reports.view',
+
+    // Pengelolaan Pas Foto & Dokumen Siswa
+    'documents.upload',
+    'documents.view.list',
+    'documents.view.detail',
+    'documents.delete',
 
     // Modul BK Khusus (Kerahasiaan Tinggi)
     'bk.cases.view.list',
@@ -451,6 +463,12 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.teachers.view.list',
     'academic.teachers.view.detail',
     'academic.manage.academic',
+
+    // Pengelolaan Pas Foto & Dokumen Siswa Jurusan
+    'documents.upload',
+    'documents.view.list',
+    'documents.view.detail',
+    'documents.delete',
 
     // Operasional & Manajemen PKL Jurusan
     'hubin.pkl.view.list',
@@ -598,6 +616,14 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.view.list',
     'academic.students.view.detail',
     'academic.students.view.history',
+    'academic.students.update',
+    'academic.students.manage',
+
+    // Pengelolaan Pas Foto & Dokumen Digital Siswa
+    'documents.upload',
+    'documents.view.list',
+    'documents.view.detail',
+    'documents.delete',
     'academic.teachers.view.list',
     'academic.structures.view.list',
     'academic.activities.types.view',

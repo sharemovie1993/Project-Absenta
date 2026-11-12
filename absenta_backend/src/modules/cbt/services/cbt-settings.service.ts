@@ -13,6 +13,7 @@ export interface CbtEventItem {
   lock_teacher_scheduling: boolean;
   token_refresh_interval?: number;
   strict_browser_guard: boolean;
+  enable_proctor?: boolean;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
@@ -58,7 +59,7 @@ export class CbtSettingsService {
         tipe_pelaksanaan: 'MASSAL',
         keterangan: 'Asesmen massal akhir semester ganjil untuk seluruh angkatan.',
         lock_teacher_scheduling: true,
-        token_refresh_interval: 15,
+        token_refresh_interval: 0,
         strict_browser_guard: true,
         is_active: true,
         created_at: now,
@@ -73,7 +74,7 @@ export class CbtSettingsService {
         target_tingkat: [10, 11],
         keterangan: 'Asesmen tengah semester ganjil khusus tingkat 10 dan 11.',
         lock_teacher_scheduling: true,
-        token_refresh_interval: 15,
+        token_refresh_interval: 0,
         strict_browser_guard: true,
         is_active: false,
         created_at: now,
@@ -88,7 +89,7 @@ export class CbtSettingsService {
         target_tingkat: [10, 11],
         keterangan: 'Asesmen tengah semester genap (kelas 12 sedang persiapan PSAJ / PKL).',
         lock_teacher_scheduling: true,
-        token_refresh_interval: 15,
+        token_refresh_interval: 0,
         strict_browser_guard: true,
         is_active: false,
         created_at: now,
@@ -103,7 +104,7 @@ export class CbtSettingsService {
         target_tingkat: [12],
         keterangan: 'Ujian kelulusan akhir jenjang khusus tingkat 12.',
         lock_teacher_scheduling: true,
-        token_refresh_interval: 15,
+        token_refresh_interval: 0,
         strict_browser_guard: true,
         is_active: false,
         created_at: now,
@@ -229,8 +230,9 @@ export class CbtSettingsService {
       tipe_pelaksanaan: payload.tipe_pelaksanaan || 'MASSAL',
       keterangan: payload.keterangan || '',
       lock_teacher_scheduling: payload.lock_teacher_scheduling ?? true,
-      token_refresh_interval: payload.token_refresh_interval ?? 15,
+      token_refresh_interval: payload.token_refresh_interval ?? 0,
       strict_browser_guard: payload.strict_browser_guard ?? true,
+      enable_proctor: payload.enable_proctor ?? false,
       is_active: payload.is_active ?? false,
       created_at: payload.created_at || now,
       updated_at: now,

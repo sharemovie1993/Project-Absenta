@@ -27,6 +27,7 @@ const AttendanceSettingsForm = lazy(() => import('@/components/settings/Attendan
 const TenantAttendanceForm = lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
 const EasyTunnelPage = lazy(() => import('../system/EasyTunnelPage'));
 const SystemUpdatePage = lazy(() => import('./SystemUpdatePage'));
+const DemoProfilesMappingForm = lazy(() => import('@/components/settings/DemoProfilesMappingForm'));
 
 export interface UniversalSettingsViewProps {
   hideLayout?: boolean;
@@ -288,6 +289,7 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
         ...(!isCloudVpsPublic ? [{ id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }] : []),
       ];
       if (can('core.sekolah.update.profile') || isAdmin) {
+        list.push({ id: 'demo_profiles', label: 'Akun Demo & Quick Login' });
         list.push({ id: 'system_update', label: 'Peralatan Sistem' });
       }
       return list;
@@ -302,6 +304,7 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
       { id: 'notifications', label: 'Notifikasi' },
       { id: 'attendance', label: 'Absensi' },
       ...(!isCloudVpsPublic ? [{ id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }] : []),
+      { id: 'demo_profiles', label: 'Akun Demo & Quick Login' },
       { id: 'system_update', label: 'Peralatan Sistem' },
     ];
     return list;
@@ -315,7 +318,7 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
   }, [tabs, activeTab]);
 
   const showSaveButton = canEdit && (
-    (isSuperAdminUser && activeTab !== 'easy_tunnel' && activeTab !== 'system_update') ||
+    (isSuperAdminUser && activeTab !== 'easy_tunnel' && activeTab !== 'system_update' && activeTab !== 'demo_profiles') ||
     (isTenantUser && activeTab === 'attendance' && canEditAttendanceSettings)
   );
 
@@ -412,6 +415,10 @@ const SettingsPage: React.FC<UniversalSettingsViewProps> = ({
       ) : activeTab === 'system_update' ? (
         <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
           <SystemUpdatePage isTab={true} />
+        </Suspense>
+      ) : activeTab === 'demo_profiles' ? (
+        <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
+          <DemoProfilesMappingForm readOnly={!canEdit} />
         </Suspense>
       ) : (
         <SectionCard fullWidth className="flex flex-col w-full min-w-0">

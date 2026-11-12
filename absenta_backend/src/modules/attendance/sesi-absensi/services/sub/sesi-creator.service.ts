@@ -276,10 +276,11 @@ export class SesiCreatorService {
     const resolvedUnitPengajaranId: string | null = payload.unit_pengajaran_id || jadwalUnitPengajaranId || null;
 
     // 🛡️ IDEMPOTENCY GUARD: Prevent duplicate session creation for same schedule slot / unit & date
-    const startOfDay = new Date(sessionDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const endOfDay = new Date(sessionDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    const tz = await getTenantTimezone(tenantId);
+    const tzOffset = getTenantOffsetString(tz);
+    const dateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(sessionDate);
+    const startOfDay = new Date(`${dateStr}T00:00:00.000${tzOffset}`);
+    const endOfDay = new Date(`${dateStr}T23:59:59.999${tzOffset}`);
 
     const matchingSesis = await (prisma.sesiAbsensi as any).findMany({
       where: {
@@ -309,8 +310,6 @@ export class SesiCreatorService {
     const existingSesi = matchingSesis[0] || null;
     const latestMatchedSesi = matchingSesis.length > 1 ? matchingSesis[matchingSesis.length - 1] : existingSesi;
 
-    const tz = await getTenantTimezone(tenantId);
-
     if (existingSesi) {
       if (existingSesi.status === 'SELESAI') {
         throw new Error('Sesi KBM telah selesai. Tidak dapat membuka kembali sesi yang sudah ditutup.');
@@ -319,7 +318,6 @@ export class SesiCreatorService {
         throw new Error('Jadwal sesi KBM telah terlewat dan ditutup. Anda tidak dapat lagi membuka sesi yang sudah terlewat.');
       }
 
-      const tzOffset = getTenantOffsetString(tz);
       const now = new Date();
       const startTarget = existingSesi.waktu_mulai || (waktu_mulai ? parseSafeDate(waktu_mulai, tzOffset) : now);
       const endTarget = latestMatchedSesi?.waktu_selesai || existingSesi.waktu_selesai || (waktu_selesai ? parseSafeDate(waktu_selesai, tzOffset) : null);
@@ -355,7 +353,6 @@ export class SesiCreatorService {
       return existingSesi;
     }
 
-    const tzOffset = getTenantOffsetString(tz);
     const parsedStart = waktu_mulai ? parseSafeDate(waktu_mulai, tzOffset) : new Date();
     const parsedEnd = waktu_selesai ? parseSafeDate(waktu_selesai, tzOffset) : null;
     const now = new Date();

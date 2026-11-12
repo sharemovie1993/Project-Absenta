@@ -35,7 +35,48 @@ export interface ExamDayConfig {
 }
 
 /**
- * Key matrix: `${day_index}_${session_index}_${tingkat}` => bank_soal_id
+ * Konfigurasi Slot Multi-Jurusan (DDPK / Produktif Kejuruan).
+ * Memetakan kode_jurusan atau jurusan_id -> bank_soal_id (atau auto_mapel_id).
+ */
+export interface MultiJurusanSlotConfig {
+  title?: string; // Misal: "DDPK Kejuruan" atau "Mapel Produktif"
+  assignments: Record<string, string>; // kode_jurusan / jurusan_id -> bank_soal_id
+}
+
+export const MULTI_JURUSAN_PREFIX = '__MULTI_JURUSAN__:';
+
+export function isMultiJurusanSlot(value?: string | null): boolean {
+  if (!value || typeof value !== 'string') return false;
+  return value.startsWith(MULTI_JURUSAN_PREFIX);
+}
+
+export function serializeMultiJurusanSlot(config: MultiJurusanSlotConfig): string {
+  return `${MULTI_JURUSAN_PREFIX}${JSON.stringify(config)}`;
+}
+
+export function parseMultiJurusanSlot(value?: string | null): MultiJurusanSlotConfig | null {
+  if (!isMultiJurusanSlot(value)) return null;
+  try {
+    const jsonStr = (value as string).slice(MULTI_JURUSAN_PREFIX.length);
+    return JSON.parse(jsonStr);
+  } catch (err) {
+    console.error('Failed to parse multi-jurusan slot config:', err);
+    return null;
+  }
+}
+
+export function extractAllBankIdsFromMatrixValue(val?: string | null): string[] {
+  if (!val) return [];
+  if (isMultiJurusanSlot(val)) {
+    const parsed = parseMultiJurusanSlot(val);
+    if (!parsed?.assignments) return [];
+    return Object.values(parsed.assignments).filter(Boolean);
+  }
+  return [val];
+}
+
+/**
+ * Key matrix: `${day_index}_${session_index}_${tingkat}` => bank_soal_id atau serialized MultiJurusanSlotConfig
  */
 export type TimetableMatrixState = Record<string, string>;
 
@@ -114,13 +155,24 @@ export function generateClassRoomMappings(
     const slotCode = `${prefix}${numStr}`;
     const roomName = `Ruang ${numStr}`;
 
+    const jurKode =
+      k.Jurusan?.kode ||
+      k.Jurusan?.singkatan ||
+      k.Jurusan?.kode_jurusan ||
+      (k.nama_kelas ? k.nama_kelas.match(/\b(AKL|AK|TKJ|TKR|TSM|TP|TM|KUL|PHT|HTL|TOI|TAV|TE|TO)\b/i)?.[1]?.toUpperCase() : undefined);
+    const jurNama =
+      k.Jurusan?.nama ||
+      k.Jurusan?.nama_jurusan ||
+      k.Jurusan?.singkatan ||
+      jurKode;
+
     return {
       kelas_id: k.id,
       nama_kelas: k.nama_kelas || k.nama || `Kelas ${idx + 1}`,
       tingkat: Number(k.tingkat) || 10,
       jurusan_id: k.jurusan_id,
-      kode_jurusan: k.Jurusan?.kode_jurusan || k.Jurusan?.singkatan,
-      nama_jurusan: k.Jurusan?.nama_jurusan,
+      kode_jurusan: jurKode,
+      nama_jurusan: jurNama,
       slot_ruang: slotCode,
       nama_ruang: roomName,
       kapasitas: k.kapasitas || 36,
@@ -268,22 +320,45 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
         }
 
         const matrixKey = `${day.day_index}_${session.session_index}_${tingkat}`;
-        const bankSoalId = matrix[matrixKey];
-        if (!bankSoalId) return;
+        const rawBankVal = matrix[matrixKey];
+        if (!rawBankVal) return;
 
-        const bank = bankMap.get(bankSoalId);
-        if (!bank) return;
-
-        const mapelName = bank.Mapel?.nama_mapel || bank.MataPelajaran?.nama_mapel || bank.judul;
         const classesInTingkat = groupedRoomsByTingkat.get(tingkat) || [];
         if (classesInTingkat.length === 0) return;
 
         const startIso = localDateTimeInputToISO(`${day.tanggal}T${session.jam_mulai}`);
         const endIso = localDateTimeInputToISO(`${day.tanggal}T${session.jam_selesai}`);
 
-        if (generationMode === 'per_rombel_ruang') {
-          // OPSI A (KONTRAK RESMI KELAS-CENTRIK): 1 Jadwal Ujian untuk setiap Ruang/Rombel
+        const isMulti = isMultiJurusanSlot(rawBankVal);
+
+        if (isMulti) {
+          // ========================================================
+          // OPSI MULTI-JURUSAN (DDPK Kelas 10 / Produktif Kelas 11-12)
+          // Memetakan masing-masing rombel ke bank soal jurusannya masing-masing
+          // ========================================================
+          const multiConfig = parseMultiJurusanSlot(rawBankVal);
+          const assignments = multiConfig?.assignments || {};
+
           classesInTingkat.forEach((cls) => {
+            let targetBankId =
+              (cls.kode_jurusan && assignments[cls.kode_jurusan]) ||
+              (cls.jurusan_id && assignments[cls.jurusan_id]);
+
+            if (!targetBankId) {
+              const matchedKey = Object.keys(assignments).find((jKey) => {
+                if (!jKey) return false;
+                const reg = new RegExp(`\\b${jKey}\\b`, 'i');
+                return reg.test(cls.nama_kelas);
+              });
+              if (matchedKey) targetBankId = assignments[matchedKey];
+            }
+
+            if (!targetBankId) return;
+
+            const bank = bankMap.get(targetBankId);
+            if (!bank) return;
+
+            const mapelName = bank.Mapel?.nama_mapel || bank.MataPelajaran?.nama_mapel || bank.judul;
             const rMapping = roomMapByKelasId.get(cls.kelas_id);
             const slotRuang = rMapping?.slot_ruang || `R.01`;
             const namaRuang = rMapping?.nama_ruang || slotRuang;
@@ -316,45 +391,87 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
             });
           });
         } else {
-          // OPSI B: 1 Jadwal Terpadu per Tingkat (Disertai Peta Ruang Fisik per Rombel Siswa)
-          const kelasRoomMap: Record<string, { slot_ruang: string; nama_ruang: string }> = {};
-          classesInTingkat.forEach((cls) => {
-            const rMapping = roomMapByKelasId.get(cls.kelas_id);
-            if (rMapping) {
-              kelasRoomMap[cls.kelas_id] = {
-                slot_ruang: rMapping.slot_ruang,
-                nama_ruang: rMapping.nama_ruang,
-              };
-            }
-          });
+          // OPSI STANDAR (MAPEL UMUM PARALEL SETINGKAT)
+          const bank = bankMap.get(rawBankVal);
+          if (!bank) return;
 
-          payloads.push({
-            bank_soal_id: bank.id,
-            tahun_pelajaran_id: activeTpId,
-            semester_id: activeSemId,
-            nama_sesi: `${normalizedPrefix} - ${mapelName} (Tingkat ${tingkat} - ${session.nama_sesi})`,
-            tanggal_mulai: startIso,
-            tanggal_selesai: endIso,
-            durasi_menit: session.durasi_menit || bank.alokasi_menit || 90,
-            toleransi_terlambat_menit: toleransiTerlambatMenit,
-            target_kelas_ids: classesInTingkat.map((c) => c.kelas_id),
-            setting_keamanan: {
-              lock_device: true,
-              block_tab_switch: true,
-              max_violations: 3,
-              shuffle_questions: true,
-              shuffle_options: true,
-              show_result_instant: false,
-              auto_transfer_rapor: false,
-              kelas_room_map: kelasRoomMap,
-              room_mappings: kelasRoomMap,
-              ruang_ujian: 'Multi-Ruang Kelas',
-              nama_sesi_waktu: session.nama_sesi,
-              token_refresh_interval: tokenRefreshInterval,
-              strict_browser_guard: strictBrowserGuard,
-              event_id: eventId,
-            },
-          });
+          const mapelName = bank.Mapel?.nama_mapel || bank.MataPelajaran?.nama_mapel || bank.judul;
+
+          if (generationMode === 'per_rombel_ruang') {
+            // OPSI A (KONTRAK RESMI KELAS-CENTRIK): 1 Jadwal Ujian untuk setiap Ruang/Rombel
+            classesInTingkat.forEach((cls) => {
+              const rMapping = roomMapByKelasId.get(cls.kelas_id);
+              const slotRuang = rMapping?.slot_ruang || `R.01`;
+              const namaRuang = rMapping?.nama_ruang || slotRuang;
+
+              payloads.push({
+                bank_soal_id: bank.id,
+                tahun_pelajaran_id: activeTpId,
+                semester_id: activeSemId,
+                nama_sesi: `${normalizedPrefix} - ${mapelName} (${cls.nama_kelas} - ${slotRuang})`,
+                tanggal_mulai: startIso,
+                tanggal_selesai: endIso,
+                durasi_menit: session.durasi_menit || bank.alokasi_menit || 90,
+                toleransi_terlambat_menit: toleransiTerlambatMenit,
+                target_kelas_ids: [cls.kelas_id],
+                setting_keamanan: {
+                  lock_device: true,
+                  block_tab_switch: true,
+                  max_violations: 3,
+                  shuffle_questions: true,
+                  shuffle_options: true,
+                  show_result_instant: false,
+                  auto_transfer_rapor: false,
+                  ruang_ujian: slotRuang,
+                  ruang_ujian_nama: namaRuang,
+                  nama_sesi_waktu: session.nama_sesi,
+                  token_refresh_interval: tokenRefreshInterval,
+                  strict_browser_guard: strictBrowserGuard,
+                  event_id: eventId,
+                },
+              });
+            });
+          } else {
+            // OPSI B: 1 Jadwal Terpadu per Tingkat (Disertai Peta Ruang Fisik per Rombel Siswa)
+            const kelasRoomMap: Record<string, { slot_ruang: string; nama_ruang: string }> = {};
+            classesInTingkat.forEach((cls) => {
+              const rMapping = roomMapByKelasId.get(cls.kelas_id);
+              if (rMapping) {
+                kelasRoomMap[cls.kelas_id] = {
+                  slot_ruang: rMapping.slot_ruang,
+                  nama_ruang: rMapping.nama_ruang,
+                };
+              }
+            });
+
+            payloads.push({
+              bank_soal_id: bank.id,
+              tahun_pelajaran_id: activeTpId,
+              semester_id: activeSemId,
+              nama_sesi: `${normalizedPrefix} - ${mapelName} (Tingkat ${tingkat} - ${session.nama_sesi})`,
+              tanggal_mulai: startIso,
+              tanggal_selesai: endIso,
+              durasi_menit: session.durasi_menit || bank.alokasi_menit || 90,
+              toleransi_terlambat_menit: toleransiTerlambatMenit,
+              target_kelas_ids: classesInTingkat.map((c) => c.kelas_id),
+              setting_keamanan: {
+                lock_device: true,
+                block_tab_switch: true,
+                max_violations: 3,
+                shuffle_questions: true,
+                shuffle_options: true,
+                show_result_instant: false,
+                auto_transfer_rapor: false,
+                kelas_room_map: kelasRoomMap,
+                room_mappings: kelasRoomMap,
+                ruang_ujian: 'Multi-Ruang Kelas',
+                nama_sesi_waktu: session.nama_sesi,
+                token_refresh_interval: tokenRefreshInterval,
+                strict_browser_guard: strictBrowserGuard,
+                event_id: eventId,
+              },
+            });
+          }
         }
       });
     });
@@ -377,16 +494,29 @@ export interface PersistedMatrixState {
 
 const MATRIX_STORAGE_PREFIX = 'absenta_cbt_matrix_state_';
 
-export function getStorageKeyMatrix(tenantId?: string, tpId?: string, semId?: string): string {
-  return `${MATRIX_STORAGE_PREFIX}${tenantId || 'global'}_${tpId || 'tp'}_${semId || 'sem'}`;
+export function getStorageKeyMatrix(
+  tenantId?: string,
+  tpId?: string,
+  semId?: string,
+  eventId?: string
+): string {
+  const base = `${MATRIX_STORAGE_PREFIX}${tenantId || 'global'}_${tpId || 'tp'}_${semId || 'sem'}`;
+  return eventId ? `${base}_${eventId}` : base;
 }
 
 export function loadPersistedMatrixState(
   tenantId?: string,
   tpId?: string,
-  semId?: string
+  semId?: string,
+  eventId?: string
 ): PersistedMatrixState | null {
   try {
+    // 1. Coba baca state spesifik event jika eventId ada
+    if (eventId) {
+      const specificRaw = localStorage.getItem(getStorageKeyMatrix(tenantId, tpId, semId, eventId));
+      if (specificRaw) return JSON.parse(specificRaw);
+    }
+    // 2. Fallback ke state umum per TP/Semester
     const raw = localStorage.getItem(getStorageKeyMatrix(tenantId, tpId, semId));
     if (!raw) return null;
     return JSON.parse(raw);
@@ -404,14 +534,20 @@ export function savePersistedMatrixState(
   },
   tenantId?: string,
   tpId?: string,
-  semId?: string
+  semId?: string,
+  eventId?: string
 ): void {
   try {
     const data: PersistedMatrixState = {
       ...payload,
       savedAt: Date.now(),
     };
-    localStorage.setItem(getStorageKeyMatrix(tenantId, tpId, semId), JSON.stringify(data));
+    const key = getStorageKeyMatrix(tenantId, tpId, semId, eventId);
+    localStorage.setItem(key, JSON.stringify(data));
+    // Jika ada eventId, simpan juga salinan fallback ke key umum agar kompatibel
+    if (eventId) {
+      localStorage.setItem(getStorageKeyMatrix(tenantId, tpId, semId), JSON.stringify(data));
+    }
   } catch (err) {
     console.warn('Gagal menyimpan matriks ke localStorage:', err);
   }
@@ -419,18 +555,20 @@ export function savePersistedMatrixState(
 
 /**
  * Rekonstruksi otomatis matriks dari jadwal yang sudah pernah diterbitkan di database
+ * Sekaligus menyinkronkan jam mulai, jam selesai, dan durasi menit sesi dari DB.
  */
 export function reconstructMatrixFromExistingSchedules(
   existingSchedules: any[],
-  days: ExamDayConfig[],
+  baseDays: ExamDayConfig[],
   bankList: CbtBankSoal[]
-): TimetableMatrixState {
+): { matrix: TimetableMatrixState; days: ExamDayConfig[] } {
   if (!existingSchedules || !Array.isArray(existingSchedules) || existingSchedules.length === 0) {
-    return {};
+    return { matrix: {}, days: baseDays || [] };
   }
 
   const bankMap = new Map(bankList.map((b) => [b.id, b]));
   const reconstructed: TimetableMatrixState = {};
+  const workingDays: ExamDayConfig[] = JSON.parse(JSON.stringify(baseDays || []));
 
   existingSchedules.forEach((j) => {
     if (!j.bank_soal_id || !j.tanggal_mulai) return;
@@ -447,18 +585,18 @@ export function reconstructMatrixFromExistingSchedules(
     const dt = String(jDate.getDate()).padStart(2, '0');
     const jDateStr = `${y}-${m}-${dt}`;
 
-    let targetDay = days.find((d) => d.tanggal === jDateStr);
+    let targetDay = workingDays.find((d) => d.tanggal === jDateStr);
     if (!targetDay) {
       const indonesianDays = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
       targetDay = {
-        day_index: days.length + 1,
-        nama_hari: indonesianDays[jDate.getDay()] || `Hari ke-${days.length + 1}`,
+        day_index: workingDays.length + 1,
+        nama_hari: indonesianDays[jDate.getDay()] || `Hari ke-${workingDays.length + 1}`,
         tanggal: jDateStr,
         sessions: [],
       };
-      days.push(targetDay);
-      days.sort((a, b) => a.tanggal.localeCompare(b.tanggal));
-      days.forEach((d, idx) => {
+      workingDays.push(targetDay);
+      workingDays.sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+      workingDays.forEach((d, idx) => {
         d.day_index = idx + 1;
       });
     }
@@ -466,28 +604,30 @@ export function reconstructMatrixFromExistingSchedules(
     const sec = j.setting_keamanan as any;
     const sessLabel = sec?.nama_sesi_waktu;
 
+    const h = String(jDate.getHours()).padStart(2, '0');
+    const min = String(jDate.getMinutes()).padStart(2, '0');
+    const jTime = `${h}:${min}`;
+
+    const endDate = j.tanggal_selesai ? new Date(j.tanggal_selesai) : null;
+    const endH = endDate ? String(endDate.getHours()).padStart(2, '0') : '09';
+    const endMin = endDate ? String(endDate.getMinutes()).padStart(2, '0') : '00';
+    const endJTime = `${endH}:${endMin}`;
+
     let matchedSess = targetDay.sessions.find((s) => s.nama_sesi === sessLabel);
     if (!matchedSess) {
       // Cocokkan jam mulai HH:MM
-      const h = String(jDate.getHours()).padStart(2, '0');
-      const min = String(jDate.getMinutes()).padStart(2, '0');
-      const jTime = `${h}:${min}`;
       matchedSess = targetDay.sessions.find((s) => s.jam_mulai === jTime);
     }
 
-    if (!matchedSess) {
+    if (matchedSess) {
+      // SINKRONISASI JAM DARI DATABASE: Pastikan jam sesi mengikuti jadwal yang terbit di DB
+      matchedSess.jam_mulai = jTime;
+      matchedSess.jam_selesai = endJTime;
+      matchedSess.durasi_menit = j.durasi_menit || matchedSess.durasi_menit || 90;
+    } else {
       // Rekonstruksi slot sesi baru jika belum ada di targetDay
       const sessMatch = (sessLabel || j.nama_sesi || '').match(/Sesi\s*(\d+)/i);
       const sessIdx = sessMatch ? parseInt(sessMatch[1], 10) : (targetDay.sessions.length + 1);
-
-      const h = String(jDate.getHours()).padStart(2, '0');
-      const min = String(jDate.getMinutes()).padStart(2, '0');
-      const jTime = `${h}:${min}`;
-
-      const endDate = j.tanggal_selesai ? new Date(j.tanggal_selesai) : null;
-      const endH = endDate ? String(endDate.getHours()).padStart(2, '0') : '09';
-      const endMin = endDate ? String(endDate.getMinutes()).padStart(2, '0') : '00';
-      const endJTime = `${endH}:${endMin}`;
 
       matchedSess = {
         session_index: sessIdx,
@@ -502,11 +642,37 @@ export function reconstructMatrixFromExistingSchedules(
 
     if (matchedSess) {
       const key = `${targetDay.day_index}_${matchedSess.session_index}_${tingkat}`;
-      reconstructed[key] = j.bank_soal_id;
+      const existingVal = reconstructed[key];
+      if (!existingVal) {
+        reconstructed[key] = j.bank_soal_id;
+      } else if (existingVal !== j.bank_soal_id) {
+        // Multi-jurusan terdeteksi (ada beberapa bank soal berbeda dalam 1 slot tingkat & sesi yang sama)
+        let multiConfig = parseMultiJurusanSlot(existingVal);
+        if (!multiConfig) {
+          multiConfig = {
+            title: 'DDPK / Produktif Kejuruan',
+            assignments: {},
+          };
+          const firstBank = bankMap.get(existingVal);
+          const firstJur = firstBank?.jurusan;
+          if (firstJur) {
+            multiConfig.assignments[firstJur] = existingVal;
+          }
+        }
+
+        const { rombel } = parseScheduleRoomAndClass(j);
+        const thisBank = bankMap.get(j.bank_soal_id);
+        const jurCode = thisBank?.jurusan || (rombel.split(' ')[1] || '').trim();
+        if (jurCode) {
+          multiConfig.assignments[jurCode] = j.bank_soal_id;
+        }
+
+        reconstructed[key] = serializeMultiJurusanSlot(multiConfig);
+      }
     }
   });
 
-  return reconstructed;
+  return { matrix: reconstructed, days: workingDays };
 }
 
 // ==========================================

@@ -63,29 +63,62 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
     });
     const slug = tenant?.subdomain?.toLowerCase();
 
-    // 2. Fetch remote subscriptions using 2-Tier protocol (Host Key + Tenant Slug)
+    // 2. Fetch remote subscriptions using 2-Tier protocol (Host Key + Tenant Subscriptions Keys + Tenant Slug)
+    const candidateKeys = new Set<string>();
+    if (licenseKey && licenseKey.trim()) candidateKeys.add(licenseKey.trim());
+
+    // Gather package-specific license keys saved in tenant's subscriptions
+    try {
+      const existingSubs = await prisma.subscription.findMany({
+        where: { tenant_id: tenantId },
+        select: { pricing_meta: true }
+      });
+      for (const s of existingSubs) {
+        const pm: any = s.pricing_meta;
+        if (pm?.license_key && typeof pm.license_key === 'string' && pm.license_key.trim()) {
+          candidateKeys.add(pm.license_key.trim());
+        }
+        if (Array.isArray(pm?.cycles)) {
+          for (const c of pm.cycles) {
+            if (c?.license_key && typeof c.license_key === 'string' && c.license_key.trim()) {
+              candidateKeys.add(c.license_key.trim());
+            }
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn('[SYNC SUBSCRIPTION] Warning reading existing subscription keys:', e.message);
+    }
+
     let remoteSubs: any[] = [];
     let isLicenseRevokedOrNotFound = false;
+    const seenRemoteSubIds = new Set<string>();
 
-    try {
-      const response = await axios.get(
-        `${LICENSE_SERVER_URL}/api/license/my-subscriptions/${licenseKey.trim()}${slug ? `?tenant_slug=${slug}` : ''}`,
-        { timeout: 2500 }
-      );
-      if (response.data && response.data.success && Array.isArray(response.data.data)) {
-        remoteSubs = response.data.data;
+    for (const key of candidateKeys) {
+      try {
+        const response = await axios.get(
+          `${LICENSE_SERVER_URL}/api/license/my-subscriptions/${key.trim()}${slug ? `?tenant_slug=${slug}` : ''}`,
+          { timeout: 2500 }
+        );
+        if (response.data && response.data.success && Array.isArray(response.data.data)) {
+          for (const sub of response.data.data) {
+            if (sub?.id && !seenRemoteSubIds.has(sub.id)) {
+              seenRemoteSubIds.add(sub.id);
+              remoteSubs.push(sub);
+            }
+          }
+        }
+      } catch (fetchErr: any) {
+        if (fetchErr.response && fetchErr.response.status === 404) {
+          console.warn(`[SYNC SUBSCRIPTION] Key ${key} returned 404 from license server.`);
+        } else {
+          console.error(`[SYNC SUBSCRIPTION] Error reaching license server for key ${key}: ${fetchErr.message}`);
+        }
       }
-    } catch (fetchErr: any) {
-      if (fetchErr.response && fetchErr.response.status === 404) {
-        // License key atau tenant telah DIHAPUS / DICABUT dari Server Lisensi
-        console.warn(`[SYNC SUBSCRIPTION] License key or tenant returned 404 Not Found from license server. Flagging as revoked/pruned.`);
-        isLicenseRevokedOrNotFound = true;
-        remoteSubs = [];
-      } else {
-        // Gangguan koneksi internet atau server lisensi temporary error -> offline tolerance
-        console.error(`[SYNC SUBSCRIPTION] Temporary error reaching license server: ${fetchErr.message}`);
-        return;
-      }
+    }
+
+    if (remoteSubs.length === 0 && candidateKeys.size > 0) {
+      isLicenseRevokedOrNotFound = false; // Graceful offline/not found tolerance
     }
 
     // 3. Get all pricing plans from server without product_id filter to include all packages

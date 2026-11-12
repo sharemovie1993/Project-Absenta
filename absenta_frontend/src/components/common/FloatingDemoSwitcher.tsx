@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Sparkles, 
   ChevronUp, 
@@ -22,13 +23,15 @@ import {
   ShieldCheck,
   UserCheck,
   GraduationCap,
-  Smartphone
+  Smartphone,
+  Settings2
 } from 'lucide-react';
 import { 
   DEMO_ROLE_PROFILES, 
   DEMO_CATEGORIES, 
   type DemoRoleProfile 
 } from '@/config/demoProfiles.config';
+import { getPublicDemoProfiles, demoQuickLogin } from '@/api/demoProfiles.api';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -59,6 +62,25 @@ export const FloatingDemoSwitcher: React.FC = () => {
 
   const { isAuthenticated, user, loginAction, logout } = useAuthStore();
 
+  const currentTenantId = typeof window !== 'undefined' ? (localStorage.getItem('tenant_id') || undefined) : undefined;
+  const { data: publicProfilesRes } = useQuery({
+    queryKey: ['public-demo-profiles', currentTenantId],
+    queryFn: () => getPublicDemoProfiles(currentTenantId),
+    staleTime: 60 * 1000,
+  });
+
+  const availableProfiles: DemoRoleProfile[] = useMemo(() => {
+    if (publicProfilesRes?.profiles && Array.isArray(publicProfilesRes.profiles) && publicProfilesRes.profiles.length > 0) {
+      return publicProfilesRes.profiles.filter((p: DemoRoleProfile) => p.isActive !== false);
+    }
+    return DEMO_ROLE_PROFILES;
+  }, [publicProfilesRes]);
+
+  const isAdminUser = useMemo(() => {
+    const roleName = user?.role?.name?.toLowerCase() || '';
+    return roleName.includes('admin') || roleName.includes('super') || (user as any)?.is_super_admin === true;
+  }, [user]);
+
   const isDemoSession = useMemo(() => {
     if (typeof window === 'undefined') return false;
     const isSessionDemo = sessionStorage.getItem('is_demo_session') === 'true';
@@ -86,7 +108,7 @@ export const FloatingDemoSwitcher: React.FC = () => {
       : DEMO_CATEGORIES.filter(c => c.id === selectedCategory);
 
     return targetCategories.map(cat => {
-      let profiles = DEMO_ROLE_PROFILES.filter(p => p.category === cat.id);
+      let profiles = availableProfiles.filter(p => p.category === cat.id);
       if (query) {
         profiles = profiles.filter(p =>
           p.title.toLowerCase().includes(query) ||
@@ -96,7 +118,7 @@ export const FloatingDemoSwitcher: React.FC = () => {
       }
       return { ...cat, profiles };
     }).filter(g => g.profiles.length > 0);
-  }, [selectedCategory, searchQuery]);
+  }, [availableProfiles, selectedCategory, searchQuery]);
 
   if (!isAuthenticated || !isDemoSession) {
     return null;
@@ -113,11 +135,9 @@ export const FloatingDemoSwitcher: React.FC = () => {
       const currentTenantId = localStorage.getItem('tenant_id') || '2acb7e12-d264-4784-8262-8f7369061542';
       const devTenantArg = (isDevMode && isLocalhostLogin) ? currentTenantId : '2acb7e12-d264-4784-8262-8f7369061542';
 
-      // 1. Silent logout
-      logout();
-
-      // Jika profil Orang Tua -> Gunakan Magic Token Access
+      // 1. Jika profil Orang Tua -> Gunakan Magic Token Access
       if (profile.roleCode === 'ORANG_TUA' || profile.id === 'demo-ortu') {
+        logout();
         const parentMagicToken = 'absenta-demo-parent-magic-token-2026';
         localStorage.setItem('parent_access_token', parentMagicToken);
         sessionStorage.setItem('is_demo_session', 'true');
@@ -128,17 +148,48 @@ export const FloatingDemoSwitcher: React.FC = () => {
         return;
       }
 
-      // 2. Set new demo session data
+      // 2. Coba 1-Click passwordless Demo Login Endpoint (Mendukung Akun Guru Terpetakan)
+      try {
+        const demoRes = await demoQuickLogin(profile.id, devTenantArg);
+        if (demoRes?.success && demoRes?.data?.token) {
+          const { token, refreshToken, user: authUser } = demoRes.data;
+          localStorage.setItem('access_token', token);
+          if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+          if (authUser?.tenant_id) localStorage.setItem('tenant_id', authUser.tenant_id);
+
+          sessionStorage.setItem('is_demo_session', 'true');
+          sessionStorage.setItem('demo_active_role', profile.title);
+          sessionStorage.setItem('demo_active_name', profile.simulatedName);
+
+          useAuthStore.setState({
+            token,
+            refreshToken,
+            user: authUser,
+            tenantId: authUser?.tenant_id || null,
+            isAuthenticated: true,
+          });
+
+          toast.success(`Berhasil masuk sebagai ${profile.simulatedName} (${profile.title})!`, { id: 'switch-demo' });
+          setIsOpen(false);
+          let targetPath = '/dashboard';
+          if (profile.roleCode === 'ORANG_TUA') targetPath = '/parent-app';
+          window.location.href = targetPath;
+          return;
+        }
+      } catch (quickErr) {
+        console.warn('[FloatingDemoSwitcher] demoQuickLogin fallback ke loginAction:', quickErr);
+      }
+
+      // 3. Fallback jika offline atau akun simulasi lokal
+      logout();
       sessionStorage.setItem('is_demo_session', 'true');
       sessionStorage.setItem('demo_active_role', profile.title);
       sessionStorage.setItem('demo_active_name', profile.simulatedName);
-
-      // 3. Login with target demo profile
       await loginAction(profile.email, profile.password || 'password123', devTenantArg);
       toast.success(`Berhasil masuk sebagai ${profile.simulatedName} (${profile.title})!`, { id: 'switch-demo' });
       setIsOpen(false);
 
-      // 4. Clean Redirect to target dashboard (Posisi Netral: Guru ke Guru, Siswa ke Siswa)
+      // 4. Clean Redirect to target dashboard
       let targetPath = '/dashboard';
       if (profile.roleCode === 'ORANG_TUA') {
         targetPath = '/parent-app';
@@ -339,11 +390,23 @@ export const FloatingDemoSwitcher: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Footer Exit Demo */}
+                {/* Footer Exit Demo & Admin Link */}
                 <div className="pt-2.5 mt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
-                  <span className="text-[11px] text-slate-400 font-medium">
-                    Demo Platform Absenta • Calon Pembeli
-                  </span>
+                  {isAdminUser ? (
+                    <a
+                      href="/settings?tab=demo_profiles"
+                      onClick={() => setIsOpen(false)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors"
+                      title="Atur & Petakan Akun Demo Guru"
+                    >
+                      <Settings2 className="w-3.5 h-3.5" />
+                      <span>Kelola Pemetaan</span>
+                    </a>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      Demo Platform Absenta • Calon Pembeli
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={handleExitDemo}

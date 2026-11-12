@@ -205,6 +205,21 @@ export const cbtApi = {
     };
   },
 
+  bulkDeleteJadwal: async (payload: {
+    ids?: string[];
+    event_id?: string;
+    tahun_pelajaran_id?: string;
+    semester_id?: string;
+    target_tingkat?: number[];
+    force?: boolean;
+  }) => {
+    const res = await api.post('/cbt/jadwal/bulk-delete', payload);
+    return res.data?.data as {
+      deleted_count: number;
+      message: string;
+    };
+  },
+
   bulkUpdatePlotting: async (
     items: Array<{
       jadwal_id: string;

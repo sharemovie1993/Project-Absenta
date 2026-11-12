@@ -154,7 +154,7 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
 
   // Permissions
   const canCreate = propCanAdd ?? (!readOnly && (isAdmin || isKesiswaan || isKurikulum || can('academic.students.create')));
-  const canEdit = propCanEdit ?? (!readOnly && (isAdmin || isKesiswaan || isKurikulum || can('academic.students.update')));
+  const canEdit = propCanEdit ?? (!readOnly && (isAdmin || isKesiswaan || isKurikulum || isWaliKelas || can('academic.students.update')));
   const canImport = propCanImport ?? (!readOnly && (isAdmin || isKesiswaan || isKurikulum || can('academic.students.create')));
   const canExport = propCanExport ?? true;
   const canView = true;

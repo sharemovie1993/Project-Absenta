@@ -1,8 +1,27 @@
 import { authController } from '../controllers/auth.controller';
+import { demoProfilesController } from '../../tenant/controllers/demo-profiles.controller';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function authRoutes(fastify: any) {
+  // Public Demo Profiles list for Login Page & Floating Switcher
+  fastify.get('/demo-profiles', {
+    preHandler: [ determineDataScope()],
+    config: { skipAuth: true, public: true },
+    handler: demoProfilesController.getPublicProfiles.bind(demoProfilesController),
+  });
+
+  // Public 1-Click Demo Login execution
+  fastify.post('/demo-login', {
+    preHandler: [ determineDataScope()],
+    config: {
+      skipAuth: true,
+      public: true,
+      rateLimit: { max: 30, timeWindow: '1 minute' },
+    },
+    handler: demoProfilesController.demoLogin.bind(demoProfilesController),
+  });
+
   // Register endpoint - no authentication required
   fastify.post('/register', {
     preHandler: [ determineDataScope()],

@@ -33,6 +33,7 @@ interface DemoRoleSelectorProps {
   activeLoadingRoleId?: string | null;
   onToggleManualLogin?: () => void;
   onOpenScanner?: () => void;
+  customProfiles?: DemoRoleProfile[];
 }
 
 const ICON_MAP: Record<string, React.FC<{ className?: string; size?: number }>> = {
@@ -157,13 +158,18 @@ export const DemoRoleSelector: React.FC<DemoRoleSelectorProps> = React.memo(({
   isLoading,
   activeLoadingRoleId,
   onToggleManualLogin,
-  onOpenScanner
+  onOpenScanner,
+  customProfiles
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   
   // React 18 Deferred Value: Input search tetap responsif tanpa freeze/lag
   const deferredSearchQuery = useDeferredValue(searchQuery);
+
+  const activeProfilesSource = useMemo(() => {
+    return customProfiles && customProfiles.length > 0 ? customProfiles : DEMO_ROLE_PROFILES;
+  }, [customProfiles]);
 
   // Memoized Clustered Filtering
   const clusteredProfiles = useMemo(() => {
@@ -174,7 +180,7 @@ export const DemoRoleSelector: React.FC<DemoRoleSelectorProps> = React.memo(({
       : DEMO_CATEGORIES.filter(c => c.id === selectedCategory);
 
     return targetCategories.map(cat => {
-      let profiles = DEMO_ROLE_PROFILES.filter(p => p.category === cat.id);
+      let profiles = activeProfilesSource.filter(p => p.category === cat.id && p.isActive !== false);
       
       if (query) {
         profiles = profiles.filter(p => 

@@ -134,8 +134,33 @@ export class CbtBankSoalService {
       const isKuisUnit = Boolean(bank.unit_pengajaran_id);
       const isKolaborasiResmi = !isKuisUnit && isCollabMapel;
 
+      const codeUpper = (bank.kode_bank || '').toUpperCase();
+      const isOfficialExamCode =
+        codeUpper.startsWith('PSAS-') ||
+        codeUpper.startsWith('PSAT-') ||
+        codeUpper.startsWith('PSTS-') ||
+        codeUpper.startsWith('PSAJ-') ||
+        codeUpper.startsWith('UKK-') ||
+        codeUpper.startsWith('SAS-') ||
+        codeUpper.startsWith('SAT-') ||
+        codeUpper.startsWith('STS-') ||
+        codeUpper.startsWith('PAS-') ||
+        codeUpper.startsWith('PAT-') ||
+        codeUpper.startsWith('PTS-') ||
+        codeUpper.startsWith('US-') ||
+        codeUpper.startsWith('UAS-') ||
+        codeUpper.startsWith('TRYOUT-');
+      const isExamTitle = Boolean(bank.judul && bank.judul.trim().startsWith('['));
+
+      const isShared =
+        (bank.Kontributor || []).length > 0 ||
+        bank.status === 'PUBLISHED' ||
+        isOfficialExamCode ||
+        isExamTitle;
+
       return {
         ...bank,
+        is_shared: isShared,
         is_kolaborasi_mapel: isCollabMapel,
         is_kolaborasi_resmi: isKolaborasiResmi,
         is_kuis_unit: isKuisUnit,

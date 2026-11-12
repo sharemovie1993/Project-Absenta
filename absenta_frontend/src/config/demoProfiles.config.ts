@@ -12,6 +12,8 @@ export interface DemoRoleProfile {
   iconName: string;
   gradient: string;
   border: string;
+  userId?: string | null;
+  isActive?: boolean;
 }
 
 export const DEMO_CATEGORIES = [

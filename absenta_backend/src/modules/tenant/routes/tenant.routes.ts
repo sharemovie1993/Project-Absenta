@@ -1,4 +1,5 @@
 import { tenantController } from '../controllers/tenant.controller';
+import { demoProfilesController } from '../controllers/demo-profiles.controller';
 import { determineDataScope } from '../../../middlewares/dataScope';
 import { requireCapability } from '../../../middlewares/requireCapability';
 
@@ -7,6 +8,33 @@ export async function tenantRoutes(fastify: any) {
   fastify.get('/', {
     preHandler: [requireCapability('core.tenants.view.list'), determineDataScope()],
     handler: tenantController.getAllTenants.bind(tenantController),
+  });
+
+  // GET /tenants/demo-profiles/manage - Get demo profiles mapping configuration & user list
+  fastify.get('/demo-profiles/manage', {
+    preHandler: [
+      requireCapability(['core.tenants.update', 'core.sekolah.update.profile', 'core.sekolah.view.profile']),
+      determineDataScope()
+    ],
+    handler: demoProfilesController.getManageData.bind(demoProfilesController),
+  });
+
+  // PUT /tenants/demo-profiles/manage - Update demo profiles mapping
+  fastify.put('/demo-profiles/manage', {
+    preHandler: [
+      requireCapability(['core.tenants.update', 'core.sekolah.update.profile']),
+      determineDataScope()
+    ],
+    handler: demoProfilesController.saveProfiles.bind(demoProfilesController),
+  });
+
+  // POST /tenants/demo-profiles/reset - Reset demo profiles mapping to default
+  fastify.post('/demo-profiles/reset', {
+    preHandler: [
+      requireCapability(['core.tenants.update', 'core.sekolah.update.profile']),
+      determineDataScope()
+    ],
+    handler: demoProfilesController.resetProfiles.bind(demoProfilesController),
   });
 
   // GET /tenants/:id - Get tenant by ID (Authenticated users can view their own tenant)

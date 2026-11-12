@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, Button, Input, Badge } from '@/components/ui';
 import {
   Calendar,
@@ -25,6 +25,11 @@ import {
   ExamSessionSlot,
   KelasRoomMapping,
   TimetableMatrixState,
+  MultiJurusanSlotConfig,
+  isMultiJurusanSlot,
+  parseMultiJurusanSlot,
+  serializeMultiJurusanSlot,
+  extractAllBankIdsFromMatrixValue,
   buildMassSchedulePayloads,
   createDefaultExamDays,
   groupMappingsByTingkat,
@@ -32,12 +37,14 @@ import {
   savePersistedMatrixState,
   reconstructMatrixFromExistingSchedules,
 } from './cbtOrchestratorHelper';
+import { CbtMultiJurusanModal, JurusanItem } from './CbtMultiJurusanModal';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 interface CbtTimetableMatrixPanelProps {
   topFlightDeck?: React.ReactNode;
   bankList: CbtBankSoal[];
+  rawGuruMapel?: any[];
   roomMappings: KelasRoomMapping[];
   activeTpId?: string;
   activeSemId?: string;
@@ -98,6 +105,7 @@ const getTingkatTheme = (tingkat: number) => {
 export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = ({
   topFlightDeck,
   bankList,
+  rawGuruMapel = [],
   roomMappings,
   activeTpId,
   activeSemId,
@@ -120,60 +128,63 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
 
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id || 'default';
+  const eventId = activeEvent?.id;
+  const isInitialLoadedRef = useRef(false);
 
-  // 1. Muat state draft matriks yang tersimpan di localStorage (SSoT Persisten)
+  // 1. Muat state draft matriks yang tersimpan di database atau localStorage (SSoT Persisten)
   useEffect(() => {
-    const persisted = loadPersistedMatrixState(tenantId, activeTpId, activeSemId);
-    if (persisted) {
-      if (persisted.matrix && Object.keys(persisted.matrix).length > 0) {
-        setMatrix(persisted.matrix);
-      }
-      if (persisted.days && persisted.days.length > 0) {
-        setDays(persisted.days);
-      }
-      if (persisted.eventPrefix) {
-        setEventPrefix(persisted.eventPrefix);
-      }
-      if (persisted.generationMode) {
-        setGenerationMode(persisted.generationMode);
-      }
-      if (persisted.savedAt) {
-        setLastSavedTime(new Date(persisted.savedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
-      }
-    }
-  }, [tenantId, activeTpId, activeSemId]);
+    if (!tenantId) return;
 
-  // 2. Rekonstruksi & Sinkronisasi Otomatis dari Jadwal Database (Existing Published Schedules)
-  useEffect(() => {
+    // A. Baca draft tersimpan di localStorage (dengan isolasi eventId)
+    const persisted = loadPersistedMatrixState(tenantId, activeTpId, activeSemId, eventId);
+    let effectiveDays =
+      persisted?.days && persisted.days.length > 0
+        ? persisted.days
+        : createDefaultExamDays(defaultTodayStr, 5);
+    let effectiveMatrix: TimetableMatrixState = persisted?.matrix ? { ...persisted.matrix } : {};
+
+    // B. Rekonstruksi & Sinkronisasi dari Jadwal Database (SSoT Tertinggi jika sudah pernah diterbitkan)
     if (existingSchedules && existingSchedules.length > 0 && bankList.length > 0) {
-      const reconstructed = reconstructMatrixFromExistingSchedules(existingSchedules, days, bankList);
-      if (Object.keys(reconstructed).length > 0) {
-        setMatrix((prev) => {
-          let hasDiff = false;
-          const merged = { ...prev };
-          Object.entries(reconstructed).forEach(([k, bankId]) => {
-            if (!merged[k]) {
-              merged[k] = bankId;
-              hasDiff = true;
-            }
-          });
-          return hasDiff ? merged : prev;
-        });
+      const { matrix: dbMatrix, days: dbDays } = reconstructMatrixFromExistingSchedules(
+        existingSchedules,
+        effectiveDays,
+        bankList
+      );
+      if (dbDays && dbDays.length > 0) {
+        effectiveDays = dbDays;
+      }
+      if (Object.keys(dbMatrix).length > 0) {
+        effectiveMatrix = { ...effectiveMatrix, ...dbMatrix };
       }
     }
-  }, [existingSchedules, bankList, days]);
 
-  // 3. Auto-save ke localStorage setiap kali ada perubahan pada matrix, days, prefix, atau mode
+    setDays(effectiveDays);
+    setMatrix(effectiveMatrix);
+    if (persisted?.eventPrefix) {
+      setEventPrefix(persisted.eventPrefix);
+    }
+    if (persisted?.generationMode) {
+      setGenerationMode(persisted.generationMode);
+    }
+    if (persisted?.savedAt) {
+      setLastSavedTime(new Date(persisted.savedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
+    }
+
+    isInitialLoadedRef.current = true;
+  }, [tenantId, activeTpId, activeSemId, eventId, existingSchedules, bankList, defaultTodayStr]);
+
+  // 2. Auto-save ke localStorage HANYA setelah initial load selesai (mencegah penimpaan state kosong/bawaan pada mount awal)
   useEffect(() => {
-    if (!activeTpId) return;
+    if (!isInitialLoadedRef.current || !activeTpId) return;
     savePersistedMatrixState(
       { matrix, days, eventPrefix, generationMode },
       tenantId,
       activeTpId,
-      activeSemId
+      activeSemId,
+      eventId
     );
     setLastSavedTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
-  }, [matrix, days, eventPrefix, generationMode, tenantId, activeTpId, activeSemId]);
+  }, [matrix, days, eventPrefix, generationMode, tenantId, activeTpId, activeSemId, eventId]);
 
   const handleResetMatrix = useCallback(() => {
     if (window.confirm('Kosongkan semua pilihan mapel pada matriks?')) {
@@ -182,15 +193,99 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
         { matrix: {}, days, eventPrefix, generationMode },
         tenantId,
         activeTpId,
-        activeSemId
+        activeSemId,
+        eventId
       );
       toast.success('Pilihan mapel pada matriks berhasil dikosongkan.');
     }
-  }, [days, eventPrefix, generationMode, tenantId, activeTpId, activeSemId]);
+  }, [days, eventPrefix, generationMode, tenantId, activeTpId, activeSemId, eventId]);
+
+  const [isResettingPublished, setIsResettingPublished] = useState(false);
+
+  // Handler Hapus / Reset Seluruh Jadwal Sesi CBT yang Sudah Terbit di Database untuk Event Ini
+  const handleResetPublishedSchedules = async () => {
+    const publishedCount = alreadyPublishedCount || existingSchedules?.length || 0;
+    const confirmed = window.confirm(
+      `Apakah Anda yakin ingin MENGHAPUS SEMUA ${publishedCount} sesi jadwal ujian yang sudah terbit di database untuk event ini?\n\n` +
+        `Fitur ini digunakan jika panitia ingin merombak jadwal besar-besaran dan menerbitkan ulang dari nol dengan bersih.\n\n` +
+        `Catatan: Wadah dan butir Bank Soal milik guru TIDAK akan terhapus.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsResettingPublished(true);
+      toast.loading('Menghapus seluruh sesi jadwal ujian di database...', { id: 'reset-published-scheds' });
+      const res = await cbtApi.bulkDeleteJadwal({
+        event_id: activeEvent?.id,
+        tahun_pelajaran_id: activeTpId,
+        semester_id: activeSemId,
+        target_tingkat: targetTingkat,
+      });
+
+      toast.success(res.message || 'Seluruh sesi jadwal ujian berhasil dibersihkan!', {
+        id: 'reset-published-scheds',
+        duration: 4000,
+      });
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all });
+      if (onSuccessGenerate) onSuccessGenerate();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Gagal menghapus jadwal ujian', {
+        id: 'reset-published-scheds',
+      });
+    } finally {
+      setIsResettingPublished(false);
+    }
+  };
 
   // Grouped room mappings by tingkat
   const groupedRoomsByTingkat = useMemo(() => {
     return groupMappingsByTingkat(roomMappings);
+  }, [roomMappings]);
+
+  // Jurusan grouped by tingkat (dievaluasi dari seluruh rombel aktif di sekolah)
+  const jurusansByTingkat = useMemo(() => {
+    const map = new Map<number, JurusanItem[]>();
+
+    roomMappings.forEach((m) => {
+      const t = m.tingkat;
+      if (!map.has(t)) map.set(t, []);
+      const list = map.get(t)!;
+
+      let kode = (m.kode_jurusan || m.nama_jurusan || '').toUpperCase().trim();
+      if (!kode || kode === 'UMUM') {
+        const match = (m.nama_kelas || '').match(/\b(AKL|AK|TKJ|TKR|TSM|TP|TM|KUL|PHT|HTL|TOI|TAV|TE|TO)\b/i);
+        if (match) {
+          kode = match[1].toUpperCase();
+        } else {
+          const parts = (m.nama_kelas || '').trim().split(/\s+/);
+          if (parts.length >= 2 && !/^\d+$/.test(parts[1])) {
+            kode = parts[1].toUpperCase();
+          } else {
+            kode = 'UMUM';
+          }
+        }
+      }
+
+      let existing = list.find((j) => j.kode === kode);
+      if (!existing) {
+        existing = {
+          id: m.jurusan_id || kode,
+          kode: kode,
+          nama: m.nama_jurusan || kode,
+          rombelCount: 0,
+          rombelNames: [],
+        };
+        list.push(existing);
+      }
+      existing.rombelCount++;
+      existing.rombelNames.push(m.nama_kelas);
+    });
+
+    map.forEach((list) => {
+      list.sort((a, b) => a.kode.localeCompare(b.kode));
+    });
+
+    return map;
   }, [roomMappings]);
 
   const activeTingkatList = useMemo(() => {
@@ -213,6 +308,113 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     return map;
   }, [bankList]);
 
+  // Unified Subject Options: 1 Mapel = 1 Pilihan Bersih per Tingkat (Tanpa Duplikasi Nama Guru atau Label Bising)
+  const subjectOptionsByTingkat = useMemo(() => {
+    const map = new Map<
+      number,
+      Array<{
+        id: string;
+        mapelId: string;
+        tingkat: number;
+        guruId?: string;
+        namaMapel: string;
+        namaGuru?: string;
+        soalCount: number;
+        isAutoDraft: boolean;
+        label: string;
+        jurusan?: string | null;
+      }>
+    >();
+
+    const tempMap = new Map<number, Map<string, any>>();
+    [10, 11, 12].forEach((t) => tempMap.set(t, new Map()));
+
+    // 1. Masukkan Bank Soal yang sudah ada di database (utamakan yang memiliki butir soal > 0)
+    bankList.forEach((b) => {
+      const num = resolveBankTingkatNumber(b);
+      if (num === undefined || !tempMap.has(num)) return;
+
+      const count = b.jumlah_soal || b._count?.Soal || 0;
+      const mName = b.Mapel?.nama_mapel || b.MataPelajaran?.nama_mapel || b.judul || 'Mata Pelajaran';
+      const normKey = mName.trim().toLowerCase();
+
+      const existing = tempMap.get(num)!.get(normKey);
+      if (!existing || (count > 0 && existing.soalCount === 0)) {
+        tempMap.get(num)!.set(normKey, {
+          id: b.id,
+          mapelId: b.mapel_id,
+          tingkat: num,
+          guruId: b.guru_id,
+          namaMapel: mName,
+          namaGuru: b.Guru?.nama_guru,
+          soalCount: count,
+          isAutoDraft: false,
+          jurusan: b.jurusan,
+          label: count > 0 ? `${mName} (${count} Soal)` : mName,
+        });
+      }
+    });
+
+    // 2. Masukkan mata pelajaran kurikulum dari rawGuruMapel yang belum memiliki bank soal
+    if (rawGuruMapel && rawGuruMapel.length > 0) {
+      rawGuruMapel.forEach((gm: any) => {
+        const mId = gm.mapel_id;
+        if (!mId) return;
+
+        const mapelName = gm.Mapel?.nama_mapel || '';
+        const lowerName = mapelName.toLowerCase();
+        if (
+          lowerName.includes('bimbingan') ||
+          lowerName.includes('konseling') ||
+          lowerName.includes('bp/bk') ||
+          lowerName.includes('bk')
+        ) {
+          return;
+        }
+
+        const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat;
+        let tNum = Number(rawTingkat);
+        if (!tNum && gm.Kelas?.nama_kelas) {
+          const match = gm.Kelas.nama_kelas.match(/\b(X|XI|XII|10|11|12)\b/i);
+          if (match) {
+            const roman = match[1].toUpperCase();
+            tNum = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
+          }
+        }
+        if (!tNum) tNum = 10;
+        if (!tempMap.has(tNum)) tempMap.set(tNum, new Map());
+
+        const normKey = mapelName.trim().toLowerCase();
+        if (!tempMap.get(tNum)!.has(normKey)) {
+          tempMap.get(tNum)!.set(normKey, {
+            id: `auto_mapel_${mId}_tingkat_${tNum}`,
+            mapelId: mId,
+            tingkat: tNum,
+            guruId: gm.guru_id,
+            namaMapel: mapelName || 'Mata Pelajaran',
+            namaGuru: gm.Guru?.nama_guru,
+            soalCount: 0,
+            isAutoDraft: true,
+            label: mapelName,
+          });
+        }
+      });
+    }
+
+    // Convert tempMap ke array dan urutkan: Mapel siap soal di atas, lalu abjad ASC
+    tempMap.forEach((entryMap, tNum) => {
+      const items = Array.from(entryMap.values());
+      items.sort((a, b) => {
+        if (a.soalCount > 0 && b.soalCount === 0) return -1;
+        if (a.soalCount === 0 && b.soalCount > 0) return 1;
+        return a.namaMapel.localeCompare(b.namaMapel);
+      });
+      map.set(tNum, items);
+    });
+
+    return map;
+  }, [bankList, rawGuruMapel]);
+
   // Map bank_soal_id ke daftar sesi ujian yang sudah ada di database (untuk Idempotensi & On-Demand)
   const publishedSessionsByBankId = useMemo(() => {
     const map = new Map<string, CbtJadwalUjian[]>();
@@ -226,17 +428,61 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     return map;
   }, [existingSchedules]);
 
-  // Kumpulan ID bank soal yang sedang terpasang di dalam slot matriks
+  // Kumpulan ID bank soal yang sedang terpasang di dalam slot matriks (mendukung multi-jurusan)
   const usedBankIdsInMatrix = useMemo(() => {
     const set = new Set<string>();
-    Object.values(matrix).forEach((bankId) => {
-      if (bankId) set.add(bankId);
+    Object.values(matrix).forEach((rawVal) => {
+      extractAllBankIdsFromMatrixValue(rawVal).forEach((id) => set.add(id));
     });
     return set;
   }, [matrix]);
 
+  // State Modal Konfigurasi Multi-Jurusan (DDPK / Produktif)
+  const [multiModalState, setMultiModalState] = useState<{
+    isOpen: boolean;
+    dayIndex: number;
+    dayName: string;
+    sessionIndex: number;
+    sessionName: string;
+    tingkat: number;
+    initialConfig?: MultiJurusanSlotConfig | null;
+  } | null>(null);
+
+  const handleOpenMultiModal = (dayIdx: number, sessIdx: number, tingkat: number) => {
+    const key = `${dayIdx}_${sessIdx}_${tingkat}`;
+    const currentVal = matrix[key];
+    const parsed = parseMultiJurusanSlot(currentVal);
+    const day = days.find((d) => d.day_index === dayIdx);
+    const sess = day?.sessions.find((s) => s.session_index === sessIdx);
+
+    setMultiModalState({
+      isOpen: true,
+      dayIndex: dayIdx,
+      dayName: day?.nama_hari || `Hari ${dayIdx}`,
+      sessionIndex: sessIdx,
+      sessionName: sess?.nama_sesi || `Sesi ${sessIdx}`,
+      tingkat,
+      initialConfig: parsed,
+    });
+  };
+
+  const handleSaveMultiJurusan = (config: MultiJurusanSlotConfig) => {
+    if (!multiModalState) return;
+    const key = `${multiModalState.dayIndex}_${multiModalState.sessionIndex}_${multiModalState.tingkat}`;
+    const serialized = serializeMultiJurusanSlot(config);
+    setMatrix((prev) => ({
+      ...prev,
+      [key]: serialized,
+    }));
+  };
+
   const handleSelectBankSoal = (dayIdx: number, sessIdx: number, tingkat: number, bankId: string) => {
     const key = `${dayIdx}_${sessIdx}_${tingkat}`;
+    if (bankId === '__MULTI_JURUSAN__') {
+      handleOpenMultiModal(dayIdx, sessIdx, tingkat);
+      return;
+    }
+
     setMatrix((prev) => {
       if (!bankId) {
         const next = { ...prev };
@@ -474,25 +720,54 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   // Hitung perkiraan jadwal yang akan di-generate
   const totalSlotsFilled = useMemo(() => Object.keys(matrix).length, [matrix]);
 
-  // Hitung jadwal baru vs jadwal yang sudah pernah diterbitkan (Idempotensi)
+  // Hitung jadwal baru vs jadwal yang sudah pernah diterbitkan (Idempotensi & Multi-Jurusan)
   const { newGeneratedCount, alreadyPublishedCount } = useMemo(() => {
     let newCount = 0;
     let publishedCount = 0;
 
-    Object.entries(matrix).forEach(([key, bankId]) => {
-      if (!bankId) return;
+    Object.entries(matrix).forEach(([key, val]) => {
+      if (!val) return;
       const parts = key.split('_');
       const tingkat = Number(parts[2]);
       if (targetTingkat && targetTingkat.length > 0 && !targetTingkat.includes(tingkat)) {
         return;
       }
-      const rombelCount = generationMode === 'per_tingkat' ? 1 : (groupedRoomsByTingkat.get(tingkat)?.length || 0);
 
-      const isPublished = (publishedSessionsByBankId.get(bankId)?.length || 0) > 0;
-      if (isPublished) {
-        publishedCount += rombelCount;
+      const classesInTingkat = groupedRoomsByTingkat.get(tingkat) || [];
+
+      if (isMultiJurusanSlot(val)) {
+        const multiConfig = parseMultiJurusanSlot(val);
+        const assignments = multiConfig?.assignments || {};
+
+        classesInTingkat.forEach((cls) => {
+          let assignedBankId =
+            (cls.kode_jurusan && assignments[cls.kode_jurusan]) ||
+            (cls.jurusan_id && assignments[cls.jurusan_id]);
+          if (!assignedBankId) {
+            const matchedKey = Object.keys(assignments).find((jKey) => {
+              if (!jKey) return false;
+              const reg = new RegExp(`\\b${jKey}\\b`, 'i');
+              return reg.test(cls.nama_kelas);
+            });
+            if (matchedKey) assignedBankId = assignments[matchedKey];
+          }
+          if (!assignedBankId) return;
+
+          const isPublished = (publishedSessionsByBankId.get(assignedBankId)?.length || 0) > 0;
+          if (isPublished) {
+            publishedCount += 1;
+          } else {
+            newCount += 1;
+          }
+        });
       } else {
-        newCount += rombelCount;
+        const rombelCount = generationMode === 'per_tingkat' ? 1 : classesInTingkat.length;
+        const isPublished = (publishedSessionsByBankId.get(val)?.length || 0) > 0;
+        if (isPublished) {
+          publishedCount += rombelCount;
+        } else {
+          newCount += rombelCount;
+        }
       }
     });
 
@@ -503,7 +778,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     return newGeneratedCount + alreadyPublishedCount;
   }, [newGeneratedCount, alreadyPublishedCount]);
 
-  // Bulk Create Mutation (Idempoten & Aman Dipanggil Berkali-kali)
+  // Bulk Create Mutation (Idempoten & Aman Dipanggil Berkali-kali, Auto-Provision Cangkang Bank Soal jika belum ada)
   const bulkCreateMutation = useMutation({
     mutationFn: async () => {
       if (!activeTpId || !activeSemId) {
@@ -513,16 +788,184 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
         throw new Error('Belum ada mata pelajaran/bank soal yang dipilih di dalam matriks hari ujian');
       }
 
+      const effectiveBankList = [...bankList];
+      const effectiveMatrix = { ...matrix };
+
+      const updateEffectiveMatrixKey = (targetAutoKey: string, replacementId: string) => {
+        Object.keys(effectiveMatrix).forEach((k) => {
+          const cellVal = effectiveMatrix[k];
+          if (cellVal === targetAutoKey) {
+            effectiveMatrix[k] = replacementId;
+          } else if (isMultiJurusanSlot(cellVal)) {
+            const parsed = parseMultiJurusanSlot(cellVal);
+            if (parsed) {
+              let changed = false;
+              Object.keys(parsed.assignments).forEach((jKey) => {
+                if (parsed.assignments[jKey] === targetAutoKey) {
+                  parsed.assignments[jKey] = replacementId;
+                  changed = true;
+                }
+              });
+              if (changed) {
+                effectiveMatrix[k] = serializeMultiJurusanSlot(parsed);
+              }
+            }
+          }
+        });
+      };
+
+      // 1. Auto-provision draft cangkang Bank Soal untuk slot yang memilih mata pelajaran tanpa bank soal
+      const autoKeys: string[] = [];
+      Object.values(effectiveMatrix).forEach((v) => {
+        extractAllBankIdsFromMatrixValue(v).forEach((id) => {
+          if (id.startsWith('auto_mapel_')) {
+            autoKeys.push(id);
+          }
+        });
+      });
+      const uniqueAutoKeys = Array.from(new Set(autoKeys));
+
+      if (uniqueAutoKeys.length > 0) {
+        toast.loading(`Menyiapkan cangkang Bank Soal untuk ${uniqueAutoKeys.length} mata pelajaran...`, {
+          id: 'auto-provision-bank',
+        });
+
+        for (const autoKey of uniqueAutoKeys) {
+          const match = autoKey.match(/^auto_mapel_(.+)_tingkat_(\d+)$/);
+          if (!match) continue;
+          const mapelId = match[1];
+          const tingkatNum = Number(match[2]);
+
+          // Safeguard Idempoten: Cek apakah bank soal untuk mapel & tingkat ini sudah ada di sistem
+          const alreadyExistingBank = effectiveBankList.find((b) => {
+            const bTingkat = resolveBankTingkatNumber(b);
+            return bTingkat === tingkatNum && b.mapel_id === mapelId;
+          });
+
+          if (alreadyExistingBank) {
+            updateEffectiveMatrixKey(autoKey, alreadyExistingBank.id);
+            continue;
+          }
+
+          const opt = subjectOptionsByTingkat.get(tingkatNum)?.find((o) => o.id === autoKey);
+          const mapelName = opt?.namaMapel || 'Mata Pelajaran';
+          const guruId = opt?.guruId || user?.id || '';
+
+          // 1. Ekstrak durasi menit dari slot sesi jadwal yang dipilih pada matriks
+          let sessionDuration = 90;
+          for (const day of days) {
+            for (const sess of day.sessions) {
+              const matrixKey = `${day.day_index}_${sess.session_index}_${tingkatNum}`;
+              const cellVal = effectiveMatrix[matrixKey];
+              if (extractAllBankIdsFromMatrixValue(cellVal).includes(autoKey) && sess.durasi_menit) {
+                sessionDuration = sess.durasi_menit;
+                break;
+              }
+            }
+          }
+
+          // 2. Kumpulkan seluruh guru pengampu semapel & setingkat dari SK Kurikulum (MGMP)
+          const colleagueGuruIds: string[] = [];
+          if (Array.isArray(rawGuruMapel)) {
+            rawGuruMapel.forEach((gm: any) => {
+              if (gm.mapel_id !== mapelId) return;
+              const rawT = gm.Kelas?.tingkat || gm.Mapel?.tingkat;
+              let t = Number(rawT);
+              if (!t && gm.Kelas?.nama_kelas) {
+                const m = gm.Kelas.nama_kelas.match(/\b(X|XI|XII|10|11|12)\b/i);
+                if (m) {
+                  const roman = m[1].toUpperCase();
+                  t = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
+                }
+              }
+              if ((t || 10) === tingkatNum && gm.guru_id) {
+                colleagueGuruIds.push(gm.guru_id);
+              }
+            });
+          }
+          const uniqueContributors = Array.from(new Set(colleagueGuruIds));
+
+          // 3. Resolusi kode bank soal standar resmi Asesmen & Event (PSAS/PSAT/PSTS/dll)
+          const rawEventCode = `${activeEvent?.kode_event || ''} ${activeEvent?.nama_event || ''} ${eventPrefix || ''} ${eventName || ''}`.toUpperCase().trim();
+          let resolvedPrefix = 'PSAS';
+          if (rawEventCode.includes('ASAS') || rawEventCode.includes('SAS') || rawEventCode.includes('PSAS') || rawEventCode.includes('PAS') || rawEventCode.includes('UAS')) {
+            resolvedPrefix = 'PSAS';
+          } else if (rawEventCode.includes('ASAT') || rawEventCode.includes('SAT') || rawEventCode.includes('PSAT') || rawEventCode.includes('PAT')) {
+            resolvedPrefix = 'PSAT';
+          } else if (rawEventCode.includes('ASTS') || rawEventCode.includes('STS') || rawEventCode.includes('PSTS') || rawEventCode.includes('PTS') || rawEventCode.includes('UTS')) {
+            resolvedPrefix = 'PSTS';
+          } else if (rawEventCode.includes('ASAJ') || rawEventCode.includes('PSAJ') || rawEventCode.includes('AM') || rawEventCode.includes('US')) {
+            resolvedPrefix = 'PSAJ';
+          } else if (rawEventCode.includes('UKK')) {
+            resolvedPrefix = 'UKK';
+          } else if (rawEventCode.includes('TRYOUT') || rawEventCode.includes('SIMULASI')) {
+            resolvedPrefix = 'TRYOUT';
+          } else if (activeEvent?.kode_event) {
+            resolvedPrefix = activeEvent.kode_event.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase() || 'PSAS';
+          }
+
+          const mapelCode = (opt?.namaMapel || 'MPL')
+            .replace(/[^a-zA-Z0-9]/g, '')
+            .slice(0, 6)
+            .toUpperCase();
+          const kodeBank = `${resolvedPrefix}-${mapelCode}-T${tingkatNum}-${Date.now().toString(36).toUpperCase().slice(-4)}${Math.floor(
+            10 + Math.random() * 90
+          )}`;
+
+          const eventLabel = activeEvent?.nama_event || eventPrefix || 'Ujian';
+          const isMassalEvent = activeEvent?.tipe_pelaksanaan !== 'MANDIRI';
+
+          try {
+            const newBank = await cbtApi.createBankSoal({
+              kode_bank: kodeBank,
+              judul: `[${eventLabel}] ${mapelName} Tingkat ${tingkatNum}`,
+              mapel_id: mapelId,
+              guru_id: guruId,
+              tingkat: String(tingkatNum),
+              alokasi_menit: sessionDuration,
+              status: 'DRAFT',
+              is_shared: isMassalEvent,
+              contributor_guru_ids: uniqueContributors,
+              tahun_pelajaran_id: activeTpId,
+              semester_id: activeSemId,
+            });
+
+            if (newBank && newBank.id) {
+              effectiveBankList.push(newBank);
+              updateEffectiveMatrixKey(autoKey, newBank.id);
+            }
+          } catch (createErr: any) {
+            console.error('Failed auto-creating bank soal:', createErr);
+            throw new Error(
+              `Gagal menyiapkan Bank Soal untuk ${mapelName}: ${
+                createErr.response?.data?.message || createErr.message
+              }`
+            );
+          }
+        }
+
+        // Simpan pemetaan ID riil ke state dan localStorage
+        setMatrix(effectiveMatrix);
+        savePersistedMatrixState(
+          { matrix: effectiveMatrix, days, eventPrefix, generationMode },
+          tenantId,
+          activeTpId,
+          activeSemId,
+          eventId
+        );
+        toast.dismiss('auto-provision-bank');
+      }
+
       const payloads = buildMassSchedulePayloads({
         eventPrefix,
         days,
-        matrix,
-        bankList,
+        matrix: effectiveMatrix,
+        bankList: effectiveBankList,
         roomMappings,
         activeTpId,
         activeSemId,
         generationMode,
-        tokenRefreshInterval: activeEvent?.token_refresh_interval ?? 15,
+        tokenRefreshInterval: activeEvent?.token_refresh_interval ?? 0,
         strictBrowserGuard: activeEvent?.strict_browser_guard ?? true,
         eventId: activeEvent?.id,
         targetTingkat,
@@ -551,6 +994,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       if (onSuccessGenerate) onSuccessGenerate();
     },
     onError: (err: any) => {
+      toast.dismiss('auto-provision-bank');
       toast.error(err.response?.data?.message || err.message || 'Gagal menerbitkan jadwal ujian massal');
     },
   });
@@ -599,11 +1043,26 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                 variant="outline"
                 size="sm"
                 onClick={handleResetMatrix}
-                className="text-xs h-7 px-2 font-bold text-rose-600 border-rose-200 bg-white hover:bg-rose-50 cursor-pointer shadow-2xs shrink-0"
-                title="Kosongkan seluruh isian mata pelajaran di matriks"
+                className="text-xs h-7 px-2 font-bold text-slate-600 border-slate-300 bg-white hover:bg-slate-50 cursor-pointer shadow-2xs shrink-0"
+                title="Kosongkan pilihan mata pelajaran di matriks layar"
               >
                 <RotateCcw size={11} className="mr-1" />
                 <span>Kosongkan</span>
+              </Button>
+            )}
+
+            {alreadyPublishedCount > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isResettingPublished}
+                onClick={handleResetPublishedSchedules}
+                className="text-xs h-7 px-2 font-bold text-rose-600 border-rose-300 bg-white hover:bg-rose-50 cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
+                title="Hapus seluruh sesi ujian yang sudah terbit di database untuk event ini agar dapat diterbitkan ulang dari nol"
+              >
+                <Trash2 size={11} className="text-rose-600" />
+                <span>{isResettingPublished ? 'Menghapus...' : `Hapus Sesi Terbit (${alreadyPublishedCount})`}</span>
               </Button>
             )}
 
@@ -695,7 +1154,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                       const slottedCount = Object.keys(matrix).filter(
                         (k) => k.endsWith(`_${tingkat}`) && Boolean(matrix[k])
                       ).length;
-                      const totalBanks = banksByTingkat.get(tingkat)?.length || 0;
+                      const totalSubjects = subjectOptionsByTingkat.get(tingkat)?.length || 0;
                       const theme = getTingkatTheme(tingkat);
 
                       return (
@@ -715,12 +1174,12 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                               <span
                                 className={cn(
                                   'px-1.5 py-0.5 rounded text-[10px] font-bold',
-                                  slottedCount >= totalBanks && totalBanks > 0
+                                  slottedCount >= totalSubjects && totalSubjects > 0
                                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                                     : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                                 )}
                               >
-                                {slottedCount}/{totalBanks} Terplot
+                                {slottedCount}/{totalSubjects} Terplot
                               </span>
                             </div>
                           </div>
@@ -779,17 +1238,68 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                       {activeTingkatList.map((tingkat) => {
                         const matrixKey = `${day.day_index}_${sess.session_index}_${tingkat}`;
                         const selectedBankId = matrix[matrixKey] || '';
-                        const allBanksForTingkat = banksByTingkat.get(tingkat) || [];
+                        const allOptionsForTingkat = subjectOptionsByTingkat.get(tingkat) || [];
+                        const jurusansForTingkat = jurusansByTingkat.get(tingkat) || [];
                         const theme = getTingkatTheme(tingkat);
 
-                        const availableBanks = allBanksForTingkat.filter((b) => {
-                          if (b.id === selectedBankId) return true;
-                          if (usedBankIdsInMatrix.has(b.id)) return false;
+                        const isMulti = isMultiJurusanSlot(selectedBankId);
+                        const multiConfig = isMulti ? parseMultiJurusanSlot(selectedBankId) : null;
+                        const assignedJurusanCount = isMulti && multiConfig
+                          ? Object.keys(multiConfig.assignments).filter((k) => Boolean(multiConfig.assignments[k])).length
+                          : 0;
+
+                        if (isMulti) {
+                          return (
+                            <td key={tingkat} className={cn('p-1.5 align-middle transition-colors', theme.cellBg)}>
+                              <div className="w-full rounded-lg border border-purple-300 dark:border-purple-700 bg-purple-50/80 dark:bg-purple-950/40 p-2 space-y-1.5 shadow-2xs">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span
+                                    className="font-bold text-xs text-purple-950 dark:text-purple-200 flex items-center gap-1 truncate"
+                                    title={multiConfig?.title || 'DDPK Kejuruan'}
+                                  >
+                                    <Sparkles size={12} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                                    <span className="truncate">{multiConfig?.title || 'DDPK Kejuruan'}</span>
+                                  </span>
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-purple-200 text-purple-800 dark:bg-purple-900/80 dark:text-purple-300 shrink-0">
+                                    {assignedJurusanCount}/{jurusansForTingkat.length} Jurusan
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenMultiModal(day.day_index, sess.session_index, tingkat)}
+                                    className="flex-1 h-6 px-2 text-[10px] font-bold rounded bg-purple-600 hover:bg-purple-700 text-white cursor-pointer transition-colors shadow-2xs flex items-center justify-center gap-1"
+                                  >
+                                    <span>Atur Paket Jurusan</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSelectBankSoal(day.day_index, sess.session_index, tingkat, '')}
+                                    title="Kosongkan slot sesi ini"
+                                    className="h-6 w-6 rounded flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer transition-colors"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          );
+                        }
+
+                        const availableOptions = allOptionsForTingkat.filter((opt) => {
+                          if (opt.id === selectedBankId) return true;
+                          if (usedBankIdsInMatrix.has(opt.id)) return false;
                           return true;
                         });
 
+                        const selectedOpt = allOptionsForTingkat.find((o) => o.id === selectedBankId);
+                        const isAutoDraftSelected = Boolean(
+                          selectedOpt?.isAutoDraft || (selectedBankId && selectedBankId.startsWith('auto_mapel_'))
+                        );
+
                         const isAllPlotted =
-                          !selectedBankId && availableBanks.length === 0 && allBanksForTingkat.length > 0;
+                          !selectedBankId && availableOptions.length === 0 && allOptionsForTingkat.length > 0;
 
                         return (
                           <td key={tingkat} className={cn('p-2 align-middle transition-colors', theme.cellBg)}>
@@ -803,7 +1313,9 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                               className={cn(
                                 'w-full h-8 px-2.5 text-xs rounded-md border font-medium transition-all cursor-pointer',
                                 selectedBankId
-                                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-indigo-400 dark:border-indigo-500 font-semibold shadow-2xs'
+                                  ? isAutoDraftSelected
+                                    ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-950 dark:text-amber-200 border-amber-400 dark:border-amber-600 font-semibold shadow-2xs'
+                                    : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-indigo-400 dark:border-indigo-500 font-semibold shadow-2xs'
                                   : isAllPlotted
                                   ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed'
                                   : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:border-slate-400'
@@ -811,20 +1323,29 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                             >
                               <option value="">
                                 {isAllPlotted
-                                  ? '— Semua Soal Sudah Terplot —'
+                                  ? '— Semua Mapel Sudah Terplot —'
                                   : '— Pilih Mata Pelajaran —'}
                               </option>
-                              {availableBanks.map((b) => (
-                                <option key={b.id} value={b.id}>
-                                  {b.Mapel?.nama_mapel || b.MataPelajaran?.nama_mapel || b.judul} (
-                                  {b.jumlah_soal || b._count?.Soal || 0} Soal)
+                              <option value="__MULTI_JURUSAN__" className="font-bold text-purple-700 bg-purple-50 dark:bg-purple-950 dark:text-purple-300">
+                                ⚡ [Multi-Jurusan] Paket {tingkat === 10 ? 'DDPK' : 'MPP / Produktif'} per Jurusan...
+                              </option>
+                              {availableOptions.map((opt) => (
+                                <option key={opt.id} value={opt.id}>
+                                  {opt.label}
                                 </option>
                               ))}
                             </select>
 
                             {selectedBankId && (
                               <div className="mt-1 flex items-center justify-between text-[10px] px-0.5">
-                                {(publishedSessionsByBankId.get(selectedBankId)?.length || 0) > 0 ? (
+                                {isAutoDraftSelected ? (
+                                  <span
+                                    className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1"
+                                    title="Cangkang Bank Soal baru akan dibuat otomatis untuk guru pengampu saat jadwal diterbitkan"
+                                  >
+                                    ✨ Auto-Provision Draft
+                                  </span>
+                                ) : (publishedSessionsByBankId.get(selectedBankId)?.length || 0) > 0 ? (
                                   <>
                                     <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
                                       <CheckCircle2 size={11} /> Terbit ({publishedSessionsByBankId.get(selectedBankId)?.length} Ruang)
@@ -984,6 +1505,23 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
           )}
         </Button>
       </div>
+
+      {/* Modal Dialog Konfigurasi Paket Kejuruan per Jurusan (SMK Serentak) */}
+      {multiModalState && (
+        <CbtMultiJurusanModal
+          isOpen={multiModalState.isOpen}
+          onClose={() => setMultiModalState(null)}
+          dayIndex={multiModalState.dayIndex}
+          dayName={multiModalState.dayName}
+          sessionIndex={multiModalState.sessionIndex}
+          sessionName={multiModalState.sessionName}
+          tingkat={multiModalState.tingkat}
+          jurusans={jurusansByTingkat.get(multiModalState.tingkat) || []}
+          subjectOptions={subjectOptionsByTingkat.get(multiModalState.tingkat) || []}
+          initialConfig={multiModalState.initialConfig}
+          onSave={handleSaveMultiJurusan}
+        />
+      )}
     </div>
   );
 };

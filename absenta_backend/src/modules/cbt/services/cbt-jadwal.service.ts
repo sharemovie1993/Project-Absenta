@@ -264,9 +264,9 @@ export class CbtJadwalService {
     if (!bankSoal) {
       throw new Error('Bank soal tidak ditemukan');
     }
-    if (bankSoal._count.Soal === 0) {
-      throw new Error('Bank soal belum memiliki butir soal. Isi soal terlebih dahulu sebelum membuat jadwal.');
-    }
+    // Catatan: Memperbolehkan penjadwalan ujian lebih awal meskipun naskah butir soal
+    // masih dalam proses penyusunan oleh guru (cangkang draft bank soal).
+    // Validasi kelengkapan soal ditegakkan saat siswa mulai mengerjakan ujian di test-engine.
 
     const token = this.generateToken();
 
@@ -448,6 +448,7 @@ export class CbtJadwalService {
   static async delete(tenantId: string, id: string) {
     const jadwal = await prisma.cbtJadwalUjian.findFirst({
       where: { id, tenant_id: tenantId },
+      select: { id: true, bank_soal_id: true, token_ujian: true },
     });
 
     if (!jadwal) {
@@ -463,11 +464,172 @@ export class CbtJadwalService {
     }
 
     // Cascade delete relasi peserta otomatis
+    await prisma.cbtPesertaUjian.deleteMany({
+      where: { tenant_id: tenantId, jadwal_ujian_id: id },
+    });
+
+    // Cascade delete jadwal
     await prisma.cbtJadwalUjian.delete({
       where: { id },
     });
 
+    // Bersihkan cangkang draft bank soal kosong jika tidak ada jadwal lain dan belum berisi butir soal
+    if (jadwal.bank_soal_id) {
+      const emptyOrphaned = await prisma.cbtBankSoal.findFirst({
+        where: {
+          tenant_id: tenantId,
+          id: jadwal.bank_soal_id,
+          jumlah_soal: 0,
+          Soal: { none: {} },
+          JadwalUjian: { none: {} },
+        },
+        select: { id: true },
+      });
+
+      if (emptyOrphaned) {
+        await prisma.cbtBankSoalKontributor.deleteMany({
+          where: { bank_soal_id: emptyOrphaned.id },
+        });
+        await prisma.cbtBankSoal.delete({
+          where: { id: emptyOrphaned.id },
+        });
+      }
+    }
+
     return { id, message: 'Jadwal ujian berhasil dihapus permanen' };
+  }
+
+  /**
+   * Menghapus massal Jadwal Ujian (Misal: reset jadwal event untuk diterbitkan ulang dari nol)
+   */
+  static async bulkDelete(
+    tenantId: string,
+    params: {
+      ids?: string[];
+      event_id?: string;
+      tahun_pelajaran_id?: string;
+      semester_id?: string;
+      target_tingkat?: number[];
+      force?: boolean;
+    }
+  ) {
+    const whereClause: any = { tenant_id: tenantId };
+
+    if (Array.isArray(params.ids) && params.ids.length > 0) {
+      whereClause.id = { in: params.ids };
+    } else {
+      if (params.tahun_pelajaran_id) whereClause.tahun_pelajaran_id = params.tahun_pelajaran_id;
+      if (params.semester_id) whereClause.semester_id = params.semester_id;
+    }
+
+    const schedules = await prisma.cbtJadwalUjian.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        bank_soal_id: true,
+        token_ujian: true,
+        status: true,
+        setting_keamanan: true,
+      },
+    });
+
+    // Saring jadwal yang sesuai event (jika disimpan di setting_keamanan)
+    const targetSchedules = schedules.filter((s) => {
+      if (params.event_id) {
+        const schedEventId = (s.setting_keamanan as any)?.event_id;
+        if (schedEventId && schedEventId !== params.event_id) return false;
+      }
+      // Jangan hapus jadwal yang sudah selesai (COMPLETED) atau aktif kecuali diminta paksa
+      if (!params.force && (s.status === 'COMPLETED' || s.status === 'ACTIVE')) {
+        return false;
+      }
+      return true;
+    });
+
+    if (targetSchedules.length === 0) {
+      return { deleted_count: 0, message: 'Tidak ada jadwal ujian berstatus draft yang dapat dihapus.' };
+    }
+
+    const targetIds = targetSchedules.map((s) => s.id);
+    const candidateBankIds = Array.from(
+      new Set(
+        targetSchedules
+          .map((s) => s.bank_soal_id)
+          .filter((id): id is string => Boolean(id))
+      )
+    );
+
+    const redis = getRedisConnection();
+
+    if (redis) {
+      for (const s of targetSchedules) {
+        await redis.del(`cbt:${tenantId}:bundle:${s.id}`).catch(() => null);
+        if (s.token_ujian) {
+          await redis.del(`cbt:${tenantId}:token:${s.token_ujian}`).catch(() => null);
+        }
+      }
+    }
+
+    // Cascade delete peserta jika ada
+    await prisma.cbtPesertaUjian.deleteMany({
+      where: {
+        tenant_id: tenantId,
+        jadwal_ujian_id: { in: targetIds },
+      },
+    });
+
+    // Hapus jadwal
+    const deleteRes = await prisma.cbtJadwalUjian.deleteMany({
+      where: {
+        tenant_id: tenantId,
+        id: { in: targetIds },
+      },
+    });
+
+    // Cek dan bersihkan cangkang draft Bank Soal kosong yang tidak memiliki butir soal (jumlah_soal === 0 & Soal kosong)
+    // dan sudah tidak digunakan oleh jadwal ujian manapun lagi (JadwalUjian kosong).
+    let cleanedEmptyBanksCount = 0;
+    if (candidateBankIds.length > 0) {
+      const emptyOrphanedBanks = await prisma.cbtBankSoal.findMany({
+        where: {
+          tenant_id: tenantId,
+          id: { in: candidateBankIds },
+          jumlah_soal: 0,
+          Soal: { none: {} },
+          JadwalUjian: { none: {} },
+        },
+        select: { id: true },
+      });
+
+      if (emptyOrphanedBanks.length > 0) {
+        const bankIdsToDelete = emptyOrphanedBanks.map((b) => b.id);
+
+        await prisma.cbtBankSoalKontributor.deleteMany({
+          where: {
+            bank_soal_id: { in: bankIdsToDelete },
+          },
+        });
+
+        const delBankRes = await prisma.cbtBankSoal.deleteMany({
+          where: {
+            tenant_id: tenantId,
+            id: { in: bankIdsToDelete },
+          },
+        });
+        cleanedEmptyBanksCount = delBankRes.count;
+      }
+    }
+
+    const bankCleanupMsg =
+      cleanedEmptyBanksCount > 0
+        ? ` serta membersihkan ${cleanedEmptyBanksCount} cangkang draft Bank Soal kosong otomatis.`
+        : '.';
+
+    return {
+      deleted_count: deleteRes.count,
+      cleaned_empty_banks_count: cleanedEmptyBanksCount,
+      message: `Berhasil menghapus ${deleteRes.count} sesi jadwal ujian${bankCleanupMsg} Matriks kini bersih dan siap diterbitkan ulang.`,
+    };
   }
 
   /**
@@ -1459,25 +1621,48 @@ export class CbtJadwalService {
         tanggal_selesai: true,
         durasi_menit: true,
         nama_sesi: true,
+        status: true,
         target_kelas_ids: true,
+        setting_keamanan: true,
       },
     });
 
     const operations: any[] = [];
+    const claimedExistingIds = new Set<string>();
+    const updatedBankSoalIds = new Set<string>();
     let skippedCount = 0;
     let updatedCount = 0;
     let createdCount = 0;
 
     for (const data of items) {
       const bankSoal = bankMap.get(data.bank_soal_id);
-      if (!bankSoal || bankSoal._count.Soal === 0) continue;
+      // Mendukung penjadwalan ujian lebih awal (cangkang bank soal) tanpa harus menunggu butir soal selesai
+      if (!bankSoal) continue;
 
       const itemStartDate = new Date(data.tanggal_mulai);
       const itemDateStr = itemStartDate.toISOString().split('T')[0];
       const itemTargetKelas: string[] = Array.isArray(data.target_kelas_ids) ? data.target_kelas_ids : [];
 
-      // Cari jadwal pada hari yang sama untuk bank soal dan rombel target yang sama
-      const matchedExisting = existingJadwal.find((exist) => {
+      // Sinkronisasi alokasi_menit pada Bank Soal jika durasi di jadwal/sesi ujian diubah atau berbeda
+      if (
+        data.durasi_menit &&
+        bankSoal.alokasi_menit !== data.durasi_menit &&
+        !updatedBankSoalIds.has(bankSoal.id)
+      ) {
+        operations.push(
+          prisma.cbtBankSoal.update({
+            where: { id: bankSoal.id },
+            data: { alokasi_menit: data.durasi_menit },
+          })
+        );
+        updatedBankSoalIds.add(bankSoal.id);
+        bankSoal.alokasi_menit = data.durasi_menit;
+      }
+
+      // Cari jadwal eksisting yang cocok (Idempoten & Proteksi Terhadap Perubahan Jadwal)
+      // Prioritas 1: Cocok pada hari yang sama untuk bank soal dan rombel target yang sama
+      let matchedExisting = existingJadwal.find((exist) => {
+        if (claimedExistingIds.has(exist.id)) return false;
         if (exist.bank_soal_id !== data.bank_soal_id) return false;
         const existDateStr = new Date(exist.tanggal_mulai).toISOString().split('T')[0];
         if (existDateStr !== itemDateStr) return false;
@@ -1486,11 +1671,31 @@ export class CbtJadwalService {
           ? (exist.target_kelas_ids as string[])
           : [];
 
-        // Periksa irisan rombel target
         return itemTargetKelas.some((kId: string) => existTargetKelas.includes(kId));
       });
 
+      // Prioritas 2: Jika hari pelaksanaan dipindahkan (reschedule), cocokkan jadwal DRAFT pada bank soal & rombel yang sama
+      if (!matchedExisting) {
+        matchedExisting = existingJadwal.find((exist) => {
+          if (claimedExistingIds.has(exist.id)) return false;
+          if (exist.bank_soal_id !== data.bank_soal_id) return false;
+          // Jangan geser jadwal yang sedang berlangsung atau sudah selesai
+          if (exist.status && exist.status !== 'DRAFT') return false;
+
+          const existEventId = (exist.setting_keamanan as any)?.event_id;
+          const itemEventId = (data.setting_keamanan as any)?.event_id;
+          if (existEventId && itemEventId && existEventId !== itemEventId) return false;
+
+          const existTargetKelas: string[] = Array.isArray(exist.target_kelas_ids)
+            ? (exist.target_kelas_ids as string[])
+            : [];
+
+          return itemTargetKelas.some((kId: string) => existTargetKelas.includes(kId));
+        });
+      }
+
       if (matchedExisting) {
+        claimedExistingIds.add(matchedExisting.id);
         const existStartMs = new Date(matchedExisting.tanggal_mulai).getTime();
         const itemStartMs = itemStartDate.getTime();
         const existEndMs = new Date(matchedExisting.tanggal_selesai).getTime();
@@ -1498,11 +1703,14 @@ export class CbtJadwalService {
         const targetDuration = data.durasi_menit ?? bankSoal.alokasi_menit;
         const isDurationDiff = (matchedExisting.durasi_menit || 0) !== targetDuration;
         const isNameDiff = (matchedExisting.nama_sesi || '').trim() !== (data.nama_sesi || '').trim();
+        const existDateStr = new Date(matchedExisting.tanggal_mulai).toISOString().split('T')[0];
+        const isDateDiff = existDateStr !== itemDateStr;
 
-        // Jika jam mulai/selesai (selisih > 60 detik), durasi, atau nama sesi diedit oleh pengguna:
+        // Jika jam mulai/selesai (selisih > 60 detik), tanggal, durasi, atau nama sesi diedit oleh pengguna:
         if (
           Math.abs(existStartMs - itemStartMs) > 60000 ||
           Math.abs(existEndMs - itemEndMs) > 60000 ||
+          isDateDiff ||
           isDurationDiff ||
           isNameDiff
         ) {
