@@ -249,9 +249,9 @@ export const TU_SUBTABS_BASE: TuTabDefinition[] = [
     color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400',
     anyOfCapabilities: [
       'academic.teachers.manage',
+      'academic.teachers.view.list',
       'tu.staff.manage',
-      'correspondence.inbox.view',
-      'correspondence.outbox.view',
+      'tu.staff.view.list',
     ],
   },
 ];
