@@ -33,6 +33,8 @@ import {
   buildMassSchedulePayloads,
   createDefaultExamDays,
   groupMappingsByTingkat,
+  loadPersistedRoomMappings,
+  savePersistedRoomMappings,
   loadPersistedMatrixState,
   savePersistedMatrixState,
   reconstructMatrixFromExistingSchedules,
