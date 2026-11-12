@@ -7,6 +7,7 @@ import { AcademicFilterToolbar, useAcademicFilter } from '../../common/academic-
 import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import { getJadwalKBM, updateJadwalKBM, type JadwalKBM } from '../../../api/attendance/jadwalKBM.api';
 import { getGuruList } from '../../../api/academic/guru.api';
+import { getMapelList, type Mapel } from '../../../api/academic/mapel.api';
 import { useKelasOptions } from '../../common';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -83,6 +84,7 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
   const debouncedSearchQuery = useDebounce(searchInput, 300);
   const [onlyDelegated, setOnlyDelegated] = useState<boolean>(false);
   const [selectedHari, setSelectedHari] = useState<string>(propHari || '');
+  const [selectedMapelId, setSelectedMapelId] = useState<string>('');
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -104,6 +106,12 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
   const { data: guruListRes, isLoading: loadingGuru } = useQuery({
     queryKey: ['guru-all-delegasi'],
     queryFn: () => getGuruList(1, 300),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: mapelListRes } = useQuery({
+    queryKey: ['mapel-all-delegasi'],
+    queryFn: () => getMapelList(1, 300),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -130,6 +138,24 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
   const rawJadwalList: JadwalKBM[] = useMemo(() => {
     return Array.isArray(jadwalRes?.data) ? jadwalRes.data : [];
   }, [jadwalRes]);
+
+  const mapelOptions = useMemo(() => {
+    const mapelMap = new Map<string, string>();
+    const masterList = (mapelListRes?.data || []) as Mapel[];
+    masterList.forEach((m) => {
+      if (m.id && m.nama_mapel) {
+        mapelMap.set(m.id, m.nama_mapel);
+      }
+    });
+    rawJadwalList.forEach((item) => {
+      if (item.mapel_id && item.Mapel?.nama_mapel) {
+        mapelMap.set(item.mapel_id, item.Mapel.nama_mapel);
+      }
+    });
+    return Array.from(mapelMap.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [mapelListRes, rawJadwalList]);
 
   // Aggregasi Blok KBM Berurutan
   const mergedBlocksList: JadwalDelegasiBlock[] = useMemo(() => {
@@ -199,6 +225,7 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
     return mergedBlocksList.filter((item) => {
       if (onlyDelegated && !item.guru_pelaksana_id) return false;
       if (selectedHari && item.hari !== selectedHari) return false;
+      if (selectedMapelId && item.mapel_id !== selectedMapelId) return false;
 
       if (query) {
         const mapel = item.Mapel?.nama_mapel?.toLowerCase() || '';
@@ -212,7 +239,7 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
 
       return true;
     });
-  }, [mergedBlocksList, onlyDelegated, selectedHari, debouncedSearchQuery]);
+  }, [mergedBlocksList, onlyDelegated, selectedHari, selectedMapelId, debouncedSearchQuery]);
 
   const totalItems = filteredJadwalList.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
@@ -506,7 +533,7 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
   const renderTableToolbar = useMemo(() => (
     <div className="flex items-center gap-2 flex-wrap">
       {/* Search Input (Local responsive input + Debounced query) */}
-      <div className="relative w-44 sm:w-60">
+      <div className="relative w-44 sm:w-56">
         <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
         <input
           type="text"
@@ -531,7 +558,7 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
       </div>
 
       {/* Kelas Dropdown */}
-      <div className="w-40">
+      <div className="w-36">
         <SearchableSelect
           value={selectedKelasId || ''}
           onValueChange={(val) => academicFilter.setKelasId(val)}
@@ -541,6 +568,21 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
           ]}
           placeholder="Semua Kelas"
           aria-label="Pilih Kelas"
+          triggerClassName="h-8 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+        />
+      </div>
+
+      {/* Mapel Dropdown */}
+      <div className="w-48">
+        <SearchableSelect
+          value={selectedMapelId}
+          onValueChange={(val) => handleFilterChange(setSelectedMapelId, val)}
+          options={[
+            { value: '', label: 'Semua Mapel' },
+            ...mapelOptions,
+          ]}
+          placeholder="Semua Mapel"
+          aria-label="Pilih Mapel"
           triggerClassName="h-8 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
         />
       </div>
@@ -579,7 +621,7 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
         <RefreshCw className="w-3 h-3" />
       </Button>
     </div>
-  ), [searchInput, selectedKelasId, kelasOptions, selectedHari, onlyDelegated, HARI_FILTER_OPTIONS, academicFilter, handleFilterChange, refetchJadwal]);
+  ), [searchInput, selectedKelasId, kelasOptions, selectedMapelId, mapelOptions, selectedHari, onlyDelegated, HARI_FILTER_OPTIONS, academicFilter, handleFilterChange, refetchJadwal]);
 
   const content = (
     <div className="space-y-4">
@@ -621,27 +663,41 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
                   <SearchableSelect
-                    value={selectedKelasId || ''}
-                    onValueChange={(val) => academicFilter.setKelasId(val)}
+                    value={selectedMapelId}
+                    onValueChange={(val) => handleFilterChange(setSelectedMapelId, val)}
                     options={[
-                      { value: '', label: 'Semua Kelas' },
-                      ...kelasOptions,
+                      { value: '', label: 'Semua Mapel' },
+                      ...mapelOptions,
                     ]}
-                    placeholder="Semua Kelas"
-                    aria-label="Pilih Kelas Mobile"
+                    placeholder="Semua Mapel"
+                    aria-label="Pilih Mapel Mobile"
                     triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                   />
 
-                  <SearchableSelect
-                    value={selectedHari}
-                    onValueChange={(val) => handleFilterChange(setSelectedHari, val)}
-                    options={HARI_FILTER_OPTIONS}
-                    placeholder="Semua Hari"
-                    aria-label="Pilih Hari Mobile"
-                    triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <SearchableSelect
+                      value={selectedKelasId || ''}
+                      onValueChange={(val) => academicFilter.setKelasId(val)}
+                      options={[
+                        { value: '', label: 'Semua Kelas' },
+                        ...kelasOptions,
+                      ]}
+                      placeholder="Semua Kelas"
+                      aria-label="Pilih Kelas Mobile"
+                      triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                    />
+
+                    <SearchableSelect
+                      value={selectedHari}
+                      onValueChange={(val) => handleFilterChange(setSelectedHari, val)}
+                      options={HARI_FILTER_OPTIONS}
+                      placeholder="Semua Hari"
+                      aria-label="Pilih Hari Mobile"
+                      triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                    />
+                  </div>
                 </div>
 
                 <Button

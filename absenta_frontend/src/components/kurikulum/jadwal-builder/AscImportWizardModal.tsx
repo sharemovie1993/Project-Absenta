@@ -212,15 +212,13 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
   const targetSemName = selectedSem?.nama_semester || 'Memuat...';
 
   // Tab State in Step 2
-  const [activeTab, setActiveTab] = useState<'GURU' | 'KELAS' | 'MAPEL' | 'DELEGASI'>('GURU');
+  const [activeTab, setActiveTab] = useState<'GURU' | 'KELAS' | 'MAPEL'>('GURU');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Editable User Mappings
   const [teacherMappings, setTeacherMappings] = useState<Record<string, EntityMapping>>({});
   const [classMappings, setClassMappings] = useState<Record<string, EntityMapping>>({});
   const [subjectMappings, setSubjectMappings] = useState<Record<string, EntityMapping>>({});
-  const [lessonMappings, setLessonMappings] = useState<Record<string, LessonMappingInput>>({});
-  const [onlyMappedLessons, setOnlyMappedLessons] = useState(false);
 
   const mappingStats = useMemo(() => {
     const teachersList = Object.values(teacherMappings);
@@ -254,8 +252,6 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
     setTeacherMappings({});
     setClassMappings({});
     setSubjectMappings({});
-    setLessonMappings({});
-    setOnlyMappedLessons(false);
   };
 
   const handleClose = () => {
@@ -428,7 +424,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
     }
   };
 
-  const handleBulkSetAction = (tab: 'GURU' | 'KELAS' | 'MAPEL' | 'DELEGASI', action: 'CHECK_ALL' | 'UNCHECK_ALL') => {
+  const handleBulkSetAction = (tab: 'GURU' | 'KELAS' | 'MAPEL', action: 'CHECK_ALL' | 'UNCHECK_ALL') => {
     if (tab === 'GURU') {
       setTeacherMappings(prev => {
         const next = { ...prev };
@@ -580,7 +576,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
       teacher_mappings: Object.values(teacherMappings),
       class_mappings: Object.values(classMappings),
       subject_mappings: Object.values(subjectMappings),
-      lesson_mappings: Object.values(lessonMappings),
+      lesson_mappings: [],
     };
 
     console.log('🚀 [aSc Import Wizard] Executing Import Payload:', {
@@ -857,22 +853,6 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                 >
                   <BookOpen className="w-4 h-4" />
                   Pemetaan Mapel ({Object.keys(subjectMappings).length})
-                </button>
-
-                <button
-                  onClick={() => { setActiveTab('DELEGASI'); setSearchQuery(''); }}
-                  className={cn(
-                    "px-4 py-2.5 text-xs font-bold flex items-center gap-2 border-b-2 transition-all relative",
-                    activeTab === 'DELEGASI'
-                      ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30"
-                      : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                  )}
-                >
-                  <Layers className="w-4 h-4" />
-                  <span>Delegasi &amp; Team-Teaching</span>
-                  <span className="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.2 rounded-full font-bold">
-                    Opsional
-                  </span>
                 </button>
               </div>
 
@@ -1424,187 +1404,6 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                   </tbody>
                 </table>
               )}
-
-              {activeTab === 'DELEGASI' && (
-                <div className="space-y-3 p-2">
-                  {/* Banner Panduan Ramah & Status Otomatis */}
-                  <div className="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50/40 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/80 rounded-2xl flex flex-col sm:flex-row items-start justify-between gap-3 shadow-xs">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-emerald-500 text-white rounded-xl shadow-xs shrink-0 mt-0.5">
-                        <CheckCircle2 className="w-5 h-5" />
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-extrabold text-emerald-950 dark:text-emerald-100 text-xs sm:text-sm">
-                            Tab Ini Bersifat Opsional — Seluruh {analysis.lessons?.length || 0} Pelajaran Sudah Otomatis 100% Siap
-                          </h4>
-                          <span className="text-[10px] bg-emerald-200/80 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold px-2 py-0.5 rounded-full">
-                            Default Otomatis Siap
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                          Secara default, seluruh jadwal KBM di XML <strong>otomatis mengajar sesuai Guru SK (Dapodik)</strong> hasil pemetaan Anda di Tab Guru.
-                          Jika seluruh guru mengajar sesuai jadwal XML, <strong>Anda tidak perlu mengubah apapun di tab ini dan bisa langsung klik tombol &ldquo;Lanjut ke Eksekusi&rdquo;</strong> di bawah.
-                        </p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          💡 <em>Gunakan tabel di bawah hanya jika ada kebutuhan khusus:</em>
-                          <span className="ml-1 text-slate-700 dark:text-slate-200 font-semibold">1) Mendelegasikan jam ke guru pengganti (Inval)</span>, atau <span className="text-slate-700 dark:text-slate-200 font-semibold">2) Membagi unit materi pelajaran team-teaching (multi-guru)</span>.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Filter Tabs Toolbar */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                      <button
-                        type="button"
-                        onClick={() => setOnlyMappedLessons(false)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer",
-                          !onlyMappedLessons
-                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200"
-                        )}
-                      >
-                        Semua Pelajaran ({analysis.lessons?.length || 0})
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setOnlyMappedLessons(true)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer flex items-center gap-1.5",
-                          onlyMappedLessons
-                            ? "bg-amber-600 text-white border-amber-600 shadow-xs"
-                            : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-100"
-                        )}
-                      >
-                        <span>Hanya Multi-Guru / Perlu Penyesuaian</span>
-                        <span className={cn(
-                          "text-[10px] px-1.5 py-0.2 rounded-full",
-                          onlyMappedLessons ? "bg-white/20 text-white" : "bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 font-bold"
-                        )}>
-                          {(analysis.lessons || []).filter(l => {
-                            const lm = lessonMappings[l.asc_lesson_id];
-                            const sMap = subjectMappings[l.subject_asc_id];
-                            return Boolean(lm?.guru_pelaksana_id || lm?.sk_guru_id || lm?.unit_name || l.is_team_teaching || sMap?.action === 'UNIT_OF_PARENT');
-                          }).length}
-                        </span>
-                      </button>
-                    </div>
-
-                    <div className="text-[11px] font-semibold text-slate-500">
-                      Kosongkan dropdown untuk mengikuti Guru SK hasil pemetaan
-                    </div>
-                  </div>
-
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700">
-                      <tr>
-                        <th className="py-2 px-3">Pelajaran XML (Mapel / Kelas / JP)</th>
-                        <th className="py-2 px-3">Guru XML</th>
-                        <th className="py-2 px-3">Guru SK Resmi (Dapodik)</th>
-                        <th className="py-2 px-3">Pengajar Pelaksana (Delegasi)</th>
-                        <th className="py-2 px-3">Unit / Sub-Materi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
-                      {(analysis.lessons || [])
-                        .filter((l) => {
-                          const sMap = subjectMappings[l.subject_asc_id];
-                          if (sMap?.action === 'IGNORE') return false;
-                          const q = searchQuery.trim().toLowerCase();
-                          if (q) {
-                            const hay = `${l.subject_name} ${l.class_names.join(' ')} ${l.teacher_names.join(' ')}`.toLowerCase();
-                            if (!hay.includes(q)) return false;
-                          }
-                          if (onlyMappedLessons) {
-                            const lm = lessonMappings[l.asc_lesson_id];
-                            const hasCustom = Boolean(lm?.guru_pelaksana_id || lm?.sk_guru_id || lm?.unit_name || l.is_team_teaching || sMap?.action === 'UNIT_OF_PARENT');
-                            if (!hasCustom) return false;
-                          }
-                          return true;
-                        })
-                        .slice(0, 150)
-                        .map((l) => {
-                          const lm = lessonMappings[l.asc_lesson_id] || { asc_lesson_id: l.asc_lesson_id };
-                          const sMap = subjectMappings[l.subject_asc_id];
-                          const defaultUnitName = sMap?.action === 'UNIT_OF_PARENT' ? (sMap.unit_name || sMap.name) : '';
-                          return (
-                            <tr key={l.asc_lesson_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                              <td className="py-2 px-3">
-                                <div className="font-bold text-slate-800 dark:text-slate-100">{l.subject_name}</div>
-                                <div className="text-[10px] text-slate-500">
-                                  {l.class_names.join(', ') || '-'} • {l.periods_per_week} JP
-                                  {l.is_team_teaching && (
-                                    <span className="ml-1.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold">
-                                      Multi-Guru
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="py-2 px-3 text-[11px] text-slate-600 dark:text-slate-300">
-                                {l.teacher_names.join(', ') || '-'}
-                              </td>
-                              <td className="py-2 px-3">
-                                <select
-                                  value={lm.sk_guru_id || ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value || null;
-                                    setLessonMappings(prev => ({
-                                      ...prev,
-                                      [l.asc_lesson_id]: { ...lm, asc_lesson_id: l.asc_lesson_id, sk_guru_id: val },
-                                    }));
-                                  }}
-                                  className="w-full text-[11px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1.5 font-medium"
-                                >
-                                  <option value="">✓ Otomatis (Sesuai Guru XML)</option>
-                                  {analysis.db_teachers.map(dbt => (
-                                    <option key={dbt.id} value={dbt.id}>{dbt.name}</option>
-                                  ))}
-                                </select>
-                              </td>
-                              <td className="py-2 px-3">
-                                <select
-                                  value={lm.guru_pelaksana_id || ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value || null;
-                                    setLessonMappings(prev => ({
-                                      ...prev,
-                                      [l.asc_lesson_id]: { ...lm, asc_lesson_id: l.asc_lesson_id, guru_pelaksana_id: val },
-                                    }));
-                                  }}
-                                  className="w-full text-[11px] rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/30 p-1.5 font-medium"
-                                >
-                                  <option value="">✓ Otomatis (Sama dengan Guru SK)</option>
-                                  {analysis.db_teachers.map(dbt => (
-                                    <option key={dbt.id} value={dbt.id}>{dbt.name}</option>
-                                  ))}
-                                </select>
-                              </td>
-                              <td className="py-2 px-3">
-                                <input
-                                  type="text"
-                                  value={lm.unit_name ?? defaultUnitName}
-                                  placeholder={defaultUnitName || 'Unit / Sub-materi'}
-                                  onChange={(e) => {
-                                    const val = e.target.value || null;
-                                    setLessonMappings(prev => ({
-                                      ...prev,
-                                      [l.asc_lesson_id]: { ...lm, asc_lesson_id: l.asc_lesson_id, unit_name: val },
-                                    }));
-                                  }}
-                                  className="w-full text-[11px] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5"
-                                />
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
 
             {/* Step 2 Bottom Navigation */}
@@ -1871,6 +1670,21 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                   <span>[Sinkronisasi Waktu] Day-Pattern Shift Bel</span>
                   <span className="text-indigo-600 font-bold">Pola Jam Senin-Jumat Aktif</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Info Delegasi & Unit Pengajaran Terpisah */}
+            <div className="p-4 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-2xl flex items-start gap-3 text-left">
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-xl shrink-0 mt-0.5">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div className="text-xs space-y-1">
+                <h4 className="font-extrabold text-indigo-950 dark:text-indigo-100">
+                  Ingin Mengatur Guru Delegasi atau Pembagian Unit Materi?
+                </h4>
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                  Seluruh jadwal KBM telah berhasil diimpor dengan guru resmi masing-masing. Jika Anda perlu menugaskan <strong>Guru Pengganti/Delegasi (Inval)</strong> atau membagi <strong>Unit Pengajaran / Team Teaching</strong>, Anda dapat mengelolanya secara terpisah melalui menu <strong>Delegasi</strong> atau <strong>Plotting Guru Mapel</strong> di Dashboard Kurikulum kapan saja.
+                </p>
               </div>
             </div>
 
