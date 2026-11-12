@@ -105,6 +105,79 @@ const getTingkatTheme = (tingkat: number) => {
   }
 };
 
+interface Time24InputProps {
+  value: string; // "HH:mm"
+  onChange: (val: string) => void;
+  ariaLabel?: string;
+  className?: string;
+}
+
+const Time24Input: React.FC<Time24InputProps> = ({ value, onChange, ariaLabel, className }) => {
+  const [internalVal, setInternalVal] = useState(value || '07:30');
+
+  useEffect(() => {
+    setInternalVal(value || '07:30');
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^0-9:]/g, '');
+    if (raw.length <= 5) {
+      setInternalVal(raw);
+    }
+  };
+
+  const handleBlur = () => {
+    let clean = internalVal.trim();
+    if (!clean) {
+      clean = value || '07:30';
+    }
+
+    if (/^\d{3,4}$/.test(clean)) {
+      if (clean.length === 3) clean = `0${clean}`;
+      clean = `${clean.slice(0, 2)}:${clean.slice(2, 4)}`;
+    }
+
+    const parts = clean.split(':');
+    let h = parseInt(parts[0] || '7', 10);
+    let m = parseInt(parts[1] || '0', 10);
+
+    if (isNaN(h) || h < 0) h = 0;
+    if (h > 23) h = 23;
+    if (isNaN(m) || m < 0) m = 0;
+    if (m > 59) m = 59;
+
+    const formatted = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    setInternalVal(formatted);
+    if (formatted !== value) {
+      onChange(formatted);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={internalVal}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      placeholder="07:30"
+      maxLength={5}
+      aria-label={ariaLabel}
+      className={cn(
+        'w-13 py-1 px-1 text-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded text-xs font-mono font-bold tracking-tight hover:border-indigo-400 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden transition-colors cursor-text',
+        className
+      )}
+    />
+  );
+};
+
 export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = ({
   topFlightDeck,
   bankList,
@@ -1239,27 +1312,23 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                         </span>
                       </td>
 
-                      {/* Kolom 2: Waktu Ujian (Inline Mono Time Range) */}
+                      {/* Kolom 2: Waktu Ujian (Inline Mono Time Range 24-Jam Terstandarisasi) */}
                       <td className="py-2 px-2 text-center align-middle bg-slate-50/30 dark:bg-slate-900/30">
                         <div className="inline-flex items-center justify-center gap-1 font-mono text-xs font-bold text-slate-800 dark:text-slate-100">
-                          <input
-                            type="time"
+                          <Time24Input
                             value={sess.jam_mulai}
-                            onChange={(e) =>
-                              handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_mulai', e.target.value)
+                            onChange={(val) =>
+                              handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_mulai', val)
                             }
-                            className="w-14 py-1 px-1 text-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded text-xs font-mono font-bold hover:border-indigo-400 focus:border-indigo-600 focus:outline-hidden [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden cursor-pointer"
-                            aria-label={`Jam Mulai ${sess.nama_sesi}`}
+                            ariaLabel={`Jam Mulai ${sess.nama_sesi}`}
                           />
                           <span className="text-slate-400 font-sans font-bold">–</span>
-                          <input
-                            type="time"
+                          <Time24Input
                             value={sess.jam_selesai}
-                            onChange={(e) =>
-                              handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_selesai', e.target.value)
+                            onChange={(val) =>
+                              handleUpdateSessionTime(day.day_index, sess.session_index, 'jam_selesai', val)
                             }
-                            className="w-14 py-1 px-1 text-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded text-xs font-mono font-bold hover:border-indigo-400 focus:border-indigo-600 focus:outline-hidden [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-inner-spin-button]:hidden cursor-pointer"
-                            aria-label={`Jam Selesai ${sess.nama_sesi}`}
+                            ariaLabel={`Jam Selesai ${sess.nama_sesi}`}
                           />
                         </div>
                       </td>
