@@ -14,6 +14,7 @@ import {
   Wrench,
   Map,
   Network,
+  Calendar,
   type LucideIcon,
 } from 'lucide-react';
 import type { TuTabId, TuNavTabItem } from './types';
