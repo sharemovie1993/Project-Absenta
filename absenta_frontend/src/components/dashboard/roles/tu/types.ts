@@ -16,7 +16,8 @@ export type TuTabId =
   | 'sarpras-peminjaman'
   | 'sarpras-perbaikan'
   | 'sarpras-denah'
-  | 'struktur_organisasi';
+  | 'struktur_organisasi'
+  | 'sosialisasi';
 
 export interface TuNavTabItem {
   id: TuTabId;

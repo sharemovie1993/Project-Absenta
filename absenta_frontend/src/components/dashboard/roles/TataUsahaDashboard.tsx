@@ -59,6 +59,9 @@ const KepegawaianDashboard = lazy(() =>
 const DapodikIntegrationView = lazy(() =>
   import('@/components/academic/dapodik/DapodikIntegrationView').then((m) => ({ default: m.DapodikIntegrationView }))
 );
+const RapatSosialisasiPanel = lazy(() =>
+  import('@/components/management/compliance/RapatSosialisasiPanel').then((m) => ({ default: m.RapatSosialisasiPanel }))
+);
 
 // Reused Sarpras Universal Tabs untuk TU_SARPRAS & TU_KEPALA
 const SarprasInventarisTab = lazy(() =>
@@ -633,6 +636,21 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
                 divisionTitle="Struktur Organisasi Tata Usaha"
                 hideLayout={true}
               />
+            </div>
+          )}
+
+          {allowedTabIds.has('sosialisasi') && visitedTabs.has('sosialisasi') && (
+            <div className={activeTab === 'sosialisasi' ? 'block animate-in fade-in duration-100' : 'hidden'}>
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Rapat Sosialisasi Platform...</span>
+                  </div>
+                }
+              >
+                <RapatSosialisasiPanel />
+              </Suspense>
             </div>
           )}
         </main>

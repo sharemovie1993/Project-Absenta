@@ -239,6 +239,21 @@ export const TU_SUBTABS_BASE: TuTabDefinition[] = [
     color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400',
     anyOfCapabilities: ['academic.structures.view.list', 'academic.structure.manage'],
   },
+  {
+    id: 'sosialisasi',
+    label: 'Rapat Sosialisasi',
+    shortLabel: 'Sosialisasi',
+    category: 'administrasi',
+    icon: Users,
+    targetPath: '/dashboard?tab=kepegawaian&subtab=sosialisasi',
+    color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400',
+    anyOfCapabilities: [
+      'academic.teachers.manage',
+      'tu.staff.manage',
+      'correspondence.inbox.view',
+      'correspondence.outbox.view',
+    ],
+  },
 ];
 
 export interface TuTabBadges {
