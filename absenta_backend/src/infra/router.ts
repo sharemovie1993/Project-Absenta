@@ -141,6 +141,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
         const { publicPortalRoutes } = await import('../modules/public-portal/routes/public-portal.routes');
         await fastify.register(publicPortalRoutes, { prefix: '/public/portal' });
 
+        // Public Sosialisasi Kehadiran Guru (Scan QR Presensi)
+        const { publicSosialisasiRoutes } = await import('../modules/academic/sosialisasi/routes/sosialisasi.routes');
+        await fastify.register(publicSosialisasiRoutes, { prefix: '/public/sosialisasi' });
+
         // Public Kalender iCal Export (Sync for Google/Apple Calendar)
         fastify.get('/kurikulum/kalender/export', async (request: any, reply: any) => {
           const { KalenderAkademikController } = await import('../modules/kurikulum/controllers/kalender-akademik.controller');
@@ -254,8 +258,6 @@ export async function registerRoutes(fastify: any, prisma: any) {
           } catch (err: any) {
             console.error('[Public invoice details proxy failed]:', err.message);
           }
-          const { publicSosialisasiRoutes } = await import('../modules/academic/sosialisasi/routes/sosialisasi.routes');
-          await fastify.register(publicSosialisasiRoutes, { prefix: '/public/sosialisasi' });
 
           return reply.status(404).send({ success: false, message: 'Tagihan tidak ditemukan atau sudah kedaluwarsa.' });
         });
