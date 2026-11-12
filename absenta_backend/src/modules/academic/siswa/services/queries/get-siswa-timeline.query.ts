@@ -16,7 +16,7 @@ export async function getSiswaTimelineQuery(params: {
   });
 
   if (!student) {
-    throw new Error('Siswa tidak ditemukan');
+    return [];
   }
 
   // 1.5. Calculate visibility context
@@ -24,19 +24,28 @@ export async function getSiswaTimelineQuery(params: {
   let isWali = true;
 
   if (userContext) {
-    hasSensitive = userContext.capabilities.includes('bk.counseling.view.sensitive') ||
-                   userContext.capabilities.includes('system.platform.full_access');
+    const userCaps = Array.isArray(userContext.capabilities) ? userContext.capabilities : [];
+    hasSensitive = userCaps.includes('bk.counseling.view.sensitive') ||
+                   userCaps.includes('system.platform.full_access');
     
-    const assignment = await prisma.organizationalAssignment.findFirst({
-      where: {
-        tenant_id: tenantId,
-        user_id: userContext.id,
-        kelas_id: student.kelas_id,
-        is_active: true,
-        Position: { code: 'WALIKELAS' }
+    if (userContext.id && student.kelas_id) {
+      try {
+        const assignment = await prisma.organizationalAssignment.findFirst({
+          where: {
+            tenant_id: tenantId,
+            user_id: userContext.id,
+            kelas_id: student.kelas_id,
+            is_active: true,
+            Position: { code: 'WALIKELAS' }
+          }
+        });
+        isWali = !!assignment;
+      } catch {
+        isWali = false;
       }
-    });
-    isWali = !!assignment;
+    } else {
+      isWali = false;
+    }
   }
 
   const filterByVisibility = <T extends { visibility?: string }>(items: T[]): T[] => {
@@ -120,12 +129,14 @@ export async function getSiswaTimelineQuery(params: {
 
   // Add registration entry
   if (student.tanggal_masuk) {
+    const d = new Date(student.tanggal_masuk);
+    const dateFormatted = !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : String(student.tanggal_masuk);
     items.push({
       id: `masuk-${student.id}`,
-      tanggal: student.tanggal_masuk,
+      tanggal: !isNaN(d.getTime()) ? d : student.tanggal_masuk,
       tipe: 'STATUS_AKADEMIK',
       judul: 'Siswa Terdaftar / Masuk Sekolah',
-      keterangan: `Tanggal masuk resmi: ${student.tanggal_masuk.toISOString().slice(0, 10)}`,
+      keterangan: `Tanggal masuk resmi: ${dateFormatted}`,
       user_name: 'Sistem',
       _order: 0  // Always first in its day (will appear last in descending view)
     });
@@ -269,9 +280,10 @@ export async function getSiswaTimelineQuery(params: {
 
   // Add exit entry if exists (always logically the LAST event)
   if (student.tanggal_keluar) {
+    const d = new Date(student.tanggal_keluar);
     items.push({
       id: `keluar-${student.id}`,
-      tanggal: student.tanggal_keluar,
+      tanggal: !isNaN(d.getTime()) ? d : student.tanggal_keluar,
       tipe: 'STATUS_AKADEMIK',
       judul: `Status Keluar Resmi (${student.status})`,
       keterangan: `Alasan: ${student.alasan_keluar || '-'}`,

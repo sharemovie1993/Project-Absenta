@@ -103,6 +103,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
       return { ...m, [field]: value };
     });
     onUpdateRoomMappings(next);
+    savePersistedRoomMappings(next, tenantId);
   };
 
   const handleSaveToStorage = () => {
@@ -317,7 +318,10 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                 type="button"
                 variant="primary"
                 size="sm"
-                onClick={onProceedToNextPhase}
+                onClick={() => {
+                  savePersistedRoomMappings(roomMappings, tenantId);
+                  if (onProceedToNextPhase) onProceedToNextPhase();
+                }}
                 className="text-xs h-7 px-2.5 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer flex items-center gap-1 shrink-0"
               >
                 <span>Lanjut</span>
@@ -546,6 +550,8 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
           items={roomMappings}
           selectedKelasId={targetKelasIdForPrint}
           eventName={eventName}
+          activeTpName={activeTpName}
+          semester={semester}
         />
       )}
 

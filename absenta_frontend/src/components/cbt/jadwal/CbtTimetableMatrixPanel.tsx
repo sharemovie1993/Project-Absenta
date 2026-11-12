@@ -956,12 +956,38 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
         toast.dismiss('auto-provision-bank');
       }
 
+      let effectiveRoomMappings = [...(roomMappings || [])];
+      const persistedRooms = loadPersistedRoomMappings(tenantId);
+      if (persistedRooms && Object.keys(persistedRooms).length > 0) {
+        if (effectiveRoomMappings.length === 0) {
+          effectiveRoomMappings = Object.entries(persistedRooms).map(([kId, val]) => ({
+            kelas_id: kId,
+            nama_kelas: (val as any).nama_kelas || 'Kelas',
+            tingkat: (val as any).tingkat || 10,
+            slot_ruang: val.slot_ruang,
+            nama_ruang: val.nama_ruang,
+          }));
+        } else {
+          effectiveRoomMappings = effectiveRoomMappings.map((m) => {
+            const p = persistedRooms[m.kelas_id];
+            if (p) {
+              return {
+                ...m,
+                slot_ruang: p.slot_ruang || m.slot_ruang,
+                nama_ruang: p.nama_ruang || m.nama_ruang,
+              };
+            }
+            return m;
+          });
+        }
+      }
+
       const payloads = buildMassSchedulePayloads({
         eventPrefix,
         days,
         matrix: effectiveMatrix,
         bankList: effectiveBankList,
-        roomMappings,
+        roomMappings: effectiveRoomMappings,
         activeTpId,
         activeSemId,
         generationMode,

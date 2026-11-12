@@ -317,15 +317,14 @@ async sendParentAccess(request: any, reply: any) {
       });
     }
   },
-async getSiswaHistory(request: any, reply: any) {
+  async getSiswaHistory(request: any, reply: any) {
     try {
       const scope = (request as any).organizationalScope;
-      const tenantId = request.tenantId;
+      const tenantId = request.tenantId || request.user?.tenantId || request.user?.tenant_id;
       const { id } = request.params;
 
       if (!tenantId) {
-        reply.status(401);
-        return { success: false, message: 'Unauthorized: tenant_id not found' };
+        return reply.status(401).send({ success: false, message: 'Unauthorized: tenant_id not found', data: [] });
       }
 
       const history = await siswaService.getSiswaHistory(id, tenantId, scope);
@@ -333,22 +332,44 @@ async getSiswaHistory(request: any, reply: any) {
       return reply.status(200).send({
         success: true,
         message: 'History retrieved successfully',
-        data: history,
+        data: history || [],
       });
     } catch (error: any) {
       console.error('Error getting siswa history:', error);
-      return reply.status(error.message === 'Siswa not found' ? 404 : 500).send({ 
+      if (error?.message?.includes('not found') || error?.message?.includes('tidak ditemukan')) {
+        return reply.status(200).send({ 
+          success: true, 
+          message: 'Belum ada riwayat akademik',
+          data: [] 
+        });
+      }
+      return reply.status(500).send({ 
         success: false, 
-        message: error.message || 'Internal server error' 
+        message: error?.message || 'Internal server error',
+        data: []
       });
     }
   },
-async getSiswaTimeline(request: any, reply: any) {
+
+  async getSiswaTimeline(request: any, reply: any) {
     try {
       const { id: siswaId } = request.params;
-      const tenantId = request.tenantId;
-      const userId = request.user.id;
-      const capabilities = await authorizationService.resolveUserCapabilities(userId, { user: request.user });
+      const tenantId = request.tenantId || request.user?.tenantId || request.user?.tenant_id;
+      const userId = request.user?.id || request.user?.userId || '';
+
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: tenant_id not found', data: [] });
+      }
+
+      let capabilities: string[] = [];
+      if (userId) {
+        try {
+          capabilities = await authorizationService.resolveUserCapabilities(userId, { user: request.user });
+        } catch (capErr) {
+          console.warn('Failed to resolve capabilities for timeline:', capErr);
+          capabilities = [];
+        }
+      }
 
       const timeline = await siswaService.getSiswaTimeline({
         tenantId,
@@ -361,11 +382,17 @@ async getSiswaTimeline(request: any, reply: any) {
 
       return reply.status(200).send({
         success: true,
-        data: timeline
+        data: timeline || []
       });
     } catch (error: any) {
       console.error('Get timeline error:', error);
-      return reply.status(500).send({ success: false, message: error.message || 'Failed to retrieve timeline' });
+      if (error?.message?.includes('tidak ditemukan') || error?.message?.includes('not found')) {
+        return reply.status(200).send({
+          success: true,
+          data: []
+        });
+      }
+      return reply.status(500).send({ success: false, message: error?.message || 'Failed to retrieve timeline', data: [] });
     }
   }
 };

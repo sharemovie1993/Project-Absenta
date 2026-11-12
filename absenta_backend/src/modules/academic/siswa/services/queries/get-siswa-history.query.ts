@@ -2,51 +2,76 @@ import { siswaDb } from '../repositories/siswa.db';
 
 export async function getSiswaHistoryQuery(
   siswaId: string,
-  scope: { tenantId: string; org: any }
+  scope: { tenantId: string; org?: any }
 ): Promise<any[]> {
   const { tenantId, org } = scope;
-  let whereClause: any = { siswa_id: siswaId };
+  if (!siswaId || !tenantId) return [];
 
-  let siswaWhere: any = { id: siswaId, tenant_id: tenantId };
+  // 1. Verify student exists in tenant
+  const student = await siswaDb.siswa.findFirst({
+    where: { id: siswaId, tenant_id: tenantId },
+    select: { id: true, kelas_id: true, status: true },
+  });
 
-  // Apply Isolate/Scope filter from Organization Engine
-  if (org && org.is_siswa === true) {
-    // Allow siswa to view their own academic history
-  } else if (org && org.tenant_wide !== true) {
+  if (!student) {
+    return [];
+  }
+
+  // 2. Apply Organizational Scoping (skip if tenant_wide or siswa self)
+  if (org && org.tenant_wide !== true && org.is_siswa !== true) {
     if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
-      siswaWhere.Kelas = {
-        jurusan_id: { in: org.unit_ids }
-      };
+      const allowedUnits: string[] = org.unit_ids.map(String);
+      const isCurrentlyInUnit = await siswaDb.kelas.findFirst({
+        where: { id: student.kelas_id || '', jurusan_id: { in: allowedUnits } },
+        select: { id: true }
+      });
+      if (!isCurrentlyInUnit) {
+        // Check historical unit enrollment
+        const hadUnitHistory = await siswaDb.siswaAkademik.findFirst({
+          where: {
+            siswa_id: siswaId,
+            kelas: { jurusan_id: { in: allowedUnits } }
+          },
+          select: { id: true }
+        });
+        if (!hadUnitHistory && !org.is_elevated_context) {
+          return [];
+        }
+      }
     } else {
-      const allowed = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
-      if (allowed.length > 0) {
-        siswaWhere.kelas_id = { in: allowed };
-      } else {
-          // No assigned classes, deny access to specific siswa history
-          throw new Error('Siswa not found');
+      const allowedKelasIds: string[] = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
+      const isCurrentlyAllowed = student.kelas_id && allowedKelasIds.includes(student.kelas_id);
+      if (!isCurrentlyAllowed && allowedKelasIds.length > 0) {
+        // Check historical class enrollment
+        const hadClassHistory = await siswaDb.siswaAkademik.findFirst({
+          where: {
+            siswa_id: siswaId,
+            kelas_id: { in: allowedKelasIds }
+          },
+          select: { id: true }
+        });
+        if (!hadClassHistory && !org.is_elevated_context) {
+          return [];
+        }
       }
     }
   }
 
-  const siswa = await siswaDb.siswa.findFirst({
-    where: siswaWhere,
-    select: { id: true },
-  });
+  // 3. Fetch academic history with relational data safely
+  try {
+    const history = await siswaDb.siswaAkademik.findMany({
+      where: { siswa_id: siswaId },
+      include: {
+        kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+        tahunPelajaran: { select: { id: true, tahun: true } },
+        semester: { select: { id: true, nama_semester: true } },
+      },
+      orderBy: [{ tahunPelajaran: { tahun: 'desc' } }, { semester: { nama_semester: 'desc' } }],
+    });
 
-  if (!siswa) {
-    throw new Error('Siswa not found');
+    return history || [];
+  } catch (error) {
+    console.error(`Failed to query siswaAkademik for siswaId ${siswaId}:`, error);
+    return [];
   }
-
-  const history = await siswaDb.siswaAkademik.findMany({
-    where: whereClause,
-    include: {
-      kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
-      tahunPelajaran: { select: { id: true, tahun: true } },
-      semester: { select: { id: true, nama_semester: true } },
-    },
-    orderBy: [{ tahunPelajaran: { tahun: 'desc' } }, { semester: { nama_semester: 'desc' } }],
-  });
-
-  return history;
 }
-

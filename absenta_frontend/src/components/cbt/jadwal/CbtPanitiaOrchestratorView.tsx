@@ -39,6 +39,7 @@ import {
   KelasRoomMapping,
   generateClassRoomMappings,
   loadPersistedRoomMappings,
+  savePersistedRoomMappings,
   filterEffectiveJadwalList,
   evaluateStep1Soal,
   evaluateStep2Ruang,
@@ -48,6 +49,7 @@ import {
   PhaseReadinessResult,
   CbtPanitiaPhase,
 } from './cbtOrchestratorHelper';
+import { fetchDenahList, spasialQueryKeys } from '@/api/spasial.api';
 import { CbtBankSoalReadinessPanel } from './CbtBankSoalReadinessPanel';
 import { CbtKelasRoomTreePanel } from './CbtKelasRoomTreePanel';
 import { CbtTimetableMatrixPanel } from './CbtTimetableMatrixPanel';
@@ -107,7 +109,32 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
     return active.filter((k) => effectiveTargetTingkat.includes(Number(k.tingkat)));
   }, [kelasList, effectiveTargetTingkat]);
 
-  // ── 1. State Ploting Ruang ke Kelas (Kelas-Centrik R.01 - R.n) ──
+  // ── 1. Query Denah Spasial Kampus (Master Sarpras / Event Ujian) ──
+  const { data: denahListData } = useQuery({
+    queryKey: spasialQueryKeys.list({ tipe: 'EVENT_UJIAN' }),
+    queryFn: () => fetchDenahList({ tipe: 'EVENT_UJIAN' }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const denahMapByKelasId = useMemo(() => {
+    const map = new Map<string, { slot_ruang: string; nama_ruang: string }>();
+    if (Array.isArray(denahListData)) {
+      denahListData.forEach((d) => {
+        const elements = Array.isArray(d.elements) ? d.elements : [];
+        elements.forEach((el: any) => {
+          if (!el || !el.label_utama) return;
+          const slot = String(el.label_utama).trim();
+          const nama = el.catatan || el.label_sub || slot;
+          if (el.kelas_id && !map.has(el.kelas_id)) {
+            map.set(el.kelas_id, { slot_ruang: slot, nama_ruang: nama });
+          }
+        });
+      });
+    }
+    return map;
+  }, [denahListData]);
+
+  // ── 2. State Ploting Ruang ke Kelas (Kelas-Centrik R.01 - R.n & Terintegrasi Denah Spasial) ──
   const [roomMappings, setRoomMappings] = useState<KelasRoomMapping[]>([]);
 
   useEffect(() => {
@@ -116,24 +143,40 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
       return;
     }
     const persisted = loadPersistedRoomMappings(tenantId);
-    if (persisted) {
-      const generated = generateClassRoomMappings(scopedKelasList);
-      const merged = generated.map((item) => {
-        const saved = persisted[item.kelas_id];
-        if (saved) {
-          return {
-            ...item,
-            slot_ruang: saved.slot_ruang || item.slot_ruang,
-            nama_ruang: saved.nama_ruang || item.nama_ruang,
-          };
-        }
-        return item;
-      });
-      setRoomMappings(merged);
-    } else {
-      setRoomMappings(generateClassRoomMappings(scopedKelasList));
+    const generated = generateClassRoomMappings(scopedKelasList);
+
+    const merged = generated.map((item) => {
+      // 1. Prioritas Utama: Editan manual panitia yang tersimpan di localStorage
+      const saved = persisted?.[item.kelas_id];
+      if (saved && (saved.slot_ruang || saved.nama_ruang)) {
+        return {
+          ...item,
+          slot_ruang: saved.slot_ruang || item.slot_ruang,
+          nama_ruang: saved.nama_ruang || item.nama_ruang,
+        };
+      }
+
+      // 2. Prioritas Kedua: Pemetaan spasial dari Denah Ujian (Sarpras & Denah Spasial)
+      const fromDenah = denahMapByKelasId.get(item.kelas_id);
+      if (fromDenah && (fromDenah.slot_ruang || fromDenah.nama_ruang)) {
+        return {
+          ...item,
+          slot_ruang: fromDenah.slot_ruang || item.slot_ruang,
+          nama_ruang: fromDenah.nama_ruang || item.nama_ruang,
+        };
+      }
+
+      // 3. Fallback: Standar deterministik R.01 s/d R.n
+      return item;
+    });
+
+    setRoomMappings(merged);
+
+    // Simpan ke localStorage agar konsisten ke seluruh tahapan
+    if (!persisted || Object.keys(persisted).length === 0) {
+      savePersistedRoomMappings(merged, tenantId);
     }
-  }, [scopedKelasList, tenantId]);
+  }, [scopedKelasList, tenantId, denahMapByKelasId]);
 
   // ── 2. Fetch Bank Soal (Kapasitas Penuh 500 & StaleTime Guard) ──
   const { data: bankRes, refetch: refetchBankSoal } = useQuery({

@@ -1706,14 +1706,45 @@ export class CbtJadwalService {
         const existDateStr = new Date(matchedExisting.tanggal_mulai).toISOString().split('T')[0];
         const isDateDiff = existDateStr !== itemDateStr;
 
-        // Jika jam mulai/selesai (selisih > 60 detik), tanggal, durasi, atau nama sesi diedit oleh pengguna:
+        const existSecurity = (matchedExisting.setting_keamanan as Record<string, any>) || {};
+        const newSecurity = (data.setting_keamanan as Record<string, any>) || {};
+        const existRuang = String(existSecurity.ruang_ujian || '').trim();
+        const newRuang = String(newSecurity.ruang_ujian || '').trim();
+        const isRoomDiff = newRuang.length > 0 && existRuang !== newRuang;
+        const isRoomNamaDiff =
+          String(newSecurity.ruang_ujian_nama || '').trim().length > 0 &&
+          String(newSecurity.ruang_ujian_nama || '').trim() !== String(existSecurity.ruang_ujian_nama || '').trim();
+
+        // Jika jam mulai/selesai (selisih > 60 detik), tanggal, durasi, nama sesi, atau pemetaan ruang diedit:
         if (
           Math.abs(existStartMs - itemStartMs) > 60000 ||
           Math.abs(existEndMs - itemEndMs) > 60000 ||
           isDateDiff ||
           isDurationDiff ||
-          isNameDiff
+          isNameDiff ||
+          isRoomDiff ||
+          isRoomNamaDiff
         ) {
+          const mergedSecurity = {
+            ...existSecurity,
+            ...newSecurity,
+            // Pertahankan pengawas & proktor eksisting jika sudah ada di database
+            pengawas_1_id: newSecurity.pengawas_1_id || existSecurity.pengawas_1_id,
+            pengawas_1_nama: newSecurity.pengawas_1_nama || existSecurity.pengawas_1_nama,
+            pengawas_1_nip: newSecurity.pengawas_1_nip || existSecurity.pengawas_1_nip,
+            tanda_tangan_pengawas_1: newSecurity.tanda_tangan_pengawas_1 || existSecurity.tanda_tangan_pengawas_1,
+            pengawas_2_id: newSecurity.pengawas_2_id || existSecurity.pengawas_2_id,
+            pengawas_2_nama: newSecurity.pengawas_2_nama || existSecurity.pengawas_2_nama,
+            pengawas_2_nip: newSecurity.pengawas_2_nip || existSecurity.pengawas_2_nip,
+            tanda_tangan_pengawas_2: newSecurity.tanda_tangan_pengawas_2 || existSecurity.tanda_tangan_pengawas_2,
+            proktor_id: newSecurity.proktor_id || existSecurity.proktor_id,
+            proktor_nama: newSecurity.proktor_nama || existSecurity.proktor_nama,
+            proktor_nip: newSecurity.proktor_nip || existSecurity.proktor_nip,
+            tanda_tangan_proktor: newSecurity.tanda_tangan_proktor || existSecurity.tanda_tangan_proktor,
+            ruang_ujian: newSecurity.ruang_ujian || existSecurity.ruang_ujian,
+            ruang_ujian_nama: newSecurity.ruang_ujian_nama || existSecurity.ruang_ujian_nama,
+          };
+
           operations.push(
             prisma.cbtJadwalUjian.update({
               where: { id: matchedExisting.id },
@@ -1722,7 +1753,7 @@ export class CbtJadwalService {
                 tanggal_selesai: new Date(data.tanggal_selesai),
                 durasi_menit: targetDuration,
                 nama_sesi: data.nama_sesi.trim(),
-                ...(data.setting_keamanan ? { setting_keamanan: data.setting_keamanan } : {}),
+                setting_keamanan: mergedSecurity,
               },
             })
           );

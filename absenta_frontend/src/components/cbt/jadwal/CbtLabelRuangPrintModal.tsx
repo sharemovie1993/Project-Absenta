@@ -16,6 +16,8 @@ interface CbtLabelRuangPrintModalProps {
   items: KelasRoomMapping[];
   selectedKelasId?: string | null;
   eventName?: string;
+  activeTpName?: string;
+  semester?: string;
 }
 
 export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = ({
@@ -24,8 +26,17 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
   items,
   selectedKelasId,
   eventName = 'PENILAIAN AKHIR SEMESTER (PAS) GANJIL',
+  activeTpName,
+  semester,
 }) => {
   const sheetContainerRef = useRef<HTMLDivElement>(null);
+
+  const formatDefaultTp = (tp?: string, sem?: string) => {
+    if (!tp) return 'TAHUN PELAJARAN 2025/2026';
+    const cleanTp = tp.replace(/tahun\s*(pelajaran|ajaran)?/i, '').trim();
+    const semText = sem ? ` - SEMESTER ${sem.toUpperCase()}` : '';
+    return `TAHUN PELAJARAN ${cleanTp}${semText}`;
+  };
 
   // Filter mode: 'ALL' or a specific kelas_id
   const [filterKelasId, setFilterKelasId] = useState<string>(selectedKelasId || 'ALL');
@@ -35,9 +46,12 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
   const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
-  // State nama event yang dapat diedit langsung oleh panitia
+  // State nama event & tahun pelajaran yang dapat diedit langsung oleh panitia
   const [customEventName, setCustomEventName] = useState<string>(
     eventName || 'PENILAIAN AKHIR SEMESTER (PAS) GANJIL'
+  );
+  const [customTpText, setCustomTpText] = useState<string>(
+    formatDefaultTp(activeTpName, semester)
   );
 
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
@@ -57,6 +71,10 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
       setCustomEventName(eventName);
     }
   }, [eventName]);
+
+  useEffect(() => {
+    setCustomTpText(formatDefaultTp(activeTpName, semester));
+  }, [activeTpName, semester]);
 
   // Filtered rooms to render
   const targetRooms = React.useMemo(() => {
@@ -191,7 +209,20 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
               onChange={(e) => setCustomEventName(e.target.value)}
               placeholder="Nama Event Asesmen..."
               aria-label="Edit nama event asesmen pada label ruang"
-              className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-52 sm:w-64"
+              className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-44 sm:w-56"
+            />
+          </div>
+
+          {/* Input Edit Tahun Pelajaran */}
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-lg">
+            <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Thn Pelajaran:</span>
+            <input
+              type="text"
+              value={customTpText}
+              onChange={(e) => setCustomTpText(e.target.value)}
+              placeholder="Tahun Pelajaran..."
+              aria-label="Edit tahun pelajaran pada label ruang"
+              className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-40 sm:w-52"
             />
           </div>
 
@@ -240,12 +271,19 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
               {/* ── 2. MAIN CENTER HERO BANNER (BEBAS NOISE & FOKUS MAKSIMAL) ── */}
               <div className="flex-1 flex flex-col justify-center items-center my-auto w-full">
                 <div className="w-full border-4 border-slate-900 rounded-3xl p-6 sm:p-10 bg-white text-center flex flex-col justify-center items-center shadow-xs">
-                  {/* Nama Event Asesmen (Dapat diedit dari toolbar) */}
-                  {customEventName && (
-                    <div className="text-xs sm:text-sm font-extrabold tracking-wider uppercase text-slate-700 mb-1">
-                      {customEventName}
-                    </div>
-                  )}
+                  {/* Nama Event Asesmen & Tahun Pelajaran (Dapat diedit dari toolbar) */}
+                  <div className="flex flex-col items-center gap-0.5 mb-2">
+                    {customEventName && (
+                      <div className="text-xs sm:text-sm font-extrabold tracking-wider uppercase text-slate-700">
+                        {customEventName}
+                      </div>
+                    )}
+                    {customTpText && (
+                      <div className="text-xs sm:text-sm font-bold tracking-widest uppercase text-slate-600">
+                        {customTpText}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Judul: RUANG UJIAN (Cukup judul tegas) */}
                   <h2 className="text-2xl sm:text-3xl font-black tracking-widest uppercase text-slate-900 mb-2">
