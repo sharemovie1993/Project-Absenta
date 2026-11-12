@@ -314,7 +314,7 @@ export class SosialisasiService {
       });
     }
 
-    // Ambil data profil guru untuk respons
+    // Ambil data profil peserta untuk respons (Guru atau Siswa)
     const guru = await prisma.guru.findFirst({
       where: { id: params.guruId, tenant_id: tenantId },
       select: {
@@ -331,13 +331,37 @@ export class SosialisasiService {
       },
     });
 
-    const mapelOrJabatan =
-      guru?.GuruMapel?.[0]?.Mapel?.nama_mapel || guru?.jabatan || guru?.jenis_ptk || 'Guru';
+    let namaPeserta = 'Peserta';
+    let nipOrNisn = '-';
+    let mapelOrJabatan = 'Tenaga Pendidik / Staf';
+
+    if (guru) {
+      namaPeserta = guru.nama_guru;
+      nipOrNisn = guru.nip || guru.nuptk || '-';
+      mapelOrJabatan =
+        guru.GuruMapel?.[0]?.Mapel?.nama_mapel || guru.jabatan || guru.jenis_ptk || 'Tenaga Pendidik';
+    } else {
+      const siswa = await prisma.siswa.findFirst({
+        where: { id: params.guruId, tenant_id: tenantId },
+        select: {
+          id: true,
+          nama_siswa: true,
+          nisn: true,
+          nis: true,
+          Kelas: { select: { nama_kelas: true } },
+        },
+      });
+      if (siswa) {
+        namaPeserta = siswa.nama_siswa;
+        nipOrNisn = siswa.nisn || siswa.nis || '-';
+        mapelOrJabatan = `Siswa (${siswa.Kelas?.nama_kelas || 'Kelas'})`;
+      }
+    }
 
     return {
       guru_id: params.guruId,
-      nama_guru: guru?.nama_guru || 'Guru',
-      nip: guru?.nip || guru?.nuptk || '-',
+      nama_guru: namaPeserta,
+      nip: nipOrNisn,
       mapel_jabatan: mapelOrJabatan,
       is_hadir: params.isHadir,
       waktu_hadir: params.isHadir ? nowIso : undefined,
@@ -429,7 +453,7 @@ export class SosialisasiService {
         },
         select: {
           id: true,
-          nama_lengkap: true,
+          nama_siswa: true,
           nisn: true,
           nis: true,
           Kelas: { select: { nama_kelas: true } },
@@ -441,7 +465,7 @@ export class SosialisasiService {
       }
 
       attendeeId = siswa.id;
-      attendeeNama = siswa.nama_lengkap;
+      attendeeNama = siswa.nama_siswa;
       attendeeNip = siswa.nisn || siswa.nis || '-';
       attendeeJabatan = `Siswa (${siswa.Kelas?.nama_kelas || 'Kelas'})`;
     }
