@@ -3,6 +3,7 @@ import React from 'react';
 export type AdminTabId =
   | 'ringkasan'
   | 'audit'
+  | 'kepatuhan'
   | 'tahun_pelajaran'
   | 'semester'
   | 'jurusan'

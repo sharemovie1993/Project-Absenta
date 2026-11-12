@@ -862,14 +862,17 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                 <button
                   onClick={() => { setActiveTab('DELEGASI'); setSearchQuery(''); }}
                   className={cn(
-                    "px-4 py-2.5 text-xs font-bold flex items-center gap-2 border-b-2 transition-all",
+                    "px-4 py-2.5 text-xs font-bold flex items-center gap-2 border-b-2 transition-all relative",
                     activeTab === 'DELEGASI'
                       ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30"
                       : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                   )}
                 >
                   <Layers className="w-4 h-4" />
-                  Delegasi &amp; Unit ({analysis.lessons?.length || 0})
+                  <span>Delegasi &amp; Team-Teaching</span>
+                  <span className="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.2 rounded-full font-bold">
+                    Opsional
+                  </span>
                 </button>
               </div>
 
@@ -1423,21 +1426,79 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
               )}
 
               {activeTab === 'DELEGASI' && (
-                <div className="space-y-2 p-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2 px-2 py-1.5 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl text-[11px] text-indigo-900 dark:text-indigo-200">
-                    <span>
-                      Atur <strong>Guru SK Resmi (Dapodik)</strong> &amp; <strong>Pengajar Pelaksana (Delegasi)</strong> atau beri <strong>Nama Unit Kolaborasi</strong> per pelajaran XML. Kosongkan jika mengajar langsung sesuai SK.
-                    </span>
-                    <label className="inline-flex items-center gap-1.5 font-semibold cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={onlyMappedLessons}
-                        onChange={(e) => setOnlyMappedLessons(e.target.checked)}
-                        className="rounded border-slate-300"
-                      />
-                      Hanya tampilkan yg sudah diatur / team teaching
-                    </label>
+                <div className="space-y-3 p-2">
+                  {/* Banner Panduan Ramah & Status Otomatis */}
+                  <div className="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50/40 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/80 rounded-2xl flex flex-col sm:flex-row items-start justify-between gap-3 shadow-xs">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-emerald-500 text-white rounded-xl shadow-xs shrink-0 mt-0.5">
+                        <CheckCircle2 className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-extrabold text-emerald-950 dark:text-emerald-100 text-xs sm:text-sm">
+                            Tab Ini Bersifat Opsional — Seluruh {analysis.lessons?.length || 0} Pelajaran Sudah Otomatis 100% Siap
+                          </h4>
+                          <span className="text-[10px] bg-emerald-200/80 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold px-2 py-0.5 rounded-full">
+                            Default Otomatis Siap
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                          Secara default, seluruh jadwal KBM di XML <strong>otomatis mengajar sesuai Guru SK (Dapodik)</strong> hasil pemetaan Anda di Tab Guru.
+                          Jika seluruh guru mengajar sesuai jadwal XML, <strong>Anda tidak perlu mengubah apapun di tab ini dan bisa langsung klik tombol &ldquo;Lanjut ke Eksekusi&rdquo;</strong> di bawah.
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          💡 <em>Gunakan tabel di bawah hanya jika ada kebutuhan khusus:</em>
+                          <span className="ml-1 text-slate-700 dark:text-slate-200 font-semibold">1) Mendelegasikan jam ke guru pengganti (Inval)</span>, atau <span className="text-slate-700 dark:text-slate-200 font-semibold">2) Membagi unit materi pelajaran team-teaching (multi-guru)</span>.
+                        </p>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Filter Tabs Toolbar */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                      <button
+                        type="button"
+                        onClick={() => setOnlyMappedLessons(false)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                          !onlyMappedLessons
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200"
+                        )}
+                      >
+                        Semua Pelajaran ({analysis.lessons?.length || 0})
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setOnlyMappedLessons(true)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer flex items-center gap-1.5",
+                          onlyMappedLessons
+                            ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                            : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-100"
+                        )}
+                      >
+                        <span>Hanya Multi-Guru / Perlu Penyesuaian</span>
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.2 rounded-full",
+                          onlyMappedLessons ? "bg-white/20 text-white" : "bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 font-bold"
+                        )}>
+                          {(analysis.lessons || []).filter(l => {
+                            const lm = lessonMappings[l.asc_lesson_id];
+                            const sMap = subjectMappings[l.subject_asc_id];
+                            return Boolean(lm?.guru_pelaksana_id || lm?.sk_guru_id || lm?.unit_name || l.is_team_teaching || sMap?.action === 'UNIT_OF_PARENT');
+                          }).length}
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="text-[11px] font-semibold text-slate-500">
+                      Kosongkan dropdown untuk mengikuti Guru SK hasil pemetaan
+                    </div>
+                  </div>
+
                   <table className="w-full text-left text-xs border-collapse">
                     <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold border-b border-slate-200 dark:border-slate-700">
                       <tr>
@@ -1496,9 +1557,9 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                                       [l.asc_lesson_id]: { ...lm, asc_lesson_id: l.asc_lesson_id, sk_guru_id: val },
                                     }));
                                   }}
-                                  className="w-full text-[11px] rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1"
+                                  className="w-full text-[11px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1.5 font-medium"
                                 >
-                                  <option value="">-- Sesuai Guru XML --</option>
+                                  <option value="">✓ Otomatis (Sesuai Guru XML)</option>
                                   {analysis.db_teachers.map(dbt => (
                                     <option key={dbt.id} value={dbt.id}>{dbt.name}</option>
                                   ))}
@@ -1514,9 +1575,9 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                                       [l.asc_lesson_id]: { ...lm, asc_lesson_id: l.asc_lesson_id, guru_pelaksana_id: val },
                                     }));
                                   }}
-                                  className="w-full text-[11px] rounded border border-amber-300 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/30 p-1"
+                                  className="w-full text-[11px] rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/30 p-1.5 font-medium"
                                 >
-                                  <option value="">-- Sama dengan Guru SK --</option>
+                                  <option value="">✓ Otomatis (Sama dengan Guru SK)</option>
                                   {analysis.db_teachers.map(dbt => (
                                     <option key={dbt.id} value={dbt.id}>{dbt.name}</option>
                                   ))}
@@ -1534,7 +1595,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
                                       [l.asc_lesson_id]: { ...lm, asc_lesson_id: l.asc_lesson_id, unit_name: val },
                                     }));
                                   }}
-                                  className="w-full text-[11px] rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-1"
+                                  className="w-full text-[11px] rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5"
                                 />
                               </td>
                             </tr>
@@ -1547,7 +1608,7 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
             </div>
 
             {/* Step 2 Bottom Navigation */}
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
               <Button
                 variant="outline"
                 size="sm"
@@ -1556,15 +1617,22 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
               >
                 Kembali
               </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleProceedToStep3}
-                className="rounded-xl px-6 bg-indigo-600 text-white font-bold"
-              >
-                Lanjut ke Eksekusi
-                <ArrowRight className="w-4 h-4 ml-1.5" />
-              </Button>
+
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold hidden sm:inline flex items-center gap-1">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Pemetaan siap. Klik tombol untuk lanjut.</span>
+                </span>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleProceedToStep3}
+                  className="rounded-xl px-6 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold shadow-md cursor-pointer"
+                >
+                  Lanjut ke Eksekusi
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
+              </div>
             </div>
           </div>
         )}

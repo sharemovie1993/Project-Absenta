@@ -33,6 +33,7 @@ import {
   ClipboardList,
   Cpu,
   Home,
+  QrCode,
   Sparkles,
   ChevronDown,
 } from 'lucide-react';
@@ -80,6 +81,7 @@ const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const CetakBerkasPage = lazy(() => import('@/pages/academic/CetakBerkasPage').then((m) => ({ default: m.CetakBerkasPage })));
 const TenantSettingsView = lazy(() => import('@/components/tenant/TenantSettingsView').then((m) => ({ default: m.TenantSettingsView })));
 const TenantAttendanceForm = lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
+const PlatformComplianceFollowUpPage = lazy(() => import('@/pages/management/PlatformComplianceFollowUpPage'));
 
 export interface AdminDashboardProps {
   user?: {
@@ -104,6 +106,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
   const validTabs: AdminTabId[] = [
     'ringkasan',
     'audit',
+    'kepatuhan',
     'tahun_pelajaran',
     'semester',
     'jurusan',
@@ -295,6 +298,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         shortLabel: 'Log',
         category: 'kontrol',
         icon: History,
+      },
+      {
+        id: 'kepatuhan',
+        label: 'Kepatuhan & Sosialisasi',
+        shortLabel: 'Sosialisasi',
+        category: 'kontrol',
+        icon: QrCode,
       },
 
       // ⚙️ KATEGORI 2: DATA MASTER AKADEMIK (PERSIS MODUL AKADEMIK)
@@ -782,6 +792,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                 }
               >
                 <StaffActivityLogPage />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB 3: KEPATUHAN & RAPAT SOSIALISASI PLATFORM */}
+          {visitedTabs.has('kepatuhan') && (
+            <div
+              key="tab-kepatuhan"
+              role="tabpanel"
+              aria-hidden={activeTab !== 'kepatuhan'}
+              className={cn('w-full min-w-0', activeTab === 'kepatuhan' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Kepatuhan & Rapat Sosialisasi...</span>
+                  </div>
+                }
+              >
+                <PlatformComplianceFollowUpPage hideLayout={true} initialTab="SOSIALISASI" />
               </Suspense>
             </div>
           )}

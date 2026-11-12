@@ -7,6 +7,7 @@ export type KurikulumTabId =
   | 'perangkat'
   | 'supervisi'
   | 'evaluasi_kinerja'
+  | 'sosialisasi'
   | 'rapor'
   | 'titimangsa_rapor'
   | 'kalender'

@@ -86,9 +86,23 @@ function sortComplianceItems<T extends TeacherComplianceItem | StudentCompliance
   });
 }
 
-export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
+export interface PlatformComplianceFollowUpPageProps {
+  initialTab?: 'GURU' | 'SISWA' | 'TREND' | 'SOSIALISASI';
+  hideLayout?: boolean;
+}
+
+export const PlatformComplianceFollowUpPage: React.FC<PlatformComplianceFollowUpPageProps> = React.memo(({
+  initialTab = 'GURU',
+  hideLayout = false,
+}) => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'GURU' | 'SISWA' | 'TREND' | 'SOSIALISASI'>('GURU');
+  const [activeTab, setActiveTab] = useState<'GURU' | 'SISWA' | 'TREND' | 'SOSIALISASI'>(initialTab);
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PASSIVE' | 'DORMANT'>('ALL');
   const [selectedIssueFilter, setSelectedIssueFilter] = useState<string>('ALL');
@@ -528,6 +542,125 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
     </div>
   ), [activeTab, filteredTeachers.length, filteredStudents.length, searchTerm, statusFilter, selectedIssueFilter, selectedCount, handleBulkNudge, handleExport, isExporting, handleRefresh]);
 
+  const contentNode = (
+    <>
+      <div className="space-y-6">
+        <SectionCard fullWidth noPadding>
+          {activeTab === 'GURU' && (
+            <Suspense fallback={
+              <div className="flex justify-center items-center py-16 w-full">
+                <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
+              </div>
+            }>
+              <TeacherComplianceList
+                data={paginatedTeachers}
+                loading={loadingGurus}
+                totalItems={filteredTeachers.length}
+                currentPage={teacherPage}
+                itemsPerPage={teacherLimit}
+                sortBy={teacherSortBy}
+                sortOrder={teacherSortOrder}
+                onSort={(col, dir) => { setTeacherSortBy(col); setTeacherSortOrder(dir); }}
+                onPageChange={setTeacherPage}
+                onLimitChange={(limit) => { setTeacherLimit(limit); setTeacherPage(1); }}
+                onNudge={handleOpenNudgeTeacher}
+                toolbarLeft={toolbarNode}
+                selectedRowKeys={selectedTeacherIds}
+                onSelectedRowKeysChange={setSelectedTeacherIds}
+              />
+            </Suspense>
+          )}
+
+          {activeTab === 'SISWA' && (
+            <Suspense fallback={
+              <div className="flex justify-center items-center py-16 w-full">
+                <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
+              </div>
+            }>
+              <StudentComplianceList
+                data={paginatedStudents}
+                loading={loadingSiswa}
+                totalItems={filteredStudents.length}
+                currentPage={studentPage}
+                itemsPerPage={studentLimit}
+                sortBy={studentSortBy}
+                sortOrder={studentSortOrder}
+                onSort={(col, dir) => { setStudentSortBy(col); setStudentSortOrder(dir); }}
+                onPageChange={setStudentPage}
+                onLimitChange={(limit) => { setStudentLimit(limit); setStudentPage(1); }}
+                onNudge={handleOpenNudgeStudent}
+                toolbarLeft={toolbarNode}
+                selectedRowKeys={selectedStudentIds}
+                onSelectedRowKeysChange={setSelectedStudentIds}
+              />
+            </Suspense>
+          )}
+
+          {activeTab === 'TREND' && (
+            <div className="flex flex-col w-full">
+              {toolbarNode}
+              <div className="p-4 sm:p-6 border-t border-gray-100 dark:border-gray-800">
+                <Suspense fallback={
+                  <div className="flex justify-center items-center py-16 w-full">
+                    <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
+                  </div>
+                }>
+                  <ComplianceTrendsView stats={stats} />
+                </Suspense>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'SOSIALISASI' && (
+            <div className="flex flex-col w-full">
+              <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+                <TabSwitcher
+                  activeTab={activeTab}
+                  onChange={(val) => setActiveTab(val as 'GURU' | 'SISWA' | 'TREND' | 'SOSIALISASI')}
+                  tabs={[
+                    { id: 'GURU', label: `Guru (${filteredTeachers.length})`, icon: Users },
+                    { id: 'SISWA', label: `Siswa (${filteredStudents.length})`, icon: GraduationCap },
+                    { id: 'TREND', label: 'Tren Adopsi', icon: TrendingUp },
+                    { id: 'SOSIALISASI', label: 'Rapat Sosialisasi', icon: QrCode },
+                  ]}
+                />
+              </div>
+              <div className="p-4 sm:p-6">
+                <Suspense fallback={
+                  <div className="flex justify-center items-center py-16 w-full">
+                    <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
+                  </div>
+                }>
+                  <RapatSosialisasiPanel />
+                </Suspense>
+              </div>
+            </div>
+          )}
+        </SectionCard>
+      </div>
+
+      {/* ── MODAL NUDGE WHATSAPP (LAZY LOADED) ── */}
+      {nudgeModalTarget && (
+        <Suspense fallback={null}>
+          <ComplianceNudgeModal
+            target={nudgeModalTarget}
+            onClose={() => setNudgeModalTarget(null)}
+          />
+        </Suspense>
+      )}
+    </>
+  );
+
+  if (hideLayout) {
+    return (
+      <InfraErrorBoundary>
+        <div className="w-full min-w-0">
+          {contentNode}
+        </div>
+      </InfraErrorBoundary>
+    );
+  }
+
   return (
     <InfraErrorBoundary>
       <AcademicPageLayout
@@ -547,110 +680,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
           ]
         }}
       >
-        <div className="space-y-6">
-          <SectionCard fullWidth noPadding>
-            {activeTab === 'GURU' && (
-              <Suspense fallback={
-                <div className="flex justify-center items-center py-16 w-full">
-                  <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
-                </div>
-              }>
-                <TeacherComplianceList
-                  data={paginatedTeachers}
-                  loading={loadingGurus}
-                  totalItems={filteredTeachers.length}
-                  currentPage={teacherPage}
-                  itemsPerPage={teacherLimit}
-                  sortBy={teacherSortBy}
-                  sortOrder={teacherSortOrder}
-                  onSort={(col, dir) => { setTeacherSortBy(col); setTeacherSortOrder(dir); }}
-                  onPageChange={setTeacherPage}
-                  onLimitChange={(limit) => { setTeacherLimit(limit); setTeacherPage(1); }}
-                  onNudge={handleOpenNudgeTeacher}
-                  toolbarLeft={toolbarNode}
-                  selectedRowKeys={selectedTeacherIds}
-                  onSelectedRowKeysChange={setSelectedTeacherIds}
-                />
-              </Suspense>
-            )}
-
-            {activeTab === 'SISWA' && (
-              <Suspense fallback={
-                <div className="flex justify-center items-center py-16 w-full">
-                  <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
-                </div>
-              }>
-                <StudentComplianceList
-                  data={paginatedStudents}
-                  loading={loadingSiswa}
-                  totalItems={filteredStudents.length}
-                  currentPage={studentPage}
-                  itemsPerPage={studentLimit}
-                  sortBy={studentSortBy}
-                  sortOrder={studentSortOrder}
-                  onSort={(col, dir) => { setStudentSortBy(col); setStudentSortOrder(dir); }}
-                  onPageChange={setStudentPage}
-                  onLimitChange={(limit) => { setStudentLimit(limit); setStudentPage(1); }}
-                  onNudge={handleOpenNudgeStudent}
-                  toolbarLeft={toolbarNode}
-                  selectedRowKeys={selectedStudentIds}
-                  onSelectedRowKeysChange={setSelectedStudentIds}
-                />
-              </Suspense>
-            )}
-
-            {activeTab === 'TREND' && (
-              <div className="flex flex-col w-full">
-                {toolbarNode}
-                <div className="p-4 sm:p-6 border-t border-gray-100 dark:border-gray-800">
-                  <Suspense fallback={
-                    <div className="flex justify-center items-center py-16 w-full">
-                      <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
-                    </div>
-                  }>
-                    <ComplianceTrendsView stats={stats} />
-                  </Suspense>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'SOSIALISASI' && (
-              <div className="flex flex-col w-full">
-                <div className="p-4 border-b border-gray-100 dark:border-gray-800">
-                  <TabSwitcher
-                    activeTab={activeTab}
-                    onChange={(val) => setActiveTab(val as 'GURU' | 'SISWA' | 'TREND' | 'SOSIALISASI')}
-                    tabs={[
-                      { id: 'GURU', label: `Guru (${filteredTeachers.length})`, icon: Users },
-                      { id: 'SISWA', label: `Siswa (${filteredStudents.length})`, icon: GraduationCap },
-                      { id: 'TREND', label: 'Tren Adopsi', icon: TrendingUp },
-                      { id: 'SOSIALISASI', label: 'Rapat Sosialisasi', icon: QrCode },
-                    ]}
-                  />
-                </div>
-                <div className="p-4 sm:p-6">
-                  <Suspense fallback={
-                    <div className="flex justify-center items-center py-16 w-full">
-                      <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
-                    </div>
-                  }>
-                    <RapatSosialisasiPanel />
-                  </Suspense>
-                </div>
-              </div>
-            )}
-          </SectionCard>
-        </div>
-
-        {/* ── MODAL NUDGE WHATSAPP (LAZY LOADED) ── */}
-        {nudgeModalTarget && (
-          <Suspense fallback={null}>
-            <ComplianceNudgeModal
-              target={nudgeModalTarget}
-              onClose={() => setNudgeModalTarget(null)}
-            />
-          </Suspense>
-        )}
+        {contentNode}
       </AcademicPageLayout>
     </InfraErrorBoundary>
   );

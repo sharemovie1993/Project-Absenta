@@ -79,6 +79,9 @@ import { KurikulumCbtTab } from './kurikulum/tabs/KurikulumCbtTab';
 import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 const TenantAttendanceForm = React.lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
 const KurikulumEvaluasiKinerjaTab = React.lazy(() => import('./kurikulum/tabs/KurikulumEvaluasiKinerjaTab'));
+const RapatSosialisasiPanel = React.lazy(() =>
+  import('@/components/management/compliance/RapatSosialisasiPanel').then((m) => ({ default: m.RapatSosialisasiPanel }))
+);
 
 export interface KurikulumDashboardProps {
   user?: {
@@ -101,6 +104,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
     'perangkat',
     'supervisi',
     'evaluasi_kinerja',
+    'sosialisasi',
     'cbt',
     'rapor',
     'titimangsa_rapor',
@@ -421,6 +425,8 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
       case 'kosp': return 'Kurikulum Operasional';
       case 'struktur': return 'Struktur Modul';
       case 'supervisi': return 'Supervisi Guru';
+      case 'evaluasi_kinerja': return 'Evaluasi Kinerja Guru';
+      case 'sosialisasi': return 'Rapat Sosialisasi Platform';
       case 'rekap': return 'Rekapitulasi KBM';
       case 'penilaian': return 'Buku Nilai & Rapor';
       case 'kalender': return 'Kalender Akademik';
@@ -773,6 +779,27 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
                   tahunPelajaranId={resolvedTahunPelajaranId}
                   semesterId={resolvedSemesterId}
                 />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB RAPAT SOSIALISASI PLATFORM */}
+          {visitedTabs.has('sosialisasi') && (
+            <div
+              key="tab-sosialisasi"
+              role="tabpanel"
+              aria-hidden={activeTab !== 'sosialisasi'}
+              className={cn('w-full min-w-0', activeTab === 'sosialisasi' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Rapat Sosialisasi Platform...</span>
+                  </div>
+                }
+              >
+                <RapatSosialisasiPanel />
               </Suspense>
             </div>
           )}

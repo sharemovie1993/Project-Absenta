@@ -1073,7 +1073,6 @@ export class AscImporterService {
         const distinctUnitKeys = new Set(specs.map((s) => `${(s.unitName || '').toLowerCase()}::${s.unitGuruId}`));
         const isCollaboration = specs.some((s) => s.isCollab) || distinctUnitKeys.size > 1;
         const teachingMode = isCollaboration ? 'COLLABORATION' : 'SINGLE';
-        const totalJpGroup = specs.reduce((acc, s) => acc + s.periodsPerWeek, 0);
 
         // Reuse existing GuruMapel for this (kelas, mapel, TP, semester) when possible
         let gm = await tx.guruMapel.findFirst({
@@ -1097,7 +1096,6 @@ export class AscImporterService {
               jurusan_id: kelasMetaMap.get(first.kelasId)?.jurusan_id || null,
               tahun_pelajaran_id: input.tahun_pelajaran_id,
               semester_id: input.semester_id,
-              alokasi_jam: totalJpGroup,
               teaching_mode: teachingMode,
             },
             include: { UnitPengajaran: true },
@@ -1106,8 +1104,7 @@ export class AscImporterService {
           gm = await tx.guruMapel.update({
             where: { id: gm.id },
             data: {
-              guru_id: first.skGuruId,
-              alokasi_jam: totalJpGroup,
+              Guru: { connect: { id: first.skGuruId } },
               teaching_mode: teachingMode,
             },
             include: { UnitPengajaran: true },
