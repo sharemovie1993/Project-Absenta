@@ -7,6 +7,7 @@ import {
   deleteSiswaDocument, 
   downloadSiswaDocumentFile, 
   downloadSiswaExitBundle,
+  updateSiswa,
   type SiswaTimelineItem,
   siswaQueryKeys 
 } from '../../../api/academic/siswa.api';
@@ -16,7 +17,7 @@ import { Loader } from '../../ui/Loader';
 import { Card, CardContent, Timeline, TimelineItem } from '../../ui';
 import { UploadSiswaDocumentModal } from './UploadSiswaDocumentModal';
 import { CompleteSiswaExitModal } from './CompleteSiswaExitModal';
-import { Download, Plus, LogOut, FileText, Trash2, Calendar, ShieldAlert, Paperclip, MailOpen } from 'lucide-react';
+import { Download, Plus, LogOut, FileText, Trash2, Calendar, ShieldAlert, Paperclip, MailOpen, RotateCcw } from 'lucide-react';
 import type { Siswa } from '../../../types/academic';
 
 interface SiswaTimelineAndExitTabProps {
@@ -31,6 +32,7 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
   const [exitModalOpen, setExitModalOpen] = useState(false);
   const [downloadingZip, setDownloadingZip] = useState(false);
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
+  const [isReactivating, setIsReactivating] = useState(false);
   
   const { isAdmin, isKesiswaan, isKurikulum, can } = useCapabilities();
   
@@ -105,6 +107,37 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
     }
   }, [siswa.id, fetchTimeline, queryClient]);
 
+  const handleReactivateStudent = useCallback(async () => {
+    if (!window.confirm(`Apakah Anda yakin ingin mengembalikan status ${siswa.nama_siswa} menjadi AKTIF? Akun login LMS siswa akan diaktifkan kembali dan riwayat tanggal keluar akan dibersihkan.`)) {
+      return;
+    }
+
+    try {
+      setIsReactivating(true);
+      const res = await updateSiswa(siswa.id, {
+        status: 'AKTIF',
+        tanggal_keluar: null,
+        alasan_keluar: null,
+      });
+
+      if (res.success) {
+        toast.success(`Status ${siswa.nama_siswa} berhasil dikembalikan menjadi AKTIF!`);
+        queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+        queryClient.invalidateQueries({ queryKey: ['siswa-options-list'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['classmates-roster-list'] });
+        fetchTimeline();
+      } else {
+        toast.error(res.message || 'Gagal mengaktifkan kembali siswa');
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      toast.error(e?.response?.data?.message || e?.message || 'Terjadi kesalahan sistem');
+    } finally {
+      setIsReactivating(false);
+    }
+  }, [siswa.id, siswa.nama_siswa, fetchTimeline, queryClient]);
+
   if (loading && timeline.length === 0) return (
     <div className="py-20 flex flex-col items-center justify-center">
       <Loader className="mb-4" />
@@ -139,7 +172,7 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
             </Button>
 
             {/* Upload and Exit Actions for active students */}
-            {siswa.status === 'AKTIF' && (
+            {siswa.status === 'AKTIF' ? (
               <>
                 {canUpload && (
                   <Button 
@@ -162,6 +195,18 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
                   </Button>
                 )}
               </>
+            ) : (
+              canManage && (
+                <Button 
+                  size="toolbar" 
+                  onClick={handleReactivateStudent}
+                  disabled={isReactivating}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 mr-2" />
+                  {isReactivating ? 'Mengaktifkan...' : 'Aktifkan Kembali Siswa (Batalkan Keluar/Mutasi)'}
+                </Button>
+              )
             )}
           </div>
         </CardContent>
@@ -175,7 +220,7 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
         </div>
       ) : (
         <Timeline className="px-2">
-          {(timeline || []).map((item, index) => {
+          {(timeline || [])?.map((item, index) => {
             const isAkademik = item.tipe === 'STATUS_AKADEMIK';
             const isPelanggaran = item.tipe === 'PELANGGARAN';
             const isDokumen = item.tipe === 'DOKUMEN';

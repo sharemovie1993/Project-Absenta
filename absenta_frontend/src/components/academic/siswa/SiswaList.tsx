@@ -1316,10 +1316,13 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                       options={[
                         { label: 'Semua Status', value: '' },
                         { label: 'Aktif', value: 'AKTIF' },
-                        { label: 'Tidak Aktif', value: 'TIDAK_AKTIF' },
-                        { label: 'Lulus', value: 'LULUS' },
+                        { label: 'Pindah / Mutasi', value: 'MUTASI' },
                         { label: 'Pindah', value: 'PINDAH' },
-                        { label: 'Keluar', value: 'KELUAR' }
+                        { label: 'Keluar', value: 'KELUAR' },
+                        { label: 'Drop Out (DO)', value: 'DO' },
+                        { label: 'Lulus', value: 'LULUS' },
+                        { label: 'Tidak Aktif', value: 'TIDAK_AKTIF' },
+                        { label: 'Calon Siswa', value: 'CALON' }
                       ]}
                       placeholder="Status"
                       searchPlaceholder="Cari Status..."
@@ -1521,10 +1524,13 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                           options={[
                             { label: 'Semua Status', value: '' },
                             { label: 'Aktif', value: 'AKTIF' },
-                            { label: 'Tidak Aktif', value: 'TIDAK_AKTIF' },
-                            { label: 'Lulus', value: 'LULUS' },
+                            { label: 'Pindah / Mutasi', value: 'MUTASI' },
                             { label: 'Pindah', value: 'PINDAH' },
-                            { label: 'Keluar', value: 'KELUAR' }
+                            { label: 'Keluar', value: 'KELUAR' },
+                            { label: 'Drop Out (DO)', value: 'DO' },
+                            { label: 'Lulus', value: 'LULUS' },
+                            { label: 'Tidak Aktif', value: 'TIDAK_AKTIF' },
+                            { label: 'Calon Siswa', value: 'CALON' }
                           ]}
                           placeholder="Semua Status"
                           searchPlaceholder="Cari Status..."

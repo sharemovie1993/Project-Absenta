@@ -184,6 +184,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeEditSection, setActiveEditSection] = useState<'pribadi' | 'akademik' | 'orangtua' | 'alamat'>('pribadi');
   const [isSavingSection, setIsSavingSection] = useState(false);
+  const [isReactivatingDirect, setIsReactivatingDirect] = useState(false);
 
   // Editable Form Fields
   const [editNamaSiswa, setEditNamaSiswa] = useState('');
@@ -373,6 +374,41 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
       setIsSavingSection(false);
     }
   };
+
+  const handleReactivateDirect = useCallback(async () => {
+    if (!siswaId || !siswa) return;
+    if (!window.confirm(`Kembalikan status siswa ${siswa.nama_siswa} menjadi AKTIF? Akun login LMS siswa akan diaktifkan kembali dan tanggal/alasan keluar akan dibersihkan.`)) {
+      return;
+    }
+
+    try {
+      setIsReactivatingDirect(true);
+      const res = await updateSiswa(siswaId, {
+        status: 'AKTIF',
+        tanggal_keluar: null,
+        alasan_keluar: null,
+      });
+
+      if (res.success) {
+        toast.success(`Siswa ${siswa.nama_siswa} berhasil diaktifkan kembali!`);
+        setEditStatus('AKTIF');
+        setEditTanggalKeluar('');
+        queryClient.invalidateQueries({ queryKey: siswaQueryKeys.detail(siswaId) });
+        queryClient.invalidateQueries({ queryKey: siswaQueryKeys.all });
+        queryClient.invalidateQueries({ queryKey: ['siswa-options-list'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['classmates-roster-list'] });
+        refetch();
+      } else {
+        toast.error(res.message || 'Gagal mengaktifkan kembali siswa');
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      toast.error(e?.response?.data?.message || e?.message || 'Terjadi kesalahan sistem');
+    } finally {
+      setIsReactivatingDirect(false);
+    }
+  }, [siswaId, siswa, queryClient, refetch]);
 
   // Submit Account Update
   const handleAccountSubmit = async (e: React.FormEvent) => {
@@ -912,7 +948,28 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Status Siswa</p>
-              <p className="font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">{editStatus || 'AKTIF'}</p>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <span className={cn(
+                  "font-extrabold px-2 py-0.5 rounded-lg text-xs",
+                  editStatus === 'AKTIF' 
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                    : "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                )}>
+                  {editStatus || 'AKTIF'}
+                </span>
+                {canEdit && editStatus !== 'AKTIF' && (
+                  <button
+                    type="button"
+                    onClick={handleReactivateDirect}
+                    disabled={isReactivatingDirect}
+                    className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                    title="Aktifkan kembali siswa ini (Batalkan Mutasi/Keluar)"
+                  >
+                    <RotateCcw size={10} />
+                    <span>{isReactivatingDirect ? 'Mengaktifkan...' : 'Aktifkan Kembali'}</span>
+                  </button>
+                )}
+              </div>
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Kelas Aktif</p>
@@ -1250,13 +1307,21 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
                   <Label>Status Siswa</Label>
                   <SearchableSelect
                     value={editStatus}
-                    onValueChange={setEditStatus}
+                    onValueChange={(val) => {
+                      setEditStatus(val);
+                      if (val === 'AKTIF') {
+                        setEditTanggalKeluar('');
+                      }
+                    }}
                     options={[
-                      { value: 'AKTIF', label: 'AKTIF' },
-                      { value: 'CALON', label: 'CALON' },
-                      { value: 'LULUS', label: 'LULUS' },
-                      { value: 'MUTASI', label: 'MUTASI' },
-                      { value: 'TIDAK_AKTIF', label: 'TIDAK AKTIF' }
+                      { value: 'AKTIF', label: 'AKTIF (Siswa Aktif Belajar)' },
+                      { value: 'MUTASI', label: 'MUTASI (Pindah Masuk / Keluar)' },
+                      { value: 'PINDAH', label: 'PINDAH (Pindah Sekolah)' },
+                      { value: 'KELUAR', label: 'KELUAR (Keluar Sekolah)' },
+                      { value: 'DO', label: 'DO (Drop Out / Dikeluarkan)' },
+                      { value: 'LULUS', label: 'LULUS (Telah Lulus)' },
+                      { value: 'CALON', label: 'CALON (Calon Siswa Baru)' },
+                      { value: 'TIDAK_AKTIF', label: 'TIDAK AKTIF (Non-aktif)' }
                     ]}
                   />
                 </div>

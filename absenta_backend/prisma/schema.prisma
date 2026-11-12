@@ -188,6 +188,8 @@ model Tenant {
   DenahSpasial             DenahSpasial[]
   UnitPengajaran           UnitPengajaran[]
   CbtBankSoalKontributor   CbtBankSoalKontributor[]
+  RapatMaster              RapatMaster[]
+  RapatPeserta             RapatPeserta[]
 }
 
 enum BackupStatus {
@@ -6022,5 +6024,113 @@ model PublicSchoolArticle {
   @@index([tenant_id])
   @@index([tenant_id, is_published, published_at])
   @@index([tenant_id, category])
+}
+
+// ── MODUL MANAJEMEN RAPAT GLOBAL ──────────────────────────────────────
+
+model RapatMaster {
+  id                 String             @id @default(uuid())
+  tenant_id          String
+  nomor_surat        String?            @db.VarChar(100)
+  judul_rapat        String             @db.VarChar(255)
+  kategori_rapat     KategoriRapat      @default(DEWAN_GURU)
+  target_peserta     TargetPesertaRapat @default(SEMUA_GURU)
+  deskripsi          String?            @db.Text
+  tanggal_rapat      DateTime
+  jam_mulai          String             @db.VarChar(10)
+  jam_selesai        String?            @db.VarChar(10)
+  tempat             String             @db.VarChar(150)
+  link_daring        String?            @db.VarChar(255)
+  pimpinan_rapat     String?            @db.VarChar(150)
+  notulis            String?            @db.VarChar(150)
+  agenda             Json?
+  notulen_hasil      String?            @db.Text
+  file_lampiran      Json?
+  qr_token           String             @unique @db.VarChar(100)
+  status             StatusRapat        @default(DIJADWALKAN)
+  created_by_user_id String?
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+
+  Tenant             Tenant             @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  PesertaRapat       RapatPeserta[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@index([tenant_id, tanggal_rapat])
+  @@map("rapat_master")
+}
+
+enum KategoriRapat {
+  SOSIALISASI
+  DEWAN_GURU
+  KURIKULUM
+  KOMITE_ORANG_TUA
+  PLENO_KENAIKAN_KELULUSAN
+  JURUSAN_KAPROG
+  KOORDINASI_BK
+  LAINNYA
+}
+
+enum TargetPesertaRapat {
+  SEMUA_GURU
+  GURU_DAN_STAF
+  WALI_MURID
+  SISWA
+  GURU_MAPEL
+  WALI_KELAS
+  KOMITE_SEKOLAH
+  CAMPURAN_UNDANGAN
+}
+
+enum StatusRapat {
+  DIJADWALKAN
+  BERLANGSUNG
+  SELESAI
+  DIBATALKAN
+}
+
+model RapatPeserta {
+  id                 String           @id @default(uuid())
+  tenant_id          String
+  rapat_id           String
+  tipe_peserta       TipePesertaRapat @default(GURU)
+  peserta_id         String?
+  nama_peserta       String           @db.VarChar(150)
+  nomor_identitas    String?          @db.VarChar(50)
+  jabatan_keterangan String?          @db.VarChar(150)
+  no_hp              String?          @db.VarChar(30)
+  is_hadir           Boolean          @default(false)
+  waktu_hadir        DateTime?
+  metode_kehadiran   MetodeHadirRapat @default(BELUM_HADIR)
+  catatan            String?          @db.VarChar(255)
+  created_at         DateTime         @default(now())
+  updated_at         DateTime         @updatedAt
+
+  RapatMaster        RapatMaster      @relation(fields: [rapat_id], references: [id], onDelete: Cascade)
+  Tenant             Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([rapat_id, peserta_id])
+  @@index([tenant_id, rapat_id])
+  @@index([rapat_id, is_hadir])
+  @@map("rapat_peserta")
+}
+
+enum TipePesertaRapat {
+  GURU
+  STAF_TU
+  ORANG_TUA
+  SISWA
+  TAMU_LUAR
+}
+
+enum MetodeHadirRapat {
+  BELUM_HADIR
+  SCAN_QR_MANDIRI
+  SCANNER_PANITIA
+  MANUAL_PANITIA
+  IZIN
+  SAKIT
+  DISPENSASI
 }
 

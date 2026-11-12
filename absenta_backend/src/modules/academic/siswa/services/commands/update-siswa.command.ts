@@ -236,6 +236,21 @@ export async function updateSiswaCommand(
     dataToUpdate.semester_id = null;
   }
 
+  // Jika dikembalikan menjadi AKTIF, bersihkan tanggal dan alasan keluar serta pulihkan akun User
+  if (dataToUpdate.status === 'AKTIF') {
+    dataToUpdate.tanggal_keluar = null;
+    dataToUpdate.alasan_keluar = null;
+    const targetUserId = dataToUpdate.user_id || existingSiswa.user_id;
+    if (targetUserId) {
+      await siswaDb.user.update({
+        where: { id: targetUserId },
+        data: { status: 'ACTIVE' },
+      }).catch((err: unknown) => {
+        console.warn('[REACTIVATE-USER] Failed to reactivate linked user status:', err);
+      });
+    }
+  }
+
   // Sanitize data: don't overwrite with null/empty for important fields
   const protectedFields = ['nama_siswa', 'jenis_kelamin', 'kelas_id', 'nis', 'nisn', 'nik'];
   protectedFields.forEach(field => {
