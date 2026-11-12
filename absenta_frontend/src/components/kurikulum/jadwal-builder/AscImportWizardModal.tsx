@@ -23,8 +23,7 @@ import {
   analyzeAscXml, 
   executeAscImport, 
   type AscAnalysisResult, 
-  type EntityMapping,
-  type LessonMappingInput
+  type EntityMapping
 } from '../../../api/academic/ascImporter.api';
 import { cn } from '../../../lib/utils';
 import { getTahunPelajaranList } from '../../../api/academic/tahunPelajaran.api';
@@ -392,15 +391,6 @@ export const AscImportWizardModal: React.FC<Props> = React.memo(({
           }
         });
         setSubjectMappings(initSubjects);
-
-        // Initialize Lesson Mappings from backend DB history
-        const initLessons: Record<string, LessonMappingInput> = {};
-        (res.data.lessons || []).forEach(l => {
-          if (l.saved_lesson_mapping) {
-            initLessons[l.asc_lesson_id] = { ...l.saved_lesson_mapping };
-          }
-        });
-        setLessonMappings(initLessons);
 
         console.log('✅ [aSc Import Wizard] Pre-Execution Mappings Initialized:', {
           teachers: Object.keys(initTeachers).length,

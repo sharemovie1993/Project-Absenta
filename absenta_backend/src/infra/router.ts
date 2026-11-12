@@ -145,6 +145,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
         const { publicSosialisasiRoutes } = await import('../modules/academic/sosialisasi/routes/sosialisasi.routes');
         await fastify.register(publicSosialisasiRoutes, { prefix: '/public/sosialisasi' });
 
+        // Public Rapat Global Kehadiran Peserta (Scan QR Presensi)
+        const { publicRapatRoutes } = await import('../modules/academic/rapat/routes/rapat.routes');
+        await fastify.register(publicRapatRoutes, { prefix: '/public/rapat' });
+
         // Public Kalender iCal Export (Sync for Google/Apple Calendar)
         fastify.get('/kurikulum/kalender/export', async (request: any, reply: any) => {
           const { KalenderAkademikController } = await import('../modules/kurikulum/controllers/kalender-akademik.controller');
