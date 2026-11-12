@@ -52,8 +52,8 @@ export async function sosialisasiRoutes(fastify: any) {
 
 export async function publicSosialisasiRoutes(fastify: any) {
   // Verifikasi info sesi via QR token
-  fastify.get('/verify-session', SosialisasiController.publicVerifySession);
+  fastify.get('/verify-session', { config: { skipAuth: true, public: true } }, SosialisasiController.publicVerifySession);
 
   // Konfirmasi kehadiran mandiri oleh guru saat scan QR
-  fastify.post('/self-attend', SosialisasiController.publicSelfAttend);
+  fastify.post('/self-attend', { config: { skipAuth: true, public: true } }, SosialisasiController.publicSelfAttend);
 }

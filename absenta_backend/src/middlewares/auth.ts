@@ -125,9 +125,10 @@ export async function authMiddleware(
     urlPath.startsWith('/invoice/public') ||
     ((urlPath.startsWith('/api/invoice/') || urlPath.startsWith('/invoice/')) && urlPath.endsWith('/print'));
   const isPaymentPublic = urlPath.startsWith('/api/payment/public') || urlPath.startsWith('/payment/public');
+  const isSosialisasiPublic = urlPath.startsWith('/api/public/sosialisasi') || urlPath.startsWith('/public/sosialisasi');
 
   const isPublicEndpoint =
-    (PUBLIC_ENDPOINTS.includes(urlPath) || isVerifyEmailPublic || isLookupNpsnPublic || isAuthPublic || isInvoicePublic || isPaymentPublic || urlPath.startsWith('/uploads/') || urlPath.startsWith('/api/uploads/')) &&
+    (PUBLIC_ENDPOINTS.includes(urlPath) || isVerifyEmailPublic || isLookupNpsnPublic || isAuthPublic || isInvoicePublic || isPaymentPublic || isSosialisasiPublic || urlPath.startsWith('/uploads/') || urlPath.startsWith('/api/uploads/')) &&
     (!isSystemConfigPath || request.method === 'GET');
 
   if (isPublicEndpoint) {
