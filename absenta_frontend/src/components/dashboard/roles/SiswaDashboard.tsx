@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import {
   LayoutList,
@@ -24,6 +25,7 @@ import { changePassword } from '@/api/auth.api';
 import { DEFAULT_CONFIG } from '@/components/academic/student-card/constants';
 import { calculateProfileCompleteness, type SectionEditType } from '@/components/academic/siswa/profileCompleteness';
 import { useGerbangAttendanceData } from '@/hooks/attendance/useGerbangAttendanceData';
+import { sosialisasiApi, sosialisasiQueryKeys } from '@/api/academic/sosialisasi.api';
 
 // Types & Skeletons
 import type { SiswaTabId, SiswaNavTabItem } from './siswa/types';
@@ -57,6 +59,10 @@ import { SiswaKehadiranModal } from './siswa/modals/SiswaKehadiranModal';
 import { SiswaBelumAbsenModal } from './siswa/modals/SiswaBelumAbsenModal';
 import { SiswaCardModal } from '../../academic/siswa/dashboard/SiswaCardModal';
 import Modal from '@/components/ui/Modal';
+
+const TeacherSosialisasiScanModal = lazy(() =>
+  import('../staff/modals/TeacherSosialisasiScanModal').then((m) => ({ default: m.TeacherSosialisasiScanModal }))
+);
 
 const AbsensiPklView = lazy(() =>
   import('../../hubin/absensi/AbsensiPklView').then((m) => ({ default: m.AbsensiPklView }))
@@ -105,6 +111,27 @@ export const SiswaDashboard: React.FC = () => {
   const [showBelumAbsenModal, setShowBelumAbsenModal] = useState(false);
   const [showPklModal, setShowPklModal] = useState(false);
   const [cardSide, setCardSide] = useState<'front' | 'back'>('front');
+
+  // Rapat Sosialisasi State (Presensi Siswa via Scan)
+  const [isScanSosialisasiOpen, setIsScanSosialisasiOpen] = useState(false);
+  const { data: sosialisasiData, refetch: refetchSosialisasi } = useQuery({
+    queryKey: sosialisasiQueryKeys.active(),
+    queryFn: () => sosialisasiApi.getActiveSession().catch(() => null),
+    staleTime: 60 * 1000,
+  });
+
+  const isSosialisasiActive = sosialisasiData?.session?.status === 'AKTIF';
+  const myStudentAttendance = useMemo(() => {
+    if (!sosialisasiData?.attendees) return null;
+    const studentId = data.siswaProfile?.id || data.user?.siswa_id || data.user?.id;
+    const currentNisn = data.currentNisn;
+    return sosialisasiData.attendees.find(
+      (a: any) =>
+        (studentId && (a.guru_id === studentId || a.id === studentId)) ||
+        (currentNisn && (a.nip === currentNisn || a.guru_id === currentNisn))
+    );
+  }, [sosialisasiData?.attendees, data]);
+  const isStudentAttended = Boolean(myStudentAttendance?.is_hadir);
 
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
@@ -395,6 +422,57 @@ export const SiswaDashboard: React.FC = () => {
 
         {/* Right Column: Main Content & Subtabs */}
         <main className="space-y-4 min-w-0">
+          {/* Banner Presensi Sosialisasi Siswa (Khusus Kehadiran Diri via Scan) */}
+          {isSosialisasiActive && sosialisasiData?.session && (
+            <div className="p-3.5 sm:p-4 bg-gradient-to-r from-violet-600/15 via-indigo-600/15 to-purple-600/15 dark:from-violet-950/60 dark:via-indigo-950/60 dark:to-purple-950/50 border border-violet-300 dark:border-violet-700/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 shadow-xs",
+                  isStudentAttended ? "bg-emerald-500 text-white" : "bg-violet-600 text-white"
+                )}>
+                  {isStudentAttended ? <CheckCircle2 size={22} /> : <QrCode size={22} />}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-violet-100 dark:bg-violet-900/60 text-violet-800 dark:text-violet-200">
+                      Sosialisasi Platform
+                    </span>
+                    <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                      {sosialisasiData.session.nama_acara}
+                    </h4>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                      isStudentAttended
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                        : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse"
+                    )}>
+                      {isStudentAttended ? "Sudah Hadir" : "Wajib Presensi"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                    {isStudentAttended
+                      ? `Kehadiran Anda telah berhasil dicatat pada rapat sosialisasi ini.`
+                      : `${sosialisasiData.session.tempat} • Pukul ${sosialisasiData.session.waktu_mulai} - ${sosialisasiData.session.waktu_selesai} WIB`}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsScanSosialisasiOpen(true)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0 self-end sm:self-auto",
+                  isStudentAttended
+                    ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50"
+                    : "bg-violet-600 hover:bg-violet-500 text-white shadow-md shadow-violet-600/30 font-extrabold"
+                )}
+              >
+                <QrCode size={16} />
+                <span>{isStudentAttended ? "Lihat Status Presensi" : "Scan QR Presensi"}</span>
+              </button>
+            </div>
+          )}
+
           {/* Header Identity Banner (Sembunyikan saat di Tab CBT agar langsung ke kartu ujian tanpa boros scrolling di HP) */}
           {activeTab !== 'cbt' && (
             <SiswaHeaderBanner
@@ -712,6 +790,24 @@ export const SiswaDashboard: React.FC = () => {
           />
         )}
       </Suspense>
+
+      {/* Modal Scanner Presensi Sosialisasi Siswa (Khusus Kehadiran Diri) */}
+      {isScanSosialisasiOpen && (
+        <Suspense fallback={null}>
+          <TeacherSosialisasiScanModal
+            isOpen={isScanSosialisasiOpen}
+            onClose={() => setIsScanSosialisasiOpen(false)}
+            guruId={data.siswaProfile?.id || data.user?.siswa_id || data.user?.id || ''}
+            guruNama={data.studentName || 'Siswa'}
+            guruNip={data.currentNisn || '-'}
+            tenantId={data.tenantId}
+            activeSession={sosialisasiData?.session}
+            isAlreadyAttended={isStudentAttended}
+            waktuHadir={myStudentAttendance?.waktu_hadir}
+            onSuccess={() => refetchSosialisasi()}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

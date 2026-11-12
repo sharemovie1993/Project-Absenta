@@ -380,7 +380,12 @@ export class SosialisasiService {
       throw new Error('Sesi rapat sosialisasi ini telah ditutup/selesai oleh panitia.');
     }
 
-    // Cari guru berdasarkan ID, NIP, NIK, atau NUPTK
+    // Cari guru atau siswa berdasarkan ID, NIP, NISN, NIK, atau NUPTK
+    let attendeeId = '';
+    let attendeeNama = '';
+    let attendeeNip = '';
+    let attendeeJabatan = '';
+
     const guru = await prisma.guru.findFirst({
       where: {
         tenant_id: tenantId,
@@ -405,30 +410,59 @@ export class SosialisasiService {
       },
     });
 
-    if (!guru) {
-      throw new Error('Data guru tidak ditemukan. Pastikan Anda memilih nama atau memasukkan NIP yang benar.');
+    if (guru) {
+      attendeeId = guru.id;
+      attendeeNama = guru.nama_guru;
+      attendeeNip = guru.nip || guru.nuptk || '-';
+      attendeeJabatan =
+        guru.GuruMapel?.[0]?.Mapel?.nama_mapel || guru.jabatan || guru.jenis_ptk || 'Tenaga Pendidik';
+    } else {
+      const siswa = await prisma.siswa.findFirst({
+        where: {
+          tenant_id: tenantId,
+          OR: [
+            { id: params.guruIdOrNip },
+            { nisn: params.guruIdOrNip },
+            { nis: params.guruIdOrNip },
+            { nik: params.guruIdOrNip },
+          ],
+        },
+        select: {
+          id: true,
+          nama_lengkap: true,
+          nisn: true,
+          nis: true,
+          Kelas: { select: { nama_kelas: true } },
+        },
+      });
+
+      if (!siswa) {
+        throw new Error('Data peserta tidak ditemukan. Pastikan Anda memilih nama atau memasukkan NIP/NISN yang benar.');
+      }
+
+      attendeeId = siswa.id;
+      attendeeNama = siswa.nama_lengkap;
+      attendeeNip = siswa.nisn || siswa.nis || '-';
+      attendeeJabatan = `Siswa (${siswa.Kelas?.nama_kelas || 'Kelas'})`;
     }
 
-    // Catat kehadiran guru
+    // Catat kehadiran peserta
     const recorded = await this.recordTeacherAttendance(tenantId, {
       sessionId: session.id,
-      guruId: guru.id,
+      guruId: attendeeId,
       isHadir: true,
       metodeScan: 'QR_MANDIRI',
       catatan: 'Scan mandiri melalui Lembar QR Cetak Sosialisasi',
     });
 
-    const mapelOrJabatan =
-      guru.GuruMapel?.[0]?.Mapel?.nama_mapel || guru.jabatan || guru.jenis_ptk || 'Tenaga Pendidik';
-
     return {
       success: true,
-      message: `Terima kasih! Kehadiran ${guru.nama_guru} pada Rapat Sosialisasi Platform telah berhasil dicatat.`,
+      message: `Terima kasih! Kehadiran ${attendeeNama} pada Rapat Sosialisasi Platform telah berhasil dicatat.`,
       guru: {
-        id: guru.id,
-        nama: guru.nama_guru,
-        nip: guru.nip || guru.nuptk || '-',
-        jabatan: mapelOrJabatan,
+        id: attendeeId,
+        nama: attendeeNama,
+        nip: attendeeNip,
+        jabatan: attendeeJabatan,
         waktuHadir: recorded.waktu_hadir || new Date().toISOString(),
       },
     };

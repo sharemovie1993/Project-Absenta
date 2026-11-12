@@ -960,11 +960,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'kepsek', label: 'Dashboard Kepala Sekolah', icon: Award });
     }
 
-    // 0.1 Tab Rapat Sosialisasi (Universal: Tampil untuk seluruh role pengguna ketika ada rapat aktif)
-    if (isSosialisasiActive) {
+    // 0.1 Tab Rapat Sosialisasi (HANYA untuk Admin & Kurikulum ketika ada rapat aktif)
+    if (isSosialisasiActive && (isAdminRole || isKurikulum)) {
       list.push({
         id: 'sosialisasi_view',
-        label: isMyAttendanceDone ? 'Sosialisasi (Hadir)' : '⚡ Presensi Sosialisasi',
+        label: 'Kelola Sosialisasi',
         icon: QrCode,
       });
     }
@@ -1207,7 +1207,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
   useEffect(() => {
     // Tab binaan, kepsek, kaprog, kepegawaian, pembimbing_pkl, dan kelola (piket) valid jika user memiliki peran tersebut
-    if (activeTab === 'sosialisasi_view' && isSosialisasiActive) return;
+    if (activeTab === 'sosialisasi_view' && isSosialisasiActive && (isAdminRole || isKurikulum)) return;
     if (activeTab === 'binaan' && (isWaliKelas || Boolean(waliKelasId))) return;
     if (activeTab === 'kepsek' && (isKepsek || isAdminRole)) return;
     if (activeTab === 'kaprog' && (isKaprog || isAdminRole)) return;
@@ -1582,13 +1582,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-            <button
-              type="button"
-              onClick={() => handleTabChange('sosialisasi_view')}
-              className="px-3 py-2 rounded-xl text-xs font-bold text-violet-700 dark:text-violet-300 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-all cursor-pointer"
-            >
-              Lihat Detail Acara
-            </button>
+            {(isAdminRole || isKurikulum) && (
+              <button
+                type="button"
+                onClick={() => handleTabChange('sosialisasi_view')}
+                className="px-3 py-2 rounded-xl text-xs font-bold text-violet-700 dark:text-violet-300 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-all cursor-pointer"
+              >
+                Kelola Sosialisasi
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setIsScanSosialisasiOpen(true)}
@@ -1610,8 +1612,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
       {/* TAB CONTENT AREA (Keep-Alive Lazy-Mount Engine: 0ms Switch)       */}
       {/* ────────────────────────────────────────────────────────────────── */}
       <div className="w-full min-w-0">
-        {/* ⚡ TAB RAPAT SOSIALISASI (UNIVERSAL ALL ROLES) */}
-        {visitedTabs.has('sosialisasi_view') && (
+        {/* ⚡ TAB KELOLA RAPAT SOSIALISASI (HANYA UNTUK ADMIN & KURIKULUM) */}
+        {(isAdminRole || isKurikulum) && visitedTabs.has('sosialisasi_view') && (
           <div 
             key="tab-sosialisasi_view"
             role="tabpanel"

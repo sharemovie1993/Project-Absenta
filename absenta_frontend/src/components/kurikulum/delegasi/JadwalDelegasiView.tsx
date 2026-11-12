@@ -281,6 +281,9 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
       queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-delegasi'] });
       queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-grid'] });
       queryClient.invalidateQueries({ queryKey: ['sesi-kbm-hari-ini'] });
+      queryClient.invalidateQueries({ queryKey: ['kbm-monitoring'] });
+      queryClient.invalidateQueries({ queryKey: ['monitoring-kbm'] });
+      queryClient.invalidateQueries({ queryKey: ['guru-jadwal'] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || err?.message || 'Gagal memperbarui delegasi pengajar');
@@ -776,19 +779,19 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
 
   return (
     <AcademicPageLayout
-      title="Delegasi Guru Inval KBM"
-      description="Kelola pengajar pengganti (inval) pada sesi jadwal KBM harian jika guru utama berhalangan hadir."
+      title="Delegasi Pengajar KBM"
+      description="Kelola penugasan pengajar riil (semesteran maupun pengganti) pada jadwal KBM tanpa mengubah SK resmi pembagian jam mengajar Dapodik."
       breadcrumbs={[
         { label: 'Kurikulum', path: '/kurikulum' },
-        { label: 'Delegasi Guru Inval' }
+        { label: 'Delegasi Pengajar KBM' }
       ]}
       instruction={{
-        title: 'Panduan Delegasi Guru Pengganti (Inval)',
-        description: 'Fitur ini memungkinkan penugasan guru pengganti pada slot sesi KBM tanpa mengubah SK pembagian beban mengajar resmi.',
+        title: 'Panduan Delegasi Pengajar KBM',
+        description: 'Fitur ini memungkinkan penugasan guru pelaksana lapangan (berlaku sepanjang semester aktif atau harian) dengan tetap menjaga kepatuhan SK Dapodik.',
         items: [
-          { text: 'Pilih kelas atau hari untuk menemukan slot jadwal yang perlu guru pengganti.' },
-          { text: 'Klik "Tugaskan Pengganti" untuk menugaskan guru inval yang siap hadir.' },
-          { text: 'Guru pengganti otomatis mendapatkan hak absensi dan jurnal kelas pada sesi tersebut.' }
+          { text: 'Jadwal dan beban mengajar SK Dapodik tetap tercatat resmi atas nama Guru SK.' },
+          { text: 'Guru pengajar riil (delegasi) otomatis menerima hak presensi siswa, jurnal KBM harian, dan jadwal masuk di akun HP mereka.' },
+          { text: 'Monitoring KBM menampilkan secara transparan Guru SK dan Pengajar Riil di lapangan.' }
         ]
       }}
       hardeningModuleKey="jadwal_delegasi_page"

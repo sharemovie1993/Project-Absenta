@@ -223,8 +223,8 @@ export class JadwalCrudController {
         },
       });
 
-      // Auto-sync sessions for today in background (organic behavior)
-      void this.syncSessionsToday(tenantId);
+      // Auto-sync sessions for today and invalidate caches
+      await this.syncSessionsToday(tenantId);
       await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
 
       // Sync kontributor CBT Bank Soal jika penugasan delegasi aktif ditambahkan
@@ -373,8 +373,8 @@ export class JadwalCrudController {
         },
       });
 
-      // Auto-sync sessions for today in background (organic behavior)
-      void this.syncSessionsToday(tenantId);
+      // Auto-sync sessions for today and invalidate caches
+      await this.syncSessionsToday(tenantId);
       await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
 
       // Sync kontributor CBT Bank Soal jika guru_pelaksana_id / unit berubah

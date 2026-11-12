@@ -101,6 +101,7 @@ export class CacheInvalidationService {
     await cacheService.deletePattern(`academic:${tenantId}:jadwal_grid:*`);
     await cacheService.deletePattern(`academic:${tenantId}:jadwal_guru:*`);
     await this.invalidateBebanGuruCache(tenantId);
+    await this.invalidateAttendanceCache(tenantId);
   }
 
   /**

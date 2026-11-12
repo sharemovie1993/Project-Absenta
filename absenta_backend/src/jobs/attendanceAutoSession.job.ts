@@ -296,11 +296,23 @@ export async function generateSessionsForTenantDirect(
               });
             }
             createdCount++;
-          } else if (existing.waktu_selesai?.getTime() !== startSelesai.getTime()) {
-            await prisma.sesiAbsensi.update({
-              where: { id: existing.id },
-              data: { waktu_selesai: startSelesai }
-            });
+          } else {
+            const pelaksanaId = (schedule as any).guru_pelaksana_id || null;
+            const needsUpdate = 
+              existing.waktu_selesai?.getTime() !== startSelesai.getTime() ||
+              (existing as any).guru_pelaksana_id !== pelaksanaId ||
+              (existing as any).is_delegasi !== Boolean(pelaksanaId);
+
+            if (needsUpdate) {
+              await (prisma.sesiAbsensi as any).update({
+                where: { id: existing.id },
+                data: {
+                  waktu_selesai: startSelesai,
+                  guru_pelaksana_id: pelaksanaId,
+                  is_delegasi: Boolean(pelaksanaId),
+                }
+              });
+            }
           }
         }
       }
