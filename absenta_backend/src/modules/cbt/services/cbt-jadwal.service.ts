@@ -882,7 +882,8 @@ export class CbtJadwalService {
     const secondsUntilScheduleEnd = tanggalSelesai
       ? Math.max(0, Math.floor((tanggalSelesai.getTime() - now.getTime()) / 1000))
       : 999999;
-    const allowFloating = Boolean((jadwal?.setting_keamanan as any)?.floating_duration);
+    // Konsisten dengan engine: default TRUE (durasi penuh) kecuali panitia set floating_duration: false
+    const allowFloating = (jadwal?.setting_keamanan as any)?.floating_duration !== false;
 
     // Ambil data sesi Redis secara batch (O(1) Redis Pipeline) untuk peserta yang sedang mengerjakan
     // Memungkinkan pengawas ruang melihat jumlah butir soal terjawab secara langsung (live-sync)
