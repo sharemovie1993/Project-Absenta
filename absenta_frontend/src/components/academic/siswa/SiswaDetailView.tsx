@@ -37,7 +37,7 @@ import { getSiswaById, updateSiswa, sendParentAccess, siswaQueryKeys } from '../
 import { useProvinsiOptions, useKabupatenOptions, useKecamatanOptions, useKelurahanOptions } from '../../../hooks/useWilayahOptions';
 import { formatAlamatLengkap } from '../../../lib/alamat.util';
 import { uploadSiswaDocument, getMemberDocPreviewUrl } from '../../../api/memberDocs.api';
-import { resolveProfilePhotoUrl } from '../../../lib/utils';
+import { cn, resolveProfilePhotoUrl } from '../../../lib/utils';
 import { FieldDocumentTrigger } from '../../documents/FieldDocumentTrigger';
 import { normalizeStudentIdentity } from '@/utils/academic/academicIdentityNormalizer';
 import { SelfMemberDocsSection } from '../../documents/SelfMemberDocsSection';
