@@ -5925,6 +5925,7 @@ model CbtJadwalUjian {
   durasi_menit              Int             @default(90)
   toleransi_terlambat_menit Int             @default(15)
   status                    CbtJadwalStatus @default(DRAFT)
+  waktu_diaktifkan          DateTime?       @db.Timestamptz // Dicatat saat pengawas klik "Aktifkan Sesi"
   target_kelas_ids          Json            // Array of kelas_id UUID strings
   setting_keamanan          Json?           // { lock_device, block_tab_switching, max_tab_switches, shuffle_questions, shuffle_options }
   created_at                DateTime        @default(now())

@@ -388,10 +388,13 @@ export class CbtJadwalService {
       await redis.set(`cbt:${tenantId}:token:${jadwal.token_ujian}`, jadwal.id, 'EX', 86400).catch(() => null);
     }
 
-    // Update status di PostgreSQL
+    // Update status di PostgreSQL + catat waktu pengawas mengaktifkan sesi
     return prisma.cbtJadwalUjian.update({
       where: { id },
-      data: { status: 'ACTIVE' },
+      data: {
+        status: 'ACTIVE',
+        waktu_diaktifkan: new Date(), // ← Toleransi keterlambatan dihitung dari sini
+      },
     });
   }
 

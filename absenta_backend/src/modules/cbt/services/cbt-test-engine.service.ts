@@ -700,22 +700,31 @@ export class CbtTestEngineService {
     // 8C. Validasi Toleransi Keterlambatan (Hanya untuk siswa yang baru akan mulai, bukan yang reconnect)
     const isNewParticipant = !existingPeserta || !existingPeserta.waktu_mulai;
     if (!isRemedial && isNewParticipant && toleransiMenit > 0) {
-      const batasTerlambatMs = tanggalMulai.getTime() + (toleransiMenit * 60 * 1000);
+      // ── RESILIENT: Hitung toleransi dari waktu pengawas benar-benar membuka sesi ──
+      // Jika pengawas terlambat mengaktifkan (misal jadwal 07:00 tapi diaktifkan 07:45),
+      // maka siswa mendapat toleransi penuh dari 07:45, bukan dari 07:00.
+      const waktuAktifMs = (jadwal as any).waktu_diaktifkan
+        ? new Date((jadwal as any).waktu_diaktifkan).getTime()
+        : tanggalMulai.getTime();
+      // sesiBukaMs = MAX(tanggal_mulai, waktu_diaktifkan) → titik awal paling akhir
+      const sesiBukaMs = Math.max(tanggalMulai.getTime(), waktuAktifMs);
+      const batasTerlambatMs = sesiBukaMs + (toleransiMenit * 60 * 1000);
       const dispensasiList = (jadwal.setting_keamanan as any)?.dispensasi_terlambat_siswa_ids || [];
       const hasDispensation = Array.isArray(dispensasiList) && dispensasiList.includes(siswaId);
 
       if (!hasDispensation && now.getTime() > batasTerlambatMs) {
         const jamBatasStr = CbtTestEngineService.formatJamIndo(new Date(batasTerlambatMs));
-        const jamMulaiStr = CbtTestEngineService.formatJamIndo(tanggalMulai);
-        const menitTerlambat = Math.floor((now.getTime() - tanggalMulai.getTime()) / (60 * 1000));
+        const jamSesiDibukaStr = CbtTestEngineService.formatJamIndo(new Date(sesiBukaMs));
+        const menitTerlambat = Math.floor((now.getTime() - sesiBukaMs) / (60 * 1000));
         const err: any = new Error(
-          `Batas toleransi keterlambatan (${toleransiMenit} menit) telah berakhir pada pukul ${jamBatasStr} WIB. Anda datang terlambat ${menitTerlambat} menit dari jadwal mulai (${jamMulaiStr} WIB).`
+          `Batas toleransi keterlambatan (${toleransiMenit} menit) telah berakhir pada pukul ${jamBatasStr} WIB. Anda datang terlambat ${menitTerlambat} menit sejak sesi dibuka pukul ${jamSesiDibukaStr} WIB.`
         );
         err.statusCode = 403;
         err.code = 'LATE_ENTRY_REJECTED';
         err.details = {
           mapel: mapelName,
           tanggal_mulai: jadwal.tanggal_mulai,
+          waktu_sesi_dibuka: new Date(sesiBukaMs).toISOString(),
           batas_masuk: new Date(batasTerlambatMs).toISOString(),
           toleransi_menit: toleransiMenit,
           menit_terlambat: menitTerlambat,
@@ -834,16 +843,21 @@ export class CbtTestEngineService {
 
     // Hitung sisa detik menuju batas akhir jendela jadwal ujian
     const secondsUntilScheduleEnd = Math.max(0, Math.floor((tanggalSelesai.getTime() - now.getTime()) / 1000));
-    if (secondsUntilScheduleEnd <= 0) {
+
+    // ── MANUSIAWI: Default floating_duration = TRUE ──
+    // Siswa selalu mendapat durasi penuh kecuali panitia sengaja set strict (floating_duration: false).
+    // Ini memastikan siswa yang terdampak keterlambatan pengawas tidak dirugikan.
+    const allowFloating = (jadwal.setting_keamanan as any)?.floating_duration !== false;
+
+    // Hanya tolak entry jika strict mode DAN jendela waktu benar-benar habis
+    if (!allowFloating && secondsUntilScheduleEnd <= 0) {
       const err: any = new Error('Waktu pelaksanaan sesi ujian telah berakhir.');
       err.statusCode = 400;
       err.code = 'SCHEDULE_EXPIRED';
       throw err;
     }
 
-    // Kebijakan Pemotongan Waktu (Strict Clamping):
-    // Durasi pengerjaan siswa tidak boleh melebihi sisa waktu jendela sesi jadwal
-    const allowFloating = (jadwal.setting_keamanan as any)?.floating_duration === true;
+    // Durasi awal: penuh jika floating, dibatasi sisa jendela jika strict
     const initialDuration = allowFloating ? durasiTotalDetik : Math.min(durasiTotalDetik, secondsUntilScheduleEnd);
 
     // Cari atau buat record peserta ujian
