@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '@/lib/axiosInstance';
 import { cn } from '@/lib/utils';
+import { useSocketPing } from '@/hooks/useSocketPing';
+import { SignalBars } from './SignalBars';
 
 export interface RouteInfo {
   route: 'LOCAL' | 'TUNNEL';
@@ -85,69 +87,46 @@ export const RouteAccessBadge: React.FC<RouteAccessBadgeProps> = ({
   className,
   showTooltip = true,
 }) => {
-  const { data, isFetching } = useAccessRoute();
+  const { data } = useAccessRoute();
+  const ping = useSocketPing(2000); // Update tiap 2 detik, seperti ML
 
   if (!data?.route) return null;
 
   const isLocal = data.route === 'LOCAL';
-  const ms = data.latencyMs;
 
-  // Warna latensi: hijau < 50ms, kuning 50–150ms, merah > 150ms
-  const latencyColor = ms === undefined
-    ? ''
-    : ms < 50
-      ? 'text-emerald-500 dark:text-emerald-400'
-      : ms < 150
-        ? 'text-yellow-500 dark:text-yellow-400'
-        : 'text-red-500 dark:text-red-400';
-
-  const latencyLabel = ms === undefined
-    ? ''
-    : ms < 1000
-      ? `${ms}ms`
-      : `${(ms / 1000).toFixed(1)}s`;
-
-  const tooltipText = isFetching
-    ? 'Memeriksa jalur jaringan...'
-    : isLocal
-      ? `Jaringan Lokal (LAN/Wi-Fi Sekolah)${ms !== undefined ? ` · ${latencyLabel}` : ''}`
-      : `Terowongan Cloud (Easy Tunnel)${ms !== undefined ? ` · ${latencyLabel}` : ''}`;
+  // Tooltip informatif
+  const routeDesc = isLocal ? 'Jaringan Lokal (LAN/Wi-Fi Sekolah)' : 'Terowongan Cloud (Easy Tunnel)';
+  const pingDesc = !ping.isConnected
+    ? 'WebSocket terputus'
+    : ping.latencyMs !== null
+      ? `Ping: ${ping.latencyMs}ms`
+      : 'Mengukur latensi...';
+  const tooltipText = `${routeDesc} · ${pingDesc}`;
 
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold tracking-tight border select-none transition-colors",
+        'inline-flex items-center gap-2 px-2 py-0.5 rounded-full text-[11px] font-bold tracking-tight border select-none transition-colors',
         isLocal
-          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800"
-          : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800",
-        className
+          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+          : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
+        className,
       )}
       title={showTooltip ? tooltipText : undefined}
     >
-      {/* Indikator titik */}
-      <span
-        className={cn(
-          "w-1.5 h-1.5 rounded-full flex-shrink-0",
-          isFetching
-            ? "bg-gray-400 animate-ping"
-            : isLocal
-              ? "bg-emerald-500 animate-pulse"
-              : "bg-indigo-500"
-        )}
-      />
-
       {/* Label Lokal / Tunnel */}
       <span>{data.label || (isLocal ? 'Lokal' : 'Tunnel')}</span>
 
-      {/* Latensi — hanya tampil jika sudah diukur dan tidak sedang fetch */}
-      {!isFetching && ms !== undefined && (
-        <>
-          <span className="opacity-30 font-normal">·</span>
-          <span className={cn("font-mono font-semibold", latencyColor)}>
-            {latencyLabel}
-          </span>
-        </>
-      )}
+      {/* Pemisah */}
+      <span className="opacity-25 font-normal">|</span>
+
+      {/* Signal bars + latensi — update tiap 2 detik */}
+      <SignalBars
+        level={ping.signalLevel}
+        latencyMs={ping.latencyMs}
+        isConnected={ping.isConnected}
+        isLocal={isLocal}
+      />
     </div>
   );
 };
