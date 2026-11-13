@@ -374,6 +374,7 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
           </span>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            <RouteAccessBadge className="text-[10px] px-1.5 py-0.5" />
             <button
               type="button"
               onClick={() => useMobileAccountSheetStore.getState().open()}

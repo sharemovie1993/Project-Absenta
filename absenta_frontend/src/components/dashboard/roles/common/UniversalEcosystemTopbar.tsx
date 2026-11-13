@@ -11,6 +11,7 @@ import {
   getEcosystemTheme,
   getEcosystemLabel
 } from '@/config/bottomNavEcosystems.config';
+import { RouteAccessBadge } from '@/components/layout/RouteAccessBadge';
 
 export interface UniversalEcosystemTopbarProps {
   /**
@@ -217,6 +218,9 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
 
       {/* SISI KANAN: AKSI MINIMAL (TOMBOL KUSTOM, REFRESH, & PROFIL AKUN) */}
       <div className="flex items-center gap-1.5 shrink-0">
+        {/* Badge Akses Jaringan Lokal/Tunnel + Signal Bar (Khusus Mobile < lg) */}
+        <RouteAccessBadge className="lg:hidden text-[10px] px-1.5 py-0.5" />
+
         {/* Universal Role Dashboard Switcher Pill (Khusus Admin / Multi-Role) */}
         {canSwitchDashboard && (
           <button
