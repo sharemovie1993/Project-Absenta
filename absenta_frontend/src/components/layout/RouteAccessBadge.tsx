@@ -7,18 +7,22 @@ export interface RouteInfo {
   route: 'LOCAL' | 'TUNNEL';
   label: string;
   name?: string;
+  latencyMs?: number; // RTT dari browser ke server (diukur client-side, nol beban server)
 }
 
 const ROUTE_QUERY_KEY = ['network-access-route'];
 
 async function fetchAccessRoute(): Promise<RouteInfo> {
   try {
+    const t0 = Date.now();
     const res = await axiosInstance.get('/auth/tenant-info');
+    const latencyMs = Date.now() - t0; // RTT round-trip time, diukur di sisi klien
     const data = res.data?.data;
     const resObj: RouteInfo = {
       route: (data?.access_route as 'LOCAL' | 'TUNNEL') || 'LOCAL',
       label: data?.access_label || (data?.access_route === 'TUNNEL' ? 'Tunnel' : 'Lokal'),
       name: data?.name,
+      latencyMs,
     };
     // Tidak disimpan ke localStorage lagi — hindari cache stale antar sesi/jaringan
     return resObj;
@@ -86,6 +90,28 @@ export const RouteAccessBadge: React.FC<RouteAccessBadgeProps> = ({
   if (!data?.route) return null;
 
   const isLocal = data.route === 'LOCAL';
+  const ms = data.latencyMs;
+
+  // Warna latensi: hijau < 50ms, kuning 50–150ms, merah > 150ms
+  const latencyColor = ms === undefined
+    ? ''
+    : ms < 50
+      ? 'text-emerald-500 dark:text-emerald-400'
+      : ms < 150
+        ? 'text-yellow-500 dark:text-yellow-400'
+        : 'text-red-500 dark:text-red-400';
+
+  const latencyLabel = ms === undefined
+    ? ''
+    : ms < 1000
+      ? `${ms}ms`
+      : `${(ms / 1000).toFixed(1)}s`;
+
+  const tooltipText = isFetching
+    ? 'Memeriksa jalur jaringan...'
+    : isLocal
+      ? `Jaringan Lokal (LAN/Wi-Fi Sekolah)${ms !== undefined ? ` · ${latencyLabel}` : ''}`
+      : `Terowongan Cloud (Easy Tunnel)${ms !== undefined ? ` · ${latencyLabel}` : ''}`;
 
   return (
     <div
@@ -96,19 +122,12 @@ export const RouteAccessBadge: React.FC<RouteAccessBadgeProps> = ({
           : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800",
         className
       )}
-      title={
-        showTooltip
-          ? isFetching
-            ? 'Memeriksa jalur jaringan...'
-            : isLocal
-              ? 'Terhubung langsung via Jaringan Fisik (Wi-Fi / LAN Lokal)'
-              : 'Terhubung melalui Terowongan (Easy Tunnel Cloud)'
-          : undefined
-      }
+      title={showTooltip ? tooltipText : undefined}
     >
+      {/* Indikator titik */}
       <span
         className={cn(
-          "w-1.5 h-1.5 rounded-full",
+          "w-1.5 h-1.5 rounded-full flex-shrink-0",
           isFetching
             ? "bg-gray-400 animate-ping"
             : isLocal
@@ -116,7 +135,19 @@ export const RouteAccessBadge: React.FC<RouteAccessBadgeProps> = ({
               : "bg-indigo-500"
         )}
       />
+
+      {/* Label Lokal / Tunnel */}
       <span>{data.label || (isLocal ? 'Lokal' : 'Tunnel')}</span>
+
+      {/* Latensi — hanya tampil jika sudah diukur dan tidak sedang fetch */}
+      {!isFetching && ms !== undefined && (
+        <>
+          <span className="opacity-30 font-normal">·</span>
+          <span className={cn("font-mono font-semibold", latencyColor)}>
+            {latencyLabel}
+          </span>
+        </>
+      )}
     </div>
   );
 };
