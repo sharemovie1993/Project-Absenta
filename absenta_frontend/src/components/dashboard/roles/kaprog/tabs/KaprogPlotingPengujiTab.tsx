@@ -13,6 +13,10 @@ import {
   ShieldCheck,
   RotateCcw,
   Sparkles,
+  Trash2,
+  Edit3,
+  UserX,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
@@ -46,6 +50,8 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
   const [selectedKelasFilter, setSelectedKelasFilter] = useState<string>('ALL');
   const [plotFilter, setPlotFilter] = useState<'ALL' | 'UNASSIGNED' | 'ASSIGNED'>('ALL');
   const [selectedSiswaIds, setSelectedSiswaIds] = useState<Set<string>>(new Set());
+  const [editingSiswa, setEditingSiswa] = useState<any | null>(null);
+  const [editGuruId, setEditGuruId] = useState<string>('');
 
   // 1. Ambil Data Guru Produktif Jurusan (Prioritas SSOT Khusus Guru Kejuruan)
   const { data: statsData } = useQuery({
@@ -200,7 +206,28 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
     return examinerOptions.find((g) => g.id === selectedGuruId) || null;
   }, [examinerOptions, selectedGuruId]);
 
-  // Mutation Assign Penguji Batch
+  // Helper Invalidate All Sidang Caches
+  const invalidateAllSidangQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+    queryClient.invalidateQueries({ queryKey: ['kaprog-ploting-siswa-list'] });
+    queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+    queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-list'] });
+    queryClient.invalidateQueries({ queryKey: ['kaprog-sidang-nilai-list'] });
+    queryClient.invalidateQueries({ queryKey: ['hubin-settings'] });
+    queryClient.invalidateQueries({ queryKey: ['rapor'] });
+    queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+  }, [queryClient]);
+
+  // Selected Siswa yang sudah berstatus Diploting
+  const selectedAssignedIds = useMemo(() => {
+    return Array.from(selectedSiswaIds).filter((id) => {
+      const s = rawSiswaList.find((item: any) => item.id === id);
+      return Boolean(s?.nilai_json?.penguji_id);
+    });
+  }, [selectedSiswaIds, rawSiswaList]);
+
+  // Mutation Assign / Reassign (Edit) Penguji Batch
   const plotingMutation = useMutation({
     mutationFn: async () => {
       if (!selectedGuruId || !selectedGuru) throw new Error('Silakan pilih guru penguji sidang.');
@@ -220,18 +247,71 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
     },
     onSuccess: () => {
       toast.success(
-        `Berhasil menugaskan ${selectedSiswaIds.size} siswa ke penguji ${selectedGuru?.nama_guru}!`
+        `Berhasil menugaskan/mengubah penguji ${selectedSiswaIds.size} siswa ke ${selectedGuru?.nama_guru}!`
       );
-      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
-      queryClient.invalidateQueries({ queryKey: ['kaprog-ploting-siswa-list'] });
-      queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
-      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-list'] });
+      invalidateAllSidangQueries();
       setSelectedSiswaIds(new Set());
       refetch();
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || err?.message || 'Gagal menyimpan ploting penguji.');
+    },
+  });
+
+  // Mutation Hapus Ploting (Batal Ploting / Unassign) Batch atau Single
+  const unassignMutation = useMutation({
+    mutationFn: async (targetIds?: string[]) => {
+      const ids = targetIds || Array.from(selectedSiswaIds);
+      if (ids.length === 0) throw new Error('Pilih minimal 1 siswa untuk dibatalkan plotingnya.');
+
+      const payloadScores = ids.map((siswaPklId) => ({
+        siswa_pkl_id: siswaPklId,
+        penguji_id: null,
+        penguji_nama: null,
+      }));
+
+      return hubinApi.upsertNilaiPklBatch({
+        scores: payloadScores,
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId,
+      });
+    },
+    onSuccess: (_, variables) => {
+      const count = variables ? variables.length : selectedSiswaIds.size;
+      toast.success(`Berhasil membatalkan ploting penguji untuk ${count} siswa!`);
+      invalidateAllSidangQueries();
+      setSelectedSiswaIds(new Set());
+      setEditingSiswa(null);
+      refetch();
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal membatalkan ploting.');
+    },
+  });
+
+  // Mutation Ganti Penguji Per 1 Siswa (Single Reassign / Edit)
+  const singleReassignMutation = useMutation({
+    mutationFn: async ({ siswaPklId, newGuruId, newGuruNama }: { siswaPklId: string; newGuruId: string; newGuruNama: string }) => {
+      return hubinApi.upsertNilaiPklBatch({
+        scores: [
+          {
+            siswa_pkl_id: siswaPklId,
+            penguji_id: newGuruId,
+            penguji_nama: newGuruNama,
+          },
+        ],
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId,
+      });
+    },
+    onSuccess: () => {
+      toast.success('Penguji sidang siswa berhasil diperbarui!');
+      invalidateAllSidangQueries();
+      setEditingSiswa(null);
+      refetch();
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal mengubah penguji sidang.');
     },
   });
 
@@ -410,7 +490,7 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
         </div>
 
         {/* ── Header List & Bulk Actions Bar ── */}
-        <div className="flex items-center justify-between px-3.5 sm:px-5 py-2.5 bg-slate-100/90 dark:bg-slate-850 border-b border-slate-200/80 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 px-3.5 sm:px-5 py-2.5 bg-slate-100/90 dark:bg-slate-850 border-b border-slate-200/80 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400">
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"
@@ -424,10 +504,37 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
             </span>
           </label>
 
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+          <div className="flex items-center gap-2 flex-wrap ml-auto">
+            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mr-1">
               Terpilih: {selectedSiswaIds.size} siswa
             </span>
+
+            {/* Tombol Hapus Ploting Terpilih (Khusus Siswa yang Sudah Memiliki Penguji) */}
+            {selectedAssignedIds.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={unassignMutation.isPending}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`Batalkan ploting penguji untuk ${selectedAssignedIds.length} siswa yang sudah diplot?`)) {
+                    unassignMutation.mutate(selectedAssignedIds);
+                  }
+                }}
+                className="border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl text-xs font-bold h-8 px-2.5 cursor-pointer shadow-2xs"
+                title="Batalkan penugasan penguji untuk siswa terpilih"
+              >
+                {unassignMutation.isPending ? (
+                  <Loader2 size={13} className="animate-spin mr-1.5" />
+                ) : (
+                  <UserX size={13} className="mr-1.5 text-rose-500" />
+                )}
+                <span>Hapus Ploting ({selectedAssignedIds.length})</span>
+              </Button>
+            )}
+
+            {/* Tombol Tugaskan / Ganti Penguji Terpilih */}
             <Button
               type="button"
               variant="primary"
@@ -440,6 +547,11 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
                 <>
                   <Loader2 size={13} className="animate-spin mr-1.5" />
                   Menyimpan...
+                </>
+              ) : selectedAssignedIds.length === selectedSiswaIds.size && selectedSiswaIds.size > 0 ? (
+                <>
+                  <Edit3 size={13} className="mr-1.5" />
+                  Ganti Penguji ({selectedSiswaIds.size})
                 </>
               ) : (
                 <>
@@ -523,14 +635,46 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
                     </div>
                   </div>
 
-                  {/* Kolom Kanan: Status Penguji Sidang */}
-                  <div className="shrink-0 text-right">
+                  {/* Kolom Kanan: Status Penguji Sidang & Aksi Cepat Edit/Hapus */}
+                  <div className="shrink-0 flex items-center gap-1.5 ml-2" onClick={(e) => e.stopPropagation()}>
                     {item.nilai_json?.penguji_id && currentPengujiNama ? (
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800 shadow-2xs">
-                        <UserCheck size={12} className="text-indigo-600 dark:text-indigo-400" />
-                        <span className="max-w-[130px] sm:max-w-[180px] truncate">
-                          {currentPengujiNama}
-                        </span>
+                      <div className="flex items-center gap-1.5">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800 shadow-2xs">
+                          <UserCheck size={12} className="text-indigo-600 dark:text-indigo-400" />
+                          <span className="max-w-[110px] sm:max-w-[160px] truncate" title={currentPengujiNama}>
+                            {currentPengujiNama}
+                          </span>
+                        </div>
+
+                        {/* Tombol Edit / Ganti Penguji */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingSiswa(item);
+                            setEditGuruId(item.nilai_json?.penguji_id || '');
+                          }}
+                          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors shadow-2xs cursor-pointer"
+                          title="Ganti Penguji Sidang (Edit Ploting)"
+                          aria-label={`Ganti Penguji untuk ${sNama}`}
+                        >
+                          <Edit3 size={13} />
+                        </button>
+
+                        {/* Tombol Hapus Ploting (Batal Ploting) */}
+                        <button
+                          type="button"
+                          disabled={unassignMutation.isPending}
+                          onClick={() => {
+                            if (window.confirm(`Batalkan ploting penguji untuk siswa ${sNama}? Siswa akan berstatus belum diploting.`)) {
+                              unassignMutation.mutate([item.id]);
+                            }
+                          }}
+                          className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-slate-800 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                          title="Batalkan / Hapus Ploting Penguji"
+                          aria-label={`Hapus Ploting untuk ${sNama}`}
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40">
@@ -587,6 +731,11 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
                   <Loader2 size={14} className="animate-spin mr-1.5" />
                   Menyimpan...
                 </>
+              ) : selectedAssignedIds.length === selectedSiswaIds.size && selectedSiswaIds.size > 0 ? (
+                <>
+                  <Edit3 size={14} className="mr-1.5" />
+                  Ganti Penguji ({selectedSiswaIds.size})
+                </>
               ) : (
                 <>
                   <UserCheck size={14} className="mr-1.5" />
@@ -597,6 +746,147 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
           </div>
         </div>
       </div>
+
+      {/* ── Modal Edit / Ganti Penguji Per Siswa ── */}
+      {editingSiswa && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <Edit3 size={16} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    Edit Penguji Sidang PKL
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Ubah penugasan guru penguji atau batalkan ploting siswa.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingSiswa(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body Info Siswa */}
+            <div className="p-5 space-y-4 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200/70 dark:border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                    {editingSiswa.Siswa?.nama_siswa || editingSiswa.siswa_nama}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                    {editingSiswa.Siswa?.Kelas?.nama_kelas || editingSiswa.SiswaAkademik?.kelas?.nama_kelas || '-'}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2">
+                  <span>NIS: {editingSiswa.Siswa?.nis || '-'}</span>
+                  <span>•</span>
+                  <span>DUDI: {editingSiswa.Mitra?.nama || editingSiswa.mitra_nama || '-'}</span>
+                </div>
+                {editingSiswa.nilai_json?.penguji_nama && (
+                  <div className="pt-1.5 mt-1 border-t border-slate-200/50 dark:border-slate-800 text-[11px]">
+                    <span className="text-slate-400">Penguji saat ini: </span>
+                    <strong className="text-indigo-600 dark:text-indigo-400">
+                      {editingSiswa.nilai_json.penguji_nama}
+                    </strong>
+                  </div>
+                )}
+              </div>
+
+              {/* Pilihan Guru Penguji Baru */}
+              <div className="space-y-1.5">
+                <label className="text-[11.5px] font-bold text-slate-700 dark:text-slate-300">
+                  Pilih Guru Penguji Baru:
+                </label>
+                <select
+                  aria-label="Pilih Guru Penguji Baru"
+                  value={editGuruId}
+                  onChange={(e) => setEditGuruId(e.target.value)}
+                  className="w-full text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none transition-all cursor-pointer shadow-2xs"
+                >
+                  <option value="">-- Pilih Guru Penguji Sidang --</option>
+                  {examinerOptions.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.nama_guru} {g.nip ? `(NIP. ${g.nip})` : ''} - [{g.mapel}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Footer Modal Actions */}
+            <div className="px-5 py-3.5 bg-slate-50 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={unassignMutation.isPending || singleReassignMutation.isPending}
+                onClick={() => {
+                  if (window.confirm(`Batalkan ploting penguji untuk ${editingSiswa.Siswa?.nama_siswa || 'siswa ini'}?`)) {
+                    unassignMutation.mutate([editingSiswa.id]);
+                  }
+                }}
+                className="border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl text-xs font-bold h-9"
+              >
+                {unassignMutation.isPending ? (
+                  <Loader2 size={13} className="animate-spin mr-1.5" />
+                ) : (
+                  <Trash2 size={13} className="mr-1.5" />
+                )}
+                Batalkan Ploting
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditingSiswa(null)}
+                  className="rounded-xl text-xs h-9"
+                >
+                  Tutup
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  disabled={!editGuruId || editGuruId === editingSiswa.nilai_json?.penguji_id || singleReassignMutation.isPending}
+                  onClick={() => {
+                    const guruTarget = examinerOptions.find((g) => g.id === editGuruId);
+                    if (!guruTarget) return;
+                    singleReassignMutation.mutate({
+                      siswaPklId: editingSiswa.id,
+                      newGuruId: guruTarget.id,
+                      newGuruNama: guruTarget.nama_guru,
+                    });
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold h-9 px-3.5 cursor-pointer"
+                >
+                  {singleReassignMutation.isPending ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin mr-1.5" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={13} className="mr-1.5" />
+                      Simpan Perubahan
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });

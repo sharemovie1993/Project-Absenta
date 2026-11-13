@@ -93,7 +93,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
   };
 
   return (
-    <div className="space-y-3 pb-24">
+    <div className="space-y-3 pb-36">
       {/* Header Info Mode & Kontrol Mobile */}
       <div className="flex flex-col gap-2 px-1 py-1">
         {!isCompositeMode && (
@@ -105,31 +105,55 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-              Daftar Sidang Siswa
+        <div className="flex items-center justify-between gap-2 px-1 py-1.5 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs rounded-xl border border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
+              Daftar Sidang
             </span>
-            <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+            <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
               {displayedScoresLength} Siswa
             </span>
           </div>
-          <div className="flex items-center gap-2 text-[11px]">
-            <button
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="hidden xs:flex items-center gap-1.5 text-[11px]">
+              <button
+                type="button"
+                onClick={expandAll}
+                className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+              >
+                Buka
+              </button>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <button
+                type="button"
+                onClick={collapseAll}
+                className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 font-medium cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+
+            {/* Tombol Simpan di Header Atas */}
+            <Button
               type="button"
-              onClick={expandAll}
-              className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+              size="sm"
+              onClick={onSaveBatch}
+              disabled={isSavingBatch || displayedScoresLength === 0 || !isCompositeMode}
+              className="h-8 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Simpan Perubahan Nilai Sidang"
             >
-              Buka Semua
-            </button>
-            <span className="text-slate-300 dark:text-slate-700">•</span>
-            <button
-              type="button"
-              onClick={collapseAll}
-              className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 font-medium cursor-pointer"
-            >
-              Tutup Semua
-            </button>
+              {isSavingBatch ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Simpan...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Simpan</span>
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </div>
@@ -554,31 +578,33 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
         </div>
       )}
 
-      {/* Floating Bottom Action Bar (Mudah Disentuh Jempol Kapan Saja di Layar HP) */}
-      <div className="fixed bottom-4 left-4 right-4 z-40 max-w-md mx-auto">
-        <Button
-          type="button"
-          onClick={onSaveBatch}
-          disabled={isSavingBatch || displayedScoresLength === 0 || !isCompositeMode}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12 rounded-2xl shadow-xl shadow-indigo-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSavingBatch ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Menyimpan Nilai Sidang...</span>
-            </>
-          ) : !isCompositeMode ? (
-            <>
-              <Lock className="w-4 h-4" />
-              <span>Skema Nilai Terkunci (DUDI 100%)</span>
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              <span>Simpan Perubahan Nilai Sidang</span>
-            </>
-          )}
-        </Button>
+      {/* Floating Bottom Action Bar (Melayang Tepat di Atas Dock Navigasi Seluler) */}
+      <div className="fixed bottom-[calc(72px+env(safe-area-inset-bottom,16px))] left-3 right-3 sm:left-4 sm:right-4 z-50 max-w-md mx-auto pointer-events-auto">
+        <div className="p-1 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-2xl border border-indigo-200/50 dark:border-indigo-900/50">
+          <Button
+            type="button"
+            onClick={onSaveBatch}
+            disabled={isSavingBatch || displayedScoresLength === 0 || !isCompositeMode}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11 sm:h-12 rounded-xl shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.99]"
+          >
+            {isSavingBatch ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Menyimpan Nilai Sidang...</span>
+              </>
+            ) : !isCompositeMode ? (
+              <>
+                <Lock className="w-4 h-4" />
+                <span>Skema Nilai Terkunci (DUDI 100%)</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                <span>Simpan Perubahan Nilai Sidang ({displayedScoresLength} Siswa)</span>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
