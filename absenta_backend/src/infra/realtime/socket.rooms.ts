@@ -509,6 +509,13 @@ export function setupSocketRooms(
        }
     });
 
+    // ── Lightweight Ping/Pong untuk pengukuran latensi real-time (seperti indikator ML) ──
+    // Payload: timestamp (number) dari client, dikembalikan langsung tanpa proses apapun.
+    // Nol DB query, nol logic — murni echo untuk mengukur RTT jaringan WebSocket.
+    socket.on('c:ping', (t0: number, ack: (t: number) => void) => {
+      if (typeof ack === 'function') ack(t0);
+    });
+
     socket.on('infra_monitoring_subscribe', () => {
       const isSysSA = isSystemSuperAdmin(user.roleName, user.tenantId);
       if (!isSysSA) {
@@ -636,6 +643,13 @@ export function setupSocketRooms(
          socket.join(`user:${user.id}`);
          fastify.log.info(`[WS] User ${user.id} joined self room manually`);
        }
+    });
+
+    // ── Lightweight Ping/Pong untuk pengukuran latensi real-time (seperti indikator ML) ──
+    // Payload: timestamp (number) dari client, dikembalikan langsung tanpa proses apapun.
+    // Nol DB query, nol logic — murni echo untuk mengukur RTT jaringan WebSocket.
+    socket.on('c:ping', (t0: number, ack: (t: number) => void) => {
+      if (typeof ack === 'function') ack(t0);
     });
 
     socket.on('infra_monitoring_subscribe', () => {
