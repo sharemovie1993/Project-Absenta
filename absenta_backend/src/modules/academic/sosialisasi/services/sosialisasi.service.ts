@@ -35,11 +35,50 @@ export class SosialisasiService {
   private static ATTENDEES_CONFIG_PREFIX = 'rapat_sosialisasi_attendees_';
 
   /**
+   * Memeriksa apakah suatu sesi rapat sosialisasi sedang berlangsung secara jadwal (WIB).
+   * Rapat dianggap aktif/berlangsung jika:
+   * 1. Status sesi adalah 'AKTIF'
+   * 2. Tanggal sesi sama dengan tanggal hari ini (WIB)
+   * 3. Waktu sekarang (WIB) berada di antara (waktu_mulai - 30 menit) s/d (waktu_selesai + 30 menit)
+   */
+  static isSessionInSchedule(session: RapatSosialisasiSession | null | undefined): boolean {
+    if (!session || session.status !== 'AKTIF') return false;
+    if (!session.tanggal) return false;
+
+    const now = new Date();
+    // YYYY-MM-DD WIB
+    const nowWibDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
+    if (session.tanggal !== nowWibDate) return false;
+
+    // Jam WIB
+    const nowWibTime = new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(now).replace('.', ':');
+
+    const [curH, curM] = nowWibTime.split(':').map(Number);
+    const curMinutes = (curH || 0) * 60 + (curM || 0);
+
+    const [startH, startM] = (session.waktu_mulai || '08:00').split(':').map(Number);
+    const [endH, endM] = (session.waktu_selesai || '11:30').split(':').map(Number);
+    const startMinutes = (startH || 0) * 60 + (startM || 0);
+    const endMinutes = (endH || 0) * 60 + (endM || 0);
+
+    const EARLY_BUFFER = 30; // 30 menit sebelum mulai untuk persiapan presensi
+    const LATE_BUFFER = 30;  // 30 menit setelah selesai untuk toleransi
+
+    return curMinutes >= (startMinutes - EARLY_BUFFER) && curMinutes <= (endMinutes + LATE_BUFFER);
+  }
+
+  /**
    * Mengambil sesi rapat sosialisasi aktif untuk tenant.
    * Jika belum ada sesi, inisialisasi sesi default hari ini secara otomatis.
    */
   static async getActiveSession(tenantId: string): Promise<{
     session: RapatSosialisasiSession;
+    is_in_schedule: boolean;
     stats: { totalGuru: number; hadirCount: number; belumHadirCount: number; persentaseHadir: number };
     attendees: RapatAttendeeItem[];
   }> {
@@ -130,6 +169,34 @@ export class SosialisasiService {
       }
     }
 
+    // ── AUTO-EXPIRY ENGINE: Deteksi sesi yang sudah lewat hari atau jam ──
+    // Mencegah banner sosialisasi menggantung secara permanen jika rapat sudah selesai.
+    const nowWibDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+    const isPastDate = Boolean(session.tanggal && session.tanggal < nowWibDate);
+
+    const nowWibTime = new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date()).replace('.', ':');
+    const [curH, curM] = nowWibTime.split(':').map(Number);
+    const curMinutes = (curH || 0) * 60 + (curM || 0);
+    const [endH, endM] = (session.waktu_selesai || '11:30').split(':').map(Number);
+    const endMinutes = (endH || 0) * 60 + (endM || 0);
+    const isPastTime = Boolean(session.tanggal === nowWibDate && curMinutes > (endMinutes + 60));
+
+    if (session.status === 'AKTIF' && (isPastDate || isPastTime)) {
+      session.status = 'SELESAI';
+      session.updated_at = new Date().toISOString();
+      if (configRow) {
+        await prisma.config.update({
+          where: { id: configRow.id },
+          data: { value: JSON.stringify(session) },
+        }).catch(() => null);
+      }
+    }
+
     // Ambil daftar seluruh guru aktif dari database
     const allGurus = await prisma.guru.findMany({
       where: {
@@ -193,9 +260,11 @@ export class SosialisasiService {
     const hadirCount = attendees.filter((a) => a.is_hadir).length;
     const belumHadirCount = totalGuru - hadirCount;
     const persentaseHadir = totalGuru > 0 ? Math.round((hadirCount / totalGuru) * 100) : 0;
+    const isInSchedule = this.isSessionInSchedule(session);
 
     return {
       session,
+      is_in_schedule: isInSchedule,
       stats: {
         totalGuru,
         hadirCount,

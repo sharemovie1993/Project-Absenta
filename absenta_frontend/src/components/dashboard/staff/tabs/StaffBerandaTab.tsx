@@ -738,54 +738,6 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
             {/* SUB-TAB 1: RINGKASAN & BERANDA PENDIDIK */}
             {activeSubTab === 'agenda' && (
               <div className="space-y-3 sm:space-y-4">
-                {/* Banner Rapat Sosialisasi Sedang Berlangsung */}
-                {isSosialisasiActive && sosialisasiData?.session && (
-                  <div className="p-3 sm:p-4 bg-gradient-to-r from-violet-600/10 via-indigo-600/10 to-purple-600/10 dark:from-violet-950/40 dark:via-indigo-950/40 dark:to-purple-950/30 border border-violet-300 dark:border-violet-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 shadow-xs",
-                        isMyAttendanceDone ? "bg-emerald-500 text-white" : "bg-violet-600 text-white"
-                      )}>
-                        {isMyAttendanceDone ? <CheckCircle2 size={22} /> : <QrCode size={22} />}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                            {sosialisasiData.session.nama_acara}
-                          </h4>
-                          <span className={cn(
-                            "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
-                            isMyAttendanceDone
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                              : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse"
-                          )}>
-                            {isMyAttendanceDone ? "Sudah Hadir" : "Wajib Presensi"}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                          {isMyAttendanceDone
-                            ? `Kehadiran Anda tercatat pada ${myAttendanceItem?.waktu_hadir ? new Date(myAttendanceItem.waktu_hadir).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : 'rapat ini'}`
-                            : `${sosialisasiData.session.tempat} • Pukul ${sosialisasiData.session.waktu_mulai} - ${sosialisasiData.session.waktu_selesai} WIB`}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setIsScanSosialisasiOpen(true)}
-                      className={cn(
-                        "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95",
-                        isMyAttendanceDone
-                          ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50"
-                          : "bg-violet-600 hover:bg-violet-500 text-white shadow-xs shadow-violet-500/30"
-                      )}
-                    >
-                      <QrCode size={15} />
-                      <span>{isMyAttendanceDone ? "Lihat Status Presensi" : "Scan QR Presensi"}</span>
-                    </button>
-                  </div>
-                )}
-
                 {/* Daily Status Strip */}
                 <TeacherDailyStatusStrip
                   activeKbm={activeKbm}

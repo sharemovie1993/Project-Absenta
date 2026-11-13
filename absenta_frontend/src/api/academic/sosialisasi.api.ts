@@ -32,6 +32,7 @@ export interface RapatAttendeeItem {
 
 export interface SosialisasiSessionResponse {
   session: RapatSosialisasiSession;
+  is_in_schedule?: boolean;
   stats: {
     totalGuru: number;
     hadirCount: number;

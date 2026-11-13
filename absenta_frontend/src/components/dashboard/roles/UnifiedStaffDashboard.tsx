@@ -123,6 +123,7 @@ const RapatSosialisasiPanel = React.lazy(() =>
   import('@/components/management/compliance/RapatSosialisasiPanel').then((m) => ({ default: m.RapatSosialisasiPanel }))
 );
 import { sosialisasiApi, sosialisasiQueryKeys } from '@/api/academic/sosialisasi.api';
+import { isSosialisasiInSchedule } from '@/helpers/sosialisasiHelper';
 
 // Hooks & APIs
 import { useStaffTimeline } from '../../../hooks/useStaffTimeline';
@@ -200,6 +201,31 @@ export const UnifiedStaffDashboard: React.FC = () => {
   });
 
   const isSosialisasiActive = sosialisasiData?.session?.status === 'AKTIF';
+  const isSosialisasiLive = useMemo(() => {
+    return isSosialisasiActive && isSosialisasiInSchedule(sosialisasiData?.session);
+  }, [isSosialisasiActive, sosialisasiData?.session]);
+
+  const [isSosialisasiDismissed, setIsSosialisasiDismissed] = useState(false);
+  const handleDismissSosialisasi = () => {
+    setIsSosialisasiDismissed(true);
+    try {
+      if (sosialisasiData?.session?.id) {
+        sessionStorage.setItem(`absenta_dismiss_sosialisasi_${sosialisasiData.session.id}`, 'true');
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (sosialisasiData?.session?.id) {
+      try {
+        const isDismissed = sessionStorage.getItem(`absenta_dismiss_sosialisasi_${sosialisasiData.session.id}`) === 'true';
+        setIsSosialisasiDismissed(isDismissed);
+      } catch {}
+    }
+  }, [sosialisasiData?.session?.id]);
+
+  const shouldShowSosialisasiBanner = isSosialisasiLive && !isSosialisasiDismissed && Boolean(sosialisasiData?.session);
+
   const myAttendanceItem = useMemo(() => {
     if (!sosialisasiData?.attendees) return null;
     const currentNip = (user?.guru_profile as any)?.nip || guruProfile?.nip || (user as any)?.nip;
@@ -1300,8 +1326,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
   if (dashboardMode === 'portal') {
     return (
       <>
-        {/* Banner Sosialisasi Global Portal Mode */}
-        {isSosialisasiActive && sosialisasiData?.session && (
+        {/* Banner Sosialisasi Global Portal Mode (Hanya Muncul Sesuai Jadwal Jam Rapat & Bisa Ditutup) */}
+        {shouldShowSosialisasiBanner && sosialisasiData?.session && (
           <div className="mb-4 p-3.5 bg-gradient-to-r from-violet-600/15 via-indigo-600/15 to-purple-600/15 dark:from-violet-950/60 dark:via-indigo-950/60 dark:to-purple-950/50 border border-violet-300 dark:border-violet-700/80 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className={cn(
@@ -1324,13 +1350,24 @@ export const UnifiedStaffDashboard: React.FC = () => {
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsScanSosialisasiOpen(true)}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-600 text-white shrink-0 active:scale-95"
-            >
-              {isMyAttendanceDone ? "Status" : "Scan QR"}
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsScanSosialisasiOpen(true)}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-600 text-white active:scale-95 cursor-pointer"
+              >
+                {isMyAttendanceDone ? "Status" : "Scan QR"}
+              </button>
+              <button
+                type="button"
+                onClick={handleDismissSosialisasi}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                title="Tutup banner ini"
+                aria-label="Tutup banner"
+              >
+                <X size={15} />
+              </button>
+            </div>
           </div>
         )}
 
@@ -1549,9 +1586,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
       </div>
 
       {/* ────────────────────────────────────────────────────────────────── */}
-      {/* ── BANNER SOSIALISASI PLATFORM (GLOBAL ACCESS ALL DASHBOARDS) ── */}
+      {/* ── BANNER SOSIALISASI PLATFORM (HANYA MUNCUL SESUAI JADWAL JAM RAPAT & BISA DITUTUP) ── */}
       {/* ────────────────────────────────────────────────────────────────── */}
-      {isSosialisasiActive && sosialisasiData?.session && (
+      {shouldShowSosialisasiBanner && sosialisasiData?.session && (
         <div className="p-3.5 sm:p-4 bg-gradient-to-r from-violet-600/15 via-indigo-600/15 to-purple-600/15 dark:from-violet-950/60 dark:via-indigo-950/60 dark:to-purple-950/50 border border-violet-300 dark:border-violet-700/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-3 min-w-0">
             <div className={cn(
@@ -1607,6 +1644,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
             >
               <QrCode size={16} />
               <span>{isMyAttendanceDone ? "Lihat Status Presensi" : "Scan QR Presensi"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissSosialisasi}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              title="Tutup banner ini"
+              aria-label="Tutup banner"
+            >
+              <X size={16} />
             </button>
           </div>
         </div>

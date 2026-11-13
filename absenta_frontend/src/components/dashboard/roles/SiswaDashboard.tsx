@@ -18,6 +18,7 @@ import {
   Sparkles,
   Briefcase,
   Laptop,
+  X,
 } from 'lucide-react';
 import { renderApiValue } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ import { DEFAULT_CONFIG } from '@/components/academic/student-card/constants';
 import { calculateProfileCompleteness, type SectionEditType } from '@/components/academic/siswa/profileCompleteness';
 import { useGerbangAttendanceData } from '@/hooks/attendance/useGerbangAttendanceData';
 import { sosialisasiApi, sosialisasiQueryKeys } from '@/api/academic/sosialisasi.api';
+import { isSosialisasiInSchedule } from '@/helpers/sosialisasiHelper';
 
 // Types & Skeletons
 import type { SiswaTabId, SiswaNavTabItem } from './siswa/types';
@@ -121,6 +123,31 @@ export const SiswaDashboard: React.FC = () => {
   });
 
   const isSosialisasiActive = sosialisasiData?.session?.status === 'AKTIF';
+  const isSosialisasiLive = useMemo(() => {
+    return isSosialisasiActive && isSosialisasiInSchedule(sosialisasiData?.session);
+  }, [isSosialisasiActive, sosialisasiData?.session]);
+
+  const [isSosialisasiDismissed, setIsSosialisasiDismissed] = useState(false);
+  const handleDismissSosialisasi = () => {
+    setIsSosialisasiDismissed(true);
+    try {
+      if (sosialisasiData?.session?.id) {
+        sessionStorage.setItem(`absenta_dismiss_sosialisasi_${sosialisasiData.session.id}`, 'true');
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (sosialisasiData?.session?.id) {
+      try {
+        const isDismissed = sessionStorage.getItem(`absenta_dismiss_sosialisasi_${sosialisasiData.session.id}`) === 'true';
+        setIsSosialisasiDismissed(isDismissed);
+      } catch {}
+    }
+  }, [sosialisasiData?.session?.id]);
+
+  const shouldShowSosialisasiBanner = isSosialisasiLive && !isSosialisasiDismissed && Boolean(sosialisasiData?.session);
+
   const myStudentAttendance = useMemo(() => {
     if (!sosialisasiData?.attendees) return null;
     const studentId = data.siswaProfile?.id || data.user?.siswa_id || data.user?.id;
@@ -422,8 +449,8 @@ export const SiswaDashboard: React.FC = () => {
 
         {/* Right Column: Main Content & Subtabs */}
         <main className="space-y-4 min-w-0">
-          {/* Banner Presensi Sosialisasi Siswa (Khusus Kehadiran Diri via Scan) */}
-          {isSosialisasiActive && sosialisasiData?.session && (
+          {/* Banner Presensi Sosialisasi Siswa (Hanya Muncul Sesuai Jadwal Jam Rapat & Bisa Ditutup) */}
+          {shouldShowSosialisasiBanner && sosialisasiData?.session && (
             <div className="p-3.5 sm:p-4 bg-gradient-to-r from-violet-600/15 via-indigo-600/15 to-purple-600/15 dark:from-violet-950/60 dark:via-indigo-950/60 dark:to-purple-950/50 border border-violet-300 dark:border-violet-700/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-3 min-w-0">
                 <div className={cn(
@@ -457,19 +484,30 @@ export const SiswaDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsScanSosialisasiOpen(true)}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0 self-end sm:self-auto",
-                  isStudentAttended
-                    ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50"
-                    : "bg-violet-600 hover:bg-violet-500 text-white shadow-md shadow-violet-600/30 font-extrabold"
-                )}
-              >
-                <QrCode size={16} />
-                <span>{isStudentAttended ? "Lihat Status Presensi" : "Scan QR Presensi"}</span>
-              </button>
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsScanSosialisasiOpen(true)}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95",
+                    isStudentAttended
+                      ? "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50"
+                      : "bg-violet-600 hover:bg-violet-500 text-white shadow-md shadow-violet-600/30 font-extrabold"
+                  )}
+                >
+                  <QrCode size={16} />
+                  <span>{isStudentAttended ? "Lihat Status Presensi" : "Scan QR Presensi"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDismissSosialisasi}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  title="Tutup banner ini"
+                  aria-label="Tutup banner"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
           )}
 

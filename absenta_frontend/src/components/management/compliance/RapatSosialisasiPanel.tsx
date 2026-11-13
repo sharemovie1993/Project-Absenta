@@ -34,6 +34,7 @@ import { RapatSosialisasiQrPrintModal } from './RapatSosialisasiQrPrintModal';
 import { RapatSosialisasiBeritaAcaraPrintModal } from './RapatSosialisasiBeritaAcaraPrintModal';
 import { RapatSosialisasiScannerModal } from './RapatSosialisasiScannerModal';
 import { RapatManagementView } from '../rapat/RapatManagementView';
+import { getSosialisasiScheduleStatus, isSosialisasiInSchedule } from '@/helpers/sosialisasiHelper';
 
 export const RapatSosialisasiPanel: React.FC = () => {
   const queryClient = useQueryClient();
@@ -53,6 +54,7 @@ export const RapatSosialisasiPanel: React.FC = () => {
 
   // Form State for Notulen & Metadata
   const [formNamaAcara, setFormNamaAcara] = useState('');
+  const [formTanggal, setFormTanggal] = useState('');
   const [formWaktuMulai, setFormWaktuMulai] = useState('');
   const [formWaktuSelesai, setFormWaktuSelesai] = useState('');
   const [formTempat, setFormTempat] = useState('');
@@ -78,6 +80,7 @@ export const RapatSosialisasiPanel: React.FC = () => {
   React.useEffect(() => {
     if (session && !isFormInitialized) {
       setFormNamaAcara(session.nama_acara || '');
+      setFormTanggal(session.tanggal || new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date()));
       setFormWaktuMulai(session.waktu_mulai || '08:00');
       setFormWaktuSelesai(session.waktu_selesai || '11:30');
       setFormTempat(session.tempat || '');
@@ -204,6 +207,7 @@ export const RapatSosialisasiPanel: React.FC = () => {
 
     updateSessionMutation.mutate({
       nama_acara: formNamaAcara,
+      tanggal: formTanggal,
       waktu_mulai: formWaktuMulai,
       waktu_selesai: formWaktuSelesai,
       tempat: formTempat,
@@ -285,6 +289,9 @@ export const RapatSosialisasiPanel: React.FC = () => {
       ) : (
         <>
           {/* ── FLIGHT DECK: RINGKASAN STATUS RAPAT SOSIALISASI ── */}
+          {(() => {
+            const sched = getSosialisasiScheduleStatus(session);
+            return (
           <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1">
@@ -292,18 +299,21 @@ export const RapatSosialisasiPanel: React.FC = () => {
               <span
                 className={cn(
                   'px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5',
-                  session?.status === 'AKTIF'
+                  sched.variant === 'live'
                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 animate-pulse'
-                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                    : sched.variant === 'upcoming'
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                      : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                 )}
+                title={sched.description}
               >
                 <span
                   className={cn(
                     'w-2 h-2 rounded-full',
-                    session?.status === 'AKTIF' ? 'bg-emerald-500' : 'bg-slate-400'
+                    sched.variant === 'live' ? 'bg-emerald-500' : sched.variant === 'upcoming' ? 'bg-blue-500' : 'bg-slate-400'
                   )}
                 />
-                <span>{session?.status === 'AKTIF' ? 'SESI SOSIALISASI AKTIF' : 'RAPAT SELESAI'}</span>
+                <span>{sched.label.toUpperCase()}</span>
               </span>
 
               <span className="text-xs text-slate-500 font-mono">
@@ -317,6 +327,10 @@ export const RapatSosialisasiPanel: React.FC = () => {
             </h2>
 
             <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-400 pt-0.5">
+              <span className="flex items-center gap-1 font-semibold text-slate-800 dark:text-slate-200">
+                <Calendar size={13} className="text-indigo-600 dark:text-indigo-400" />
+                <span>{session?.tanggal || '-'}</span>
+              </span>
               <span className="flex items-center gap-1">
                 <Clock size={13} className="text-slate-400" />
                 <span>
@@ -453,6 +467,8 @@ export const RapatSosialisasiPanel: React.FC = () => {
           </div>
         )}
       </div>
+            );
+          })()}
 
       {/* ── GRID: NOTULEN FORM & LIVE ATTENDEE TABLE ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -482,6 +498,16 @@ export const RapatSosialisasiPanel: React.FC = () => {
                 onChange={(e) => setFormNamaAcara(e.target.value)}
                 placeholder="Nama rapat sosialisasi..."
                 className="h-8 text-xs rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Tanggal Pelaksanaan</label>
+              <Input
+                type="date"
+                value={formTanggal}
+                onChange={(e) => setFormTanggal(e.target.value)}
+                className="h-8 text-xs font-mono rounded-lg"
               />
             </div>
 
