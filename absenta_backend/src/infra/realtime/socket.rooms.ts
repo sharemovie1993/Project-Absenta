@@ -511,9 +511,12 @@ export function setupSocketRooms(
 
     // ── Lightweight Ping/Pong untuk pengukuran latensi real-time (seperti indikator ML) ──
     // Payload: timestamp (number) dari client, dikembalikan langsung tanpa proses apapun.
-    // Nol DB query, nol logic — murni echo untuk mengukur RTT jaringan WebSocket.
+    // PRIMARY : ack callback — RTT paling akurat
+    // FALLBACK: emit 's:pong' biasa — aman untuk proxy/nginx yang strip ack
     socket.on('c:ping', (t0: number, ack: (t: number) => void) => {
       if (typeof ack === 'function') ack(t0);
+      // Selalu emit s:pong sebagai fallback agar klien yang tidak menerima ack tetap dapat pong
+      socket.emit('s:pong', t0);
     });
 
     socket.on('infra_monitoring_subscribe', () => {
@@ -647,9 +650,12 @@ export function setupSocketRooms(
 
     // ── Lightweight Ping/Pong untuk pengukuran latensi real-time (seperti indikator ML) ──
     // Payload: timestamp (number) dari client, dikembalikan langsung tanpa proses apapun.
-    // Nol DB query, nol logic — murni echo untuk mengukur RTT jaringan WebSocket.
+    // PRIMARY : ack callback — RTT paling akurat
+    // FALLBACK: emit 's:pong' biasa — aman untuk proxy/nginx yang strip ack
     socket.on('c:ping', (t0: number, ack: (t: number) => void) => {
       if (typeof ack === 'function') ack(t0);
+      // Selalu emit s:pong sebagai fallback agar klien yang tidak menerima ack tetap dapat pong
+      socket.emit('s:pong', t0);
     });
 
     socket.on('infra_monitoring_subscribe', () => {

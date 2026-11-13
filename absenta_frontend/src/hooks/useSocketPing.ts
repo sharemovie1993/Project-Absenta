@@ -21,9 +21,13 @@ function latencyToSignal(ms: number | null, connected: boolean): SignalLevel {
 
 /**
  * Hook pengukur latensi real-time via Socket.IO ping/pong.
- * Teknik: kirim event `c:ping` dengan timestamp, server echo balik,
- * ukur selisih Date.now(). Update setiap `intervalMs` (default 2 detik).
- * Nol request HTTP, nol DB query — murni WebSocket RTT.
+ *
+ * Strategi dual:
+ *  - PRIMARY  : ack callback `socket.emit('c:ping', t0, cb)` — RTT tepat
+ *  - FALLBACK : listener `s:pong` biasa — aman untuk setup proxy/nginx yang
+ *               kadang strip ack (mis. sticky-session off, atau Vite HTTPS proxy)
+ *
+ * Listener connect/disconnect langsung update state tanpa tunggu interval.
  */
 export function useSocketPing(intervalMs = 2000): PingState {
   const [state, setState] = useState<PingState>({
@@ -32,30 +36,66 @@ export function useSocketPing(intervalMs = 2000): PingState {
     isConnected: false,
   });
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pendingRef = useRef<boolean>(false);
+  const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingRef  = useRef<boolean>(false);
+  const t0Ref       = useRef<number>(0);
+  const ackDoneRef  = useRef<boolean>(false); // flag: ack sudah diterima, jangan proses s:pong lagi
 
   useEffect(() => {
+    const handleConnected = () => {
+      // Segera ukur saat socket baru connect (tanpa tunggu interval)
+      pendingRef.current = false;
+      measure();
+    };
+
+    const handleDisconnected = () => {
+      pendingRef.current = false;
+      ackDoneRef.current = false;
+      setState({ latencyMs: null, signalLevel: 0, isConnected: false });
+    };
+
+    // Fallback: server mengemit 's:pong' biasa tanpa ack
+    const handlePong = (echoedT0: number) => {
+      if (ackDoneRef.current) return; // ack sudah lebih dulu — abaikan
+      clearPendingTimeout();
+      pendingRef.current = false;
+      const ms = Date.now() - (echoedT0 || t0Ref.current);
+      setState({
+        latencyMs: ms,
+        signalLevel: latencyToSignal(ms, true),
+        isConnected: true,
+      });
+    };
+
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+    const clearPendingTimeout = () => {
+      if (timeoutHandle) { clearTimeout(timeoutHandle); timeoutHandle = null; }
+    };
+
     const measure = () => {
       const socket = socketService.getSocket();
       if (!socket?.connected) {
         setState({ latencyMs: null, signalLevel: 0, isConnected: false });
         return;
       }
-
-      // Hindari ping bertumpuk jika respons belum datang
       if (pendingRef.current) return;
       pendingRef.current = true;
+      ackDoneRef.current = false;
 
-      const t0 = Date.now();
-      const timeout = setTimeout(() => {
-        // Timeout 3 detik — anggap tidak responsif
+      t0Ref.current = Date.now();
+      const t0 = t0Ref.current;
+
+      timeoutHandle = setTimeout(() => {
         pendingRef.current = false;
+        ackDoneRef.current = false;
         setState({ latencyMs: null, signalLevel: 0, isConnected: false });
-      }, 3000);
+      }, 4000); // 4 detik — lebih longgar dari sebelumnya (3 detik)
 
+      // PRIMARY: ack callback
       socket.emit('c:ping', t0, (_echoedT0: number) => {
-        clearTimeout(timeout);
+        if (ackDoneRef.current) return;
+        ackDoneRef.current = true;
+        clearPendingTimeout();
         pendingRef.current = false;
         const ms = Date.now() - t0;
         setState({
@@ -66,13 +106,27 @@ export function useSocketPing(intervalMs = 2000): PingState {
       });
     };
 
+    // Bind lifecycle events
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.on('connect',    handleConnected);
+      socket.on('disconnect', handleDisconnected);
+      socket.on('s:pong',     handlePong);
+    }
+
     // Ukur segera saat mount
     measure();
-
     timerRef.current = setInterval(measure, intervalMs);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      clearPendingTimeout();
+      const s = socketService.getSocket();
+      if (s) {
+        s.off('connect',    handleConnected);
+        s.off('disconnect', handleDisconnected);
+        s.off('s:pong',     handlePong);
+      }
     };
   }, [intervalMs]);
 

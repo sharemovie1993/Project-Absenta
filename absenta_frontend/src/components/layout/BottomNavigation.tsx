@@ -71,10 +71,17 @@ export const BottomNavigation: React.FC = React.memo(() => {
   const { isPengawasCbt, pengawasCbtActiveCount } = useMyPengawasCbt();
 
   // 🎓 Deteksi Status Penugasan Penguji Sidang PKL (SSOT useMyPengujiSidang)
-  const { isPengujiSidang, pengujiSidangUnexaminedCount } = useMyPengujiSidang();
+  const { isPengujiSidang, pengujiSidangUnexaminedCount, refetch: refetchSidang } = useMyPengujiSidang();
 
   const isSidebarOpen = useMobileSubtabSidebarStore((state) => state.isOpen);
   const registeredScopes = useMobileSubtabSidebarStore((state) => state.registeredScopes);
+
+  // ⚡ Refresh instan penugasan sidang saat drawer menu HP dibuka
+  useEffect(() => {
+    if (isSidebarOpen) {
+      refetchSidang();
+    }
+  }, [isSidebarOpen, refetchSidang]);
 
   // Tutup subtab sidebar saat rute atau parameter berubah setelah mount (mencegah sidebar tertutup saat mount awal)
   const prevNavLocationRef = React.useRef(`${location.pathname}${location.search}`);

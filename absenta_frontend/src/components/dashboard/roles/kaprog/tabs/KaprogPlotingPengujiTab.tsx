@@ -26,6 +26,7 @@ import { useGuruOptions } from '@/hooks/useGuruOptions';
 import { GuruProduktifItem } from '../types';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import { notifySidangPlotingUpdated } from '@/hooks/useMyPengujiSidang';
 
 export interface KaprogPlotingPengujiTabProps {
   jurusanId?: string;
@@ -214,9 +215,11 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
     queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
     queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-list'] });
     queryClient.invalidateQueries({ queryKey: ['kaprog-sidang-nilai-list'] });
+    queryClient.invalidateQueries({ queryKey: ['my-penguji-sidang-students'] });
     queryClient.invalidateQueries({ queryKey: ['hubin-settings'] });
     queryClient.invalidateQueries({ queryKey: ['rapor'] });
     queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+    notifySidangPlotingUpdated();
   }, [queryClient]);
 
   // Selected Siswa yang sudah berstatus Diploting
