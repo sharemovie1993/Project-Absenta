@@ -12,11 +12,13 @@ import {
   Laptop, 
   CheckSquare,
   Eye,
+  Award,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
 import { useBottomNavTabs } from './bottom-nav/useBottomNavTabs';
 import { useMyPengawasCbt } from '@/hooks/useMyPengawasCbt';
+import { useMyPengujiSidang } from '@/hooks/useMyPengujiSidang';
 import { BottomNavTabItem } from './bottom-nav/BottomNavTabItem';
 const MobileAccountSheet = React.lazy(() => import('./bottom-nav/MobileAccountSheet').then(m => ({ default: m.MobileAccountSheet })));
 const RoleDashboardSwitcherSheet = React.lazy(() => import('./bottom-nav/RoleDashboardSwitcherSheet').then(m => ({ default: m.RoleDashboardSwitcherSheet })));
@@ -67,6 +69,9 @@ export const BottomNavigation: React.FC = React.memo(() => {
 
   // 🔍 Deteksi Status Penugasan Pengawas CBT (SSOT useMyPengawasCbt)
   const { isPengawasCbt, pengawasCbtActiveCount } = useMyPengawasCbt();
+
+  // 🎓 Deteksi Status Penugasan Penguji Sidang PKL (SSOT useMyPengujiSidang)
+  const { isPengujiSidang, pengujiSidangUnexaminedCount } = useMyPengujiSidang();
 
   const isSidebarOpen = useMobileSubtabSidebarStore((state) => state.isOpen);
   const registeredScopes = useMobileSubtabSidebarStore((state) => state.registeredScopes);
@@ -179,6 +184,18 @@ export const BottomNavigation: React.FC = React.memo(() => {
             category: 'operasional',
             targetPath: '/dashboard?tab=ringkasan&subtab=pengawas_cbt',
           },
+          ...(isPengujiSidang ? [
+            {
+              id: 'sidang_guru',
+              label: 'Sidang PKL',
+              shortLabel: 'Sidang',
+              icon: Award,
+              badge: pengujiSidangUnexaminedCount > 0 ? pengujiSidangUnexaminedCount : undefined,
+              badgeColor: 'bg-amber-500 text-white',
+              category: 'operasional' as const,
+              targetPath: '/dashboard?tab=ringkasan&subtab=sidang_guru',
+            }
+          ] : []),
           { id: 'nilai', label: 'Buku Nilai Guru', shortLabel: 'Nilai', icon: GraduationCap, category: 'operasional', targetPath: '/rapor/input-nilai' },
           { id: 'tugas', label: 'Pusat Tugas & Peringatan', shortLabel: 'Tugas', icon: CheckSquare, category: 'operasional', targetPath: '/dashboard?tab=action_hub' },
         ];
@@ -226,8 +243,23 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
+    // Selalu pastikan akses Penguji Sidang PKL tersedia di drawer jika user terdaftar sebagai penguji
+    if (isPengujiSidang && !seen.has('sidang_guru')) {
+      seen.add('sidang_guru');
+      list.push({
+        id: 'sidang_guru',
+        label: 'Sidang PKL',
+        shortLabel: 'Sidang',
+        icon: Award,
+        badge: pengujiSidangUnexaminedCount > 0 ? pengujiSidangUnexaminedCount : undefined,
+        badgeColor: 'bg-amber-500 text-white',
+        category: 'operasional' as any,
+        targetPath: '/dashboard?tab=ringkasan&subtab=sidang_guru',
+      });
+    }
+
     return list;
-  }, [activeTabsList, activeEcosystem, isPengawasCbt, pengawasCbtActiveCount]);
+  }, [activeTabsList, activeEcosystem, isPengawasCbt, pengawasCbtActiveCount, isPengujiSidang, pengujiSidangUnexaminedCount]);
 
   const fallbackCategories = useMemo(() => {
     if (activeEcosystem === 'kaprog') {

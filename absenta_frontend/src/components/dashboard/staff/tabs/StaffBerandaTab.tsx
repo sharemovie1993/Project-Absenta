@@ -25,6 +25,7 @@ import {
   Laptop,
   Rocket,
   QrCode,
+  LayoutGrid,
 } from 'lucide-react';
 import { 
   UniversalEcosystemTopbar,
@@ -44,6 +45,7 @@ import { toLocalDate, formatLocalTimeFromISO } from '../../../../utils/attendanc
 import { useMyPengawasCbt } from '@/hooks/useMyPengawasCbt';
 import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import { useMobileAccountSheetStore } from '@/store/mobileAccountSheetStore';
+import { useMobileSubtabSidebarStore } from '@/components/dashboard/roles/common/subtabSidebarStore';
 import { safeArr } from '@/components/kurikulum/dashboard/DashboardComponents';
 import { HubCard, HubActionGrid, type HubActionItem } from '@/components/ui/hub';
 
@@ -662,25 +664,37 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
             onBack={() => handleSubTabChange('agenda')}
             className="lg:hidden"
             actions={
-              <button
-                type="button"
-                onClick={() => handleSubTabChange('tugas')}
-                className={cn(
-                  'relative p-1.5 rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center shrink-0',
-                  activeSubTab === 'tugas'
-                    ? 'bg-white text-indigo-700 shadow-xs'
-                    : 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25'
-                )}
-                title="Pusat Tugas & Peringatan Saya"
-                aria-label="Pusat Tugas & Peringatan Saya"
-              >
-                <ClipboardList size={15} />
-                {(actionHubData.summary?.total || 0) > 0 && (
-                  <span className="absolute -top-1 -right-1 px-1 min-w-[15px] h-3.5 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center ring-1 ring-white animate-pulse leading-none">
-                    {(actionHubData.summary?.total || 0) > 99 ? '99+' : actionHubData.summary?.total}
-                  </span>
-                )}
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleSubTabChange('tugas')}
+                  className={cn(
+                    'relative p-1.5 rounded-xl transition-all cursor-pointer active:scale-95 flex items-center justify-center shrink-0',
+                    activeSubTab === 'tugas'
+                      ? 'bg-white text-indigo-700 shadow-xs'
+                      : 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25'
+                  )}
+                  title="Pusat Tugas & Peringatan Saya"
+                  aria-label="Pusat Tugas & Peringatan Saya"
+                >
+                  <ClipboardList size={15} />
+                  {(actionHubData.summary?.total || 0) > 0 && (
+                    <span className="absolute -top-1 -right-1 px-1 min-w-[15px] h-3.5 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center ring-1 ring-white animate-pulse leading-none">
+                      {(actionHubData.summary?.total || 0) > 99 ? '99+' : actionHubData.summary?.total}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => useMobileSubtabSidebarStore.getState().toggle('portal')}
+                  className="p-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 transition-all cursor-pointer active:scale-95 flex items-center justify-center shrink-0"
+                  title="Buka Menu Navigasi Guru"
+                  aria-label="Buka Menu Navigasi Guru"
+                >
+                  <LayoutGrid size={15} />
+                </button>
+              </div>
             }
           />
 

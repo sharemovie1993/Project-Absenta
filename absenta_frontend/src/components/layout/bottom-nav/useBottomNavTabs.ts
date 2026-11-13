@@ -26,6 +26,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useExecutivePillarStore, type ExecutivePillar } from '@/store/executivePillarStore';
+import { useMyPengujiSidang } from '@/hooks/useMyPengujiSidang';
 import {
   type MobileBottomSubItem,
   type MobileBottomTabItem,
@@ -95,6 +96,9 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     isSiswa,
     can
   } = useCapabilities();
+
+  // 🎓 Deteksi Status Penugasan Penguji Sidang PKL
+  const { isPengujiSidang, pengujiSidangUnexaminedCount } = useMyPengujiSidang();
 
   const guruProfile = user?.guru_profile;
   const rawRole = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
@@ -402,6 +406,18 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       });
     }
 
+    if (isPengujiSidang && !isKepsek) {
+      list.push({
+        id: 'dash-penguji-sidang',
+        label: 'Meja Penguji Sidang PKL',
+        shortLabel: 'Sidang',
+        icon: Award,
+        targetPath: '/dashboard?tab=ringkasan&subtab=sidang_guru',
+        color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400',
+        badge: pengujiSidangUnexaminedCount > 0 ? String(pengujiSidangUnexaminedCount) : undefined,
+      });
+    }
+
     return list;
   }, [
     isKaprog,
@@ -426,6 +442,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     isPiketGuru,
     hasGerbangDuty,
     isGerbang,
+    isPengujiSidang,
+    pengujiSidangUnexaminedCount,
   ]);
 
   // ── DETEKSI EKOSISTEM AKTIF (STEP 2 VS STEP 1 PORTAL) ──
