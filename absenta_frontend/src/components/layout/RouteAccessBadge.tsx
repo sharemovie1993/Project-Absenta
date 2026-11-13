@@ -88,19 +88,25 @@ export const RouteAccessBadge: React.FC<RouteAccessBadgeProps> = ({
   showTooltip = true,
 }) => {
   const { data } = useAccessRoute();
-  const ping = useSocketPing(2000); // Update tiap 2 detik, seperti ML
+  const ping = useSocketPing(2000);
 
   if (!data?.route) return null;
 
   const isLocal = data.route === 'LOCAL';
 
-  // Tooltip informatif
+  // ── Mode tampilan berdasarkan ketersediaan socket ──
+  // Socket tersambung → signal bar real-time (seperti ML)
+  // Socket belum ada (belum login / pre-auth) → fallback: dot + HTTP RTT
+  const socketAvailable = ping.isConnected;
+
+  // Fallback: gunakan latensi HTTP dari request tenant-info
+  const httpMs = data.latencyMs;
+
+  // Tooltip
   const routeDesc = isLocal ? 'Jaringan Lokal (LAN/Wi-Fi Sekolah)' : 'Terowongan Cloud (Easy Tunnel)';
-  const pingDesc = !ping.isConnected
-    ? 'WebSocket terputus'
-    : ping.latencyMs !== null
-      ? `Ping: ${ping.latencyMs}ms`
-      : 'Mengukur latensi...';
+  const pingDesc = socketAvailable
+    ? ping.latencyMs !== null ? `Ping WebSocket: ${ping.latencyMs}ms` : 'Mengukur...'
+    : httpMs !== undefined ? `HTTP RTT: ${httpMs}ms` : 'Belum terukur';
   const tooltipText = `${routeDesc} · ${pingDesc}`;
 
   return (
@@ -120,13 +126,35 @@ export const RouteAccessBadge: React.FC<RouteAccessBadgeProps> = ({
       {/* Pemisah */}
       <span className="opacity-25 font-normal">|</span>
 
-      {/* Signal bars + latensi — update tiap 2 detik */}
-      <SignalBars
-        level={ping.signalLevel}
-        latencyMs={ping.latencyMs}
-        isConnected={ping.isConnected}
-        isLocal={isLocal}
-      />
+      {socketAvailable ? (
+        // ── MODE SOCKET: Signal bar real-time ──
+        <SignalBars
+          level={ping.signalLevel}
+          latencyMs={ping.latencyMs}
+          isConnected={ping.isConnected}
+          isLocal={isLocal}
+        />
+      ) : (
+        // ── MODE FALLBACK (belum login): Dot + HTTP RTT ──
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            className={cn(
+              'w-1.5 h-1.5 rounded-full flex-shrink-0',
+              isLocal ? 'bg-emerald-500 animate-pulse' : 'bg-indigo-500',
+            )}
+          />
+          {httpMs !== undefined && (
+            <span className={cn(
+              'font-mono font-semibold',
+              httpMs < 50
+                ? isLocal ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-600 dark:text-indigo-400'
+                : httpMs < 150 ? 'text-yellow-500' : 'text-red-500',
+            )}>
+              {httpMs < 1000 ? `${httpMs}ms` : `${(httpMs / 1000).toFixed(1)}s`}
+            </span>
+          )}
+        </span>
+      )}
     </div>
   );
 };
