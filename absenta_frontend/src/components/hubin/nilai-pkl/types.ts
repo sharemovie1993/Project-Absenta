@@ -12,7 +12,7 @@ export const scoreSchema = z.object({
 });
 
 export interface HubinAssessmentSettings {
-  assessmentMode?: 'DUDI_ONLY' | 'COMPOSITE';
+  assessmentMode?: 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
   weightDudi?: number;
   weightLaporan?: number;
   weightSidang?: number;
@@ -157,10 +157,12 @@ export function calculateNilaiAkhirPkl(
     ? dudiGradeList.reduce((a, b) => a + b, 0) / dudiGradeList.length
     : null;
 
-  const isComposite = settings?.assessmentMode === 'COMPOSITE';
+  const mode = settings?.assessmentMode || 'DUDI_ONLY';
+  const isComposite = mode === 'COMPOSITE';
+  const isDudiSidang = mode === 'DUDI_SIDANG';
   const wDudi = settings?.weightDudi ?? 70;
   const wLaporan = settings?.weightLaporan ?? 15;
-  const wSidang = settings?.weightSidang ?? 15;
+  const wSidang = settings?.weightSidang ?? (isDudiSidang ? 30 : 15);
 
   let nilai_akhir: number | null = null;
 
@@ -174,6 +176,18 @@ export function calculateNilaiAkhirPkl(
     if (target.nilai_laporan !== null && target.nilai_laporan !== undefined) {
       totalScore += Number(target.nilai_laporan) * wLaporan;
       totalWeight += wLaporan;
+    }
+    if (target.nilai_sidang !== null && target.nilai_sidang !== undefined) {
+      totalScore += Number(target.nilai_sidang) * wSidang;
+      totalWeight += wSidang;
+    }
+    nilai_akhir = totalWeight > 0 ? Math.round((totalScore / totalWeight) * 10) / 10 : null;
+  } else if (isDudiSidang) {
+    let totalScore = 0;
+    let totalWeight = 0;
+    if (dudiAvg !== null) {
+      totalScore += dudiAvg * wDudi;
+      totalWeight += wDudi;
     }
     if (target.nilai_sidang !== null && target.nilai_sidang !== undefined) {
       totalScore += Number(target.nilai_sidang) * wSidang;

@@ -144,7 +144,7 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
       durasi_jp: durasiResmi,
       tanggal_terbit: tanggalResmi,
       // Adaptive assessment config
-      assessment_mode: (pklData?.assessment_mode || 'DUDI_ONLY') as 'DUDI_ONLY' | 'COMPOSITE',
+      assessment_mode: (pklData?.assessment_mode || 'DUDI_ONLY') as 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE',
       weight_dudi: pklData?.weight_dudi ?? 70,
       weight_laporan: pklData?.weight_laporan ?? 15,
       weight_sidang: pklData?.weight_sidang ?? 15,
@@ -215,6 +215,8 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
     certData.penilaian.soft_tanggung_jawab ?? 85,
   ];
   const isComposite = certData.assessment_mode === 'COMPOSITE';
+  const isDudiSidang = certData.assessment_mode === 'DUDI_SIDANG';
+  const hasSchoolEval = isComposite || isDudiSidang;
   const dudiScoresArr = [...hardScores, ...softScores];
   const dudiTotal = dudiScoresArr.reduce((acc, s) => acc + s, 0);
   const dudiAvg = dudiTotal / dudiScoresArr.length;
@@ -237,6 +239,20 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
       if (certData.penilaian.nilai_laporan !== null && certData.penilaian.nilai_laporan !== undefined) {
         scoreSum += certData.penilaian.nilai_laporan * wL; wSum += wL;
       }
+      if (certData.penilaian.nilai_sidang !== null && certData.penilaian.nilai_sidang !== undefined) {
+        scoreSum += certData.penilaian.nilai_sidang * wS; wSum += wS;
+      }
+      avgScore = wSum > 0 ? scoreSum / wSum : dudiAvg;
+    }
+  } else if (isDudiSidang) {
+    const stored = certData.penilaian.nilai_akhir_pkl;
+    if (stored !== null && stored !== undefined) {
+      avgScore = stored;
+    } else {
+      const wD = certData.weight_dudi ?? 70;
+      const wS = certData.weight_sidang ?? 30;
+      let scoreSum = dudiAvg * wD;
+      let wSum = wD;
       if (certData.penilaian.nilai_sidang !== null && certData.penilaian.nilai_sidang !== undefined) {
         scoreSum += certData.penilaian.nilai_sidang * wS; wSum += wS;
       }
@@ -703,7 +719,7 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                       </tr>
 
                       {/* JUMLAH NILAI – only on DUDI_ONLY */}
-                      {!isComposite && (
+                      {!hasSchoolEval && (
                         <tr className="font-bold border-t-2 border-slate-950">
                           <td colSpan={2} className="p-2 text-center border-r border-slate-950">JUMLAH NILAI</td>
                           <td className="p-2 text-center border-r border-slate-950 font-mono font-bold">{totalScore}</td>
@@ -711,15 +727,17 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                         </tr>
                       )}
 
-                      {/* C. EVALUASI AKADEMIK SEKOLAH – only on COMPOSITE */}
-                      {isComposite && (
+                      {/* C. EVALUASI AKADEMIK SEKOLAH – on COMPOSITE or DUDI_SIDANG */}
+                      {hasSchoolEval && (
                         <>
                           <tr className="font-bold bg-slate-50/50">
                             <td className="p-1.5 text-center border-r border-slate-950">C</td>
                             <td colSpan={3} className="p-1.5 text-[10px]">
                               EVALUASI AKADEMIK SEKOLAH{' '}
                               <span className="font-normal italic text-slate-600">
-                                (Bobot: DUDI {certData.weight_dudi ?? 70}% | Laporan {certData.weight_laporan ?? 15}% | Sidang {certData.weight_sidang ?? 15}%)
+                                {isDudiSidang
+                                  ? `(Bobot: DUDI ${certData.weight_dudi ?? 70}% | Sidang ${certData.weight_sidang ?? 30}%)`
+                                  : `(Bobot: DUDI ${certData.weight_dudi ?? 70}% | Laporan ${certData.weight_laporan ?? 15}% | Sidang ${certData.weight_sidang ?? 15}%)`}
                               </span>
                             </td>
                           </tr>
@@ -729,16 +747,18 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                             <td className="p-1.5 text-center border-r border-slate-950 font-semibold">{(Math.round(dudiAvg * 100) / 100).toFixed(2)}</td>
                             <td className="p-1.5 text-center font-semibold">{getPredikatHuruf(dudiAvg)}</td>
                           </tr>
+                          {isComposite && (
+                            <tr>
+                              <td className="p-1.5 text-center border-r border-slate-950">2</td>
+                              <td className="p-1.5 border-r border-slate-950">Laporan PKL</td>
+                              <td className="p-1.5 text-center border-r border-slate-950 font-semibold">
+                                {certData.penilaian.nilai_laporan !== null && certData.penilaian.nilai_laporan !== undefined ? certData.penilaian.nilai_laporan : '-'}
+                              </td>
+                              <td className="p-1.5 text-center font-semibold">{getPredikatHuruf(certData.penilaian.nilai_laporan ?? null)}</td>
+                            </tr>
+                          )}
                           <tr>
-                            <td className="p-1.5 text-center border-r border-slate-950">2</td>
-                            <td className="p-1.5 border-r border-slate-950">Laporan PKL</td>
-                            <td className="p-1.5 text-center border-r border-slate-950 font-semibold">
-                              {certData.penilaian.nilai_laporan !== null && certData.penilaian.nilai_laporan !== undefined ? certData.penilaian.nilai_laporan : '-'}
-                            </td>
-                            <td className="p-1.5 text-center font-semibold">{getPredikatHuruf(certData.penilaian.nilai_laporan ?? null)}</td>
-                          </tr>
-                          <tr>
-                            <td className="p-1.5 text-center border-r border-slate-950">3</td>
+                            <td className="p-1.5 text-center border-r border-slate-950">{isComposite ? 3 : 2}</td>
                             <td className="p-1.5 border-r border-slate-950">Sidang / Presentasi PKL</td>
                             <td className="p-1.5 text-center border-r border-slate-950 font-semibold">
                               {certData.penilaian.nilai_sidang !== null && certData.penilaian.nilai_sidang !== undefined ? certData.penilaian.nilai_sidang : '-'}
@@ -923,7 +943,7 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                     <tr><td className="p-1 text-center border-r border-black">5</td><td className="p-1 border-r border-black">Tanggung Jawab</td><td className="p-1 text-center border-r border-black">{softScores[4]}</td><td className="p-1 text-center">{getPredikatHuruf(softScores[4])}</td></tr>
 
                     {/* JUMLAH NILAI – only on DUDI_ONLY */}
-                    {!isComposite && (
+                    {!hasSchoolEval && (
                       <tr className="font-bold border-t-2 border-black">
                         <td colSpan={2} className="p-1.5 text-center border-r border-black">JUMLAH NILAI</td>
                         <td className="p-1.5 text-center border-r border-black">{totalScore}</td>
@@ -931,15 +951,17 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                       </tr>
                     )}
 
-                    {/* C. EVALUASI AKADEMIK SEKOLAH – only on COMPOSITE */}
-                    {isComposite && (
+                    {/* C. EVALUASI AKADEMIK SEKOLAH – on COMPOSITE or DUDI_SIDANG */}
+                    {hasSchoolEval && (
                       <>
                         <tr className="font-bold">
                           <td className="p-1 text-center border-r border-black">C</td>
                           <td colSpan={3} className="p-1 text-[8pt]">
                             EVALUASI AKADEMIK SEKOLAH{' '}
                             <span className="font-normal italic">
-                              (DUDI {certData.weight_dudi ?? 70}% | Laporan {certData.weight_laporan ?? 15}% | Sidang {certData.weight_sidang ?? 15}%)
+                              {isDudiSidang
+                                ? `(DUDI ${certData.weight_dudi ?? 70}% | Sidang ${certData.weight_sidang ?? 30}%)`
+                                : `(DUDI ${certData.weight_dudi ?? 70}% | Laporan ${certData.weight_laporan ?? 15}% | Sidang ${certData.weight_sidang ?? 15}%)`}
                             </span>
                           </td>
                         </tr>
@@ -949,16 +971,18 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                           <td className="p-1 text-center border-r border-black">{(Math.round(dudiAvg * 100) / 100).toFixed(2)}</td>
                           <td className="p-1 text-center">{getPredikatHuruf(dudiAvg)}</td>
                         </tr>
+                        {isComposite && (
+                          <tr>
+                            <td className="p-1 text-center border-r border-black">2</td>
+                            <td className="p-1 border-r border-black">Laporan PKL</td>
+                            <td className="p-1 text-center border-r border-black">
+                              {certData.penilaian.nilai_laporan !== null && certData.penilaian.nilai_laporan !== undefined ? certData.penilaian.nilai_laporan : '-'}
+                            </td>
+                            <td className="p-1 text-center">{getPredikatHuruf(certData.penilaian.nilai_laporan ?? null)}</td>
+                          </tr>
+                        )}
                         <tr>
-                          <td className="p-1 text-center border-r border-black">2</td>
-                          <td className="p-1 border-r border-black">Laporan PKL</td>
-                          <td className="p-1 text-center border-r border-black">
-                            {certData.penilaian.nilai_laporan !== null && certData.penilaian.nilai_laporan !== undefined ? certData.penilaian.nilai_laporan : '-'}
-                          </td>
-                          <td className="p-1 text-center">{getPredikatHuruf(certData.penilaian.nilai_laporan ?? null)}</td>
-                        </tr>
-                        <tr>
-                          <td className="p-1 text-center border-r border-black">3</td>
+                          <td className="p-1 text-center border-r border-black">{isComposite ? 3 : 2}</td>
                           <td className="p-1 border-r border-black">Sidang / Presentasi PKL</td>
                           <td className="p-1 text-center border-r border-black">
                             {certData.penilaian.nilai_sidang !== null && certData.penilaian.nilai_sidang !== undefined ? certData.penilaian.nilai_sidang : '-'}

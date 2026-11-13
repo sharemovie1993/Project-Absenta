@@ -7,7 +7,7 @@ export interface SertifikatPklPrintData {
   durasi_jp?: number | string;
   tanggal_terbit?: string;
   // Adaptive assessment config (from HubinSettings)
-  assessment_mode?: 'DUDI_ONLY' | 'COMPOSITE';
+  assessment_mode?: 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
   weight_dudi?: number;
   weight_laporan?: number;
   weight_sidang?: number;
@@ -456,9 +456,11 @@ export const renderSertifikatBack = (
   const { siswa, mitra, penilaian } = data;
   const normalizedSiswa = normalizeStudentIdentity(siswa);
   const isComposite = data.assessment_mode === 'COMPOSITE';
+  const isDudiSidang = data.assessment_mode === 'DUDI_SIDANG';
+  const hasSchoolEval = isComposite || isDudiSidang;
   const wDudi = data.weight_dudi ?? 70;
   const wLaporan = data.weight_laporan ?? 15;
-  const wSidang = data.weight_sidang ?? 15;
+  const wSidang = data.weight_sidang ?? (isDudiSidang ? 30 : 15);
 
   const hardScores = [
     penilaian.hard_kompetensi_teknis ?? 88,
@@ -495,6 +497,18 @@ export const renderSertifikatBack = (
       }
       displayedNilaiAkhir = totalW > 0 ? totalScore / totalW : dudiAvg;
     }
+  } else if (isDudiSidang) {
+    if (penilaian.nilai_akhir_pkl !== null && penilaian.nilai_akhir_pkl !== undefined) {
+      displayedNilaiAkhir = penilaian.nilai_akhir_pkl;
+    } else {
+      let totalW = 0;
+      let totalScore = 0;
+      totalScore += dudiAvg * wDudi; totalW += wDudi;
+      if (penilaian.nilai_sidang !== null && penilaian.nilai_sidang !== undefined) {
+        totalScore += penilaian.nilai_sidang * wSidang; totalW += wSidang;
+      }
+      displayedNilaiAkhir = totalW > 0 ? totalScore / totalW : dudiAvg;
+    }
   } else {
     displayedNilaiAkhir = penilaian.nilai_akhir_pkl ?? dudiAvg;
   }
@@ -503,16 +517,16 @@ export const renderSertifikatBack = (
   const finalPredikat = penilaian.predikat_pkl ? penilaian.predikat_pkl.toUpperCase() : getPredikatLabel(displayedNilaiAkhir);
 
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(isComposite ? 12 : 13);
-  doc.text('DAFTAR NILAI PRAKTIK KERJA LAPANGAN', pageWidth / 2, isComposite ? 15 : 18, { align: 'center' });
+  doc.setFontSize(hasSchoolEval ? 12 : 13);
+  doc.text('DAFTAR NILAI PRAKTIK KERJA LAPANGAN', pageWidth / 2, hasSchoolEval ? 15 : 18, { align: 'center' });
 
-  let curY = isComposite ? 23 : 28;
+  let curY = hasSchoolEval ? 23 : 28;
   const leftLabelX = 20;
   const leftColonX = 68;
   const leftValX = 71;
-  const rowGap = isComposite ? 4.2 : 4.8;
+  const rowGap = hasSchoolEval ? 4.2 : 4.8;
 
-  doc.setFontSize(isComposite ? 8.5 : 9.5);
+  doc.setFontSize(hasSchoolEval ? 8.5 : 9.5);
   doc.setFont('Helvetica', 'normal');
   doc.text('Nama', leftLabelX, curY);
   doc.text(':', leftColonX, curY);
@@ -596,11 +610,15 @@ export const renderSertifikatBack = (
     ],
   ];
 
-  if (isComposite) {
+  if (hasSchoolEval) {
     // Section C – Evaluasi Akademik Sekolah
+    const evalHeaderTitle = isDudiSidang
+      ? `EVALUASI AKADEMIK SEKOLAH (Bobot: DUDI ${wDudi}% | Sidang ${wSidang}%)`
+      : `EVALUASI AKADEMIK SEKOLAH (Bobot: DUDI ${wDudi}% | Laporan ${wLaporan}% | Sidang ${wSidang}%)`;
+
     tableBody.push([
       { content: 'C', styles: { fontStyle: 'bold', halign: 'center' } },
-      { content: `EVALUASI AKADEMIK SEKOLAH (Bobot: DUDI ${wDudi}% | Laporan ${wLaporan}% | Sidang ${wSidang}%)`, colSpan: 3, styles: { fontStyle: 'bold', halign: 'left' } }
+      { content: evalHeaderTitle, colSpan: 3, styles: { fontStyle: 'bold', halign: 'left' } }
     ]);
     tableBody.push([
       { content: '1', styles: { halign: 'center' } },
@@ -608,14 +626,16 @@ export const renderSertifikatBack = (
       { content: (Math.round(dudiAvg * 100) / 100).toFixed(2), styles: { halign: 'center' } },
       { content: getPredikatHuruf(dudiAvg), styles: { halign: 'center' } }
     ]);
+    if (isComposite) {
+      tableBody.push([
+        { content: '2', styles: { halign: 'center' } },
+        { content: 'Laporan PKL', styles: { halign: 'left' } },
+        { content: penilaian.nilai_laporan !== null && penilaian.nilai_laporan !== undefined ? String(penilaian.nilai_laporan) : '-', styles: { halign: 'center' } },
+        { content: getPredikatHuruf(penilaian.nilai_laporan ?? null), styles: { halign: 'center' } }
+      ]);
+    }
     tableBody.push([
-      { content: '2', styles: { halign: 'center' } },
-      { content: 'Laporan PKL', styles: { halign: 'left' } },
-      { content: penilaian.nilai_laporan !== null && penilaian.nilai_laporan !== undefined ? String(penilaian.nilai_laporan) : '-', styles: { halign: 'center' } },
-      { content: getPredikatHuruf(penilaian.nilai_laporan ?? null), styles: { halign: 'center' } }
-    ]);
-    tableBody.push([
-      { content: '3', styles: { halign: 'center' } },
+      { content: isComposite ? '3' : '2', styles: { halign: 'center' } },
       { content: 'Sidang / Presentasi PKL', styles: { halign: 'left' } },
       { content: penilaian.nilai_sidang !== null && penilaian.nilai_sidang !== undefined ? String(penilaian.nilai_sidang) : '-', styles: { halign: 'center' } },
       { content: getPredikatHuruf(penilaian.nilai_sidang ?? null), styles: { halign: 'center' } }
@@ -655,20 +675,20 @@ export const renderSertifikatBack = (
     theme: 'grid',
     styles: {
       font: 'Helvetica',
-      fontSize: isComposite ? 8.2 : 8.5,
+      fontSize: hasSchoolEval ? 8.2 : 8.5,
       textColor: [0, 0, 0],
       lineColor: [0, 0, 0],
       lineWidth: 0.25,
-      cellPadding: isComposite ? [1.6, 2] : [1.8, 2],
-      minCellHeight: isComposite ? 5.3 : 5.6,
+      cellPadding: hasSchoolEval ? [1.6, 2] : [1.8, 2],
+      minCellHeight: hasSchoolEval ? 5.3 : 5.6,
     },
     headStyles: {
       fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
       lineWidth: 0.25,
       lineColor: [0, 0, 0],
-      fontSize: isComposite ? 8.2 : 8.5,
-      cellPadding: isComposite ? [1.6, 2] : [1.8, 2],
+      fontSize: hasSchoolEval ? 8.2 : 8.5,
+      cellPadding: hasSchoolEval ? [1.6, 2] : [1.8, 2],
     },
     columnStyles: {
       0: { cellWidth: 14 },
@@ -678,21 +698,21 @@ export const renderSertifikatBack = (
     },
   });
 
-  const finalTableY = (doc as any).lastAutoTable?.finalY ?? (isComposite ? 130 : 145);
-  const footerY = finalTableY + (isComposite ? 6 : 7);
+  const finalTableY = (doc as any).lastAutoTable?.finalY ?? (hasSchoolEval ? 130 : 145);
+  const footerY = finalTableY + (hasSchoolEval ? 6 : 7);
 
   // Kotak Keterangan Nilai
-  const boxH = isComposite ? 28 : 32;
+  const boxH = hasSchoolEval ? 28 : 32;
   doc.setLineWidth(0.25);
   doc.rect(20, footerY, 60, boxH);
 
-  doc.setFontSize(isComposite ? 8 : 8.5);
+  doc.setFontSize(hasSchoolEval ? 8 : 8.5);
   doc.setFont('Helvetica', 'normal');
-  doc.text('Keterangan Nilai :', 22, footerY + (isComposite ? 4.5 : 5));
+  doc.text('Keterangan Nilai :', 22, footerY + (hasSchoolEval ? 4.5 : 5));
 
-  const legY = footerY + (isComposite ? 9.5 : 10.5);
-  const legGap = isComposite ? 4.4 : 5;
-  doc.setFontSize(isComposite ? 7.5 : 8);
+  const legY = footerY + (hasSchoolEval ? 9.5 : 10.5);
+  const legGap = hasSchoolEval ? 4.4 : 5;
+  doc.setFontSize(hasSchoolEval ? 7.5 : 8);
   doc.text('90 - 100', 23, legY);
   doc.text('A', 41, legY);
   doc.text('Amat Baik', 49, legY);
@@ -717,7 +737,7 @@ export const renderSertifikatBack = (
 
   // TTD Tunggal: Penanggung Jawab Perusahaan / Instansi (Area TTD lega, tidak terpotong)
   const picSigX = 230;
-  const linePicY = footerY + (isComposite ? 34 : 36);
+  const linePicY = footerY + (hasSchoolEval ? 34 : 36);
 
   doc.setFontSize(9);
   doc.setFont('Helvetica', 'normal');

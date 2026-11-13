@@ -134,7 +134,9 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
               <Sliders size={13} className="text-indigo-600 dark:text-indigo-400" />
               <span className="hidden sm:inline">{canEditScheme ? 'Bobot' : 'Info'}</span>
               <span className="px-1 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-[10px] font-mono font-bold">
-                {isCompositeMode
+                {effectiveSettings?.assessmentMode === 'DUDI_SIDANG'
+                  ? `${effectiveSettings?.weightDudi}/${effectiveSettings?.weightSidang}%`
+                  : isCompositeMode
                   ? `${effectiveSettings?.weightDudi}/${effectiveSettings?.weightLaporan}/${effectiveSettings?.weightSidang}%`
                   : '100%'}
               </span>

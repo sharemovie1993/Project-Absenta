@@ -32,7 +32,7 @@ export interface PklNilaiSidangMobileCardsProps {
   isLoadingRekap: boolean;
   isCompositeMode: boolean;
   effectiveSettings?: {
-    assessmentMode: 'DUDI_ONLY' | 'COMPOSITE';
+    assessmentMode: 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
     weightDudi: number;
     weightLaporan: number;
     weightSidang: number;
@@ -320,7 +320,9 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                         Komponen Nilai
                       </span>
                       <span className="text-[10px] font-medium text-slate-500">
-                        {isCompositeMode
+                        {effectiveSettings?.assessmentMode === 'DUDI_SIDANG'
+                          ? `DUDI ${effectiveSettings?.weightDudi ?? 70}% • Sid ${effectiveSettings?.weightSidang ?? 30}%`
+                          : isCompositeMode
                           ? `DUDI ${effectiveSettings?.weightDudi ?? 70}% • Lap ${effectiveSettings?.weightLaporan ?? 15}% • Sid ${effectiveSettings?.weightSidang ?? 15}%`
                           : 'Skema DUDI 100%'}
                       </span>
@@ -350,7 +352,11 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                             Laporan
                           </label>
                           <span className="text-[9px] text-slate-400 font-mono">
-                            {isCompositeMode ? `${effectiveSettings?.weightLaporan ?? 15}%` : '-'}
+                            {effectiveSettings?.assessmentMode === 'COMPOSITE'
+                              ? `${effectiveSettings?.weightLaporan ?? 15}%`
+                              : effectiveSettings?.assessmentMode === 'DUDI_SIDANG'
+                              ? 'Off'
+                              : '-'}
                           </span>
                         </div>
                         <input
@@ -358,16 +364,16 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                           type="number"
                           min="0"
                           max="100"
-                          disabled={!isCompositeMode}
-                          placeholder={!isCompositeMode ? '-' : '0'}
-                          value={!isCompositeMode ? '' : (score.nilai_laporan ?? '')}
+                          disabled={effectiveSettings?.assessmentMode !== 'COMPOSITE'}
+                          placeholder={effectiveSettings?.assessmentMode !== 'COMPOSITE' ? '-' : '0'}
+                          value={effectiveSettings?.assessmentMode !== 'COMPOSITE' ? '' : (score.nilai_laporan ?? '')}
                           onChange={(e) => {
                             const val = e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value)));
                             handleScoreChange(score.siswa_pkl_id, 'nilai_laporan', val);
                           }}
                           className={cn(
                             'w-full h-10 mt-1 rounded-lg text-center font-mono font-bold text-base border focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all',
-                            !isCompositeMode
+                            effectiveSettings?.assessmentMode !== 'COMPOSITE'
                               ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 cursor-not-allowed'
                               : 'bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800'
                           )}
@@ -384,7 +390,9 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                             Sidang
                           </label>
                           <span className="text-[9px] text-slate-400 font-mono">
-                            {isCompositeMode ? `${effectiveSettings?.weightSidang ?? 15}%` : '-'}
+                            {isCompositeMode
+                              ? `${effectiveSettings?.weightSidang ?? (effectiveSettings?.assessmentMode === 'DUDI_SIDANG' ? 30 : 15)}%`
+                              : '-'}
                           </span>
                         </div>
                         <input

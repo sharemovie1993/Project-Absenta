@@ -47,7 +47,7 @@ export interface PklNilaiSidangTabProps {
   totalRawScores: number;
   isCompositeMode: boolean;
   effectiveSettings?: {
-    assessmentMode: 'DUDI_ONLY' | 'COMPOSITE';
+    assessmentMode: 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
     weightDudi: number;
     weightLaporan: number;
     weightSidang: number;
@@ -277,30 +277,39 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
     {
       key: 'nilai_laporan',
       header: 'Laporan',
-      subHeader: isCompositeMode ? `${effectiveSettings?.weightLaporan ?? 15}%` : 'Arsip',
+      subHeader: effectiveSettings?.assessmentMode === 'COMPOSITE'
+        ? `${effectiveSettings?.weightLaporan ?? 15}%`
+        : effectiveSettings?.assessmentMode === 'DUDI_SIDANG'
+        ? 'Non-Aktif'
+        : 'Arsip',
       width: 52,
       align: 'center',
-      renderCell: (score, rowIndex) => (
-        <SpreadsheetCellInput
-          id={`sidang-score-${rowIndex}-0`}
-          aria-label={`Nilai laporan ${score.nama_siswa}`}
-          value={!isCompositeMode ? null : score.nilai_laporan}
-          disabled={!isCompositeMode}
-          placeholder={!isCompositeMode ? '-' : '0'}
-          onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'nilai_laporan', val)}
-          onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 0)}
-          className={
-            !isCompositeMode
-              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-              : 'bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800'
-          }
-        />
-      ),
+      renderCell: (score, rowIndex) => {
+        const isLaporanEnabled = effectiveSettings?.assessmentMode === 'COMPOSITE';
+        return (
+          <SpreadsheetCellInput
+            id={`sidang-score-${rowIndex}-0`}
+            aria-label={`Nilai laporan ${score.nama_siswa}`}
+            value={!isLaporanEnabled ? null : score.nilai_laporan}
+            disabled={!isLaporanEnabled}
+            placeholder={!isLaporanEnabled ? '-' : '0'}
+            onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'nilai_laporan', val)}
+            onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 0)}
+            className={
+              !isLaporanEnabled
+                ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+                : 'bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800'
+            }
+          />
+        );
+      },
     },
     {
       key: 'nilai_sidang',
       header: 'Sidang',
-      subHeader: isCompositeMode ? `${effectiveSettings?.weightSidang ?? 15}%` : 'Arsip',
+      subHeader: isCompositeMode
+        ? `${effectiveSettings?.weightSidang ?? (effectiveSettings?.assessmentMode === 'DUDI_SIDANG' ? 30 : 15)}%`
+        : 'Arsip',
       width: 52,
       align: 'center',
       renderCell: (score, rowIndex) => (

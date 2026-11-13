@@ -66,7 +66,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
     const tpKey = (prefix: string) => (targetTpId ? configMap.get(`${prefix}_${targetTpId}`) : undefined);
     const tpHasConfig = targetTpId ? Boolean(tpKey('HUBIN_PKL_NOMOR_SURAT') || tpKey('HUBIN_PKL_TANGGAL_TERBIT') || tpKey('HUBIN_PKL_DURASI_JP') || tpKey('HUBIN_PKL_TEMPAT_TERBIT') || tpKey('HUBIN_PKL_PENANDATANGAN_NAMA')) : true;
 
-    const resolvedAssessmentMode = (tpKey('HUBIN_PKL_ASSESSMENT_MODE') || (targetTpId ? 'DUDI_ONLY' : (configMap.get('HUBIN_PKL_ASSESSMENT_MODE') || 'DUDI_ONLY'))) as 'DUDI_ONLY' | 'COMPOSITE';
+    const resolvedAssessmentMode = (tpKey('HUBIN_PKL_ASSESSMENT_MODE') || (targetTpId ? 'DUDI_ONLY' : (configMap.get('HUBIN_PKL_ASSESSMENT_MODE') || 'DUDI_ONLY'))) as 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
     const resolvedWeightDudi = Number(tpKey('HUBIN_PKL_WEIGHT_DUDI') || (targetTpId ? 70 : (configMap.get('HUBIN_PKL_WEIGHT_DUDI') || 70)));
     const resolvedWeightLaporan = Number(tpKey('HUBIN_PKL_WEIGHT_LAPORAN') || (targetTpId ? 15 : (configMap.get('HUBIN_PKL_WEIGHT_LAPORAN') || 15)));
     const resolvedWeightSidang = Number(tpKey('HUBIN_PKL_WEIGHT_SIDANG') || (targetTpId ? 15 : (configMap.get('HUBIN_PKL_WEIGHT_SIDANG') || 15)));
@@ -167,7 +167,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
         tempatTerbit: isConfigured ? (tpTempat || '') : '',
         penandatanganNama: isConfigured ? (tpKepsek || '') : '',
         penandatanganNip: isConfigured ? (tpNip || '') : '',
-        assessmentMode: (tpMode || 'DUDI_ONLY') as 'DUDI_ONLY' | 'COMPOSITE',
+        assessmentMode: (tpMode || 'DUDI_ONLY') as 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE',
         weightDudi: tpWeightDudi ? Number(tpWeightDudi) : 70,
         weightLaporan: tpWeightLaporan ? Number(tpWeightLaporan) : 15,
         weightSidang: tpWeightSidang ? Number(tpWeightSidang) : 15,
@@ -584,6 +584,22 @@ export class HubinPenilaianService extends HubinCommonHelper {
         if (nilaiLaporan !== null && !isNaN(nilaiLaporan)) {
           totalWeightedScore += Number(nilaiLaporan) * weightLaporan;
           totalActiveWeights += weightLaporan;
+        }
+        if (nilaiSidang !== null && !isNaN(nilaiSidang)) {
+          totalWeightedScore += Number(nilaiSidang) * weightSidang;
+          totalActiveWeights += weightSidang;
+        }
+
+        if (totalActiveWeights > 0) {
+          nilaiAkhir = Number((totalWeightedScore / totalActiveWeights).toFixed(2));
+        }
+      } else if (assessmentMode === 'DUDI_SIDANG') {
+        let totalWeightedScore = 0;
+        let totalActiveWeights = 0;
+
+        if (dudiAvg !== null) {
+          totalWeightedScore += dudiAvg * weightDudi;
+          totalActiveWeights += weightDudi;
         }
         if (nilaiSidang !== null && !isNaN(nilaiSidang)) {
           totalWeightedScore += Number(nilaiSidang) * weightSidang;
@@ -1584,7 +1600,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_WEIGHT_SIDANG_${tpId}` } }) : null,
     ]);
 
-    const assessmentMode = (assessmentModeTpCfg?.value || assessmentModeCfg?.value || 'DUDI_ONLY') as 'DUDI_ONLY' | 'COMPOSITE';
+    const assessmentMode = (assessmentModeTpCfg?.value || assessmentModeCfg?.value || 'DUDI_ONLY') as 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
     const weightDudi = Number(weightDudiTpCfg?.value ?? weightDudiCfg?.value ?? 70);
     const weightLaporan = Number(weightLaporanTpCfg?.value ?? weightLaporanCfg?.value ?? 15);
     const weightSidang = Number(weightSidangTpCfg?.value ?? weightSidangCfg?.value ?? 15);

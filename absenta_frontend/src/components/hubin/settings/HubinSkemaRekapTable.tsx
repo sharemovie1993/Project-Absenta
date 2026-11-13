@@ -29,17 +29,18 @@ export const HubinSkemaRekapTable: React.FC<HubinSkemaRekapTableProps> = React.m
   const queryClient = useQueryClient();
   const [editingRow, setEditingRow] = useState<HubinSettingSummaryRow | null>(null);
 
-  const [formMode, setFormMode] = useState<'DUDI_ONLY' | 'COMPOSITE'>('DUDI_ONLY');
+  const [formMode, setFormMode] = useState<'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE'>('DUDI_ONLY');
   const [formWeightDudi, setFormWeightDudi] = useState<number>(70);
   const [formWeightLaporan, setFormWeightLaporan] = useState<number>(15);
   const [formWeightSidang, setFormWeightSidang] = useState<number>(15);
 
   const handleOpenEdit = (row: HubinSettingSummaryRow) => {
     setEditingRow(row);
-    setFormMode(row.assessmentMode || 'DUDI_ONLY');
+    const mode = row.assessmentMode || 'DUDI_ONLY';
+    setFormMode(mode);
     setFormWeightDudi(row.weightDudi ?? 70);
-    setFormWeightLaporan(row.weightLaporan ?? 15);
-    setFormWeightSidang(row.weightSidang ?? 15);
+    setFormWeightLaporan(row.weightLaporan ?? (mode === 'DUDI_SIDANG' ? 0 : 15));
+    setFormWeightSidang(row.weightSidang ?? (mode === 'DUDI_SIDANG' ? 30 : 15));
   };
 
   const saveSkemaMutation = useMutation({
@@ -64,13 +65,19 @@ export const HubinSkemaRekapTable: React.FC<HubinSkemaRekapTableProps> = React.m
         toast.error(`Total persentase bobot harus pas 100% (Saat ini: ${total}%)`);
         return;
       }
+    } else if (formMode === 'DUDI_SIDANG') {
+      const total = formWeightDudi + formWeightSidang;
+      if (total !== 100) {
+        toast.error(`Total persentase bobot DUDI + Sidang harus pas 100% (Saat ini: ${total}%)`);
+        return;
+      }
     }
 
     saveSkemaMutation.mutate({
       tahun_pelajaran_id: editingRow.tahun_pelajaran_id,
       assessmentMode: formMode,
       weightDudi: formWeightDudi,
-      weightLaporan: formWeightLaporan,
+      weightLaporan: formMode === 'DUDI_SIDANG' ? 0 : formWeightLaporan,
       weightSidang: formWeightSidang,
     });
   };
@@ -102,6 +109,7 @@ export const HubinSkemaRekapTable: React.FC<HubinSkemaRekapTableProps> = React.m
             {rows.map((row) => {
               const isActive = row.is_active || row.tahun_ajaran === activeTahunAjaran;
               const isComposite = row.assessmentMode === 'COMPOSITE';
+              const isDudiSidang = row.assessmentMode === 'DUDI_SIDANG';
 
               return (
                 <tr
@@ -124,24 +132,28 @@ export const HubinSkemaRekapTable: React.FC<HubinSkemaRekapTableProps> = React.m
 
                   <td className="px-3 py-3.5">
                     {isComposite ? (
-                      <Badge variant="secondary" className="text-[10px] font-extrabold uppercase bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
+                      <Badge variant="secondary" className="text-[10px] font-extrabold uppercase bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
                         Komposit (3 Unsur)
                       </Badge>
+                    ) : isDudiSidang ? (
+                      <Badge variant="secondary" className="text-[10px] font-extrabold uppercase bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+                        DUDI + Sidang (2 Unsur)
+                      </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-[10px] font-extrabold uppercase">
+                      <Badge variant="outline" className="text-[10px] font-extrabold uppercase bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
                         DUDI Tunggal (100%)
                       </Badge>
                     )}
                   </td>
 
                   <td className="px-3 py-3.5 text-center font-bold">
-                    {isComposite ? `${row.weightDudi ?? 70}%` : '100%'}
+                    {isComposite || isDudiSidang ? `${row.weightDudi ?? 70}%` : '100%'}
                   </td>
                   <td className="px-3 py-3.5 text-center font-bold">
                     {isComposite ? `${row.weightLaporan ?? 15}%` : '—'}
                   </td>
                   <td className="px-3 py-3.5 text-center font-bold">
-                    {isComposite ? `${row.weightSidang ?? 15}%` : '—'}
+                    {isComposite ? `${row.weightSidang ?? 15}%` : isDudiSidang ? `${row.weightSidang ?? 30}%` : '—'}
                   </td>
 
                   <td className="px-4 py-3.5 text-center">
@@ -190,7 +202,7 @@ export const HubinSkemaRekapTable: React.FC<HubinSkemaRekapTableProps> = React.m
               <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
                 Pilih Mode Penilaian
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setFormMode('DUDI_ONLY')}
@@ -201,11 +213,39 @@ export const HubinSkemaRekapTable: React.FC<HubinSkemaRekapTableProps> = React.m
                       : 'border-slate-200 dark:border-slate-800'
                   )}
                 >
-                  DUDI Tunggal (100%)
+                  <div className="text-xs font-bold">1. DUDI Tunggal</div>
+                  <div className="text-[10px] text-slate-500 font-normal mt-0.5">100% Nilai Industri</div>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFormMode('COMPOSITE')}
+                  onClick={() => {
+                    setFormMode('DUDI_SIDANG');
+                    if (formWeightDudi + formWeightSidang !== 100) {
+                      setFormWeightDudi(70);
+                      setFormWeightSidang(30);
+                    }
+                    setFormWeightLaporan(0);
+                  }}
+                  className={cn(
+                    'p-2.5 rounded-xl border text-left transition-all',
+                    formMode === 'DUDI_SIDANG'
+                      ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold'
+                      : 'border-slate-200 dark:border-slate-800'
+                  )}
+                >
+                  <div className="text-xs font-bold">2. DUDI + Sidang</div>
+                  <div className="text-[10px] text-slate-500 font-normal mt-0.5">2 Unsur (Tanpa Laporan)</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormMode('COMPOSITE');
+                    if (formWeightDudi + formWeightLaporan + formWeightSidang !== 100) {
+                      setFormWeightDudi(70);
+                      setFormWeightLaporan(15);
+                      setFormWeightSidang(15);
+                    }
+                  }}
                   className={cn(
                     'p-2.5 rounded-xl border text-left transition-all',
                     formMode === 'COMPOSITE'
@@ -213,10 +253,48 @@ export const HubinSkemaRekapTable: React.FC<HubinSkemaRekapTableProps> = React.m
                       : 'border-slate-200 dark:border-slate-800'
                   )}
                 >
-                  Komposit (3 Unsur)
+                  <div className="text-xs font-bold">3. DUDI + Lap + Sid</div>
+                  <div className="text-[10px] text-slate-500 font-normal mt-0.5">3 Unsur Lengkap</div>
                 </button>
               </div>
             </div>
+
+            {formMode === 'DUDI_SIDANG' && (
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl space-y-3 border border-slate-200 dark:border-slate-800">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="font-bold text-slate-600 block mb-1">DUDI (%)</label>
+                    <input
+                      type="number"
+                      value={formWeightDudi}
+                      onChange={(e) => setFormWeightDudi(Number(e.target.value))}
+                      className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-center font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-600 block mb-1">Sidang (%)</label>
+                    <input
+                      type="number"
+                      value={formWeightSidang}
+                      onChange={(e) => setFormWeightSidang(Number(e.target.value))}
+                      className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-center font-bold"
+                    />
+                  </div>
+                </div>
+                <div className="text-[11px] text-center font-bold">
+                  Total:{' '}
+                  <span
+                    className={
+                      formWeightDudi + formWeightSidang === 100
+                        ? 'text-emerald-600'
+                        : 'text-rose-600'
+                    }
+                  >
+                    {formWeightDudi + formWeightSidang}% (Wajib 100%)
+                  </span>
+                </div>
+              </div>
+            )}
 
             {formMode === 'COMPOSITE' && (
               <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl space-y-3 border border-slate-200 dark:border-slate-800">

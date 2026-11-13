@@ -168,7 +168,7 @@ function buildCertPrintData(
     nomor_sertifikat: nomorResmi,
     durasi_jp: durasiResmi,
     tanggal_terbit: tanggalResmi,
-    assessment_mode: (certDetail?.assessment_mode || 'DUDI_ONLY') as 'DUDI_ONLY' | 'COMPOSITE',
+    assessment_mode: (certDetail?.assessment_mode || 'DUDI_ONLY') as 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE',
     weight_dudi: certDetail?.weight_dudi ?? 70,
     weight_laporan: certDetail?.weight_laporan ?? 15,
     weight_sidang: certDetail?.weight_sidang ?? 15,

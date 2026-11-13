@@ -348,7 +348,7 @@ export const hubinApi = {
     tempatTerbit?: string;
     penandatanganNama?: string;
     penandatanganNip?: string;
-    assessmentMode?: 'DUDI_ONLY' | 'COMPOSITE';
+    assessmentMode?: 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
     weightDudi?: number;
     weightLaporan?: number;
     weightSidang?: number;
@@ -361,7 +361,7 @@ export const hubinApi = {
   getSettings: (params?: { tahun_pelajaran_id?: string }) => requestWithFallback<{ 
     folderUrl: string; 
     driveMode: string;
-    assessmentMode?: 'DUDI_ONLY' | 'COMPOSITE';
+    assessmentMode?: 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
     weightDudi?: number;
     weightLaporan?: number;
     weightSidang?: number;
@@ -381,7 +381,7 @@ export const hubinApi = {
   updateSettings: (data: { 
     folderUrl?: string; 
     driveMode?: string;
-    assessmentMode?: 'DUDI_ONLY' | 'COMPOSITE';
+    assessmentMode?: 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
     weightDudi?: number;
     weightLaporan?: number;
     weightSidang?: number;

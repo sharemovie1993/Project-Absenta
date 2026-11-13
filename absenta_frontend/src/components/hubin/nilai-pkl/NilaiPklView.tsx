@@ -93,7 +93,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   }, [activeTabOnly, initialTab]);
 
   // Settings Form State
-  const [formMode, setFormMode] = useState<'DUDI_ONLY' | 'COMPOSITE'>('DUDI_ONLY');
+  const [formMode, setFormMode] = useState<'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE'>('DUDI_ONLY');
   const [formWeightDudi, setFormWeightDudi] = useState<number>(70);
   const [formWeightLaporan, setFormWeightLaporan] = useState<number>(15);
   const [formWeightSidang, setFormWeightSidang] = useState<number>(15);
@@ -190,7 +190,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     return raw?.data ?? raw;
   }, [hubinSettings]);
 
-  const isCompositeMode = effectiveSettings?.assessmentMode === 'COMPOSITE';
+  const isCompositeMode = effectiveSettings?.assessmentMode === 'COMPOSITE' || effectiveSettings?.assessmentMode === 'DUDI_SIDANG';
 
   useEffect(() => {
     if (effectiveSettings) {

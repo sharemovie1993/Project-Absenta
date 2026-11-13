@@ -24,7 +24,7 @@ export interface HubinSettingSummaryRow {
   tempatTerbit?: string;
   penandatanganNama?: string;
   penandatanganNip?: string;
-  assessmentMode?: 'DUDI_ONLY' | 'COMPOSITE';
+  assessmentMode?: 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
   weightDudi?: number;
   weightLaporan?: number;
   weightSidang?: number;
