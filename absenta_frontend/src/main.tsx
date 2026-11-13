@@ -6,6 +6,10 @@ import { ErrorBoundary } from './components/common/ErrorBoundary'
 import { LogService } from './utils/LogService';
 import { toLocalDate } from './utils/attendance/time';
 
+// Bersihkan cache jaringan lama (absenta_cached_route) yang pernah disimpan versi sebelumnya.
+// Cache ini tidak digunakan lagi agar badge Lokal/Tunnel selalu akurat lintas jaringan.
+try { localStorage.removeItem('absenta_cached_route'); } catch { /* ignore */ }
+
 // Global Production & Development Auto-Recovery for Stale Chunk Deployments
 window.addEventListener('vite:preloadError', (event) => {
   console.warn('[Absenta] 🔄 Stale chunk detected after new deployment. Auto-reloading page...', event);
