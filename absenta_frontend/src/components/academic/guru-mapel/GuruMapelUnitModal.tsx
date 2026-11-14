@@ -197,7 +197,7 @@ export const GuruMapelUnitModal: React.FC<GuruMapelUnitModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Konfigurasi Unit Pengajaran & Kolaborasi"
-      size="lg"
+      size="4xl"
     >
       <div className="space-y-4">
         {guruMapel && (
