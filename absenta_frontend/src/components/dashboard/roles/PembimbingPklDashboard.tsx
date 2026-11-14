@@ -439,8 +439,8 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
 
         {/* 2. Desktop 2-Column Sidebar Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-4 sm:gap-5 items-start">
-          {/* Left Sidebar (Desktop Only) */}
-          <aside className="hidden lg:block sticky top-20 space-y-3.5">
+          {/* Left Sidebar (Desktop sticky & independent scroll without scrollbar UI) */}
+          <aside className="hidden lg:block sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain no-scrollbar space-y-3.5 pb-6">
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3">
               <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
