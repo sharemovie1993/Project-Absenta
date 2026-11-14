@@ -21,7 +21,6 @@ import { useCapabilities } from './useCapabilities';
 import { useMyPengujiSidang } from './useMyPengujiSidang';
 import { 
   type MobileBottomSubItem, 
-  type EcosystemType,
 } from '@/config/bottomNavEcosystems.config';
 
 export interface UserRoleDashboardItem extends MobileBottomSubItem {
@@ -38,11 +37,12 @@ export interface UserRoleDashboardItem extends MobileBottomSubItem {
  * agar konsisten di semua perangkat (BottomNav, Drawer HP, Divisi Switcher, Desktop).
  */
 export function useUserRoleDashboards() {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
   const {
+    isAdmin: isAdminFromCaps,
     isKaprog,
     kaprogJurusan,
     isWaliKelas: isWaliKelasFromCaps,
@@ -71,18 +71,18 @@ export function useUserRoleDashboards() {
   const { isPengujiSidang } = useMyPengujiSidang();
 
   const guruProfile = user?.guru_profile;
-  const rawRole = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
+  const rawRole = typeof user?.role === 'string' ? user.role : (user?.role as Record<string, unknown>)?.name;
   const roleName = String(rawRole || '').toUpperCase();
-  const isAdminRole = isAdmin || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
-  const jenisPtk = (guruProfile?.jenis_ptk || (user?.guru_profile as any)?.jenis_ptk || (user as any)?.jenis_ptk || '').toUpperCase();
+  const isAdminRole = Boolean(isAdminFromCaps || roleName === 'ADMIN' || roleName === 'SUPERADMIN');
+  const jenisPtk = String(guruProfile?.jenis_ptk || (user?.guru_profile as Record<string, unknown>)?.jenis_ptk || (user as Record<string, unknown>)?.jenis_ptk || '').toUpperCase();
   const isTuStaff = isTU || roleName === 'TU' || jenisPtk === 'TENAGA_KEPENDIDIKAN' || (guruProfile?.is_tu ?? false);
-  const isPendidik = !isTuStaff && !isKepsek && (jenisPtk === 'PENDIDIK' || (!jenisPtk && (roleName === 'GURU' || Boolean((user as any)?.isTeacher) || Boolean(guruProfile) || isWaliKelasFromCaps)));
+  const isPendidik = !isTuStaff && !isKepsek && (jenisPtk === 'PENDIDIK' || (!jenisPtk && (roleName === 'GURU' || Boolean((user as Record<string, unknown>)?.isTeacher) || Boolean(guruProfile) || isWaliKelasFromCaps)));
 
   const isPembimbingPkl = !isHubin && !isKepsek && Boolean(
-    (guruProfile as any)?.is_pembimbing_pkl || 
-    ((guruProfile as any)?.active_pkl_count && (guruProfile as any).active_pkl_count > 0) ||
-    ((user?.guru_profile as any)?.is_pembimbing_pkl) ||
-    ((user?.guru_profile as any)?.active_pkl_count > 0)
+    (guruProfile as Record<string, unknown>)?.is_pembimbing_pkl || 
+    (typeof (guruProfile as Record<string, unknown>)?.active_pkl_count === 'number' && Number((guruProfile as Record<string, unknown>).active_pkl_count) > 0) ||
+    ((user?.guru_profile as Record<string, unknown>)?.is_pembimbing_pkl) ||
+    (typeof (user?.guru_profile as Record<string, unknown>)?.active_pkl_count === 'number' && Number((user?.guru_profile as Record<string, unknown>).active_pkl_count) > 0)
   );
 
   const isPureGerbangStaff = roleName === 'GERBANG' || roleName === 'PETUGAS_GERBANG' || (isGerbang && !isPendidik && !isAdminRole && !isKepsek && !isKurikulum);
@@ -94,8 +94,8 @@ export function useUserRoleDashboards() {
     )
   );
 
-  const isWaliKelas = isWaliKelasFromCaps || !!guruProfile?.wali_kelas_di?.id || !!(user?.guru_profile as any)?.wali_kelas_di?.id;
-  const waliKelasNama = guruProfile?.wali_kelas_di?.nama_kelas || (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas || '';
+  const isWaliKelas = isWaliKelasFromCaps || !!guruProfile?.wali_kelas_di?.id || !!(user?.guru_profile as Record<string, unknown>)?.wali_kelas_di;
+  const waliKelasNama = guruProfile?.wali_kelas_di?.nama_kelas || ((user?.guru_profile as Record<string, unknown>)?.wali_kelas_di as Record<string, unknown>)?.nama_kelas || '';
 
   // Dynamic TU Tab Label & Badge
   const tuTabMeta = useMemo(() => {
@@ -460,8 +460,13 @@ export function useUserRoleDashboards() {
     roleCount: roleDashboards.length,
     isPendidik,
     isTuStaff,
+    isPureGerbangStaff,
+    hasGerbangDuty,
+    isWaliKelas,
+    isPembimbingPkl,
     isKepsek,
     isAdminRole,
+    isAdmin: isAdminRole,
     waliKelasNama,
     kaprogJurusan,
     tuTabMeta,

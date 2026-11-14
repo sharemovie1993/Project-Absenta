@@ -6,28 +6,20 @@ import {
   FileText, 
   BookOpen, 
   CheckCircle2, 
-  PiggyBank, 
   User, 
   Users, 
   HeartHandshake, 
   Building, 
   Briefcase, 
   Award, 
-  ShieldAlert, 
-  ShieldCheck,
   GraduationCap, 
-  Building2, 
-  ScanLine, 
   LayoutGrid,
-  CheckSquare,
-  Wrench,
-  Compass 
+  CheckSquare
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useUserRoleDashboards } from '@/hooks/useUserRoleDashboards';
 import { useExecutivePillarStore, type ExecutivePillar } from '@/store/executivePillarStore';
-import { useMyPengujiSidang } from '@/hooks/useMyPengujiSidang';
 import {
   type MobileBottomSubItem,
   type MobileBottomTabItem,
@@ -70,7 +62,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
-  const { isSiswa, isKepsek, can } = useCapabilities();
+  const { isSiswa, isKepsek, can, isAdmin } = useCapabilities();
   const {
     teacherDashboards,
     isPendidik,
@@ -92,8 +84,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
 
   // ── 1. SISWA MOBILE NAVIGATION (SHOPEE STYLE - LANGSUNG EXPOSE 6 TOMBOL) ──
   const isPetugasKelas = Boolean(
-    (user as any)?.is_petugas_kelas ||
-    (user?.siswa_profile as any)?.is_petugas ||
+    (user as Record<string, unknown>)?.is_petugas_kelas ||
+    (user?.siswa_profile as Record<string, unknown>)?.is_petugas ||
     can('attendance.class.input') ||
     can('attendance.ops')
   );
@@ -204,7 +196,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       case 'walas':
         return getWalasTabs(waliKelasNama, currentSubtab);
       case 'tu':
-        return getTuTabs(tuTabMeta, currentSubtab, isPendidik, (cap) => isAdmin || can(cap));
+        return getTuTabs(tuTabMeta, currentSubtab, isPendidik, (cap) => isAdmin || isAdminRole || can(cap));
       case 'kurikulum':
         return getKurikulumTabs(currentSubtab);
       case 'kesiswaan':
@@ -226,7 +218,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       case 'satpam':
         return getSatpamTabs(currentSubtab);
       case 'koperasi':
-        return getKoperasiTabs(currentSubtab, (cap) => isAdmin || can(cap));
+        return getKoperasiTabs(currentSubtab, (cap) => isAdmin || isAdminRole || can(cap));
       case 'piket':
         return getPiketTabs();
       case 'admin':
@@ -347,13 +339,14 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     activeEcosystem,
     isPendidik,
     currentSubtab,
-    currentTab,
     kaprogJurusan,
     waliKelasNama,
     tuTabMeta,
     teacherDashboards,
     isAdmin,
+    isAdminRole,
     can,
+    kepsekTabs,
   ]);
 
   // ── LAYER THEME CONFIGURATION (LAYER 1 VS LAYER 2 ROLE WORKSPACE ECOSYSTEM) ──

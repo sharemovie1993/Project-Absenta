@@ -5,11 +5,9 @@ import {
   Menu, 
   X, 
   ChevronRight, 
-  Check, 
   Layers, 
-  Sparkles,
-  ChevronDown,
-  LogOut
+  ChevronDown, 
+  LogOut 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -38,7 +36,6 @@ import {
   normalizeRoleToScope,
   checkScopeMatchesUrlTab,
   useMobileSubtabSidebarStore,
-  useMobileSubtabSidebar,
 } from './subtabSidebarStore';
 
 export interface UniversalMobileSubtabSidebarProps {
@@ -49,7 +46,7 @@ export interface UniversalMobileSubtabSidebarProps {
   roleBadge?: string;
   scope?: string;
   isActive?: boolean;
-  roleIcon?: React.ComponentType<{ className?: string; size?: number }> | React.ComponentType<any>;
+  roleIcon?: React.ComponentType<{ className?: string; size?: number }> | React.ComponentType<{ className?: string }>;
   logoUrl?: string | null;
   tabs: UniversalSubtabItem[];
   activeTab: string;
@@ -332,7 +329,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
                   <p>Tidak ada menu</p>
                 </div>
               ) : (
-                groupedSections.map((group, gIdx) => {
+                groupedSections?.map((group, gIdx) => {
                   const cat = group.category;
                   return (
                     <div key={cat?.id ? `cat-${cat.id}` : `group-${gIdx}`} className="space-y-0.5">
@@ -345,7 +342,7 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
 
                       {/* Tab Items in Group */}
                       <div className="space-y-0.5">
-                        {group.items.map((tab, idx) => {
+                        {group.items?.map((tab, idx) => {
                           const Icon = tab.icon;
                           const isActive = activeTab === tab.id;
 

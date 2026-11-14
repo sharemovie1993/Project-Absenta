@@ -18,11 +18,8 @@ import {
   Home,
   X,
   Sparkles,
-  ChevronRight,
   CheckCircle2,
 } from 'lucide-react';
-import { useAuthStore } from '@/store/authStore';
-import { useCapabilities } from '@/hooks/useCapabilities';
 import { useUserRoleDashboards } from '@/hooks/useUserRoleDashboards';
 import { cn } from '@/lib/utils';
 import { useRoleDashboardSwitcherStore } from '@/store/roleDashboardSwitcherStore';
@@ -53,7 +50,6 @@ export const RoleDashboardSwitcherSheet: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { user } = useAuthStore();
 
   const { hasDashboard, isAdminRole } = useUserRoleDashboards();
 
@@ -400,7 +396,7 @@ export const RoleDashboardSwitcherSheet: React.FC = () => {
             {/* Scrollable Card Grid */}
             <div className="p-4 overflow-y-auto no-scrollbar space-y-3">
               <div className="grid grid-cols-2 gap-2.5">
-                {accessibleDashboards.map((dash) => {
+                {accessibleDashboards?.map((dash) => {
                   const Icon = dash.icon;
                   const active = isCurrentActive(dash);
 
