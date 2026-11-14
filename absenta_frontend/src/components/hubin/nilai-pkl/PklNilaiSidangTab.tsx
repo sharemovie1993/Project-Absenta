@@ -905,9 +905,9 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           scores={displayedScores || []}
           jurusanId={jurusanId}
           jurusanNama={jurusanNama}
-          selectedTpNama={selectedTp ? tpOptions.find((t) => t.value === selectedTp)?.label : ''}
-          selectedSemesterNama={selectedSemester ? semesterOptions.find((s) => s.value === selectedSemester)?.label : ''}
-          activePengujiNama={guruList.find((g) => g.id === activeGuruId)?.nama_guru || ''}
+          selectedTpNama={selectedTp ? (tpOptions || []).find((t) => t.value === selectedTp)?.label : ''}
+          selectedSemesterNama={selectedSemester ? (semesterOptions || []).find((s) => s.value === selectedSemester)?.label : ''}
+          activePengujiNama={(guruList || []).find((g) => g.id === activeGuruId)?.nama_guru || ''}
           isKaprog={isKaprog}
         />
       )}
@@ -918,7 +918,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           isOpen={showSpinWheelModal}
           onClose={() => setShowSpinWheelModal(false)}
           scores={displayedScores || []}
-          activePengujiNama={guruList.find((g) => g.id === activeGuruId)?.nama_guru || ''}
+          activePengujiNama={(guruList || []).find((g) => g.id === activeGuruId)?.nama_guru || ''}
           onSelectStudentToGrade={(student) => {
             const rowIndex = (paginatedScores || []).findIndex(s => s.siswa_pkl_id === student.siswa_pkl_id);
             if (rowIndex !== -1) {

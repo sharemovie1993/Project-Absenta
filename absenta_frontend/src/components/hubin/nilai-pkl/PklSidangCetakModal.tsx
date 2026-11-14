@@ -40,8 +40,10 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
   isKaprog = false,
 }) => {
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
-  const { rawList: allJurusanList } = useJurusanOptions();
-  const { guruList } = useGuruOptions();
+  const { rawList: allJurusanListRaw } = useJurusanOptions();
+  const allJurusanList = useMemo(() => allJurusanListRaw || [], [allJurusanListRaw]);
+  const { rawList: rawGuruList } = useGuruOptions({ jenisPtk: 'ALL', onlyActive: false });
+  const guruList = useMemo(() => rawGuruList || [], [rawGuruList]);
   const printSheetRef = useRef<HTMLDivElement>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
@@ -63,7 +65,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
 
       // 1. Cocokkan dari allJurusanList via ID
       if (jId && !jNama) {
-        const found = allJurusanList.find((j) => j.id === jId);
+        const found = (allJurusanList || []).find((j) => j.id === jId);
         if (found) {
           jNama = found.nama || (found as any).nama_jurusan;
           jSingkatan = found.singkatan || (found as any).kode;
@@ -75,7 +77,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
         const parts = s.nama_kelas.trim().split(/[\s-]+/);
         const codeCandidate = parts.length >= 2 ? parts[1].toUpperCase() : '';
         if (codeCandidate) {
-          const found = allJurusanList.find((j) => {
+          const found = (allJurusanList || []).find((j) => {
             const sKode = (j.singkatan || (j as any).kode || (j as any).kode_jurusan || '').toUpperCase();
             const sNama = (j.nama || (j as any).nama_jurusan || '').toUpperCase();
             return sKode === codeCandidate || sNama.includes(codeCandidate);
@@ -122,9 +124,9 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
   // Program Keahlian Aktif yang Terpilih
   const activeJurusanObj = useMemo(() => {
     if (selectedJurusanFilter !== 'ALL') {
-      const foundAvailable = availableJurusanList.find((j) => j.id === selectedJurusanFilter);
+      const foundAvailable = (availableJurusanList || []).find((j) => j.id === selectedJurusanFilter);
       if (foundAvailable) return foundAvailable;
-      const foundAll = allJurusanList.find((j) => j.id === selectedJurusanFilter);
+      const foundAll = (allJurusanList || []).find((j) => j.id === selectedJurusanFilter);
       if (foundAll) {
         return {
           id: foundAll.id,
@@ -190,7 +192,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
         const matchId = s.jurusan_id === selectedJurusanFilter;
         let matchClass = false;
         if (s.nama_kelas) {
-          const target = availableJurusanList.find((j) => j.id === selectedJurusanFilter);
+          const target = (availableJurusanList || []).find((j) => j.id === selectedJurusanFilter);
           if (target?.singkatan) {
             matchClass = s.nama_kelas.toUpperCase().includes(target.singkatan.toUpperCase());
           }
@@ -265,7 +267,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
   const currentPengujiObj = useMemo(() => {
     const targetName = selectedPengujiFilter !== 'ALL' ? selectedPengujiFilter : activePengujiNama;
     if (!targetName) return null;
-    return guruList.find((g) => g.nama_guru?.trim().toLowerCase() === targetName.trim().toLowerCase()) || null;
+    return (guruList || []).find((g) => g.nama_guru?.trim().toLowerCase() === targetName.trim().toLowerCase()) || null;
   }, [guruList, selectedPengujiFilter, activePengujiNama]);
 
   // Default Signers Data
