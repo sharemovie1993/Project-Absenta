@@ -43,7 +43,7 @@ import { MasterGridGuruTimetable } from './jadwal-builder/MasterGridGuruTimetabl
 import { ConflictResolverModal, type ConflictDetails } from './jadwal-builder/ConflictResolverModal';
 import { MasterGridKelasTimetable } from './jadwal-builder/MasterGridKelasTimetable';
 import { BebanGuruSummaryModal } from './jadwal-builder/BebanGuruSummaryModal';
-import { EditJadwalModal, type EditJadwalPayload } from './jadwal-builder/EditJadwalModal';
+import { EditJadwalModal, type EditJadwalPayload, type CreateJadwalModalPayload } from './jadwal-builder/EditJadwalModal';
 import { UnallocatedCardsPanel } from './jadwal-builder/UnallocatedCardsPanel';
 import { calculateSmartJpStatus, calculateClassJpStatus } from './jadwal-builder/jpCalculationHelper';
 import { getSlotsForDay } from './jam-kbm/JamKBMTypes';
@@ -140,6 +140,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     kelasName: string;
     kelasId: string;
     slotTime: { start: string; end: string };
+    isNew?: boolean;
   } | null>(null);
   const [isUpdatingJadwal, setIsUpdatingJadwal] = useState<boolean>(false);
 
@@ -859,6 +860,72 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     }
   };
 
+  // ── Create handler from Add Jadwal Modal ────────────────────────────────
+  const handleCreateJadwalFromModal = async ({
+    kelas_id,
+    guru_id,
+    mapel_id,
+    unit_pengajaran_id,
+    durasiJp = 1,
+  }: CreateJadwalModalPayload) => {
+    if (!editingJadwalState || !tahunPelajaranId || !semesterId) return;
+    const { day, slotIndex } = editingJadwalState;
+    setIsUpdatingJadwal(true);
+    try {
+      const createdItems: JadwalKBM[] = [];
+      for (let offset = 0; offset < durasiJp; offset++) {
+        const curSlot = slotIndex + offset;
+        const slot = resolveSlotTime(kelas_id, curSlot, day);
+
+        // Check if there is already a lesson in this class at this time slot
+        const classExisting = allJadwal.find(j => 
+          j.hari === day && 
+          j.slot_index === curSlot && 
+          j.kelas_id === kelas_id
+        );
+        if (classExisting) {
+          await deleteJadwalKBM(classExisting.id);
+        }
+
+        const res = await createJadwalKBM({
+          tahun_pelajaran_id: tahunPelajaranId,
+          semester_id: semesterId,
+          kelas_id,
+          hari: day as any,
+          slot_index: curSlot,
+          jam_mulai: slot.start,
+          jam_selesai: slot.end,
+          mapel_id,
+          guru_id,
+          unit_pengajaran_id: unit_pengajaran_id || null,
+          jenis_kegiatan: 'KBM',
+        });
+        if (res?.data) {
+          createdItems.push(res.data);
+        }
+      }
+
+      setAllJadwal(prev => [
+        ...prev.filter(j => !createdItems.some(c => c.id === j.id || (j.hari === day && j.kelas_id === kelas_id && (j.slot_index ?? 0) >= slotIndex && (j.slot_index ?? 0) < slotIndex + durasiJp))),
+        ...createdItems
+      ]);
+
+      invalidateJadwalBuilderCache();
+      if (onRefresh) onRefresh();
+      toast.success(
+        durasiJp > 1
+          ? `${durasiJp} jam pelajaran berhasil ditambahkan.`
+          : 'Jadwal pelajaran berhasil ditambahkan.'
+      );
+      setEditingJadwalState(null);
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.message || err?.message || 'Gagal menambahkan jadwal pelajaran.';
+      toast.error(errorMsg);
+    } finally {
+      setIsUpdatingJadwal(false);
+    }
+  };
+
   // Quick Paint info for edit modal
   const activePaintInfo = useMemo(() => {
     if (!paintGuruId || !paintMapelId) return undefined;
@@ -905,6 +972,37 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       }
       return;
     }
+
+    // JIKA SLOT KOSONG: Buka modal Tambah Jadwal langsung!
+    const targetKelasId = viewMode === 'KELAS' ? selectedKelasId : '';
+    const targetGuruId = viewMode === 'GURU' ? selectedGuruId : '';
+    const targetKelasObj = kelasList.find(k => k.value === targetKelasId);
+    const slot = resolveSlotTime(targetKelasId || selectedKelasId, slotIndex, day);
+
+    setEditingJadwalState({
+      jadwal: {
+        id: '',
+        tenant_id: tenantId || '',
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId,
+        kelas_id: targetKelasId,
+        guru_id: targetGuruId,
+        mapel_id: '',
+        hari: day as any,
+        slot_index: slotIndex,
+        jam_mulai: slot.start,
+        jam_selesai: slot.end,
+        jenis_kegiatan: 'KBM',
+      },
+      relatedJadwals: [],
+      day,
+      slotIndex,
+      kelasName: targetKelasObj?.label || targetKelasId,
+      kelasId: targetKelasId,
+      slotTime: slot,
+      isNew: true,
+    });
+    return;
 
     // PAINT MODE: Place lesson card
     if (toolMode === 'PAINT') {
@@ -1466,12 +1564,12 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             }
           }}
         />
-        {/* Modal Edit Jadwal Pelajaran (Ketika slot jadwal diklik) */}
+        {/* Modal Edit / Tambah Jadwal Pelajaran (Ketika slot jadwal diklik) */}
         {editingJadwalState && (
           <EditJadwalModal
             isOpen={Boolean(editingJadwalState)}
             onClose={() => setEditingJadwalState(null)}
-            jadwal={editingJadwalState.jadwal}
+            jadwal={editingJadwalState.isNew ? null : editingJadwalState.jadwal}
             relatedJadwals={editingJadwalState.relatedJadwals}
             day={editingJadwalState.day}
             slotIndex={editingJadwalState.slotIndex}
@@ -1480,11 +1578,15 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             slotTime={editingJadwalState.slotTime}
             guruList={guruList}
             mapelList={mapelList}
+            kelasList={kelasList}
             allUnitsList={allUnitsList}
             onSave={handleSaveEditJadwal}
+            onCreate={handleCreateJadwalFromModal}
             onDelete={handleDeleteFromEditModal}
             isSaving={isUpdatingJadwal}
             activePaint={activePaintInfo}
+            mode={editingJadwalState.isNew ? 'ADD' : 'EDIT'}
+            viewMode={viewMode}
           />
         )}
       </div>
