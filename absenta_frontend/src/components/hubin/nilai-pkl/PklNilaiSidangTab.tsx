@@ -67,6 +67,7 @@ export interface PklNilaiSidangTabProps {
   onNavigateCetakRapor?: () => void;
   hideFilterCard?: boolean;
   jurusanId?: string;
+  jurusanNama?: string;
 }
 
 export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
@@ -110,6 +111,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   onNavigateCetakRapor,
   hideFilterCard = false,
   jurusanId,
+  jurusanNama,
 }) => {
   const [showCetakModal, setShowCetakModal] = useState(false);
   const [showSpinWheelModal, setShowSpinWheelModal] = useState(false);
@@ -901,11 +903,8 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           isOpen={showCetakModal}
           onClose={() => setShowCetakModal(false)}
           scores={displayedScores || []}
-          jurusanNama={
-            jurusanId && guruList.length > 0
-              ? 'Program Keahlian Terpilih'
-              : 'Semua Program Keahlian'
-          }
+          jurusanId={jurusanId}
+          jurusanNama={jurusanNama}
           selectedTpNama={selectedTp ? tpOptions.find((t) => t.value === selectedTp)?.label : ''}
           selectedSemesterNama={selectedSemester ? semesterOptions.find((s) => s.value === selectedSemester)?.label : ''}
           activePengujiNama={guruList.find((g) => g.id === activeGuruId)?.nama_guru || ''}

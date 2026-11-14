@@ -25,6 +25,9 @@ export interface ScoreRow {
   foto?: string | null;
   kelas_id?: string;
   nama_kelas?: string;
+  jurusan_id?: string;
+  nama_jurusan?: string;
+  singkatan_jurusan?: string;
   mitra_nama: string;
   instruktur_nama: string;
   penanggung_jawab_nama: string;

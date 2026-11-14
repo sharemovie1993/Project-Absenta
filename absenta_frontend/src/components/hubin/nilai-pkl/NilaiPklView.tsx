@@ -103,6 +103,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id || 'default';
   const { can, isKaprog: capIsKaprog, kaprogJurusan, isWaliKelas: capIsWaliKelas, walikelasKelas, activeGuruId: capActiveGuruId, isHubin } = useCapabilities();
+  const { rawList: jurusanList } = useJurusanOptions();
 
   // Mode Penguji Sidang Murni: Abaikan hak Kaprog/Wali Kelas agar antarmuka fokus 100% sebagai penguji
   const isKaprog = isPengujiOnly ? false : capIsKaprog;
@@ -227,53 +228,62 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
 
   useEffect(() => {
     if (Array.isArray(rawList)) {
-      setScores(rawList?.map((item: RawPklItem) => ({
-        siswa_pkl_id: item.id || item.siswa_pkl_id || '',
-        nama_siswa: item.Siswa?.nama_siswa || item.siswa_nama || '',
-        nis: item.Siswa?.nis || item.nis || '',
-        foto: item.Siswa?.foto || null,
-        kelas_id: item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id || '',
-        nama_kelas: item.Siswa?.Kelas?.nama_kelas || item.SiswaAkademik?.kelas?.nama_kelas || '',
-        jurusan_id: item.Siswa?.jurusan_id || (item.Siswa?.Kelas as any)?.jurusan_id || (item.SiswaAkademik?.kelas as any)?.jurusan_id || '',
-        mitra_nama: item.Mitra?.nama || item.mitra_nama || '-',
-        instruktur_nama: item.instruktur_nama || '',
-        penanggung_jawab_nama: item.penanggung_jawab_nama || '',
-        alamat_dudi: item.alamat_dudi || item.Mitra?.alamat || '',
-        hard_kompetensi_teknis: item.hard_kompetensi_teknis ?? null,
-        hard_sop_k3lh: item.hard_sop_k3lh ?? null,
-        hard_alur_bisnis: item.hard_alur_bisnis ?? null,
-        soft_kedisiplinan: item.soft_kedisiplinan ?? null,
-        soft_kerajinan_inisiatif: item.soft_kerajinan_inisiatif ?? null,
-        soft_kerjasama: item.soft_kerjasama ?? null,
-        soft_kejujuran: item.soft_kejujuran ?? null,
-        soft_tanggung_jawab: item.soft_tanggung_jawab ?? null,
-        nilai_laporan: item.nilai_json?.nilai_laporan ?? null,
-        nilai_sidang: item.nilai_json?.nilai_sidang ?? null,
-        sidang_materi: item.nilai_json?.sidang_materi ?? null,
-        sidang_komunikasi: item.nilai_json?.sidang_komunikasi ?? null,
-        sidang_portofolio: item.nilai_json?.sidang_portofolio ?? null,
-        sidang_sikap: item.nilai_json?.sidang_sikap ?? null,
-        penguji_id: item.nilai_json?.penguji_id || null,
-        penguji_nama: item.nilai_json?.penguji_nama || '',
-        catatan_sidang: item.nilai_json?.catatan_sidang || '',
-        file_portofolio: item.jurnal_json?.file_url || null,
-        nilai_akhir_pkl: item.nilai_akhir_pkl ?? null,
-        predikat_pkl: item.predikat_pkl || '-',
-        catatan_pkl: item.catatan_pkl || '',
-        sakit_pkl: item.sakit_pkl !== null && item.sakit_pkl !== undefined && item.sakit_pkl > 0 ? item.sakit_pkl : (item.auto_sakit ?? 0),
-        izin_pkl: item.izin_pkl !== null && item.izin_pkl !== undefined && item.izin_pkl > 0 ? item.izin_pkl : (item.auto_izin ?? 0),
-        alpa_pkl: item.alpa_pkl !== null && item.alpa_pkl !== undefined && item.alpa_pkl > 0 ? item.alpa_pkl : (item.auto_alpa ?? 0),
-        auto_sakit: item.auto_sakit ?? 0,
-        auto_izin: item.auto_izin ?? 0,
-        auto_alpa: item.auto_alpa ?? 0,
-        auto_hadir: item.auto_hadir ?? 0,
-        nomor_sertifikat: item.nomor_sertifikat || '',
-        deskripsi_tp: item.deskripsi_tp || '',
-        status: item.status || 'AKTIF',
-        pembimbing_id: item.Pembimbing?.id || item.pembimbing_id,
-      })));
+      setScores(rawList?.map((item: RawPklItem) => {
+        const jId = item.Siswa?.jurusan_id || (item.Siswa?.Kelas as any)?.jurusan_id || (item.SiswaAkademik?.kelas as any)?.jurusan_id || (item.Siswa as any)?.Jurusan?.id || '';
+        const matchedJurusan = (item.Siswa as any)?.Jurusan || jurusanList.find((j) => j.id === jId);
+        const nama_jurusan = matchedJurusan?.nama || (matchedJurusan as any)?.nama_jurusan || '';
+        const singkatan_jurusan = matchedJurusan?.singkatan || (matchedJurusan as any)?.kode || (matchedJurusan as any)?.kode_jurusan || '';
+
+        return {
+          siswa_pkl_id: item.id || item.siswa_pkl_id || '',
+          nama_siswa: item.Siswa?.nama_siswa || item.siswa_nama || '',
+          nis: item.Siswa?.nis || item.nis || '',
+          foto: item.Siswa?.foto || null,
+          kelas_id: item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id || '',
+          nama_kelas: item.Siswa?.Kelas?.nama_kelas || item.SiswaAkademik?.kelas?.nama_kelas || '',
+          jurusan_id: jId,
+          nama_jurusan,
+          singkatan_jurusan,
+          mitra_nama: item.Mitra?.nama || item.mitra_nama || '-',
+          instruktur_nama: item.instruktur_nama || '',
+          penanggung_jawab_nama: item.penanggung_jawab_nama || '',
+          alamat_dudi: item.alamat_dudi || item.Mitra?.alamat || '',
+          hard_kompetensi_teknis: item.hard_kompetensi_teknis ?? null,
+          hard_sop_k3lh: item.hard_sop_k3lh ?? null,
+          hard_alur_bisnis: item.hard_alur_bisnis ?? null,
+          soft_kedisiplinan: item.soft_kedisiplinan ?? null,
+          soft_kerajinan_inisiatif: item.soft_kerajinan_inisiatif ?? null,
+          soft_kerjasama: item.soft_kerjasama ?? null,
+          soft_kejujuran: item.soft_kejujuran ?? null,
+          soft_tanggung_jawab: item.soft_tanggung_jawab ?? null,
+          nilai_laporan: item.nilai_json?.nilai_laporan ?? null,
+          nilai_sidang: item.nilai_json?.nilai_sidang ?? null,
+          sidang_materi: item.nilai_json?.sidang_materi ?? null,
+          sidang_komunikasi: item.nilai_json?.sidang_komunikasi ?? null,
+          sidang_portofolio: item.nilai_json?.sidang_portofolio ?? null,
+          sidang_sikap: item.nilai_json?.sidang_sikap ?? null,
+          penguji_id: item.nilai_json?.penguji_id || null,
+          penguji_nama: item.nilai_json?.penguji_nama || '',
+          catatan_sidang: item.nilai_json?.catatan_sidang || '',
+          file_portofolio: item.jurnal_json?.file_url || null,
+          nilai_akhir_pkl: item.nilai_akhir_pkl ?? null,
+          predikat_pkl: item.predikat_pkl || '-',
+          catatan_pkl: item.catatan_pkl || '',
+          sakit_pkl: item.sakit_pkl !== null && item.sakit_pkl !== undefined && item.sakit_pkl > 0 ? item.sakit_pkl : (item.auto_sakit ?? 0),
+          izin_pkl: item.izin_pkl !== null && item.izin_pkl !== undefined && item.izin_pkl > 0 ? item.izin_pkl : (item.auto_izin ?? 0),
+          alpa_pkl: item.alpa_pkl !== null && item.alpa_pkl !== undefined && item.alpa_pkl > 0 ? item.alpa_pkl : (item.auto_alpa ?? 0),
+          auto_sakit: item.auto_sakit ?? 0,
+          auto_izin: item.auto_izin ?? 0,
+          auto_alpa: item.auto_alpa ?? 0,
+          auto_hadir: item.auto_hadir ?? 0,
+          nomor_sertifikat: item.nomor_sertifikat || '',
+          deskripsi_tp: item.deskripsi_tp || '',
+          status: item.status || 'AKTIF',
+          pembimbing_id: item.Pembimbing?.id || item.pembimbing_id,
+        };
+      }));
     }
-  }, [rawList]);
+  }, [rawList, jurusanList]);
 
   const smartClassOptions = useMemo(() => {
     const map = new Map<string, { id: string; name: string; count: number }>();
@@ -727,6 +737,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               handleScoreChange={handleScoreChange}
               onNavigateCetakRapor={effectiveHideCetakRapor ? undefined : handleNavigateCetakRapor}
               jurusanId={effectiveJurusanId}
+              jurusanNama={effectiveJurusanNama && effectiveJurusanNama !== 'Kejuruan' ? effectiveJurusanNama : undefined}
             />
           )}
         </Suspense>
