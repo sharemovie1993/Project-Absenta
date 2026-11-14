@@ -156,8 +156,8 @@ export function AppLauncherDropdown() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        aria-label="Aplikasi Sekolah"
-        title="Aplikasi Sekolah"
+        aria-label="Pusat Modul & Aplikasi (Pintasan Halaman Utama Tiap Modul)"
+        title="Pusat Modul & Aplikasi (Pintasan Halaman Utama Tiap Modul)"
         className={cn(
           "h-10 w-10 flex items-center justify-center rounded-full transition-all duration-200 outline-none",
           isOpen
@@ -195,21 +195,26 @@ export function AppLauncherDropdown() {
           >
               {/* Header / Home Portal Shortcut */}
               <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-slate-100 dark:border-slate-800/80 px-1">
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-black shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xs font-black shadow-xs shrink-0">
                     A
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Aplikasi Sekolah
-                  </span>
+                  <div>
+                    <span className="text-xs font-extrabold text-slate-800 dark:text-slate-100 block leading-tight">
+                      Pusat Modul & Aplikasi
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium block leading-tight mt-0.5">
+                      Pintasan melihat halaman utama tiap modul
+                    </span>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={handleGoHome}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30 px-2.5 py-1 rounded-full transition-colors cursor-pointer shrink-0"
                 >
-                  <Home className="h-3.5 w-3.5" />
-                  <span>Beranda Portal</span>
+                  <Home className="h-3 w-3" />
+                  <span>Beranda</span>
                 </button>
               </div>
 
@@ -267,10 +272,10 @@ export function AppLauncherDropdown() {
 
               {/* Footer Summary */}
               <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 px-1">
-                <span>{visibleApps.length} Aplikasi Tersedia</span>
+                <span>{visibleApps.length} Modul Utama</span>
                 <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-400 tracking-wider uppercase">
                   <Sparkles className="h-3 w-3 text-blue-500" />
-                  Pusat Layanan
+                  Pintasan Cepat Modul
                 </span>
               </div>
             </div>
