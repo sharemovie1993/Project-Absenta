@@ -617,45 +617,8 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
       {/* Filter & Action Card */}
       {!hideFilterCard && (
         <Card className="p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
-        {/* Top Scoping & Status Filter Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-          {canManageAll && activeGuruId ? (
-            <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => {
-                  setGuidanceScope('ALL');
-                  setSelectedKelas('');
-                }}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  guidanceScope === 'ALL'
-                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm font-bold'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                {isKaprog ? 'Semua Siswa Jurusan' : (isWaliKelas ? `Semua Siswa ${walikelasKelas?.nama_kelas || 'Kelas'}` : 'Semua Siswa PKL')} ({allScopedCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setGuidanceScope('MY_GUIDANCE');
-                  setSelectedKelas('');
-                }}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  guidanceScope === 'MY_GUIDANCE'
-                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm font-bold'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                Bimbingan Saya ({myGuidanceCountNilai})
-              </button>
-            </div>
-          ) : (
-            <span className="text-[11px] text-slate-400 font-medium">
-              Mode: {canManageAll ? 'Administrator Hubin' : 'Guru Pembimbing Lapangan'}
-            </span>
-          )}
-
+        {/* Top Status Filter Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
           {/* Status Penempatan Filter */}
           {!isMobile && (
             <div className="hidden md:flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold self-start sm:self-auto overflow-x-auto max-w-full">
