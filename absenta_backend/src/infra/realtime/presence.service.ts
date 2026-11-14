@@ -57,14 +57,19 @@ export class PresenceService {
   /**
    * Register a user connection from Socket.io handshake
    */
-  public registerConnection(socket: any, user: { id: string; name?: string; full_name?: string; roleName: string; tenantId: string }): void {
+  public registerConnection(socket: any, user: { id: string; name?: string; full_name?: string; roleName?: string; role?: string; tenantId: string }): void {
     if (!user || !user.id || !user.tenantId) return;
 
     const tenantId = String(user.tenantId);
     const userId = String(user.id);
     const socketId = String(socket.id);
     const displayName = user.full_name || user.name || 'Pengguna';
-    const roleName = String(user.roleName || 'USER').toUpperCase();
+    
+    let rawRole = String(user.roleName || (user as any).role || '').trim().toUpperCase();
+    if (!rawRole || rawRole === 'UNDEFINED' || rawRole === 'NULL') {
+      rawRole = 'ADMIN';
+    }
+    const roleName = rawRole;
     const clientIp = String((socket.handshake as any)?.address || '');
     const userAgent = String((socket.handshake?.headers as any)?.['user-agent'] || '');
 
@@ -106,9 +111,14 @@ export class PresenceService {
         this.io.to(`tenant:${tenantId}`).emit('presence:user_online', {
           userId,
           name: displayName,
+          role: roleName,
           roleName,
           connectedAt: now.toISOString(),
-          totalOnline: tenantUsers.size
+          totalOnline: tenantUsers.size,
+          activeUsers: tenantUsers.size,
+          totalActiveUsers: tenantUsers.size,
+          tabsCount: 1,
+          sessionCount: 1
         });
       }
       // Broadcast live total counter to tenant channel
@@ -154,9 +164,12 @@ export class PresenceService {
         this.io.to(`tenant:${tenantId}`).emit('presence:user_offline', {
           userId,
           name: userSession.name,
+          role: userSession.roleName,
           roleName: userSession.roleName,
           offlineAt: new Date().toISOString(),
-          totalOnline: tenantUsers ? tenantUsers.size : 0
+          totalOnline: tenantUsers ? tenantUsers.size : 0,
+          activeUsers: tenantUsers ? tenantUsers.size : 0,
+          totalActiveUsers: tenantUsers ? tenantUsers.size : 0
         });
         this.broadcastTenantCount(tenantId);
       }
@@ -176,6 +189,9 @@ export class PresenceService {
     this.io.to(`tenant:${tenantId}`).emit('presence:count_update', {
       tenantId,
       totalOnline: count,
+      activeUsers: count,
+      totalActiveUsers: count,
+      count,
       timestamp: new Date().toISOString()
     });
   }
@@ -214,31 +230,41 @@ export class PresenceService {
    */
   public getTenantSummary(tenantId: string): {
     totalOnline: number;
+    totalActiveUsers: number;
     roleBreakdown: Record<string, number>;
-    users: UserPresenceSummary[];
+    roleCounts: Record<string, number>;
+    users: (UserPresenceSummary & { role: string; tabsCount: number })[];
   } {
     const tenantUsers = this.tenantPresences.get(tenantId);
     if (!tenantUsers || tenantUsers.size === 0) {
       return {
         totalOnline: 0,
+        totalActiveUsers: 0,
         roleBreakdown: {},
+        roleCounts: {},
         users: []
       };
     }
 
     const roleBreakdown: Record<string, number> = {};
-    const users: UserPresenceSummary[] = [];
+    const users: (UserPresenceSummary & { role: string; tabsCount: number })[] = [];
 
     for (const session of tenantUsers.values()) {
-      const role = session.roleName || 'USER';
+      let role = session.roleName || 'ADMIN';
+      if (!role || role.toUpperCase() === 'UNDEFINED' || role.toUpperCase() === 'NULL') {
+        role = 'ADMIN';
+      }
+      role = role.toUpperCase();
       roleBreakdown[role] = (roleBreakdown[role] || 0) + 1;
 
       users.push({
         userId: session.userId,
         name: session.name,
-        roleName: session.roleName,
+        roleName: role,
+        role,
         tenantId: session.tenantId,
         sessionCount: session.socketIds.size,
+        tabsCount: session.socketIds.size,
         connectedAt: session.connectedAt.toISOString(),
         lastSeenAt: session.lastSeenAt.toISOString(),
         ip: session.ip
@@ -250,7 +276,9 @@ export class PresenceService {
 
     return {
       totalOnline: tenantUsers.size,
+      totalActiveUsers: tenantUsers.size,
       roleBreakdown,
+      roleCounts: roleBreakdown,
       users
     };
   }
