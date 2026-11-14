@@ -22,6 +22,8 @@ export interface MatchAnalysisItem {
   asc_id: string;
   name: string;
   code?: string;
+  total_jp?: number;
+  total_lessons?: number;
   matched_db_id: string | null;
   matched_db_name: string | null;
   match_status: 'EXACT_MATCH' | 'NEW_CREATE';

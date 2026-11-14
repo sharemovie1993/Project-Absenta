@@ -1557,6 +1557,43 @@ export const UnifiedStaffDashboard: React.FC = () => {
               const TabIcon = tab.icon;
               const isTabActive = activeTab === tab.id;
 
+              // ── Aksen Warna Dinamis Tab Role Desktop Sesuai Ekosistem Divisi ──
+              const getTabActiveStyle = (tId: string) => {
+                switch (tId) {
+                  case 'kaprog':
+                    return { button: "bg-slate-900 text-amber-400 border border-amber-500/50 shadow-md shadow-amber-950/50", icon: "text-amber-400" };
+                  case 'hubin':
+                  case 'pembimbing_pkl':
+                  case 'bkk':
+                    return { button: "bg-slate-900 text-orange-400 border border-orange-500/50 shadow-md shadow-orange-950/50", icon: "text-orange-400" };
+                  case 'binaan':
+                    return { button: "bg-slate-900 text-sky-400 border border-sky-500/50 shadow-md shadow-sky-950/50", icon: "text-sky-400" };
+                  case 'kesiswaan':
+                  case 'ekskul':
+                  case 'kelola':
+                  case 'satpam':
+                    return { button: "bg-slate-900 text-rose-400 border border-rose-500/50 shadow-md shadow-rose-950/50", icon: "text-rose-400" };
+                  case 'sarpras':
+                  case 'toolman':
+                    return { button: "bg-slate-900 text-teal-400 border border-teal-500/50 shadow-md shadow-teal-950/50", icon: "text-teal-400" };
+                  case 'kepegawaian':
+                    return { button: "bg-slate-900 text-indigo-400 border border-indigo-500/50 shadow-md shadow-indigo-950/50", icon: "text-indigo-400" };
+                  case 'bpbk':
+                    return { button: "bg-slate-900 text-purple-400 border border-purple-500/50 shadow-md shadow-purple-950/50", icon: "text-purple-400" };
+                  case 'koperasi':
+                  case 'kurikulum':
+                    return { button: "bg-slate-900 text-emerald-400 border border-emerald-500/50 shadow-md shadow-emerald-950/50", icon: "text-emerald-400" };
+                  case 'admin':
+                  case 'kepsek':
+                    return { button: "bg-slate-900 text-indigo-300 border border-indigo-400/50 shadow-md shadow-indigo-950/50", icon: "text-indigo-300" };
+                  case 'ringkasan':
+                  default:
+                    return { button: "bg-slate-900 text-blue-400 border border-blue-500/50 shadow-md shadow-blue-950/50", icon: "text-blue-400" };
+                }
+              };
+
+              const activeStyle = getTabActiveStyle(tab.id);
+
               return (
                 <button
                   key={tab.id || `tab-idx-${idx}`}
@@ -1566,11 +1603,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
                   className={cn(
                     "px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 select-none",
                     isTabActive
-                      ? "bg-slate-900 text-emerald-400 border border-emerald-500/40 shadow-md shadow-emerald-950/50"
+                      ? activeStyle.button
                       : "text-slate-300 hover:text-white hover:bg-white/10"
                   )}
                 >
-                  <TabIcon size={15} className={isTabActive ? "text-emerald-400" : "text-slate-400"} />
+                  <TabIcon size={15} className={isTabActive ? activeStyle.icon : "text-slate-400"} />
                   <span>{tab.label}</span>
                 </button>
               );

@@ -914,6 +914,7 @@ export const AscImportWizardModal: React.FC<AscImportWizardModalProps> = React.m
                     <tr>
                       <th className="py-2.5 px-3 w-12 text-center">Impor</th>
                       <th className="py-2.5 px-4">Nama di File XML aSc</th>
+                      <th className="py-2.5 px-3 text-center w-28">Beban XML</th>
                       <th className="py-2.5 px-4">Status Pemetaan Auto</th>
                       <th className="py-2.5 px-4">Aksi / Target Database Master</th>
                     </tr>
@@ -949,7 +950,21 @@ export const AscImportWizardModal: React.FC<AscImportWizardModalProps> = React.m
                               />
                             </td>
                             <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100">
-                              {t.name} {t.code ? <span className="text-slate-400 font-normal">({t.code})</span> : null}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span>{t.name}</span>
+                                {t.code ? <span className="text-slate-400 font-normal">({t.code})</span> : null}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              {Number(t.total_jp || 0) > 0 ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60" title={`${t.total_lessons || 0} Pelajaran/Kartu di XML`}>
+                                  ⚡ {t.total_jp} JP
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 border border-slate-200 dark:border-slate-700" title="Tidak memiliki jam mengajar / kartu di file XML ini">
+                                  0 JP (Kosong)
+                                </span>
+                              )}
                             </td>
                             <td className="py-2.5 px-4">
                               {isIgnored ? (
@@ -1015,6 +1030,7 @@ export const AscImportWizardModal: React.FC<AscImportWizardModalProps> = React.m
                     <tr>
                       <th className="py-2.5 px-3 w-12 text-center">Impor</th>
                       <th className="py-2.5 px-4">Nama Kelas di File XML</th>
+                      <th className="py-2.5 px-3 text-center w-28">Total JP</th>
                       <th className="py-2.5 px-4">Status Pemetaan Auto</th>
                       <th className="py-2.5 px-4">Aksi / Target Database Master</th>
                     </tr>
@@ -1096,6 +1112,17 @@ export const AscImportWizardModal: React.FC<AscImportWizardModalProps> = React.m
                                   <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
                                   <span>Terdapat {twinCandidates.length} Jurusan di DB ({twinCandidates.map(t => `${t.jurusan_kode || t.jurusan_nama || 'Umum'}${t.is_active === false ? ' [Nonaktif]' : ''}`).join(', ')}). Pastikan memilih yang sesuai periode ini.</span>
                                 </div>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              {Number(c.total_jp || 0) > 0 ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/60" title={`${c.total_lessons || 0} Pelajaran/Alokasi di XML`}>
+                                  🏫 {c.total_jp} JP
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 border border-slate-200 dark:border-slate-700" title="Kelas ini tidak memiliki jadwal/kartu pelajaran di XML">
+                                  0 JP (Kosong)
+                                </span>
                               )}
                             </td>
                             <td className="py-2.5 px-4">
@@ -1220,6 +1247,7 @@ export const AscImportWizardModal: React.FC<AscImportWizardModalProps> = React.m
                     <tr>
                       <th className="py-2.5 px-3 w-12 text-center">Impor</th>
                       <th className="py-2.5 px-4">Mata Pelajaran di File XML</th>
+                      <th className="py-2.5 px-3 text-center w-28">Total JP</th>
                       <th className="py-2.5 px-4">Status Pemetaan Auto</th>
                       <th className="py-2.5 px-4">Aksi / Target Database Master</th>
                     </tr>
@@ -1256,7 +1284,21 @@ export const AscImportWizardModal: React.FC<AscImportWizardModalProps> = React.m
                               />
                             </td>
                             <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100">
-                              {s.name} {s.code ? <span className="text-slate-400 font-normal">({s.code})</span> : null}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span>{s.name}</span>
+                                {s.code ? <span className="text-slate-400 font-normal">({s.code})</span> : null}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              {Number(s.total_jp || 0) > 0 ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60" title={`${s.total_lessons || 0} Pelajaran/Alokasi di XML`}>
+                                  📚 {s.total_jp} JP
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/60" title="Mapel ini ada di daftar subject XML tetapi tidak ada jam/kartu pelajaran (0 JP)">
+                                  0 JP (Kosong)
+                                </span>
+                              )}
                             </td>
                             <td className="py-2.5 px-4">
                               {isIgnored ? (
