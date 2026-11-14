@@ -14,7 +14,12 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
-import { getEcosystemTokens, EcosystemType } from '@/config/bottomNavEcosystems.config';
+import { 
+  getEcosystemTokens, 
+  EcosystemType, 
+  getRoleEcosystemStyles, 
+  getRoleEcosystemFromDashId 
+} from '@/config/bottomNavEcosystems.config';
 const ConfirmModal = React.lazy(() => import('@/components/ui/Modal').then(m => ({ default: m.ConfirmModal })));
 
 export {
@@ -343,6 +348,18 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
                         {group.items.map((tab, idx) => {
                           const Icon = tab.icon;
                           const isActive = activeTab === tab.id;
+
+                          // ── DETEKSI JABATAN DI HP (PERILAKU IDENTIK DENGAN BOTTOMNAV LAYER 1) ──
+                          // Diberi warna yang sama sesuai warna jabatan dan berdenyut (pulsing beacon dot)
+                          const isJabatan = group.category?.id === 'jabatan' || tab.category === 'jabatan' || Boolean(tab.roleEcosystem) || tab.id.startsWith('dash-');
+                          const rawRoleEco = (tab.roleEcosystem as EcosystemType) 
+                            || (tab.id.startsWith('dash-') ? getRoleEcosystemFromDashId(tab.id) : null) 
+                            || (isJabatan ? getRoleEcosystemFromDashId(`dash-${tab.id}`) : null)
+                            || null;
+                          const roleEco = rawRoleEco as EcosystemType | null;
+                          const roleStyle = roleEco ? getRoleEcosystemStyles(roleEco) : null;
+                          const isRoleLauncher = Boolean(roleStyle && isJabatan && !isActive);
+
                           return (
                             <button
                               key={tab.id ? `tab-${tab.id}` : `tab-idx-${gIdx}-${idx}`}
@@ -350,41 +367,85 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
                               disabled={tab.disabled}
                               onClick={() => handleSelect(tab.id, tab.disabled)}
                               className={cn(
-                                'w-full flex items-center justify-between min-h-[38px] px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer group',
+                                'w-full flex items-center justify-between min-h-[40px] px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer group relative',
                                 isActive
                                   ? cn(ecosystemTokens.activeButton, ecosystemTokens.shadowClass, 'shadow-xs font-bold')
-                                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 active:scale-[0.99]',
+                                  : isRoleLauncher && roleStyle
+                                    ? 'bg-slate-50/70 hover:bg-slate-100/90 dark:bg-slate-800/40 dark:hover:bg-slate-800/80 border border-slate-100/90 dark:border-slate-800/60 active:scale-[0.99]'
+                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 active:scale-[0.99]',
                                 tab.disabled && 'opacity-40 cursor-not-allowed'
                               )}
                             >
                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 <div
                                   className={cn(
-                                    'w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors',
+                                    'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all relative',
                                     isActive
                                       ? ecosystemTokens.activeIconBg
-                                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200/80 dark:group-hover:bg-slate-700/80'
+                                      : isRoleLauncher && roleStyle
+                                        ? cn(roleStyle.pillBg, roleStyle.iconColor, roleStyle.pillRing, roleStyle.glowShadow)
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200/80 dark:group-hover:bg-slate-700/80'
                                   )}
                                 >
-                                  <Icon size={14} className="shrink-0" />
+                                  <Icon 
+                                    size={15} 
+                                    className={cn(
+                                      "shrink-0 transition-transform duration-200 group-hover:scale-110",
+                                      isRoleLauncher && roleStyle ? roleStyle.iconColor : ""
+                                    )} 
+                                  />
+
+                                  {/* Indikator Berdenyut (Pulsing Live Beacon) Sesuai Warna Jabatan */}
+                                  {isRoleLauncher && roleStyle && (
+                                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 pointer-events-none z-10" aria-hidden="true">
+                                      <span 
+                                        className={cn(
+                                          "animate-ping transform-gpu will-change-transform absolute inline-flex h-full w-full rounded-full opacity-80", 
+                                          roleStyle.pulseDotRing
+                                        )} 
+                                      />
+                                      <span 
+                                        className={cn(
+                                          "relative inline-flex rounded-full h-2.5 w-2.5 ring-1.5 ring-white dark:ring-slate-900 shadow-xs", 
+                                          roleStyle.dotColor
+                                        )} 
+                                      />
+                                    </span>
+                                  )}
                                 </div>
-                                <span className="truncate font-semibold text-xs leading-none">
+
+                                <span 
+                                  className={cn(
+                                    "truncate text-xs leading-none",
+                                    isActive
+                                      ? "font-bold text-white"
+                                      : isRoleLauncher && roleStyle
+                                        ? cn("font-bold tracking-tight", roleStyle.labelColor)
+                                        : "font-semibold text-slate-700 dark:text-slate-300"
+                                  )}
+                                >
                                   {tab.shortLabel || tab.label}
                                 </span>
                               </div>
 
-                              {tab.badge !== undefined && (
-                                <span
-                                  className={cn(
-                                    'px-1.5 py-0.2 rounded-full text-[9.5px] font-black min-w-4 text-center ml-2 shrink-0 leading-tight',
-                                    isActive
-                                      ? 'bg-white/25 text-white'
-                                      : tab.badgeColor || 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
-                                  )}
-                                >
-                                  {tab.badge}
-                                </span>
-                              )}
+                              {/* Badge atau Indikator Panah Sesuai Warna Jabatan */}
+                              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                {tab.badge !== undefined && (
+                                  <span
+                                    className={cn(
+                                      'px-1.5 py-0.2 rounded-full text-[9.5px] font-black min-w-4 text-center leading-tight',
+                                      isActive
+                                        ? 'bg-white/25 text-white'
+                                        : tab.badgeColor || (isRoleLauncher && roleStyle ? cn(roleStyle.pillBg, roleStyle.iconColor) : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300')
+                                    )}
+                                  >
+                                    {tab.badge}
+                                  </span>
+                                )}
+                                {isRoleLauncher && roleStyle && (
+                                  <ChevronRight size={13} className={cn("opacity-35 group-hover:opacity-90 group-hover:translate-x-0.5 transition-all", roleStyle.iconColor)} />
+                                )}
+                              </div>
                             </button>
                           );
                         })}

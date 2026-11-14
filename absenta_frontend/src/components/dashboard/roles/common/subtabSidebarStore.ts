@@ -17,6 +17,8 @@ export interface UniversalSubtabItem {
   description?: string;
   disabled?: boolean;
   targetPath?: string;
+  roleEcosystem?: string;
+  color?: string;
 }
 
 export interface UniversalSubtabCategory {

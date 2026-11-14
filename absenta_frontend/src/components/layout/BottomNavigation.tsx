@@ -36,7 +36,8 @@ import {
   type MobileBottomTabItem, 
   type EcosystemType, 
   type EcosystemTheme,
-  getEcosystemLabel 
+  getEcosystemLabel,
+  getRoleEcosystemFromDashId,
 } from '@/config/bottomNavEcosystems.config';
 import { KAPROG_CATEGORIES } from '@/components/dashboard/roles/kaprog/kaprogNavigation.config';
 import { KURIKULUM_CATEGORIES } from '@/components/dashboard/roles/kurikulum/kurikulumNavigation.config';
@@ -169,6 +170,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
             badge: child.badge,
             category: child.category || (activeEcosystem === 'portal' ? 'jabatan' : undefined),
             targetPath: child.targetPath,
+            roleEcosystem: (child as any).roleEcosystem || (child.id.startsWith('dash-') ? getRoleEcosystemFromDashId(child.id) || undefined : undefined),
+            color: (child as any).color,
           });
         }
       });
@@ -231,6 +234,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
           badge: tab.badge,
           category: (tab as any).category,
           targetPath: tab.targetPath,
+          roleEcosystem: (tab as any).roleEcosystem || (tab.id.startsWith('dash-') ? getRoleEcosystemFromDashId(tab.id) || undefined : undefined),
+          color: (tab as any).color,
         });
       }
     });
