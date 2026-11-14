@@ -645,7 +645,7 @@ export const getUserPositions = (user: any): string[] => {
   if (Array.isArray(user?.capabilities)) {
     if (user.capabilities.includes('dashboard.view.walikelas')) rawList.push('WALIKELAS');
     if (user.capabilities.includes('dashboard.view.gerbang')) rawList.push('GERBANG');
-    if (user.capabilities.includes('academic.manage.academic')) rawList.push('KURIKULUM');
+    if (user.capabilities.includes('dashboard.view.kurikulum')) rawList.push('KURIKULUM');
   }
 
   const normalizedSet = new Set<string>();

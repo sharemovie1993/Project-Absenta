@@ -324,8 +324,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
     ))
   );
 
-  // Piket Guru: Murni hanya jika guru terdaftar dalam jadwal piket (bukan Hubin/Kepsek/guru umum tanpa jadwal)
-  const isPiketGuruActual = !isKepsek && (
+  // Piket Guru: Murni hanya jika guru terdaftar dalam jadwal piket (bukan Kepsek / Kaprog / Hubin yang fokus di struktural unit)
+  const isPiketGuruActual = !isKepsek && !isKaprog && !isHubin && (
     Boolean(isPiketGuru) ||
     Boolean(
       guruProfile?.is_piket_guru || 
@@ -1037,8 +1037,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
-    // 4.2 Kurikulum (Khusus Waka / Staf Kurikulum / Admin)
-    if ((isKurikulum || (isAdminRole && !isKepsek) || can('curriculum.view') || can('curriculum.manage')) && !isKepsek) {
+    // 4.2 Kurikulum (Khusus Waka / Staf Kurikulum / Admin - Bukan Kaprog)
+    if ((isKurikulum || (isAdminRole && !isKepsek) || can('dashboard.view.kurikulum') || can('curriculum.manage')) && !isKepsek && !isKaprog) {
       list.push({ 
         id: 'kurikulum', 
         label: 'Dashboard Kurikulum', 
@@ -1146,8 +1146,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'kepegawaian', label: tuTabMeta.label || 'Dashboard TU', icon: Building });
     }
 
-    // 11. Piket & Gerbang: Murni hanya untuk guru yang terdaftar dalam jadwal piket atau petugas keamanan gerbang
-    const canAccessPiket = isPureGerbangStaff || (isPiketGuruActual && !isKepsek);
+    // 11. Piket & Gerbang: Murni hanya untuk guru yang terdaftar dalam jadwal piket atau petugas keamanan gerbang (bukan Kaprog/Kepsek)
+    const canAccessPiket = isPureGerbangStaff || (isPiketGuruActual && !isKepsek && !isKaprog);
     if (canAccessPiket) {
       list.push({ 
         id: 'kelola', 
@@ -1239,9 +1239,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (activeTab === 'kaprog' && (isKaprog || isAdminRole)) return;
     if (activeTab === 'kepegawaian' && (isTUKepala || isTUPersuratan || isTUKepegawaian || isTUKeuangan || isTUSarpras || isTU || isAdminRole)) return;
     if (activeTab === 'pembimbing_pkl' && isPembimbingPkl) return;
-    if (activeTab === 'kelola' && (isPiketGuruActual || isPureGerbangStaff)) return;
+    if (activeTab === 'kelola' && !isKaprog && (isPiketGuruActual || isPureGerbangStaff)) return;
     if (activeTab === 'hubin' && (isHubin || isAdminRole || can('hubin.view') || can('hubin.manage') || can('dashboard.view.hubin'))) return;
-    if (activeTab === 'kurikulum' && (isKurikulum || isAdminRole || can('curriculum.view') || can('curriculum.manage'))) return;
+    if (activeTab === 'kurikulum' && !isKaprog && (isKurikulum || isAdminRole || can('dashboard.view.kurikulum') || can('curriculum.manage'))) return;
     if (activeTab === 'kesiswaan' && (isKesiswaan || isAdminRole || can('kesiswaan.view') || can('kesiswaan.manage'))) return;
     if (activeTab === 'sarpras' && (isSarpras || isAdminRole || can('sarpras.view') || can('sarpras.manage'))) return;
     if (activeTab === 'bpbk' && (isBpbk || isAdminRole || can('bpbk.view') || can('bpbk.manage'))) return;
