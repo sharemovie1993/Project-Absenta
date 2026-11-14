@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
+import { useUserRoleDashboards } from '@/hooks/useUserRoleDashboards';
 import { cn } from '@/lib/utils';
 import { useRoleDashboardSwitcherStore } from '@/store/roleDashboardSwitcherStore';
 
@@ -54,30 +55,7 @@ export const RoleDashboardSwitcherSheet: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
 
-  const {
-    isAdmin,
-    isKurikulum,
-    isKesiswaan,
-    isSarpras,
-    isHubin,
-    isToolman,
-    isKaprog,
-    isKabeng,
-    isBpbk,
-    isBkk,
-    isGerbang,
-    isPiketGuru,
-    isTU,
-    isTUKepala,
-    isWaliKelas,
-    isPembinaEskul,
-    isKoperasi,
-    isKepsek,
-    can,
-  } = useCapabilities();
-
-  const roleName = String(user?.role?.name || (user?.role as any) || '').toUpperCase();
-  const isAdminRole = isAdmin || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
+  const { hasDashboard, isAdminRole } = useUserRoleDashboards();
 
   // Current active tab resolution
   const currentTab = searchParams.get('tab') || 'ringkasan';
@@ -343,45 +321,15 @@ export const RoleDashboardSwitcherSheet: React.FC = () => {
     },
   ], []);
 
-  // Filter dashboards by permission: Admin gets ALL, other roles get their authorized ones
+  // Filter dashboards by permission: Admin gets ALL, other roles get their authorized ones (Single Source of Truth)
   const accessibleDashboards = useMemo(() => {
     if (isAdminRole) return allDashboards;
 
     return allDashboards.filter((d) => {
       if (d.id === 'portal') return true;
-      if (d.id === 'kurikulum' && (isKurikulum || can('curriculum.view'))) return true;
-      if (d.id === 'kesiswaan' && (isKesiswaan || can('kesiswaan.view'))) return true;
-      if (d.id === 'walas' && isWaliKelas) return true;
-      if (d.id === 'kaprog' && isKaprog) return true;
-      if (d.id === 'tu' && (isTU || isTUKepala)) return true;
-      if (d.id === 'sarpras' && (isSarpras || isToolman || can('sarpras.view'))) return true;
-      if (d.id === 'hubin' && (isHubin || can('hubin.view'))) return true;
-      if (d.id === 'bpbk' && isBpbk) return true;
-      if (d.id === 'bkk' && isBkk) return true;
-      if (d.id === 'koperasi' && isKoperasi) return true;
-      if (d.id === 'satpam' && isGerbang) return true;
-      if (d.id === 'piket' && isPiketGuru) return true;
-      return false;
+      return hasDashboard(d.id);
     });
-  }, [
-    allDashboards,
-    isAdminRole,
-    isKurikulum,
-    isKesiswaan,
-    isWaliKelas,
-    isKaprog,
-    isTU,
-    isTUKepala,
-    isSarpras,
-    isToolman,
-    isHubin,
-    isBpbk,
-    isBkk,
-    isKoperasi,
-    isGerbang,
-    isPiketGuru,
-    can,
-  ]);
+  }, [allDashboards, isAdminRole, hasDashboard]);
 
   const handleSelectDashboard = (dash: DashboardOption) => {
     onClose();
