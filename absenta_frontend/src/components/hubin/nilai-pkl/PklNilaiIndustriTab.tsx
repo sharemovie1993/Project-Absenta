@@ -57,6 +57,12 @@ export interface PklNilaiIndustriTabProps {
   onPrintSertifikat?: (row: ScoreRow) => void;
   onNavigateCetakRapor?: () => void;
   hideFilterCard?: boolean;
+  effectiveSettings?: {
+    assessmentMode?: 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
+    weightDudi?: number;
+    weightLaporan?: number;
+    weightSidang?: number;
+  };
 }
 
 export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
@@ -100,10 +106,13 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
   handleSyncFromDailyAttendance,
   onNavigateCetakRapor,
   hideFilterCard = false,
+  effectiveSettings,
 }) => {
+  const hasLaporan = effectiveSettings?.assessmentMode === 'COMPOSITE';
+
   const { handleKeyDown: handleKeyDownScore } = useSpreadsheetNavigation({
     totalRows: paginatedScores?.length || 0,
-    totalCols: 8,
+    totalCols: hasLaporan ? 9 : 8,
     idPrefix: 'score-input',
   });
 
@@ -132,11 +141,11 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'evaluasi',
-      title: 'Hasil Evaluasi & Presensi',
-      colSpan: 3,
+      title: hasLaporan ? 'Hasil Evaluasi, Laporan & Presensi' : 'Hasil Evaluasi & Presensi',
+      colSpan: hasLaporan ? 4 : 3,
       className: 'bg-slate-100/90 dark:bg-slate-800/90',
     },
-  ], []);
+  ], [hasLaporan]);
 
   const renderVerticalHeader = (title: string) => {
     const words = title.split(' ');
@@ -393,6 +402,25 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
         />
       ),
     },
+    ...(hasLaporan ? [{
+      key: 'nilai_laporan' as keyof ScoreRow,
+      header: 'Laporan',
+      subHeader: `${effectiveSettings?.weightLaporan ?? 15}%`,
+      width: 58,
+      align: 'center' as const,
+      headerClassName: 'text-[10px] font-bold text-center px-0.5 whitespace-normal leading-tight bg-purple-50/70 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200',
+      renderCell: (score: ScoreRow, rowIndex: number) => (
+        <SpreadsheetCellInput
+          id={`score-input-${rowIndex}-8`}
+          aria-label={`Nilai laporan ${score.nama_siswa}`}
+          value={score.nilai_laporan}
+          placeholder="0"
+          onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'nilai_laporan', val)}
+          onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 8)}
+          className="bg-purple-50/60 dark:bg-purple-950/30 text-purple-900 dark:text-purple-100 border-purple-200 dark:border-purple-800"
+        />
+      ),
+    }] : []),
     {
       key: 'nilai_akhir_pkl',
       header: 'Nilai Akhir',
@@ -487,6 +515,8 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
   ], [
     currentPage,
     itemsPerPage,
+    hasLaporan,
+    effectiveSettings,
     handleScoreChange,
     handleApplyToSameMitra,
     handleSyncFromDailyAttendance,
@@ -668,6 +698,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           isSavingBatch={isSavingBatch}
           displayedScoresLength={displayedScores?.length || 0}
           isLoadingRekap={isLoadingRekap}
+          effectiveSettings={effectiveSettings}
         />
       ) : (
         <SpreadsheetGridTable<ScoreRow>

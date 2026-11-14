@@ -29,6 +29,12 @@ export interface PklNilaiIndustriMobileCardsProps {
   isSavingBatch: boolean;
   displayedScoresLength: number;
   isLoadingRekap: boolean;
+  effectiveSettings?: {
+    assessmentMode?: 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
+    weightDudi?: number;
+    weightLaporan?: number;
+    weightSidang?: number;
+  };
 }
 
 const PAGINATION_LIMITS = [10, 25, 50, 100];
@@ -47,7 +53,10 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
   isSavingBatch,
   displayedScoresLength,
   isLoadingRekap,
+  effectiveSettings,
 }) => {
+  const hasLaporan = effectiveSettings?.assessmentMode === 'COMPOSITE';
+
   // Set default: kartu pertama dibuka agar guru langsung paham layoutnya
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(() => {
     const initial = new Set<string>();
@@ -225,6 +234,19 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
                         {isComplete ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
                         <span>{filledCount}/8 Aspek Terisi</span>
                       </span>
+
+                      {hasLaporan && (
+                        <span
+                          className={cn(
+                            'text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1',
+                            score.nilai_laporan !== null && score.nilai_laporan !== undefined && score.nilai_laporan !== ''
+                              ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300'
+                              : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                          )}
+                        >
+                          <span>Laporan: {score.nilai_laporan ?? '-'}</span>
+                        </span>
+                      )}
 
                       {score.instruktur_nama && (
                         <span className="text-[10px] text-slate-400 truncate max-w-[130px]">
@@ -410,6 +432,35 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
                       </div>
                     </div>
                   </div>
+
+                  {/* Bagian Laporan PKL (Hanya tampil pada skema COMPOSITE) */}
+                  {hasLaporan && (
+                    <div className="space-y-1.5 p-2.5 rounded-xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/80 dark:border-purple-900/40">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-purple-900 dark:text-purple-200">
+                        <span>NILAI LAPORAN / JURNAL PKL</span>
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300">
+                          BOBOT {effectiveSettings?.weightLaporan ?? 15}%
+                        </span>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-purple-800 dark:text-purple-300 mb-0.5">
+                          Nilai Laporan (Disahkan Pembimbing PKL)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          placeholder="0 - 100"
+                          value={score.nilai_laporan ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value)));
+                            handleScoreChange(score.siswa_pkl_id, 'nilai_laporan', val);
+                          }}
+                          className="w-full h-9 text-center font-mono font-bold text-sm bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800 rounded-xl text-purple-950 dark:text-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-2xs"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Bagian 4: Presensi (S, I, A) & Catatan */}
                   <div className="space-y-1.5 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">

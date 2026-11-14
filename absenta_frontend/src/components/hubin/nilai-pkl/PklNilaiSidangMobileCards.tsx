@@ -62,6 +62,9 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
   isLoadingGuru = false,
   onApplyPengujiToAll,
 }) => {
+  const isComposite3Unsur = effectiveSettings?.assessmentMode === 'COMPOSITE';
+  const isDudiSidang = effectiveSettings?.assessmentMode === 'DUDI_SIDANG';
+
   // Set default: kartu pertama dibuka agar penguji/guru langsung paham alur pengisian
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(() => {
     const initial = new Set<string>();
@@ -251,15 +254,17 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                         DUDI: {dudiAvg ?? '-'}
                       </span>
 
-                      {/* Laporan badge */}
-                      <span className={cn(
-                        'text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border',
-                        score.nilai_laporan !== null && score.nilai_laporan !== undefined && score.nilai_laporan !== ''
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-900/40'
-                          : 'bg-slate-50 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
-                      )}>
-                        Laporan: {score.nilai_laporan ?? '-'}
-                      </span>
+                      {/* Laporan badge (hanya tampil jika skema COMPOSITE / 3 Unsur) */}
+                      {isComposite3Unsur && (
+                        <span className={cn(
+                          'text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border',
+                          score.nilai_laporan !== null && score.nilai_laporan !== undefined && score.nilai_laporan !== ''
+                            ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200/60 dark:border-purple-900/40'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
+                        )}>
+                          Laporan: {score.nilai_laporan ?? '-'}
+                        </span>
+                      )}
 
                       {/* Sidang badge */}
                       <span className={cn(
@@ -328,7 +333,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className={isComposite3Unsur ? "grid grid-cols-3 gap-2" : "grid grid-cols-2 gap-2"}>
                       {/* DUDI (Read-Only) */}
                       <div className="p-2.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 flex flex-col items-center justify-center text-center">
                         <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300">
@@ -342,56 +347,33 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                         </span>
                       </div>
 
-                      {/* Nilai Laporan (Input) */}
-                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
-                        <div className="flex items-center justify-between">
-                          <label
-                            htmlFor={`mobile-laporan-${score.siswa_pkl_id}`}
-                            className="text-[10px] font-bold text-slate-700 dark:text-slate-200"
-                          >
-                            Laporan
-                          </label>
-                          <span className="text-[9px] text-slate-400 font-mono">
-                            {effectiveSettings?.assessmentMode === 'COMPOSITE'
-                              ? `${effectiveSettings?.weightLaporan ?? 15}%`
-                              : effectiveSettings?.assessmentMode === 'DUDI_SIDANG'
-                              ? 'Off'
-                              : '-'}
+                      {/* Nilai Laporan (Read-Only dari Pembimbing PKL, hanya tampil jika skema COMPOSITE) */}
+                      {isComposite3Unsur && (
+                        <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40 flex flex-col items-center justify-center text-center" title="Nilai diinput oleh Pembimbing PKL">
+                          <span className="text-[10px] font-bold text-purple-800 dark:text-purple-300">
+                            Nilai Laporan
+                          </span>
+                          <span className="text-[9px] text-purple-600/80 dark:text-purple-400 font-medium">
+                            {effectiveSettings?.weightLaporan ?? 15}% • Pembimbing
+                          </span>
+                          <span className="font-mono font-black text-lg text-purple-700 dark:text-purple-300 mt-0.5">
+                            {score.nilai_laporan ?? '-'}
                           </span>
                         </div>
-                        <input
-                          id={`mobile-laporan-${score.siswa_pkl_id}`}
-                          type="number"
-                          min="0"
-                          max="100"
-                          disabled={effectiveSettings?.assessmentMode !== 'COMPOSITE'}
-                          placeholder={effectiveSettings?.assessmentMode !== 'COMPOSITE' ? '-' : '0'}
-                          value={effectiveSettings?.assessmentMode !== 'COMPOSITE' ? '' : (score.nilai_laporan ?? '')}
-                          onChange={(e) => {
-                            const val = e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value)));
-                            handleScoreChange(score.siswa_pkl_id, 'nilai_laporan', val);
-                          }}
-                          className={cn(
-                            'w-full h-10 mt-1 rounded-lg text-center font-mono font-bold text-base border focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all',
-                            effectiveSettings?.assessmentMode !== 'COMPOSITE'
-                              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 cursor-not-allowed'
-                              : 'bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800'
-                          )}
-                        />
-                      </div>
+                      )}
 
-                      {/* Nilai Sidang (Input) */}
+                      {/* Nilai Sidang (Input oleh Penguji Sidang) */}
                       <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
                         <div className="flex items-center justify-between">
                           <label
                             htmlFor={`mobile-sidang-${score.siswa_pkl_id}`}
                             className="text-[10px] font-bold text-slate-700 dark:text-slate-200"
                           >
-                            Sidang
+                            Nilai Sidang
                           </label>
                           <span className="text-[9px] text-slate-400 font-mono">
                             {isCompositeMode
-                              ? `${effectiveSettings?.weightSidang ?? (effectiveSettings?.assessmentMode === 'DUDI_SIDANG' ? 30 : 15)}%`
+                              ? `${effectiveSettings?.weightSidang ?? (isDudiSidang ? 30 : 15)}%`
                               : '-'}
                           </span>
                         </div>
@@ -411,7 +393,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                             'w-full h-10 mt-1 rounded-lg text-center font-mono font-bold text-base border focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all',
                             !isCompositeMode
                               ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 cursor-not-allowed'
-                              : 'bg-purple-50/50 dark:bg-purple-950/20 text-purple-900 dark:text-purple-100 border-purple-200 dark:border-purple-800'
+                              : 'bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-900 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800'
                           )}
                         />
                       </div>

@@ -625,6 +625,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
             <PklNilaiIndustriTab
               hideFilterCard={true}
               canManageAll={canManageAll}
+              effectiveSettings={effectiveSettings}
               activeGuruId={activeGuruId || undefined}
               isKaprog={isKaprog || isJurusanScoped}
               isWaliKelas={isWaliKelas}

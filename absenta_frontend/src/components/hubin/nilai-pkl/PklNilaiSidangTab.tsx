@@ -109,9 +109,12 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   hideFilterCard = false,
   jurusanId,
 }) => {
+  const isComposite3Unsur = effectiveSettings?.assessmentMode === 'COMPOSITE';
+  const isDudiSidang = effectiveSettings?.assessmentMode === 'DUDI_SIDANG';
+
   const { handleKeyDown: handleKeyDownScore } = useSpreadsheetNavigation({
     totalRows: paginatedScores?.length || 0,
-    totalCols: 2,
+    totalCols: 1,
     idPrefix: 'sidang-score',
   });
 
@@ -165,7 +168,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
     {
       key: 'komponen_nilai',
       title: 'Komponen Nilai Akhir',
-      colSpan: 3,
+      colSpan: isComposite3Unsur ? 3 : (isCompositeMode ? 2 : 1),
       badge: isCompositeMode ? 'Bobot Gabungan' : 'DUDI 100%',
       className: 'bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300',
       badgeClassName: isCompositeMode
@@ -184,7 +187,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
       colSpan: 2,
       className: 'bg-slate-100/90 dark:bg-slate-800/90',
     },
-  ], [isCompositeMode]);
+  ], [isCompositeMode, isComposite3Unsur]);
 
   const spreadsheetColumns = useMemo<SpreadsheetColumn<ScoreRow>[]>(() => [
     {
@@ -274,53 +277,38 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
         );
       },
     },
-    {
-      key: 'nilai_laporan',
+    ...(isComposite3Unsur ? [{
+      key: 'nilai_laporan' as keyof ScoreRow,
       header: 'Laporan',
-      subHeader: effectiveSettings?.assessmentMode === 'COMPOSITE'
-        ? `${effectiveSettings?.weightLaporan ?? 15}%`
-        : effectiveSettings?.assessmentMode === 'DUDI_SIDANG'
-        ? 'Non-Aktif'
-        : 'Arsip',
-      width: 52,
-      align: 'center',
-      renderCell: (score, rowIndex) => {
-        const isLaporanEnabled = effectiveSettings?.assessmentMode === 'COMPOSITE';
-        return (
-          <SpreadsheetCellInput
-            id={`sidang-score-${rowIndex}-0`}
-            aria-label={`Nilai laporan ${score.nama_siswa}`}
-            value={!isLaporanEnabled ? null : score.nilai_laporan}
-            disabled={!isLaporanEnabled}
-            placeholder={!isLaporanEnabled ? '-' : '0'}
-            onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'nilai_laporan', val)}
-            onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 0)}
-            className={
-              !isLaporanEnabled
-                ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-                : 'bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800'
-            }
-          />
-        );
-      },
-    },
+      subHeader: `${effectiveSettings?.weightLaporan ?? 15}%`,
+      width: 58,
+      align: 'center' as const,
+      headerClassName: 'text-[10px] font-bold text-center px-0.5 whitespace-normal leading-tight bg-purple-50/70 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200',
+      renderCell: (score: ScoreRow) => (
+        <div className="flex flex-col items-center justify-center leading-tight py-1" title="Nilai laporan dari Guru Pembimbing PKL (Read-Only)">
+          <span className="font-mono font-bold text-xs text-purple-700 dark:text-purple-300 bg-purple-50/90 dark:bg-purple-950/50 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800">
+            {score.nilai_laporan ?? '-'}
+          </span>
+        </div>
+      ),
+    }] : []),
     {
       key: 'nilai_sidang',
       header: 'Sidang',
       subHeader: isCompositeMode
-        ? `${effectiveSettings?.weightSidang ?? (effectiveSettings?.assessmentMode === 'DUDI_SIDANG' ? 30 : 15)}%`
+        ? `${effectiveSettings?.weightSidang ?? (isDudiSidang ? 30 : 15)}%`
         : 'Arsip',
       width: 52,
       align: 'center',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
-          id={`sidang-score-${rowIndex}-1`}
+          id={`sidang-score-${rowIndex}-0`}
           aria-label={`Nilai sidang ${score.nama_siswa}`}
           value={!isCompositeMode ? null : score.nilai_sidang}
           disabled={!isCompositeMode}
           placeholder={!isCompositeMode ? '-' : '0'}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'nilai_sidang', val)}
-          onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 1)}
+          onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 0)}
           className={
             !isCompositeMode
               ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
@@ -462,6 +450,8 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
     currentPage,
     itemsPerPage,
     isCompositeMode,
+    isComposite3Unsur,
+    isDudiSidang,
     effectiveSettings,
     handleScoreChange,
     handleKeyDownScore,
@@ -632,17 +622,21 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
               <>
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
                   <Info size={14} className="text-indigo-500 shrink-0" />
-                  <span>Bobot Penilaian Gabungan Aktif:</span>
+                  <span>
+                    Skema Penilaian Aktif: {isDudiSidang ? 'DUDI + Sidang (2 Unsur)' : 'DUDI + Laporan + Sidang (3 Unsur)'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 flex-wrap">
                   <span className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-semibold">
                     DUDI: {effectiveSettings?.weightDudi ?? 70}%
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-semibold">
-                    Laporan: {effectiveSettings?.weightLaporan ?? 15}%
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 font-semibold">
-                    Sidang: {effectiveSettings?.weightSidang ?? 15}%
+                  {isComposite3Unsur && (
+                    <span className="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 font-semibold" title="Nilai diinput oleh Pembimbing PKL">
+                      Laporan: {effectiveSettings?.weightLaporan ?? 15}% (Pembimbing)
+                    </span>
+                  )}
+                  <span className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-semibold">
+                    Sidang: {effectiveSettings?.weightSidang ?? (isDudiSidang ? 30 : 15)}%
                   </span>
                 </div>
               </>
