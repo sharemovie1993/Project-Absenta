@@ -10,6 +10,7 @@ interface Props {
   masterGridHari: string;
   slots: number[];
   colorByMode?: ColorByMode;
+  onEditJadwal?: (item: JadwalKBM) => void;
 }
 
 import { WORKDAYS_HARI_KEYS as DAYS } from '../../../constants/day.constants';
@@ -20,6 +21,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = React.memo(({
   masterGridHari,
   slots,
   colorByMode = 'MAPEL',
+  onEditJadwal,
 }) => {
   const isSemuaHari = masterGridHari === 'SEMUA';
 

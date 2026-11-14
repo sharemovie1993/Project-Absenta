@@ -19,8 +19,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  getJadwalKBM, 
-  createJadwalKBM, 
+  getJadwalKBM,
+  createJadwalKBM,
+  updateJadwalKBM,
   deleteJadwalKBM,
   clearJadwalKBM,
   type JadwalKBM 
@@ -42,6 +43,7 @@ import { MasterGridGuruTimetable } from './jadwal-builder/MasterGridGuruTimetabl
 import { ConflictResolverModal, type ConflictDetails } from './jadwal-builder/ConflictResolverModal';
 import { MasterGridKelasTimetable } from './jadwal-builder/MasterGridKelasTimetable';
 import { BebanGuruSummaryModal } from './jadwal-builder/BebanGuruSummaryModal';
+import { EditJadwalModal, type EditJadwalPayload } from './jadwal-builder/EditJadwalModal';
 import { UnallocatedCardsPanel } from './jadwal-builder/UnallocatedCardsPanel';
 import { calculateSmartJpStatus, calculateClassJpStatus } from './jadwal-builder/jpCalculationHelper';
 import { getSlotsForDay } from './jam-kbm/JamKBMTypes';
@@ -128,6 +130,18 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
   // Conflict Resolver State
   const [activeConflictDetails, setActiveConflictDetails] = useState<ConflictDetails | null>(null);
+
+  // Edit Jadwal Modal State (Ketika slot yang sudah memiliki jadwal diklik)
+  const [editingJadwalState, setEditingJadwalState] = useState<{
+    jadwal: JadwalKBM;
+    relatedJadwals: JadwalKBM[];
+    day: string;
+    slotIndex: number;
+    kelasName: string;
+    kelasId: string;
+    slotTime: { start: string; end: string };
+  } | null>(null);
+  const [isUpdatingJadwal, setIsUpdatingJadwal] = useState<boolean>(false);
 
   // ── Reference Options Hooks ──────────────────────────────────────────────
   const { options: kelasSelectOptions, rawList: kelasRawList } = useKelasOptions();
@@ -703,6 +717,160 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       setSavingSlot(null);
     }
   };
+  // ── Open Edit Modal for an existing schedule item ─────────────────────
+  const handleOpenEditFromJadwalItem = useCallback((item: JadwalKBM, dayParam?: string, slotParam?: number) => {
+    const day = dayParam || item.hari;
+    const slotIndex = slotParam !== undefined ? slotParam : (item.slot_index ?? 0);
+    const targetKelasId = item.kelas_id || selectedKelasId;
+    const targetKelasObj = kelasList.find(k => k.id === targetKelasId);
+    const slot = resolveSlotTime(targetKelasId, slotIndex, day);
+
+    // Cari jadwal sejenis (kelas, guru, mapel sama) pada hari yang sama untuk mendeteksi blok multi-JP
+    const sameDaySchedules = allJadwal
+      .filter(j => 
+        j.hari === day && 
+        j.kelas_id === targetKelasId &&
+        j.mapel_id === item.mapel_id &&
+        j.guru_id === item.guru_id
+      )
+      .sort((a, b) => (a.slot_index ?? 0) - (b.slot_index ?? 0));
+
+    let cluster: JadwalKBM[] = [item];
+    if (sameDaySchedules.length > 1) {
+      const clusters: JadwalKBM[][] = [];
+      let currentGroup: JadwalKBM[] = [];
+      for (const s of sameDaySchedules) {
+        if (currentGroup.length === 0) {
+          currentGroup.push(s);
+        } else {
+          const prev = currentGroup[currentGroup.length - 1];
+          if ((s.slot_index ?? 0) === (prev.slot_index ?? 0) + 1) {
+            currentGroup.push(s);
+          } else {
+            clusters.push(currentGroup);
+            currentGroup = [s];
+          }
+        }
+      }
+      if (currentGroup.length > 0) clusters.push(currentGroup);
+      const found = clusters.find(c => c.some(el => el.id === item.id || el.slot_index === slotIndex));
+      if (found) cluster = found;
+    }
+
+    setEditingJadwalState({
+      jadwal: item,
+      relatedJadwals: cluster,
+      day,
+      slotIndex,
+      kelasName: item.Kelas?.nama_kelas || targetKelasObj?.nama_kelas || targetKelasId,
+      kelasId: targetKelasId,
+      slotTime: slot,
+    });
+  }, [allJadwal, kelasList, resolveSlotTime, selectedKelasId]);
+
+  // ── Save handler for Edit Jadwal Modal ──────────────────────────────────
+  const handleSaveEditJadwal = async ({
+    id,
+    guru_id,
+    mapel_id,
+    unit_pengajaran_id,
+    applyToAllSpans,
+    spanIds,
+  }: EditJadwalPayload) => {
+    const idsToUpdate = applyToAllSpans && spanIds && spanIds.length > 0 ? spanIds : [id];
+    setIsUpdatingJadwal(true);
+    try {
+      for (const targetId of idsToUpdate) {
+        await updateJadwalKBM(targetId, {
+          guru_id,
+          mapel_id,
+          unit_pengajaran_id: unit_pengajaran_id || null,
+        });
+      }
+
+      const updatedGuru = guruRawList?.find(g => g.id === guru_id);
+      const updatedMapel = mapelRawList?.find(m => m.id === mapel_id);
+      const updatedUnit = allUnitsList?.find(u => u.id === unit_pengajaran_id);
+
+      setAllJadwal(prev => prev.map(j => {
+        if (idsToUpdate.includes(j.id)) {
+          return {
+            ...j,
+            guru_id,
+            mapel_id,
+            unit_pengajaran_id: unit_pengajaran_id || null,
+            Guru: updatedGuru ? {
+              id: updatedGuru.id,
+              nama_guru: updatedGuru.nama_guru,
+              User: { full_name: updatedGuru.nama_guru },
+            } : j.Guru,
+            Mapel: updatedMapel ? {
+              nama_mapel: updatedMapel.nama_mapel,
+              kode_mapel: updatedMapel.kode_mapel,
+            } : j.Mapel,
+            UnitPengajaran: updatedUnit ? {
+              id: updatedUnit.id,
+              nama_unit: updatedUnit.nama_unit,
+              guru_id,
+            } : null,
+          };
+        }
+        return j;
+      }));
+
+      invalidateJadwalBuilderCache();
+      if (onRefresh) onRefresh();
+      toast.success(
+        idsToUpdate.length > 1
+          ? `${idsToUpdate.length} jam pelajaran berhasil diperbarui.`
+          : 'Jadwal pelajaran berhasil diperbarui.'
+      );
+      setEditingJadwalState(null);
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.message || err?.message || 'Gagal memperbarui jadwal pelajaran.';
+      toast.error(errorMsg);
+    } finally {
+      setIsUpdatingJadwal(false);
+    }
+  };
+
+  // ── Delete handler from inside Edit Jadwal Modal ─────────────────────────
+  const handleDeleteFromEditModal = async (id: string, spanIds?: string[]) => {
+    const idsToDelete = spanIds && spanIds.length > 0 ? spanIds : [id];
+    setIsUpdatingJadwal(true);
+    try {
+      for (const targetId of idsToDelete) {
+        await deleteJadwalKBM(targetId);
+      }
+      setAllJadwal(prev => prev.filter(j => !idsToDelete.includes(j.id)));
+      invalidateJadwalBuilderCache();
+      if (onRefresh) onRefresh();
+      toast.success(
+        idsToDelete.length > 1
+          ? `${idsToDelete.length} jam pelajaran berhasil dikosongkan.`
+          : 'Slot jadwal berhasil dikosongkan.'
+      );
+      setEditingJadwalState(null);
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.message || err?.message || 'Gagal menghapus jadwal.';
+      toast.error(errorMsg);
+    } finally {
+      setIsUpdatingJadwal(false);
+    }
+  };
+
+  // Quick Paint info for edit modal
+  const activePaintInfo = useMemo(() => {
+    if (!paintGuruId || !paintMapelId) return undefined;
+    const guru = guruRawList?.find(g => g.id === paintGuruId);
+    const mapel = mapelRawList?.find(m => m.id === paintMapelId);
+    return {
+      guruId: paintGuruId,
+      guruName: guru?.nama_guru || 'Guru',
+      mapelId: paintMapelId,
+      mapelName: mapel?.nama_mapel || 'Mapel',
+    };
+  }, [paintGuruId, paintMapelId, guruRawList, mapelRawList]);
 
   // Click handler on slot
   const handleSlotClick = async (day: string, slotIndex: number) => {
@@ -713,6 +881,12 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
     const existing = getSlotData(day, slotIndex);
     const key = `${day}-${slotIndex}`;
+
+    // JIKA SLOT SUDAH MEMILIKI JADWAL: Buka modal edit untuk merubah guru & mapel!
+    if (existing && toolMode !== 'ERASER') {
+      handleOpenEditFromJadwalItem(existing, day, slotIndex);
+      return;
+    }
 
     // ERASER MODE: Delete slot if exists
     if (toolMode === 'ERASER') {
@@ -1174,6 +1348,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             masterGridHari={masterGridHari}
             slots={SLOTS}
             colorByMode={colorByMode}
+            onEditJadwal={handleOpenEditFromJadwalItem}
           />
         )}
 
@@ -1185,6 +1360,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             masterGridHari={masterGridHari}
             slots={SLOTS}
             colorByMode={colorByMode}
+            onEditJadwal={handleOpenEditFromJadwalItem}
           />
         )}
 
@@ -1290,9 +1466,31 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             }
           }}
         />
+        {/* Modal Edit Jadwal Pelajaran (Ketika slot jadwal diklik) */}
+        {editingJadwalState && (
+          <EditJadwalModal
+            isOpen={Boolean(editingJadwalState)}
+            onClose={() => setEditingJadwalState(null)}
+            jadwal={editingJadwalState.jadwal}
+            relatedJadwals={editingJadwalState.relatedJadwals}
+            day={editingJadwalState.day}
+            slotIndex={editingJadwalState.slotIndex}
+            kelasName={editingJadwalState.kelasName}
+            kelasId={editingJadwalState.kelasId}
+            slotTime={editingJadwalState.slotTime}
+            guruList={guruList}
+            mapelList={mapelList}
+            allUnitsList={allUnitsList}
+            onSave={handleSaveEditJadwal}
+            onDelete={handleDeleteFromEditModal}
+            isSaving={isUpdatingJadwal}
+            activePaint={activePaintInfo}
+          />
+        )}
       </div>
     </>
   );
 };
 
 export default JadwalBuilder;
+
