@@ -16,6 +16,7 @@ import {
   ScoreRow, 
   RawPklItem, 
   calculateNilaiAkhirPkl,
+  calculateNilaiSidangFromAspects,
   HubinAssessmentSettings
 } from './types';
 
@@ -248,6 +249,10 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         soft_tanggung_jawab: item.soft_tanggung_jawab ?? null,
         nilai_laporan: item.nilai_json?.nilai_laporan ?? null,
         nilai_sidang: item.nilai_json?.nilai_sidang ?? null,
+        sidang_materi: item.nilai_json?.sidang_materi ?? null,
+        sidang_komunikasi: item.nilai_json?.sidang_komunikasi ?? null,
+        sidang_portofolio: item.nilai_json?.sidang_portofolio ?? null,
+        sidang_sikap: item.nilai_json?.sidang_sikap ?? null,
         penguji_id: item.nilai_json?.penguji_id || null,
         penguji_nama: item.nilai_json?.penguji_nama || '',
         catatan_sidang: item.nilai_json?.catatan_sidang || '',
@@ -418,10 +423,15 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
       if (index === -1) return prev;
       const target = { ...clone[index] };
 
-      if (field.startsWith('hard_') || field.startsWith('soft_') || field === 'nilai_laporan' || field === 'nilai_sidang') {
+      if (field.startsWith('hard_') || field.startsWith('soft_') || field === 'nilai_laporan' || field === 'nilai_sidang' || field.startsWith('sidang_')) {
         const parsedVal = val === '' || val === null ? null : Math.min(100, Math.max(0, parseFloat(String(val)) || 0));
         scoreFieldSchema.parse(parsedVal);
         (target as Record<string, unknown>)[field] = parsedVal;
+
+        // Jika mengubah aspek sidang, hitung otomatis nilai_sidang
+        if (field.startsWith('sidang_')) {
+          target.nilai_sidang = calculateNilaiSidangFromAspects(target);
+        }
 
         const calculated = calculateNilaiAkhirPkl(target, effectiveSettings);
         target.nilai_akhir_pkl = calculated.nilai_akhir_pkl;
@@ -493,6 +503,10 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         soft_tanggung_jawab: s.soft_tanggung_jawab,
         nilai_laporan: s.nilai_laporan,
         nilai_sidang: s.nilai_sidang,
+        sidang_materi: s.sidang_materi,
+        sidang_komunikasi: s.sidang_komunikasi,
+        sidang_portofolio: s.sidang_portofolio,
+        sidang_sikap: s.sidang_sikap,
         penguji_id: s.penguji_id,
         penguji_nama: s.penguji_nama,
         catatan_sidang: s.catatan_sidang,

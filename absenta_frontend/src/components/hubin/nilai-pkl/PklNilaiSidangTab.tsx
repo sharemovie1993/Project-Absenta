@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicFilterToolbar } from '@/components/common/academic-filter';
@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
 import { PklNilaiSidangMobileCards } from './PklNilaiSidangMobileCards';
 import { PengujiCombobox } from './PengujiCombobox';
+import { PklSidangCetakModal } from './PklSidangCetakModal';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
 import { getKaprogStats } from '@/api/dashboard.api';
 import {
@@ -109,12 +110,13 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   hideFilterCard = false,
   jurusanId,
 }) => {
+  const [showCetakModal, setShowCetakModal] = useState(false);
   const isComposite3Unsur = effectiveSettings?.assessmentMode === 'COMPOSITE';
   const isDudiSidang = effectiveSettings?.assessmentMode === 'DUDI_SIDANG';
 
   const { handleKeyDown: handleKeyDownScore } = useSpreadsheetNavigation({
     totalRows: paginatedScores?.length || 0,
-    totalCols: 1,
+    totalCols: 4,
     idPrefix: 'sidang-score',
   });
 
@@ -167,8 +169,8 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
     },
     {
       key: 'komponen_nilai',
-      title: 'Komponen Nilai Akhir',
-      colSpan: isComposite3Unsur ? 3 : (isCompositeMode ? 2 : 1),
+      title: 'Komponen Nilai Akhir (DUDI, Laporan & 4 Aspek Sidang)',
+      colSpan: isComposite3Unsur ? 7 : (isCompositeMode ? 6 : 1),
       badge: isCompositeMode ? 'Bobot Gabungan' : 'DUDI 100%',
       className: 'bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300',
       badgeClassName: isCompositeMode
@@ -293,29 +295,122 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
       ),
     }] : []),
     {
-      key: 'nilai_sidang',
-      header: 'Sidang',
-      subHeader: isCompositeMode
-        ? `${effectiveSettings?.weightSidang ?? (isDudiSidang ? 30 : 15)}%`
-        : 'Arsip',
+      key: 'sidang_materi' as keyof ScoreRow,
+      header: 'Materi',
+      subHeader: '40%',
       width: 52,
       align: 'center',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`sidang-score-${rowIndex}-0`}
-          aria-label={`Nilai sidang ${score.nama_siswa}`}
-          value={!isCompositeMode ? null : score.nilai_sidang}
+          aria-label={`Nilai materi ${score.nama_siswa}`}
+          value={!isCompositeMode ? null : score.sidang_materi}
           disabled={!isCompositeMode}
           placeholder={!isCompositeMode ? '-' : '0'}
-          onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'nilai_sidang', val)}
+          onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'sidang_materi', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 0)}
           className={
             !isCompositeMode
               ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-              : 'bg-purple-50/60 dark:bg-purple-950/30 text-purple-900 dark:text-purple-100 border-purple-200 dark:border-purple-800'
+              : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800'
           }
         />
       ),
+    },
+    {
+      key: 'sidang_komunikasi' as keyof ScoreRow,
+      header: 'Komunikasi',
+      subHeader: '25%',
+      width: 54,
+      align: 'center',
+      renderCell: (score, rowIndex) => (
+        <SpreadsheetCellInput
+          id={`sidang-score-${rowIndex}-1`}
+          aria-label={`Nilai komunikasi ${score.nama_siswa}`}
+          value={!isCompositeMode ? null : score.sidang_komunikasi}
+          disabled={!isCompositeMode}
+          placeholder={!isCompositeMode ? '-' : '0'}
+          onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'sidang_komunikasi', val)}
+          onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 1)}
+          className={
+            !isCompositeMode
+              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+              : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800'
+          }
+        />
+      ),
+    },
+    {
+      key: 'sidang_portofolio' as keyof ScoreRow,
+      header: 'Portofolio',
+      subHeader: '20%',
+      width: 52,
+      align: 'center',
+      renderCell: (score, rowIndex) => (
+        <SpreadsheetCellInput
+          id={`sidang-score-${rowIndex}-2`}
+          aria-label={`Nilai portofolio ${score.nama_siswa}`}
+          value={!isCompositeMode ? null : score.sidang_portofolio}
+          disabled={!isCompositeMode}
+          placeholder={!isCompositeMode ? '-' : '0'}
+          onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'sidang_portofolio', val)}
+          onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 2)}
+          className={
+            !isCompositeMode
+              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+              : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800'
+          }
+        />
+      ),
+    },
+    {
+      key: 'sidang_sikap' as keyof ScoreRow,
+      header: 'Sikap',
+      subHeader: '15%',
+      width: 52,
+      align: 'center',
+      renderCell: (score, rowIndex) => (
+        <SpreadsheetCellInput
+          id={`sidang-score-${rowIndex}-3`}
+          aria-label={`Nilai sikap ${score.nama_siswa}`}
+          value={!isCompositeMode ? null : score.sidang_sikap}
+          disabled={!isCompositeMode}
+          placeholder={!isCompositeMode ? '-' : '0'}
+          onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'sidang_sikap', val)}
+          onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 3)}
+          className={
+            !isCompositeMode
+              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+              : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800'
+          }
+        />
+      ),
+    },
+    {
+      key: 'nilai_sidang',
+      header: 'Nilai Sidang',
+      subHeader: isCompositeMode
+        ? `${effectiveSettings?.weightSidang ?? (isDudiSidang ? 30 : 15)}%`
+        : 'Arsip',
+      width: 60,
+      align: 'center',
+      renderCell: (score) => {
+        const hasExamined = score.nilai_sidang !== null && score.nilai_sidang !== undefined && score.nilai_sidang !== '';
+        return (
+          <div className="flex flex-col items-center justify-center leading-tight py-1" title="Nilai Sidang terkalkulasi otomatis dari 4 aspek">
+            <span className={cn(
+              "font-mono font-bold text-xs px-2 py-0.5 rounded border",
+              !hasExamined
+                ? "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"
+                : Number(score.nilai_sidang) >= 70
+                ? "bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+            )}>
+              {score.nilai_sidang ?? '-'}
+            </span>
+          </div>
+        );
+      },
     },
     {
       key: 'file_portofolio',
@@ -675,6 +770,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           guruList={guruList}
           isLoadingGuru={isLoadingGuru}
           onApplyPengujiToAll={handleApplyPengujiToAll}
+          onOpenCetakModal={() => setShowCetakModal(true)}
         />
       ) : (
         <SpreadsheetGridTable<ScoreRow>
@@ -699,6 +795,18 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
                   Bobot: DUDI {effectiveSettings?.weightDudi ?? 70}% • Laporan {effectiveSettings?.weightLaporan ?? 15}% • Sidang {effectiveSettings?.weightSidang ?? 15}%
                 </span>
               )}
+              {/* Tombol Cetak Berita Acara & Rekap Sidang PKL */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowCetakModal(true)}
+                className="border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Cetak Berita Acara Penguji & Rekap Hasil Sidang PKL"
+              >
+                <Printer className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span>Cetak Berkas Sidang</span>
+              </Button>
+
               <Button
                 type="button"
                 aria-label="Simpan perubahan nilai"
@@ -775,6 +883,24 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
               </div>
             ) : undefined
           }
+        />
+      )}
+
+      {/* Modal Cetak Berita Acara & Rekapitulasi Sidang PKL */}
+      {showCetakModal && (
+        <PklSidangCetakModal
+          isOpen={showCetakModal}
+          onClose={() => setShowCetakModal(false)}
+          scores={displayedScores || []}
+          jurusanNama={
+            jurusanId && guruList.length > 0
+              ? 'Program Keahlian Terpilih'
+              : 'Semua Program Keahlian'
+          }
+          selectedTpNama={selectedTp ? tpOptions.find((t) => t.value === selectedTp)?.label : ''}
+          selectedSemesterNama={selectedSemester ? semesterOptions.find((s) => s.value === selectedSemester)?.label : ''}
+          activePengujiNama={guruList.find((g) => g.id === activeGuruId)?.nama_guru || ''}
+          isKaprog={isKaprog}
         />
       )}
     </div>

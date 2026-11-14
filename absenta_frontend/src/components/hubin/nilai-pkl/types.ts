@@ -39,6 +39,10 @@ export interface ScoreRow {
   soft_tanggung_jawab: number | null;
   nilai_laporan: number | null;
   nilai_sidang: number | null;
+  sidang_materi?: number | null;
+  sidang_komunikasi?: number | null;
+  sidang_portofolio?: number | null;
+  sidang_sikap?: number | null;
   penguji_id?: string | null;
   penguji_nama: string;
   catatan_sidang: string;
@@ -109,6 +113,10 @@ export interface RawPklItem {
     dudi_avg?: number | null;
     nilai_laporan?: number | null;
     nilai_sidang?: number | null;
+    sidang_materi?: number | null;
+    sidang_komunikasi?: number | null;
+    sidang_portofolio?: number | null;
+    sidang_sikap?: number | null;
     penguji_nama?: string | null;
     penguji_id?: string | null;
     catatan_sidang?: string | null;
@@ -136,6 +144,38 @@ export interface DeskripsiTpItem {
   deskripsi_tp: string;
   Mitra?: { nama: string };
   Jurusan?: { id: string; nama: string; singkatan: string };
+}
+
+export function calculateNilaiSidangFromAspects(target: {
+  sidang_materi?: number | null;
+  sidang_komunikasi?: number | null;
+  sidang_portofolio?: number | null;
+  sidang_sikap?: number | null;
+}): number | null {
+  const { sidang_materi, sidang_komunikasi, sidang_portofolio, sidang_sikap } = target;
+  const list = [sidang_materi, sidang_komunikasi, sidang_portofolio, sidang_sikap];
+  const filled = list.filter((v): v is number => typeof v === 'number' && v !== null && !isNaN(v));
+  if (filled.length === 0) return null;
+
+  let totalScore = 0;
+  let totalWeight = 0;
+  if (sidang_materi !== null && sidang_materi !== undefined && !isNaN(sidang_materi)) {
+    totalScore += Number(sidang_materi) * 40;
+    totalWeight += 40;
+  }
+  if (sidang_komunikasi !== null && sidang_komunikasi !== undefined && !isNaN(sidang_komunikasi)) {
+    totalScore += Number(sidang_komunikasi) * 25;
+    totalWeight += 25;
+  }
+  if (sidang_portofolio !== null && sidang_portofolio !== undefined && !isNaN(sidang_portofolio)) {
+    totalScore += Number(sidang_portofolio) * 20;
+    totalWeight += 20;
+  }
+  if (sidang_sikap !== null && sidang_sikap !== undefined && !isNaN(sidang_sikap)) {
+    totalScore += Number(sidang_sikap) * 15;
+    totalWeight += 15;
+  }
+  return totalWeight > 0 ? Math.round((totalScore / totalWeight) * 10) / 10 : null;
 }
 
 export function calculateNilaiAkhirPkl(

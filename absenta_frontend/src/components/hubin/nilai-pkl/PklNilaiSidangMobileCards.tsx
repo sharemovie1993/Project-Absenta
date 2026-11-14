@@ -14,6 +14,7 @@ import {
   GraduationCap,
   Building2,
   UserCheck,
+  Printer,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -40,6 +41,7 @@ export interface PklNilaiSidangMobileCardsProps {
   guruList?: GuruItem[];
   isLoadingGuru?: boolean;
   onApplyPengujiToAll?: (namaPenguji: string) => void;
+  onOpenCetakModal?: () => void;
 }
 
 const PAGINATION_LIMITS = [10, 25, 50, 100];
@@ -61,6 +63,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
   guruList = [],
   isLoadingGuru = false,
   onApplyPengujiToAll,
+  onOpenCetakModal,
 }) => {
   const isComposite3Unsur = effectiveSettings?.assessmentMode === 'COMPOSITE';
   const isDudiSidang = effectiveSettings?.assessmentMode === 'DUDI_SIDANG';
@@ -135,6 +138,20 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                 Tutup
               </button>
             </div>
+
+            {onOpenCetakModal && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={onOpenCetakModal}
+                className="h-8 px-2.5 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-2xs flex items-center gap-1 cursor-pointer"
+                title="Cetak Berkas Hasil Sidang"
+              >
+                <Printer className="w-3.5 h-3.5 text-indigo-500" />
+                <span className="hidden xxs:inline">Cetak</span>
+              </Button>
+            )}
 
             {/* Tombol Simpan di Header Atas */}
             <Button
@@ -362,42 +379,103 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                         </div>
                       )}
 
-                      {/* Nilai Sidang (Input oleh Penguji Sidang) */}
-                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
-                        <div className="flex items-center justify-between">
-                          <label
-                            htmlFor={`mobile-sidang-${score.siswa_pkl_id}`}
-                            className="text-[10px] font-bold text-slate-700 dark:text-slate-200"
-                          >
-                            Nilai Sidang
-                          </label>
-                          <span className="text-[9px] text-slate-400 font-mono">
-                            {isCompositeMode
-                              ? `${effectiveSettings?.weightSidang ?? (isDudiSidang ? 30 : 15)}%`
-                              : '-'}
-                          </span>
-                        </div>
-                        <input
-                          id={`mobile-sidang-${score.siswa_pkl_id}`}
-                          type="number"
-                          min="0"
-                          max="100"
-                          disabled={!isCompositeMode}
-                          placeholder={!isCompositeMode ? '-' : '0'}
-                          value={!isCompositeMode ? '' : (score.nilai_sidang ?? '')}
-                          onChange={(e) => {
-                            const val = e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value)));
-                            handleScoreChange(score.siswa_pkl_id, 'nilai_sidang', val);
-                          }}
-                          className={cn(
-                            'w-full h-10 mt-1 rounded-lg text-center font-mono font-bold text-base border focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all',
-                            !isCompositeMode
-                              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 cursor-not-allowed'
-                              : 'bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-900 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800'
-                          )}
-                        />
+                      {/* Nilai Sidang Terkalkulasi (Read-Only dari 4 Aspek) */}
+                      <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40 flex flex-col items-center justify-center text-center">
+                        <span className="text-[10px] font-bold text-purple-800 dark:text-purple-300">
+                          Nilai Sidang
+                        </span>
+                        <span className="text-[9px] text-purple-600/80 dark:text-purple-400 font-medium">
+                          {isCompositeMode
+                            ? `${effectiveSettings?.weightSidang ?? (isDudiSidang ? 30 : 15)}% • Akumulasi`
+                            : '-'}
+                        </span>
+                        <span className="font-mono font-black text-lg text-purple-700 dark:text-purple-300 mt-0.5">
+                          {score.nilai_sidang ?? '-'}
+                        </span>
                       </div>
                     </div>
+
+                    {/* Form Input 4 Aspek Penilaian Sidang PKL */}
+                    {isCompositeMode && (
+                      <div className="space-y-2 p-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                          <span>4 KOMPONEN ASPEK PENILAIAN SIDANG</span>
+                          <span className="text-[9px] font-mono text-indigo-600 dark:text-indigo-400">
+                            Wajib Terisi
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 xs:grid-cols-4 gap-2">
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                              1. Materi (40%)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              placeholder="0 - 100"
+                              value={score.sidang_materi ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value)));
+                                handleScoreChange(score.siswa_pkl_id, 'sidang_materi', val);
+                              }}
+                              className="w-full h-8 text-center font-mono font-bold text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                              2. Komunikasi (25%)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              placeholder="0 - 100"
+                              value={score.sidang_komunikasi ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value)));
+                                handleScoreChange(score.siswa_pkl_id, 'sidang_komunikasi', val);
+                              }}
+                              className="w-full h-8 text-center font-mono font-bold text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                              3. Portofolio (20%)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              placeholder="0 - 100"
+                              value={score.sidang_portofolio ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value)));
+                                handleScoreChange(score.siswa_pkl_id, 'sidang_portofolio', val);
+                              }}
+                              className="w-full h-8 text-center font-mono font-bold text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                              4. Sikap (15%)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              placeholder="0 - 100"
+                              value={score.sidang_sikap ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? null : Math.min(100, Math.max(0, Number(e.target.value)));
+                                handleScoreChange(score.siswa_pkl_id, 'sidang_sikap', val);
+                              }}
+                              className="w-full h-8 text-center font-mono font-bold text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Berkas / Portofolio Siswa (Jika ada) */}

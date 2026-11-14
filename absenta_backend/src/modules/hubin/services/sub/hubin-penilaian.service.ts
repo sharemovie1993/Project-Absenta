@@ -431,6 +431,10 @@ export class HubinPenilaianService extends HubinCommonHelper {
       semester_id?: string | null;
       nilai_laporan?: number | null;
       nilai_sidang?: number | null;
+      sidang_materi?: number | null;
+      sidang_komunikasi?: number | null;
+      sidang_portofolio?: number | null;
+      sidang_sikap?: number | null;
       penguji_nama?: string | null;
       penguji_id?: string | null;
       catatan_sidang?: string | null;
@@ -538,9 +542,55 @@ export class HubinPenilaianService extends HubinCommonHelper {
         ? item.nilai_laporan 
         : (prevNilaiJson.nilai_laporan ?? null);
 
-      const nilaiSidang = item.nilai_sidang !== undefined 
+      const sidangMateri = item.sidang_materi !== undefined
+        ? item.sidang_materi
+        : (prevNilaiJson.sidang_materi ?? null);
+
+      const sidangKomunikasi = item.sidang_komunikasi !== undefined
+        ? item.sidang_komunikasi
+        : (prevNilaiJson.sidang_komunikasi ?? null);
+
+      const sidangPortofolio = item.sidang_portofolio !== undefined
+        ? item.sidang_portofolio
+        : (prevNilaiJson.sidang_portofolio ?? null);
+
+      const sidangSikap = item.sidang_sikap !== undefined
+        ? item.sidang_sikap
+        : (prevNilaiJson.sidang_sikap ?? null);
+
+      // Hitung nilai sidang dari 4 aspek jika tidak disediakan eksplisit
+      let computedNilaiSidang = item.nilai_sidang !== undefined 
         ? item.nilai_sidang 
         : (prevNilaiJson.nilai_sidang ?? null);
+
+      const aspekList = [sidangMateri, sidangKomunikasi, sidangPortofolio, sidangSikap]
+        .filter((v): v is number => v !== null && v !== undefined && !isNaN(v));
+
+      if (aspekList.length > 0) {
+        let tScore = 0;
+        let tWeight = 0;
+        if (sidangMateri !== null && sidangMateri !== undefined && !isNaN(sidangMateri)) {
+          tScore += Number(sidangMateri) * 40;
+          tWeight += 40;
+        }
+        if (sidangKomunikasi !== null && sidangKomunikasi !== undefined && !isNaN(sidangKomunikasi)) {
+          tScore += Number(sidangKomunikasi) * 25;
+          tWeight += 25;
+        }
+        if (sidangPortofolio !== null && sidangPortofolio !== undefined && !isNaN(sidangPortofolio)) {
+          tScore += Number(sidangPortofolio) * 20;
+          tWeight += 20;
+        }
+        if (sidangSikap !== null && sidangSikap !== undefined && !isNaN(sidangSikap)) {
+          tScore += Number(sidangSikap) * 15;
+          tWeight += 15;
+        }
+        if (tWeight > 0) {
+          computedNilaiSidang = Number((tScore / tWeight).toFixed(1));
+        }
+      }
+
+      const nilaiSidang = computedNilaiSidang;
 
       const pengujiNama = item.penguji_nama !== undefined 
         ? item.penguji_nama 
@@ -563,6 +613,10 @@ export class HubinPenilaianService extends HubinCommonHelper {
         dudi_avg: dudiAvg,
         nilai_laporan: nilaiLaporan,
         nilai_sidang: nilaiSidang,
+        sidang_materi: sidangMateri,
+        sidang_komunikasi: sidangKomunikasi,
+        sidang_portofolio: sidangPortofolio,
+        sidang_sikap: sidangSikap,
         penguji_nama: pengujiNama,
         penguji_id: pengujiId,
         catatan_sidang: catatanSidang,
