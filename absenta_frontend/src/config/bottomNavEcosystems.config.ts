@@ -370,6 +370,47 @@ export function getEcosystemTokens(ecosystem: EcosystemType): EcosystemColorToke
 }
 
 /**
+ * ── DESIGN TOKEN: ECOSYSTEM SOLID/GRADIENT BANNER CLASS (SSOT) ──
+ * Digunakan oleh Topbar dan Drawer Header untuk memberikan penanda visual ekosistem divisi yang konsisten.
+ */
+export function getEcosystemGradientClass(ecosystem: EcosystemType): string {
+  switch (ecosystem) {
+    case 'kurikulum':
+      return 'bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-700 text-white border-emerald-400/40 shadow-xs shadow-emerald-950/20';
+    case 'hubin':
+    case 'pembimbing_pkl':
+    case 'bkk':
+      return 'bg-gradient-to-r from-orange-600 via-orange-600 to-amber-700 text-white border-orange-400/40 shadow-xs shadow-orange-950/20';
+    case 'kesiswaan':
+    case 'ekskul':
+    case 'piket':
+    case 'satpam':
+      return 'bg-gradient-to-r from-rose-600 via-rose-600 to-red-700 text-white border-rose-400/40 shadow-xs shadow-rose-950/20';
+    case 'kaprog':
+      return 'bg-gradient-to-r from-amber-600 via-amber-600 to-amber-700 text-white border-amber-400/40 shadow-xs shadow-amber-950/20';
+    case 'walas':
+      return 'bg-gradient-to-r from-sky-600 via-sky-600 to-blue-700 text-white border-sky-400/40 shadow-xs shadow-sky-950/20';
+    case 'sarpras':
+    case 'toolman':
+      return 'bg-gradient-to-r from-teal-700 via-teal-700 to-emerald-800 text-white border-teal-400/40 shadow-xs shadow-teal-950/20';
+    case 'tu':
+      return 'bg-gradient-to-r from-indigo-700 via-indigo-700 to-slate-800 text-white border-indigo-400/40 shadow-xs shadow-indigo-950/20';
+    case 'bpbk':
+      return 'bg-gradient-to-r from-purple-600 via-purple-600 to-violet-800 text-white border-purple-400/40 shadow-xs shadow-purple-950/20';
+    case 'koperasi':
+      return 'bg-gradient-to-r from-emerald-700 via-emerald-700 to-green-800 text-white border-emerald-400/40 shadow-xs shadow-emerald-950/20';
+    case 'admin':
+      return 'bg-gradient-to-r from-slate-800 via-slate-800 to-slate-950 text-white border-slate-600/40 shadow-xs shadow-slate-950/20';
+    case 'portal':
+      return 'bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-700 text-white border-indigo-400/40 shadow-xs shadow-indigo-950/25';
+    case 'kepsek':
+      return 'bg-gradient-to-r from-indigo-800 via-indigo-900 to-slate-900 text-white border-indigo-500/40 shadow-xs shadow-indigo-950/30';
+    default:
+      return 'bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-700 text-white border-indigo-400/40 shadow-xs shadow-indigo-950/25';
+  }
+}
+
+/**
  * ── DESIGN TOKEN: LAYER 1 BASE PORTAL ROLE DASHBOARD STYLING ──
  * Digunakan saat tombol launcher divisi berada di bilah Layer 1 (Portal Pendidik).
  * Membawa warna khas lingkungan divisi + pulsing/blinking live highlight indicator.

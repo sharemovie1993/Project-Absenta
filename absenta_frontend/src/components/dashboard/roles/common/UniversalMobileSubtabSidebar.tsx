@@ -16,7 +16,8 @@ import {
   getEcosystemTokens, 
   EcosystemType, 
   getRoleEcosystemStyles, 
-  getRoleEcosystemFromDashId 
+  getRoleEcosystemFromDashId,
+  getEcosystemGradientClass,
 } from '@/config/bottomNavEcosystems.config';
 const ConfirmModal = React.lazy(() => import('@/components/ui/Modal').then(m => ({ default: m.ConfirmModal })));
 
@@ -114,6 +115,10 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
 
   const ecosystemTokens = useMemo(() => {
     return getEcosystemTokens((myScope || 'portal') as EcosystemType);
+  }, [myScope]);
+
+  const headerGradientClass = useMemo(() => {
+    return getEcosystemGradientClass((myScope || 'portal') as EcosystemType);
   }, [myScope]);
 
   const activeStoreScope = useMobileSubtabSidebarStore((state) => state.activeScope);
@@ -251,12 +256,20 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
               className
             )}
           >
-            {/* ─── Drawer Header (Clean, Shopee-Grade with Logo & Zero Truncation) ─── */}
-            <div className="flex items-center justify-between px-3.5 py-3 shrink-0 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5 min-w-0 pr-1.5 flex-1">
+            {/* ─── Drawer Header (Adaptif Gradien Ekosistem Opsi 1) ─── */}
+            <div
+              className={cn(
+                'flex items-center justify-between px-3.5 py-3 shrink-0 relative overflow-hidden text-white border-b transition-colors shadow-xs',
+                headerGradientClass
+              )}
+            >
+              {/* Subtle ambient light glow in corner */}
+              <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full blur-xl pointer-events-none" aria-hidden="true" />
+
+              <div className="flex items-center gap-2.5 min-w-0 pr-1.5 flex-1 relative z-10">
                 {/* 1. Identity Visual: Logo Jurusan / Sekolah atau Role Icon Squircle */}
                 {logoUrl && !imgError ? (
-                  <div className="w-8 h-8 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 p-0.5 shadow-2xs flex items-center justify-center shrink-0 overflow-hidden">
+                  <div className="w-8 h-8 rounded-xl bg-white/95 border border-white/40 p-0.5 shadow-2xs flex items-center justify-center shrink-0 overflow-hidden">
                     <img
                       src={logoUrl}
                       alt={title}
@@ -266,16 +279,12 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
                   </div>
                 ) : (
                   <div
-                    className={cn(
-                      'w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs',
-                      ecosystemTokens.subtleBg,
-                      ecosystemTokens.borderClass
-                    )}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-white/20 backdrop-blur-xs border border-white/30 text-white shadow-2xs"
                   >
                     {RoleIcon ? (
-                      <RoleIcon className={cn('w-4 h-4', ecosystemTokens.textClass)} />
+                      <RoleIcon className="w-4 h-4 text-white" />
                     ) : (
-                      <span className={cn('w-2.5 h-2.5 rounded-full', ecosystemTokens.badgeClass.split(' ')[0])} />
+                      <span className="w-2.5 h-2.5 rounded-full bg-white shadow-2xs" />
                     )}
                   </div>
                 )}
@@ -283,24 +292,19 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
                 {/* 2. Title & Role Badge */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate tracking-tight">
+                    <h2 className="text-sm font-bold text-white truncate tracking-tight drop-shadow-2xs">
                       {title}
                     </h2>
                     {showRoleBadge && (
                       <span
-                        className={cn(
-                          'px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shrink-0 leading-none border',
-                          ecosystemTokens.subtleBg,
-                          ecosystemTokens.subtleText,
-                          ecosystemTokens.borderClass
-                        )}
+                        className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shrink-0 leading-none bg-white/20 text-white backdrop-blur-xs border border-white/30 drop-shadow-2xs"
                       >
                         {roleBadge}
                       </span>
                     )}
                   </div>
                   {subtitle && (
-                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5 leading-tight">
+                    <div className="text-[10px] text-white/80 font-medium truncate mt-0.5 leading-tight drop-shadow-2xs">
                       {subtitle}
                     </div>
                   )}
@@ -311,11 +315,11 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
               <button
                 type="button"
                 onClick={onClose}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all cursor-pointer shrink-0 ml-1"
+                className="relative z-10 w-7 h-7 rounded-lg flex items-center justify-center text-white/85 hover:text-white bg-white/10 hover:bg-white/20 active:scale-95 transition-all border border-white/20 cursor-pointer shrink-0 ml-1 shadow-2xs"
                 title="Tutup Menu"
                 aria-label="Tutup Menu"
               >
-                <X size={17} />
+                <X size={16} />
               </button>
             </div>
 
