@@ -32,6 +32,7 @@ import { listGuruMapel, listUnitPengajaran } from '../../api/kurikulum/guru-mape
 import type { UnitPengajaran } from '../../types/academic';
 import { type DropdownOption } from '../../api/dropdown.api';
 import { getMyTenant } from '../../api/tenants.api';
+import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../lib/utils';
 import { toast } from 'react-hot-toast';
 import { kurikulumApi } from '../../api/kurikulum.api';
@@ -83,6 +84,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   onOpenPrintPreview,
 }) => {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
 
   const invalidateJadwalBuilderCache = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['jadwal-kbm'] });
@@ -477,6 +479,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     }
     return ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
   }, [tenantRes]);
+
+  const tenantId = user?.tenant_id || (tenantRes?.data as any)?.id || '';
 
   // Resolve slot time dynamically based on the class shift assignment (STRICT MANDATORY DAY PARAMETER)
   const resolveSlotTime = (targetKelasId: string, slotIndex: number, day: string): { start: string; end: string } => {
