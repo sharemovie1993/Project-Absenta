@@ -90,12 +90,14 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
   const isLayer2 = theme.isLayer2 || ecosystem === 'portal';
 
   const user = useAuthStore((state) => state.user);
-  const rawPhoto = user?.profile_photo_url || (user as any)?.avatar || (user?.guru_profile as any)?.foto_url;
+  const userRec = user as Record<string, unknown> | undefined;
+  const guruProfRec = user?.guru_profile as Record<string, unknown> | undefined;
+  const rawPhoto = user?.profile_photo_url || (typeof userRec?.avatar === 'string' ? userRec.avatar : null) || (typeof guruProfRec?.foto_url === 'string' ? guruProfRec.foto_url : null);
   const userPhoto = rawPhoto ? resolveProfilePhotoUrl(rawPhoto) : null;
-  const initialChar = (user?.full_name || (user as any)?.name || 'G').slice(0, 1).toUpperCase();
+  const initialChar = (user?.full_name || (typeof userRec?.name === 'string' ? userRec.name : null) || 'G').slice(0, 1).toUpperCase();
 
   const { isAdmin, isKurikulum, isKesiswaan, isSarpras, isHubin, isKaprog, isWaliKelas, isTU, isKepsek } = useCapabilities();
-  const rawRoleName = String(user?.role?.name || (user?.role as any) || '').toUpperCase();
+  const rawRoleName = String(user?.role?.name || (typeof userRec?.role === 'string' ? userRec.role : '') || '').toUpperCase();
   const isAdminRole = isAdmin || rawRoleName === 'ADMIN' || rawRoleName === 'SUPERADMIN';
   const canSwitchDashboard = !isKepsek && (isAdminRole || isKurikulum || isKesiswaan || isSarpras || isHubin || isKaprog || isWaliKelas || isTU);
 
@@ -159,9 +161,9 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
   return (
     <header
       className={cn(
-        'sticky top-0 z-30 h-12 px-3 sm:px-4 flex items-center justify-between gap-2.5 backdrop-blur-md transition-all',
-        // Edge-to-edge flush menempel ke tepi layar pada mobile (< lg), contained pada desktop (>= lg)
-        '-mx-4 -mt-2.5 sm:-mt-3 w-[calc(100%+2rem)] rounded-none border-b border-t-0 border-x-0 mb-3 sm:mb-4 lg:mx-0 lg:mt-0 lg:w-full lg:rounded-2xl lg:border',
+        'lg:hidden sticky top-0 z-30 h-12 px-3 sm:px-4 flex items-center justify-between gap-2.5 backdrop-blur-md transition-all',
+        // Edge-to-edge flush menempel ke tepi layar pada mobile (< lg)
+        '-mx-4 -mt-2.5 sm:-mt-3 w-[calc(100%+2rem)] rounded-none border-b border-t-0 border-x-0 mb-3 sm:mb-4',
         getContainerStyles(),
         className
       )}

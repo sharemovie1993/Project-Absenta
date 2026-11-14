@@ -203,7 +203,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     // Idle Delay: Tunda minimal 4 detik agar fase FCP/LCP awal selesai tanpa beban parsing opsi
     const timer = setTimeout(() => {
       if ('requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(makeReady);
+        (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(makeReady);
       } else {
         makeReady();
       }
@@ -525,11 +525,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Tombol Pilih Dashboard Divisi (Mobile & Desktop) */}
+            {/* Tombol Pilih Dashboard Divisi (Khusus Mobile) */}
             <button
               type="button"
               onClick={() => useRoleDashboardSwitcherStore.getState().open()}
-              className="px-2 sm:px-2.5 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/80 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              className="lg:hidden px-2 sm:px-2.5 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/80 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
               title="Pilih Dashboard Divisi Sekolah"
               aria-label="Pilih Dashboard Divisi"
             >
@@ -686,7 +686,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
 
             <div className="border-t border-slate-100 dark:border-slate-800/80 mx-1.5" />
 
-            {categories.map((cat, idx) => {
+            {categories?.map((cat, idx) => {
               const catTabs = navTabs.filter((t) => t.category === cat.id);
               if (catTabs.length === 0) return null;
               const CatIcon = cat.icon;
@@ -710,7 +710,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                     </div>
 
                     {/* Tombol Sub-tab dalam Kategori */}
-                    {catTabs.map((tab) => {
+                    {catTabs?.map((tab) => {
                       const Icon = tab.icon;
                       const isActive = activeTab === tab.id;
 
