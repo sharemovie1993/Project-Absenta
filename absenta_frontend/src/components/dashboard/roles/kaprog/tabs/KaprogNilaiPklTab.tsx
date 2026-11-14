@@ -29,10 +29,10 @@ export const KaprogNilaiPklTab: React.FC<KaprogNilaiPklTabProps> = React.memo(({
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <span>Penilaian PKL DUDI Jurusan {jurusanNama}</span>
+              <span>Monitoring Penilaian PKL DUDI Jurusan {jurusanNama}</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Rekapitulasi dan entri nilai kompetensi kerja industri (Hard Skill &amp; Soft Skill) dari instruktur / pembimbing DUDI.
+              Pantau progres ketuntasan nilai capaian kompetensi industri (Hard Skill &amp; Soft Skill) dari instruktur DUDI untuk persiapan kelulusan &amp; rapor PKL.
             </p>
           </div>
         </div>

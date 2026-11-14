@@ -31,10 +31,10 @@ export const KaprogNilaiSidangTab: React.FC<KaprogNilaiSidangTabProps> = React.m
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <span>Sidang &amp; Ujian PKL Jurusan {jurusanNama}</span>
+              <span>Monitoring Sidang &amp; Ujian PKL Jurusan {jurusanNama}</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Form penilaian sidang dapat diisi langsung oleh Kaprog maupun oleh Guru Penguji yang ditugaskan.
+              Pantau progres kelulusan sidang, sebaran penguji, rekapitulasi nilai aspek, dan cetak Berita Acara Ujian Sidang resmi jurusan.
             </p>
           </div>
         </div>
