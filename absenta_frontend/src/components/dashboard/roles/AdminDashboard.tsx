@@ -636,26 +636,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
       <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
         {/* Left Column: Sidebar Controls (Desktop sticky & independent scroll without scrollbar UI) */}
         <aside className="hidden lg:block sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain no-scrollbar space-y-3 pb-6">
-          {/* Identitas Admin Ringkas & Minimalis */}
-          <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden shadow-xs">
+          {/* Identitas Admin Ringkas & Minimalis (Ecosystem Banner Accent) */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-800 via-slate-800 to-slate-950 text-white shadow-xs space-y-2.5 border border-slate-700/50 relative overflow-hidden">
+            <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full blur-xl pointer-events-none" aria-hidden="true" />
+            <div className="flex items-center gap-3 relative z-10">
+              <div className="w-10 h-10 rounded-xl bg-white/95 border border-white/40 text-slate-800 flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden shadow-xs">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block leading-tight">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 block leading-tight">
                   Pusat Kendali
                 </span>
-                <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase">
+                <h2 className="text-sm font-black text-white tracking-wider truncate uppercase">
                   Administrator
                 </h2>
               </div>
             </div>
 
             {/* Badge Info Periode */}
-            <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-              <span className="font-medium">Periode Aktif</span>
-              <span className="font-bold text-slate-700 dark:text-slate-200 text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md truncate max-w-[120px]">
+            <div className="pt-2 border-t border-white/20 flex items-center justify-between text-[11px] text-white/80 relative z-10">
+              <span className="font-medium text-slate-300">Periode Aktif</span>
+              <span className="font-bold text-white font-mono text-[10px] bg-white/20 backdrop-blur-xs px-2 py-0.5 rounded-md truncate max-w-[120px]">
                 {tpTahun ? `TP ${tpTahun}` : 'Aktif'}
               </span>
             </div>

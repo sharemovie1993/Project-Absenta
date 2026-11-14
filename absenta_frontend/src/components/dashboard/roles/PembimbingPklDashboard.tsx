@@ -441,80 +441,85 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
         <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-4 sm:gap-5 items-start">
           {/* Left Sidebar (Desktop sticky & independent scroll without scrollbar UI) */}
           <aside className="hidden lg:block sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain no-scrollbar space-y-3.5 pb-6">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3">
-              <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-600 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+            {/* Identitas Pembimbing PKL Ringkas (Ecosystem Banner Accent) */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-600 to-amber-700 text-white shadow-xs space-y-2.5 border border-orange-500/40 relative overflow-hidden">
+              <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full blur-xl pointer-events-none" aria-hidden="true" />
+              <div className="flex items-center gap-3 relative z-10">
+                <div className="w-10 h-10 rounded-xl bg-white/95 border border-white/40 text-orange-600 flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
                   <UserCheck size={18} />
                 </div>
-                <div className="min-w-0">
-                  <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">{user?.full_name || 'Guru Pembimbing'}</h4>
-                  <p className="text-[10px] text-orange-600 dark:text-orange-400 font-bold truncate">Pembimbing PKL</p>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-orange-200 block leading-tight">
+                    Pembimbing PKL
+                  </span>
+                  <h4 className="text-xs font-black text-white truncate">{user?.full_name || 'Guru Pembimbing'}</h4>
                 </div>
               </div>
 
               {/* Status Banner */}
-              <div className="p-2.5 rounded-xl bg-orange-50/70 dark:bg-orange-950/40 border border-orange-100 dark:border-orange-900/40 text-[11px] text-orange-900 dark:text-orange-300">
-                <span className="font-bold block text-[10px] uppercase tracking-wider text-orange-600 dark:text-orange-400">Tahun Pelajaran</span>
-                <span className="font-extrabold">{tpTahun || '2026/2027'}</span>
-                <span className="text-[10px] text-orange-700/80 dark:text-orange-400/80 block mt-0.5">{semesterNama || 'Semester Ganjil'}</span>
-              </div>
-
-              {/* Vertical Tab Navigation */}
-              <nav className="space-y-1">
-                {navTabs.map((tab) => {
-                  const IconComp = tab.icon;
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => handleTabSelect(tab.id)}
-                      className={cn(
-                        'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer',
-                        isActive ? 'bg-teal-600 text-white shadow-xs font-black' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <IconComp size={16} className={cn(isActive ? 'text-white' : 'text-slate-400')} />
-                        <span className="truncate">{tab.label}</span>
-                      </div>
-                      {tab.badge !== undefined && tab.badge !== null && (
-                        <span
-                          className={cn(
-                            'text-[10px] px-2 py-0.5 rounded-full font-bold',
-                            isActive ? 'bg-white/25 text-white' : tab.badgeColor || 'bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300'
-                          )}
-                        >
-                          {tab.badge}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </nav>
-
-              {/* Quick Shortcuts */}
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/hubin/mitra')}
-                  className="w-full justify-start text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 h-8 px-2"
-                >
-                  <Building2 size={13} className="mr-2 text-slate-400" />
-                  Katalog Mitra DU/DI
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/dashboard?tab=ringkasan')}
-                  className="w-full justify-start text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 h-8 px-2"
-                >
-                  <ArrowLeft size={13} className="mr-2 text-slate-400" />
-                  Kembali ke Portal Guru
-                </Button>
+              <div className="pt-2 border-t border-white/20 flex items-center justify-between text-[11px] text-white/80 relative z-10">
+                <span className="font-medium text-orange-100">Tahun Pelajaran</span>
+                <span className="font-bold text-white font-mono text-[10px] bg-white/20 backdrop-blur-xs px-2 py-0.5 rounded-md truncate">
+                  {tpTahun || '2026/2027'} {semesterNama ? `• ${semesterNama}` : ''}
+                </span>
               </div>
             </div>
-          </aside>
+
+            {/* Vertical Tab Navigation */}
+            <nav className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
+              {navTabs.map((tab) => {
+                const IconComp = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabSelect(tab.id)}
+                    className={cn(
+                      'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer',
+                      isActive ? 'bg-gradient-to-r from-orange-600 to-amber-700 text-white shadow-xs font-black' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <IconComp size={16} className={cn(isActive ? 'text-white' : 'text-slate-400')} />
+                      <span className="truncate">{tab.label}</span>
+                    </div>
+                    {tab.badge !== undefined && tab.badge !== null && (
+                      <span
+                        className={cn(
+                          'text-[10px] px-2 py-0.5 rounded-full font-bold',
+                          isActive ? 'bg-white/25 text-white' : tab.badgeColor || 'bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300'
+                        )}
+                      >
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                  );
+                })}
+
+                {/* Quick Shortcuts */}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/hubin/mitra')}
+                    className="w-full justify-start text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 h-8 px-2"
+                  >
+                    <Building2 size={13} className="mr-2 text-slate-400" />
+                    Katalog Mitra DU/DI
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/dashboard?tab=ringkasan')}
+                    className="w-full justify-start text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 h-8 px-2"
+                  >
+                    <ArrowLeft size={13} className="mr-2 text-slate-400" />
+                    Kembali ke Portal Guru
+                  </Button>
+                </div>
+              </nav>
+            </aside>
 
           {/* Right Main Body (Keep-Alive Subtabs) */}
           <main className="min-w-0 flex-1 space-y-4">

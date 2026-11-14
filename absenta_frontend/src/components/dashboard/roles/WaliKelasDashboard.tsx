@@ -293,29 +293,30 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
         {/* Left Column: Sidebar Controls (Desktop sticky & independent scroll without scrollbar UI) */}
         <aside className="hidden lg:block sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain no-scrollbar space-y-3 pb-6">
-          {/* Identitas Rombel Ringkas & Minimalis */}
-          <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden shadow-xs">
+          {/* Identitas Rombel Ringkas & Minimalis (Ecosystem Banner Accent) */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-sky-600 via-sky-600 to-blue-700 text-white shadow-xs flex items-center gap-3 border border-sky-500/40 relative overflow-hidden">
+            <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full blur-xl pointer-events-none" aria-hidden="true" />
+            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs border border-white/30 text-white flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden shadow-xs relative z-10">
               <GraduationCap className="w-5 h-5" />
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase">
+            <div className="min-w-0 flex-1 relative z-10">
+              <h2 className="text-sm font-black text-white tracking-wider truncate uppercase drop-shadow-2xs">
                 {activeKelasNama}
               </h2>
               {kelasList.length > 1 ? (
                 <select
                   value={activeKelasId || ''}
                   onChange={(e) => handleClassChange(e.target.value)}
-                  className="w-full text-[11px] text-slate-500 dark:text-slate-400 bg-transparent border-0 p-0 focus:ring-0 cursor-pointer"
+                  className="w-full text-[11px] text-sky-100/90 bg-transparent border-0 p-0 focus:ring-0 cursor-pointer font-medium"
                 >
                   {kelasList.map((k) => (
-                    <option key={k.id} value={k.id} className="dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+                    <option key={k.id} value={k.id} className="bg-slate-900 text-white">
                       {k.nama} ({k.tahun_pelajaran?.nama || 'TP'})
                     </option>
                   ))}
                 </select>
               ) : (
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                <p className="text-[11px] text-sky-100/80 truncate drop-shadow-2xs">
                   {walasData?.wali_kelas?.nama ? `Walas: ${walasData.wali_kelas.nama}` : 'Wali Kelas'}
                 </p>
               )}

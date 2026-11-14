@@ -382,24 +382,26 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
       <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
         {/* LEFT COLUMN: SIDEBAR CONTROLS (Desktop sticky & independent scroll without scrollbar UI) */}
         <aside className="hidden lg:block sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain no-scrollbar space-y-3 pb-6">
-          <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden shadow-xs">
+          {/* Identitas TU (Ecosystem Banner Accent) */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-indigo-700 via-indigo-700 to-slate-800 text-white shadow-xs space-y-2.5 border border-indigo-500/40 relative overflow-hidden">
+            <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full blur-xl pointer-events-none" aria-hidden="true" />
+            <div className="flex items-center gap-3 relative z-10">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs border border-white/30 text-white flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden shadow-xs">
                 TU
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block leading-tight">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-100/90 block leading-tight drop-shadow-2xs">
                   Unit Kerja
                 </span>
-                <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase">
+                <h2 className="text-sm font-black text-white tracking-wider truncate uppercase drop-shadow-2xs">
                   TATA USAHA
                 </h2>
               </div>
             </div>
 
-            <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-              <span className="font-medium">Kode Layanan</span>
-              <span className="font-bold text-slate-700 dark:text-slate-200 font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+            <div className="pt-2 border-t border-white/20 flex items-center justify-between text-[11px] text-white/90 relative z-10">
+              <span className="font-medium text-indigo-100/80">Kode Layanan</span>
+              <span className="font-bold text-white font-mono text-[10px] bg-white/20 backdrop-blur-xs border border-white/25 px-2 py-0.5 rounded-md">
                 {tuIdentity.sidebarCode}
               </span>
             </div>
