@@ -261,7 +261,6 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                 <th rowSpan={2} className="border border-black px-2 py-1.5 w-20">NIS / NISN</th>
                 <th rowSpan={2} className="border border-black px-2 py-1.5 text-left min-w-[130px]">Nama Lengkap Siswa</th>
                 <th rowSpan={2} className="border border-black px-1.5 py-1.5 w-16">Kelas</th>
-                <th rowSpan={2} className="border border-black px-2 py-1.5 text-left min-w-[120px]">Tempat PKL (DUDI)</th>
                 {docType === 'JURUSAN' && (
                   <th rowSpan={2} className="border border-black px-2 py-1.5 text-left w-28">Guru Penguji</th>
                 )}
@@ -294,7 +293,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
             <tbody>
               {filteredScores.length === 0 ? (
                 <tr>
-                  <td colSpan={docType === 'JURUSAN' ? 12 : 11} className="border border-black p-4 text-center italic text-slate-500">
+                  <td colSpan={docType === 'JURUSAN' ? 11 : 10} className="border border-black p-4 text-center italic text-slate-500">
                     Tidak ada data sidang siswa yang memenuhi kriteria filter.
                   </td>
                 </tr>
@@ -309,7 +308,6 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                       <td className="border border-black px-1.5 py-1 font-mono text-center">{row.nis || '-'}</td>
                       <td className="border border-black px-2 py-1 font-semibold">{row.nama_siswa}</td>
                       <td className="border border-black px-1.5 py-1 text-center">{row.nama_kelas || '-'}</td>
-                      <td className="border border-black px-2 py-1 truncate max-w-[130px]">{row.mitra_nama || '-'}</td>
                       {docType === 'JURUSAN' && (
                         <td className="border border-black px-2 py-1 truncate max-w-[110px]">{row.penguji_nama || '-'}</td>
                       )}
