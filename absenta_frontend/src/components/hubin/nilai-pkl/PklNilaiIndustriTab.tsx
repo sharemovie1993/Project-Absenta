@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicFilterToolbar } from '@/components/common/academic-filter';
-import { Save, RotateCcw, Copy, Printer } from 'lucide-react';
+import { Save, RotateCcw, Copy, Printer, Lock, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
 import { PklNilaiIndustriMobileCards } from './PklNilaiIndustriMobileCards';
@@ -57,6 +57,9 @@ export interface PklNilaiIndustriTabProps {
   onPrintSertifikat?: (row: ScoreRow) => void;
   onNavigateCetakRapor?: () => void;
   hideFilterCard?: boolean;
+  readOnly?: boolean;
+  isAdminOverride?: boolean;
+  onToggleAdminOverride?: () => void;
   effectiveSettings?: {
     assessmentMode?: 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
     weightDudi?: number;
@@ -106,6 +109,9 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
   handleSyncFromDailyAttendance,
   onNavigateCetakRapor,
   hideFilterCard = false,
+  readOnly = false,
+  isAdminOverride = false,
+  onToggleAdminOverride,
   effectiveSettings,
 }) => {
   const hasLaporan = effectiveSettings?.assessmentMode === 'COMPOSITE';
@@ -236,22 +242,32 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
               id={`score-instruktur-${globalIndex}`}
               aria-label={`Nama instruktur ${score.nama_siswa}`}
               type="text"
-              placeholder="Instruktur..."
+              placeholder={readOnly ? '-' : 'Instruktur...'}
               value={score.instruktur_nama || ''}
+              readOnly={readOnly}
+              disabled={readOnly}
               onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'instruktur_nama', e.target.value)}
-              className="w-full text-[10px] h-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className={cn(
+                "w-full text-[10px] h-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                readOnly && "border-transparent bg-transparent cursor-default px-0 text-slate-700 dark:text-slate-300 font-semibold"
+              )}
             />
             <div className="flex items-center gap-0.5">
               <input
                 id={`score-pic-${globalIndex}`}
                 aria-label={`Jabatan atau penanggung jawab DUDI ${score.nama_siswa}`}
                 type="text"
-                placeholder="Jabatan..."
+                placeholder={readOnly ? '' : 'Jabatan...'}
                 value={score.penanggung_jawab_nama || ''}
+                readOnly={readOnly}
+                disabled={readOnly}
                 onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penanggung_jawab_nama', e.target.value)}
-                className="w-full text-[9px] h-4.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-1 text-slate-600 dark:text-slate-400 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className={cn(
+                  "w-full text-[9px] h-4.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-1 text-slate-600 dark:text-slate-400 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                  readOnly && "border-transparent bg-transparent cursor-default px-0 text-slate-400 text-[8px]"
+                )}
               />
-              {score.mitra_nama && score.instruktur_nama && (
+              {!readOnly && score.mitra_nama && score.instruktur_nama && (
                 <button
                   type="button"
                   onClick={() => handleApplyToSameMitra(score.mitra_nama, score.instruktur_nama, score.penanggung_jawab_nama)}
@@ -277,9 +293,14 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           id={`score-input-${rowIndex}-0`}
           aria-label={`Nilai teknis ${score.nama_siswa}`}
           value={score.hard_kompetensi_teknis}
+          readOnly={readOnly}
+          disabled={readOnly}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'hard_kompetensi_teknis', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 0)}
-          className="bg-blue-50/60 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-800"
+          className={cn(
+            "bg-blue-50/60 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-800",
+            readOnly && "bg-transparent border-transparent text-center font-bold"
+          )}
         />
       ),
     },
@@ -294,9 +315,14 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           id={`score-input-${rowIndex}-1`}
           aria-label={`Nilai SOP K3LH ${score.nama_siswa}`}
           value={score.hard_sop_k3lh}
+          readOnly={readOnly}
+          disabled={readOnly}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'hard_sop_k3lh', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 1)}
-          className="bg-blue-50/60 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-800"
+          className={cn(
+            "bg-blue-50/60 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-800",
+            readOnly && "bg-transparent border-transparent text-center font-bold"
+          )}
         />
       ),
     },
@@ -311,9 +337,14 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           id={`score-input-${rowIndex}-2`}
           aria-label={`Nilai alur bisnis ${score.nama_siswa}`}
           value={score.hard_alur_bisnis}
+          readOnly={readOnly}
+          disabled={readOnly}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'hard_alur_bisnis', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 2)}
-          className="bg-blue-50/60 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-800"
+          className={cn(
+            "bg-blue-50/60 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-800",
+            readOnly && "bg-transparent border-transparent text-center font-bold"
+          )}
         />
       ),
     },
@@ -328,9 +359,14 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           id={`score-input-${rowIndex}-3`}
           aria-label={`Nilai kedisiplinan ${score.nama_siswa}`}
           value={score.soft_kedisiplinan}
+          readOnly={readOnly}
+          disabled={readOnly}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'soft_kedisiplinan', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 3)}
-          className="bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800"
+          className={cn(
+            "bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800",
+            readOnly && "bg-transparent border-transparent text-center font-bold"
+          )}
         />
       ),
     },
@@ -345,9 +381,14 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           id={`score-input-${rowIndex}-4`}
           aria-label={`Nilai inisiatif ${score.nama_siswa}`}
           value={score.soft_kerajinan_inisiatif}
+          readOnly={readOnly}
+          disabled={readOnly}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'soft_kerajinan_inisiatif', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 4)}
-          className="bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800"
+          className={cn(
+            "bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800",
+            readOnly && "bg-transparent border-transparent text-center font-bold"
+          )}
         />
       ),
     },
@@ -362,9 +403,14 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           id={`score-input-${rowIndex}-5`}
           aria-label={`Nilai kerjasama ${score.nama_siswa}`}
           value={score.soft_kerjasama}
+          readOnly={readOnly}
+          disabled={readOnly}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'soft_kerjasama', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 5)}
-          className="bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800"
+          className={cn(
+            "bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800",
+            readOnly && "bg-transparent border-transparent text-center font-bold"
+          )}
         />
       ),
     },
@@ -379,9 +425,14 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           id={`score-input-${rowIndex}-6`}
           aria-label={`Nilai kejujuran ${score.nama_siswa}`}
           value={score.soft_kejujuran}
+          readOnly={readOnly}
+          disabled={readOnly}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'soft_kejujuran', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 6)}
-          className="bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800"
+          className={cn(
+            "bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800",
+            readOnly && "bg-transparent border-transparent text-center font-bold"
+          )}
         />
       ),
     },
@@ -396,9 +447,14 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           id={`score-input-${rowIndex}-7`}
           aria-label={`Nilai tanggung jawab ${score.nama_siswa}`}
           value={score.soft_tanggung_jawab}
+          readOnly={readOnly}
+          disabled={readOnly}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'soft_tanggung_jawab', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 7)}
-          className="bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800"
+          className={cn(
+            "bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800",
+            readOnly && "bg-transparent border-transparent text-center font-bold"
+          )}
         />
       ),
     },
@@ -415,9 +471,14 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           aria-label={`Nilai laporan ${score.nama_siswa}`}
           value={score.nilai_laporan}
           placeholder="0"
+          readOnly={readOnly}
+          disabled={readOnly}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'nilai_laporan', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 8)}
-          className="bg-purple-50/60 dark:bg-purple-950/30 text-purple-900 dark:text-purple-100 border-purple-200 dark:border-purple-800"
+          className={cn(
+            "bg-purple-50/60 dark:bg-purple-950/30 text-purple-900 dark:text-purple-100 border-purple-200 dark:border-purple-800",
+            readOnly && "bg-transparent border-transparent text-center font-bold"
+          )}
         />
       ),
     }] : []),
@@ -444,14 +505,16 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
       header: (
         <div className="flex items-center justify-center gap-0.5">
           <span>Presensi</span>
-          <button
-            type="button"
-            onClick={handleSyncFromDailyAttendance}
-            className="p-0.5 text-slate-400 hover:text-indigo-600 rounded transition-colors"
-            title="Tarik S/I/A harian"
-          >
-            <RotateCcw size={10} />
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={handleSyncFromDailyAttendance}
+              className="p-0.5 text-slate-400 hover:text-indigo-600 rounded transition-colors"
+              title="Tarik S/I/A harian"
+            >
+              <RotateCcw size={10} />
+            </button>
+          )}
         </div>
       ),
       subHeader: 'S / I / A',
@@ -460,14 +523,22 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
       renderCell: (score, index) => {
         const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
         return (
-          <div className="inline-flex items-center gap-0.5 bg-slate-50 dark:bg-slate-800/80 p-0.5 rounded border border-slate-200 dark:border-slate-700/80">
+          <div className={cn(
+            "inline-flex items-center gap-0.5 p-0.5 rounded",
+            readOnly ? "bg-transparent border-transparent" : "bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80"
+          )}>
             <input
               id={`score-sakit-${globalIndex}`}
               aria-label={`Sakit ${score.nama_siswa}`}
               type="number" min={0} max={365} placeholder="0"
               value={score.sakit_pkl || ''}
+              readOnly={readOnly}
+              disabled={readOnly}
               onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'sakit_pkl', e.target.value)}
-              className="w-5.5 h-5 text-[9px] font-bold text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className={cn(
+                "w-5.5 h-5 text-[9px] font-bold text-center rounded focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                readOnly ? "bg-transparent border-transparent text-amber-700 dark:text-amber-400" : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+              )}
               title="Sakit"
             />
             <input
@@ -475,8 +546,13 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
               aria-label={`Izin ${score.nama_siswa}`}
               type="number" min={0} max={365} placeholder="0"
               value={score.izin_pkl || ''}
+              readOnly={readOnly}
+              disabled={readOnly}
               onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'izin_pkl', e.target.value)}
-              className="w-5.5 h-5 text-[9px] font-bold text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className={cn(
+                "w-5.5 h-5 text-[9px] font-bold text-center rounded focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                readOnly ? "bg-transparent border-transparent text-blue-700 dark:text-blue-400" : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+              )}
               title="Izin"
             />
             <input
@@ -484,8 +560,13 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
               aria-label={`Alpa ${score.nama_siswa}`}
               type="number" min={0} max={365} placeholder="0"
               value={score.alpa_pkl || ''}
+              readOnly={readOnly}
+              disabled={readOnly}
               onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'alpa_pkl', e.target.value)}
-              className="w-5.5 h-5 text-[9px] font-bold text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-rose-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className={cn(
+                "w-5.5 h-5 text-[9px] font-bold text-center rounded focus:outline-none focus:ring-1 focus:ring-rose-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                readOnly ? "bg-transparent border-transparent text-rose-700 dark:text-rose-400" : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+              )}
               title="Alpa"
             />
           </div>
@@ -504,10 +585,17 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
             id={`score-cat-${globalIndex}`}
             aria-label={`Catatan evaluasi ${score.nama_siswa}`}
             type="text"
-            placeholder="Catatan..."
+            placeholder={readOnly ? '-' : 'Catatan...'}
             value={score.catatan_pkl || ''}
+            readOnly={readOnly}
+            disabled={readOnly}
             onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'catatan_pkl', e.target.value)}
-            className="w-full text-[10px] h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className={cn(
+              "w-full text-[10px] h-6 rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500",
+              readOnly
+                ? "bg-transparent border-transparent text-slate-600 dark:text-slate-400 font-medium px-0 truncate cursor-default"
+                : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+            )}
           />
         );
       },
@@ -521,6 +609,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     handleApplyToSameMitra,
     handleSyncFromDailyAttendance,
     handleKeyDownScore,
+    readOnly,
   ]);
 
   return (
@@ -715,19 +804,57 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           density="compact"
           enableFullscreen={true}
           autoHeight={true}
-          headerTitle="Lembar Penilaian PKL DUDI"
+          headerTitle={readOnly ? "Rekapitulasi Nilai PKL DUDI" : (isAdminOverride ? "Lembar Nilai PKL DUDI (Mode Koreksi Admin)" : "Lembar Penilaian PKL DUDI")}
           headerActions={
             <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                aria-label="Simpan perubahan nilai"
-                onClick={onSaveBatch}
-                disabled={isSavingBatch || displayedScores?.length === 0}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 dark:shadow-none text-xs h-[34px] px-3.5 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>{isSavingBatch ? 'Menyimpan...' : 'Simpan'}</span>
-              </Button>
+              {readOnly ? (
+                <>
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <Lock size={12} className="text-slate-400" />
+                    <span>Mode Monitoring</span>
+                  </span>
+
+                  {canManageAll && onToggleAdminOverride && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={onToggleAdminOverride}
+                      className="border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Buka akses edit nilai jika perlu melakukan koreksi darurat"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>Mode Koreksi</span>
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  aria-label="Simpan perubahan nilai"
+                  onClick={onSaveBatch}
+                  disabled={isSavingBatch || displayedScores?.length === 0}
+                  className={cn(
+                    "text-white rounded-xl font-bold shadow-md text-xs h-[34px] px-3.5 flex items-center gap-1.5 cursor-pointer disabled:opacity-50",
+                    isAdminOverride
+                      ? "bg-amber-600 hover:bg-amber-700 shadow-amber-100 dark:shadow-none"
+                      : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100 dark:shadow-none"
+                  )}
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isSavingBatch ? 'Menyimpan...' : (isAdminOverride ? 'Simpan Koreksi' : 'Simpan')}</span>
+                </Button>
+              )}
+
+              {isAdminOverride && onToggleAdminOverride && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onToggleAdminOverride}
+                  className="border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-bold text-xs h-[34px] px-3 cursor-pointer"
+                >
+                  Batal
+                </Button>
+              )}
 
               {onNavigateCetakRapor && (
                 <Button

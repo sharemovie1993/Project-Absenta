@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, GraduationCap, Award } from 'lucide-react';
+import { ShieldCheck, GraduationCap, Award, AlertTriangle, Lock, Edit3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button, SectionCard } from '@/components/ui';
+import { HubCard } from '@/components/ui/hub';
 import { hubinApi } from '@/api/hubin.api';
 import { toast } from 'sonner';
 import { useDudiOptions } from '@/hooks/useDudiOptions';
@@ -125,6 +126,15 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   
   const [guidanceScope, setGuidanceScope] = useState<'ALL' | 'MY_GUIDANCE'>(propGuruId ? 'MY_GUIDANCE' : canManageAll ? 'ALL' : 'MY_GUIDANCE');
   const [statusFilter, setStatusFilter] = useState<'ELIGIBLE' | 'AKTIF' | 'SELESAI' | 'ALL'>('ELIGIBLE');
+  const [adminOverrideMode, setAdminOverrideMode] = useState(false);
+
+  // Konteks View: Default adalah Monitoring (read-only) untuk seluruh siswa (scope ALL)
+  // Operasional edit nilai hanya aktif jika:
+  // 1. Pengguna berada di mode penguji khusus (isPengujiOnly)
+  // 2. Filter aktif adalah bimbingan saya (MY_GUIDANCE)
+  // 3. Admin Hubin secara eksplisit mengaktifkan Mode Koreksi (adminOverrideMode)
+  const isOperatingAsGuidanceTeacher = guidanceScope === 'MY_GUIDANCE';
+  const effectiveReadOnly = readOnly || (!isPengujiOnly && !isOperatingAsGuidanceTeacher && !adminOverrideMode);
 
   useEffect(() => {
     if (isMobile) {
@@ -358,6 +368,17 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     return filtered.filter((s) => s.kelas_id === selectedKelas);
   }, [scores, selectedKelas, guidanceScope, activeGuruId, isWaliKelas, isPrivilegedHubin, walikelasKelas, isJurusanScoped, effectiveJurusanId, kaprogJurusan]);
 
+  const kpiStats = useMemo(() => {
+    const list = displayedScores || [];
+    const total = list.length;
+    const dudiLengkap = list.filter(s => s.hard_kompetensi_teknis !== null && s.hard_kompetensi_teknis !== undefined).length;
+    const sidangLengkap = list.filter(s => s.nilai_sidang !== null && s.nilai_sidang !== undefined).length;
+    const tuntas = list.filter(s => s.nilai_akhir_pkl !== null && s.nilai_akhir_pkl !== undefined && Number(s.nilai_akhir_pkl) > 0).length;
+    const belumLengkap = Math.max(0, total - tuntas);
+
+    return { total, dudiLengkap, sidangLengkap, tuntas, belumLengkap };
+  }, [displayedScores]);
+
   const allScopedCount = useMemo(() => {
     if (isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id && !effectiveJurusanId) {
       return rawList.filter((item: RawPklItem) => {
@@ -426,7 +447,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   });
 
   const handleScoreChange = useCallback((siswaPklId: string, field: keyof ScoreRow, val: string | number | null) => {
-    if (readOnly) return;
+    if (effectiveReadOnly) return;
     setScores(prev => {
       const clone = [...(prev || [])];
       const index = clone.findIndex(s => s.siswa_pkl_id === siswaPklId);
@@ -456,10 +477,10 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
       clone[index] = target;
       return clone;
     });
-  }, [effectiveSettings, readOnly]);
+  }, [effectiveSettings, effectiveReadOnly]);
 
   const handleApplyToSameMitra = useCallback((mitraNama: string, instruktur: string, pic?: string) => {
-    if (readOnly || !mitraNama || !instruktur) return;
+    if (effectiveReadOnly || !mitraNama || !instruktur) return;
     setScores(prev => prev?.map(s => {
       if (s.mitra_nama === mitraNama) {
         return {
@@ -471,10 +492,10 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
       return s;
     }) || []);
     toast.success(`Data instruktur diterapkan ke seluruh siswa di ${mitraNama}`);
-  }, [readOnly]);
+  }, [effectiveReadOnly]);
 
   const handleSyncFromDailyAttendance = useCallback(() => {
-    if (readOnly) return;
+    if (effectiveReadOnly) return;
     setScores(prev => prev?.map(s => ({
       ...s,
       sakit_pkl: s.auto_sakit ?? 0,
@@ -482,7 +503,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
       alpa_pkl: s.auto_alpa ?? 0,
     })) || []);
     toast.success('Presensi PKL (S/I/A) berhasil ditarik & disinkronkan dari data absensi harian siswa!');
-  }, [readOnly]);
+  }, [effectiveReadOnly]);
 
   const handleNavigateCetakRapor = useCallback(() => {
     const params = new URLSearchParams();
@@ -494,7 +515,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   }, [navigate, selectedKelas, selectedTp, selectedSemester]);
 
   const handleSaveBatch = useCallback(() => {
-    if (readOnly) return;
+    if (effectiveReadOnly) return;
     if (scores.length === 0) {
       toast.error('Tidak ada data siswa untuk disimpan');
       return;
@@ -533,7 +554,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         alamat_dudi: s.alamat_dudi
       })) || []
     });
-  }, [scores, selectedTp, selectedSemester, saveBatchMutation, readOnly]);
+  }, [scores, selectedTp, selectedSemester, saveBatchMutation, effectiveReadOnly]);
 
   const isSidangAvailable = isCompositeMode || initialTab === 'sidang' || isKaprog || isPrivilegedHubin || isPengujiOnly;
   const tabs = useMemo(() => {
@@ -587,6 +608,91 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
                 <strong>{walikelasKelas?.nama_kelas || 'Binaan Anda'}</strong>.
               </span>
             </div>
+          </div>
+        )}
+
+        {/* KPI Strip Monitoring Progres Nilai PKL (Shopee-Grade Hairline Strip) */}
+        {!isPengujiOnly && !hideHeaderStats && (
+          <HubCard noPadding className="w-full">
+            <div className={cn(
+              "grid divide-x divide-slate-100 dark:divide-slate-800/80 py-2 sm:py-2.5 text-center",
+              isCompositeMode ? "grid-cols-5" : "grid-cols-4"
+            )}>
+              <div className="px-1 min-w-0">
+                <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-none">
+                  {kpiStats.total}
+                </div>
+                <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                  Total Siswa
+                </div>
+              </div>
+
+              <div className="px-1 min-w-0">
+                <div className="text-sm sm:text-base font-black text-blue-600 dark:text-blue-400 leading-none">
+                  {kpiStats.dudiLengkap}
+                  <span className="text-[10px] font-normal text-slate-400 ml-1 hidden sm:inline">
+                    ({kpiStats.total > 0 ? Math.round((kpiStats.dudiLengkap / kpiStats.total) * 100) : 0}%)
+                  </span>
+                </div>
+                <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                  Nilai DUDI
+                </div>
+              </div>
+
+              {isCompositeMode && (
+                <div className="px-1 min-w-0">
+                  <div className="text-sm sm:text-base font-black text-purple-600 dark:text-purple-400 leading-none">
+                    {kpiStats.sidangLengkap}
+                    <span className="text-[10px] font-normal text-slate-400 ml-1 hidden sm:inline">
+                      ({kpiStats.total > 0 ? Math.round((kpiStats.sidangLengkap / kpiStats.total) * 100) : 0}%)
+                    </span>
+                  </div>
+                  <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                    Nilai Sidang
+                  </div>
+                </div>
+              )}
+
+              <div className="px-1 min-w-0">
+                <div className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 leading-none">
+                  {kpiStats.tuntas}
+                  <span className="text-[10px] font-normal text-slate-400 ml-1 hidden sm:inline">
+                    ({kpiStats.total > 0 ? Math.round((kpiStats.tuntas / kpiStats.total) * 100) : 0}%)
+                  </span>
+                </div>
+                <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                  Siap Cetak
+                </div>
+              </div>
+
+              <div className="px-1 min-w-0">
+                <div className="text-sm sm:text-base font-black text-rose-600 dark:text-rose-400 leading-none">
+                  {kpiStats.belumLengkap}
+                </div>
+                <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                  Belum Lengkap
+                </div>
+              </div>
+            </div>
+          </HubCard>
+        )}
+
+        {/* Banner Peringatan Mode Koreksi Admin */}
+        {adminOverrideMode && !isPengujiOnly && (
+          <div className="flex items-center justify-between gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-900 dark:text-amber-200">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+              <span>
+                <strong>Mode Koreksi Nilai Aktif (Admin Override):</strong> Anda memiliki izin mengedit nilai langsung seluruh siswa. Harap pastikan perubahan sesuai dokumen otentik dari DUDI / Penguji.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAdminOverrideMode(false)}
+              className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition-colors shrink-0 cursor-pointer"
+            >
+              Kunci & Selesai Koreksi
+            </button>
           </div>
         )}
 
@@ -687,6 +793,9 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               handleApplyToSameMitra={handleApplyToSameMitra}
               handleSyncFromDailyAttendance={handleSyncFromDailyAttendance}
               onNavigateCetakRapor={effectiveHideCetakRapor ? undefined : handleNavigateCetakRapor}
+              readOnly={effectiveReadOnly}
+              isAdminOverride={adminOverrideMode}
+              onToggleAdminOverride={canManageAll ? () => setAdminOverrideMode(prev => !prev) : undefined}
             />
           )}
 
@@ -738,6 +847,9 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               onNavigateCetakRapor={effectiveHideCetakRapor ? undefined : handleNavigateCetakRapor}
               jurusanId={effectiveJurusanId}
               jurusanNama={effectiveJurusanNama && effectiveJurusanNama !== 'Kejuruan' ? effectiveJurusanNama : undefined}
+              readOnly={effectiveReadOnly}
+              isAdminOverride={adminOverrideMode}
+              onToggleAdminOverride={canManageAll ? () => setAdminOverrideMode(prev => !prev) : undefined}
             />
           )}
         </Suspense>

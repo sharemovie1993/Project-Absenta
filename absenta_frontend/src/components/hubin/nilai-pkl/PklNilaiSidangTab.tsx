@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicFilterToolbar } from '@/components/common/academic-filter';
-import { Info, Lock, Save, FileText, Check, Printer, Sparkles } from 'lucide-react';
+import { Info, Lock, Save, FileText, Check, Printer, Sparkles, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
 import { PklNilaiSidangMobileCards } from './PklNilaiSidangMobileCards';
@@ -68,6 +68,9 @@ export interface PklNilaiSidangTabProps {
   hideFilterCard?: boolean;
   jurusanId?: string;
   jurusanNama?: string;
+  readOnly?: boolean;
+  isAdminOverride?: boolean;
+  onToggleAdminOverride?: () => void;
 }
 
 export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
@@ -112,6 +115,9 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   hideFilterCard = false,
   jurusanId,
   jurusanNama,
+  readOnly = false,
+  isAdminOverride = false,
+  onToggleAdminOverride,
 }) => {
   const [showCetakModal, setShowCetakModal] = useState(false);
   const [showSpinWheelModal, setShowSpinWheelModal] = useState(false);
@@ -309,14 +315,17 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           id={`sidang-score-${rowIndex}-0`}
           aria-label={`Nilai materi ${score.nama_siswa}`}
           value={!isCompositeMode ? null : score.sidang_materi}
-          disabled={!isCompositeMode}
-          placeholder={!isCompositeMode ? '-' : '0'}
+          disabled={!isCompositeMode || readOnly}
+          readOnly={readOnly}
+          placeholder={!isCompositeMode ? '-' : (readOnly ? '-' : '0')}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'sidang_materi', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 0)}
           className={
             !isCompositeMode
               ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-              : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800'
+              : (readOnly
+                  ? 'bg-transparent border-transparent text-center font-bold text-indigo-950 dark:text-indigo-100'
+                  : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800')
           }
         />
       ),
@@ -332,14 +341,17 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           id={`sidang-score-${rowIndex}-1`}
           aria-label={`Nilai komunikasi ${score.nama_siswa}`}
           value={!isCompositeMode ? null : score.sidang_komunikasi}
-          disabled={!isCompositeMode}
-          placeholder={!isCompositeMode ? '-' : '0'}
+          disabled={!isCompositeMode || readOnly}
+          readOnly={readOnly}
+          placeholder={!isCompositeMode ? '-' : (readOnly ? '-' : '0')}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'sidang_komunikasi', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 1)}
           className={
             !isCompositeMode
               ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-              : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800'
+              : (readOnly
+                  ? 'bg-transparent border-transparent text-center font-bold text-indigo-950 dark:text-indigo-100'
+                  : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800')
           }
         />
       ),
@@ -355,14 +367,17 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           id={`sidang-score-${rowIndex}-2`}
           aria-label={`Nilai portofolio ${score.nama_siswa}`}
           value={!isCompositeMode ? null : score.sidang_portofolio}
-          disabled={!isCompositeMode}
-          placeholder={!isCompositeMode ? '-' : '0'}
+          disabled={!isCompositeMode || readOnly}
+          readOnly={readOnly}
+          placeholder={!isCompositeMode ? '-' : (readOnly ? '-' : '0')}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'sidang_portofolio', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 2)}
           className={
             !isCompositeMode
               ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-              : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800'
+              : (readOnly
+                  ? 'bg-transparent border-transparent text-center font-bold text-indigo-950 dark:text-indigo-100'
+                  : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800')
           }
         />
       ),
@@ -378,14 +393,17 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           id={`sidang-score-${rowIndex}-3`}
           aria-label={`Nilai sikap ${score.nama_siswa}`}
           value={!isCompositeMode ? null : score.sidang_sikap}
-          disabled={!isCompositeMode}
-          placeholder={!isCompositeMode ? '-' : '0'}
+          disabled={!isCompositeMode || readOnly}
+          readOnly={readOnly}
+          placeholder={!isCompositeMode ? '-' : (readOnly ? '-' : '0')}
           onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'sidang_sikap', val)}
           onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 3)}
           className={
             !isCompositeMode
               ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
-              : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800'
+              : (readOnly
+                  ? 'bg-transparent border-transparent text-center font-bold text-indigo-950 dark:text-indigo-100'
+                  : 'bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800')
           }
         />
       ),
@@ -442,11 +460,18 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
       width: 140,
       renderCell: (score, index) => {
         const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
+        if (readOnly) {
+          return (
+            <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate block">
+              {score.penguji_nama || '-'}
+            </span>
+          );
+        }
         return (
           <PengujiCombobox
             id={`score-penguji-${globalIndex}`}
             aria-label={`Nama penguji ${score.nama_siswa}`}
-            disabled={!isCompositeMode}
+            disabled={!isCompositeMode || readOnly}
             placeholder={!isCompositeMode ? 'Terkunci' : 'Ketik / pilih guru...'}
             value={!isCompositeMode ? '' : (score.penguji_nama || '')}
             onChange={(val) => {
@@ -478,15 +503,18 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
             id={`score-catatan-sidang-${globalIndex}`}
             aria-label={`Catatan sidang ${score.nama_siswa}`}
             type="text"
-            disabled={!isCompositeMode}
-            placeholder={!isCompositeMode ? 'Terkunci' : 'Catatan / revisi...'}
+            disabled={!isCompositeMode || readOnly}
+            readOnly={readOnly}
+            placeholder={!isCompositeMode ? 'Terkunci' : (readOnly ? '-' : 'Catatan / revisi...')}
             value={!isCompositeMode ? '' : (score.catatan_sidang || '')}
             onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'catatan_sidang', e.target.value)}
             className={cn(
               'w-full text-[10px] h-6 rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 border',
               !isCompositeMode
                 ? 'bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed'
-                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400'
+                : (readOnly
+                    ? 'bg-transparent border-transparent text-slate-600 dark:text-slate-400 font-medium px-0 truncate cursor-default'
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400')
             )}
           />
         );
@@ -557,6 +585,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
     guruList,
     isLoadingGuru,
     handleApplyPengujiToAll,
+    readOnly,
   ]);
 
   return (
@@ -792,7 +821,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           density="compact"
           enableFullscreen={true}
           autoHeight={true}
-          headerTitle="Lembar Penilaian Laporan & Sidang PKL"
+          headerTitle={readOnly ? "Rekapitulasi Sidang PKL (Monitoring)" : (isAdminOverride ? "Lembar Sidang PKL (Mode Koreksi Admin)" : "Lembar Penilaian Laporan & Sidang PKL")}
           headerActions={
             <div className="flex items-center gap-2">
               {/* Tombol Acak Siswa (Spin Wheel) */}
@@ -818,17 +847,55 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
                 <span>Cetak Berkas Sidang</span>
               </Button>
 
-              <Button
-                type="button"
-                aria-label="Simpan perubahan nilai"
-                onClick={onSaveBatch}
-                disabled={isSavingBatch || displayedScores?.length === 0 || !isCompositeMode}
-                title={!isCompositeMode ? 'Form terkunci karena skema aktif adalah DUDI 100%' : undefined}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 dark:shadow-none text-xs h-[34px] px-3.5 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>{isSavingBatch ? 'Menyimpan...' : (!isCompositeMode ? 'Skema Terkunci' : 'Simpan')}</span>
-              </Button>
+              {readOnly ? (
+                <>
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <Lock size={12} className="text-slate-400" />
+                    <span>Monitoring</span>
+                  </span>
+
+                  {canManageAll && onToggleAdminOverride && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={onToggleAdminOverride}
+                      className="border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Buka akses edit nilai jika perlu melakukan koreksi darurat"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>Mode Koreksi</span>
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  aria-label="Simpan perubahan nilai"
+                  onClick={onSaveBatch}
+                  disabled={isSavingBatch || displayedScores?.length === 0 || !isCompositeMode}
+                  title={!isCompositeMode ? 'Form terkunci karena skema aktif adalah DUDI 100%' : undefined}
+                  className={cn(
+                    "text-white rounded-xl font-bold shadow-md text-xs h-[34px] px-3.5 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
+                    isAdminOverride
+                      ? "bg-amber-600 hover:bg-amber-700 shadow-amber-100 dark:shadow-none"
+                      : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100 dark:shadow-none"
+                  )}
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isSavingBatch ? 'Menyimpan...' : (!isCompositeMode ? 'Skema Terkunci' : (isAdminOverride ? 'Simpan Koreksi' : 'Simpan'))}</span>
+                </Button>
+              )}
+
+              {isAdminOverride && onToggleAdminOverride && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onToggleAdminOverride}
+                  className="border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-bold text-xs h-[34px] px-3 cursor-pointer"
+                >
+                  Batal
+                </Button>
+              )}
 
               {onNavigateCetakRapor && (
                 <Button
