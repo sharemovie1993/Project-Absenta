@@ -15,6 +15,7 @@ import {
   Building2,
   UserCheck,
   Printer,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -42,6 +43,7 @@ export interface PklNilaiSidangMobileCardsProps {
   isLoadingGuru?: boolean;
   onApplyPengujiToAll?: (namaPenguji: string) => void;
   onOpenCetakModal?: () => void;
+  onOpenSpinWheelModal?: () => void;
 }
 
 const PAGINATION_LIMITS = [10, 25, 50, 100];
@@ -64,6 +66,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
   isLoadingGuru = false,
   onApplyPengujiToAll,
   onOpenCetakModal,
+  onOpenSpinWheelModal,
 }) => {
   const isComposite3Unsur = effectiveSettings?.assessmentMode === 'COMPOSITE';
   const isDudiSidang = effectiveSettings?.assessmentMode === 'DUDI_SIDANG';
@@ -138,6 +141,19 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                 Tutup
               </button>
             </div>
+
+            {onOpenSpinWheelModal && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={onOpenSpinWheelModal}
+                className="h-8 px-2.5 rounded-xl border border-purple-300 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 font-bold text-xs shadow-2xs flex items-center gap-1 cursor-pointer"
+                title="Buka Roda Pengacak Siswa (Spin Wheel)"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                <span className="hidden xxs:inline">Spin</span>
+              </Button>
+            )}
 
             {onOpenCetakModal && (
               <Button

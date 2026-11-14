@@ -735,9 +735,7 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                             <td colSpan={3} className="p-1.5 text-[10px]">
                               EVALUASI AKADEMIK SEKOLAH{' '}
                               <span className="font-normal italic text-slate-600">
-                                {isDudiSidang
-                                  ? `(Bobot: DUDI ${certData.weight_dudi ?? 70}% | Sidang ${certData.weight_sidang ?? 30}%)`
-                                  : `(Bobot: DUDI ${certData.weight_dudi ?? 70}% | Laporan ${certData.weight_laporan ?? 15}% | Sidang ${certData.weight_sidang ?? 15}%)`}
+                                (Bobot: DUDI {certData.weight_dudi ?? 70}% | Sidang {certData.weight_sidang ?? 30}%)
                               </span>
                             </td>
                           </tr>
@@ -747,18 +745,9 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                             <td className="p-1.5 text-center border-r border-slate-950 font-semibold">{(Math.round(dudiAvg * 100) / 100).toFixed(2)}</td>
                             <td className="p-1.5 text-center font-semibold">{getPredikatHuruf(dudiAvg)}</td>
                           </tr>
-                          {isComposite && (
-                            <tr>
-                              <td className="p-1.5 text-center border-r border-slate-950">2</td>
-                              <td className="p-1.5 border-r border-slate-950">Laporan PKL</td>
-                              <td className="p-1.5 text-center border-r border-slate-950 font-semibold">
-                                {certData.penilaian.nilai_laporan !== null && certData.penilaian.nilai_laporan !== undefined ? certData.penilaian.nilai_laporan : '-'}
-                              </td>
-                              <td className="p-1.5 text-center font-semibold">{getPredikatHuruf(certData.penilaian.nilai_laporan ?? null)}</td>
-                            </tr>
-                          )}
+                          {/* Skema Sertifikat Hanya 2 Opsi: DUDI ONLY atau DUDI + SIDANG */}
                           <tr>
-                            <td className="p-1.5 text-center border-r border-slate-950">{isComposite ? 3 : 2}</td>
+                            <td className="p-1.5 text-center border-r border-slate-950">2</td>
                             <td className="p-1.5 border-r border-slate-950">Sidang / Presentasi PKL</td>
                             <td className="p-1.5 text-center border-r border-slate-950 font-semibold">
                               {certData.penilaian.nilai_sidang !== null && certData.penilaian.nilai_sidang !== undefined ? certData.penilaian.nilai_sidang : '-'}
@@ -959,9 +948,7 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                           <td colSpan={3} className="p-1 text-[8pt]">
                             EVALUASI AKADEMIK SEKOLAH{' '}
                             <span className="font-normal italic">
-                              {isDudiSidang
-                                ? `(DUDI ${certData.weight_dudi ?? 70}% | Sidang ${certData.weight_sidang ?? 30}%)`
-                                : `(DUDI ${certData.weight_dudi ?? 70}% | Laporan ${certData.weight_laporan ?? 15}% | Sidang ${certData.weight_sidang ?? 15}%)`}
+                              (DUDI {certData.weight_dudi ?? 70}% | Sidang {certData.weight_sidang ?? 30}%)
                             </span>
                           </td>
                         </tr>
@@ -971,18 +958,9 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                           <td className="p-1 text-center border-r border-black">{(Math.round(dudiAvg * 100) / 100).toFixed(2)}</td>
                           <td className="p-1 text-center">{getPredikatHuruf(dudiAvg)}</td>
                         </tr>
-                        {isComposite && (
-                          <tr>
-                            <td className="p-1 text-center border-r border-black">2</td>
-                            <td className="p-1 border-r border-black">Laporan PKL</td>
-                            <td className="p-1 text-center border-r border-black">
-                              {certData.penilaian.nilai_laporan !== null && certData.penilaian.nilai_laporan !== undefined ? certData.penilaian.nilai_laporan : '-'}
-                            </td>
-                            <td className="p-1 text-center">{getPredikatHuruf(certData.penilaian.nilai_laporan ?? null)}</td>
-                          </tr>
-                        )}
+                        {/* Skema Sertifikat Hanya 2 Opsi: DUDI ONLY atau DUDI + SIDANG */}
                         <tr>
-                          <td className="p-1 text-center border-r border-black">{isComposite ? 3 : 2}</td>
+                          <td className="p-1 text-center border-r border-black">2</td>
                           <td className="p-1 border-r border-black">Sidang / Presentasi PKL</td>
                           <td className="p-1 text-center border-r border-black">
                             {certData.penilaian.nilai_sidang !== null && certData.penilaian.nilai_sidang !== undefined ? certData.penilaian.nilai_sidang : '-'}

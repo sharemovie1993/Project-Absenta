@@ -2,12 +2,13 @@ import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicFilterToolbar } from '@/components/common/academic-filter';
-import { Info, Lock, Save, FileText, Check, Printer } from 'lucide-react';
+import { Info, Lock, Save, FileText, Check, Printer, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
 import { PklNilaiSidangMobileCards } from './PklNilaiSidangMobileCards';
 import { PengujiCombobox } from './PengujiCombobox';
 import { PklSidangCetakModal } from './PklSidangCetakModal';
+import { PklSidangSpinWheelModal } from './PklSidangSpinWheelModal';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
 import { getKaprogStats } from '@/api/dashboard.api';
 import {
@@ -111,6 +112,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   jurusanId,
 }) => {
   const [showCetakModal, setShowCetakModal] = useState(false);
+  const [showSpinWheelModal, setShowSpinWheelModal] = useState(false);
   const isComposite3Unsur = effectiveSettings?.assessmentMode === 'COMPOSITE';
   const isDudiSidang = effectiveSettings?.assessmentMode === 'DUDI_SIDANG';
 
@@ -771,6 +773,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           isLoadingGuru={isLoadingGuru}
           onApplyPengujiToAll={handleApplyPengujiToAll}
           onOpenCetakModal={() => setShowCetakModal(true)}
+          onOpenSpinWheelModal={() => setShowSpinWheelModal(true)}
         />
       ) : (
         <SpreadsheetGridTable<ScoreRow>
@@ -795,6 +798,17 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
                   Bobot: DUDI {effectiveSettings?.weightDudi ?? 70}% • Laporan {effectiveSettings?.weightLaporan ?? 15}% • Sidang {effectiveSettings?.weightSidang ?? 15}%
                 </span>
               )}
+              {/* Tombol Acak Siswa (Spin Wheel) */}
+              <Button
+                type="button"
+                onClick={() => setShowSpinWheelModal(true)}
+                className="border border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-200 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Buka Roda Putar / Pengacak Siswa yang akan diuji sidang"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 animate-pulse shrink-0" />
+                <span>Acak Siswa (Spin)</span>
+              </Button>
+
               {/* Tombol Cetak Berita Acara & Rekap Sidang PKL */}
               <Button
                 type="button"
@@ -901,6 +915,23 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           selectedSemesterNama={selectedSemester ? semesterOptions.find((s) => s.value === selectedSemester)?.label : ''}
           activePengujiNama={guruList.find((g) => g.id === activeGuruId)?.nama_guru || ''}
           isKaprog={isKaprog}
+        />
+      )}
+
+      {/* Modal Pengacak Siswa Sidang PKL (Spin Wheel) */}
+      {showSpinWheelModal && (
+        <PklSidangSpinWheelModal
+          isOpen={showSpinWheelModal}
+          onClose={() => setShowSpinWheelModal(false)}
+          scores={displayedScores || []}
+          activePengujiNama={guruList.find((g) => g.id === activeGuruId)?.nama_guru || ''}
+          onSelectStudentToGrade={(student) => {
+            const rowIndex = (paginatedScores || []).findIndex(s => s.siswa_pkl_id === student.siswa_pkl_id);
+            if (rowIndex !== -1) {
+              const inputEl = document.getElementById(`sidang-score-${rowIndex}-0`);
+              inputEl?.focus();
+            }
+          }}
         />
       )}
     </div>

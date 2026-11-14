@@ -611,10 +611,8 @@ export const renderSertifikatBack = (
   ];
 
   if (hasSchoolEval) {
-    // Section C – Evaluasi Akademik Sekolah
-    const evalHeaderTitle = isDudiSidang
-      ? `EVALUASI AKADEMIK SEKOLAH (Bobot: DUDI ${wDudi}% | Sidang ${wSidang}%)`
-      : `EVALUASI AKADEMIK SEKOLAH (Bobot: DUDI ${wDudi}% | Laporan ${wLaporan}% | Sidang ${wSidang}%)`;
+    // Section C – Evaluasi Akademik Sekolah (2 Unsur: DUDI & Sidang)
+    const evalHeaderTitle = `EVALUASI AKADEMIK SEKOLAH (DUDI ${wDudi}% | Sidang ${wSidang}%)`;
 
     tableBody.push([
       { content: 'C', styles: { fontStyle: 'bold', halign: 'center' } },
@@ -626,16 +624,9 @@ export const renderSertifikatBack = (
       { content: (Math.round(dudiAvg * 100) / 100).toFixed(2), styles: { halign: 'center' } },
       { content: getPredikatHuruf(dudiAvg), styles: { halign: 'center' } }
     ]);
-    if (isComposite) {
-      tableBody.push([
-        { content: '2', styles: { halign: 'center' } },
-        { content: 'Laporan PKL', styles: { halign: 'left' } },
-        { content: penilaian.nilai_laporan !== null && penilaian.nilai_laporan !== undefined ? String(penilaian.nilai_laporan) : '-', styles: { halign: 'center' } },
-        { content: getPredikatHuruf(penilaian.nilai_laporan ?? null), styles: { halign: 'center' } }
-      ]);
-    }
+    // Skema Sertifikat Hanya 2 Opsi: DUDI ONLY atau DUDI + SIDANG
     tableBody.push([
-      { content: isComposite ? '3' : '2', styles: { halign: 'center' } },
+      { content: '2', styles: { halign: 'center' } },
       { content: 'Sidang / Presentasi PKL', styles: { halign: 'left' } },
       { content: penilaian.nilai_sidang !== null && penilaian.nilai_sidang !== undefined ? String(penilaian.nilai_sidang) : '-', styles: { halign: 'center' } },
       { content: getPredikatHuruf(penilaian.nilai_sidang ?? null), styles: { halign: 'center' } }
