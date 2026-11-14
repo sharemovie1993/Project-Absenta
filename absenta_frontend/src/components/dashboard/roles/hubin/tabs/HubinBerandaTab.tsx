@@ -53,16 +53,22 @@ export const HubinBerandaTab: React.FC<HubinBerandaTabProps> = React.memo(({
         onTabSelect('mitra');
         break;
       case 'penempatan':
+      case 'plotting':
+      case 'ploting_pkl':
         onTabSelect('penempatan');
         break;
       case 'absensi':
+      case 'presensi':
+      case 'presensi_pkl':
         onTabSelect('absensi');
         break;
       case 'nilai':
       case 'nilai-pkl':
+      case 'nilai_pkl':
         onTabSelect('nilai');
         break;
       case 'bkk':
+      case 'loker':
         onTabSelect('bkk');
         break;
       case 'tracer':
@@ -70,14 +76,21 @@ export const HubinBerandaTab: React.FC<HubinBerandaTabProps> = React.memo(({
         break;
       case 'rekap':
       case 'cetak':
+      case 'cetak-berkas':
+      case 'cetak_berkas':
+      case 'berkas':
         onTabSelect('rekap');
         break;
       case 'pengaturan':
       case 'settings':
         onTabSelect('pengaturan');
         break;
+      case 'struktur_organisasi':
+      case 'organisasi':
+        onTabSelect('struktur_organisasi');
+        break;
       default:
-        onTabSelect('ringkasan');
+        // Jangan paksa kembali ke ringkasan jika id tidak dikenali
         break;
     }
   }, [onTabSelect]);

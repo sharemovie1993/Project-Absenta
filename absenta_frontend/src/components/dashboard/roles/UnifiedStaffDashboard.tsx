@@ -1232,7 +1232,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
   useEffect(() => {
-    // Tab binaan, kepsek, kaprog, kepegawaian, pembimbing_pkl, dan kelola (piket) valid jika user memiliki peran tersebut
+    // Tab binaan, kepsek, kaprog, kepegawaian, pembimbing_pkl, dan peran struktural lainnya valid jika user memiliki hak tersebut
     if (activeTab === 'sosialisasi_view' && isSosialisasiActive && (isAdminRole || isKurikulum)) return;
     if (activeTab === 'binaan' && (isWaliKelas || Boolean(waliKelasId))) return;
     if (activeTab === 'kepsek' && (isKepsek || isAdminRole)) return;
@@ -1240,6 +1240,16 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (activeTab === 'kepegawaian' && (isTUKepala || isTUPersuratan || isTUKepegawaian || isTUKeuangan || isTUSarpras || isTU || isAdminRole)) return;
     if (activeTab === 'pembimbing_pkl' && isPembimbingPkl) return;
     if (activeTab === 'kelola' && (isPiketGuruActual || isPureGerbangStaff)) return;
+    if (activeTab === 'hubin' && (isHubin || isAdminRole || can('hubin.view') || can('hubin.manage') || can('dashboard.view.hubin'))) return;
+    if (activeTab === 'kurikulum' && (isKurikulum || isAdminRole || can('curriculum.view') || can('curriculum.manage'))) return;
+    if (activeTab === 'kesiswaan' && (isKesiswaan || isAdminRole || can('kesiswaan.view') || can('kesiswaan.manage'))) return;
+    if (activeTab === 'sarpras' && (isSarpras || isAdminRole || can('sarpras.view') || can('sarpras.manage'))) return;
+    if (activeTab === 'bpbk' && (isBpbk || isAdminRole || can('bpbk.view') || can('bpbk.manage'))) return;
+    if (activeTab === 'bkk' && (isBkk || isHubin || isAdminRole || can('bkk.view') || can('bkk.manage') || can('hubin.view'))) return;
+    if (activeTab === 'toolman' && (isToolman || isKabeng || isAdminRole || can('sarpras.view') || can('sarpras.manage'))) return;
+    if (activeTab === 'ekskul' && (isPembinaEskul || isKesiswaan || isAdminRole || can('kesiswaan.view') || can('kesiswaan.manage'))) return;
+    if (activeTab === 'koperasi' && (isKoperasi || isAdminRole || can('coop.pos.access') || can('coop.manage'))) return;
+    if (activeTab === 'satpam' && (hasGerbangDuty || isGerbang || isPureGerbangStaff || isAdminRole || can('attendance.gate.scan'))) return;
 
     // Tunggu sampai tabs siap sebelum melakukan fallback
     if (tabs.length === 0) return;

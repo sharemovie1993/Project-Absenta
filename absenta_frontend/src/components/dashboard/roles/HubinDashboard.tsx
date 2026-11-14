@@ -47,6 +47,19 @@ import {
   getHubinNavTabs,
 } from './hubin/hubinNavigation.config';
 
+const VALID_HUBIN_TABS: readonly HubinTabId[] = [
+  'ringkasan',
+  'mitra',
+  'penempatan',
+  'absensi',
+  'nilai',
+  'bkk',
+  'tracer',
+  'rekap',
+  'pengaturan',
+  'struktur_organisasi',
+] as const;
+
 export interface HubinDashboardProps {
   user?: {
     id?: string;
@@ -61,18 +74,6 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as HubinTabId | null;
 
-  const validTabs: HubinTabId[] = [
-    'ringkasan',
-    'mitra',
-    'penempatan',
-    'absensi',
-    'nilai',
-    'bkk',
-    'tracer',
-    'rekap',
-    'pengaturan',
-    'struktur_organisasi',
-  ];
 
   // Mobile Filter Collapsible State
   const [showMobileFilter, setShowMobileFilter] = useState(false);
@@ -81,7 +82,7 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<HubinTabId>(() => {
-    if (subtabParam && validTabs.includes(subtabParam)) {
+    if (subtabParam && (VALID_HUBIN_TABS as readonly string[]).includes(subtabParam)) {
       return subtabParam;
     }
     return 'ringkasan';
@@ -91,7 +92,7 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
   const [visitedTabs, setVisitedTabs] = useState<Set<HubinTabId>>(() => new Set([activeTab]));
 
   useEffect(() => {
-    if (subtabParam && validTabs.includes(subtabParam)) {
+    if (subtabParam && (VALID_HUBIN_TABS as readonly string[]).includes(subtabParam)) {
       setActiveTab((curr) => (curr !== subtabParam ? subtabParam : curr));
       setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
     } else if (!subtabParam) {
@@ -105,23 +106,22 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
       setActiveTab(tabId);
       setVisitedTabs((prev) => (prev.has(tabId) ? prev : new Set(prev).add(tabId)));
 
-      const currentSubtab = searchParams.get('subtab') || 'ringkasan';
-      if (currentSubtab !== tabId) {
-        setSearchParams(
-          (prev) => {
-            const next = new URLSearchParams(prev);
-            if (tabId === 'ringkasan') {
-              next.delete('subtab');
-            } else {
-              next.set('subtab', tabId);
-            }
-            return next;
-          },
-          { replace: true }
-        );
-      }
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          const currentSubtab = next.get('subtab') || 'ringkasan';
+          if (currentSubtab === tabId) return prev;
+          if (tabId === 'ringkasan') {
+            next.delete('subtab');
+          } else {
+            next.set('subtab', tabId);
+          }
+          return next;
+        },
+        { replace: true }
+      );
     },
-    [searchParams, setSearchParams]
+    [setSearchParams]
   );
 
   // Academic Filter SSOT
@@ -303,7 +303,7 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
 
             {/* Navigasi Menu Vertikal Sidebar */}
             <nav className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
-              {navTabs.map((tab) => {
+              {navTabs?.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (

@@ -712,5 +712,5 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
   );
 });
 
-export const MitraIndustriPage = React.memo(() => <MitraIndustriSection />);
+export const MitraIndustriPage = React.memo<{ hideLayout?: boolean }>((props) => <MitraIndustriSection {...props} />);
 export default MitraIndustriPage;
