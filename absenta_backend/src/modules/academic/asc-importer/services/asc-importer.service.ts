@@ -424,6 +424,40 @@ export class AscImporterService {
     const xmlCardsRaw = timetable.cards?.card || [];
     const xmlCardsArr = Array.isArray(xmlCardsRaw) ? xmlCardsRaw : [xmlCardsRaw];
 
+    // Pre-calculate Total JP & Card Stats per Guru, Mapel, dan Kelas dari XML <lessons>
+    const teacherJpMap = new Map<string, number>();
+    const teacherLessonCountMap = new Map<string, number>();
+    const subjectJpMap = new Map<string, number>();
+    const subjectLessonCountMap = new Map<string, number>();
+    const classJpMap = new Map<string, number>();
+    const classLessonCountMap = new Map<string, number>();
+
+    for (const les of xmlLessonsArr) {
+      const periodsPerCard = Number(les.periodspercard) || 1;
+      const periodsPerWeek = Number(les.periodsperweek) || periodsPerCard;
+      const classIdsArr = String(les.classids || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+      const teacherIdsArr = String(les.teacherids || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+      const subjectIdStr = String(les.subjectid || '').trim();
+
+      // Hitung JP untuk Mapel
+      if (subjectIdStr) {
+        subjectJpMap.set(subjectIdStr, (subjectJpMap.get(subjectIdStr) || 0) + periodsPerWeek);
+        subjectLessonCountMap.set(subjectIdStr, (subjectLessonCountMap.get(subjectIdStr) || 0) + 1);
+      }
+
+      // Hitung JP untuk Guru
+      for (const tId of teacherIdsArr) {
+        teacherJpMap.set(tId, (teacherJpMap.get(tId) || 0) + periodsPerWeek);
+        teacherLessonCountMap.set(tId, (teacherLessonCountMap.get(tId) || 0) + 1);
+      }
+
+      // Hitung JP untuk Kelas
+      for (const cId of classIdsArr) {
+        classJpMap.set(cId, (classJpMap.get(cId) || 0) + periodsPerWeek);
+        classLessonCountMap.set(cId, (classLessonCountMap.get(cId) || 0) + 1);
+      }
+    }
+
     // 3. Match Teachers
     const teacherAnalysis = xmlTeachersArr.map((t: any) => {
       const xmlId = String(t.id);
@@ -435,10 +469,15 @@ export class AscImporterService {
         (g: any) => this.normalizeName(g.nama_guru) === normXmlName || (g.asc_id && String(g.asc_id) === xmlId)
       );
 
+      const totalJp = teacherJpMap.get(xmlId) || 0;
+      const totalLessons = teacherLessonCountMap.get(xmlId) || 0;
+
       return {
         asc_id: xmlId,
         name: xmlName,
         code: xmlCode,
+        total_jp: totalJp,
+        total_lessons: totalLessons,
         matched_db_id: exactMatch?.id || null,
         matched_db_name: exactMatch?.nama_guru || null,
         match_status: exactMatch ? 'EXACT_MATCH' : 'NEW_CREATE',
@@ -519,10 +558,15 @@ export class AscImporterService {
         ? `${exactMatch.nama_kelas}${exactMatch.Jurusan ? ` - ${exactMatch.Jurusan.singkatan || exactMatch.Jurusan.nama}` : ''}${activeStudentCount > 0 ? ` (${activeStudentCount} Siswa)` : ''}`
         : null;
 
+      const totalJp = classJpMap.get(xmlId) || 0;
+      const totalLessons = classLessonCountMap.get(xmlId) || 0;
+
       return {
         asc_id: xmlId,
         name: xmlName,
         code: xmlCode,
+        total_jp: totalJp,
+        total_lessons: totalLessons,
         matched_db_id: exactMatch?.id || null,
         matched_db_name: matchedNameWithJurusan || exactMatch?.nama_kelas || null,
         detected_jurusan: detectedJurusan || null,
@@ -564,10 +608,15 @@ export class AscImporterService {
         ? dbSubjects.find((m: any) => m.id === saved.parent_mapel_id)
         : null;
 
+      const totalJp = subjectJpMap.get(xmlId) || 0;
+      const totalLessons = subjectLessonCountMap.get(xmlId) || 0;
+
       return {
         asc_id: xmlId,
         name: xmlName,
         code: xmlCode,
+        total_jp: totalJp,
+        total_lessons: totalLessons,
         matched_db_id: exactMatch?.id || null,
         matched_db_name: exactMatch?.nama_mapel || null,
         match_status: exactMatch ? 'EXACT_MATCH' : 'NEW_CREATE',
