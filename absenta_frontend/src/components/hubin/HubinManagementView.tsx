@@ -31,6 +31,8 @@ import {
   AnalyticsCard,
   SimpleFormField 
 } from '../ui';
+import { HubCard } from '@/components/ui/hub';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { SearchableSelect } from '../ui/SearchableSelect';
 import { format, parseISO, isValid } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
@@ -101,6 +103,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
   attendanceVerificationOnly = false,
   defaultScopeFilter,
 }) => {
+  const isMobile = useIsMobile();
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [scopeFilter, setScopeFilter] = useState<'ALL' | 'MY_GUIDANCE'>(
@@ -304,60 +307,147 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
         </div>
       )}
 
-      {/* Analytics Cards - Compact Premium Mobile & Desktop Grid */}
+      {/* Analytics Cards - Shopee-Grade Hairline di Mobile vs 4-Grid di Desktop */}
       {!hideHeaderStats && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full min-w-0">
-        <AnalyticsCard 
-          title={<><span className="hidden sm:inline">Total </span>Siswa</>}
-          value={filteredPenempatan.length}
-          icon={<Users size={16} />}
-          gradient="from-indigo-600 to-violet-700"
-          variant="compact-premium"
-          mobileCompact
-          compact
-          onClick={() => setStatusFilter('ALL')}
-          className={cn(
-            "cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]",
-            statusFilter === 'ALL'
-              ? "ring-2 ring-indigo-500 shadow-md ring-offset-2 dark:ring-offset-slate-900"
-              : "opacity-85 hover:opacity-100"
-          )}
-        />
+        isMobile ? (
+          <HubCard noPadding className="w-full">
+            <div className="grid grid-cols-4 divide-x divide-slate-100 dark:divide-slate-800/80 py-2 sm:py-2.5 text-center">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('ALL')}
+                className={cn(
+                  "px-1 min-w-0 transition-colors py-0.5 cursor-pointer",
+                  statusFilter === 'ALL' && "bg-indigo-50/60 dark:bg-indigo-950/40 rounded-lg"
+                )}
+              >
+                <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-none">
+                  {filteredPenempatan.length}
+                </div>
+                <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                  Total
+                </div>
+              </button>
 
-        <AnalyticsCard 
-          title="Verifikasi"
-          value={needsVerificationCount}
-          icon={<AlertTriangle size={16} />}
-          gradient="from-amber-500 to-amber-600"
-          variant="compact-premium"
-          mobileCompact
-          compact
-          onClick={() => setStatusFilter(statusFilter === 'NEEDS_VERIFICATION' ? 'ALL' : 'NEEDS_VERIFICATION')}
-          className={cn(
-            "cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]",
-            statusFilter === 'NEEDS_VERIFICATION'
-              ? "ring-2 ring-amber-500 shadow-md ring-offset-2 dark:ring-offset-slate-900"
-              : "opacity-85 hover:opacity-100"
-          )}
-        />
+              <button
+                type="button"
+                onClick={() => setStatusFilter(statusFilter === 'NEEDS_VERIFICATION' ? 'ALL' : 'NEEDS_VERIFICATION')}
+                className={cn(
+                  "px-1 min-w-0 transition-colors py-0.5 cursor-pointer",
+                  statusFilter === 'NEEDS_VERIFICATION' && "bg-amber-50/60 dark:bg-amber-950/40 rounded-lg"
+                )}
+              >
+                <div className="text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 leading-none">
+                  {needsVerificationCount}
+                </div>
+                <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                  Verifikasi
+                </div>
+              </button>
 
-        <AnalyticsCard 
-          title={<><span className="hidden sm:inline">Sudah </span>Hadir</>}
-          value={attendedTodayCount}
-          icon={<ShieldCheck size={16} />}
-          gradient="from-emerald-500 to-teal-600"
-          variant="compact-premium"
-          mobileCompact
-          compact
-          onClick={() => setStatusFilter(statusFilter === 'ATTENDED_TODAY' ? 'ALL' : 'ATTENDED_TODAY')}
-          className={cn(
-            "cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]",
-            statusFilter === 'ATTENDED_TODAY'
-              ? "ring-2 ring-emerald-500 shadow-md ring-offset-2 dark:ring-offset-slate-900"
-              : "opacity-85 hover:opacity-100"
-          )}
-        />
-      </div>
+              <button
+                type="button"
+                onClick={() => setStatusFilter(statusFilter === 'ATTENDED_TODAY' ? 'ALL' : 'ATTENDED_TODAY')}
+                className={cn(
+                  "px-1 min-w-0 transition-colors py-0.5 cursor-pointer",
+                  statusFilter === 'ATTENDED_TODAY' && "bg-emerald-50/60 dark:bg-emerald-950/40 rounded-lg"
+                )}
+              >
+                <div className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 leading-none">
+                  {attendedTodayCount}
+                </div>
+                <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                  Hadir
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter(statusFilter === 'NOT_ATTENDED_TODAY' ? 'ALL' : 'NOT_ATTENDED_TODAY')}
+                className={cn(
+                  "px-1 min-w-0 transition-colors py-0.5 cursor-pointer",
+                  statusFilter === 'NOT_ATTENDED_TODAY' && "bg-rose-50/60 dark:bg-rose-950/40 rounded-lg"
+                )}
+              >
+                <div className="text-sm sm:text-base font-black text-rose-600 dark:text-rose-400 leading-none">
+                  {Math.max(0, filteredPenempatan.length - attendedTodayCount)}
+                </div>
+                <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                  Belum
+                </div>
+              </button>
+            </div>
+          </HubCard>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full min-w-0">
+            <AnalyticsCard 
+              title={<><span className="hidden sm:inline">Total </span>Siswa</>}
+              value={filteredPenempatan.length}
+              icon={<Users size={16} />}
+              gradient="from-indigo-600 to-violet-700"
+              variant="compact-premium"
+              mobileCompact
+              compact
+              onClick={() => setStatusFilter('ALL')}
+              className={cn(
+                "cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]",
+                statusFilter === 'ALL'
+                  ? "ring-2 ring-indigo-500 shadow-md ring-offset-2 dark:ring-offset-slate-900"
+                  : "opacity-85 hover:opacity-100"
+              )}
+            />
+
+            <AnalyticsCard 
+              title="Perlu Verifikasi"
+              value={needsVerificationCount}
+              icon={<AlertTriangle size={16} />}
+              gradient="from-amber-500 to-amber-600"
+              variant="compact-premium"
+              mobileCompact
+              compact
+              onClick={() => setStatusFilter(statusFilter === 'NEEDS_VERIFICATION' ? 'ALL' : 'NEEDS_VERIFICATION')}
+              className={cn(
+                "cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]",
+                statusFilter === 'NEEDS_VERIFICATION'
+                  ? "ring-2 ring-amber-500 shadow-md ring-offset-2 dark:ring-offset-slate-900"
+                  : "opacity-85 hover:opacity-100"
+              )}
+            />
+
+            <AnalyticsCard 
+              title={<><span className="hidden sm:inline">Sudah </span>Hadir</>}
+              value={attendedTodayCount}
+              icon={<ShieldCheck size={16} />}
+              gradient="from-emerald-500 to-teal-600"
+              variant="compact-premium"
+              mobileCompact
+              compact
+              onClick={() => setStatusFilter(statusFilter === 'ATTENDED_TODAY' ? 'ALL' : 'ATTENDED_TODAY')}
+              className={cn(
+                "cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]",
+                statusFilter === 'ATTENDED_TODAY'
+                  ? "ring-2 ring-emerald-500 shadow-md ring-offset-2 dark:ring-offset-slate-900"
+                  : "opacity-85 hover:opacity-100"
+              )}
+            />
+
+            <AnalyticsCard 
+              title={<><span className="hidden sm:inline">Belum </span>Hadir</>}
+              value={Math.max(0, filteredPenempatan.length - attendedTodayCount)}
+              icon={<Clock size={16} />}
+              gradient="from-rose-500 to-red-600"
+              variant="compact-premium"
+              mobileCompact
+              compact
+              onClick={() => setStatusFilter(statusFilter === 'NOT_ATTENDED_TODAY' ? 'ALL' : 'NOT_ATTENDED_TODAY')}
+              className={cn(
+                "cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]",
+                statusFilter === 'NOT_ATTENDED_TODAY'
+                  ? "ring-2 ring-rose-500 shadow-md ring-offset-2 dark:ring-offset-slate-900"
+                  : "opacity-85 hover:opacity-100"
+              )}
+            />
+          </div>
+        )
       )}
 
       <SectionCard 
