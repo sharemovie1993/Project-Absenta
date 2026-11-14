@@ -2,7 +2,7 @@ import { Card } from '../components/ui/Card';
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { formatDate } from '@/utils/date.utils';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import axiosInstance from '../lib/axiosInstance';
@@ -14,6 +14,11 @@ import { getSavedServerDomain } from '../services/serverConfig';
 import toast from 'react-hot-toast';
 
 const hardeningModuleKey = "auth_login";
+
+const loginSchema = z.object({
+  username: z.string().min(1, 'Email atau NISN harus diisi'),
+  password: z.string().min(1, 'Password harus diisi'),
+});
 
 const Login: React.FC = () => {
   const [credentials, setCredentials] = useState({
@@ -32,6 +37,15 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
 
   const savedDomain = useMemo(() => getSavedServerDomain() || (typeof window !== 'undefined' ? window.location.hostname : 'Default'), []);
+  const tenantName = useMemo(() => {
+    if (typeof window !== 'undefined' && window.location.hostname) {
+      const host = window.location.hostname;
+      if (host !== 'localhost' && !host.startsWith('10.') && !host.startsWith('192.')) {
+        return host.split('.')[0].toUpperCase();
+      }
+    }
+    return '';
+  }, []);
 
   const handleScanSuccess = useCallback(async (scannedCode: string, payload?: ScannedQrPayload) => {
     if (payload?.isQuickLogin && payload.identifier && payload.password) {

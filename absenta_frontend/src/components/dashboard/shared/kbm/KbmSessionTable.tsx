@@ -1,6 +1,7 @@
 import React from 'react';
 import { Badge } from '../../../ui';
 import { motion } from 'framer-motion';
+import { cn } from '../../../../lib/utils';
 import { getTeacherStatusMeta, getSessionStatusMeta } from '../../../../utils/kbm-normalizer';
 
 interface KbmSessionTableProps {

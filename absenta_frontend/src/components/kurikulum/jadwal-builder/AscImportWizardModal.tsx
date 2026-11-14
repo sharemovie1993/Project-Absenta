@@ -138,7 +138,15 @@ const saveMappingsToStorage = (
   }
 };
 
-export const AscImportWizardModal: React.FC<Props> = React.memo(({
+interface AscImportWizardModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  tahunPelajaranId?: string;
+  semesterId?: string;
+  onSuccessImport?: () => void;
+}
+
+export const AscImportWizardModal: React.FC<AscImportWizardModalProps> = React.memo(({
   isOpen,
   onClose,
   tahunPelajaranId,

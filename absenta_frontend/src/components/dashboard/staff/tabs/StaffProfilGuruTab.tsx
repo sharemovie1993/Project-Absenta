@@ -552,7 +552,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
           onOpenAjukanIzin={() => setShowIzinModal(true)}
           onOpenIdCard={() => {}}
           onOpenDocuments={() => {}}
-          onOpenSecurity={() => setActiveTab('keamanan')}
+          onOpenSecurity={() => document.getElementById('oldPassword')?.scrollIntoView({ behavior: 'smooth' })}
         />
       </div>
 

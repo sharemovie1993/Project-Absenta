@@ -25,6 +25,7 @@ import { exportDataToExcel } from '../../../utils/export.utils';
 import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
 import { downloadFileFromBlob } from '../../../utils/file-download.utils';
 import { useCapabilities } from '../../../hooks/useCapabilities';
+import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
 import { 
   Search, 
   RefreshCw, 
@@ -111,6 +112,7 @@ export function RekapHarianKelasContent({
                       customUser?.kelas_id;
 
   const [kelasId, setKelasId] = useState(initialKelasId || waliKelasId || '');
+  const isWaliKelasAutoFiltered = Boolean(!initialKelasId && waliKelasId);
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
   const [searchQuery, setSearchQuery] = useState('');
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);

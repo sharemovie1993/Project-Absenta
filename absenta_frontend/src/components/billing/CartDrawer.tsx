@@ -255,7 +255,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckoutSuccess }) => 
                     Rp {Number(createdInvoice.amount || createdInvoice.total_amount || 0).toLocaleString('id-ID')}
                   </div>
                   <span className="text-[11px] text-slate-400 block">
-                    Metode: <strong className="text-slate-200">{createdInvoice.payment_method || paymentMethod}</strong>
+                    Metode: <strong className="text-slate-200">{createdInvoice.payment_method || selectedChannelCode}</strong>
                   </span>
                 </div>
 

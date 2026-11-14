@@ -29,6 +29,7 @@ export const PersonalTeacherProgressWidget: React.FC<PersonalTeacherProgressWidg
   progressInfo,
   isLoading,
   isWaliKelas,
+  userKelasId,
   tahunPelajaranId,
   semesterId,
 }) => {

@@ -179,6 +179,13 @@ export const sendWaGreetingBulk = async (payload: { role?: string; search?: stri
   return response.data as { success: boolean; sentCount: number; message: string };
 };
 
+export interface WaGroupItem {
+  id: string;
+  name: string;
+  subject?: string;
+  participantsCount?: number;
+}
+
 export interface WaSessionSummary {
   status: string;
   connected: boolean;

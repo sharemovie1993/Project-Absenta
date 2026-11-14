@@ -3,6 +3,7 @@ import { Wand2, Sparkles, Save, BookOpen, Loader2, Eye, Code2, Terminal, Chevron
 import { Modal, Button, SearchableSelect, Badge } from '../../ui';
 import { useAuthStore } from '../../../store/authStore';
 import { useJenjang } from '../../../hooks/useJenjang';
+import toast from 'react-hot-toast';
 
 interface Option {
   label: string;

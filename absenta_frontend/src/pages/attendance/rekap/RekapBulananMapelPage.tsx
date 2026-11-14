@@ -23,6 +23,7 @@ import { BookOpen } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
+import type { MapelClassCard } from '../../../components/attendance/rekap/RekapBulananMapelToolbar';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 

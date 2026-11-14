@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { GenerateGenericPdfOptions } from '../pdfGeneric';
-import { drawClassHeaderInfo } from '../pdfGeneric';
+import { drawClassHeaderInfo, getAcademicYearFromPeriod } from '../pdfGeneric';
 
 export const renderKesiswaanPdf = (
   doc: jsPDF,

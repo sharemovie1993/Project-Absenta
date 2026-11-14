@@ -267,11 +267,11 @@ export const AttendanceTvModeLayout: React.FC<AttendanceTvModeLayoutProps> = Rea
                     <div className="space-y-4">
                       <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
                         <span className="text-xs text-slate-500 font-bold uppercase">Total Tapping</span>
-                        <span className="text-base font-black text-slate-800 dark:text-white">{gateStats?.total_taps_today ?? 0} Kali</span>
+                        <span className="text-base font-black text-slate-800 dark:text-white">{attendanceStats?.total_taps_today ?? 0} Kali</span>
                       </div>
                       <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
                         <span className="text-xs text-slate-500 font-bold uppercase">Siswa Masuk (Tap)</span>
-                        <span className="text-base font-black text-emerald-500">{gateStats?.total_masuk ?? 0} Siswa</span>
+                        <span className="text-base font-black text-emerald-500">{attendanceStats?.total_masuk ?? 0} Siswa</span>
                       </div>
                       <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
                         <span className="text-xs text-slate-500 font-bold uppercase">Siswa Keluar (Tap)</span>

@@ -177,30 +177,6 @@ const GuruMapelList = React.memo<Props>(({
     }
   }, [invalidateJadwalCache, queryClient, fetchBebanData]);
 
-  const handleSearchGuru = useCallback(async (query: string) => {
-    try {
-      setIsLoadingGuru(true);
-      const res = await getGuruList(1, 100, query);
-      setGuruOptions(res.data);
-    } catch {
-      // ignore
-    } finally {
-      setIsLoadingGuru(false);
-    }
-  }, []);
-
-  const handleSearchMapel = useCallback(async (query: string) => {
-    try {
-      setIsLoadingMapel(true);
-      const res = await getMapelList(1, 100, query);
-      setMapelOptions(res.data);
-    } catch {
-      // ignore
-    } finally {
-      setIsLoadingMapel(false);
-    }
-  }, []);
-
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);

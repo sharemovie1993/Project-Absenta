@@ -335,8 +335,8 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
       judul: item.judul || item.judul_modul || `Modul Ajar: ${effectiveMapelName}`,
       mapelId: resolvedMapelId,
       mapelNama: effectiveMapelName,
-      fase: item.fase || (selectedFaseFilter === 'ALL' ? 'E' : selectedFaseFilter),
-      tingkat: item.tingkat || (selectedFaseFilter === 'F' ? 11 : 10)
+      fase: item.fase || 'E',
+      tingkat: item.tingkat || (item.fase === 'F' ? 11 : 10)
     });
     setIsStudioOpen(true);
   };

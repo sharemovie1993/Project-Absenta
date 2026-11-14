@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { UserCheck, Printer, Sparkles, Info } from 'lucide-react';
+import { UserCheck, Printer, Sparkles, Info, BarChart3 } from 'lucide-react';
 import { SearchableSelect, SearchableSelectOption } from '../../ui/SearchableSelect';
 import { Badge } from '../../ui/Badge';
 import { AcademicYear, Semester } from '../../../types/cetakRapor.types';

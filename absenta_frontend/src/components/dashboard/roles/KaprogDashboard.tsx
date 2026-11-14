@@ -217,6 +217,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     data: pklSummaryRes,
     isLoading: pklLoading,
     isFetching: pklFetching,
+    refetch: refetchPkl,
   } = useQuery({
     queryKey: ['kaprog-pkl-summary', jurusanId, academic.selectedTahunPelajaran, academic.selectedSemester],
     queryFn: () => hubinApi.getKaprogSummary({
@@ -235,6 +236,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   const {
     data: kaprogStatsRes,
     isLoading: statsLoading,
+    refetch: refetchStats,
   } = useQuery({
     queryKey: ['kaprog-stats', jurusanId, academic.selectedTahunPelajaran, academic.selectedSemester],
     queryFn: () => getKaprogStats({

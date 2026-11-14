@@ -16,7 +16,7 @@ import { createGuru, updateGuru, getGuruDetail, type CreateGuruPayload, type Upd
 import { getMapelList, type Mapel } from '../../../api/academic/mapel.api';
 import { listGuruMapel, assignGuruMapel, removeGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
-import { studentCardConfigApi } from '../../../api/academic/student-card-config.api';
+import { studentCardConfigApi, type StudentCardConfig } from '../../../api/academic/student-card-config.api';
 import { DEFAULT_GURU_CONFIG, PAPER_SIZES } from '@/components/academic/student-card/constants';
 import { PrintOverlay } from '@/components/academic/student-card/PrintOverlay';
 import { useAuthStore } from '../../../store/authStore';

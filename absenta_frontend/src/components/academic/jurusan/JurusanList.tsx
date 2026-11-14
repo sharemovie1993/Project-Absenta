@@ -41,6 +41,7 @@ interface JurusanListProps {
   onExport?: () => void;
   isExporting?: boolean;
   refreshTrigger?: number;
+  onRefresh?: () => void;
 }
 
 const JurusanList: React.FC<JurusanListProps> = React.memo(({ 
@@ -50,7 +51,8 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
   onImport, 
   onExport, 
   isExporting = false,
-  refreshTrigger = 0 
+  refreshTrigger = 0,
+  onRefresh
 }) => {
   const isMobile = useIsMobile();
   const confirm = useConfirm();

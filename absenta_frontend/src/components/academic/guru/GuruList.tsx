@@ -931,7 +931,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                  <Button
                    variant="toolbarOutline"
                    size="toolbar"
-                   onClick={() => fetchGurus(currentPage, debouncedSearchTerm)}
+                   onClick={() => refetch()}
                    aria-label="Refresh Data"
                    className="rounded-xl"
                    disabled={loading}
@@ -1198,7 +1198,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         onClose={() => setIsRfidPairingOpen(false)}
         onSuccess={() => {
           invalidateGuruCache();
-          fetchGurus(currentPage, debouncedSearchTerm);
+          refetch();
         }}
       />
 
@@ -1209,7 +1209,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         onClose={() => setIsPhotoStudioOpen(false)}
         onSuccess={() => {
           invalidateGuruCache();
-          fetchGurus(currentPage, debouncedSearchTerm);
+          refetch();
         }}
       />
 
@@ -1234,7 +1234,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         onRunNormalization={normalizeGuruWaPhones}
         onSuccessRefresh={() => {
           invalidateGuruCache();
-          fetchGurus(currentPage, debouncedSearchTerm);
+          refetch();
         }}
       />
 
@@ -1244,7 +1244,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         selectedGuruIds={Array.from(selectedIds)}
         onSuccess={() => {
           invalidateGuruCache();
-          fetchGurus(currentPage, debouncedSearchTerm);
+          refetch();
         }}
       />
     </div>

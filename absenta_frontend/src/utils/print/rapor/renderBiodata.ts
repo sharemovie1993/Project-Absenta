@@ -59,6 +59,16 @@ export const renderOfficialBiodataPage = (
     siswa.kabupaten_ortu || siswa.kabupaten
   );
 
+  const alamatWaliDuaBaris = formatAlamatDuaBaris(
+    siswa.alamat_wali,
+    siswa.dusun_wali,
+    siswa.rt_wali,
+    siswa.rw_wali,
+    siswa.kelurahan_wali,
+    siswa.kecamatan_wali,
+    siswa.kabupaten_wali
+  );
+
   const identity = normalizeStudentIdentity(siswa);
   const jk = identity.jenisKelaminLabel;
   const ttl = identity.ttlFormatted;

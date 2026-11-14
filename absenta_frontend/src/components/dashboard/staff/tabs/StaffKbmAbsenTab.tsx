@@ -35,7 +35,8 @@ import {
   stopFindDeviceAlarm, 
   triggerVibration, 
   requestNotificationPermission,
-  notifySessionReady
+  notifySessionReady,
+  notifySessionPhase
 } from '../../../../utils/audioUtils';
 
 export interface TimelineItem {

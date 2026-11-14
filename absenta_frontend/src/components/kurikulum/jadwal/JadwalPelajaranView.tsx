@@ -13,15 +13,11 @@ import {
   LayoutGrid,
   Printer,
   Paintbrush,
-  Sparkles,
   Trash2,
-  Users,
   FileUp,
   Lock,
   AlertCircle
 } from 'lucide-react';
-import { AutoJadwalWizardModal } from '../AutoJadwalWizardModal';
-import { BebanGuruSummaryModal } from '../jadwal-builder/BebanGuruSummaryModal';
 import { AscImportWizardModal } from '../jadwal-builder/AscImportWizardModal';
 import { TabSwitcher } from '../../ui/TabSwitcher';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
@@ -113,8 +109,6 @@ export const JadwalPelajaranView: React.FC<UniversalJadwalPelajaranViewProps> = 
       setSelectedSemesterId(semesterId);
     }
   }, [semesterId]);
-  const [autoWizardOpen, setAutoWizardOpen] = useState(false);
-  const [bebanModalOpen, setBebanModalOpen] = useState(false);
   const [ascWizardOpen, setAscWizardOpen] = useState(false);
   const [selectedGuruId, setSelectedGuruId] = useState<string>(
     propGuruId || searchParams.get('guru_id') || (isGuru ? (myGuruId || '') : '')
@@ -342,40 +336,8 @@ export const JadwalPelajaranView: React.FC<UniversalJadwalPelajaranViewProps> = 
       <SectionCard fullWidth>
         <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 mb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl px-3 py-1.5 border-emerald-300 dark:border-emerald-800 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-extrabold flex items-center gap-1.5 text-xs shadow-xs"
-              onClick={() => setIsPrintModalOpen(true)}
-              title="Cetak Jadwal Pelajaran (Roster KBM)"
-            >
-              <Printer className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              Cetak Roster KBM
-            </Button>
-
             {canManage && (
               <>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="rounded-xl px-3 py-1.5 border-amber-200 dark:border-amber-900/60 bg-amber-50/10 dark:bg-amber-950/10 shadow-xs hover:shadow-md transition-all text-amber-700 dark:text-amber-400 font-extrabold flex items-center gap-1.5 text-xs"
-                  onClick={() => setAutoWizardOpen(true)}
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-                  Generate Otomatis
-                </Button>
-
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="rounded-xl px-3 py-1.5 border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/20 shadow-xs hover:bg-indigo-100/50 hover:shadow-md transition-all text-indigo-700 dark:text-indigo-300 font-bold flex items-center gap-1.5 text-xs"
-                  onClick={() => setBebanModalOpen(true)}
-                  title="Statistik Beban Mengajar Guru"
-                >
-                  <Users className="w-3.5 h-3.5 text-indigo-500" />
-                  Beban JP Guru
-                </Button>
-
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -465,21 +427,6 @@ export const JadwalPelajaranView: React.FC<UniversalJadwalPelajaranViewProps> = 
           )}
         </Suspense>
       </SectionCard>
-
-      <AutoJadwalWizardModal
-        isOpen={autoWizardOpen}
-        onClose={() => setAutoWizardOpen(false)}
-        tahunPelajaranId={selectedTahunId}
-        semesterId={selectedSemesterId}
-        onSuccess={() => setRefreshKey(k => k + 1)}
-      />
-
-      <BebanGuruSummaryModal
-        isOpen={bebanModalOpen}
-        onClose={() => setBebanModalOpen(false)}
-        tahunPelajaranId={selectedTahunId}
-        semesterId={selectedSemesterId}
-      />
 
       <AscImportWizardModal
         isOpen={ascWizardOpen}

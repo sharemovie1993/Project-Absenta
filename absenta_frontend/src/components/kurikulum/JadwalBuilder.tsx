@@ -37,13 +37,12 @@ import { cn } from '../../lib/utils';
 import { toast } from 'react-hot-toast';
 import { kurikulumApi } from '../../api/kurikulum.api';
 import { useGuruOptions, useMapelOptions, useKelasOptions } from '../common';
-import { ViewMode, ToolMode, JadwalBuilderProps } from './jadwal-builder/types';
+import { ViewMode, ToolMode, ColorByMode, GridOrientation, JadwalBuilderProps } from './jadwal-builder/types';
 import { JadwalBuilderHeader } from './jadwal-builder/JadwalBuilderHeader';
 import { SingleGridTimetable } from './jadwal-builder/SingleGridTimetable';
 import { MasterGridGuruTimetable } from './jadwal-builder/MasterGridGuruTimetable';
 import { ConflictResolverModal, type ConflictDetails } from './jadwal-builder/ConflictResolverModal';
 import { MasterGridKelasTimetable } from './jadwal-builder/MasterGridKelasTimetable';
-import { BebanGuruSummaryModal } from './jadwal-builder/BebanGuruSummaryModal';
 import { EditJadwalModal, type EditJadwalPayload, type CreateJadwalModalPayload } from './jadwal-builder/EditJadwalModal';
 import { UnallocatedCardsPanel } from './jadwal-builder/UnallocatedCardsPanel';
 import { calculateSmartJpStatus, calculateClassJpStatus } from './jadwal-builder/jpCalculationHelper';
@@ -446,7 +445,6 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   }, [guruMapelSelectOptions, mappedMapelIds, paintMapelId]);
 
   // Beban guru states
-  const [bebanModalOpen, setBebanModalOpen] = useState(false);
   const [searchBebanGuru, setSearchBebanGuru] = useState('');
 
   // ── useQuery: Beban Guru List ─────────────────────────────────────────────
@@ -1138,6 +1136,20 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       }
 
       setSavingSlot(key);
+      const payload = {
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId,
+        kelas_id: targetKelasId,
+        hari: day,
+        slot_index: slotIndex,
+        jam_mulai: slot.start,
+        jam_selesai: slot.end,
+        mapel_id: paintMapelId,
+        guru_id: paintGuruId,
+        unit_pengajaran_id: paintUnitId || undefined,
+        jenis_kegiatan: 'KBM'
+      };
+
       try {
         // Capping JP check
         if (paintGuruId) {
@@ -1198,20 +1210,6 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             console.error('Failed to check beban guru capping:', e);
           }
         }
-
-        const payload = {
-          tahun_pelajaran_id: tahunPelajaranId,
-          semester_id: semesterId,
-          kelas_id: targetKelasId,
-          hari: day,
-          slot_index: slotIndex,
-          jam_mulai: slot.start,
-          jam_selesai: slot.end,
-          mapel_id: paintMapelId,
-          guru_id: paintGuruId,
-          unit_pengajaran_id: paintUnitId || undefined,
-          jenis_kegiatan: 'KBM'
-        };
 
         const res = await createJadwalKBM(payload);
         if (res?.data) {
@@ -1476,19 +1474,6 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           style="warning"
           onConfirm={confirmState.onConfirm}
           onCancel={confirmState.onCancel}
-        />
-
-        {/* Modal Beban Mengajar Guru */}
-        <BebanGuruSummaryModal
-          isOpen={bebanModalOpen}
-          onClose={() => setBebanModalOpen(false)}
-          loadingBeban={loadingBeban}
-          bebanGuruList={bebanGuruList}
-          onSelectTeacherForSchedule={(guruId) => {
-            setViewMode('GURU');
-            setSelectedGuruId(guruId);
-            setBebanModalOpen(false);
-          }}
         />
 
         {/* Modal Resolusi Bentrok Jadwal Guru */}

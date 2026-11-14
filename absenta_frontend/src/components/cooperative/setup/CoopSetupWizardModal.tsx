@@ -40,6 +40,7 @@ import {
   type SubledgerMemberImport 
 } from '../../../api/coopSetup.api';
 import { coopAccountApi } from '../../../api/coopAccount.api';
+import type { AccountNode } from '../accounting/types';
 import toast from 'react-hot-toast';
 
 interface CoopSetupWizardModalProps {

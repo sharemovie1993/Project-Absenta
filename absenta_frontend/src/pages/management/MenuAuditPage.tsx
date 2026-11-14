@@ -202,7 +202,13 @@ export default function MenuAuditPage() {
   const isError = auditQuery.isError;
   const problemCount = items.filter(i => i.status === 'legacy_mappable' || i.status === 'unknown_string').length;
   return <InfraErrorBoundary>
-      <SuperAdminPageLayout title="Audit Capability Menu" description="Analisis kepatuhan rute menu terhadap sistem Capability Action ID terpusat." stats={statsList} hardeningModuleKey="menuauditpage" breadcrumbs={breadcrumbs} instruction={{
+      <SuperAdminPageLayout 
+        title="Audit Capability Menu" 
+        description="Analisis kepatuhan rute menu terhadap sistem Capability Action ID terpusat." 
+        stats={statsList} 
+        hardeningModuleKey="menuauditpage" 
+        breadcrumbs={[{ label: 'System Superadmin', path: '/superadmin' }, { label: 'Audit Menu' }]} 
+        instruction={{
       title: 'Panduan Audit Menu',
       description: 'Gunakan halaman ini untuk memantau transisi menu dari sistem string legacy ke sistem Action ID yang lebih aman.',
       items: [{

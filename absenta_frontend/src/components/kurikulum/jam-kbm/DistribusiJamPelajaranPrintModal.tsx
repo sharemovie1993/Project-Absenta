@@ -784,7 +784,7 @@ export const DistribusiJamPelajaranPrintModal: React.FC<DistribusiJamPelajaranPr
                 <div className="w-full page-break-inside-avoid">
                   <UniversalDocumentSignatures
                     layout="dual_unit_kepsek"
-                    tahunPelajaranId={tahunPelajaranId}
+                    tahunPelajaranId={activeTahunPelajaran?.id}
                     titimangsaCity={kotaTitimangsa}
                     titimangsaDate={tanggalTitimangsa}
                     overrideSignerLeft={{

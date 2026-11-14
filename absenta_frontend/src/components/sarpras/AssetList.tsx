@@ -23,6 +23,7 @@ import type { Asset } from '../../api/sarpras.api';
 import { Loader, ConfirmDialog } from '../ui';
 import Tooltip from '../ui/Tooltip';
 import { AssetDetailModal } from './AssetDetailModal';
+import { cn } from '../../lib/utils';
 import { AssetPrintLabelModal } from './AssetPrintLabelModal';
 import { SearchableSelect } from '../ui/SearchableSelect';
 

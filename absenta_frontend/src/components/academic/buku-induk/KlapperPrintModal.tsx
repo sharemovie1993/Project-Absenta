@@ -266,7 +266,7 @@ export const KlapperPrintModal: React.FC<KlapperPrintModalProps> = ({
               </table>
 
               {/* Tanda Tangan Pengesahan Buku Klapper pada Lembar Terakhir Menggunakan Universal Engine */}
-              {pageIndex === pages.length - 1 && (
+              {pageIdx === allPages.length - 1 && (
                 <div className="mt-6 flex justify-end page-break-inside-avoid">
                   <div className="w-[70mm]">
                     <UniversalDocumentSignatures

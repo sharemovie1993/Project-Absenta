@@ -556,7 +556,7 @@ export const SiswaBimbinganDetailModal: React.FC<SiswaBimbinganDetailModalProps>
                                         type="button"
                                         onClick={() => {
                                           setActiveTab('logbook');
-                                          if (abs.tanggal) setSelectedDate(formatDate(abs.tanggal, 'yyyy-MM-dd'));
+                                          setSelectedAbsensiId(abs.id);
                                         }}
                                         className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                                       >

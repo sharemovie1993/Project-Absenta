@@ -663,7 +663,7 @@ const KelasList = React.memo<KelasListProps>(({
                <Button
                  variant="toolbarOutline"
                  size="toolbarIcon"
-                 onClick={() => fetchKelas(currentPage, debouncedSearchTerm)}
+                 onClick={() => refetch()}
                  aria-label="Refresh Data"
                  className="rounded-xl"
                  disabled={loading}
@@ -824,7 +824,7 @@ const KelasList = React.memo<KelasListProps>(({
                     </Button>
                   )}
                   <Button
-                    onClick={() => fetchKelas(currentPage, debouncedSearchTerm)}
+                    onClick={() => refetch()}
                     variant="toolbarGhost"
                     size="toolbar"
                     className="p-2"

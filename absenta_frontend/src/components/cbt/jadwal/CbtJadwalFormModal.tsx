@@ -390,7 +390,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
       const kelasRoomMap: Record<string, { slot_ruang: string; nama_ruang: string }> = {};
       validTargetKelasIds.forEach((kId) => {
         const p = persistedRooms?.[kId];
-        const kObj = targetKelasList.find((c) => c.id === kId);
+        const kObj = rawKelasList.find((c) => c.id === kId) || displayedKelasList.find((c) => c.id === kId);
         kelasRoomMap[kId] = {
           slot_ruang: p?.slot_ruang || kObj?.nama_kelas || 'Ruang Ujian',
           nama_ruang: p?.nama_ruang || (kObj ? `Kelas ${kObj.nama_kelas}` : 'Ruang Ujian'),

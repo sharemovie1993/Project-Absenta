@@ -430,7 +430,6 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
       await updateSiswa(siswaId, payload);
       toast.success('Pengaturan akun & kontak siswa berhasil disimpan!');
       setPasswordBaru('');
-      setIsAccountModalOpen(false);
       queryClient.invalidateQueries({ queryKey: siswaQueryKeys.detail(siswaId) });
       queryClient.invalidateQueries({ queryKey: siswaQueryKeys.lists() });
       refetch();

@@ -549,7 +549,7 @@ export const SettingsSection: React.FC = React.memo(() => {
             title={vId ? 'Edit Kategori Pelanggaran' : 'Tambah Kategori Pelanggaran Baru'}
             size="sm"
           >
-            <form onSubmit={handleVSubmit} className="space-y-4 py-2 text-xs">
+            <form onSubmit={handleVSave} className="space-y-4 py-2 text-xs">
               <div>
                 <Label htmlFor="tingkat-pelanggaran" className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">Tingkat Pelanggaran</Label>
                 <SearchableSelect
@@ -609,7 +609,7 @@ export const SettingsSection: React.FC = React.memo(() => {
             title={aId ? 'Edit Kategori Prestasi' : 'Tambah Kategori Prestasi Baru'}
             size="sm"
           >
-            <form onSubmit={handleASubmit} className="space-y-4 py-2 text-xs">
+            <form onSubmit={handleASave} className="space-y-4 py-2 text-xs">
               <div>
                 <Label htmlFor="kategori-prestasi" className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 block">Kategori Kegiatan</Label>
                 <SearchableSelect
