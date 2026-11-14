@@ -21,10 +21,10 @@ export async function getSiswaHistoryQuery(
   if (org && org.tenant_wide !== true && org.is_siswa !== true) {
     if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
       const allowedUnits: string[] = org.unit_ids.map(String);
-      const isCurrentlyInUnit = await siswaDb.kelas.findFirst({
-        where: { id: student.kelas_id || '', jurusan_id: { in: allowedUnits } },
+      const isCurrentlyInUnit = student.kelas_id ? await siswaDb.kelas.findFirst({
+        where: { id: student.kelas_id, jurusan_id: { in: allowedUnits } },
         select: { id: true }
-      });
+      }) : null;
       if (!isCurrentlyInUnit) {
         // Check historical unit enrollment
         const hadUnitHistory = await siswaDb.siswaAkademik.findFirst({

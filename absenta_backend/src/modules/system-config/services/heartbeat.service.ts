@@ -1,4 +1,5 @@
 import { prisma } from '@/utils/prisma';
+import { presenceService } from '@/infra/realtime/presence.service';
 import axios from 'axios';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -143,15 +144,17 @@ export const heartbeatService = {
     try {
       console.log(`[Heartbeat] Leader instance (pid ${process.pid}) collecting metrics...`);
 
-      // 1. Get active user count
+      // 1. Get realtime active logged-in users count from Presence Engine
       let activeUsers = 0;
       try {
-        activeUsers = await prisma.user.count({
-          where: { status: 'ACTIVE' }
-        });
-      } catch {
+        activeUsers = presenceService.getActiveUserCount();
+      } catch (e: any) {
+        console.warn('[Heartbeat] Failed to get live active users from presenceService:', e.message);
+        // Fallback to active registered count if presence engine is not initialized
         try {
-          activeUsers = await prisma.user.count();
+          activeUsers = await prisma.user.count({
+            where: { status: 'ACTIVE' }
+          });
         } catch {}
       }
 
@@ -206,18 +209,12 @@ export const heartbeatService = {
         });
 
         for (const t of tenants) {
-          // Get active user count for this specific tenant
+          // Get realtime active user count for this specific tenant from Presence Engine
           let tActiveUsers = 0;
           try {
-            tActiveUsers = await prisma.user.count({
-              where: { tenant_id: t.id, status: 'ACTIVE' }
-            });
+            tActiveUsers = presenceService.getActiveUserCount(t.id);
           } catch {
-            try {
-              tActiveUsers = await prisma.user.count({
-                where: { tenant_id: t.id }
-              });
-            } catch {}
+            tActiveUsers = 0;
           }
 
           // Get last tapped activity timestamp for this specific tenant

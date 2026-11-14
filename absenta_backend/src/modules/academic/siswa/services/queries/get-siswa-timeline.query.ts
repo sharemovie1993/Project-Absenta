@@ -57,7 +57,7 @@ export async function getSiswaTimelineQuery(params: {
     });
   };
 
-  // 2. Fetch all timeline sources in parallel
+  // 2. Fetch all timeline sources in parallel with resilient fallbacks
   const [
     violations,
     documents,
@@ -72,40 +72,40 @@ export async function getSiswaTimelineQuery(params: {
     prisma.pelanggaranSiswa.findMany({
       where: { siswa_id: siswaId, tenant_id: tenantId },
       orderBy: { tanggal: 'asc' }
-    }),
+    }).catch(err => { console.warn('Failed to query pelanggaranSiswa for timeline:', err?.message); return []; }),
     prisma.siswaDocument.findMany({
       where: { siswa_id: siswaId, tenant_id: tenantId },
       include: { UploadedBy: { select: { full_name: true } } },
       orderBy: { created_at: 'asc' }
-    }),
+    }).catch(err => { console.warn('Failed to query siswaDocument for timeline:', err?.message); return []; }),
     prisma.prestasiSiswa.findMany({
       where: { siswa_id: siswaId, tenant_id: tenantId },
       orderBy: { tanggal: 'asc' }
-    }),
+    }).catch(err => { console.warn('Failed to query prestasiSiswa for timeline:', err?.message); return []; }),
     prisma.konselingSiswa.findMany({
       where: { siswa_id: siswaId, tenant_id: tenantId },
       include: { Petugas: { select: { full_name: true } } },
       orderBy: { tanggal: 'asc' }
-    }),
+    }).catch(err => { console.warn('Failed to query konselingSiswa for timeline:', err?.message); return []; }),
     prisma.pemanggilanOrangTua.findMany({
       where: { siswa_id: siswaId, tenant_id: tenantId },
       include: { Dokumen: true },
       orderBy: { tanggal_pemanggilan: 'asc' }
-    }),
+    }).catch(err => { console.warn('Failed to query pemanggilanOrangTua for timeline:', err?.message); return []; }),
     prisma.homeVisit.findMany({
       where: { siswa_id: siswaId, tenant_id: tenantId },
       include: { Dokumen: true },
       orderBy: { tanggal: 'asc' }
-    }),
+    }).catch(err => { console.warn('Failed to query homeVisit for timeline:', err?.message); return []; }),
     prisma.asesmenSiswa.findMany({
       where: { siswa_id: siswaId, tenant_id: tenantId },
       include: { Dokumen: true },
       orderBy: { tanggal: 'asc' }
-    }),
+    }).catch(err => { console.warn('Failed to query asesmenSiswa for timeline:', err?.message); return []; }),
     prisma.rujukanKasus.findMany({
       where: { siswa_id: siswaId, tenant_id: tenantId },
       orderBy: { tanggal: 'asc' }
-    }),
+    }).catch(err => { console.warn('Failed to query rujukanKasus for timeline:', err?.message); return []; }),
     prisma.siswaAkademik.findMany({
       where: { siswa_id: siswaId },
       include: {
@@ -114,7 +114,7 @@ export async function getSiswaTimelineQuery(params: {
         semester: { select: { nama_semester: true } }
       },
       orderBy: { created_at: 'asc' }
-    })
+    }).catch(err => { console.warn('Failed to query siswaAkademik for timeline:', err?.message); return []; })
   ]);
 
   // Filter BK items by visibility

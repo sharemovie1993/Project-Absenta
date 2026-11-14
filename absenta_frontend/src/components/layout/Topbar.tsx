@@ -23,6 +23,7 @@ import { resolveSmartDashboardMode } from '@/helpers/dashboardModeHelper';
 import { AppLauncherDropdown } from './AppLauncherDropdown';
 import { getActiveApp } from '@/config/absentaAppsRegistry';
 import { RouteAccessBadge } from './RouteAccessBadge';
+import { ActiveUsersWidget } from '../common/ActiveUsersWidget';
 import { useMobileAccountSheetStore } from '@/store/mobileAccountSheetStore';
 
 interface TopbarProps {
@@ -254,6 +255,9 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
 
         {/* Kolom 3: Konten Topbar Kanan (Minimalist & Zero-Noise) */}
         <div className="flex items-center gap-2 ml-auto shrink-0">
+          {/* User Aktif Realtime Badge */}
+          <ActiveUsersWidget />
+
           {/* Indikator Rute Jaringan: 🟢 Lokal / 🟣 Tunnel */}
           <RouteAccessBadge />
 

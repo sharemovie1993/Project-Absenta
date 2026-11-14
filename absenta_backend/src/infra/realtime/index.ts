@@ -2,6 +2,7 @@ import { createSocketServers } from './socket.init';
 import { setupSocketAuth } from './socket.auth';
 import { setupSocketRooms } from './socket.rooms';
 import { setupSocketEvents } from './socket.events';
+import { presenceService } from './presence.service';
 import { createPostResponseCacheInvalidation } from '../../middleware/cache-invalidation.middleware';
 import type { ParentTokenValidator } from './socket.auth';
 import type { AttendanceFeedBuilder, TenantDetailProvider } from './socket.rooms';
@@ -28,5 +29,8 @@ export async function initRealtime(opts: {
     tenantDetailProvider: opts.adapters?.tenantDetailProvider,
   });
   setupSocketEvents(io, ioApi);
+  presenceService.setIo(io);
   return { io, ioApi };
 }
+
+export { presenceService };

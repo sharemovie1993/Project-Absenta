@@ -592,6 +592,8 @@ export async function registerRoutes(fastify: any, prisma: any) {
       await fastify.register(systemUpdateRoutes, { prefix: '/system/update' });
       const { observabilityRoutes } = await import('../modules/observability/routes/observability.routes');
       await fastify.register(observabilityRoutes, { prefix: '/system/observability' });
+      const { presenceRoutes } = await import('./realtime/presence.routes');
+      await fastify.register(presenceRoutes, { prefix: '/presence' });
 
       const { communicationRoutes } = await import(
         '../modules/communication/routes/communication.routes'

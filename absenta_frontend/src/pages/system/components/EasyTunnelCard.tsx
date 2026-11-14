@@ -17,6 +17,7 @@ import {
 import { Card, Button, Badge } from '@/components/ui';
 import { easyTunnelApi, type Tunnel } from '../../../api/easyTunnel.api';
 import LiveResponseTimeChart from './LiveResponseTimeChart';
+import { ActiveUsersWidget } from '../../../components/common/ActiveUsersWidget';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -262,11 +263,14 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
 
       {/* Live Mikhmon-style Response Time (LAN vs VPN Tunnel) & Split-DNS Telemetry */}
       {isConnected && (
-        <LiveResponseTimeChart
-          tunnelId={tunnel.id}
-          hostName={host || tunnel.slug}
-          initialTelemetry={telemetry}
-        />
+        <div className="space-y-4">
+          <ActiveUsersWidget variant="card" />
+          <LiveResponseTimeChart
+            tunnelId={tunnel.id}
+            hostName={host || tunnel.slug}
+            initialTelemetry={telemetry}
+          />
+        </div>
       )}
     </Card>
   );

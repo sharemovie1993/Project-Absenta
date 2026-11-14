@@ -1,5 +1,6 @@
 import { isSystemSuperAdmin } from '../../utils/rbac';
 import { SocketMonitor } from './socket.monitor';
+import { presenceService } from './presence.service';
 import { prisma } from '../../utils/prisma';
 
 export type AttendanceFeedBuilder = (
@@ -474,6 +475,23 @@ export function setupSocketRooms(
       socket.join(`user:${user.id}`);
     }
 
+    // Register to Realtime Presence Engine
+    if (user.id && tenantId) {
+      presenceService.registerConnection(socket, user);
+    }
+
+    socket.on('presence:get_summary', () => {
+      if (tenantId) {
+        socket.emit('presence:summary', presenceService.getTenantSummary(tenantId));
+      }
+    });
+
+    socket.on('presence:touch', () => {
+      if (tenantId && user.id) {
+        presenceService.touchUser(tenantId, String(user.id));
+      }
+    });
+
     let lastParams: { tanggal?: string; kelas_id?: string; guru_id?: string; siswa_id?: string } = {};
     const emitFeed = async () => {
       try {
@@ -569,6 +587,7 @@ export function setupSocketRooms(
 
     socket.on('disconnect', (reason: any) => {
       monitor.onDisconnect(socket, tenantId);
+      presenceService.unregisterConnection(socket.id, tenantId, user.id);
       fastify.log.warn(`[WS] Disconnected userId=${String(user.id || '')} tenantId=${String(user.tenantId || '')} reason=${String(reason || '')}`);
     });
 
@@ -611,6 +630,23 @@ export function setupSocketRooms(
       socket.join(`role:${user.roleName}`);
       socket.join(`user:${user.id}`);
     }
+
+    // Register to Realtime Presence Engine
+    if (user.id && tenantId) {
+      presenceService.registerConnection(socket, user);
+    }
+
+    socket.on('presence:get_summary', () => {
+      if (tenantId) {
+        socket.emit('presence:summary', presenceService.getTenantSummary(tenantId));
+      }
+    });
+
+    socket.on('presence:touch', () => {
+      if (tenantId && user.id) {
+        presenceService.touchUser(tenantId, String(user.id));
+      }
+    });
 
     let lastParams: { tanggal?: string; kelas_id?: string; guru_id?: string; siswa_id?: string } = {};
 
@@ -736,6 +772,7 @@ export function setupSocketRooms(
 
     socket.on('disconnect', (reason: any) => {
       monitor.onDisconnect(socket, tenantId);
+      presenceService.unregisterConnection(socket.id, tenantId, user.id);
       fastify.log.warn(`[WS] Disconnected userId=${String(user.id || '')} tenantId=${String(user.tenantId || '')} reason=${String(reason || '')}`);
     });
 

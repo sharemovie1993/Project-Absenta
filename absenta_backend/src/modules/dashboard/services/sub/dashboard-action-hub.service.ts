@@ -494,7 +494,7 @@ export class DashboardActionHubService {
           status: { in: ['APPROVED', 'DIPINJAM', 'ACTIVE', 'OVERDUE'] }
         },
         include: {
-          Asset: { select: { nama_barang: true, kode_barang: true } }
+          Asset: { select: { nama: true, kode: true } }
         },
         take: 2
       });
@@ -506,7 +506,7 @@ export class DashboardActionHubService {
           division: 'SARPRAS',
           urgency: isOverdue ? 'CRITICAL' : 'TODAY',
           title: 'Pengembalian Aset Sarpras',
-          subtitle: `Aset: ${loan.Asset?.nama_barang || 'Barang Sekolah'} (${loan.Asset?.kode_barang || '-'})`,
+          subtitle: `Aset: ${(loan.Asset as any)?.nama || 'Barang Sekolah'} (${(loan.Asset as any)?.kode || '-'})`,
           badgeText: isOverdue ? 'Terlambat' : 'Jatuh Tempo',
           action: {
             label: 'Lihat Aset ➔',
@@ -538,7 +538,7 @@ export class DashboardActionHubService {
         }),
         prisma.semester.findFirst({
           where: { tenant_id: tenantId, is_active: true },
-          select: { id: true, nama: true }
+          select: { id: true, nama_semester: true }
         })
       ]);
 
