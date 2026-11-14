@@ -19,6 +19,7 @@ import { toLocalMonth } from '@/utils/attendance/time';
 import { exportDataToExcel } from '@/utils/export.utils';
 import { useRekapPklColumns, type ViewMode } from './rekapPklColumns';
 import { SectionCard, Button, Input, Badge, Loader } from '@/components/ui';
+import { HubCard } from '@/components/ui/hub';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useTahunPelajaranOptions } from '@/hooks/useTahunPelajaranOptions';
 
@@ -314,40 +315,50 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
 
       {/* Overview Stat Badges: Shopee-Grade Hairline di Mobile vs 6-Grid di Desktop */}
       {isMobile ? (
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-2.5 shadow-xs space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200 px-1">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-              Tingkat Disiplin: <strong className="text-indigo-600 dark:text-indigo-400">{stats.avgPercentage}%</strong>
-            </span>
-            <span className="text-[11px] text-slate-400 font-medium">
-              {stats.totalSiswa} Siswa
-            </span>
+        <HubCard noPadding className="w-full">
+          <div className="grid grid-cols-5 divide-x divide-slate-100 dark:divide-slate-800/80 py-2 text-center">
+            <div className="px-1 min-w-0">
+              <div className="text-sm font-black text-slate-900 dark:text-white leading-none">
+                {stats.totalSiswa}
+              </div>
+              <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                Total
+              </div>
+            </div>
+            <div className="px-1 min-w-0">
+              <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 leading-none">
+                {stats.sumHadir}
+              </div>
+              <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                Hadir
+              </div>
+            </div>
+            <div className="px-1 min-w-0">
+              <div className="text-sm font-black text-amber-600 dark:text-amber-400 leading-none">
+                {stats.sumSakit + stats.sumIzin}
+              </div>
+              <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                Sakit/Izin
+              </div>
+            </div>
+            <div className="px-1 min-w-0">
+              <div className="text-sm font-black text-rose-600 dark:text-rose-400 leading-none">
+                {stats.sumAlpa}
+              </div>
+              <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                Alpa
+              </div>
+            </div>
+            <div className="px-1 min-w-0">
+              <div className="text-sm font-black text-indigo-600 dark:text-indigo-400 leading-none">
+                {stats.avgPercentage}%
+              </div>
+              <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                Disiplin
+              </div>
+            </div>
           </div>
-
-          <div className="grid grid-cols-5 gap-1.5 text-center">
-            <div className="py-1 px-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60">
-              <div className="text-[9px] font-bold text-emerald-600">Hadir</div>
-              <div className="text-xs font-black text-emerald-700 dark:text-emerald-300">{stats.sumHadir}</div>
-            </div>
-            <div className="py-1 px-1 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60">
-              <div className="text-[9px] font-bold text-purple-600">Telat</div>
-              <div className="text-xs font-black text-purple-700 dark:text-purple-300">{stats.sumTerlambat}</div>
-            </div>
-            <div className="py-1 px-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60">
-              <div className="text-[9px] font-bold text-amber-600">Sakit</div>
-              <div className="text-xs font-black text-amber-700 dark:text-amber-300">{stats.sumSakit}</div>
-            </div>
-            <div className="py-1 px-1 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60">
-              <div className="text-[9px] font-bold text-blue-600">Izin</div>
-              <div className="text-xs font-black text-blue-700 dark:text-blue-300">{stats.sumIzin}</div>
-            </div>
-            <div className="py-1 px-1 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/60">
-              <div className="text-[9px] font-bold text-rose-600">Alpa</div>
-              <div className="text-xs font-black text-rose-700 dark:text-rose-300">{stats.sumAlpa}</div>
-            </div>
-          </div>
-        </div>
+        </HubCard>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 shadow-2xs">

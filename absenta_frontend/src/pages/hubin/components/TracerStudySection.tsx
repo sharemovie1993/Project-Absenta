@@ -33,6 +33,8 @@ import {
 import { toast } from 'react-hot-toast';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
+import { HubCard } from '../../../components/ui/hub';
+import { cn } from '../../../lib/utils';
 
 // Zod validation schema for Tracer Study Alumni Survey (Pillar 25)
 const tracerSurveySchema = z.object({
@@ -404,57 +406,124 @@ export const TracerStudySection: React.FC = React.memo(() => {
             </div>
           </div>
 
-          {/* Kartu Statistik Standar AnalyticsCard Compact Premium */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full max-w-full min-w-0">
-            <AnalyticsCard
-              title={<><span className="hidden sm:inline">Lulusan </span>Bekerja</>}
-              value={stats.BEKERJA}
-              subtitle={`${totalStats > 0 ? Math.round((stats.BEKERJA / totalStats) * 100) : 0}% dari total`}
-              icon={<Building size={16} />}
-              gradient="from-emerald-500 to-teal-600"
-              variant="compact-premium"
-              mobileCompact
-              compact
-              onClick={() => setFilterStatus(filterStatus === 'BEKERJA' ? '' : 'BEKERJA')}
-              className={filterStatus === 'BEKERJA' ? 'ring-2 ring-emerald-500 shadow-md ring-offset-2' : ''}
-            />
-            <AnalyticsCard
-              title={<><span className="hidden sm:inline">Lanjut </span>Kuliah</>}
-              value={stats.KULIAH}
-              subtitle={`${totalStats > 0 ? Math.round((stats.KULIAH / totalStats) * 100) : 0}% dari total`}
-              icon={<BookOpen size={16} />}
-              gradient="from-indigo-600 to-violet-700"
-              variant="compact-premium"
-              mobileCompact
-              compact
-              onClick={() => setFilterStatus(filterStatus === 'KULIAH' ? '' : 'KULIAH')}
-              className={filterStatus === 'KULIAH' ? 'ring-2 ring-indigo-500 shadow-md ring-offset-2' : ''}
-            />
-            <AnalyticsCard
-              title="Wirausaha"
-              value={stats.WIRAUSAHA}
-              subtitle={`${totalStats > 0 ? Math.round((stats.WIRAUSAHA / totalStats) * 100) : 0}% dari total`}
-              icon={<Store size={16} />}
-              gradient="from-amber-500 to-orange-600"
-              variant="compact-premium"
-              mobileCompact
-              compact
-              onClick={() => setFilterStatus(filterStatus === 'WIRAUSAHA' ? '' : 'WIRAUSAHA')}
-              className={filterStatus === 'WIRAUSAHA' ? 'ring-2 ring-amber-500 shadow-md ring-offset-2' : ''}
-            />
-            <AnalyticsCard
-              title="Belum Bekerja"
-              value={stats.MENCARI_KERJA}
-              subtitle={`${totalStats > 0 ? Math.round((stats.MENCARI_KERJA / totalStats) * 100) : 0}% dari total`}
-              icon={<Clipboard size={16} />}
-              gradient="from-rose-500 to-red-600"
-              variant="compact-premium"
-              mobileCompact
-              compact
-              onClick={() => setFilterStatus(filterStatus === 'MENCARI_KERJA' ? '' : 'MENCARI_KERJA')}
-              className={filterStatus === 'MENCARI_KERJA' ? 'ring-2 ring-rose-500 shadow-md ring-offset-2' : ''}
-            />
-          </div>
+          {/* Header KPI Stats 1-Baris Hairline Strip di Mobile vs AnalyticsCard di Desktop */}
+          {isMobile ? (
+            <HubCard noPadding className="w-full">
+              <div className="grid grid-cols-4 divide-x divide-slate-100 dark:divide-slate-800/80 py-2 sm:py-2.5 text-center">
+                <button
+                  type="button"
+                  onClick={() => setFilterStatus(filterStatus === 'BEKERJA' ? '' : 'BEKERJA')}
+                  className={cn(
+                    "px-1 min-w-0 transition-colors py-0.5 cursor-pointer",
+                    filterStatus === 'BEKERJA' && "bg-emerald-50/50 dark:bg-emerald-950/30"
+                  )}
+                >
+                  <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 leading-none">
+                    {stats.BEKERJA}
+                  </div>
+                  <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                    Bekerja
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterStatus(filterStatus === 'KULIAH' ? '' : 'KULIAH')}
+                  className={cn(
+                    "px-1 min-w-0 transition-colors py-0.5 cursor-pointer",
+                    filterStatus === 'KULIAH' && "bg-indigo-50/50 dark:bg-indigo-950/30"
+                  )}
+                >
+                  <div className="text-sm font-black text-indigo-600 dark:text-indigo-400 leading-none">
+                    {stats.KULIAH}
+                  </div>
+                  <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                    Kuliah
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterStatus(filterStatus === 'WIRAUSAHA' ? '' : 'WIRAUSAHA')}
+                  className={cn(
+                    "px-1 min-w-0 transition-colors py-0.5 cursor-pointer",
+                    filterStatus === 'WIRAUSAHA' && "bg-amber-50/50 dark:bg-amber-950/30"
+                  )}
+                >
+                  <div className="text-sm font-black text-amber-600 dark:text-amber-400 leading-none">
+                    {stats.WIRAUSAHA}
+                  </div>
+                  <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                    Wirausaha
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterStatus(filterStatus === 'MENCARI_KERJA' ? '' : 'MENCARI_KERJA')}
+                  className={cn(
+                    "px-1 min-w-0 transition-colors py-0.5 cursor-pointer",
+                    filterStatus === 'MENCARI_KERJA' && "bg-rose-50/50 dark:bg-rose-950/30"
+                  )}
+                >
+                  <div className="text-sm font-black text-rose-600 dark:text-rose-400 leading-none">
+                    {stats.MENCARI_KERJA}
+                  </div>
+                  <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+                    Belum Kerja
+                  </div>
+                </button>
+              </div>
+            </HubCard>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full max-w-full min-w-0">
+              <AnalyticsCard
+                title={<><span className="hidden sm:inline">Lulusan </span>Bekerja</>}
+                value={stats.BEKERJA}
+                subtitle={`${totalStats > 0 ? Math.round((stats.BEKERJA / totalStats) * 100) : 0}% dari total`}
+                icon={<Building size={16} />}
+                gradient="from-emerald-500 to-teal-600"
+                variant="compact-premium"
+                mobileCompact
+                compact
+                onClick={() => setFilterStatus(filterStatus === 'BEKERJA' ? '' : 'BEKERJA')}
+                className={filterStatus === 'BEKERJA' ? 'ring-2 ring-emerald-500 shadow-md ring-offset-2' : ''}
+              />
+              <AnalyticsCard
+                title={<><span className="hidden sm:inline">Lanjut </span>Kuliah</>}
+                value={stats.KULIAH}
+                subtitle={`${totalStats > 0 ? Math.round((stats.KULIAH / totalStats) * 100) : 0}% dari total`}
+                icon={<BookOpen size={16} />}
+                gradient="from-indigo-600 to-violet-700"
+                variant="compact-premium"
+                mobileCompact
+                compact
+                onClick={() => setFilterStatus(filterStatus === 'KULIAH' ? '' : 'KULIAH')}
+                className={filterStatus === 'KULIAH' ? 'ring-2 ring-indigo-500 shadow-md ring-offset-2' : ''}
+              />
+              <AnalyticsCard
+                title="Wirausaha"
+                value={stats.WIRAUSAHA}
+                subtitle={`${totalStats > 0 ? Math.round((stats.WIRAUSAHA / totalStats) * 100) : 0}% dari total`}
+                icon={<Store size={16} />}
+                gradient="from-amber-500 to-orange-600"
+                variant="compact-premium"
+                mobileCompact
+                compact
+                onClick={() => setFilterStatus(filterStatus === 'WIRAUSAHA' ? '' : 'WIRAUSAHA')}
+                className={filterStatus === 'WIRAUSAHA' ? 'ring-2 ring-amber-500 shadow-md ring-offset-2' : ''}
+              />
+              <AnalyticsCard
+                title="Belum Bekerja"
+                value={stats.MENCARI_KERJA}
+                subtitle={`${totalStats > 0 ? Math.round((stats.MENCARI_KERJA / totalStats) * 100) : 0}% dari total`}
+                icon={<Clipboard size={16} />}
+                gradient="from-rose-500 to-red-600"
+                variant="compact-premium"
+                mobileCompact
+                compact
+                onClick={() => setFilterStatus(filterStatus === 'MENCARI_KERJA' ? '' : 'MENCARI_KERJA')}
+                className={filterStatus === 'MENCARI_KERJA' ? 'ring-2 ring-rose-500 shadow-md ring-offset-2' : ''}
+              />
+            </div>
+          )}
 
           {/* Filtering & Search Toolbar */}
           <div className="flex flex-col lg:flex-row gap-3 items-center justify-between bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 w-full max-w-full min-w-0">

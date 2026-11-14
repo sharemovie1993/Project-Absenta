@@ -23,6 +23,8 @@ import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard, Table, Button, Input } from '../../components/ui';
+import { HubCard } from '../../components/ui/hub';
+import { cn } from '../../lib/utils';
 import useConfirm from '../../hooks/useConfirm';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
@@ -522,7 +524,73 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
   ]);
 
   const mainContent = (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* 1. Header KPI Stats 1-Baris Hairline Strip (Shopee-Grade High-Density) */}
+      <HubCard noPadding className="w-full">
+        <div className="grid grid-cols-4 divide-x divide-slate-100 dark:divide-slate-800/80 py-2 sm:py-2.5 text-center">
+          <button
+            type="button"
+            onClick={() => { setSelectedMouFilter('ALL'); setPage(1); }}
+            className={cn(
+              "px-1 min-w-0 transition-colors py-0.5 cursor-pointer",
+              selectedMouFilter === 'ALL' && "bg-slate-50 dark:bg-slate-800/60"
+            )}
+          >
+            <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-none">
+              {mouStats.total}
+            </div>
+            <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+              Total
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setSelectedMouFilter('AKTIF'); setPage(1); }}
+            className={cn(
+              "px-1 min-w-0 transition-colors py-0.5 cursor-pointer",
+              selectedMouFilter === 'AKTIF' && "bg-emerald-50/50 dark:bg-emerald-950/30"
+            )}
+          >
+            <div className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 leading-none">
+              {mouStats.aktif}
+            </div>
+            <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+              MoU Aktif
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setSelectedMouFilter('EXPIRING_SOON'); setPage(1); }}
+            className={cn(
+              "px-1 min-w-0 transition-colors py-0.5 cursor-pointer",
+              selectedMouFilter === 'EXPIRING_SOON' && "bg-amber-50/50 dark:bg-amber-950/30"
+            )}
+          >
+            <div className="text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 leading-none">
+              {mouStats.expiringSoon}
+            </div>
+            <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+              Habis Segera
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setSelectedMouFilter('EXPIRED'); setPage(1); }}
+            className={cn(
+              "px-1 min-w-0 transition-colors py-0.5 cursor-pointer",
+              selectedMouFilter === 'EXPIRED' && "bg-rose-50/50 dark:bg-rose-950/30"
+            )}
+          >
+            <div className="text-sm sm:text-base font-black text-rose-600 dark:text-rose-400 leading-none">
+              {mouStats.expired}
+            </div>
+            <div className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 truncate">
+              Kedaluwarsa
+            </div>
+          </button>
+        </div>
+      </HubCard>
+
       <SectionCard title={SectionCardTitle} icon={Building2} fullWidth noPadding>
         <div className="bg-transparent overflow-hidden">
           <MitraMouFilterBar
@@ -627,8 +695,6 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
         title="Mitra Industri"
         description="Kelola daftar rekanan industri untuk program PKL"
         breadcrumbs={breadcrumbs}
-        stats={stats}
-        isLoadingStats={isLoading}
         hardeningModuleKey="mitraindustripage"
         instruction={{
           title: "Panduan Manajemen Mitra Industri",
