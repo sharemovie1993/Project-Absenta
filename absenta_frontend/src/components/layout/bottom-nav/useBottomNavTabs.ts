@@ -75,6 +75,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
     teacherDashboards,
     isPendidik,
     isTuStaff,
+    isPureGerbangStaff,
     isAdminRole,
     waliKelasNama,
     kaprogJurusan,
