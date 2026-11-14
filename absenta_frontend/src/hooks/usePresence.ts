@@ -25,13 +25,27 @@ export function usePresence() {
   useEffect(() => {
     fetchSummary();
 
-    const handleCountUpdate = (payload: { activeUsers: number }) => {
-      if (typeof payload?.activeUsers === 'number') {
-        setActiveCount(payload.activeUsers);
+    const handleCountUpdate = (payload: any) => {
+      const count = Number(payload?.activeUsers ?? payload?.totalOnline ?? payload?.count);
+      if (!isNaN(count)) {
+        setActiveCount(count);
       }
     };
 
-    const handleUserOnline = (user: PresenceUser) => {
+    const handleUserOnline = (rawUser: any) => {
+      let role = String(rawUser?.role || rawUser?.roleName || '').trim().toUpperCase();
+      if (!role || role === 'UNDEFINED' || role === 'NULL') {
+        role = 'ADMIN';
+      }
+      const user: PresenceUser = {
+        userId: String(rawUser?.userId || rawUser?.id || ''),
+        name: String(rawUser?.name || rawUser?.full_name || 'Pengguna'),
+        role,
+        roleName: role,
+        tabsCount: Number(rawUser?.tabsCount || rawUser?.sessionCount || 1),
+        connectedAt: rawUser?.connectedAt || new Date().toISOString()
+      };
+
       setSummary(prev => {
         if (!prev) return prev;
         const exists = prev.users.some(u => u.userId === user.userId);
@@ -39,12 +53,21 @@ export function usePresence() {
           ? prev.users.map(u => (u.userId === user.userId ? user : u))
           : [user, ...prev.users];
         
-        const roleCounts = { ...prev.roleCounts };
-        roleCounts[user.role] = (roleCounts[user.role] || 0) + (exists ? 0 : 1);
+        const roleCounts: Record<string, number> = {};
+        for (const [r, cnt] of Object.entries(prev.roleCounts || {})) {
+          let cleanR = String(r || '').trim().toUpperCase();
+          if (cleanR && cleanR !== 'UNDEFINED' && cleanR !== 'NULL') {
+            roleCounts[cleanR] = (roleCounts[cleanR] || 0) + Number(cnt || 0);
+          }
+        }
+        if (!exists) {
+          roleCounts[role] = (roleCounts[role] || 0) + 1;
+        }
 
         return {
           ...prev,
           totalActiveUsers: updatedUsers.length,
+          totalOnline: updatedUsers.length,
           users: updatedUsers,
           roleCounts
         };
@@ -52,17 +75,31 @@ export function usePresence() {
       setActiveCount(prev => Math.max(1, prev));
     };
 
-    const handleUserOffline = (data: { userId: string; role?: string }) => {
+    const handleUserOffline = (data: { userId: string; role?: string; roleName?: string }) => {
+      let role = String(data?.role || data?.roleName || '').trim().toUpperCase();
       setSummary(prev => {
         if (!prev) return prev;
-        const updatedUsers = prev.users.filter(u => u.userId !== data.userId);
-        const roleCounts = { ...prev.roleCounts };
-        if (data.role && roleCounts[data.role]) {
-          roleCounts[data.role] = Math.max(0, roleCounts[data.role] - 1);
+        const targetUser = prev.users.find(u => u.userId === data.userId);
+        if (!role && targetUser) {
+          role = targetUser.role;
         }
+        const updatedUsers = prev.users.filter(u => u.userId !== data.userId);
+        const roleCounts: Record<string, number> = {};
+        for (const [r, cnt] of Object.entries(prev.roleCounts || {})) {
+          let cleanR = String(r || '').trim().toUpperCase();
+          if (cleanR && cleanR !== 'UNDEFINED' && cleanR !== 'NULL') {
+            roleCounts[cleanR] = (roleCounts[cleanR] || 0) + Number(cnt || 0);
+          }
+        }
+        if (role && roleCounts[role]) {
+          roleCounts[role] = Math.max(0, roleCounts[role] - 1);
+          if (roleCounts[role] === 0) delete roleCounts[role];
+        }
+
         return {
           ...prev,
           totalActiveUsers: updatedUsers.length,
+          totalOnline: updatedUsers.length,
           users: updatedUsers,
           roleCounts
         };

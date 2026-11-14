@@ -34,7 +34,9 @@ export const ActiveUsersWidget: React.FC<ActiveUsersWidgetProps> = ({
   const filteredUsers = (summary?.users || []).filter(u => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
-    return u.name.toLowerCase().includes(q) || u.role.toLowerCase().includes(q);
+    const nameStr = String(u.name || '').toLowerCase();
+    const roleStr = String(u.role || (u as any).roleName || '').toLowerCase();
+    return nameStr.includes(q) || roleStr.includes(q);
   });
 
   const getRoleIcon = (role: string) => {
@@ -83,13 +85,18 @@ export const ActiveUsersWidget: React.FC<ActiveUsersWidgetProps> = ({
 
         {/* Breakdown bar */}
         {summary && summary.roleCounts && (
-          <div className="grid grid-cols-3 gap-2 pt-1 text-center">
-            {Object.entries(summary.roleCounts).map(([role, cnt]) => (
-              <div key={role} className="p-2 rounded-xl bg-slate-800/60 border border-slate-700/50">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{role}</p>
-                <p className="text-sm font-extrabold text-white mt-0.5">{cnt}</p>
-              </div>
-            ))}
+          <div className="flex flex-wrap gap-2 pt-1 text-center">
+            {Object.entries(summary.roleCounts)
+              .filter(([role]) => {
+                const r = String(role || '').trim().toLowerCase();
+                return r && r !== 'undefined' && r !== 'null';
+              })
+              .map(([role, cnt]) => (
+                <div key={role} className="flex-1 min-w-[70px] p-2 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{role}</p>
+                  <p className="text-sm font-extrabold text-white mt-0.5">{cnt}</p>
+                </div>
+              ))}
           </div>
         )}
       </div>
@@ -148,16 +155,21 @@ export const ActiveUsersWidget: React.FC<ActiveUsersWidgetProps> = ({
           {/* Role Summary Badges */}
           {summary?.roleCounts && Object.keys(summary.roleCounts).length > 0 && (
             <div className="px-3.5 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-1.5 flex-wrap bg-slate-50/30 dark:bg-slate-900/40">
-              {Object.entries(summary.roleCounts).map(([role, count]) => (
-                <span
-                  key={role}
-                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 ${getRoleBadgeColor(role)}`}
-                >
-                  {getRoleIcon(role)}
-                  <span>{role}:</span>
-                  <span className="font-extrabold">{count}</span>
-                </span>
-              ))}
+              {Object.entries(summary.roleCounts)
+                .filter(([role]) => {
+                  const r = String(role || '').trim().toLowerCase();
+                  return r && r !== 'undefined' && r !== 'null';
+                })
+                .map(([role, count]) => (
+                  <span
+                    key={role}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 ${getRoleBadgeColor(role)}`}
+                  >
+                    {getRoleIcon(role)}
+                    <span>{role}:</span>
+                    <span className="font-extrabold">{count}</span>
+                  </span>
+                ))}
             </div>
           )}
 
