@@ -130,13 +130,12 @@ export function useUserRoleDashboards() {
 
     // 2. Ketua Program Keahlian / Jurusan
     if (isKaprog || isAdminRole) {
-      const jurNama = kaprogJurusan?.nama || kaprogJurusan?.kode || '';
       list.push({
         id: 'dash-kaprog',
         code: 'KAPROG',
         tabKey: 'kaprog',
-        label: jurNama ? `Dashboard Jurusan ${jurNama}` : 'Dashboard Jurusan',
-        shortLabel: jurNama || 'Jurusan',
+        label: 'Dashboard Jurusan',
+        shortLabel: 'Jurusan',
         description: 'Manajemen Kejuruan, UKK & Portofolio',
         icon: Award,
         targetPath: '/dashboard?tab=kaprog&subtab=beranda',
@@ -152,8 +151,8 @@ export function useUserRoleDashboards() {
         id: 'dash-walas',
         code: 'WALAS',
         tabKey: 'binaan',
-        label: waliKelasNama ? `Dashboard Walas ${waliKelasNama}` : 'Dashboard Walas',
-        shortLabel: waliKelasNama || 'Walas',
+        label: 'Dashboard Walas',
+        shortLabel: 'Walas',
         description: 'Presensi, Rekap Nilai & Cetak Rapor',
         icon: Users,
         targetPath: '/dashboard?tab=binaan&subtab=ringkasan',
