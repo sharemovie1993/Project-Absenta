@@ -443,7 +443,7 @@ export const EvaluasiKinerjaGuruView: React.FC<UniversalEvaluasiKinerjaGuruViewP
             </div>
 
             <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer minWidth={0} minHeight={0} width="100%" height="100%">
                 <RadarChart data={schoolRadarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
                   <PolarGrid stroke="#e2e8f0" strokeDasharray="3 3" />
                   <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fontWeight: 700, fill: '#64748b' }} />
@@ -469,7 +469,7 @@ export const EvaluasiKinerjaGuruView: React.FC<UniversalEvaluasiKinerjaGuruViewP
             </div>
 
             <div className="h-64 w-full pt-4">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer minWidth={0} minHeight={0} width="100%" height="100%">
                 <BarChart data={predikatChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 700 }} />
                   <YAxis tick={{ fontSize: 10 }} />
