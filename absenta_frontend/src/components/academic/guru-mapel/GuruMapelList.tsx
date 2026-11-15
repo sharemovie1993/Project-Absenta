@@ -7,7 +7,7 @@ import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Input } from '../../ui/Input';
 import { SectionCard } from '../../ui/SectionCard';
 import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download, Layers, Calendar, ChevronDown, Clock, Lock, Unlock } from 'lucide-react';
-import { listGuruMapel, removeGuruMapel, assignGuruMapel, getKurikulumPolicy, updateKurikulumPolicy } from '../../../api/kurikulum/guru-mapel.api';
+import { listGuruMapel, removeGuruMapel, assignGuruMapel, getKurikulumPolicy, updateKurikulumPolicy, clearGuruMapelByContext } from '../../../api/kurikulum/guru-mapel.api';
 import { GuruMapelUnitModal } from './GuruMapelUnitModal';
 import { kurikulumApi } from '../../../api/kurikulum.api';
 import type { GuruMapel } from '../../../types/academic';
@@ -380,6 +380,73 @@ const GuruMapelList = React.memo<Props>(({
       confirm.setLoading(false);
     }
   }, [selectedIds, items, fetchData, confirm]);
+
+  const [isClearingPlotting, setIsClearingPlotting] = useState(false);
+
+  const handleClearPlotting = useCallback(async () => {
+    if (!selectedTahunPelajaranId) {
+      toast.error('Pilih Tahun Pelajaran terlebih dahulu pada filter.');
+      return;
+    }
+
+    try {
+      const ok = await confirm({
+        title: 'Konfirmasi Kosongkan Ploting Guru Mapel',
+        description: (
+          <div className="space-y-4">
+            <div className="p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 rounded-xl flex items-start gap-3">
+              <div className="bg-rose-100 dark:bg-rose-900/60 p-2 rounded-xl text-rose-600 dark:text-rose-400 shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs font-black text-rose-900 dark:text-rose-200 uppercase tracking-tight">
+                  Tindakan Destruktif: Reset Ploting Mengajar
+                </p>
+                <p className="text-xs text-rose-700 dark:text-rose-300 leading-relaxed">
+                  Apakah Anda yakin ingin mengosongkan seluruh ploting penugasan guru mapel untuk{' '}
+                  <strong>
+                    konteks akademik ini
+                    {selectedSemesterId ? ' (Semester Terpilih)' : ' (Semua Semester dalam Tahun Pelajaran)'}
+                  </strong>?
+                </p>
+                <p className="text-[11px] text-rose-600/90 dark:text-rose-400">
+                  Seluruh data penugasan guru-mapel dan konfigurasi unit pengajaran terkait pada konteks ini akan dihapus bersih.
+                </p>
+              </div>
+            </div>
+          </div>
+        ),
+        confirmText: 'Ya, Kosongkan Ploting',
+        cancelText: 'Batal',
+        style: 'danger',
+        withProgress: true,
+        progressLabel: 'Mengosongkan ploting guru mapel...',
+      });
+
+      if (!ok) return;
+
+      setIsClearingPlotting(true);
+      const res = await clearGuruMapelByContext({
+        tahun_pelajaran_id: selectedTahunPelajaranId,
+        semester_id: selectedSemesterId || undefined,
+      });
+
+      if (res?.success) {
+        toast.success(res.message || 'Ploting guru mapel berhasil dikosongkan.');
+        invalidateJadwalCache();
+        queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+        fetchData();
+      } else {
+        toast.error(res?.message || 'Gagal mengosongkan ploting.');
+      }
+    } catch (err: any) {
+      console.error('Error clearing plotting:', err);
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal mengosongkan ploting.');
+    } finally {
+      setIsClearingPlotting(false);
+      confirm.setLoading(false);
+    }
+  }, [selectedTahunPelajaranId, selectedSemesterId, confirm, invalidateJadwalCache, queryClient, fetchData]);
 
   const columns = useMemo(() => [
     {
@@ -774,7 +841,6 @@ const GuruMapelList = React.memo<Props>(({
             tahunPelajaranId={selectedTahunPelajaranId}
             value={selectedSemesterId}
             onValueChange={setSelectedSemesterId}
-            autoSelectActive={true}
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
           />
         </div>
@@ -884,6 +950,20 @@ const GuruMapelList = React.memo<Props>(({
                    >
                      <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                    </Button>
+
+                   {canManage && (
+                     <Button
+                       variant="toolbarDanger"
+                       size="toolbar"
+                       onClick={handleClearPlotting}
+                       disabled={loading || isClearingPlotting}
+                       title="Kosongkan seluruh data ploting penugasan guru mapel untuk konteks akademik yang dipilih"
+                       className="rounded-xl text-xs border border-rose-300 bg-rose-50/80 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:border-rose-900/60 dark:text-rose-300"
+                     >
+                       <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                       {isClearingPlotting ? 'Mengosongkan...' : 'Kosongkan Ploting'}
+                     </Button>
+                   )}
 
                    {canManage && (
                      <Button

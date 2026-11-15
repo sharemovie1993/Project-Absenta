@@ -79,6 +79,14 @@ export const syncGuruMapelFromJadwal = async (payload?: {
   return requestWithFallback('post', '/kurikulum/guru-mapel/sync-from-jadwal', { data: payload });
 };
 
+// POST /api/kurikulum/guru-mapel/clear
+export const clearGuruMapelByContext = async (payload: {
+  tahun_pelajaran_id: string;
+  semester_id?: string;
+}): Promise<{ success: boolean; message: string; data?: { deletedCount: number } }> => {
+  return requestWithFallback('post', '/kurikulum/guru-mapel/clear', { data: payload });
+};
+
 // GET/PUT /api/kurikulum/guru-mapel/policy
 export const getKurikulumPolicy = async (): Promise<{
   success: boolean;

@@ -82,39 +82,77 @@ export class GuruMapelService {
       orderBy: { created_at: 'desc' },
     });
 
-    // Auto-heal / Auto-sync: jika data penugasan GuruMapel di tenant ini belum ada atau sangat sedikit (<= 2)
-    // tetapi di JadwalKBM sudah ada data jadwal riil KBM (> 10), jalankan sync otomatis agar modul CBT & Rapor tidak kosong.
-    if (data.length <= 2 && requestingUserTenantId) {
-      const kbmCount = await prisma.jadwalKBM.count({
-        where: {
-          tenant_id: requestingUserTenantId,
-          jenis_kegiatan: 'KBM',
-          ...(filters?.tahun_pelajaran_id ? { tahun_pelajaran_id: filters.tahun_pelajaran_id } : {})
-        }
-      });
-      if (kbmCount > 10) {
-        await this.syncFromJadwalKbm(requestingUserTenantId, filters?.tahun_pelajaran_id, filters?.semester_id);
-        return (await prisma.guruMapel.findMany({
-          where: whereClause,
-          include: {
-            Guru: { select: { id: true, nama_guru: true, max_jp: true, no_hp: true } },
-            Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
-            Kelas: { select: { id: true, nama_kelas: true, tingkat: true, jurusan_id: true } },
-            Jurusan: { select: { id: true, nama: true } },
-            UnitPengajaran: {
-              include: {
-                Guru: { select: { id: true, nama_guru: true } },
-                _count: { select: { JadwalKBM: true, SesiAbsensi: true } },
-              },
-              orderBy: [{ urutan: 'asc' }, { created_at: 'asc' }],
-            },
-          },
-          orderBy: { created_at: 'desc' },
-        })) as unknown as GuruMapelResponse[];
-      }
+    return data as unknown as GuruMapelResponse[];
+  }
+
+  async clearAssignmentsByContext(
+    tenantId: string,
+    context: {
+      tahun_pelajaran_id: string;
+      semester_id?: string | null;
+    }
+  ): Promise<{ deletedCount: number }> {
+    if (!tenantId) {
+      throw new Error('Tenant ID wajib disertakan.');
+    }
+    if (!context.tahun_pelajaran_id) {
+      throw new Error('Tahun Pelajaran wajib ditentukan untuk mengosongkan ploting.');
     }
 
-    return data as unknown as GuruMapelResponse[];
+    const whereClause: any = {
+      tenant_id: tenantId,
+      tahun_pelajaran_id: context.tahun_pelajaran_id,
+    };
+
+    if (context.semester_id) {
+      whereClause.semester_id = context.semester_id;
+    }
+
+    const existingList = await prisma.guruMapel.findMany({
+      where: whereClause,
+      select: { id: true },
+    });
+
+    if (existingList.length === 0) {
+      return { deletedCount: 0 };
+    }
+
+    const ids = existingList.map((item) => item.id);
+
+    await prisma.$transaction(async (tx) => {
+      // Hapus UnitPengajaran terkait guru_mapel_id tersebut
+      await tx.unitPengajaran.deleteMany({
+        where: {
+          tenant_id: tenantId,
+          guru_mapel_id: { in: ids },
+        },
+      });
+
+      // Lepaskan tautan unit_pengajaran_id di JadwalKBM untuk TP / Semester ini
+      await tx.jadwalKBM.updateMany({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: context.tahun_pelajaran_id,
+          ...(context.semester_id ? { semester_id: context.semester_id } : {}),
+        },
+        data: {
+          unit_pengajaran_id: null,
+        },
+      });
+
+      // Hapus data GuruMapel
+      await tx.guruMapel.deleteMany({
+        where: {
+          id: { in: ids },
+          tenant_id: tenantId,
+        },
+      });
+    });
+
+    const { cacheInvalidationService } = await import('../../../../utils/cache-invalidation.service');
+    await cacheInvalidationService.invalidateBebanGuruCache(tenantId);
+
+    return { deletedCount: ids.length };
   }
 
   async assignMapelToGuru(tenantId: string, input: CreateGuruMapelInput): Promise<GuruMapelResponse> {

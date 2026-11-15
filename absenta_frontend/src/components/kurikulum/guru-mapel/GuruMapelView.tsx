@@ -8,9 +8,10 @@ import GuruMapelList from '../../academic/guru-mapel/GuruMapelList';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
 import { getAcademicStats } from '../../../api/academic-stats.api';
-import { listGuruMapel, importGuruMapelFromExcel, syncGuruMapelFromJadwal } from '../../../api/kurikulum/guru-mapel.api';
+import { listGuruMapel, importGuruMapelFromExcel, syncGuruMapelFromJadwal, clearGuruMapelByContext } from '../../../api/kurikulum/guru-mapel.api';
 import { guruApi, mapelApi } from '../../../api/academic.api';
-import { Users, BookOpen, GraduationCap, Download, Upload, FileText, Sparkles, Layers, Printer, RefreshCw } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, Download, Upload, FileText, Sparkles, Layers, Printer, RefreshCw, Trash2 } from 'lucide-react';
+import useConfirm from '../../../hooks/useConfirm';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import { generateAdvancedTemplate } from '../../../utils/excel-advanced.utils';
 import toast from 'react-hot-toast';
@@ -51,7 +52,9 @@ export const GuruMapelView: React.FC<UniversalGuruMapelViewProps> = ({
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const confirm = useConfirm();
 
   // Academic Filter SSOT saat berdiri sebagai standalone page
   const academicFilter = useAcademicFilter({
@@ -73,6 +76,64 @@ export const GuruMapelView: React.FC<UniversalGuruMapelViewProps> = ({
       setIsSyncing(false);
     }
   }, [effectiveTpId]);
+
+  const handleClearPlotting = useCallback(async () => {
+    if (!effectiveTpId) {
+      toast.error('Pilih Tahun Pelajaran terlebih dahulu pada filter.');
+      return;
+    }
+
+    try {
+      const ok = await confirm({
+        title: 'Konfirmasi Kosongkan Ploting Guru Mapel',
+        description: (
+          <div className="space-y-4">
+            <div className="p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 rounded-xl flex items-start gap-3">
+              <div className="bg-rose-100 dark:bg-rose-900/60 p-2 rounded-xl text-rose-600 dark:text-rose-400 shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs font-black text-rose-900 dark:text-rose-200 uppercase tracking-tight">
+                  Tindakan Destruktif: Reset Ploting Mengajar
+                </p>
+                <p className="text-xs text-rose-700 dark:text-rose-300 leading-relaxed">
+                  Apakah Anda yakin ingin mengosongkan seluruh ploting penugasan guru mapel untuk{' '}
+                  <strong>konteks akademik tahun pelajaran aktif</strong>?
+                </p>
+                <p className="text-[11px] text-rose-600/90 dark:text-rose-400">
+                  Seluruh penugasan guru-mapel dan konfigurasi unit pengajaran terkait pada tahun pelajaran ini akan dihapus.
+                </p>
+              </div>
+            </div>
+          </div>
+        ),
+        confirmText: 'Ya, Kosongkan Ploting',
+        cancelText: 'Batal',
+        style: 'danger',
+        withProgress: true,
+        progressLabel: 'Mengosongkan ploting guru mapel...',
+      });
+
+      if (!ok) return;
+
+      setIsClearing(true);
+      const res = await clearGuruMapelByContext({
+        tahun_pelajaran_id: effectiveTpId,
+      });
+
+      if (res?.success) {
+        toast.success(res.message || 'Ploting guru mapel berhasil dikosongkan.');
+        setRefreshTrigger(prev => prev + 1);
+      } else {
+        toast.error(res?.message || 'Gagal mengosongkan ploting.');
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || e?.message || 'Gagal mengosongkan ploting.');
+    } finally {
+      setIsClearing(false);
+      confirm.setLoading(false);
+    }
+  }, [effectiveTpId, confirm]);
 
   const handleOpenTimeOff = useCallback((guruId: string, guruName?: string) => {
     setTimeOffGuruId(guruId);
@@ -152,7 +213,7 @@ export const GuruMapelView: React.FC<UniversalGuruMapelViewProps> = ({
     try {
       toast('Menyiapkan referensi data...', { icon: 'ℹ️' });
       const [gurusRes, mapelsRes] = await Promise.all([
-        guruApi.getAll({ limit: 1000, jenis_ptk: 'PENDIDIK' }),
+        guruApi.getAll({ limit: 1000, jenis_ptk: 'PENDIDIK' } as any),
         mapelApi.getAll({ limit: 1000 })
       ]);
 
@@ -236,6 +297,17 @@ export const GuruMapelView: React.FC<UniversalGuruMapelViewProps> = ({
               >
                 <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
                 {isSyncing ? 'Menyinkronkan...' : 'Sinkronkan dari Jadwal KBM'}
+              </button>
+            )}
+            {canManage && (
+              <button
+                onClick={handleClearPlotting}
+                disabled={isClearing}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 dark:bg-rose-950/60 dark:border-rose-900/40 dark:text-rose-300 dark:hover:bg-rose-900 transition-colors shadow-sm disabled:opacity-50"
+                title="Kosongkan seluruh data ploting penugasan guru mapel untuk konteks akademik aktif"
+              >
+                <Trash2 size={14} className={isClearing ? 'animate-spin' : ''} />
+                {isClearing ? 'Mengosongkan...' : 'Kosongkan Ploting'}
               </button>
             )}
             {canManage && (

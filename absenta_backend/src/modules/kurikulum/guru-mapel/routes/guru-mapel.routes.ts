@@ -32,6 +32,20 @@ export default async function guruMapelRoutes(fastify: any) {
     }
   );
 
+  fastify.post(
+    '/clear',
+    {
+      preHandler: [
+        requireCapability('academic.teaching.manage'),
+        organizationalScopeMiddleware,
+        determineDataScope(),
+      ]
+    },
+    async (request: any, reply: any) => {
+      return guruMapelController.clearByContext(request, reply);
+    }
+  );
+
   fastify.delete(
     '/:id',
     {

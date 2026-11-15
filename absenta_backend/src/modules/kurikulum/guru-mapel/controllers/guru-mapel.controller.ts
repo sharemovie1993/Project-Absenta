@@ -380,6 +380,41 @@ export class GuruMapelController {
       return this.handlePolicyError(reply, error, 'Gagal menyalin konfigurasi dari semester sebelumnya');
     }
   }
+
+  async clearByContext(request: any, reply: any): Promise<ApiResponse> {
+    try {
+      const user = request.user;
+      if (!user) {
+        reply.status(401);
+        return { success: false, message: 'Unauthorized' };
+      }
+
+      const tenantId = request.tenantId || user.tenantId;
+      const { tahun_pelajaran_id, semester_id } = request.body || {};
+
+      if (!tahun_pelajaran_id) {
+        reply.status(400);
+        return { success: false, message: 'Tahun pelajaran wajib dipilih untuk mengosongkan ploting' };
+      }
+
+      const result = await guruMapelService.clearAssignmentsByContext(tenantId, {
+        tahun_pelajaran_id,
+        semester_id,
+      });
+
+      reply.status(200);
+      return {
+        success: true,
+        message: `Berhasil mengosongkan ${result.deletedCount} ploting penugasan guru mapel.`,
+        data: result,
+      };
+    } catch (error) {
+      appLogger.error({ err: error }, 'Controller error clearByContext');
+      const msg = error instanceof Error ? error.message : 'Gagal mengosongkan ploting penugasan guru mapel';
+      reply.status(500);
+      return { success: false, message: msg };
+    }
+  }
 }
 
 export const guruMapelController = new GuruMapelController();
