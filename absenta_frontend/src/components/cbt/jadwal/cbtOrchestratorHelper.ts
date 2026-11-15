@@ -182,6 +182,116 @@ export function savePersistedRoomMappings(
 }
 
 /**
+ * Menugaskan kelas ke slot ruang tertentu (Room-Centric).
+ * Ruang tetap statis (R.01, R.02, dst). Kelas yang berpindah / bertukar ruangan.
+ * Jika kelas yang dipilih sebelumnya berada di ruang lain, lakukan SWAP 1-on-1 otomatis.
+ */
+export function assignClassToRoomSlot(
+  mappings: KelasRoomMapping[],
+  targetSlotRuang: string,
+  newKelasId: string,
+  rawKelasList: any[]
+): KelasRoomMapping[] {
+  const targetRoom = mappings.find((m) => m.slot_ruang === targetSlotRuang);
+  if (!targetRoom || targetRoom.kelas_id === newKelasId) return mappings;
+
+  const oldKelasId = targetRoom.kelas_id;
+
+  // Temukan room lain yang saat ini ditempati oleh newKelasId
+  const previousRoomForNewClass = mappings.find((m) => m.kelas_id === newKelasId);
+
+  // Ambil data master kelas
+  const newClassData = rawKelasList.find((k) => k.id === newKelasId);
+  const oldClassData = rawKelasList.find((k) => k.id === oldKelasId);
+
+  const getJurusanKode = (k: any) =>
+    k?.Jurusan?.kode ||
+    k?.Jurusan?.singkatan ||
+    k?.Jurusan?.kode_jurusan ||
+    (k?.nama_kelas ? k.nama_kelas.match(/\b(AKL|AK|TKJ|TKR|TSM|TP|TM|KUL|PHT|HTL|TOI|TAV|TE|TO)\b/i)?.[1]?.toUpperCase() : undefined);
+
+  const getJurusanNama = (k: any) =>
+    k?.Jurusan?.nama ||
+    k?.Jurusan?.nama_jurusan ||
+    k?.Jurusan?.singkatan ||
+    getJurusanKode(k);
+
+  return mappings.map((m) => {
+    // 1. Ruang target menerima kelas baru
+    if (m.slot_ruang === targetSlotRuang) {
+      return {
+        ...m,
+        kelas_id: newKelasId,
+        nama_kelas: newClassData?.nama_kelas || newClassData?.nama || m.nama_kelas,
+        tingkat: Number(newClassData?.tingkat) || m.tingkat,
+        jurusan_id: newClassData?.jurusan_id,
+        kode_jurusan: getJurusanKode(newClassData),
+        nama_jurusan: getJurusanNama(newClassData),
+        kapasitas: newClassData?.kapasitas || m.kapasitas || 36,
+      };
+    }
+
+    // 2. Ruang lama asal newKelasId menerima kelas lama dari targetRoom (SWAP 1-on-1)
+    if (previousRoomForNewClass && m.slot_ruang === previousRoomForNewClass.slot_ruang) {
+      return {
+        ...m,
+        kelas_id: oldKelasId,
+        nama_kelas: oldClassData?.nama_kelas || oldClassData?.nama || m.nama_kelas,
+        tingkat: Number(oldClassData?.tingkat) || m.tingkat,
+        jurusan_id: oldClassData?.jurusan_id,
+        kode_jurusan: getJurusanKode(oldClassData),
+        nama_jurusan: getJurusanNama(oldClassData),
+        kapasitas: oldClassData?.kapasitas || m.kapasitas || 36,
+      };
+    }
+
+    return m;
+  });
+}
+
+/**
+ * Menggeser kelas antar dua ruang bersebelahan (Room-Centric).
+ * Ruang dan nama fisik tetap di tempat, hanya kelas yang bertukar ruang.
+ */
+export function swapClassesBetweenNeighborRooms(
+  mappings: KelasRoomMapping[],
+  index: number,
+  direction: 'UP' | 'DOWN'
+): KelasRoomMapping[] {
+  const targetIndex = direction === 'UP' ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= mappings.length) return mappings;
+
+  const roomA = mappings[index];
+  const roomB = mappings[targetIndex];
+
+  const next = [...mappings];
+  // roomA tetap memegang slot_ruang & nama_ruang miliknya, tetapi menerima kelas milik roomB
+  next[index] = {
+    ...roomA,
+    kelas_id: roomB.kelas_id,
+    nama_kelas: roomB.nama_kelas,
+    tingkat: roomB.tingkat,
+    jurusan_id: roomB.jurusan_id,
+    kode_jurusan: roomB.kode_jurusan,
+    nama_jurusan: roomB.nama_jurusan,
+    kapasitas: roomB.kapasitas,
+  };
+  // roomB tetap memegang slot_ruang & nama_ruang miliknya, tetapi menerima kelas milik roomA
+  next[targetIndex] = {
+    ...roomB,
+    kelas_id: roomA.kelas_id,
+    nama_kelas: roomA.nama_kelas,
+    tingkat: roomA.tingkat,
+    jurusan_id: roomA.jurusan_id,
+    kode_jurusan: roomA.kode_jurusan,
+    nama_jurusan: roomA.nama_jurusan,
+    kapasitas: roomA.kapasitas,
+  };
+
+  return next;
+}
+
+/**
  * Menukar (SWAP) slot kode ruang antar dua kelas secara 1-on-1 tanpa duplikasi.
  * Jika kelas A memegang slot_1 dan memilih slot_2 milik kelas B:
  * - Kelas A menjadi memegang slot_2

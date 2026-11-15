@@ -26,8 +26,8 @@ import {
   KelasRoomMapping,
   generateClassRoomMappings,
   savePersistedRoomMappings,
-  swapRoomSlotBetweenClasses,
-  moveRoomMappingOrder,
+  assignClassToRoomSlot,
+  swapClassesBetweenNeighborRooms,
 } from './cbtOrchestratorHelper';
 import { CbtLabelRuangPrintModal } from './CbtLabelRuangPrintModal';
 import { CbtKartuUjianPrintModal } from './CbtKartuUjianPrintModal';
@@ -93,20 +93,28 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   // Modal Studio Denah Spasial State
   const [isDenahModalOpen, setIsDenahModalOpen] = useState(false);
 
-  // Daftar seluruh slot kode ruang unik yang tersedia (terurut R.01, R.02, dst)
-  const availableSlotOptions = useMemo(() => {
-    const slots = Array.from(new Set(roomMappings.map((m) => m.slot_ruang).filter(Boolean)));
-    slots.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+  // Daftar seluruh kelas yang aktif untuk dipilih/ditempatkan ke dalam ruang ujian
+  const availableKelasOptions = useMemo(() => {
+    const list = [...kelasList].filter(
+      (k) => k.is_active !== false && String(k.status || '').toUpperCase() !== 'NONAKTIF'
+    );
+    list.sort((a, b) => {
+      const tA = Number(a.tingkat) || 0;
+      const tB = Number(b.tingkat) || 0;
+      if (tA !== tB) return tA - tB;
+      return (a.nama_kelas || a.nama || '').localeCompare(b.nama_kelas || b.nama || '');
+    });
 
-    return slots.map((s) => {
-      const assigned = roomMappings.find((m) => m.slot_ruang === s);
+    return list.map((k) => {
+      const currentRoom = roomMappings.find((m) => m.kelas_id === k.id);
       return {
-        slot: s,
-        currentKelasName: assigned?.nama_kelas || '',
-        currentKelasId: assigned?.kelas_id || '',
+        id: k.id,
+        nama_kelas: k.nama_kelas || k.nama || 'Kelas',
+        tingkat: Number(k.tingkat) || 10,
+        currentSlot: currentRoom?.slot_ruang || '',
       };
     });
-  }, [roomMappings]);
+  }, [kelasList, roomMappings]);
 
   // Auto-generate sequential room slots R.01 s/d R.n
   const handleAutoPlottingRooms = () => {
@@ -122,38 +130,34 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
     );
   };
 
-  // Menukar slot kode ruang ke rombel lain (SWAP aman tanpa duplikasi)
-  const handleSwapSlot = (sourceKelasId: string, targetSlotRuang: string) => {
-    const src = roomMappings.find((m) => m.kelas_id === sourceKelasId);
-    const other = roomMappings.find((m) => m.slot_ruang === targetSlotRuang);
-    const next = swapRoomSlotBetweenClasses(roomMappings, sourceKelasId, targetSlotRuang);
+  // Menugaskan / menukar rombel kelas ke slot ruang tertentu (Room-Centric SWAP)
+  const handleAssignClassToRoom = (targetSlotRuang: string, newKelasId: string) => {
+    const next = assignClassToRoomSlot(roomMappings, targetSlotRuang, newKelasId, kelasList);
     onUpdateRoomMappings(next);
     savePersistedRoomMappings(next, tenantId, eventId);
 
-    if (other && other.kelas_id !== sourceKelasId) {
-      toast.success(`Slot ${targetSlotRuang} ditukar ke ${src?.nama_kelas || 'Kelas'} (bertukar dengan ${other.nama_kelas})`);
-    } else {
-      toast.success(`Slot berhasil dipindah ke ${targetSlotRuang}`);
-    }
+    const assignedClass = availableKelasOptions.find((k) => k.id === newKelasId);
+    toast.success(`${assignedClass?.nama_kelas || 'Kelas'} ditempatkan di ${targetSlotRuang}`);
   };
 
-  // Menggeser urutan alokasi slot naik / turun
-  const handleMoveSlot = (currentFilteredIdx: number, direction: 'UP' | 'DOWN') => {
+  // Menggeser rombel kelas antar dua ruang bersebelahan (slot ruang tetap statis, hanya kelas bertukar ruang)
+  const handleMoveClassNeighbor = (currentFilteredIdx: number, direction: 'UP' | 'DOWN') => {
     const targetItem = filteredList[currentFilteredIdx];
     if (!targetItem) return;
 
-    const realIndex = roomMappings.findIndex((m) => m.kelas_id === targetItem.kelas_id);
+    // Temukan index riil di roomMappings berdasarkan slot_ruang
+    const realIndex = sortedRoomMappings.findIndex((m) => m.slot_ruang === targetItem.slot_ruang);
     if (realIndex === -1) return;
 
-    const next = moveRoomMappingOrder(roomMappings, realIndex, direction);
+    const next = swapClassesBetweenNeighborRooms(sortedRoomMappings, realIndex, direction);
     onUpdateRoomMappings(next);
     savePersistedRoomMappings(next, tenantId, eventId);
-    toast.success('Urutan slot ruang berhasil digeser!');
+    toast.success('Rombel kelas berhasil digeser antar ruangan!');
   };
 
-  const handleUpdateNamaRuangFisik = (kelasId: string, value: string) => {
+  const handleUpdateNamaRuangFisik = (slotRuang: string, value: string) => {
     const next = roomMappings.map((m) => {
-      if (m.kelas_id !== kelasId) return m;
+      if (m.slot_ruang !== slotRuang) return m;
       return { ...m, nama_ruang: value };
     });
     onUpdateRoomMappings(next);
@@ -183,9 +187,16 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
     setIsKartuModalOpen(true);
   };
 
-  // Filter & Search List
+  // ── ROOM-CENTRIC ENGINE: Selalu urutkan daftar berdasarkan nomor urut slot ruang (R.01 s/d R.n) ──
+  const sortedRoomMappings = useMemo(() => {
+    return [...roomMappings].sort((a, b) =>
+      a.slot_ruang.localeCompare(b.slot_ruang, undefined, { numeric: true, sensitivity: 'base' })
+    );
+  }, [roomMappings]);
+
+  // Filter & Search List berbasis Ruang Ujian
   const filteredList = useMemo(() => {
-    return roomMappings.filter((item) => {
+    return sortedRoomMappings.filter((item) => {
       if (filterTingkat !== 'ALL' && item.tingkat !== filterTingkat) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -198,7 +209,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
       }
       return true;
     });
-  }, [roomMappings, filterTingkat, searchQuery]);
+  }, [sortedRoomMappings, filterTingkat, searchQuery]);
 
   const totalClasses = kelasList.length;
   const mappedCount = roomMappings.filter((m) => Boolean(m.slot_ruang.trim())).length;
@@ -408,7 +419,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
             const tProps = getTingkatBadgeProps(cls.tingkat);
             return (
               <div
-                key={cls.kelas_id}
+                key={cls.slot_ruang}
                 className={cn(
                   'p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs space-y-2.5',
                   tProps.cardBorder
@@ -417,8 +428,11 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] font-mono font-bold text-slate-400">#{idx + 1}</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300">
+                      {cls.slot_ruang}
+                    </span>
                     <span className="font-bold text-sm text-slate-800 dark:text-slate-100">
-                      {cls.nama_kelas}
+                      {cls.nama_ruang || 'Ruang Ujian'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
@@ -433,33 +447,33 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                      Slot Kode Ruang (Pindah / Tukar)
+                      Rombel / Kelas yang Menempati (Pilih / Tukar)
                     </label>
-                    <div className="flex items-center gap-1 mt-0.5">
+                    <div className="flex items-center gap-1.5 mt-0.5">
                       <div className="relative flex-1">
                         <select
-                          value={cls.slot_ruang}
-                          onChange={(e) => handleSwapSlot(cls.kelas_id, e.target.value)}
-                          aria-label={`Slot kode ruang untuk ${cls.nama_kelas}`}
-                          className="w-full pl-2 pr-5 py-1.5 text-xs font-mono font-black rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 focus:bg-white focus:outline-hidden cursor-pointer appearance-none shadow-2xs"
+                          value={cls.kelas_id}
+                          onChange={(e) => handleAssignClassToRoom(cls.slot_ruang, e.target.value)}
+                          aria-label={`Rombel kelas untuk ${cls.slot_ruang}`}
+                          className="w-full pl-2.5 pr-7 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 appearance-none shadow-2xs"
                         >
-                          {availableSlotOptions.map((opt) => (
-                            <option key={opt.slot} value={opt.slot} className="font-sans font-semibold text-slate-800">
-                              {opt.slot} {opt.currentKelasName ? `(${opt.currentKelasName})` : ''}
+                          {availableKelasOptions.map((opt) => (
+                            <option key={opt.id} value={opt.id}>
+                              {opt.nama_kelas} {opt.currentSlot ? `(di ${opt.currentSlot})` : ''}
                             </option>
                           ))}
                         </select>
-                        <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none" />
+                        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       </div>
                       <div className="flex flex-col gap-0.5 shrink-0">
                         <button
                           type="button"
                           disabled={idx === 0}
-                          onClick={() => handleMoveSlot(idx, 'UP')}
-                          title="Tukar slot dengan rombel atas"
+                          onClick={() => handleMoveClassNeighbor(idx, 'UP')}
+                          title="Tukar rombel kelas dengan ruang di atasnya"
                           className="p-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 disabled:opacity-30 disabled:pointer-events-none"
                         >
                           <ChevronUp size={10} />
@@ -467,8 +481,8 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                         <button
                           type="button"
                           disabled={idx === filteredList.length - 1}
-                          onClick={() => handleMoveSlot(idx, 'DOWN')}
-                          title="Tukar slot dengan rombel bawah"
+                          onClick={() => handleMoveClassNeighbor(idx, 'DOWN')}
+                          title="Tukar rombel kelas dengan ruang di bawahnya"
                           className="p-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 disabled:opacity-30 disabled:pointer-events-none"
                         >
                           <ChevronDown size={10} />
@@ -476,6 +490,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                       </div>
                     </div>
                   </div>
+
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase">
                       Nama Ruang Fisik (Ketik Manual)
@@ -483,10 +498,10 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                     <input
                       type="text"
                       value={cls.nama_ruang}
-                      onChange={(e) => handleUpdateNamaRuangFisik(cls.kelas_id, e.target.value)}
+                      onChange={(e) => handleUpdateNamaRuangFisik(cls.slot_ruang, e.target.value)}
                       placeholder="Contoh: Lab Komputer 1..."
-                      aria-label={`Nama ruang untuk ${cls.nama_kelas}`}
-                      className="w-full mt-0.5 px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+                      aria-label={`Nama ruang untuk ${cls.slot_ruang}`}
+                      className="w-full mt-0.5 px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 shadow-2xs"
                     />
                   </div>
                 </div>
@@ -495,7 +510,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                   <button
                     type="button"
                     onClick={() => handlePrintSingleLabel(cls.kelas_id)}
-                    aria-label={`Cetak label ruang ${cls.nama_kelas}`}
+                    aria-label={`Cetak label ruang ${cls.slot_ruang}`}
                     className="w-full min-h-[38px] px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Printer size={13} />
@@ -523,17 +538,20 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-slate-500 font-bold">
                   <th scope="col" className="py-2.5 px-3 w-10 text-center">No</th>
-                  <th scope="col" className="py-2.5 px-3">Rombel / Kelas</th>
-                  <th scope="col" className="py-2.5 px-3 w-28 text-center">Tingkat</th>
-                  <th scope="col" className="py-2.5 px-3 w-32">Jurusan</th>
-                  <th scope="col" className="py-2.5 px-3 w-48">
-                    <span>Slot Kode Ruang</span>
-                    <span className="block text-[10px] font-normal text-slate-400">Pilih / Tukar Slot</span>
+                  <th scope="col" className="py-2.5 px-3 w-32">
+                    <span>Slot Ruang Ujian</span>
+                    <span className="block text-[10px] font-normal text-slate-400">Patokan Tetap</span>
                   </th>
-                  <th scope="col" className="py-2.5 px-3">
+                  <th scope="col" className="py-2.5 px-3 w-56">
                     <span>Nama Ruang Fisik</span>
                     <span className="block text-[10px] font-normal text-slate-400">Ketik Manual (cth: Lab Komputer 1)</span>
                   </th>
+                  <th scope="col" className="py-2.5 px-3">
+                    <span>Rombel / Kelas yang Menempati</span>
+                    <span className="block text-[10px] font-normal text-slate-400">Pilih / Tukar Kelas</span>
+                  </th>
+                  <th scope="col" className="py-2.5 px-3 w-28 text-center">Tingkat</th>
+                  <th scope="col" className="py-2.5 px-3 w-28">Jurusan</th>
                   <th scope="col" className="py-2.5 px-3 w-44 text-right">Aksi Cetak</th>
                 </tr>
               </thead>
@@ -541,28 +559,81 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                 {filteredList.map((cls, idx) => {
                   const tProps = getTingkatBadgeProps(cls.tingkat);
                   return (
-                    <tr key={cls.kelas_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                    <tr key={cls.slot_ruang} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                       {/* 1. No */}
                       <td className="py-2.5 px-3 text-center text-slate-400 font-medium">
                         {idx + 1}
                       </td>
 
-                      {/* 2. Rombel / Kelas */}
+                      {/* 2. Slot Ruang Ujian (Patokan Tetap Berurutan R.01 - R.n) */}
                       <td className="py-2.5 px-3">
-                        <div className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                          <span className={cn('w-2 h-2 rounded-full shrink-0', tProps.dot)} />
-                          <span>{cls.nama_kelas}</span>
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-black bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shadow-2xs">
+                          {cls.slot_ruang}
+                        </span>
+                      </td>
+
+                      {/* 3. Nama Ruang Fisik (Ketik Manual) */}
+                      <td className="py-2 px-3">
+                        <input
+                          type="text"
+                          value={cls.nama_ruang}
+                          onChange={(e) => handleUpdateNamaRuangFisik(cls.slot_ruang, e.target.value)}
+                          placeholder="Ketik nama ruang fisik..."
+                          aria-label={`Nama ruang untuk ${cls.slot_ruang}`}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 shadow-2xs"
+                        />
+                      </td>
+
+                      {/* 4. Rombel / Kelas yang Menempati (Pilih / Tukar Kelas) */}
+                      <td className="py-2 px-3">
+                        <div className="flex items-center gap-1.5">
+                          <div className="relative min-w-[200px] flex-1">
+                            <select
+                              value={cls.kelas_id}
+                              onChange={(e) => handleAssignClassToRoom(cls.slot_ruang, e.target.value)}
+                              aria-label={`Rombel kelas untuk ${cls.slot_ruang}`}
+                              className="w-full pl-2.5 pr-7 py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-2xs appearance-none"
+                            >
+                              {availableKelasOptions.map((opt) => (
+                                <option key={opt.id} value={opt.id}>
+                                  {opt.nama_kelas} {opt.currentSlot ? `(di ${opt.currentSlot})` : ''}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          </div>
+
+                          <div className="flex flex-col gap-0.5 shrink-0">
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => handleMoveClassNeighbor(idx, 'UP')}
+                              title="Tukar rombel kelas dengan ruang atas"
+                              className="p-1 rounded bg-slate-100 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 dark:bg-slate-800 dark:hover:bg-indigo-950/50 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                            >
+                              <ChevronUp size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === filteredList.length - 1}
+                              onClick={() => handleMoveClassNeighbor(idx, 'DOWN')}
+                              title="Tukar rombel kelas dengan ruang bawah"
+                              className="p-1 rounded bg-slate-100 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 dark:bg-slate-800 dark:hover:bg-indigo-950/50 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                            >
+                              <ChevronDown size={11} />
+                            </button>
+                          </div>
                         </div>
                       </td>
 
-                      {/* 3. Tingkat */}
+                      {/* 5. Tingkat */}
                       <td className="py-2.5 px-3 text-center">
                         <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black', tProps.badge)}>
                           Tingkat {formatTingkatRomawi(cls.tingkat)}
                         </span>
                       </td>
 
-                      {/* 4. Jurusan */}
+                      {/* 6. Jurusan */}
                       <td className="py-2.5 px-3">
                         {cls.kode_jurusan ? (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
@@ -573,63 +644,8 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                         )}
                       </td>
 
-                    {/* 5. Slot Kode Ruang (Slot Tetap / Non-Editable Text, Bisa Dipindah / Ditukar ke Kelas Mana) */}
-                    <td className="py-2 px-3">
-                      <div className="flex items-center gap-1.5">
-                        <div className="relative min-w-[130px] flex-1">
-                          <select
-                            value={cls.slot_ruang}
-                            onChange={(e) => handleSwapSlot(cls.kelas_id, e.target.value)}
-                            aria-label={`Slot kode ruang untuk ${cls.nama_kelas}`}
-                            className="w-full pl-2.5 pr-6 py-1.5 text-xs font-mono font-black rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 focus:bg-white focus:outline-hidden cursor-pointer shadow-2xs appearance-none transition-colors"
-                            title={`Slot saat ini: ${cls.slot_ruang}. Pilih slot lain untuk menukar penugasan ruang`}
-                          >
-                            {availableSlotOptions.map((opt) => (
-                              <option key={opt.slot} value={opt.slot} className="font-sans font-semibold text-slate-800">
-                                {opt.slot} {opt.currentKelasName ? `(${opt.currentKelasName})` : ''}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none" />
-                        </div>
-
-                        <div className="flex flex-col gap-0.5 shrink-0">
-                          <button
-                            type="button"
-                            disabled={idx === 0}
-                            onClick={() => handleMoveSlot(idx, 'UP')}
-                            title="Tukar slot dengan rombel atas"
-                            className="p-1 rounded bg-slate-100 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 dark:bg-slate-800 dark:hover:bg-indigo-950/50 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                          >
-                            <ChevronUp size={11} />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={idx === filteredList.length - 1}
-                            onClick={() => handleMoveSlot(idx, 'DOWN')}
-                            title="Tukar slot dengan rombel bawah"
-                            className="p-1 rounded bg-slate-100 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 dark:bg-slate-800 dark:hover:bg-indigo-950/50 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                          >
-                            <ChevronDown size={11} />
-                          </button>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* 6. Nama Ruang Fisik (Ketik Manual) */}
-                    <td className="py-2 px-3">
-                      <input
-                        type="text"
-                        value={cls.nama_ruang}
-                        onChange={(e) => handleUpdateNamaRuangFisik(cls.kelas_id, e.target.value)}
-                        placeholder="Ketik nama ruang fisik..."
-                        aria-label={`Nama ruang untuk ${cls.nama_kelas}`}
-                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 shadow-2xs"
-                      />
-                    </td>
-
-                    {/* 7. Label & Kartu Ruang Aksi */}
-                    <td className="py-2 px-3 text-right">
+                      {/* 7. Label & Kartu Ruang Aksi */}
+                      <td className="py-2 px-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"

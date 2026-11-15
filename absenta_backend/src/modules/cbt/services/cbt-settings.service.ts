@@ -294,9 +294,18 @@ export class CbtSettingsService {
   }
 
   static async deleteEvent(tenantId: string, eventId: string) {
-    const configRow = await prisma.config.findFirst({
-      where: { tenant_id: tenantId, key: CBT_CONFIG_KEY },
-    });
+    const [configRow, activeRow] = await Promise.all([
+      prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: CBT_CONFIG_KEY },
+      }),
+      prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: CBT_ACTIVE_KEY },
+      }),
+    ]);
+
+    if (activeRow?.value === eventId) {
+      throw new Error('Event ini sedang aktif di Meja Kerja Panitia dan tidak dapat dihapus. Silakan aktifkan event lain terlebih dahulu.');
+    }
 
     let allEvents: CbtEventItem[] = [];
     if (configRow?.value) {
