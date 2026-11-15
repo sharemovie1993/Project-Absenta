@@ -18,6 +18,7 @@ import {
   Sparkles,
   Briefcase,
   Laptop,
+  Calendar,
   X,
 } from 'lucide-react';
 import { renderApiValue } from '@/components/ui';
@@ -45,6 +46,7 @@ import { SiswaHeaderBanner } from './siswa/components/SiswaHeaderBanner';
 
 // Subtabs
 import { SiswaRingkasanTab } from './siswa/tabs/SiswaRingkasanTab';
+import { SiswaJadwalTab } from './siswa/tabs/SiswaJadwalTab';
 import { SiswaPklTab } from './siswa/tabs/SiswaPklTab';
 import { SiswaCbtTab } from './siswa/tabs/SiswaCbtTab';
 import { SiswaKehadiranTab } from './siswa/tabs/SiswaKehadiranTab';
@@ -77,7 +79,7 @@ const SiswaOnboardingModal = lazy(() =>
 export const SiswaDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab') as SiswaTabId | null;
-  const validTabs: SiswaTabId[] = ['ringkasan', 'pkl', 'cbt', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil'];
+  const validTabs: SiswaTabId[] = ['ringkasan', 'jadwal', 'pkl', 'cbt', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil'];
   const activeTab: SiswaTabId = rawTab && validTabs.includes(rawTab) ? rawTab : 'ringkasan';
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -254,6 +256,7 @@ export const SiswaDashboard: React.FC = () => {
   const navTabs: SiswaNavTabItem[] = useMemo(() => {
     const tabs: SiswaNavTabItem[] = [
       { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', icon: LayoutList, category: 'operasional' },
+      { id: 'jadwal', label: 'Jadwal Pelajaran', shortLabel: 'Jadwal', icon: Calendar, category: 'akademik' },
     ];
     if (data.isAktifPkl || data.myPenempatan) {
       tabs.push({
@@ -287,6 +290,7 @@ export const SiswaDashboard: React.FC = () => {
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
       case 'ringkasan': return 'Pusat Kendali';
+      case 'jadwal': return 'Jadwal Pelajaran';
       case 'kehadiran': return 'Riwayat Presensi';
       case 'pkl': return 'Praktik Kerja (PKL)';
       case 'cbt': return 'Ujian Online (CBT)';
@@ -561,6 +565,19 @@ export const SiswaDashboard: React.FC = () => {
                 onOpenKehadiranModal={() => setShowKehadiranModal(true)}
                 onOpenPklModal={handleOpenPklModal}
                 onNavigateTab={handleTabChange}
+              />
+            </div>
+          )}
+
+          {visitedTabs.has('jadwal') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'jadwal'}
+              className={cn('w-full min-w-0', activeTab === 'jadwal' ? 'block' : 'hidden')}
+            >
+              <SiswaJadwalTab
+                kelasId={data.siswaProfile?.kelas_id}
+                kelasNama={data.currentClassName}
               />
             </div>
           )}
