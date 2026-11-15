@@ -266,15 +266,15 @@ export class DashboardRoleStatsService {
     const topMitraIds = topMitraGroup.map(g => g.mitra_id);
     const topMitrasDetail = await prisma.mitraIndustri.findMany({
       where: { id: { in: topMitraIds } },
-      select: { id: true, nama: true, bidang_usaha: true, kota: true, kuota_pkl: true }
+      select: { id: true, nama: true, bidang: true, alamat: true, kuota_pkl: true }
     });
     const topMitra = topMitraGroup.map(g => {
       const detail = topMitrasDetail.find(m => m.id === g.mitra_id);
       return {
         id: g.mitra_id,
         nama: detail?.nama || 'Tidak Diketahui',
-        bidang_usaha: detail?.bidang_usaha || 'DU-DI Rekanan PKL',
-        kota: detail?.kota || null,
+        bidang_usaha: detail?.bidang || 'DU-DI Rekanan PKL',
+        kota: detail?.alamat || null,
         kuota_pkl: detail?.kuota_pkl || 0,
         count: g._count.siswa_id
       };
@@ -328,7 +328,7 @@ export class DashboardRoleStatsService {
             Kelas: { select: { nama_kelas: true } }
           } 
         },
-        Mitra: { select: { nama: true, kota: true, bidang_usaha: true } }
+        Mitra: { select: { nama: true, alamat: true, bidang: true } }
       },
       orderBy: { created_at: 'desc' },
       take: 6
@@ -465,8 +465,8 @@ export class DashboardRoleStatsService {
         kelas: p.Siswa?.Kelas?.nama_kelas || null,
         nis: p.Siswa?.nis || null,
         mitra: p.Mitra?.nama || 'Mitra',
-        mitra_kota: p.Mitra?.kota || null,
-        bidang_usaha: p.Mitra?.bidang_usaha || null,
+        mitra_kota: p.Mitra?.alamat || null,
+        bidang_usaha: p.Mitra?.bidang || null,
         status: p.status,
         tanggal: (p.tanggal_mulai || p.created_at).toISOString()
       }))
