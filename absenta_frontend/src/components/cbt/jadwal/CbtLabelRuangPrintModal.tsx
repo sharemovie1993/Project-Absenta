@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import {
   UniversalDocumentModal,
   PrintDocumentSheet,
@@ -7,8 +7,28 @@ import {
 } from '@/components/ui';
 import { Printer, Download, Filter, Edit3 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useQuery } from '@tanstack/react-query';
+import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
+import { useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
+import type { CbtEventItem } from '@/types/cbt.types';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 import { KelasRoomMapping } from './cbtOrchestratorHelper';
+
+/**
+ * Pemformat Teks Tahun Pelajaran & Semester Standar Resmi Asesmen
+ */
+export const formatLabelRuangTp = (tp?: string, sem?: string): string => {
+  let cleanTp = (tp || '').replace(/tahun\s*(pelajaran|ajaran)?/i, '').trim();
+  if (!cleanTp) {
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth() + 1;
+    cleanTp = curMonth >= 7 ? `${curYear}/${curYear + 1}` : `${curYear - 1}/${curYear}`;
+  }
+  const cleanSem = (sem || '').replace(/^semester\s+/i, '').trim();
+  const semText = cleanSem ? ` - SEMESTER ${cleanSem.toUpperCase()}` : '';
+  return `TAHUN PELAJARAN ${cleanTp}${semText}`;
+};
 
 interface CbtLabelRuangPrintModalProps {
   isOpen: boolean;
@@ -18,6 +38,7 @@ interface CbtLabelRuangPrintModalProps {
   eventName?: string;
   activeTpName?: string;
   semester?: string;
+  activeEvent?: CbtEventItem | null;
 }
 
 export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = ({
@@ -25,18 +46,71 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
   onClose,
   items,
   selectedKelasId,
-  eventName = 'PENILAIAN AKHIR SEMESTER (PAS) GANJIL',
+  eventName,
   activeTpName,
   semester,
+  activeEvent,
 }) => {
   const sheetContainerRef = useRef<HTMLDivElement>(null);
 
-  const formatDefaultTp = (tp?: string, sem?: string) => {
-    if (!tp) return 'TAHUN PELAJARAN 2025/2026';
-    const cleanTp = tp.replace(/tahun\s*(pelajaran|ajaran)?/i, '').trim();
-    const semText = sem ? ` - SEMESTER ${sem.toUpperCase()}` : '';
-    return `TAHUN PELAJARAN ${cleanTp}${semText}`;
-  };
+  // Hook Konteks Akademik & Konfigurasi Event CBT Aktif (SSoT)
+  const { data: eventsData } = useQuery({
+    queryKey: cbtQueryKeys.eventsSummary(),
+    queryFn: () => cbtApi.getEventsSummary(),
+    enabled: isOpen,
+    staleTime: 60 * 1000,
+  });
+
+  const { activeYear: activeTp, rawList: tpRawList = [] } = useTahunPelajaranOptions();
+  const { activeSemester } = useSemesterOptions();
+
+  const effectiveEvent = activeEvent || eventsData?.active_event;
+
+  // 1. Resolusi Nama Event CBT
+  const resolvedEventName = useMemo(() => {
+    if (eventName && eventName.trim()) return eventName.trim();
+    if (effectiveEvent?.nama_event && effectiveEvent.nama_event.trim()) {
+      return effectiveEvent.nama_event.trim();
+    }
+    return 'PENILAIAN AKHIR SEMESTER (PAS) GANJIL';
+  }, [eventName, effectiveEvent]);
+
+  // 2. Resolusi Tahun Pelajaran (Event Aktif CBT -> Konteks Akademik Aktif -> Dynamic Fallback)
+  const resolvedTpName = useMemo(() => {
+    // A. Prioritas 1: Jika activeTpName dikirim secara spesifik
+    if (activeTpName && activeTpName.trim()) return activeTpName.trim();
+
+    // B. Prioritas 2: Cari Tahun Pelajaran dari Event CBT yang Aktif
+    if (effectiveEvent?.tahun_pelajaran_id && eventsData?.summary) {
+      const matched = eventsData.summary.find(
+        (s) => s.tahun_pelajaran_id === effectiveEvent.tahun_pelajaran_id
+      );
+      if (matched?.tahun_ajaran) return matched.tahun_ajaran;
+    }
+    if (effectiveEvent?.tahun_pelajaran_id && tpRawList.length > 0) {
+      const matched = tpRawList.find((tp) => tp.id === effectiveEvent.tahun_pelajaran_id);
+      if (matched?.tahun) return matched.tahun;
+    }
+
+    // C. Prioritas 3: Konteks Akademik Aktif Sekolah
+    if (activeTp?.tahun) return activeTp.tahun;
+    if ((activeTp as any)?.nama) return (activeTp as any).nama;
+
+    // D. Dynamic Fallback: Kalender Berjalan
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth() + 1;
+    return curMonth >= 7 ? `${curYear}/${curYear + 1}` : `${curYear - 1}/${curYear}`;
+  }, [activeTpName, effectiveEvent, eventsData, tpRawList, activeTp]);
+
+  // 3. Resolusi Semester (Event Aktif CBT -> Konteks Akademik Aktif)
+  const resolvedSemester = useMemo(() => {
+    if (semester && semester.trim()) return semester.trim();
+    if (effectiveEvent?.semester) return effectiveEvent.semester;
+    if (activeSemester?.nama_semester) return activeSemester.nama_semester;
+    if ((activeSemester as any)?.nama) return (activeSemester as any).nama;
+    return new Date().getMonth() + 1 >= 7 ? 'GANJIL' : 'GENAP';
+  }, [semester, effectiveEvent, activeSemester]);
 
   // Filter mode: 'ALL' or a specific kelas_id
   const [filterKelasId, setFilterKelasId] = useState<string>(selectedKelasId || 'ALL');
@@ -47,17 +121,15 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   // State nama event & tahun pelajaran yang dapat diedit langsung oleh panitia
-  const [customEventName, setCustomEventName] = useState<string>(
-    eventName || 'PENILAIAN AKHIR SEMESTER (PAS) GANJIL'
-  );
-  const [customTpText, setCustomTpText] = useState<string>(
-    formatDefaultTp(activeTpName, semester)
+  const [customEventName, setCustomEventName] = useState<string>(resolvedEventName);
+  const [customTpText, setCustomTpText] = useState<string>(() =>
+    formatLabelRuangTp(resolvedTpName, resolvedSemester)
   );
 
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
   const sekolah = (rawSekolah || {}) as any;
 
-  // Sync state when props change
+  // Sync state when props or resolved metadata change
   useEffect(() => {
     if (selectedKelasId) {
       setFilterKelasId(selectedKelasId);
@@ -67,14 +139,16 @@ export const CbtLabelRuangPrintModal: React.FC<CbtLabelRuangPrintModalProps> = (
   }, [selectedKelasId, isOpen]);
 
   useEffect(() => {
-    if (eventName) {
-      setCustomEventName(eventName);
+    if (resolvedEventName) {
+      setCustomEventName(resolvedEventName);
     }
-  }, [eventName]);
+  }, [resolvedEventName]);
 
   useEffect(() => {
-    setCustomTpText(formatDefaultTp(activeTpName, semester));
-  }, [activeTpName, semester]);
+    if (resolvedTpName) {
+      setCustomTpText(formatLabelRuangTp(resolvedTpName, resolvedSemester));
+    }
+  }, [resolvedTpName, resolvedSemester]);
 
   // Filtered rooms to render
   const targetRooms = React.useMemo(() => {

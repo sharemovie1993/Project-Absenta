@@ -100,8 +100,44 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
 
   const { rawList: guruList = [] } = useGuruOptions({ jenisPtk: 'ALL' });
   const { rawList: kelasList = [] } = useKelasOptions();
-  const { activeYear: activeTp } = useTahunPelajaranOptions();
+  const { activeYear: activeTp, rawList: tpRawList = [] } = useTahunPelajaranOptions();
   const { activeSemester } = useSemesterOptions();
+
+  // Resolusi Tahun Pelajaran SSoT: Prioritaskan Pengaturan Event CBT Aktif -> Konteks Akademik Aktif
+  const effectiveTpName = useMemo(() => {
+    if (activeEvent?.tahun_pelajaran_id && eventsData?.summary) {
+      const matched = eventsData.summary.find(
+        (s) => s.tahun_pelajaran_id === activeEvent.tahun_pelajaran_id
+      );
+      if (matched?.tahun_ajaran) return matched.tahun_ajaran;
+    }
+    if (activeEvent?.tahun_pelajaran_id && tpRawList.length > 0) {
+      const matched = tpRawList.find((tp) => tp.id === activeEvent.tahun_pelajaran_id);
+      if (matched?.tahun) return matched.tahun;
+    }
+    if (activeTp?.tahun) return activeTp.tahun;
+    if ((activeTp as any)?.nama) return (activeTp as any).nama;
+
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth() + 1;
+    return curMonth >= 7 ? `${curYear}/${curYear + 1}` : `${curYear - 1}/${curYear}`;
+  }, [activeEvent, eventsData, tpRawList, activeTp]);
+
+  // Resolusi Semester SSoT: Prioritaskan Pengaturan Event CBT Aktif -> Konteks Akademik Aktif
+  const effectiveSemesterName = useMemo(() => {
+    if (activeEvent?.semester) {
+      return activeEvent.semester;
+    }
+    if (activeSemester?.nama_semester) {
+      return activeSemester.nama_semester;
+    }
+    if ((activeSemester as any)?.nama) {
+      return (activeSemester as any).nama;
+    }
+    const curMonth = new Date().getMonth() + 1;
+    return curMonth >= 7 ? 'GANJIL' : 'GENAP';
+  }, [activeEvent, activeSemester]);
 
   // Filter kelas aktif sesuai sasaran tingkat event ujian yang sedang aktif
   const scopedKelasList = useMemo(() => {
@@ -535,8 +571,9 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           tenantId={tenantId}
           eventId={activeEvent?.id}
           eventName={effectiveEventName}
-          activeTpName={activeTp?.nama}
-          semester={activeSemester?.nama}
+          activeTpName={effectiveTpName}
+          semester={effectiveSemesterName}
+          activeEvent={activeEvent}
           targetTingkat={effectiveTargetTingkat}
           onProceedToNextPhase={() => setActiveTab('fase_3_jadwal')}
         />

@@ -28,6 +28,8 @@ import QRCode from 'qrcode';
 import { useQuery } from '@tanstack/react-query';
 import { siswaApi } from '@/api/academic.api';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
+import { useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
+import type { CbtEventItem } from '@/types/cbt.types';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 import { KelasRoomMapping } from './cbtOrchestratorHelper';
 import { formatDate } from '@/utils/date.utils';
@@ -42,6 +44,8 @@ export interface CbtKartuUjianPrintModalProps {
   selectedKelasId?: string | null;
   eventName?: string;
   activeTpName?: string;
+  semester?: string;
+  activeEvent?: CbtEventItem | null;
 }
 
 export interface StudentExamCardData {
@@ -526,10 +530,74 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
   kelasList,
   roomMappings,
   selectedKelasId,
-  eventName = 'TES KEMAMPUAN AKADEMIK PAKET C/ULYA',
-  activeTpName = 'TAHUN 2026',
+  eventName,
+  activeTpName,
+  semester,
+  activeEvent,
 }) => {
   const sheetContainerRef = useRef<HTMLDivElement>(null);
+
+  // Hook Konteks Akademik & Konfigurasi Event CBT Aktif (SSoT)
+  const { data: eventsData } = useQuery({
+    queryKey: cbtQueryKeys.eventsSummary(),
+    queryFn: () => cbtApi.getEventsSummary(),
+    enabled: isOpen,
+    staleTime: 60 * 1000,
+  });
+
+  const { activeYear: activeTp, rawList: tpRawList = [] } = useTahunPelajaranOptions();
+  const { activeSemester } = useSemesterOptions();
+
+  const effectiveEvent = activeEvent || eventsData?.active_event;
+
+  // 1. Resolusi Nama Event CBT
+  const resolvedEventName = useMemo(() => {
+    if (eventName && eventName.trim()) return eventName.trim();
+    if (effectiveEvent?.nama_event && effectiveEvent.nama_event.trim()) {
+      return effectiveEvent.nama_event.trim();
+    }
+    return 'TES KEMAMPUAN AKADEMIK / UJIAN CBT';
+  }, [eventName, effectiveEvent]);
+
+  // 2. Resolusi Tahun Pelajaran (Event Aktif CBT -> Konteks Akademik Aktif -> Dynamic Fallback)
+  const resolvedTpName = useMemo(() => {
+    if (activeTpName && activeTpName.trim()) return activeTpName.trim();
+
+    if (effectiveEvent?.tahun_pelajaran_id && eventsData?.summary) {
+      const matched = eventsData.summary.find(
+        (s) => s.tahun_pelajaran_id === effectiveEvent.tahun_pelajaran_id
+      );
+      if (matched?.tahun_ajaran) return matched.tahun_ajaran;
+    }
+    if (effectiveEvent?.tahun_pelajaran_id && tpRawList.length > 0) {
+      const matched = tpRawList.find((tp) => tp.id === effectiveEvent.tahun_pelajaran_id);
+      if (matched?.tahun) return matched.tahun;
+    }
+
+    if (activeTp?.tahun) return activeTp.tahun;
+    if ((activeTp as any)?.nama) return (activeTp as any).nama;
+
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth() + 1;
+    return curMonth >= 7 ? `${curYear}/${curYear + 1}` : `${curYear - 1}/${curYear}`;
+  }, [activeTpName, effectiveEvent, eventsData, tpRawList, activeTp]);
+
+  // 3. Resolusi Semester (Event Aktif CBT -> Konteks Akademik Aktif)
+  const resolvedSemester = useMemo(() => {
+    if (semester && semester.trim()) return semester.trim();
+    if (effectiveEvent?.semester) return effectiveEvent.semester;
+    if (activeSemester?.nama_semester) return activeSemester.nama_semester;
+    if ((activeSemester as any)?.nama) return (activeSemester as any).nama;
+    return new Date().getMonth() + 1 >= 7 ? 'GANJIL' : 'GENAP';
+  }, [semester, effectiveEvent, activeSemester]);
+
+  const formatDefaultCardTp = (tp: string, sem?: string) => {
+    const cleanTp = (tp || '').replace(/tahun\s*(pelajaran|ajaran)?/i, '').trim();
+    const cleanSem = (sem || '').replace(/^semester\s+/i, '').trim();
+    const semText = cleanSem ? ` - SEMESTER ${cleanSem.toUpperCase()}` : '';
+    return `TAHUN PELAJARAN ${cleanTp || '2025/2026'}${semText}`;
+  };
 
   // ── 1. Target Kelas Fokus ──
   const initialClassId = useMemo(() => {
@@ -565,8 +633,9 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
   const [qrPayloadMode, setQrPayloadMode] = useState<QrPayloadMode>('url_short');
 
   // ── 4. Editable Text ──
-  const [customEventName, setCustomEventName] = useState<string>(
-    eventName || 'TES KEMAMPUAN AKADEMIK PAKET C/ULYA'
+  const [customEventName, setCustomEventName] = useState<string>(resolvedEventName);
+  const [customTpText, setCustomTpText] = useState<string>(() =>
+    formatDefaultCardTp(resolvedTpName, resolvedSemester)
   );
 
   // Universal Header Info (SSoT)
@@ -574,10 +643,16 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
   const sekolahData = (rawSekolah || {}) as any;
 
   useEffect(() => {
-    if (eventName) {
-      setCustomEventName(eventName);
+    if (resolvedEventName) {
+      setCustomEventName(resolvedEventName);
     }
-  }, [eventName]);
+  }, [resolvedEventName]);
+
+  useEffect(() => {
+    if (resolvedTpName) {
+      setCustomTpText(formatDefaultCardTp(resolvedTpName, resolvedSemester));
+    }
+  }, [resolvedTpName, resolvedSemester]);
 
   // ── 5. Query Jadwal Ujian Aktif (Fase 3 Hari & Sesi) ──
   const { data: jadwalRes } = useQuery({
@@ -906,6 +981,19 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
             />
           </div>
 
+          {/* Input Edit Tahun Pelajaran */}
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-lg">
+            <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">TP:</span>
+            <input
+              type="text"
+              value={customTpText}
+              onChange={(e) => setCustomTpText(e.target.value)}
+              placeholder="Tahun Pelajaran..."
+              aria-label="Edit tahun pelajaran pada kartu ujian"
+              className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-40 sm:w-48"
+            />
+          </div>
+
           {/* Toggle Password Visible / Hidden */}
           <button
             type="button"
@@ -1088,7 +1176,7 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
                       sekolahData={sekolahData}
                       tenantInfo={tenantInfo}
                       customEventName={customEventName}
-                      activeTpName={activeTpName}
+                      activeTpName={customTpText}
                       showLogoSekolah={showLogoSekolah}
                       showFoto={showFoto}
                       showQrCode={showQrCode}

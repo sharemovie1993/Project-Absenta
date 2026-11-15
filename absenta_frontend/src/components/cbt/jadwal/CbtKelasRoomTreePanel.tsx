@@ -32,6 +32,7 @@ import {
 import { CbtLabelRuangPrintModal } from './CbtLabelRuangPrintModal';
 import { CbtKartuUjianPrintModal } from './CbtKartuUjianPrintModal';
 import { CbtDenahModal } from './CbtDenahModal';
+import type { CbtEventItem } from '@/types/cbt.types';
 
 interface CbtKelasRoomTreePanelProps {
   topFlightDeck?: React.ReactNode;
@@ -43,6 +44,7 @@ interface CbtKelasRoomTreePanelProps {
   eventName?: string;
   activeTpName?: string;
   semester?: string;
+  activeEvent?: CbtEventItem | null;
   targetTingkat?: number[];
   onProceedToNextPhase?: () => void;
 }
@@ -57,6 +59,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   eventName,
   activeTpName,
   semester,
+  activeEvent,
   targetTingkat,
   onProceedToNextPhase,
 }) => {
@@ -673,6 +676,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
           eventName={eventName}
           activeTpName={activeTpName}
           semester={semester}
+          activeEvent={activeEvent}
         />
       )}
 
@@ -689,6 +693,8 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
           selectedKelasId={targetKelasIdForKartu}
           eventName={eventName}
           activeTpName={activeTpName}
+          semester={semester}
+          activeEvent={activeEvent}
         />
       )}
 
