@@ -73,7 +73,7 @@ export const BottomNavTabItem: React.FC<BottomNavTabItemProps> = React.memo(({
 
         <span
           className={cn(
-            "text-center tracking-tight font-bold leading-none line-clamp-1",
+            "text-center tracking-tight font-bold leading-none line-clamp-1 whitespace-nowrap truncate max-w-full px-0.5",
             is7Tabs ? "text-[8.5px] sm:text-[9.5px]" : "text-[9.5px] sm:text-[10px]",
             isHighlighted ? theme.activeTextClass : theme.inactiveTextClass
           )}

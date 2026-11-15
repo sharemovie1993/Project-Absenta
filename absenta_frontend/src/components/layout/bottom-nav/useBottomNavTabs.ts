@@ -118,7 +118,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       {
         id: 'lensa_more',
         label: 'Lensa Pengawasan',
-        shortLabel: 'Menu',
+        shortLabel: 'Menu Kepsek',
         icon: LayoutGrid,
         badge: '360°',
         targetPath: '/dashboard?tab=ringkasan',
@@ -285,7 +285,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         const tab4_CenterFab: MobileBottomTabItem = {
           id: 'base_divisi_more',
           label: 'Pusat Layanan & Menu',
-          shortLabel: 'Menu',
+          shortLabel: 'Menu Guru',
           icon: LayoutGrid,
           targetPath: '/dashboard',
           badge: teacherDashboards.length > 4 ? `${teacherDashboards.length}` : undefined,
