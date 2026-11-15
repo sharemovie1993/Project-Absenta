@@ -41,6 +41,7 @@ import {
   UniversalMobileSubtabSidebar,
   useMobileSubtabSidebar,
 } from './common/UniversalMobileSubtabSidebar';
+import { UniversalEcosystemTopbar } from './common/UniversalEcosystemTopbar';
 
 export interface KoperasiDashboardProps {
   user?: {
@@ -331,99 +332,52 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
       description="Kelola transaksi kasir, simpan pinjam, bagi hasil SHU, dan pembukuan akuntansi koperasi sekolah dalam satu dashboard terintegrasi."
     >
       <div className="space-y-4 w-full max-w-full min-w-0">
-        {/* 1. Header Toolbar Mobile & Desktop */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xs">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <button
-                type="button"
-                onClick={() => {
-                  if (window.history.state && window.history.state.idx > 0) {
-                    navigate(-1);
-                  } else {
-                    navigate('/dashboard?tab=ringkasan');
-                  }
-                }}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all shrink-0 cursor-pointer"
-                title="Kembali ke Portal"
-                aria-label="Kembali"
-              >
-                <ArrowLeft size={18} className="stroke-[2.2]" />
-              </button>
-
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                    {koperasiIdentity.unitTitle}
-                  </h1>
-                  {koperasiIdentity.isReadOnlyAuditor && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800">
-                      <ShieldCheck size={11} />
-                      <span>Mode Pengawas (Read-Only)</span>
-                    </span>
-                  )}
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate hidden sm:inline">
-                    &bull; {tpTahun ? `TP ${tpTahun}` : ''} {semNama}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate hidden md:block">
-                  {koperasiIdentity.subtitle}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* TV Mode Shortcut */}
+        {/* 1. Universal Topbar Terkunci Ramping (Murni Judul + Kembali) - Mobile Only (< lg) */}
+        <UniversalEcosystemTopbar
+          ecosystem="koperasi"
+          title={koperasiIdentity.unitTitle}
+          icon={Receipt}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          actions={
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => navigate('/cooperative/dashboard')}
-                className="px-2.5 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                className="w-8 h-8 rounded-xl bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0"
                 title="Buka Mode TV Monitor Koperasi"
+                aria-label="Mode TV"
               >
                 <Tv size={14} />
-                <span className="hidden sm:inline">Layar TV</span>
               </button>
-
-              {/* Mobile Filter Toggle */}
               <button
                 type="button"
                 onClick={() => setShowMobileFilter((prev) => !prev)}
                 className={cn(
-                  'lg:hidden px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer',
+                  'w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0',
                   showMobileFilter
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                    ? 'bg-white text-emerald-800 shadow-xs'
+                    : 'bg-white/15 hover:bg-white/25 text-white ring-1 ring-white/25 backdrop-blur-xs'
                 )}
-                aria-label="Filter Akademik"
+                title="Atur Periode Akademik"
+                aria-label="Atur Periode Akademik"
               >
                 <SlidersHorizontal size={14} />
-                <span className="hidden sm:inline">Filter</span>
-              </button>
-
-              {/* Refresh Button */}
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-50"
-                title="Segarkan Data"
-              >
-                <RefreshCw size={14} className={cn(isRefreshing && 'animate-spin')} />
               </button>
             </div>
+          }
+        />
+
+        {/* Collapsible Academic Filter Toolbar Mobile */}
+        {showMobileFilter && (
+          <div className="lg:hidden p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs animate-in fade-in slide-in-from-top-2 duration-200">
+            <AcademicFilterToolbar
+              {...academicFilter.toolbarProps}
+              variant="compact"
+              className="w-full"
+            />
           </div>
-
-          {/* Collapsible Academic Filter Toolbar Mobile */}
-          {showMobileFilter && (
-            <div className="lg:hidden mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
-              <AcademicFilterToolbar
-                {...academicFilter.toolbarProps}
-                variant="compact"
-                className="w-full"
-              />
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
         <UniversalMobileSubtabSidebar
@@ -489,7 +443,7 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
                     className={cn(
                       'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
                       isActive
-                        ? 'bg-emerald-600 text-white shadow-xs'
+                        ? 'bg-gradient-to-r from-emerald-700 to-green-800 text-white shadow-xs font-bold'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                     )}
                   >
@@ -511,6 +465,19 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
                 );
               })}
             </nav>
+
+            {/* Quick Shortcuts */}
+            <div className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
+              <button
+                type="button"
+                onClick={() => navigate('/cooperative/dashboard')}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
+                title="Buka Mode TV Monitor Koperasi"
+              >
+                <Tv size={14} />
+                <span>Mode Monitor TV</span>
+              </button>
+            </div>
           </aside>
 
           {/* Right Column: Dynamic Subtab Viewports (Keep-Alive Cache, Strictly Capability-Gated) */}
