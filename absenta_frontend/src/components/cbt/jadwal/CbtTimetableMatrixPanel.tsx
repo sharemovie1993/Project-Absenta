@@ -303,6 +303,18 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       toast.loading('Menyimpan format tanggal & jam sesi ke server...', { id: 'save-time-config' });
       await cbtApi.upsertEvent({
         id: activeEvent.id,
+        nama_event: activeEvent.nama_event,
+        kode_event: activeEvent.kode_event,
+        tahun_pelajaran_id: activeEvent.tahun_pelajaran_id,
+        semester: activeEvent.semester,
+        target_tingkat: activeEvent.target_tingkat,
+        tipe_pelaksanaan: activeEvent.tipe_pelaksanaan,
+        keterangan: activeEvent.keterangan,
+        lock_teacher_scheduling: activeEvent.lock_teacher_scheduling,
+        token_refresh_interval: activeEvent.token_refresh_interval,
+        strict_browser_guard: activeEvent.strict_browser_guard,
+        enable_proctor: activeEvent.enable_proctor,
+        is_active: activeEvent.is_active ?? true,
         days_config: days,
       });
 

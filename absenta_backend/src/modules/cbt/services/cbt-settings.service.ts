@@ -217,33 +217,50 @@ export class CbtSettingsService {
 
     const now = new Date().toISOString();
     const id = payload.id || `cbt-event-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-    const targetTingkat = Array.isArray(payload.target_tingkat) && payload.target_tingkat.length > 0
-      ? payload.target_tingkat.map(Number)
-      : [10, 11, 12];
-
     const existingIndex = allEvents.findIndex((e) => e.id === id);
+    const existing = existingIndex >= 0 ? allEvents[existingIndex] : null;
+
+    // Resolusi Target Tingkat: Jika ada payload, gunakan payload. Jika tidak ada dan existing ada, gunakan existing. Jika baru, default [10, 11, 12]
+    let targetTingkat: number[];
+    if (Array.isArray(payload.target_tingkat) && payload.target_tingkat.length > 0) {
+      targetTingkat = payload.target_tingkat.map(Number);
+    } else if (existing?.target_tingkat && Array.isArray(existing.target_tingkat) && existing.target_tingkat.length > 0) {
+      targetTingkat = existing.target_tingkat.map(Number);
+    } else {
+      targetTingkat = [10, 11, 12];
+    }
+
+    // Resolusi is_active:
+    // Jika payload secara eksplisit mengirim is_active (boolean), gunakan payload.
+    // Jika payload TIDAK mengirim is_active (undefined) dan existing ada, PERTAHANKAN status existing.
+    // Jika event baru dan payload tidak ada, default false (kecuali jika allEvents masih kosong, bisa dijadikan active).
+    const isActive = payload.is_active !== undefined
+      ? Boolean(payload.is_active)
+      : (existing ? Boolean(existing.is_active) : (allEvents.length === 0));
 
     const updatedEvent: CbtEventItem = {
       id,
-      tahun_pelajaran_id: payload.tahun_pelajaran_id || '',
-      nama_event: payload.nama_event?.trim() || 'Event Ujian Baru',
-      kode_event: (payload.kode_event || payload.nama_event || 'EVENT').trim().toUpperCase().replace(/\s+/g, '-'),
-      semester: payload.semester || 'GANJIL',
+      tahun_pelajaran_id: payload.tahun_pelajaran_id !== undefined ? payload.tahun_pelajaran_id : (existing?.tahun_pelajaran_id || ''),
+      nama_event: payload.nama_event !== undefined ? payload.nama_event.trim() : (existing?.nama_event || 'Event Ujian Baru'),
+      kode_event: payload.kode_event !== undefined
+        ? payload.kode_event.trim().toUpperCase().replace(/\s+/g, '-')
+        : (existing?.kode_event || (payload.nama_event || 'EVENT').trim().toUpperCase().replace(/\s+/g, '-')),
+      semester: payload.semester !== undefined ? payload.semester : (existing?.semester || 'GANJIL'),
       target_tingkat: targetTingkat,
-      tipe_pelaksanaan: payload.tipe_pelaksanaan || 'MASSAL',
-      keterangan: payload.keterangan || '',
-      days_config: Array.isArray(payload.days_config) ? payload.days_config : (existingIndex >= 0 ? allEvents[existingIndex].days_config : []),
-      lock_teacher_scheduling: payload.lock_teacher_scheduling ?? true,
-      token_refresh_interval: payload.token_refresh_interval ?? 0,
-      strict_browser_guard: payload.strict_browser_guard ?? true,
-      enable_proctor: payload.enable_proctor ?? false,
-      is_active: payload.is_active ?? false,
-      created_at: payload.created_at || now,
+      tipe_pelaksanaan: payload.tipe_pelaksanaan !== undefined ? payload.tipe_pelaksanaan : (existing?.tipe_pelaksanaan || 'MASSAL'),
+      keterangan: payload.keterangan !== undefined ? payload.keterangan : (existing?.keterangan || ''),
+      days_config: Array.isArray(payload.days_config) ? payload.days_config : (existing?.days_config || []),
+      lock_teacher_scheduling: payload.lock_teacher_scheduling !== undefined ? payload.lock_teacher_scheduling : (existing?.lock_teacher_scheduling ?? true),
+      token_refresh_interval: payload.token_refresh_interval !== undefined ? payload.token_refresh_interval : (existing?.token_refresh_interval ?? 0),
+      strict_browser_guard: payload.strict_browser_guard !== undefined ? payload.strict_browser_guard : (existing?.strict_browser_guard ?? true),
+      enable_proctor: payload.enable_proctor !== undefined ? payload.enable_proctor : (existing?.enable_proctor ?? false),
+      is_active: isActive,
+      created_at: existing?.created_at || payload.created_at || now,
       updated_at: now,
     };
 
     if (existingIndex >= 0) {
-      allEvents[existingIndex] = { ...allEvents[existingIndex], ...updatedEvent };
+      allEvents[existingIndex] = updatedEvent;
     } else {
       allEvents.push(updatedEvent);
     }
