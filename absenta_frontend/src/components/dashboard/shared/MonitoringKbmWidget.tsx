@@ -8,8 +8,9 @@ import { useSocket } from '../../../hooks/useSocket';
 import { Button } from '../../ui';
 import Card from '../../ui/Card';
 import { Modal, ModalFooter } from '../../ui/Modal';
-import { BookOpen, ShieldAlert, ArrowRight, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock, UserCheck, MessageSquare, Send, UserX } from 'lucide-react';
+import { BookOpen, ShieldAlert, ArrowRight, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock, UserCheck, MessageSquare, Send, UserX, Printer } from 'lucide-react';
 import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
+import { RekapSesiKbmPrintModal } from '../../kurikulum/rekap-kbm/RekapSesiKbmPrintModal';
 import { useAuthStore } from '../../../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
@@ -109,6 +110,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
   const [selectedSesi, setSelectedSesi] = useState<any>(null);
   const [expandedSesiId, setExpandedSesiId] = useState<string | null>(null);
   const [journalModalOpen, setJournalModalOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Status Modal State (Inval / Izin / Sakit)
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -613,6 +615,15 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
             </div>
 
             <div className="flex items-center gap-3 self-end md:self-auto flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsPrintModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer shadow-2xs"
+                title="Cetak Berita Acara & Rekapitulasi Realisasi KBM Harian"
+              >
+                <Printer size={13} className="text-indigo-600 dark:text-indigo-400" />
+                <span>Cetak Rekap KBM</span>
+              </button>
               <Link
                 to="/dashboard?tab=kelola&subtab=GURU_KBM"
                 className="text-xs font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
@@ -659,6 +670,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
             isLoading={isLoading}
             refetchSessions={refetchSessions}
             handleExport={handleExport}
+            onOpenPrint={() => setIsPrintModalOpen(true)}
           />
 
           {/* 3. Session List/Grid/Table */}
@@ -854,6 +866,15 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
           </ModalFooter>
         </Modal>
       )}
+
+      {/* Modal Cetak Rekap Sesi KBM Harian (Universal Document Printing) */}
+      <RekapSesiKbmPrintModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        initialDate={targetDate}
+        tahunPelajaranId={tahunPelajaranId}
+        semesterId={semesterId}
+      />
     </div>
   );
 };

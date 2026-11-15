@@ -16,6 +16,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Building2,
+  Printer,
 } from 'lucide-react';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
 import { Button } from '../../ui/Button';
@@ -23,6 +24,7 @@ import { Input } from '../../ui/Input';
 import { Modal } from '../../ui/Modal';
 import { kurikulumApi } from '../../../api/kurikulum.api';
 import { AcademicFilterToolbar, useAcademicFilter } from '../../common/academic-filter';
+import { RekapSesiKbmPrintModal } from './RekapSesiKbmPrintModal';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { cn } from '../../../lib/utils';
@@ -141,6 +143,7 @@ export const RekapKBMView: React.FC<UniversalRekapKBMViewProps> = React.memo(({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [expandedGuruIds, setExpandedGuruIds] = useState<Set<string>>(new Set());
   const [selectedGuruDetail, setSelectedGuruDetail] = useState<RekapKBMRecord | null>(null);
+  const [isPrintSesiModalOpen, setIsPrintSesiModalOpen] = useState(false);
 
   // ── Konteks Akademik Terpusat (AcademicFilterToolbar SSOT) ──
   const academicFilter = useAcademicFilter({
@@ -370,6 +373,18 @@ export const RekapKBMView: React.FC<UniversalRekapKBMViewProps> = React.memo(({
                 </button>
               </div>
             )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPrintSesiModalOpen(true)}
+              className="h-8 gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 rounded-xl shadow-xs"
+              title="Cetak Berita Acara & Rekap Sesi KBM Harian (True WYSIWYG)"
+            >
+              <Printer size={13} className="text-indigo-600 dark:text-indigo-400" />
+              <span className="hidden sm:inline">Cetak Rekap Sesi KBM</span>
+              <span className="sm:hidden">Cetak</span>
+            </Button>
 
             <Button
               variant="toolbarGhost"
@@ -650,6 +665,14 @@ export const RekapKBMView: React.FC<UniversalRekapKBMViewProps> = React.memo(({
           </div>
         </Modal>
       )}
+
+      {/* Modal Cetak Rekap Sesi KBM Harian (Universal Document Printing) */}
+      <RekapSesiKbmPrintModal
+        isOpen={isPrintSesiModalOpen}
+        onClose={() => setIsPrintSesiModalOpen(false)}
+        tahunPelajaranId={academicFilter.values.selectedTpId || propTpId}
+        semesterId={academicFilter.values.selectedSemesterId || propSemId}
+      />
     </div>
   );
 

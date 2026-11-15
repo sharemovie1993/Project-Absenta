@@ -3,7 +3,7 @@ import { Button } from '../../../ui';
 import { cn } from '../../../../lib/utils';
 import {
   Calendar as CalendarIcon, Search, Filter,
-  List, LayoutGrid, Activity, Download
+  List, LayoutGrid, Activity, Download, Printer
 } from 'lucide-react';
 
 interface KbmFiltersProps {
@@ -22,6 +22,7 @@ interface KbmFiltersProps {
   isLoading: boolean;
   refetchSessions: () => void;
   handleExport: () => void;
+  onOpenPrint?: () => void;
 }
 
 export const KbmFilters = React.memo<KbmFiltersProps>(({
@@ -39,7 +40,8 @@ export const KbmFilters = React.memo<KbmFiltersProps>(({
   setViewMode,
   isLoading,
   refetchSessions,
-  handleExport
+  handleExport,
+  onOpenPrint,
 }) => {
   return (
     <div className="bg-white dark:bg-gray-800 p-1.5 rounded-md border border-gray-100 dark:border-gray-700 shadow-sm">
@@ -135,6 +137,19 @@ export const KbmFilters = React.memo<KbmFiltersProps>(({
             <Download size={10} className="mr-1.5" />
             Export
           </Button>
+
+          {onOpenPrint && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm border-indigo-200 text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800 font-black text-[8px] uppercase tracking-widest px-3 h-7 shadow-sm"
+              onClick={onOpenPrint}
+              title="Cetak Berita Acara & Rekap Sesi KBM (Standard Universal Printing)"
+            >
+              <Printer size={10} className="mr-1.5 text-indigo-600 dark:text-indigo-400" />
+              Cetak Rekap
+            </Button>
+          )}
         </div>
       </div>
     </div>

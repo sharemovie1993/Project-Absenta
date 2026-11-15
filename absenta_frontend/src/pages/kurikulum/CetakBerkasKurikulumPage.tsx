@@ -13,6 +13,9 @@ import { Loader } from '@/components/ui/Loader';
 import { Card } from '../../components/ui/Card';
 import { formatDate } from '../../utils/layoutUtils';
 import { useCapabilities } from '../../hooks/useCapabilities';
+import { Button } from '@/components/ui/Button';
+import { Printer } from 'lucide-react';
+import { RekapSesiKbmPrintModal } from '@/components/kurikulum/rekap-kbm/RekapSesiKbmPrintModal';
 
 // Impor tipe data resmi untuk standardisasi Type Safety
 import type { Kelas, Guru } from '../../types/academic';
@@ -87,6 +90,7 @@ export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> =
   const queryClient = useQueryClient();
   const { isKurikulum, isAdmin, can } = useCapabilities();
   const canPrintDocuments = isAdmin || isKurikulum || can('academic.manage.academic');
+  const [isRekapSesiModalOpen, setIsRekapSesiModalOpen] = React.useState(false);
 
   // Memoize breadcrumbs & instruction untuk mencegah re-creation
   const breadcrumbs = useMemo(() => [
@@ -226,6 +230,31 @@ export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> =
   return (
     <InfraErrorBoundary>
       <Card className="border-none shadow-none bg-transparent">
+        {/* Banner Pintasan Rekapitulasi Realisasi KBM Harian */}
+        <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-gradient-to-r from-indigo-50/80 to-blue-50/50 dark:from-indigo-950/30 dark:to-slate-900/60 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-xs shrink-0">
+              <Printer size={18} />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Berita Acara & Rekapitulasi Sesi Realisasi KBM Harian
+              </h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Cetak dokumen resmi keterlaksanaan mengajar harian, guru inval, dan kehadiran siswa berstandar dinas (True WYSIWYG).
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setIsRekapSesiModalOpen(true)}
+            className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs shrink-0 gap-1.5 self-end sm:self-auto"
+          >
+            <Printer size={13} />
+            <span>Buka Rekap Sesi KBM</span>
+          </Button>
+        </div>
+
         <CetakBerkasTemplate
           module="kurikulum"
           title="Cetak Berkas Kurikulum"
@@ -240,6 +269,12 @@ export const CetakBerkasKurikulumPage: React.FC<CetakBerkasKurikulumPageProps> =
           docFormRenderer={renderDocForm}
           pdfGenerator={generatePdf}
           hardeningModuleKey={hardeningModuleKey}
+        />
+
+        {/* Modal Cetak Rekap Sesi KBM Harian (Universal Document Printing) */}
+        <RekapSesiKbmPrintModal
+          isOpen={isRekapSesiModalOpen}
+          onClose={() => setIsRekapSesiModalOpen(false)}
         />
       </Card>
     </InfraErrorBoundary>
