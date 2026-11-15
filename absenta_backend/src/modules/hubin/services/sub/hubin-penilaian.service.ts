@@ -697,26 +697,26 @@ export class HubinPenilaianService extends HubinCommonHelper {
         prisma.siswaPkl.update({
           where: { id: item.siswa_pkl_id },
           data: {
-            status: nilaiAkhir !== null && predikat !== null ? 'SELESAI' : undefined,
-            instruktur_nama: item.instruktur_nama ?? undefined,
-            penanggung_jawab_nama: item.penanggung_jawab_nama ?? undefined,
-            alamat_dudi: item.alamat_dudi ?? undefined,
-            hard_kompetensi_teknis: item.hard_kompetensi_teknis ?? undefined,
-            hard_sop_k3lh: item.hard_sop_k3lh ?? undefined,
-            hard_alur_bisnis: item.hard_alur_bisnis ?? undefined,
-            soft_kedisiplinan: item.soft_kedisiplinan ?? undefined,
-            soft_kerajinan_inisiatif: item.soft_kerajinan_inisiatif ?? undefined,
-            soft_kerjasama: item.soft_kerjasama ?? undefined,
-            soft_kejujuran: item.soft_kejujuran ?? undefined,
-            soft_tanggung_jawab: item.soft_tanggung_jawab ?? undefined,
+            status: nilaiAkhir !== null && predikat !== null ? 'SELESAI' : 'AKTIF',
+            instruktur_nama: item.instruktur_nama !== undefined ? item.instruktur_nama : undefined,
+            penanggung_jawab_nama: item.penanggung_jawab_nama !== undefined ? item.penanggung_jawab_nama : undefined,
+            alamat_dudi: item.alamat_dudi !== undefined ? item.alamat_dudi : undefined,
+            hard_kompetensi_teknis: item.hard_kompetensi_teknis !== undefined ? item.hard_kompetensi_teknis : undefined,
+            hard_sop_k3lh: item.hard_sop_k3lh !== undefined ? item.hard_sop_k3lh : undefined,
+            hard_alur_bisnis: item.hard_alur_bisnis !== undefined ? item.hard_alur_bisnis : undefined,
+            soft_kedisiplinan: item.soft_kedisiplinan !== undefined ? item.soft_kedisiplinan : undefined,
+            soft_kerajinan_inisiatif: item.soft_kerajinan_inisiatif !== undefined ? item.soft_kerajinan_inisiatif : undefined,
+            soft_kerjasama: item.soft_kerjasama !== undefined ? item.soft_kerjasama : undefined,
+            soft_kejujuran: item.soft_kejujuran !== undefined ? item.soft_kejujuran : undefined,
+            soft_tanggung_jawab: item.soft_tanggung_jawab !== undefined ? item.soft_tanggung_jawab : undefined,
             nilai_akhir_pkl: nilaiAkhir,
             predikat_pkl: predikat,
-            catatan_pkl: item.catatan_pkl ?? undefined,
-            sakit_pkl: item.sakit_pkl ?? undefined,
-            izin_pkl: item.izin_pkl ?? undefined,
-            alpa_pkl: item.alpa_pkl ?? undefined,
-            nomor_sertifikat: item.nomor_sertifikat ?? undefined,
-            deskripsi_tp: item.deskripsi_tp ?? undefined,
+            catatan_pkl: item.catatan_pkl !== undefined ? item.catatan_pkl : undefined,
+            sakit_pkl: item.sakit_pkl !== undefined ? item.sakit_pkl : undefined,
+            izin_pkl: item.izin_pkl !== undefined ? item.izin_pkl : undefined,
+            alpa_pkl: item.alpa_pkl !== undefined ? item.alpa_pkl : undefined,
+            nomor_sertifikat: item.nomor_sertifikat !== undefined ? item.nomor_sertifikat : undefined,
+            deskripsi_tp: item.deskripsi_tp !== undefined ? item.deskripsi_tp : undefined,
             nilai_json: updatedNilaiJson,
           },
         })
@@ -780,6 +780,40 @@ export class HubinPenilaianService extends HubinCommonHelper {
               })
             );
           }
+        }
+      } else if (nilaiAkhir === null && mapelPkl) {
+        // Jika nilai dikosongkan/direset, kosongkan juga nilai mapel PKL di tabel NilaiSiswa
+        const pklRec = pklMap.get(item.siswa_pkl_id);
+        const targetSiswaId = pklRec?.siswa_id;
+        const targetTpId =
+          item.tahun_pelajaran_id ||
+          pklRec?.SiswaAkademik?.tahun_pelajaran_id ||
+          pklRec?.Siswa?.tahun_pelajaran_id ||
+          activeTp?.id;
+        const targetSemId =
+          item.semester_id ||
+          pklRec?.SiswaAkademik?.semester_id ||
+          pklRec?.Siswa?.semester_id ||
+          activeSem?.id;
+
+        if (targetSiswaId && targetTpId && targetSemId) {
+          operations.push(
+            prisma.nilaiSiswa.updateMany({
+              where: {
+                tenant_id: tenantId,
+                siswa_id: targetSiswaId,
+                mapel_id: mapelPkl.id,
+                tahun_pelajaran_id: targetTpId,
+                semester_id: targetSemId,
+              },
+              data: {
+                nilai: null,
+                nilai_akhir_sumatif: null,
+                nilai_rapor_final: null,
+                capaian_kompetensi: null,
+              },
+            })
+          );
         }
       }
     }

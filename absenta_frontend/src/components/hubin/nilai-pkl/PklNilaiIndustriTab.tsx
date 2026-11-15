@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicFilterToolbar } from '@/components/common/academic-filter';
-import { Save, RotateCcw, Copy, Printer, Lock, Edit3 } from 'lucide-react';
+import { Save, RotateCcw, Copy, Printer, Lock, Edit3, Eraser } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
 import { PklNilaiIndustriMobileCards } from './PklNilaiIndustriMobileCards';
@@ -56,6 +56,7 @@ export interface PklNilaiIndustriTabProps {
   handleSyncFromDailyAttendance: () => void;
   onPrintSertifikat?: (row: ScoreRow) => void;
   onNavigateCetakRapor?: () => void;
+  onClearScores?: (specificSiswaPklId?: string) => void;
   hideFilterCard?: boolean;
   readOnly?: boolean;
   isAdminOverride?: boolean;
@@ -108,6 +109,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
   handleApplyToSameMitra,
   handleSyncFromDailyAttendance,
   onNavigateCetakRapor,
+  onClearScores,
   hideFilterCard = false,
   readOnly = false,
   isAdminOverride = false,
@@ -751,6 +753,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           displayedScoresLength={displayedScores?.length || 0}
           isLoadingRekap={isLoadingRekap}
           effectiveSettings={effectiveSettings}
+          onClearScores={onClearScores}
         />
       ) : (
         <SpreadsheetGridTable<ScoreRow>
@@ -805,6 +808,20 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>{isSavingBatch ? 'Menyimpan...' : (isAdminOverride ? 'Simpan Koreksi' : 'Simpan')}</span>
+                </Button>
+              )}
+
+              {onClearScores && !readOnly && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onClearScores()}
+                  disabled={isSavingBatch || displayedScores?.length === 0}
+                  className="border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 bg-rose-50/60 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+                  title="Kosongkan nilai seluruh siswa yang sedang ditampilkan"
+                >
+                  <Eraser className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Kosongkan Nilai</span>
                 </Button>
               )}
 

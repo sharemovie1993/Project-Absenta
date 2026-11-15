@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicFilterToolbar } from '@/components/common/academic-filter';
-import { Info, Lock, Save, FileText, Check, Printer, Sparkles, Edit3 } from 'lucide-react';
+import { Info, Lock, Save, FileText, Check, Printer, Sparkles, Edit3, Eraser } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
 import { PklNilaiSidangMobileCards } from './PklNilaiSidangMobileCards';
@@ -65,6 +65,7 @@ export interface PklNilaiSidangTabProps {
   setCurrentPage: (updater: number | ((prev: number) => number)) => void;
   handleScoreChange: (siswaPklId: string, field: keyof ScoreRow, value: string | number | null) => void;
   onNavigateCetakRapor?: () => void;
+  onClearScores?: (specificSiswaPklId?: string) => void;
   hideFilterCard?: boolean;
   jurusanId?: string;
   jurusanNama?: string;
@@ -112,6 +113,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   setCurrentPage,
   handleScoreChange,
   onNavigateCetakRapor,
+  onClearScores,
   hideFilterCard = false,
   jurusanId,
   jurusanNama,
@@ -763,6 +765,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           isLoadingRekap={isLoadingRekap}
           isCompositeMode={isCompositeMode}
           effectiveSettings={effectiveSettings}
+          onClearScores={onClearScores}
           guruList={guruList}
           isLoadingGuru={isLoadingGuru}
           onApplyPengujiToAll={handleApplyPengujiToAll}
@@ -846,6 +849,20 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>{isSavingBatch ? 'Menyimpan...' : (!isCompositeMode ? 'Skema Terkunci' : (isAdminOverride ? 'Simpan Koreksi' : 'Simpan'))}</span>
+                </Button>
+              )}
+
+              {onClearScores && !readOnly && isCompositeMode && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onClearScores()}
+                  disabled={isSavingBatch || displayedScores?.length === 0}
+                  className="border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 bg-rose-50/60 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+                  title="Kosongkan nilai sidang seluruh siswa yang sedang ditampilkan"
+                >
+                  <Eraser className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Kosongkan Nilai</span>
                 </Button>
               )}
 

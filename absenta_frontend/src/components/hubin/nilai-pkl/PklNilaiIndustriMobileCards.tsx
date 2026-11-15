@@ -10,7 +10,8 @@ import {
   Save, 
   Loader2, 
   CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  Eraser 
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,7 @@ export interface PklNilaiIndustriMobileCardsProps {
   isSavingBatch: boolean;
   displayedScoresLength: number;
   isLoadingRekap: boolean;
+  onClearScores?: (specificSiswaPklId?: string) => void;
   effectiveSettings?: {
     assessmentMode?: 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
     weightDudi?: number;
@@ -53,6 +55,7 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
   isSavingBatch,
   displayedScoresLength,
   isLoadingRekap,
+  onClearScores,
   effectiveSettings,
 }) => {
   const hasLaporan = effectiveSettings?.assessmentMode === 'COMPOSITE';
@@ -88,7 +91,7 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
   };
 
   return (
-    <div className="space-y-3 pb-36">
+    <div className="space-y-3 pb-8">
       {/* Header Bar Kontrol Mobile */}
       <div className="flex items-center justify-between gap-2 px-1 py-1.5 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs rounded-xl border border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -117,6 +120,21 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
               Tutup
             </button>
           </div>
+
+          {onClearScores && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => onClearScores()}
+              disabled={isSavingBatch || displayedScoresLength === 0}
+              className="h-8 px-2.5 rounded-xl border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 bg-rose-50/60 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 font-bold text-xs shadow-2xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
+              title="Kosongkan nilai seluruh siswa yang difilter"
+            >
+              <Eraser className="w-3.5 h-3.5 text-rose-500" />
+              <span className="hidden xs:inline">Kosongkan</span>
+            </Button>
+          )}
 
           {/* Tombol Simpan di Header Atas */}
           <Button
@@ -258,7 +276,22 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
                 </div>
 
                 {/* Bagian Kanan: Nilai Akhir & Tombol Expand */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {onClearScores && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClearScores(score.siswa_pkl_id);
+                      }}
+                      disabled={isSavingBatch}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      title="Kosongkan nilai siswa ini"
+                    >
+                      <Eraser size={15} />
+                    </button>
+                  )}
+
                   <div className="flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-xl border border-slate-200/80 dark:border-slate-700 text-center min-w-[50px]">
                     <span className="font-mono font-black text-sm text-indigo-600 dark:text-indigo-400 leading-tight">
                       {score.nilai_akhir_pkl ?? '-'}
@@ -571,30 +604,6 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
           </div>
         </div>
       )}
-
-      {/* Floating Bottom Action Bar (Melayang Tepat di Atas Dock Navigasi Seluler) */}
-      <div className="fixed bottom-[calc(72px+env(safe-area-inset-bottom,16px))] left-3 right-3 sm:left-4 sm:right-4 z-50 max-w-md mx-auto pointer-events-auto">
-        <div className="p-1 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-2xl border border-indigo-200/50 dark:border-indigo-900/50">
-          <Button
-            type="button"
-            onClick={onSaveBatch}
-            disabled={isSavingBatch || displayedScoresLength === 0}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11 sm:h-12 rounded-xl shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all active:scale-[0.99]"
-          >
-            {isSavingBatch ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Menyimpan Perubahan...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>Simpan Perubahan Nilai ({displayedScoresLength} Siswa)</span>
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
     </div>
   );
 };

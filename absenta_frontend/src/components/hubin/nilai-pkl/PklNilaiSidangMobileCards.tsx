@@ -16,6 +16,7 @@ import {
   UserCheck,
   Printer,
   Sparkles,
+  Eraser,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,7 @@ export interface PklNilaiSidangMobileCardsProps {
   displayedScoresLength: number;
   isLoadingRekap: boolean;
   isCompositeMode: boolean;
+  onClearScores?: (specificSiswaPklId?: string) => void;
   effectiveSettings?: {
     assessmentMode: 'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE';
     weightDudi: number;
@@ -61,6 +63,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
   displayedScoresLength,
   isLoadingRekap,
   isCompositeMode,
+  onClearScores,
   effectiveSettings,
   guruList = [],
   isLoadingGuru = false,
@@ -102,7 +105,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
   };
 
   return (
-    <div className="space-y-3 pb-36">
+    <div className="space-y-3 pb-8">
       {/* Header Info Mode & Kontrol Mobile */}
       <div className="flex flex-col gap-2 px-1 py-1">
         {!isCompositeMode && (
@@ -166,6 +169,21 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
               >
                 <Printer className="w-3.5 h-3.5 text-indigo-500" />
                 <span className="hidden xxs:inline">Cetak</span>
+              </Button>
+            )}
+
+            {onClearScores && isCompositeMode && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => onClearScores()}
+                disabled={isSavingBatch || displayedScoresLength === 0}
+                className="h-8 px-2.5 rounded-xl border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 bg-rose-50/60 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 font-bold text-xs shadow-2xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                title="Kosongkan nilai sidang seluruh siswa yang difilter"
+              >
+                <Eraser className="w-3.5 h-3.5 text-rose-500" />
+                <span className="hidden xxs:inline">Kosongkan</span>
               </Button>
             )}
 
@@ -319,30 +337,47 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
 
                 {/* Status Sidang Badge & Chevron */}
                 <div className="flex flex-col items-end gap-1.5 shrink-0 pt-0.5">
-                  {!isCompositeMode ? (
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-                      Non-Sidang
-                    </span>
-                  ) : hasExamined ? (
-                    isLulus ? (
-                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                        Lulus
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
-                        <AlertCircle className="w-3 h-3 text-amber-500" />
-                        Revisi
-                      </span>
-                    )
-                  ) : (
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400">
-                      Belum
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {onClearScores && isCompositeMode && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onClearScores(score.siswa_pkl_id);
+                        }}
+                        disabled={isSavingBatch}
+                        className="p-1 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                        title="Kosongkan nilai sidang siswa ini"
+                      >
+                        <Eraser size={14} />
+                      </button>
+                    )}
 
-                  <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
-                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    {!isCompositeMode ? (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+                        Non-Sidang
+                      </span>
+                    ) : hasExamined ? (
+                      isLulus ? (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                          Lulus
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                          <AlertCircle className="w-3 h-3 text-amber-500" />
+                          Revisi
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400">
+                        Belum
+                      </span>
+                    )}
+
+                    <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -661,35 +696,6 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
           </div>
         </div>
       )}
-
-      {/* Floating Bottom Action Bar (Melayang Tepat di Atas Dock Navigasi Seluler) */}
-      <div className="fixed bottom-[calc(72px+env(safe-area-inset-bottom,16px))] left-3 right-3 sm:left-4 sm:right-4 z-50 max-w-md mx-auto pointer-events-auto">
-        <div className="p-1 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-2xl border border-indigo-200/50 dark:border-indigo-900/50">
-          <Button
-            type="button"
-            onClick={onSaveBatch}
-            disabled={isSavingBatch || displayedScoresLength === 0 || !isCompositeMode}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11 sm:h-12 rounded-xl shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.99]"
-          >
-            {isSavingBatch ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Menyimpan Nilai Sidang...</span>
-              </>
-            ) : !isCompositeMode ? (
-              <>
-                <Lock className="w-4 h-4" />
-                <span>Skema Nilai Terkunci (DUDI 100%)</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>Simpan Perubahan Nilai Sidang ({displayedScoresLength} Siswa)</span>
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
     </div>
   );
 };

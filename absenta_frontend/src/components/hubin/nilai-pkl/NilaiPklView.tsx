@@ -556,6 +556,125 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     });
   }, [scores, selectedTp, selectedSemester, saveBatchMutation, effectiveReadOnly]);
 
+  const handleClearScores = useCallback((target: 'dudi' | 'sidang', specificSiswaPklId?: string) => {
+    if (effectiveReadOnly) return;
+
+    const targetList = specificSiswaPklId 
+      ? scores.filter(s => s.siswa_pkl_id === specificSiswaPklId)
+      : displayedScores;
+
+    if (targetList.length === 0) {
+      toast.error('Tidak ada siswa yang dipilih');
+      return;
+    }
+
+    const confirmMsg = specificSiswaPklId
+      ? `Kosongkan nilai ${target === 'dudi' ? 'DUDI' : 'Sidang'} untuk ${targetList[0]?.nama_siswa || 'siswa ini'}?`
+      : `Apakah Anda yakin ingin mengosongkan nilai ${target === 'dudi' ? 'DUDI' : 'Sidang'} untuk ${targetList.length} siswa yang sedang ditampilkan? Tindakan ini akan menghapus nilai dan mengembalikan status ke Aktif.`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    const targetIds = new Set(targetList.map(t => t.siswa_pkl_id));
+
+    setScores(prev => {
+      const clone = [...(prev || [])];
+      return clone.map(s => {
+        if (!targetIds.has(s.siswa_pkl_id)) return s;
+
+        if (target === 'dudi') {
+          return {
+            ...s,
+            hard_kompetensi_teknis: null,
+            hard_sop_k3lh: null,
+            hard_alur_bisnis: null,
+            soft_kedisiplinan: null,
+            soft_kerajinan_inisiatif: null,
+            soft_kerjasama: null,
+            soft_kejujuran: null,
+            soft_tanggung_jawab: null,
+            nilai_akhir_pkl: null,
+            predikat_pkl: null,
+            status: 'AKTIF',
+          };
+        } else {
+          return {
+            ...s,
+            nilai_laporan: null,
+            nilai_sidang: null,
+            sidang_materi: null,
+            sidang_komunikasi: null,
+            sidang_portofolio: null,
+            sidang_sikap: null,
+            catatan_sidang: null,
+          };
+        }
+      });
+    });
+
+    const payloadScores = targetList.map(s => {
+      if (target === 'dudi') {
+        return {
+          ...s,
+          hard_kompetensi_teknis: null,
+          hard_sop_k3lh: null,
+          hard_alur_bisnis: null,
+          soft_kedisiplinan: null,
+          soft_kerajinan_inisiatif: null,
+          soft_kerjasama: null,
+          soft_kejujuran: null,
+          soft_tanggung_jawab: null,
+          nilai_akhir_pkl: null,
+          predikat_pkl: null,
+        };
+      } else {
+        return {
+          ...s,
+          nilai_laporan: null,
+          nilai_sidang: null,
+          sidang_materi: null,
+          sidang_komunikasi: null,
+          sidang_portofolio: null,
+          sidang_sikap: null,
+          catatan_sidang: null,
+        };
+      }
+    });
+
+    saveBatchMutation.mutate({
+      scores: payloadScores.map(s => ({
+        siswa_pkl_id: s.siswa_pkl_id,
+        hard_kompetensi_teknis: s.hard_kompetensi_teknis,
+        hard_sop_k3lh: s.hard_sop_k3lh,
+        hard_alur_bisnis: s.hard_alur_bisnis,
+        soft_kedisiplinan: s.soft_kedisiplinan,
+        soft_kerajinan_inisiatif: s.soft_kerajinan_inisiatif,
+        soft_kerjasama: s.soft_kerjasama,
+        soft_kejujuran: s.soft_kejujuran,
+        soft_tanggung_jawab: s.soft_tanggung_jawab,
+        nilai_laporan: s.nilai_laporan,
+        nilai_sidang: s.nilai_sidang,
+        sidang_materi: s.sidang_materi,
+        sidang_komunikasi: s.sidang_komunikasi,
+        sidang_portofolio: s.sidang_portofolio,
+        sidang_sikap: s.sidang_sikap,
+        penguji_id: s.penguji_id,
+        penguji_nama: s.penguji_nama,
+        catatan_sidang: s.catatan_sidang,
+        nilai_akhir_pkl: s.nilai_akhir_pkl,
+        predikat_pkl: s.predikat_pkl,
+        catatan_pkl: s.catatan_pkl,
+        sakit_pkl: Number(s.sakit_pkl) || 0,
+        izin_pkl: Number(s.izin_pkl) || 0,
+        alpa_pkl: Number(s.alpa_pkl) || 0,
+        nomor_sertifikat: s.nomor_sertifikat,
+        deskripsi_tp: s.deskripsi_tp,
+        instruktur_nama: s.instruktur_nama,
+        penanggung_jawab_nama: s.penanggung_jawab_nama,
+        alamat_dudi: s.alamat_dudi
+      }))
+    });
+  }, [effectiveReadOnly, scores, displayedScores, saveBatchMutation]);
+
   const isSidangAvailable = isCompositeMode || initialTab === 'sidang' || isKaprog || isPrivilegedHubin || isPengujiOnly;
   const tabs = useMemo(() => {
     if (activeTabOnly === 'dudi') {
@@ -793,6 +912,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               handleApplyToSameMitra={handleApplyToSameMitra}
               handleSyncFromDailyAttendance={handleSyncFromDailyAttendance}
               onNavigateCetakRapor={effectiveHideCetakRapor ? undefined : handleNavigateCetakRapor}
+              onClearScores={(id) => handleClearScores('dudi', id)}
               readOnly={effectiveReadOnly}
               isAdminOverride={adminOverrideMode}
               onToggleAdminOverride={canManageAll ? () => setAdminOverrideMode(prev => !prev) : undefined}
@@ -835,6 +955,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
                 weightSidang: effectiveSettings.weightSidang ?? 15,
               } : undefined}
               onSaveBatch={handleSaveBatch}
+              onClearScores={(id) => handleClearScores('sidang', id)}
               isSavingBatch={saveBatchMutation.isPending}
               displayedScores={displayedScores}
               paginatedScores={paginatedScores}
