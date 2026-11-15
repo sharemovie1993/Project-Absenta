@@ -687,6 +687,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
   // BKK (Ketua Bursa Kerja Khusus)
   [STRUKTUR_CODES.BKK]: [
     'organization.scope.tenant_wide',
+    'dashboard.view.bkk',
     'dashboard.view.hubin',
     'hubin.bkk.manage',
     'hubin.lamaran.manage',

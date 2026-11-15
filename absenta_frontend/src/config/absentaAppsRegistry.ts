@@ -2,6 +2,8 @@ import {
   GraduationCap, Clock, BookOpen, Shield, HeartHandshake, 
   Mail, MessageSquare, ShoppingCart, Building2, Globe, Settings, FileText,
   Laptop,
+  Award,
+  Briefcase,
   LucideIcon
 } from 'lucide-react';
 
@@ -236,8 +238,8 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
   // 10. Hubin
   {
     id: 'hubin',
-    name: 'Hubin',
-    description: 'Kemitraan industri, monitoring PKL, BKK, dan tracer study',
+    name: 'Hubin & PKL',
+    description: 'Kemitraan industri DU-DI, MoU, penempatan & asesmen PKL',
     icon: Globe,
     iconName: 'Globe',
     color: {
@@ -248,8 +250,27 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-teal-600 to-emerald-600',
     },
     defaultPath: '/hubin',
-    pathPrefixes: ['/hubin', '/pkl', '/bkk', '/tracer', '/magang'],
+    pathPrefixes: ['/hubin', '/pkl', '/magang'],
     category: 'HUBIN',
+  },
+
+  // 11. BKK (Bursa Kerja Khusus)
+  {
+    id: 'bkk',
+    name: 'Bursa Kerja Khusus (BKK)',
+    description: 'Penyaluran alumni, lowongan kerja, pelamar & tracer study',
+    icon: Award,
+    iconName: 'Award',
+    color: {
+      bg: 'bg-sky-500/10 dark:bg-sky-500/20',
+      text: 'text-sky-600 dark:text-sky-400',
+      badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200',
+      hover: 'hover:border-sky-300 dark:hover:border-sky-700 hover:bg-sky-50/50 dark:hover:bg-sky-950/20',
+      gradient: 'from-sky-600 to-indigo-600',
+    },
+    defaultPath: '/dashboard?tab=bkk',
+    pathPrefixes: ['/bkk', '/tracer'],
+    category: 'BKK',
   },
 
   // 11. Setelan
@@ -391,8 +412,13 @@ export function getVisibleApps(
 
       // Hubungan Industri (Hubin & PKL)
       case 'hubin':
-        return hasPos('HUBIN', 'KAPROG', 'BKK', 'KEPALA_SEKOLAH') ||
+        return hasPos('HUBIN', 'KAPROG', 'KEPALA_SEKOLAH') ||
           hasCap('hubin.guidance.manage', 'hubin.pkl.manage', 'hubin.self.pkl', 'hubin.self.logbook');
+
+      // Bursa Kerja Khusus (BKK)
+      case 'bkk':
+        return hasPos('BKK', 'SUB_BKK_PENYALURAN', 'HUBIN', 'KEPALA_SEKOLAH') ||
+          hasCap('bkk.manage', 'hubin.bkk.manage', 'hubin.tracer.manage');
 
       // Setelan Sistem
       case 'settings':

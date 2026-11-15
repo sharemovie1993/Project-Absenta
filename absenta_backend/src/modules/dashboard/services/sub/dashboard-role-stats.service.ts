@@ -744,21 +744,32 @@ export class DashboardRoleStatsService {
    * - pendingApplications: lamaran yang pending (dari siswaPkl yang belum aktif)
    */
   async getBkkStats(tenantId: string) {
-    const where = tenantId ? { tenant_id: tenantId } : {};
+    const where = tenantId ? { tenant_id: tenantId, deleted_at: null } : { deleted_at: null };
 
-    const [alumniPlaced, pendingApplications, activePkl] = await Promise.all([
-      // Alumni yang sudah selesai PKL = sudah tersalur
-      prisma.siswaPkl.count({ where: { ...where, status: 'SELESAI' } }),
-      // Yang masih pending (belum disetujui/aktif)
-      prisma.siswaPkl.count({ where: { ...where, status: { in: ['PENDING', 'MENUNGGU'] } } }),
-      // PKL aktif sebagai proxy "lowongan yang diisi"
-      prisma.siswaPkl.count({ where: { ...where, status: 'AKTIF' } })
+    const [activeJobs, totalApplicants, pendingInterviews, alumniPlaced, totalMitra] = await Promise.all([
+      // Lowongan aktif BKK
+      prisma.hubinLowongan.count({ where: { ...where, status: 'BUKA' } }),
+      // Total lamaran yang masuk
+      prisma.hubinLamaran.count({ where }),
+      // Pelamar yang sedang proses seleksi / interview / tes
+      prisma.hubinLamaran.count({ where: { ...where, status_seleksi: { in: ['SELEKSI', 'INTERVIEW', 'TES'] } } }),
+      // Pelamar yang diterima kerja
+      prisma.hubinLamaran.count({ where: { ...where, status_seleksi: 'DITERIMA' } }),
+      // Total mitra DUDI rekanan
+      prisma.mitraIndustri.count({ where: tenantId ? { tenant_id: tenantId } : {} })
     ]);
 
     return {
+      active_jobs: activeJobs,
+      total_applicants: totalApplicants,
+      pending_interviews: pendingInterviews,
+      alumni_placed: alumniPlaced,
+      activeJobs,
+      totalApplicants,
+      pendingInterviews,
       alumniPlaced,
-      activeJobs: activePkl, // PKL aktif sebagai proxy lowongan terisi
-      pendingApplications
+      totalMitra,
+      pendingApplications: pendingInterviews
     };
   }
 

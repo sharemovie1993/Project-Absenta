@@ -1092,7 +1092,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     }
 
     // 4.8 BKK (Bursa Kerja Khusus & Penyaluran Alumni)
-    if ((isBkk || (isAdminRole && !isKepsek) || can('hubin.view') || can('hubin.manage')) && !isKepsek) {
+    if ((isBkk || (isAdminRole && !isKepsek) || can('dashboard.view.bkk') || can('bkk.view') || can('hubin.view') || can('hubin.manage')) && !isKepsek) {
       list.push({ 
         id: 'bkk', 
         label: 'Dashboard BKK', 

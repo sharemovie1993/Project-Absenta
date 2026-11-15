@@ -6,8 +6,6 @@ export type HubinTabId =
   | 'penempatan'
   | 'absensi'
   | 'nilai'
-  | 'bkk'
-  | 'tracer'
   | 'rekap'
   | 'pengaturan'
   | 'struktur_organisasi';

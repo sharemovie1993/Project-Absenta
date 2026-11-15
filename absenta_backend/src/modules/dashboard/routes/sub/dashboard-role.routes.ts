@@ -461,7 +461,7 @@ export async function dashboardRoleRoutes(fastify: any) {
 
   // BKK Stats
   fastify.get('/bkk/stats', {
-    preHandler: [requireCapability('dashboard.view.hubin'), determineDataScope()],
+    preHandler: [requireCapability(['dashboard.view.bkk', 'dashboard.view.hubin']), determineDataScope()],
     schema: {
       description: 'Get BKK (Bursa Kerja Khusus) statistics',
       tags: ['Dashboard'],
@@ -473,10 +473,18 @@ export async function dashboardRoleRoutes(fastify: any) {
             data: {
               type: 'object',
               properties: {
-                alumniPlaced: { type: 'number' },
+                active_jobs: { type: 'number' },
+                total_applicants: { type: 'number' },
+                pending_interviews: { type: 'number' },
+                alumni_placed: { type: 'number' },
                 activeJobs: { type: 'number' },
+                totalApplicants: { type: 'number' },
+                pendingInterviews: { type: 'number' },
+                alumniPlaced: { type: 'number' },
+                totalMitra: { type: 'number' },
                 pendingApplications: { type: 'number' }
-              }
+              },
+              additionalProperties: true
             }
           }
         }

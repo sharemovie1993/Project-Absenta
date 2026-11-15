@@ -32,8 +32,6 @@ import { HubinMitraTab } from './hubin/tabs/HubinMitraTab';
 import { HubinPenempatanTab } from './hubin/tabs/HubinPenempatanTab';
 import { HubinAbsensiTab } from './hubin/tabs/HubinAbsensiTab';
 import { HubinNilaiTab } from './hubin/tabs/HubinNilaiTab';
-import { HubinBkkTab } from './hubin/tabs/HubinBkkTab';
-import { HubinTracerTab } from './hubin/tabs/HubinTracerTab';
 import { HubinRekapTab } from './hubin/tabs/HubinRekapTab';
 import { HubinSettingsTab } from './hubin/tabs/HubinSettingsTab';
 import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
@@ -53,8 +51,6 @@ const VALID_HUBIN_TABS: readonly HubinTabId[] = [
   'penempatan',
   'absensi',
   'nilai',
-  'bkk',
-  'tracer',
   'rekap',
   'pengaturan',
   'struktur_organisasi',
@@ -92,6 +88,16 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
   const [visitedTabs, setVisitedTabs] = useState<Set<HubinTabId>>(() => new Set([activeTab]));
 
   useEffect(() => {
+    // Separation of Concerns: Redirect BKK operational subtabs to dedicated BKK Dashboard
+    if (subtabParam === ('bkk' as any) || subtabParam === ('loker' as any)) {
+      navigate('/dashboard?tab=bkk&subtab=loker', { replace: true });
+      return;
+    }
+    if (subtabParam === ('tracer' as any)) {
+      navigate('/dashboard?tab=bkk&subtab=tracer', { replace: true });
+      return;
+    }
+
     if (subtabParam && (VALID_HUBIN_TABS as readonly string[]).includes(subtabParam)) {
       setActiveTab((curr) => (curr !== subtabParam ? subtabParam : curr));
       setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
@@ -99,7 +105,7 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
       setActiveTab('ringkasan');
       setVisitedTabs((prev) => (prev.has('ringkasan') ? prev : new Set(prev).add('ringkasan')));
     }
-  }, [subtabParam]);
+  }, [subtabParam, navigate]);
 
   const handleTabSelect = useCallback(
     (tabId: HubinTabId) => {
@@ -184,8 +190,6 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
       case 'penempatan': return 'Penempatan PKL';
       case 'absensi': return 'Presensi PKL';
       case 'nilai': return 'Penilaian PKL';
-      case 'bkk': return 'Bursa Kerja (BKK)';
-      case 'tracer': return 'Tracer Study';
       case 'rekap': return 'Cetak Dokumen';
       case 'pengaturan': return 'Pengaturan & Kuota';
       case 'struktur_organisasi': return 'Struktur Organisasi';
@@ -402,29 +406,7 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
               </div>
             )}
 
-            {/* TAB 6: BURSA KERJA KHUSUS (BKK) */}
-            {visitedTabs.has('bkk') && (
-              <div
-                role="tabpanel"
-                aria-hidden={activeTab !== 'bkk'}
-                className={cn('w-full min-w-0', activeTab === 'bkk' ? 'block' : 'hidden')}
-              >
-                <HubinBkkTab />
-              </div>
-            )}
-
-            {/* TAB 7: TRACER STUDY ALUMNI */}
-            {visitedTabs.has('tracer') && (
-              <div
-                role="tabpanel"
-                aria-hidden={activeTab !== 'tracer'}
-                className={cn('w-full min-w-0', activeTab === 'tracer' ? 'block' : 'hidden')}
-              >
-                <HubinTracerTab />
-              </div>
-            )}
-
-            {/* TAB 8: CETAK DOKUMEN HUBIN */}
+            {/* TAB 6: CETAK DOKUMEN HUBIN */}
             {visitedTabs.has('rekap') && (
               <div
                 role="tabpanel"

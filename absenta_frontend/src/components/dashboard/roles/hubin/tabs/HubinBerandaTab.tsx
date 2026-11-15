@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Building2,
   Users,
@@ -47,6 +48,8 @@ export const HubinBerandaTab: React.FC<HubinBerandaTabProps> = React.memo(({
   loading,
   onTabSelect,
 }) => {
+  const navigate = useNavigate();
+
   const handleNavigateSubtab = useCallback((rawTab: string) => {
     switch (rawTab) {
       case 'mitra':
@@ -69,10 +72,12 @@ export const HubinBerandaTab: React.FC<HubinBerandaTabProps> = React.memo(({
         break;
       case 'bkk':
       case 'loker':
-        onTabSelect('bkk');
+        // Separation of Concerns: Open dedicated BKK Dashboard
+        navigate('/dashboard?tab=bkk&subtab=loker');
         break;
       case 'tracer':
-        onTabSelect('tracer');
+        // Separation of Concerns: Open dedicated BKK Dashboard
+        navigate('/dashboard?tab=bkk&subtab=tracer');
         break;
       case 'rekap':
       case 'cetak':
@@ -93,7 +98,7 @@ export const HubinBerandaTab: React.FC<HubinBerandaTabProps> = React.memo(({
         // Jangan paksa kembali ke ringkasan jika id tidak dikenali
         break;
     }
-  }, [onTabSelect]);
+  }, [onTabSelect, navigate]);
 
   const pklSelesaiCount = useMemo(() => {
     const selesai = Number(

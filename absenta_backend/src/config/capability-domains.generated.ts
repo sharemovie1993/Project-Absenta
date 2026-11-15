@@ -200,6 +200,7 @@ export const CAPABILITY_DOMAIN_MAP: Record<string, string> = {
   "academic.activities.grades.manage": "ORGANIZATIONAL",
   "kesiswaan.schedules.view.list": "ORGANIZATIONAL",
   "dashboard.view.hubin": "SHARED",
+  "dashboard.view.bkk": "SHARED",
   "academic.teaching.rekap": "TENANT",
   "academic.manage.academic": "ORGANIZATIONAL",
   "hubin.pkl.manage": "ORGANIZATIONAL",

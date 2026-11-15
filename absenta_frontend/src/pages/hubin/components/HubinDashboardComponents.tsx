@@ -8,7 +8,7 @@ import {
   Activity, AlertTriangle, ArrowRight, ChevronRight, TrendingUp, Clock, Award,
   CheckCircle2, AlertCircle, FileSpreadsheet, Printer, Settings, MapPin, Factory,
   Sparkles, Stethoscope, FileText, UserCheck, UserPlus, ShieldCheck, Star, Calendar, Filter,
-  Crown, Radio
+  Crown, Radio, Network
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { resolvePklLifecyclePhase } from '@/utils/hubinPklLifecycle';
@@ -169,10 +169,10 @@ export const TracerStudyUraian: React.FC<TracerStudyUraianProps> = React.memo(({
         
         <button 
           onClick={() => onNavigateTab('tracer')}
-          className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-[10px] font-bold transition-all mt-4 cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-[10px] font-bold transition-all mt-4 cursor-pointer group"
         >
-          Lihat Detail Tracer Study
-          <ChevronRight size={12} className="text-slate-400" />
+          <span>Buka Detail di Dashboard BKK</span>
+          <ChevronRight size={12} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
         </button>
       </div>
     </Card>
@@ -833,30 +833,6 @@ export const HubinQuickActionsBar: React.FC<HubinQuickActionsBarProps> = React.m
       iconBg: 'bg-purple-50 dark:bg-purple-950/50 border-purple-200/60 dark:border-purple-800/60',
     },
     {
-      id: 'bkk',
-      title: 'Bursa Kerja (BKK)',
-      shortTitle: 'BKK',
-      desc: 'Lowongan kerja & rekrutmen alumni',
-      icon: Briefcase,
-      badge: `${stats?.totalLowonganAktif || 0} lowongan`,
-      badgeColor: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
-      gradient: 'from-sky-500/10 to-cyan-500/10 hover:from-sky-500/20 hover:to-cyan-500/20',
-      iconColor: 'text-sky-600 dark:text-sky-400',
-      iconBg: 'bg-sky-50 dark:bg-sky-950/50 border-sky-200/60 dark:border-sky-800/60',
-    },
-    {
-      id: 'tracer',
-      title: 'Tracer Study Alumni',
-      shortTitle: 'Tracer',
-      desc: 'Keterserapan kerja & wirausaha alumni',
-      icon: GraduationCap,
-      badge: `${stats?.totalAlumniTraced || 0} terlacak`,
-      badgeColor: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20',
-      gradient: 'from-teal-500/10 to-emerald-500/10 hover:from-teal-500/20 hover:to-emerald-500/20',
-      iconColor: 'text-teal-600 dark:text-teal-400',
-      iconBg: 'bg-teal-50 dark:bg-teal-950/50 border-teal-200/60 dark:border-teal-800/60',
-    },
-    {
       id: 'tefa',
       title: 'Teaching Factory',
       shortTitle: 'TEFA',
@@ -867,6 +843,30 @@ export const HubinQuickActionsBar: React.FC<HubinQuickActionsBarProps> = React.m
       gradient: 'from-orange-500/10 to-amber-500/10 hover:from-orange-500/20 hover:to-amber-500/20',
       iconColor: 'text-orange-600 dark:text-orange-400',
       iconBg: 'bg-orange-50 dark:bg-orange-950/50 border-orange-200/60 dark:border-orange-800/60',
+    },
+    {
+      id: 'pengaturan',
+      title: 'Pengaturan PKL',
+      shortTitle: 'Pengaturan',
+      desc: 'Bobot penilaian, geofence, dan nomor surat',
+      icon: Settings,
+      badge: 'Konfigurasi',
+      badgeColor: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20',
+      gradient: 'from-slate-500/10 to-zinc-500/10 hover:from-slate-500/20 hover:to-zinc-500/20',
+      iconColor: 'text-slate-600 dark:text-slate-400',
+      iconBg: 'bg-slate-100 dark:bg-slate-800 border-slate-200/60 dark:border-slate-700/60',
+    },
+    {
+      id: 'organisasi',
+      title: 'Organisasi Hubin',
+      shortTitle: 'Organisasi',
+      desc: 'Struktur tim hubungan industri & penugasan',
+      icon: Network,
+      badge: 'Tim Hubin',
+      badgeColor: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+      gradient: 'from-blue-500/10 to-sky-500/10 hover:from-blue-500/20 hover:to-sky-500/20',
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      iconBg: 'bg-blue-50 dark:bg-blue-950/50 border-blue-200/60 dark:border-blue-800/60',
     },
   ];
 

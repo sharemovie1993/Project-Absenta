@@ -360,13 +360,30 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     color: 'text-purple-600',
     bg: 'bg-purple-50',
     solidBg: 'bg-purple-600',
-    desc: 'PKL & Kemitraan Industri',
+    desc: 'PKL & Kemitraan DU-DI',
     requiredCapability: 'dashboard.view.hubin',
     requiredPositionCode: 'HUBIN',
     defaultPath: '/hubin',
     targetGroupKeywords: ['HUBIN'],
     crossModulePaths: [
       '/kurikulum/jadwal',
+      '/academic/siswa'
+    ]
+  },
+  {
+    id: 'BKK_WORKSPACE',
+    label: 'BKK',
+    badge: 'Bursa Kerja',
+    icon: Award,
+    color: 'text-sky-600',
+    bg: 'bg-sky-50',
+    solidBg: 'bg-sky-600',
+    desc: 'Bursa Kerja Khusus & Penyaluran Alumni',
+    requiredPositionCode: 'BKK',
+    defaultPath: '/dashboard?tab=bkk',
+    targetGroupKeywords: ['BKK'],
+    crossModulePaths: [
+      '/hubin',
       '/academic/siswa'
     ]
   },
