@@ -28,6 +28,8 @@ export interface KelasResponse {
   nama_kelas: string;
   tingkat: number;
   jurusan_id: string;
+  kode_jurusan?: string | null;
+  nama_jurusan?: string | null;
   is_active: boolean;
   jam_masuk?: string | null;
   jam_pulang?: string | null;
@@ -36,6 +38,16 @@ export interface KelasResponse {
   Jurusan?: {
     id: string;
     nama: string;
+    kode?: string | null;
+    singkatan?: string | null;
+    warna?: string | null;
+    program_keahlian_id?: string | null;
+    ProgramKeahlian?: {
+      id: string;
+      nama: string;
+      kode?: string | null;
+      singkatan?: string | null;
+    } | null;
   } | null;
   WaliKelas?: {
     id: string;
@@ -68,6 +80,25 @@ export interface PaginatedKelasResponse {
   };
 }
 
+const JURUSAN_CLASS_INCLUDE = {
+  select: {
+    id: true,
+    nama: true,
+    kode: true,
+    singkatan: true,
+    warna: true,
+    program_keahlian_id: true,
+    ProgramKeahlian: {
+      select: {
+        id: true,
+        nama: true,
+        kode: true,
+        singkatan: true,
+      },
+    },
+  },
+};
+
 export class KelasService {
   private withDerivedWaliKelas(kelas: any): KelasResponse {
     const assignments: Array<{ id: string; Guru: { id: string; nama_guru: string } }> = [];
@@ -79,8 +110,25 @@ export class KelasService {
       }
     }
 
+    const derivedKodeJurusan =
+      kelas?.Jurusan?.kode ||
+      kelas?.Jurusan?.singkatan ||
+      kelas?.Jurusan?.ProgramKeahlian?.kode ||
+      kelas?.Jurusan?.ProgramKeahlian?.singkatan ||
+      null;
+
+    const derivedNamaJurusan =
+      kelas?.Jurusan?.nama ||
+      kelas?.Jurusan?.ProgramKeahlian?.nama ||
+      null;
+
     const { OrganizationalAssignments, ...rest } = kelas;
-    return { ...rest, WaliKelas: assignments };
+    return {
+      ...rest,
+      kode_jurusan: derivedKodeJurusan,
+      nama_jurusan: derivedNamaJurusan,
+      WaliKelas: assignments,
+    };
   }
 
   private buildSarprasLocationName(namaKelas: string, jurusanNama?: string | null): string {
@@ -192,13 +240,7 @@ export class KelasService {
     const kelas = await prisma.kelas.findMany({
       where: whereClause,
       include: {
-        Jurusan: {
-          select: {
-            id: true,
-            nama: true,
-            program_keahlian_id: true,
-          },
-        },
+        Jurusan: JURUSAN_CLASS_INCLUDE,
         OrganizationalAssignments: {
           where: {
             is_active: true,
@@ -250,13 +292,7 @@ export class KelasService {
     const kelas = await prisma.kelas.findFirst({
       where: whereClause,
       include: {
-        Jurusan: {
-          select: {
-            id: true,
-            nama: true,
-            program_keahlian_id: true,
-          },
-        },
+        Jurusan: JURUSAN_CLASS_INCLUDE,
         OrganizationalAssignments: {
           where: {
             is_active: true,
@@ -537,12 +573,7 @@ export class KelasService {
     const kelas = await prisma.kelas.findUnique({
       where: { id: result.id },
       include: {
-        Jurusan: {
-          select: {
-            id: true,
-            nama: true,
-          },
-        },
+        Jurusan: JURUSAN_CLASS_INCLUDE,
         OrganizationalAssignments: {
           where: { is_active: true, Position: { code: 'WALIKELAS' } },
           include: { User: { select: { Guru: { select: { id: true, nama_guru: true } } } } },
@@ -792,12 +823,7 @@ export class KelasService {
     const kelas = await prisma.kelas.findUnique({
       where: { id: kelasId },
       include: {
-        Jurusan: {
-          select: {
-            id: true,
-            nama: true,
-          },
-        },
+        Jurusan: JURUSAN_CLASS_INCLUDE,
         OrganizationalAssignments: {
           where: { is_active: true, Position: { code: 'WALIKELAS' } },
           include: { User: { select: { Guru: { select: { id: true, nama_guru: true } } } } },

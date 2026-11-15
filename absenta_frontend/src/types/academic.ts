@@ -137,6 +137,8 @@ export interface Kelas {
   nama_kelas: string;
   tingkat: number;
   jurusan_id?: string;
+  kode_jurusan?: string | null;
+  nama_jurusan?: string | null;
   kapasitas?: number;
   keterangan?: string;
   jam_masuk?: string | null;
@@ -155,10 +157,15 @@ export interface Kelas {
   Jurusan?: {
     id: string;
     nama: string;
+    kode?: string | null;
+    singkatan?: string | null;
+    warna?: string | null;
     program_keahlian_id?: string | null;
     ProgramKeahlian?: {
       id: string;
       nama: string;
+      kode?: string | null;
+      singkatan?: string | null;
     } | null;
   };
 

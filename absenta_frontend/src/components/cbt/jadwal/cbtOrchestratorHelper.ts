@@ -205,14 +205,19 @@ export function assignClassToRoomSlot(
   const oldClassData = rawKelasList.find((k) => k.id === oldKelasId);
 
   const getJurusanKode = (k: any) =>
+    k?.kode_jurusan ||
     k?.Jurusan?.kode ||
     k?.Jurusan?.singkatan ||
+    k?.Jurusan?.ProgramKeahlian?.kode ||
+    k?.Jurusan?.ProgramKeahlian?.singkatan ||
     k?.Jurusan?.kode_jurusan ||
-    (k?.nama_kelas ? k.nama_kelas.match(/\b(AKL|AK|TKJ|TKR|TSM|TP|TM|KUL|PHT|HTL|TOI|TAV|TE|TO)\b/i)?.[1]?.toUpperCase() : undefined);
+    (k?.nama_kelas ? k.nama_kelas.match(/\b(AKL|AK|TKJ|TJKT|TKR|TSM|TP|TM|KUL|PHT|HTL|TOI|TAV|TE|TO)\b/i)?.[1]?.toUpperCase() : undefined);
 
   const getJurusanNama = (k: any) =>
+    k?.nama_jurusan ||
     k?.Jurusan?.nama ||
     k?.Jurusan?.nama_jurusan ||
+    k?.Jurusan?.ProgramKeahlian?.nama ||
     k?.Jurusan?.singkatan ||
     getJurusanKode(k);
 
@@ -397,13 +402,18 @@ export function generateClassRoomMappings(
     const roomName = `Ruang ${numStr}`;
 
     const jurKode =
+      k.kode_jurusan ||
       k.Jurusan?.kode ||
       k.Jurusan?.singkatan ||
+      k.Jurusan?.ProgramKeahlian?.kode ||
+      k.Jurusan?.ProgramKeahlian?.singkatan ||
       k.Jurusan?.kode_jurusan ||
-      (k.nama_kelas ? k.nama_kelas.match(/\b(AKL|AK|TKJ|TKR|TSM|TP|TM|KUL|PHT|HTL|TOI|TAV|TE|TO)\b/i)?.[1]?.toUpperCase() : undefined);
+      (k.nama_kelas ? k.nama_kelas.match(/\b(AKL|AK|TKJ|TJKT|TKR|TSM|TP|TM|KUL|PHT|HTL|TOI|TAV|TE|TO)\b/i)?.[1]?.toUpperCase() : undefined);
     const jurNama =
+      k.nama_jurusan ||
       k.Jurusan?.nama ||
       k.Jurusan?.nama_jurusan ||
+      k.Jurusan?.ProgramKeahlian?.nama ||
       k.Jurusan?.singkatan ||
       jurKode;
 

@@ -206,10 +206,30 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
         if (activeIds.has(item.kelas_id)) {
           // Update data nama kelas / jurusan jika ada perubahan dari master kelas
           const master = scopedKelasList.find((k) => k.id === item.kelas_id);
+          const masterJurKode =
+            master?.kode_jurusan ||
+            master?.Jurusan?.kode ||
+            master?.Jurusan?.singkatan ||
+            master?.Jurusan?.ProgramKeahlian?.kode ||
+            master?.Jurusan?.ProgramKeahlian?.singkatan ||
+            master?.Jurusan?.kode_jurusan ||
+            item.kode_jurusan;
+
+          const masterJurNama =
+            master?.nama_jurusan ||
+            master?.Jurusan?.nama ||
+            master?.Jurusan?.nama_jurusan ||
+            master?.Jurusan?.ProgramKeahlian?.nama ||
+            master?.Jurusan?.singkatan ||
+            item.nama_jurusan;
+
           ordered.push({
             ...item,
             nama_kelas: master?.nama_kelas || master?.nama || item.nama_kelas,
             tingkat: Number(master?.tingkat) || item.tingkat,
+            jurusan_id: master?.jurusan_id || item.jurusan_id,
+            kode_jurusan: masterJurKode,
+            nama_jurusan: masterJurNama,
           });
         }
       });
@@ -226,8 +246,19 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
             nama_kelas: k.nama_kelas || k.nama || `Kelas ${nextSlotNum}`,
             tingkat: Number(k.tingkat) || 10,
             jurusan_id: k.jurusan_id,
-            kode_jurusan: k.Jurusan?.kode_jurusan || k.Jurusan?.kode,
-            nama_jurusan: k.Jurusan?.nama_jurusan || k.Jurusan?.nama,
+            kode_jurusan:
+              k.kode_jurusan ||
+              k.Jurusan?.kode ||
+              k.Jurusan?.singkatan ||
+              k.Jurusan?.ProgramKeahlian?.kode ||
+              k.Jurusan?.ProgramKeahlian?.singkatan ||
+              k.Jurusan?.kode_jurusan,
+            nama_jurusan:
+              k.nama_jurusan ||
+              k.Jurusan?.nama ||
+              k.Jurusan?.nama_jurusan ||
+              k.Jurusan?.ProgramKeahlian?.nama ||
+              k.Jurusan?.singkatan,
             slot_ruang: slotCode,
             nama_ruang: `Ruang ${String(nextSlotNum).padStart(padLength, '0')}`,
             kapasitas: k.kapasitas || 36,
