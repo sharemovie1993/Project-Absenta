@@ -85,6 +85,7 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
           nextItem &&
           String(nextItem.kelas_id || '') === String(item.kelas_id || '') &&
           String(nextItem.mapel_id || '') === String(item.mapel_id || '') &&
+          String(nextItem.unit_pengajaran_id || '') === String(item.unit_pengajaran_id || '') &&
           String(nextItem.jenis_kegiatan || '').toUpperCase() === String(item.jenis_kegiatan || '').toUpperCase()
         ) {
           colSpan++;
@@ -200,6 +201,7 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
                   {mergedCells.map(({ slot, colSpan, item }) => {
                     const kelasNama = item?.Kelas?.nama_kelas || item?.kelas_nama || 'Kelas';
                     const mapelNama = item?.Mapel?.nama_mapel || item?.mapel_nama || item?.jenis_kegiatan || 'Mapel';
+                    const unitNama = item?.UnitPengajaran?.nama_unit || item?.unit_nama || null;
                     const jamText = item?.jam_mulai && (item?.jam_selesai_merged || item?.jam_selesai)
                       ? `${item.jam_mulai}-${item.jam_selesai_merged || item.jam_selesai}`
                       : null;
@@ -244,11 +246,16 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
                               )}
                             </div>
 
-                            {/* ── BARIS 3: NAMA MATA PELAJARAN ───────────── */}
-                            <div className="w-full">
-                              <p className="text-[7.5px] sm:text-[9.5px] font-extrabold text-slate-800 dark:text-slate-100 truncate leading-tight">
+                            {/* ── BARIS 3: NAMA MATA PELAJARAN & UNIT ─────── */}
+                            <div className="w-full flex flex-col items-center justify-center">
+                              <p className="text-[7.5px] sm:text-[9.5px] font-extrabold text-slate-800 dark:text-slate-100 truncate leading-tight w-full">
                                 {mapelNama}
                               </p>
+                              {unitNama && (
+                                <span className="inline-block mt-0.5 px-1 py-0.2 rounded text-[7px] sm:text-[8px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 truncate max-w-full">
+                                  {unitNama}
+                                </span>
+                              )}
                             </div>
                           </button>
                         ) : (
@@ -300,9 +307,16 @@ export const StaffWeeklyScheduleWidget: React.FC<StaffWeeklyScheduleWidgetProps>
             <div className="space-y-2.5">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Mata Pelajaran</p>
-                <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
-                  {selectedItem.item.Mapel?.nama_mapel || selectedItem.item.mapel_nama || selectedItem.item.jenis_kegiatan || 'Mata Pelajaran'}
-                </h3>
+                <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    {selectedItem.item.Mapel?.nama_mapel || selectedItem.item.mapel_nama || selectedItem.item.jenis_kegiatan || 'Mata Pelajaran'}
+                  </h3>
+                  {(selectedItem.item.UnitPengajaran?.nama_unit || selectedItem.item.unit_nama) && (
+                    <span className="px-2 py-0.5 rounded text-xs font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                      Unit: {selectedItem.item.UnitPengajaran?.nama_unit || selectedItem.item.unit_nama}
+                    </span>
+                  )}
+                </div>
                 {selectedItem.item.Mapel?.kode_mapel && (
                   <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Kode: {selectedItem.item.Mapel.kode_mapel}
