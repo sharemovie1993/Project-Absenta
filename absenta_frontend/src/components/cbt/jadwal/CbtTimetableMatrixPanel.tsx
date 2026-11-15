@@ -1089,7 +1089,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       }
 
       let effectiveRoomMappings = [...(roomMappings || [])];
-      const persistedRooms = loadPersistedRoomMappings(tenantId);
+      const persistedRooms = loadPersistedRoomMappings(tenantId, eventId);
       if (persistedRooms && Object.keys(persistedRooms).length > 0) {
         if (effectiveRoomMappings.length === 0) {
           effectiveRoomMappings = Object.entries(persistedRooms).map(([kId, val]) => ({

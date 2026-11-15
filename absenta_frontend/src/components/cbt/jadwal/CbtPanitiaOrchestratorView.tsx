@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -39,6 +39,7 @@ import {
   KelasRoomMapping,
   generateClassRoomMappings,
   loadPersistedRoomMappings,
+  loadPersistedRoomMappingsList,
   savePersistedRoomMappings,
   filterEffectiveJadwalList,
   evaluateStep1Soal,
@@ -136,18 +137,79 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
 
   // ── 2. State Ploting Ruang ke Kelas (Kelas-Centrik R.01 - R.n & Terintegrasi Denah Spasial) ──
   const [roomMappings, setRoomMappings] = useState<KelasRoomMapping[]>([]);
+  const isRoomInitializedRef = useRef(false);
 
   useEffect(() => {
     if (!scopedKelasList.length) {
       setRoomMappings([]);
+      isRoomInitializedRef.current = false;
       return;
     }
-    const persisted = loadPersistedRoomMappings(tenantId);
-    const generated = generateClassRoomMappings(scopedKelasList);
 
+    // Jika komponen sudah diinisialisasi dan state saat ini sudah memuat seluruh kelas target,
+    // JANGAN timpa balik (mencegah revert susunan saat query denah/kelas re-fetch di background)
+    if (isRoomInitializedRef.current && roomMappings.length > 0) {
+      const currentIds = new Set(roomMappings.map((r) => r.kelas_id));
+      const allExist = scopedKelasList.every((k) => currentIds.has(k.id));
+      if (allExist && roomMappings.length === scopedKelasList.length) {
+        return;
+      }
+    }
+
+    const eventId = activeEvent?.id;
+    const persistedList = loadPersistedRoomMappingsList(tenantId, eventId);
+    const persistedMap = loadPersistedRoomMappings(tenantId, eventId);
+
+    // 1. Jika sudah ada susunan array tersimpan (format v2), pertahankan urutan persis yang diatur panitia
+    if (persistedList && Array.isArray(persistedList) && persistedList.length > 0) {
+      const activeIds = new Set(scopedKelasList.map((k) => k.id));
+      const ordered: KelasRoomMapping[] = [];
+
+      // Masukkan item tersimpan yang masih relevan dengan kelas aktif
+      persistedList.forEach((item) => {
+        if (activeIds.has(item.kelas_id)) {
+          // Update data nama kelas / jurusan jika ada perubahan dari master kelas
+          const master = scopedKelasList.find((k) => k.id === item.kelas_id);
+          ordered.push({
+            ...item,
+            nama_kelas: master?.nama_kelas || master?.nama || item.nama_kelas,
+            tingkat: Number(master?.tingkat) || item.tingkat,
+          });
+        }
+      });
+
+      // Tambahkan rombel baru jika ada rombel yang belum terdaftar di susunan sebelumnya
+      const existingOrderedIds = new Set(ordered.map((o) => o.kelas_id));
+      scopedKelasList.forEach((k) => {
+        if (!existingOrderedIds.has(k.id)) {
+          const nextSlotNum = ordered.length + 1;
+          const padLength = scopedKelasList.length > 99 ? 3 : 2;
+          const slotCode = `R.${String(nextSlotNum).padStart(padLength, '0')}`;
+          ordered.push({
+            kelas_id: k.id,
+            nama_kelas: k.nama_kelas || k.nama || `Kelas ${nextSlotNum}`,
+            tingkat: Number(k.tingkat) || 10,
+            jurusan_id: k.jurusan_id,
+            kode_jurusan: k.Jurusan?.kode_jurusan || k.Jurusan?.kode,
+            nama_jurusan: k.Jurusan?.nama_jurusan || k.Jurusan?.nama,
+            slot_ruang: slotCode,
+            nama_ruang: `Ruang ${String(nextSlotNum).padStart(padLength, '0')}`,
+            kapasitas: k.kapasitas || 36,
+          });
+        }
+      });
+
+      setRoomMappings(ordered);
+      savePersistedRoomMappings(ordered, tenantId, eventId);
+      isRoomInitializedRef.current = true;
+      return;
+    }
+
+    // 2. Fallback: Inisialisasi awal jika belum ada data tersimpan
+    const generated = generateClassRoomMappings(scopedKelasList);
     const merged = generated.map((item) => {
-      // 1. Prioritas Utama: Editan manual panitia yang tersimpan di localStorage
-      const saved = persisted?.[item.kelas_id];
+      // Prioritas 1: editan tersimpan
+      const saved = persistedMap?.[item.kelas_id];
       if (saved && (saved.slot_ruang || saved.nama_ruang)) {
         return {
           ...item,
@@ -156,7 +218,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
         };
       }
 
-      // 2. Prioritas Kedua: Pemetaan spasial dari Denah Ujian (Sarpras & Denah Spasial)
+      // Prioritas 2: dari denah spasial
       const fromDenah = denahMapByKelasId.get(item.kelas_id);
       if (fromDenah && (fromDenah.slot_ruang || fromDenah.nama_ruang)) {
         return {
@@ -166,17 +228,13 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
         };
       }
 
-      // 3. Fallback: Standar deterministik R.01 s/d R.n
       return item;
     });
 
     setRoomMappings(merged);
-
-    // Simpan ke localStorage agar konsisten ke seluruh tahapan
-    if (!persisted || Object.keys(persisted).length === 0) {
-      savePersistedRoomMappings(merged, tenantId);
-    }
-  }, [scopedKelasList, tenantId, denahMapByKelasId]);
+    savePersistedRoomMappings(merged, tenantId, eventId);
+    isRoomInitializedRef.current = true;
+  }, [scopedKelasList, tenantId, activeEvent?.id, denahMapByKelasId]);
 
   // ── 2. Fetch Bank Soal (Kapasitas Penuh 500 & StaleTime Guard) ──
   const { data: bankRes, refetch: refetchBankSoal } = useQuery({
@@ -475,6 +533,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           roomMappings={roomMappings}
           onUpdateRoomMappings={setRoomMappings}
           tenantId={tenantId}
+          eventId={activeEvent?.id}
           eventName={effectiveEventName}
           activeTpName={activeTp?.nama}
           semester={activeSemester?.nama}

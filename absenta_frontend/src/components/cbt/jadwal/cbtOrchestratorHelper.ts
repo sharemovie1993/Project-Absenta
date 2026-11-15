@@ -86,30 +86,161 @@ export type TimetableMatrixState = Record<string, string>;
 
 const STORAGE_PREFIX = 'absenta_cbt_room_mappings_';
 
-export function getStorageKeyRoomMappings(tenantId?: string): string {
-  return `${STORAGE_PREFIX}${tenantId || 'global'}`;
+export function getStorageKeyRoomMappings(tenantId?: string, eventId?: string): string {
+  const t = tenantId || 'global';
+  return eventId ? `${STORAGE_PREFIX}${t}_evt_${eventId}` : `${STORAGE_PREFIX}${t}`;
 }
 
-export function loadPersistedRoomMappings(tenantId?: string): Record<string, { slot_ruang: string; nama_ruang: string }> | null {
+export interface PersistedRoomStoragePayload {
+  version: number;
+  mappings: KelasRoomMapping[];
+  mapObj: Record<string, { slot_ruang: string; nama_ruang: string }>;
+  updated_at: string;
+}
+
+export function loadPersistedRoomMappingsList(tenantId?: string, eventId?: string): KelasRoomMapping[] | null {
   try {
-    const raw = localStorage.getItem(getStorageKeyRoomMappings(tenantId));
-    if (!raw) return null;
-    return JSON.parse(raw);
+    // 1. Coba baca key khusus event jika ada
+    if (eventId) {
+      const rawEvent = localStorage.getItem(getStorageKeyRoomMappings(tenantId, eventId));
+      if (rawEvent) {
+        const parsed = JSON.parse(rawEvent);
+        if (parsed && Array.isArray(parsed.mappings) && parsed.mappings.length > 0) {
+          return parsed.mappings;
+        }
+      }
+    }
+
+    // 2. Baca key tenant umum
+    const rawGeneral = localStorage.getItem(getStorageKeyRoomMappings(tenantId));
+    if (!rawGeneral) return null;
+    const parsed = JSON.parse(rawGeneral);
+    if (parsed && Array.isArray(parsed.mappings) && parsed.mappings.length > 0) {
+      return parsed.mappings;
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-export function savePersistedRoomMappings(mappings: KelasRoomMapping[], tenantId?: string): void {
+export function loadPersistedRoomMappings(
+  tenantId?: string,
+  eventId?: string
+): Record<string, { slot_ruang: string; nama_ruang: string }> | null {
+  try {
+    // Coba baca dari key event dulu
+    if (eventId) {
+      const rawEvent = localStorage.getItem(getStorageKeyRoomMappings(tenantId, eventId));
+      if (rawEvent) {
+        const parsed = JSON.parse(rawEvent);
+        if (parsed?.mapObj && typeof parsed.mapObj === 'object') return parsed.mapObj;
+        if (parsed && typeof parsed === 'object' && !parsed.mappings) return parsed;
+      }
+    }
+
+    const raw = localStorage.getItem(getStorageKeyRoomMappings(tenantId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.mapObj && typeof parsed.mapObj === 'object') return parsed.mapObj;
+    if (parsed && typeof parsed === 'object') return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function savePersistedRoomMappings(
+  mappings: KelasRoomMapping[],
+  tenantId?: string,
+  eventId?: string
+): void {
   try {
     const mapObj: Record<string, { slot_ruang: string; nama_ruang: string }> = {};
     mappings.forEach((m) => {
       mapObj[m.kelas_id] = { slot_ruang: m.slot_ruang, nama_ruang: m.nama_ruang };
     });
-    localStorage.setItem(getStorageKeyRoomMappings(tenantId), JSON.stringify(mapObj));
+
+    const payload: PersistedRoomStoragePayload = {
+      version: 2,
+      mappings,
+      mapObj,
+      updated_at: new Date().toISOString(),
+    };
+
+    const payloadStr = JSON.stringify(payload);
+
+    // Simpan ke key event jika ada
+    if (eventId) {
+      localStorage.setItem(getStorageKeyRoomMappings(tenantId, eventId), payloadStr);
+    }
+    // Simpan ke key umum
+    localStorage.setItem(getStorageKeyRoomMappings(tenantId), payloadStr);
   } catch (err) {
     console.warn('Gagal menyimpan mapping ruang ke localStorage:', err);
   }
+}
+
+/**
+ * Menukar (SWAP) slot kode ruang antar dua kelas secara 1-on-1 tanpa duplikasi.
+ * Jika kelas A memegang slot_1 dan memilih slot_2 milik kelas B:
+ * - Kelas A menjadi memegang slot_2
+ * - Kelas B menjadi memegang slot_1
+ */
+export function swapRoomSlotBetweenClasses(
+  mappings: KelasRoomMapping[],
+  sourceKelasId: string,
+  targetSlotRuang: string
+): KelasRoomMapping[] {
+  const currentItem = mappings.find((m) => m.kelas_id === sourceKelasId);
+  if (!currentItem) return mappings;
+
+  const currentSlot = currentItem.slot_ruang;
+  if (currentSlot === targetSlotRuang) return mappings;
+
+  // Temukan item lain yang saat ini memegang targetSlotRuang
+  const otherItem = mappings.find((m) => m.slot_ruang === targetSlotRuang);
+
+  return mappings.map((m) => {
+    if (m.kelas_id === sourceKelasId) {
+      return {
+        ...m,
+        slot_ruang: targetSlotRuang,
+      };
+    }
+    if (otherItem && m.kelas_id === otherItem.kelas_id) {
+      return {
+        ...m,
+        slot_ruang: currentSlot,
+      };
+    }
+    return m;
+  });
+}
+
+/**
+ * Menggeser urutan alokasi slot ruang (naik/turun) antar baris kelas bersebelahan.
+ */
+export function moveRoomMappingOrder(
+  mappings: KelasRoomMapping[],
+  index: number,
+  direction: 'UP' | 'DOWN'
+): KelasRoomMapping[] {
+  const targetIndex = direction === 'UP' ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= mappings.length) return mappings;
+
+  const itemA = mappings[index];
+  const itemB = mappings[targetIndex];
+
+  // Tukar slot_ruang kedua item agar kelas di index sekarang mendapat slot itemB
+  const slotA = itemA.slot_ruang;
+  const slotB = itemB.slot_ruang;
+
+  const next = [...mappings];
+  next[index] = { ...itemA, slot_ruang: slotB };
+  next[targetIndex] = { ...itemB, slot_ruang: slotA };
+
+  return next;
 }
 
 /**

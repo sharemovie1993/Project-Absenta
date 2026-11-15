@@ -13,6 +13,9 @@ import {
   ArrowRight,
   Filter,
   Map,
+  ChevronUp,
+  ChevronDown,
+  ArrowUpDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -23,6 +26,8 @@ import {
   KelasRoomMapping,
   generateClassRoomMappings,
   savePersistedRoomMappings,
+  swapRoomSlotBetweenClasses,
+  moveRoomMappingOrder,
 } from './cbtOrchestratorHelper';
 import { CbtLabelRuangPrintModal } from './CbtLabelRuangPrintModal';
 import { CbtKartuUjianPrintModal } from './CbtKartuUjianPrintModal';
@@ -34,6 +39,7 @@ interface CbtKelasRoomTreePanelProps {
   roomMappings: KelasRoomMapping[];
   onUpdateRoomMappings: (mappings: KelasRoomMapping[]) => void;
   tenantId?: string;
+  eventId?: string;
   eventName?: string;
   activeTpName?: string;
   semester?: string;
@@ -47,6 +53,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   roomMappings,
   onUpdateRoomMappings,
   tenantId,
+  eventId,
   eventName,
   activeTpName,
   semester,
@@ -83,6 +90,21 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   // Modal Studio Denah Spasial State
   const [isDenahModalOpen, setIsDenahModalOpen] = useState(false);
 
+  // Daftar seluruh slot kode ruang unik yang tersedia (terurut R.01, R.02, dst)
+  const availableSlotOptions = useMemo(() => {
+    const slots = Array.from(new Set(roomMappings.map((m) => m.slot_ruang).filter(Boolean)));
+    slots.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+    return slots.map((s) => {
+      const assigned = roomMappings.find((m) => m.slot_ruang === s);
+      return {
+        slot: s,
+        currentKelasName: assigned?.nama_kelas || '',
+        currentKelasId: assigned?.kelas_id || '',
+      };
+    });
+  }, [roomMappings]);
+
   // Auto-generate sequential room slots R.01 s/d R.n
   const handleAutoPlottingRooms = () => {
     if (!kelasList.length) {
@@ -91,23 +113,52 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
     }
     const generated = generateClassRoomMappings(kelasList, roomPrefix);
     onUpdateRoomMappings(generated);
-    savePersistedRoomMappings(generated, tenantId);
+    savePersistedRoomMappings(generated, tenantId, eventId);
     toast.success(
       `Berhasil memetakan slot ${roomPrefix}01 s/d ${roomPrefix}${String(kelasList.length).padStart(2, '0')} untuk ${kelasList.length} rombel!`
     );
   };
 
-  const handleUpdateSingleRoom = (kelasId: string, field: 'slot_ruang' | 'nama_ruang', value: string) => {
+  // Menukar slot kode ruang ke rombel lain (SWAP aman tanpa duplikasi)
+  const handleSwapSlot = (sourceKelasId: string, targetSlotRuang: string) => {
+    const src = roomMappings.find((m) => m.kelas_id === sourceKelasId);
+    const other = roomMappings.find((m) => m.slot_ruang === targetSlotRuang);
+    const next = swapRoomSlotBetweenClasses(roomMappings, sourceKelasId, targetSlotRuang);
+    onUpdateRoomMappings(next);
+    savePersistedRoomMappings(next, tenantId, eventId);
+
+    if (other && other.kelas_id !== sourceKelasId) {
+      toast.success(`Slot ${targetSlotRuang} ditukar ke ${src?.nama_kelas || 'Kelas'} (bertukar dengan ${other.nama_kelas})`);
+    } else {
+      toast.success(`Slot berhasil dipindah ke ${targetSlotRuang}`);
+    }
+  };
+
+  // Menggeser urutan alokasi slot naik / turun
+  const handleMoveSlot = (currentFilteredIdx: number, direction: 'UP' | 'DOWN') => {
+    const targetItem = filteredList[currentFilteredIdx];
+    if (!targetItem) return;
+
+    const realIndex = roomMappings.findIndex((m) => m.kelas_id === targetItem.kelas_id);
+    if (realIndex === -1) return;
+
+    const next = moveRoomMappingOrder(roomMappings, realIndex, direction);
+    onUpdateRoomMappings(next);
+    savePersistedRoomMappings(next, tenantId, eventId);
+    toast.success('Urutan slot ruang berhasil digeser!');
+  };
+
+  const handleUpdateNamaRuangFisik = (kelasId: string, value: string) => {
     const next = roomMappings.map((m) => {
       if (m.kelas_id !== kelasId) return m;
-      return { ...m, [field]: value };
+      return { ...m, nama_ruang: value };
     });
     onUpdateRoomMappings(next);
-    savePersistedRoomMappings(next, tenantId);
+    savePersistedRoomMappings(next, tenantId, eventId);
   };
 
   const handleSaveToStorage = () => {
-    savePersistedRoomMappings(roomMappings, tenantId);
+    savePersistedRoomMappings(roomMappings, tenantId, eventId);
     toast.success('Konfigurasi ploting ruang ke kelas berhasil disimpan!');
   };
 
@@ -319,7 +370,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                 variant="primary"
                 size="sm"
                 onClick={() => {
-                  savePersistedRoomMappings(roomMappings, tenantId);
+                  savePersistedRoomMappings(roomMappings, tenantId, eventId);
                   if (onProceedToNextPhase) onProceedToNextPhase();
                 }}
                 className="text-xs h-7 px-2.5 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer flex items-center gap-1 shrink-0"
@@ -382,26 +433,57 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                      Slot Ruang
+                      Slot Kode Ruang (Pindah / Tukar)
                     </label>
-                    <input
-                      type="text"
-                      value={cls.slot_ruang}
-                      onChange={(e) => handleUpdateSingleRoom(cls.kelas_id, 'slot_ruang', e.target.value)}
-                      aria-label={`Slot ruang untuk ${cls.nama_kelas}`}
-                      className="w-full mt-0.5 px-2.5 py-1.5 text-xs font-mono font-black rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300"
-                    />
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <div className="relative flex-1">
+                        <select
+                          value={cls.slot_ruang}
+                          onChange={(e) => handleSwapSlot(cls.kelas_id, e.target.value)}
+                          aria-label={`Slot kode ruang untuk ${cls.nama_kelas}`}
+                          className="w-full pl-2 pr-5 py-1.5 text-xs font-mono font-black rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 focus:bg-white focus:outline-hidden cursor-pointer appearance-none shadow-2xs"
+                        >
+                          {availableSlotOptions.map((opt) => (
+                            <option key={opt.slot} value={opt.slot} className="font-sans font-semibold text-slate-800">
+                              {opt.slot} {opt.currentKelasName ? `(${opt.currentKelasName})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none" />
+                      </div>
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => handleMoveSlot(idx, 'UP')}
+                          title="Tukar slot dengan rombel atas"
+                          className="p-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 disabled:opacity-30 disabled:pointer-events-none"
+                        >
+                          <ChevronUp size={10} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === filteredList.length - 1}
+                          onClick={() => handleMoveSlot(idx, 'DOWN')}
+                          title="Tukar slot dengan rombel bawah"
+                          className="p-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 disabled:opacity-30 disabled:pointer-events-none"
+                        >
+                          <ChevronDown size={10} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                      Nama Ruang Fisik
+                      Nama Ruang Fisik (Ketik Manual)
                     </label>
                     <input
                       type="text"
                       value={cls.nama_ruang}
-                      onChange={(e) => handleUpdateSingleRoom(cls.kelas_id, 'nama_ruang', e.target.value)}
+                      onChange={(e) => handleUpdateNamaRuangFisik(cls.kelas_id, e.target.value)}
+                      placeholder="Contoh: Lab Komputer 1..."
                       aria-label={`Nama ruang untuk ${cls.nama_kelas}`}
-                      className="w-full mt-0.5 px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+                      className="w-full mt-0.5 px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
                     />
                   </div>
                 </div>
@@ -441,8 +523,14 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                   <th scope="col" className="py-2.5 px-3">Rombel / Kelas</th>
                   <th scope="col" className="py-2.5 px-3 w-28 text-center">Tingkat</th>
                   <th scope="col" className="py-2.5 px-3 w-32">Jurusan</th>
-                  <th scope="col" className="py-2.5 px-3 w-40">Slot Kode Ruang</th>
-                  <th scope="col" className="py-2.5 px-3">Nama Ruang Fisik</th>
+                  <th scope="col" className="py-2.5 px-3 w-48">
+                    <span>Slot Kode Ruang</span>
+                    <span className="block text-[10px] font-normal text-slate-400">Pilih / Tukar Slot</span>
+                  </th>
+                  <th scope="col" className="py-2.5 px-3">
+                    <span>Nama Ruang Fisik</span>
+                    <span className="block text-[10px] font-normal text-slate-400">Ketik Manual (cth: Lab Komputer 1)</span>
+                  </th>
                   <th scope="col" className="py-2.5 px-3 w-44 text-right">Aksi Cetak</th>
                 </tr>
               </thead>
@@ -482,25 +570,58 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                         )}
                       </td>
 
-                    {/* 5. Slot Kode Ruang */}
+                    {/* 5. Slot Kode Ruang (Slot Tetap / Non-Editable Text, Bisa Dipindah / Ditukar ke Kelas Mana) */}
                     <td className="py-2 px-3">
-                      <input
-                        type="text"
-                        value={cls.slot_ruang}
-                        onChange={(e) => handleUpdateSingleRoom(cls.kelas_id, 'slot_ruang', e.target.value)}
-                        aria-label={`Slot ruang untuk ${cls.nama_kelas}`}
-                        className="w-full px-2.5 py-1 text-xs font-mono font-black rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 focus:bg-white focus:outline-hidden"
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <div className="relative min-w-[130px] flex-1">
+                          <select
+                            value={cls.slot_ruang}
+                            onChange={(e) => handleSwapSlot(cls.kelas_id, e.target.value)}
+                            aria-label={`Slot kode ruang untuk ${cls.nama_kelas}`}
+                            className="w-full pl-2.5 pr-6 py-1.5 text-xs font-mono font-black rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 focus:bg-white focus:outline-hidden cursor-pointer shadow-2xs appearance-none transition-colors"
+                            title={`Slot saat ini: ${cls.slot_ruang}. Pilih slot lain untuk menukar penugasan ruang`}
+                          >
+                            {availableSlotOptions.map((opt) => (
+                              <option key={opt.slot} value={opt.slot} className="font-sans font-semibold text-slate-800">
+                                {opt.slot} {opt.currentKelasName ? `(${opt.currentKelasName})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none" />
+                        </div>
+
+                        <div className="flex flex-col gap-0.5 shrink-0">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => handleMoveSlot(idx, 'UP')}
+                            title="Tukar slot dengan rombel atas"
+                            className="p-1 rounded bg-slate-100 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 dark:bg-slate-800 dark:hover:bg-indigo-950/50 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                          >
+                            <ChevronUp size={11} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === filteredList.length - 1}
+                            onClick={() => handleMoveSlot(idx, 'DOWN')}
+                            title="Tukar slot dengan rombel bawah"
+                            className="p-1 rounded bg-slate-100 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 dark:bg-slate-800 dark:hover:bg-indigo-950/50 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                          >
+                            <ChevronDown size={11} />
+                          </button>
+                        </div>
+                      </div>
                     </td>
 
-                    {/* 6. Nama Ruang Fisik */}
+                    {/* 6. Nama Ruang Fisik (Ketik Manual) */}
                     <td className="py-2 px-3">
                       <input
                         type="text"
                         value={cls.nama_ruang}
-                        onChange={(e) => handleUpdateSingleRoom(cls.kelas_id, 'nama_ruang', e.target.value)}
+                        onChange={(e) => handleUpdateNamaRuangFisik(cls.kelas_id, e.target.value)}
+                        placeholder="Ketik nama ruang fisik..."
                         aria-label={`Nama ruang untuk ${cls.nama_kelas}`}
-                        className="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-hidden"
+                        className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 shadow-2xs"
                       />
                     </td>
 
