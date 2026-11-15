@@ -744,6 +744,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
         isOpen={journalModalOpen}
         onClose={() => setJournalModalOpen(false)}
         sesiId={selectedSesi?.id || ''}
+        sesi={selectedSesi}
         initialData={selectedSesi?.ProgresMateri}
         readOnly={true}
       />

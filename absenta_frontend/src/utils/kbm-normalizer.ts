@@ -302,6 +302,9 @@ export interface KbmItem {
   kelas_nama: string;
   mapel_id?: string;
   mapel_nama: string;
+  unit_pengajaran_id?: string | null;
+  unit_nama?: string | null;
+  UnitPengajaran?: any | null;
   guru_id?: string;
   guru_nama: string;
   jenis_kegiatan: string;
@@ -399,6 +402,9 @@ export function normalizeFromSesiAbsensi(raw: any): KbmItem {
     kelas_nama: raw.Kelas?.nama_kelas || raw.kelas_nama || '-',
     mapel_id: raw.mapel_id,
     mapel_nama: raw.Mapel?.nama_mapel || raw.mapel_nama || raw.jenis_kegiatan || '-',
+    unit_pengajaran_id: raw.unit_pengajaran_id || raw.UnitPengajaran?.id || null,
+    unit_nama: raw.unit_nama || raw.UnitPengajaran?.nama_unit || null,
+    UnitPengajaran: raw.UnitPengajaran || null,
     kegiatan: raw.Mapel?.nama_mapel || raw.mapel_nama || raw.jenis_kegiatan || raw.kegiatan || '-',
     guru_id: raw.guru_id,
     guru_nama: raw.Guru?.nama_guru || raw.guru_nama || '-',
@@ -523,6 +529,9 @@ export function normalizeFromJadwalKbm(raw: any): KbmItem {
     kelas_nama: kelasNama,
     mapel_id: raw.mapel_id,
     mapel_nama: mapelNama,
+    unit_pengajaran_id: physicalSession?.unit_pengajaran_id || raw.unit_pengajaran_id || raw.UnitPengajaran?.id || null,
+    unit_nama: physicalSession?.unit_nama || physicalSession?.UnitPengajaran?.nama_unit || raw.unit_nama || raw.UnitPengajaran?.nama_unit || null,
+    UnitPengajaran: physicalSession?.UnitPengajaran || raw.UnitPengajaran || null,
     guru_id: raw.guru_id,
     guru_nama: guruNama,
     guru_no_hp: raw.Guru?.no_hp || raw.guru_no_hp || raw.telepon || raw.phone || null,

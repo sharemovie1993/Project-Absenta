@@ -13,6 +13,7 @@ interface JurnalKbmModalProps {
   isOpen: boolean;
   onClose: () => void;
   sesiId: string;
+  sesi?: any;
   initialData?: any;
   onSuccess?: () => void;
   readOnly?: boolean;
@@ -22,6 +23,7 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
   isOpen,
   onClose,
   sesiId,
+  sesi,
   initialData,
   onSuccess,
   readOnly = false
@@ -38,6 +40,10 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
     pencapaian_persen: 100,
     kendala: ''
   });
+
+  const unitNama = sesi?.unit_nama || sesi?.UnitPengajaran?.nama_unit || sesi?._raw?.unit_nama || initialData?.unit_nama || null;
+  const mapelNama = sesi?.mapel_nama || sesi?.Mapel?.nama_mapel || sesi?.kegiatan || initialData?.mapel_nama || null;
+  const kelasNama = sesi?.kelas_nama || sesi?.Kelas?.nama_kelas || initialData?.kelas_nama || null;
 
   // Reset or set initial data when modal opens
   useEffect(() => {
@@ -126,6 +132,25 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           {/* Scrollable Form Body */}
           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 space-y-4">
+            {(mapelNama || unitNama || kelasNama) && (
+              <div className="flex items-center gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs flex-wrap justify-between">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  {kelasNama && (
+                    <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-black text-[11px] font-mono border border-blue-300 dark:border-blue-800 shrink-0">
+                      {kelasNama}
+                    </span>
+                  )}
+                  {mapelNama && <span className="font-extrabold text-slate-900 dark:text-white truncate">{mapelNama}</span>}
+                </div>
+                {unitNama && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                    Unit: {unitNama}
+                  </span>
+                )}
+              </div>
+            )}
+
             {!readOnly && (
               <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-blue-900 dark:text-blue-200 text-xs">
                 <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />

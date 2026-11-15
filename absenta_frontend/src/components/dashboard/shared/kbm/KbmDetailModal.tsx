@@ -27,7 +27,14 @@ export const KbmDetailModal = React.memo<KbmDetailModalProps>(({
       onClose={onClose}
       title={
         <div className="flex flex-col">
-          <span className="text-lg font-black">{selectedSesi?.Mapel?.nama_mapel || '-'}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-lg font-black">{selectedSesi?.Mapel?.nama_mapel || selectedSesi?.mapel_nama || '-'}</span>
+            {(selectedSesi?.unit_nama || selectedSesi?.UnitPengajaran?.nama_unit) && (
+              <span className="px-2 py-0.5 rounded text-xs font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                Unit: {selectedSesi?.unit_nama || selectedSesi?.UnitPengajaran?.nama_unit}
+              </span>
+            )}
+          </div>
           <span className="text-xs text-gray-400 uppercase tracking-widest font-bold">
             {selectedSesi?.Kelas?.nama_kelas || '-'} • {selectedSesi?.Guru?.nama_guru || '-'}
           </span>

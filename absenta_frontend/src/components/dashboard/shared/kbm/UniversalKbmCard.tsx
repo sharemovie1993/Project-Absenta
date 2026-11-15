@@ -175,6 +175,14 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     || (typeof item.sesi === 'string' ? item.sesi.replace(/^KBM\s*-\s*/i, '').trim() : '')
     || 'Mata Pelajaran KBM';
 
+  const unitNama = item.unit_nama 
+    || item.UnitPengajaran?.nama_unit 
+    || item.session?.unit_nama 
+    || item.session?.UnitPengajaran?.nama_unit 
+    || item._raw?.unit_nama 
+    || item._raw?.UnitPengajaran?.nama_unit 
+    || null;
+
   const kelasNama = item.kelas_nama 
     || item.Kelas?.nama_kelas 
     || item.kelas 
@@ -508,7 +516,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
         {/* ── ZONA 2: CORE SUBJECT, CLASS, & TEACHER (NAMA GURU DI ATAS) ── */}
         <div className="space-y-0.5 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
             {!hideKelas && kelasNama && kelasNama !== '-' && (
               <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-black text-[11px] sm:text-xs font-mono border border-blue-300 dark:border-blue-800 shrink-0">
                 {kelasNama}
@@ -517,6 +525,12 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
             <h4 className="font-extrabold text-slate-900 dark:text-white text-xs sm:text-sm leading-tight tracking-tight truncate">
               {mapelNama}
             </h4>
+            {unitNama && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 shrink-0 shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                Unit: {unitNama}
+              </span>
+            )}
           </div>
 
           {/* Nama Guru diletakkan di ATAS (untuk Siswa, Petugas, & Monitoring) */}

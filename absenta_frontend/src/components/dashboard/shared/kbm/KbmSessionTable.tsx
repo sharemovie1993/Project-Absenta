@@ -72,7 +72,14 @@ export const KbmSessionTable = React.memo<KbmSessionTableProps>(({
                     <span className="text-xs font-bold text-gray-600 dark:text-gray-400">{sesi.Kelas?.nama_kelas || '-'}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 line-clamp-1">{sesi.Mapel?.nama_mapel || '-'}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 line-clamp-1">{sesi.Mapel?.nama_mapel || sesi.mapel_nama || '-'}</span>
+                      {(sesi.unit_nama || sesi.UnitPengajaran?.nama_unit) && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+                          Unit: {sesi.unit_nama || sesi.UnitPengajaran?.nama_unit}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                      <div className="flex items-center gap-2">
