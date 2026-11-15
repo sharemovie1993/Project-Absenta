@@ -289,6 +289,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   }, [days, eventPrefix, generationMode, tenantId, activeTpId, activeSemId, eventId]);
 
   const [isSavingTimeConfig, setIsSavingTimeConfig] = useState(false);
+  const [isResettingPublished, setIsResettingPublished] = useState(false);
 
   // Handler Simpan Format Waktu & Sesi ke Server (Database Event Config)
   const handleSaveTimeConfigToServer = async () => {
