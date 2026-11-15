@@ -62,6 +62,9 @@ export class JadwalQueryController {
       const kelasId = (petugas as any)?.kelas_id || siswa.kelas_id;
 
       if (!hasSchedulePermission && !petugas) {
+        if (request.method === 'GET' && siswa.kelas_id) {
+          return this.buildContext(request, reply, tenantId, siswa.kelas_id, siswa);
+        }
         reply.status(403).send({ success: false, message: 'Forbidden: You are not an active Petugas Absensi or missing Kelas assignment' });
         return null;
       }

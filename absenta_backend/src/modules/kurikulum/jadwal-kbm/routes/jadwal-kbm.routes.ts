@@ -12,7 +12,7 @@ export async function jadwalKBMRoutes(fastify: any) {
       '/',
       {
         preHandler: [
-          requireCapability('academic.schedules.view.list'),
+          requireCapability('academic.schedules.view.list', { exemptRoles: [RoleName.SISWA] }),
           determineDataScope(),
         ],
       },

@@ -27,10 +27,18 @@ export const StudentWeeklyScheduleWidget: React.FC<StudentWeeklyScheduleWidgetPr
   const { data: scheduleRes, isLoading } = useQuery({
     queryKey: ['jadwal-kbm', 'student-weekly', effectiveKelasId],
     queryFn: async () => {
+      try {
+        const myRes = await getMyJadwalKBM({ hari: 'ALL' });
+        const list = myRes?.data ?? (myRes as any);
+        if (Array.isArray(list) && list.length > 0) {
+          return myRes;
+        }
+      } catch (err) {
+        console.warn('getMyJadwalKBM failed, trying getJadwalKBM fallback:', err);
+      }
       const filters: any = {};
       if (effectiveKelasId) filters.kelas_id = effectiveKelasId;
-      const res = await getJadwalKBM(filters);
-      return res;
+      return await getJadwalKBM(filters);
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
