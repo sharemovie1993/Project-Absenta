@@ -529,10 +529,23 @@ export class HubinAbsensiService extends HubinCommonHelper {
         is_verified: true,
         verified_by: requesterId,
         verifikasi_at: new Date()
+      },
+      include: {
+        SiswaPkl: {
+          include: {
+            Siswa: { select: { nama_siswa: true } },
+            Mitra: { select: { nama: true } }
+          }
+        }
       }
     });
 
-    this.log(tenantId, requesterId || null, 'VERIFY_ABSENSI_PKL', 'ABSENSI_PKL', id, { is_verified: true });
+    this.log(tenantId, requesterId || null, 'HUBIN_ABSENSI_VERIFY', 'AbsensiPkl', id, { 
+      siswa_nama: res.SiswaPkl?.Siswa?.nama_siswa,
+      mitra_nama: res.SiswaPkl?.Mitra?.nama,
+      status: res.status,
+      tanggal: res.tanggal
+    });
     await cacheInvalidationService.invalidateHubinCache(tenantId);
     return res;
   }
@@ -542,7 +555,11 @@ export class HubinAbsensiService extends HubinCommonHelper {
       await this.ensureOwnership(tenantId, id, requesterId, org);
     }
     const existing = await prisma.siswaPkl.findFirst({
-      where: { id, tenant_id: tenantId }
+      where: { id, tenant_id: tenantId },
+      include: {
+        Siswa: { select: { nama_siswa: true } },
+        Mitra: { select: { nama: true } }
+      }
     });
     if (!existing) throw new Error('Data penempatan PKL tidak ditemukan');
 
@@ -572,6 +589,13 @@ export class HubinAbsensiService extends HubinCommonHelper {
         kunjungan_json: kunjunganList
       }
     });
+
+    this.log(tenantId, requesterId || null, 'HUBIN_KUNJUNGAN_CREATE', 'SiswaPkl', id, {
+      siswa_nama: existing.Siswa?.nama_siswa,
+      mitra_nama: existing.Mitra?.nama,
+      tahap: data.tahap || 'MONITORING',
+    });
+
     await cacheInvalidationService.invalidateHubinCache(tenantId);
     return res;
   }
@@ -643,6 +667,13 @@ export class HubinAbsensiService extends HubinCommonHelper {
     });
 
     await prisma.$transaction(updates);
+
+    this.log(tenantId, requesterId || null, 'HUBIN_KUNJUNGAN_CREATE', 'SiswaPkl', null, {
+      count: pklRecords.length,
+      tahap: tahap || 'MONITORING',
+      is_bulk: true,
+    });
+
     await cacheInvalidationService.invalidateHubinCache(tenantId);
 
     return {

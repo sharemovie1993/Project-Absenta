@@ -47,8 +47,12 @@ export async function dashboardRoleRoutes(fastify: any) {
                     properties: {
                       id: { type: 'string' },
                       nama: { type: 'string' },
+                      bidang_usaha: { type: 'string', nullable: true },
+                      kota: { type: 'string', nullable: true },
+                      kuota_pkl: { type: 'number', nullable: true },
                       count: { type: 'number' }
-                    }
+                    },
+                    additionalProperties: true
                   }
                 },
                 topJurusanTerserap: {
@@ -58,7 +62,8 @@ export async function dashboardRoleRoutes(fastify: any) {
                     properties: {
                       nama: { type: 'string' },
                       count: { type: 'number' }
-                    }
+                    },
+                    additionalProperties: true
                   }
                 },
                 recentPkl: {
@@ -68,10 +73,15 @@ export async function dashboardRoleRoutes(fastify: any) {
                     properties: {
                       id: { type: 'string' },
                       siswa: { type: 'string' },
+                      kelas: { type: 'string', nullable: true },
+                      nis: { type: 'string', nullable: true },
                       mitra: { type: 'string' },
+                      mitra_kota: { type: 'string', nullable: true },
+                      bidang_usaha: { type: 'string', nullable: true },
                       status: { type: 'string' },
                       tanggal: { type: 'string' }
-                    }
+                    },
+                    additionalProperties: true
                   }
                 },
                 todayPresensi: {

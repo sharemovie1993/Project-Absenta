@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { Card } from '@/components/ui/Card';
@@ -7,19 +7,59 @@ import {
   Building2, Users, ClipboardList, Briefcase, GraduationCap, 
   Activity, AlertTriangle, ArrowRight, ChevronRight, TrendingUp, Clock, Award,
   CheckCircle2, AlertCircle, FileSpreadsheet, Printer, Settings, MapPin, Factory,
-  Sparkles, Stethoscope, FileText
+  Sparkles, Stethoscope, FileText, UserCheck, UserPlus, ShieldCheck, Star, Calendar, Filter,
+  Crown, Radio
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { resolvePklLifecyclePhase } from '@/utils/hubinPklLifecycle';
 import { HubinPklPhase } from '@/constants/HubinConstants';
 
-export interface HubinActivity { id: string; action: string; actor: string; metadata?: { nama?: string; siswa_nama?: string; posisi?: string; nama_proyek?: string; mou_nomor?: string; }; created_at: string; }
+export interface HubinActivity { 
+  id: string; 
+  action: string; 
+  actor: string; 
+  metadata?: { 
+    nama?: string; 
+    siswa_nama?: string; 
+    mitra_nama?: string;
+    posisi?: string; 
+    nama_proyek?: string; 
+    mou_nomor?: string; 
+    status?: string;
+    dudi_avg?: number;
+    count?: number;
+    tahap?: string;
+    keterangan?: string;
+    tanggal?: string;
+    is_bulk?: boolean;
+    target_tp_id?: string;
+  }; 
+  created_at: string; 
+}
+
 export interface HubinStats {
   totalMitra: number; totalSiswaPkl: number; pklAktif: number; pklOverdue?: number; pklSelesai?: number; fasePkl?: string; pendingReports: number; mouExpiringCount: number;
   totalLowonganAktif: number; totalAlumniTraced: number; tracerCoverage: number; employmentRate: number; totalRecruitmentSuccess: number;
   tracerStats: { BEKERJA: number; KULIAH: number; WIRAUSAHA: number; MENCARI_KERJA: number; };
-  recentPkl: Array<{ id: string; siswa: string; mitra: string; status: string; tanggal: string; }>;
-  topMitra: Array<{ id: string; nama: string; count: number }>;
+  recentPkl: Array<{ 
+    id: string; 
+    siswa: string; 
+    kelas?: string | null;
+    nis?: string | null;
+    mitra: string; 
+    mitra_kota?: string | null;
+    bidang_usaha?: string | null;
+    status: string; 
+    tanggal: string; 
+  }>;
+  topMitra: Array<{ 
+    id: string; 
+    nama: string; 
+    bidang_usaha?: string | null;
+    kota?: string | null;
+    kuota_pkl?: number | null;
+    count: number 
+  }>;
   topJurusanTerserap: Array<{ nama: string; count: number }>;
   todayPresensi?: {
     hadir: number;
@@ -166,6 +206,37 @@ export const TopJurusanList: React.FC<TopJurusanListProps> = React.memo(({ stats
   );
 });
 
+// Helper formatting
+const getInitials = (name?: string | null): string => {
+  if (!name) return '??';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+const getAvatarColor = (name?: string | null): string => {
+  const gradients = [
+    'from-indigo-500 to-indigo-700 text-white',
+    'from-blue-500 to-cyan-600 text-white',
+    'from-emerald-500 to-teal-700 text-white',
+    'from-violet-500 to-purple-700 text-white',
+    'from-amber-500 to-orange-600 text-white',
+    'from-rose-500 to-pink-600 text-white',
+    'from-fuchsia-500 to-rose-600 text-white',
+  ];
+  if (!name) return gradients[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return gradients[Math.abs(hash) % gradients.length];
+};
+
+const formatTitleCase = (str?: string | null): string => {
+  if (!str) return '-';
+  return str.toLowerCase().replace(/(?:^|\s|\/|-)\S/g, (c) => c.toUpperCase());
+};
+
 // Recent PKL Placements Table
 interface RecentPklTableProps {
   stats: HubinStats | null;
@@ -176,37 +247,108 @@ export const RecentPklTable: React.FC<RecentPklTableProps> = React.memo(({ stats
   const recentPklList = React.useMemo(() => stats?.recentPkl || [], [stats]);
 
   return (
-    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md p-5 rounded-2xl shadow-sm">
-      <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-4">Aktivitas Penempatan Siswa PKL Terbaru</span>
-      
-      {recentPklList?.length === 0 ? (
-        <div className="py-16 text-center text-slate-400 dark:text-slate-500 text-xs font-semibold">
-          Tidak ada data penempatan PKL baru-baru ini.
+    <Card className="border border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 shadow-sm">
+            <Users size={18} />
+          </div>
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+              Aktivitas Penempatan Siswa PKL Terbaru
+            </h3>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+              Siswa yang terpetakan pada mitra DU-DI periode ini
+            </p>
+          </div>
+        </div>
+        {recentPklList.length > 0 && (
+          <Badge variant="secondary" className="text-[10px] font-bold px-2.5 py-1 rounded-full border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
+            {recentPklList.length} Penempatan Baru
+          </Badge>
+        )}
+      </div>
+
+      {recentPklList.length === 0 ? (
+        <div className="py-14 text-center">
+          <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500">
+            <Users size={22} />
+          </div>
+          <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Belum ada aktivitas penempatan PKL</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Plotting siswa ke mitra DUDI untuk memantau data di sini</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-xl border border-slate-200/70 dark:border-slate-800/80">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 uppercase font-black tracking-wider text-[9px]">
-                <th className="py-2.5 px-3">Nama Siswa</th>
-                <th className="py-2.5 px-3">Perusahaan Mitra</th>
-                <th className="py-2.5 px-3">Tanggal Mulai</th>
-                <th className="py-2.5 px-3 text-right">Status</th>
+              <tr className="bg-slate-50/80 dark:bg-slate-800/40 border-b border-slate-200/70 dark:border-slate-800/80 text-slate-400 dark:text-slate-400 uppercase font-black tracking-wider text-[9px]">
+                <th className="py-2.5 px-3.5">Nama Siswa</th>
+                <th className="py-2.5 px-3.5">Perusahaan Mitra</th>
+                <th className="py-2.5 px-3.5">Tanggal Mulai</th>
+                <th className="py-2.5 px-3.5 text-right">Status PKL</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {recentPklList?.map((pkl) => (
-                <tr key={pkl.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-200">{pkl.siswa}</td>
-                  <td className="py-3 px-3 text-slate-500 dark:text-slate-400">{pkl.mitra}</td>
-                  <td className="py-3 px-3 text-slate-400 dark:text-slate-500">{formatDate(pkl.tanggal, { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                  <td className="py-3 px-3 text-right">
-                    <Badge 
-                      variant={pkl.status === 'AKTIF' ? 'success' : pkl.status === 'SELESAI' ? 'info' : 'secondary'}
-                      className="font-bold text-[9px] px-2 py-0.5 rounded-full"
-                    >
-                      {pkl.status}
-                    </Badge>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              {recentPklList.map((pkl) => (
+                <tr key={pkl.id} className="group hover:bg-indigo-50/20 dark:hover:bg-slate-800/30 transition-colors">
+                  <td className="py-3 px-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className={cn("w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-[10px] font-black shrink-0 shadow-sm", getAvatarColor(pkl.siswa))}>
+                        {getInitials(pkl.siswa)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
+                          {formatTitleCase(pkl.siswa)}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">
+                          {pkl.nis && <span className="font-mono text-slate-400 dark:text-slate-500">{pkl.nis}</span>}
+                          {pkl.nis && pkl.kelas && <span>•</span>}
+                          {pkl.kelas && (
+                            <span className="font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[9px]">
+                              {pkl.kelas}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3 px-3.5">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 shrink-0">
+                        <Building2 size={13} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-700 dark:text-slate-200 truncate">{pkl.mitra}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                          {pkl.mitra_kota || pkl.bidang_usaha || 'DU-DI Rekanan PKL'}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3 px-3.5">
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                      <Calendar size={12} className="text-slate-400 shrink-0" />
+                      <span className="text-[11px] font-medium">
+                        {formatDate(pkl.tanggal, { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-3.5 text-right">
+                    {pkl.status === 'AKTIF' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Aktif PKL
+                      </span>
+                    ) : pkl.status === 'SELESAI' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 shadow-xs">
+                        <CheckCircle2 size={11} />
+                        Selesai
+                      </span>
+                    ) : (
+                      <Badge variant="secondary" className="font-bold text-[9px] px-2.5 py-0.5 rounded-full">
+                        {pkl.status}
+                      </Badge>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -215,13 +357,16 @@ export const RecentPklTable: React.FC<RecentPklTableProps> = React.memo(({ stats
         </div>
       )}
 
-      <div className="flex justify-end mt-4">
+      <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+          Menampilkan {recentPklList.length} penempatan teraktual
+        </span>
         <button 
           onClick={() => onNavigateTab('penempatan')}
-          className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 bg-indigo-50/60 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 transition-all cursor-pointer group"
         >
-          Kelola Penempatan PKL
-          <ArrowRight size={11} className="mt-0.5" />
+          <span>Kelola Penempatan PKL</span>
+          <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
         </button>
       </div>
     </Card>
@@ -236,22 +381,119 @@ interface TopMitraGridProps {
 export const TopMitraGrid: React.FC<TopMitraGridProps> = React.memo(({ stats }) => {
   const topMitraList = React.useMemo(() => stats?.topMitra || [], [stats]);
 
+  const getRankStyle = (idx: number) => {
+    if (idx === 0) {
+      return {
+        badge: 'bg-amber-500 text-white shadow-xs',
+        border: 'border-amber-200/80 dark:border-amber-800/40 hover:border-amber-400',
+        cardBg: 'bg-gradient-to-br from-amber-50/40 via-white to-white dark:from-amber-950/20 dark:via-slate-900/60 dark:to-slate-900/40',
+        iconBg: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+        label: '#1 Top'
+      };
+    }
+    if (idx === 1) {
+      return {
+        badge: 'bg-slate-400 text-white shadow-xs',
+        border: 'border-slate-200/80 dark:border-slate-700/50 hover:border-slate-400',
+        cardBg: 'bg-gradient-to-br from-slate-50/50 via-white to-white dark:from-slate-800/30 dark:via-slate-900/60 dark:to-slate-900/40',
+        iconBg: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+        label: '#2 Top'
+      };
+    }
+    if (idx === 2) {
+      return {
+        badge: 'bg-orange-500 text-white shadow-xs',
+        border: 'border-orange-200/80 dark:border-orange-900/40 hover:border-orange-400',
+        cardBg: 'bg-gradient-to-br from-orange-50/30 via-white to-white dark:from-orange-950/20 dark:via-slate-900/60 dark:to-slate-900/40',
+        iconBg: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+        label: '#3 Top'
+      };
+    }
+    return {
+      badge: 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300',
+      border: 'border-slate-200/60 dark:border-slate-800/60 hover:border-indigo-300 dark:hover:border-indigo-700',
+      cardBg: 'bg-white dark:bg-slate-900/50',
+      iconBg: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+      label: `#${idx + 1}`
+    };
+  };
+
   return (
-    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md p-5 rounded-2xl shadow-sm">
-      <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-4">Top Mitra Industri Partner PKL Aktif</span>
-      {topMitraList?.length === 0 ? (
-        <div className="py-6 text-center text-slate-400 dark:text-slate-500 text-xs font-semibold">Belum ada siswa PKL ditempatkan di mitra industri.</div>
+    <Card className="border border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 border border-violet-200/60 dark:border-violet-800/60 shadow-sm">
+            <Building2 size={18} />
+          </div>
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+              Top Mitra Industri Partner PKL
+            </h3>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+              DU-DI dengan kontribusi serapan siswa tertinggi
+            </p>
+          </div>
+        </div>
+        <Badge variant="secondary" className="text-[10px] font-bold px-2.5 py-1 rounded-full border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
+          {topMitraList.length} Mitra Unggulan
+        </Badge>
+      </div>
+
+      {topMitraList.length === 0 ? (
+        <div className="py-14 text-center">
+          <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500">
+            <Building2 size={22} />
+          </div>
+          <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Belum ada siswa aktif di mitra</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Data serapan akan muncul saat siswa ditempatkan</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {topMitraList?.map((m, idx) => (
-            <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800/50 flex items-center justify-between text-xs">
-              <div>
-                <p className="font-bold text-slate-800 dark:text-slate-200">{m.nama}</p>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">DU-DI Rekanan PKL</p>
+        <div className="space-y-3">
+          {topMitraList.map((m, idx) => {
+            const style = getRankStyle(idx);
+            return (
+              <div 
+                key={m.id || idx} 
+                className={cn(
+                  "p-3.5 rounded-xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col gap-2.5",
+                  style.border,
+                  style.cardBg
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={cn("p-2 rounded-xl shrink-0 font-bold", style.iconBg)}>
+                      <Building2 size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-800 dark:text-slate-100 text-xs truncate">
+                        {m.nama}
+                      </p>
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                        <MapPin size={10} className="shrink-0" />
+                        <span className="truncate">{m.kota || 'Jawa Barat'}</span>
+                        <span>•</span>
+                        <span className="truncate">{m.bidang_usaha || 'DU-DI Rekanan PKL'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className={cn("text-[9px] font-black uppercase px-2 py-0.5 rounded-full shrink-0", style.badge)}>
+                    {style.label}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                    {m.kuota_pkl ? `Kuota: ${m.kuota_pkl} siswa` : 'Rekanan Aktif'}
+                  </span>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-[11px] font-black shadow-xs">
+                    <Users size={12} className="text-emerald-600 dark:text-emerald-400" />
+                    <span>{m.count} Siswa Aktif</span>
+                  </div>
+                </div>
               </div>
-              <Badge variant="success" className="font-bold">{m.count} siswa aktif</Badge>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Card>
@@ -265,65 +507,256 @@ interface ActivityLogTimelineProps {
 }
 
 export const ActivityLogTimeline: React.FC<ActivityLogTimelineProps> = React.memo(({ activities, activitiesLoading }) => {
-  const getActionLabel = React.useCallback((action: string) => {
-    const map: Record<string, string> = {
-      HUBIN_MITRA_CREATE: 'Menambahkan Mitra Industri', HUBIN_MITRA_UPDATE: 'Memperbarui Mitra Industri', HUBIN_MITRA_DELETE: 'Menghapus Mitra Industri',
-      HUBIN_MOU_CREATE: 'Membuat MoU Kerja Sama', HUBIN_MOU_UPDATE: 'Memperbarui MoU Kerja Sama', HUBIN_MOU_DELETE: 'Menghapus MoU Kerja Sama', HUBIN_MOU_RENEW: 'Memperpanjang MoU Kerja Sama',
-      HUBIN_PKL_PLACE: 'Menempatkan Siswa PKL', HUBIN_PKL_REMOVE: 'Menarik Siswa PKL',
-      HUBIN_LOWONGAN_CREATE: 'Membuka Lowongan BKK', HUBIN_LOWONGAN_UPDATE: 'Memperbarui Lowongan', HUBIN_LOWONGAN_DELETE: 'Menutup Lowongan',
-      HUBIN_LAMARAN_CREATE: 'Mengajukan Lamaran', HUBIN_LAMARAN_STATUS: 'Memperbarui Status Lamaran', HUBIN_LAMARAN_DELETE: 'Membatalkan Lamaran',
-      HUBIN_TRACER_SUBMIT: 'Mengisi Tracer Study', HUBIN_TEFA_CREATE: 'Membuat Proyek TEFA', HUBIN_TEFA_UPDATE: 'Memperbarui Proyek TEFA', HUBIN_TEFA_DELETE: 'Menghapus Proyek TEFA'
-    };
-    return map[action] || action;
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  const filterCategory = useCallback((action: string): string => {
+    if (action.includes('PKL') && !action.includes('ABSENSI') && !action.includes('NILAI')) return 'pkl';
+    if (action.includes('NILAI') || action.includes('SETTINGS')) return 'nilai';
+    if (action.includes('ABSENSI') || action.includes('KUNJUNGAN')) return 'presensi';
+    if (action.includes('MITRA') || action.includes('MOU')) return 'mitra';
+    if (action.includes('LOWONGAN') || action.includes('LAMARAN') || action.includes('TRACER') || action.includes('TEFA')) return 'bkk_tefa';
+    return 'other';
   }, []);
 
-  const getActionBadgeColor = React.useCallback((action: string) => {
-    if (action.includes('CREATE')) return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
-    if (action.includes('UPDATE') || action.includes('RENEW')) return 'bg-sky-500/10 text-sky-600 dark:text-sky-400';
-    if (action.includes('DELETE') || action.includes('REMOVE')) return 'bg-rose-500/10 text-rose-600 dark:text-rose-400';
-    return 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400';
+  const getActionMeta = useCallback((action: string) => {
+    const metaMap: Record<string, { label: string; category: string; icon: React.ElementType; colorClass: string; badgeClass: string }> = {
+      // PKL Placement
+      HUBIN_PKL_PLACE: { label: 'Menempatkan Siswa PKL', category: 'Penempatan', icon: UserCheck, colorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800', badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+      HUBIN_PKL_UPDATE: { label: 'Memperbarui Penempatan Siswa', category: 'Penempatan', icon: Settings, colorClass: 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/50 border-sky-200 dark:border-sky-800', badgeClass: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' },
+      HUBIN_PKL_MUTASI: { label: 'Mutasi Mitra Siswa PKL', category: 'Penempatan', icon: ArrowRight, colorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800', badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+      HUBIN_PKL_REMOVE: { label: 'Menarik Siswa PKL', category: 'Penempatan', icon: AlertTriangle, colorClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800', badgeClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+      HUBIN_PKL_BULK_STATUS: { label: 'Pembaruan Status PKL Masal', category: 'Penempatan', icon: CheckCircle2, colorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800', badgeClass: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
+      HUBIN_PKL_BULK_REMOVE: { label: 'Penarikan Siswa PKL Masal', category: 'Penempatan', icon: AlertCircle, colorClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800', badgeClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+      HUBIN_PKL_EXCEL_IMPORT: { label: 'Impor Data Siswa PKL Excel', category: 'Penempatan', icon: FileSpreadsheet, colorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800', badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+
+      // Nilai & Sertifikat
+      HUBIN_NILAI_UPDATE: { label: 'Input / Update Nilai PKL Siswa', category: 'Nilai & Sertifikat', icon: Award, colorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800', badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+      HUBIN_SETTINGS_UPDATE: { label: 'Pembaruan Konfigurasi PKL', category: 'Pengaturan', icon: Settings, colorClass: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800', badgeClass: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20' },
+
+      // Presensi & Kunjungan
+      HUBIN_ABSENSI_VERIFY: { label: 'Verifikasi Presensi Siswa PKL', category: 'Presensi', icon: CheckCircle2, colorClass: 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 border-teal-200 dark:border-teal-800', badgeClass: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20' },
+      HUBIN_ABSENSI_IZIN_SUBMIT: { label: 'Pengajuan Izin / Sakit PKL', category: 'Presensi', icon: Stethoscope, colorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800', badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+      HUBIN_KUNJUNGAN_CREATE: { label: 'Pencatatan Kunjungan Monitoring DUDI', category: 'Kunjungan DUDI', icon: MapPin, colorClass: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800', badgeClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+      HUBIN_KUNJUNGAN_UPDATE: { label: 'Perubahan Kunjungan Monitoring', category: 'Kunjungan DUDI', icon: MapPin, colorClass: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800', badgeClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+      HUBIN_KUNJUNGAN_DELETE: { label: 'Pembatalan Kunjungan Monitoring', category: 'Kunjungan DUDI', icon: AlertCircle, colorClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800', badgeClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+
+      // Mitra & MoU
+      HUBIN_MITRA_CREATE: { label: 'Pendaftaran Mitra Industri Baru', category: 'Mitra Industri', icon: Building2, colorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800', badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+      HUBIN_MITRA_UPDATE: { label: 'Pembaruan Profil Mitra Industri', category: 'Mitra Industri', icon: Building2, colorClass: 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/50 border-sky-200 dark:border-sky-800', badgeClass: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' },
+      HUBIN_MITRA_DELETE: { label: 'Penghapusan Mitra Industri', category: 'Mitra Industri', icon: Building2, colorClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800', badgeClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+      HUBIN_MOU_CREATE: { label: 'Penerbitan Dokumen MoU Kerja Sama', category: 'MoU DUDI', icon: FileText, colorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800', badgeClass: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
+      HUBIN_MOU_UPDATE: { label: 'Revisi Dokumen MoU Kerja Sama', category: 'MoU DUDI', icon: FileText, colorClass: 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/50 border-sky-200 dark:border-sky-800', badgeClass: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' },
+      HUBIN_MOU_RENEW: { label: 'Perpanjangan Masa Berlaku MoU', category: 'MoU DUDI', icon: Sparkles, colorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800', badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+      HUBIN_MOU_DELETE: { label: 'Pembatalan Dokumen MoU', category: 'MoU DUDI', icon: AlertCircle, colorClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800', badgeClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+
+      // BKK & TEFA
+      HUBIN_LOWONGAN_CREATE: { label: 'Pembukaan Lowongan Kerja BKK', category: 'Bursa Kerja', icon: Briefcase, colorClass: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800', badgeClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+      HUBIN_LOWONGAN_UPDATE: { label: 'Pembaruan Lowongan BKK', category: 'Bursa Kerja', icon: Briefcase, colorClass: 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/50 border-sky-200 dark:border-sky-800', badgeClass: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' },
+      HUBIN_LOWONGAN_DELETE: { label: 'Penutupan Lowongan BKK', category: 'Bursa Kerja', icon: Briefcase, colorClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800', badgeClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+      HUBIN_LAMARAN_CREATE: { label: 'Pengajuan Lamaran Kerja Alumni', category: 'Bursa Kerja', icon: UserPlus, colorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800', badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+      HUBIN_LAMARAN_STATUS: { label: 'Pembaruan Status Seleksi Lamaran', category: 'Bursa Kerja', icon: UserCheck, colorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800', badgeClass: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
+      HUBIN_LAMARAN_DELETE: { label: 'Pembatalan Lamaran Alumni', category: 'Bursa Kerja', icon: AlertCircle, colorClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800', badgeClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+      HUBIN_TRACER_SUBMIT: { label: 'Pengisian Kuesioner Tracer Study', category: 'Tracer Study', icon: GraduationCap, colorClass: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800', badgeClass: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
+      HUBIN_TEFA_CREATE: { label: 'Pembuatan Proyek Teaching Factory', category: 'TEFA', icon: Factory, colorClass: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 border-violet-200 dark:border-violet-800', badgeClass: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20' },
+      HUBIN_TEFA_UPDATE: { label: 'Pembaruan Proyek TEFA', category: 'TEFA', icon: Factory, colorClass: 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/50 border-sky-200 dark:border-sky-800', badgeClass: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' },
+      HUBIN_TEFA_DELETE: { label: 'Penghapusan Proyek TEFA', category: 'TEFA', icon: Factory, colorClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800', badgeClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' },
+    };
+
+    if (metaMap[action]) return metaMap[action];
+
+    // Fallback parser
+    const cleanAction = action.replace(/^HUBIN_/, '');
+    return {
+      label: formatTitleCase(cleanAction.replace(/_/g, ' ')),
+      category: 'Aktivitas Hubin',
+      icon: Activity,
+      colorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800',
+      badgeClass: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20'
+    };
   }, []);
+
+  const filteredActivities = useMemo(() => {
+    if (!activities) return [];
+    if (selectedCategory === 'all') return activities;
+    return activities.filter(act => filterCategory(act.action) === selectedCategory);
+  }, [activities, selectedCategory, filterCategory]);
+
+  const categoryChips = [
+    { id: 'all', label: 'Semua Aktivitas' },
+    { id: 'pkl', label: 'Penempatan PKL' },
+    { id: 'nilai', label: 'Nilai & Sertifikat' },
+    { id: 'presensi', label: 'Presensi & Kunjungan' },
+    { id: 'mitra', label: 'Mitra & MoU' },
+    { id: 'bkk_tefa', label: 'BKK & TEFA' },
+  ];
 
   return (
-    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-white/5 backdrop-blur-md p-5 rounded-2xl shadow-sm">
-      <div className="flex items-center gap-2 mb-4">
-        <Activity className="text-indigo-500" size={16} />
-        <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Aktivitas Terakhir HUBIN (Audit Trail)</span>
+    <Card className="border border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 shadow-sm relative">
+            <Activity size={18} />
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                Aktivitas Terakhir Hubin (Audit Trail)
+              </h3>
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live Feed
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+              Rekam jejak mutasi data penempatan, penilaian, presensi, mitra, dan dokumen Hubin
+            </p>
+          </div>
+        </div>
+
+        {/* Filter Category Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+          {categoryChips.map((chip) => {
+            const isSelected = selectedCategory === chip.id;
+            return (
+              <button
+                key={chip.id}
+                onClick={() => setSelectedCategory(chip.id)}
+                className={cn(
+                  "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all shrink-0 cursor-pointer",
+                  isSelected 
+                    ? "bg-indigo-600 text-white shadow-xs" 
+                    : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+                )}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {activitiesLoading ? (
-        <div className="py-12 flex justify-center text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">Memuat audit trail...</div>
-      ) : activities?.length === 0 ? (
-        <div className="py-6 text-center text-slate-400 dark:text-slate-500 text-xs font-semibold">Tidak ada aktivitas tercatat.</div>
+        <div className="py-12 flex flex-col items-center justify-center gap-2">
+          <Activity size={24} className="text-indigo-500 animate-spin" />
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            Memuat audit trail hubin...
+          </span>
+        </div>
+      ) : filteredActivities.length === 0 ? (
+        <div className="py-12 text-center">
+          <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500">
+            <Activity size={22} />
+          </div>
+          <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Tidak ada log aktivitas pada kategori ini</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+            {selectedCategory === 'all' 
+              ? 'Seluruh mutasi data Hubin akan otomatis terekam secara realtime' 
+              : 'Pilih kategori filter lain untuk melihat riwayat aktivitas'}
+          </p>
+        </div>
       ) : (
-        <div className="space-y-4">
-          {activities?.map((act) => (
-            <div key={act.id} className="flex items-start justify-between text-xs py-2.5 border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50/20 dark:hover:bg-slate-800/10 transition-colors px-2 rounded-lg">
-              <div className="flex items-start gap-3 min-w-0">
-                <span className={cn("text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded shrink-0", getActionBadgeColor(act.action))}>
-                  {act.action.replace('HUBIN_', '')}
-                </span>
-                <div className="min-w-0">
-                  <p className="font-bold text-slate-700 dark:text-slate-300 truncate">{getActionLabel(act.action)}</p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                    Oleh <span className="font-semibold text-slate-500 dark:text-slate-400">{act.actor}</span>
-                    {act.metadata && (
-                      <span className="italic opacity-80">
-                        {act.metadata.nama && ` • ${act.metadata.nama}`}
-                        {act.metadata.siswa_nama && ` • ${act.metadata.siswa_nama}`}
-                        {act.metadata.posisi && ` • ${act.metadata.posisi}`}
-                        {act.metadata.nama_proyek && ` • ${act.metadata.nama_proyek}`}
-                        {act.metadata.mou_nomor && ` • MoU ${act.metadata.mou_nomor}`}
+        <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+          {filteredActivities.map((act) => {
+            const meta = getActionMeta(act.action);
+            const IconComponent = meta.icon;
+            const actDate = new Date(act.created_at);
+            const isToday = new Date().toDateString() === actDate.toDateString();
+
+            return (
+              <div 
+                key={act.id} 
+                className="py-3 px-2 flex items-start justify-between gap-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 rounded-xl transition-colors group"
+              >
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className={cn("p-2 rounded-xl shrink-0 border mt-0.5 shadow-2xs", meta.colorClass)}>
+                    <IconComponent size={15} />
+                  </div>
+
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-slate-800 dark:text-slate-100 text-xs group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        {meta.label}
+                      </p>
+                      <span className={cn("text-[9px] font-black uppercase px-2 py-0.2 rounded-full border", meta.badgeClass)}>
+                        {meta.category}
                       </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
+                      <span>Oleh</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded text-[10px]">
+                        {act.actor}
+                      </span>
+                    </div>
+
+                    {/* Metadata Context Badges */}
+                    {act.metadata && (
+                      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                        {act.metadata.siswa_nama && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold border border-indigo-200/50 dark:border-indigo-800/50">
+                            <Users size={10} />
+                            <span>{act.metadata.siswa_nama}</span>
+                          </span>
+                        )}
+                        {act.metadata.mitra_nama && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold border border-slate-200/60 dark:border-slate-700/60">
+                            <Building2 size={10} />
+                            <span>{act.metadata.mitra_nama}</span>
+                          </span>
+                        )}
+                        {act.metadata.dudi_avg !== undefined && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold border border-amber-200/50 dark:border-amber-800/50">
+                            <Award size={10} />
+                            <span>Nilai Rata-rata: {act.metadata.dudi_avg}</span>
+                          </span>
+                        )}
+                        {act.metadata.tahap && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-[10px] font-bold border border-blue-200/50 dark:border-blue-800/50">
+                            <MapPin size={10} />
+                            <span>Kunjungan Tahap {act.metadata.tahap}</span>
+                          </span>
+                        )}
+                        {act.metadata.count && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200/50 dark:border-emerald-800/50">
+                            <CheckCircle2 size={10} />
+                            <span>{act.metadata.count} Siswa</span>
+                          </span>
+                        )}
+                        {act.metadata.posisi && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-[10px] font-bold border border-sky-200/50 dark:border-sky-800/50">
+                            <Briefcase size={10} />
+                            <span>Posisi: {act.metadata.posisi}</span>
+                          </span>
+                        )}
+                        {act.metadata.nama_proyek && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 text-[10px] font-bold border border-violet-200/50 dark:border-violet-800/50">
+                            <Factory size={10} />
+                            <span>Proyek: {act.metadata.nama_proyek}</span>
+                          </span>
+                        )}
+                        {act.metadata.mou_nomor && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-[10px] font-bold border border-purple-200/50 dark:border-purple-800/50">
+                            <FileText size={10} />
+                            <span>MoU #{act.metadata.mou_nomor}</span>
+                          </span>
+                        )}
+                      </div>
                     )}
-                  </p>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    {actDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+                  </span>
+                  <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium block">
+                    {isToday ? 'Hari Ini' : formatDate(act.created_at, { day: '2-digit', month: 'short' })}
+                  </span>
                 </div>
               </div>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium shrink-0 ml-2">
-                {new Date(act.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </Card>

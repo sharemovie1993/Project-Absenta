@@ -19,8 +19,20 @@ export class HubinPenilaianService extends HubinCommonHelper {
       where: { id, tenant_id: tenantId },
       data: {
         nilai_json: nilai
+      },
+      include: {
+        Siswa: { select: { nama_siswa: true, nis: true } },
+        Mitra: { select: { nama: true } }
       }
     });
+
+    this.log(tenantId, requesterId || null, 'HUBIN_NILAI_UPDATE', 'SiswaPkl', id, {
+      siswa_nama: res.Siswa?.nama_siswa,
+      mitra_nama: res.Mitra?.nama,
+      dudi_avg: (nilai as any)?.dudi_avg || (nilai as any)?.nilai_akhir,
+      has_sertifikat: Boolean(res.nomor_sertifikat),
+    });
+
     await cacheInvalidationService.invalidateHubinCache(tenantId);
     return res;
   }
@@ -250,6 +262,11 @@ export class HubinPenilaianService extends HubinCommonHelper {
       if (data.visitRequireSignature !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_REQUIRE_SIGNATURE', String(data.visitRequireSignature));
       if (data.visitRequireJournal !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_VISIT_REQUIRE_JOURNAL', String(data.visitRequireJournal));
     }
+
+    this.log(tenantId, null, 'HUBIN_SETTINGS_UPDATE', 'Config', null, {
+      target_tp_id: tpId || null,
+      assessment_mode: data.assessmentMode,
+    });
 
     await cacheInvalidationService.invalidateHubinCache(tenantId);
     return { success: true };

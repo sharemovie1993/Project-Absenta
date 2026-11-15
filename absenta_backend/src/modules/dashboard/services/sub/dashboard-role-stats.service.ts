@@ -266,13 +266,16 @@ export class DashboardRoleStatsService {
     const topMitraIds = topMitraGroup.map(g => g.mitra_id);
     const topMitrasDetail = await prisma.mitraIndustri.findMany({
       where: { id: { in: topMitraIds } },
-      select: { id: true, nama: true }
+      select: { id: true, nama: true, bidang_usaha: true, kota: true, kuota_pkl: true }
     });
     const topMitra = topMitraGroup.map(g => {
       const detail = topMitrasDetail.find(m => m.id === g.mitra_id);
       return {
         id: g.mitra_id,
         nama: detail?.nama || 'Tidak Diketahui',
+        bidang_usaha: detail?.bidang_usaha || 'DU-DI Rekanan PKL',
+        kota: detail?.kota || null,
+        kuota_pkl: detail?.kuota_pkl || 0,
         count: g._count.siswa_id
       };
     });
@@ -318,11 +321,17 @@ export class DashboardRoleStatsService {
     const recentPkl = await prisma.siswaPkl.findMany({
       where: pklWhere,
       include: {
-        Siswa: { select: { nama_siswa: true } },
-        Mitra: { select: { nama: true } }
+        Siswa: { 
+          select: { 
+            nama_siswa: true,
+            nis: true,
+            Kelas: { select: { nama_kelas: true } }
+          } 
+        },
+        Mitra: { select: { nama: true, kota: true, bidang_usaha: true } }
       },
       orderBy: { created_at: 'desc' },
-      take: 5
+      take: 6
     });
 
     const hadirToday = todayAbsensiList.filter(a => a.status === 'HADIR' || a.status === 'TERLAMBAT').length;
@@ -453,7 +462,11 @@ export class DashboardRoleStatsService {
       recentPkl: recentPkl.map(p => ({
         id: p.id,
         siswa: p.Siswa?.nama_siswa || 'Siswa',
+        kelas: p.Siswa?.Kelas?.nama_kelas || null,
+        nis: p.Siswa?.nis || null,
         mitra: p.Mitra?.nama || 'Mitra',
+        mitra_kota: p.Mitra?.kota || null,
+        bidang_usaha: p.Mitra?.bidang_usaha || null,
         status: p.status,
         tanggal: (p.tanggal_mulai || p.created_at).toISOString()
       }))
