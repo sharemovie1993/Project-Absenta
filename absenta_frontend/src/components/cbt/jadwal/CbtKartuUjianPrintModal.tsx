@@ -125,7 +125,6 @@ function generateSampleStudentsForClass(
     const nis = `${23 + (12 - cls.tingkat)}24${String(i).padStart(4, '0')}`;
     const nisn = `007${String(1000000 + i * 47).padStart(7, '0')}`;
     const noPeserta = `${prefixNo}-${String(i).padStart(3, '0')}`;
-    const pin = String(100000 + ((i * 8492) % 900000));
 
     students.push({
       id: `sample-${cls.kelas_id}-${i}`,
@@ -140,8 +139,8 @@ function generateSampleStudentsForClass(
       nama_ruang: cls.nama_ruang || 'Ruang CBT',
       sesi_ujian: 'Sesi 1 (07.30 - 09.30 WIB)',
       no_peserta: noPeserta,
-      username: `TC${nisn.slice(-9)}`,
-      pin,
+      username: nisn,
+      pin: nisn,
     });
   }
   return students;
@@ -394,7 +393,7 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
           </span>
         </div>
         <div className="grid grid-cols-12 items-baseline">
-          <span className="col-span-4 text-slate-600 font-bold">Username</span>
+          <span className="col-span-4 text-slate-600 font-bold">Username / NISN</span>
           <span className="col-span-8 font-mono font-black text-slate-900">
             : {student.username}
           </span>
@@ -402,7 +401,7 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
         <div className="grid grid-cols-12 items-baseline">
           <span className="col-span-4 text-slate-600 font-bold">Password</span>
           <span className="col-span-8 font-mono font-black text-indigo-700 tracking-wider">
-            : {showPassword ? `${student.pin}*` : '••••••*'}
+            : {showPassword ? student.pin : '••••••••••'}
           </span>
         </div>
         <div className="grid grid-cols-12 items-baseline">
@@ -880,14 +879,19 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
 
       return realStudents.map((s, idx) => {
         const noPeserta = `26-${tingkatStr}-${cleanClassName}-${String(idx + 1).padStart(3, '0')}`;
-        const username = s.User?.username || s.nisn || s.nis || `user_${s.id.slice(0, 5)}`;
-        const pin = s.nisn && s.nisn.length >= 6 ? s.nisn.slice(-6) : String(849200 + ((idx * 17) % 999));
+        const cleanNisn = s.nisn ? String(s.nisn).trim() : '';
+        const cleanNis = s.nis ? String(s.nis).trim() : '';
+
+        // SSoT Login Platform Absenta: Login menggunakan NISN murni (atau NIS jika belum ada NISN)
+        const loginUsername = cleanNisn || cleanNis || s.User?.username || s.User?.email || s.id.slice(0, 8);
+        // Default password platform: NISN murni (atau NIS / fallback)
+        const loginPassword = cleanNisn || cleanNis || 'Siswa123!';
 
         return {
           id: s.id,
           nama_siswa: s.nama_siswa || (s as any).nama || 'Siswa CBT',
-          nis: s.nis || '-',
-          nisn: s.nisn || '-',
+          nis: cleanNis || '-',
+          nisn: cleanNisn || '-',
           kelas_id: currentClassMapping.kelas_id,
           nama_kelas: currentClassMapping.nama_kelas,
           tingkat: currentClassMapping.tingkat,
@@ -896,8 +900,8 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
           nama_ruang: currentClassMapping.nama_ruang || 'Ruang CBT',
           sesi_ujian: defaultSesiWaktu,
           no_peserta: noPeserta,
-          username: `TC${username.replace(/[^a-zA-Z0-9]/g, '').slice(-11)}`,
-          pin,
+          username: loginUsername,
+          pin: loginPassword,
           foto: s.foto,
         };
       });
