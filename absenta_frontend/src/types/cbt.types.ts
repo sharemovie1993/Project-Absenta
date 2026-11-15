@@ -312,6 +312,7 @@ export interface CbtEventItem {
   target_tingkat: number[];
   tipe_pelaksanaan?: 'MASSAL' | 'MANDIRI';
   keterangan?: string;
+  days_config?: any[]; // Struktur ExamDayConfig (hari, tanggal, sesi, jam)
   lock_teacher_scheduling: boolean;
   token_refresh_interval?: number;
   strict_browser_guard: boolean;

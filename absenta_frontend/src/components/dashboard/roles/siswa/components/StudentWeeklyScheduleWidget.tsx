@@ -3,7 +3,7 @@ import { Calendar, Sparkles, Clock, X, User, BookOpen, Layers } from 'lucide-rea
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { WORKDAYS_HARI_KEYS, getDayLabel, getDayShortLabel } from '@/constants/day.constants';
-import { getJadwalKBM, type JadwalKBM } from '@/api/attendance/jadwalKBM.api';
+import { getJadwalKBM, getMyJadwalKBM, type JadwalKBM } from '@/api/attendance/jadwalKBM.api';
 import { useAuthStore } from '@/store/authStore';
 
 interface StudentWeeklyScheduleWidgetProps {

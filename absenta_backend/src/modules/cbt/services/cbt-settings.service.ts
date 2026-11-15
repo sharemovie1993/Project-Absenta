@@ -10,6 +10,7 @@ export interface CbtEventItem {
   target_tingkat: number[];
   tipe_pelaksanaan?: 'MASSAL' | 'MANDIRI';
   keterangan?: string;
+  days_config?: any[]; // Struktur ExamDayConfig (hari, tanggal, sesi, jam)
   lock_teacher_scheduling: boolean;
   token_refresh_interval?: number;
   strict_browser_guard: boolean;
@@ -220,6 +221,8 @@ export class CbtSettingsService {
       ? payload.target_tingkat.map(Number)
       : [10, 11, 12];
 
+    const existingIndex = allEvents.findIndex((e) => e.id === id);
+
     const updatedEvent: CbtEventItem = {
       id,
       tahun_pelajaran_id: payload.tahun_pelajaran_id || '',
@@ -229,6 +232,7 @@ export class CbtSettingsService {
       target_tingkat: targetTingkat,
       tipe_pelaksanaan: payload.tipe_pelaksanaan || 'MASSAL',
       keterangan: payload.keterangan || '',
+      days_config: Array.isArray(payload.days_config) ? payload.days_config : (existingIndex >= 0 ? allEvents[existingIndex].days_config : []),
       lock_teacher_scheduling: payload.lock_teacher_scheduling ?? true,
       token_refresh_interval: payload.token_refresh_interval ?? 0,
       strict_browser_guard: payload.strict_browser_guard ?? true,
@@ -238,7 +242,6 @@ export class CbtSettingsService {
       updated_at: now,
     };
 
-    const existingIndex = allEvents.findIndex((e) => e.id === id);
     if (existingIndex >= 0) {
       allEvents[existingIndex] = { ...allEvents[existingIndex], ...updatedEvent };
     } else {

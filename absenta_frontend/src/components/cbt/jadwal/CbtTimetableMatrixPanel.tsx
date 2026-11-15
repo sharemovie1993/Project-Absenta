@@ -211,15 +211,23 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   useEffect(() => {
     if (!tenantId) return;
 
-    // A. Baca draft tersimpan di localStorage (dengan isolasi eventId)
+    // A. Baca struktur hari & sesi dari Event Config di DB (Prioritas Tertinggi Server SSoT jika ada), fallback ke localStorage
+    const serverDaysConfig = activeEvent?.days_config && Array.isArray(activeEvent.days_config) && activeEvent.days_config.length > 0
+      ? activeEvent.days_config.map((d: any) => ({
+          ...d,
+          nama_hari: getNamaHariIndo(d.tanggal) || d.nama_hari,
+        }))
+      : null;
+
     const persisted = loadPersistedMatrixState(tenantId, activeTpId, activeSemId, eventId);
     let effectiveDays =
-      persisted?.days && persisted.days.length > 0
+      serverDaysConfig ||
+      (persisted?.days && persisted.days.length > 0
         ? persisted.days.map((d) => ({
             ...d,
             nama_hari: getNamaHariIndo(d.tanggal) || d.nama_hari,
           }))
-        : createDefaultExamDays(defaultTodayStr, 5);
+        : createDefaultExamDays(defaultTodayStr, 5));
     let effectiveMatrix: TimetableMatrixState = persisted?.matrix ? { ...persisted.matrix } : {};
 
     // B. Rekonstruksi & Sinkronisasi dari Jadwal Database (SSoT Tertinggi jika sudah pernah diterbitkan)
@@ -279,7 +287,45 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     }
   }, [days, eventPrefix, generationMode, tenantId, activeTpId, activeSemId, eventId]);
 
-  const [isResettingPublished, setIsResettingPublished] = useState(false);
+  const [isSavingTimeConfig, setIsSavingTimeConfig] = useState(false);
+
+  // Handler Simpan Format Waktu & Sesi ke Server (Database Event Config)
+  const handleSaveTimeConfigToServer = async () => {
+    if (!activeEvent?.id) {
+      toast.error('Tidak ada Event CBT aktif yang dipilih');
+      return;
+    }
+
+    try {
+      setIsSavingTimeConfig(true);
+      toast.loading('Menyimpan format tanggal & jam sesi ke server...', { id: 'save-time-config' });
+      await cbtApi.upsertEvent({
+        id: activeEvent.id,
+        days_config: days,
+      });
+
+      // Simpan juga ke local storage sebagai backup draft
+      savePersistedMatrixState(
+        { matrix, days, eventPrefix, generationMode },
+        tenantId,
+        activeTpId,
+        activeSemId,
+        eventId
+      );
+
+      toast.success(
+        `Format waktu & sesi (${days.length} hari) berhasil disimpan ke Server! Panitia lain kini dapat melihat jadwal waktu yang sama.`,
+        { id: 'save-time-config', duration: 4000 }
+      );
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.eventsSummary() });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Gagal menyimpan format waktu sesi ke server', {
+        id: 'save-time-config',
+      });
+    } finally {
+      setIsSavingTimeConfig(false);
+    }
+  };
 
   // Handler Hapus / Reset Seluruh Jadwal Sesi CBT yang Sudah Terbit di Database untuk Event Ini
   const handleResetPublishedSchedules = async () => {
@@ -1133,7 +1179,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
             )}
           </div>
 
-          {/* Right: Actions (Tambah Hari, Kosongkan, Terbitkan, Lanjut) */}
+          {/* Right: Actions (Tambah Hari, Simpan Format Waktu, Kosongkan, Terbitkan, Lanjut) */}
           <div className="flex items-center gap-1.5 flex-wrap xl:flex-nowrap justify-between xl:justify-end shrink-0">
             <Button
               type="button"
@@ -1145,6 +1191,19 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
             >
               <Plus size={11} className="mr-1 text-indigo-600" />
               <span>Tambah Hari</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isSavingTimeConfig}
+              onClick={handleSaveTimeConfigToServer}
+              className="text-xs h-7 px-2.5 font-bold text-emerald-700 dark:text-emerald-300 border-emerald-400 dark:border-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
+              title="Simpan struktur tanggal dan jam sesi ke Server Database (tanpa harus menunggu mapel di-plot)"
+            >
+              <Save size={11} className="text-emerald-600 dark:text-emerald-400" />
+              <span>{isSavingTimeConfig ? 'Menyimpan...' : 'Simpan Waktu & Sesi'}</span>
             </Button>
 
             {totalSlotsFilled > 0 && (
