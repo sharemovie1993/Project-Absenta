@@ -183,11 +183,56 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
     }
 
     // Jika komponen sudah diinisialisasi dan state saat ini sudah memuat seluruh kelas target,
-    // JANGAN timpa balik (mencegah revert susunan saat query denah/kelas re-fetch di background)
+    // JANGAN timpa balik urutan susunan (mencegah revert susunan saat query denah/kelas re-fetch di background)
+    // NAMUN tetap sinkronkan metadata kelas (jurusan, tingkat, nama) yang melekat dari master backend
     if (isRoomInitializedRef.current && roomMappings.length > 0) {
       const currentIds = new Set(roomMappings.map((r) => r.kelas_id));
       const allExist = scopedKelasList.every((k) => currentIds.has(k.id));
       if (allExist && roomMappings.length === scopedKelasList.length) {
+        let hasChanges = false;
+        const reconciled = roomMappings.map((rm) => {
+          const master = scopedKelasList.find((k) => k.id === rm.kelas_id);
+          if (!master) return rm;
+          const jurKode =
+            master.kode_jurusan ||
+            master.Jurusan?.kode ||
+            master.Jurusan?.singkatan ||
+            master.Jurusan?.ProgramKeahlian?.kode ||
+            master.Jurusan?.ProgramKeahlian?.singkatan ||
+            master.Jurusan?.kode_jurusan ||
+            rm.kode_jurusan;
+          const jurNama =
+            master.nama_jurusan ||
+            master.Jurusan?.nama ||
+            master.Jurusan?.nama_jurusan ||
+            master.Jurusan?.ProgramKeahlian?.nama ||
+            master.Jurusan?.singkatan ||
+            rm.nama_jurusan;
+          const mNamaKelas = master.nama_kelas || master.nama || rm.nama_kelas;
+          const mTingkat = Number(master.tingkat) || rm.tingkat;
+
+          if (
+            rm.kode_jurusan !== jurKode ||
+            rm.nama_jurusan !== jurNama ||
+            rm.nama_kelas !== mNamaKelas ||
+            rm.tingkat !== mTingkat
+          ) {
+            hasChanges = true;
+            return {
+              ...rm,
+              kode_jurusan: jurKode,
+              nama_jurusan: jurNama,
+              nama_kelas: mNamaKelas,
+              tingkat: mTingkat,
+            };
+          }
+          return rm;
+        });
+
+        if (hasChanges) {
+          setRoomMappings(reconciled);
+          savePersistedRoomMappings(reconciled, tenantId, activeEvent?.id);
+        }
         return;
       }
     }

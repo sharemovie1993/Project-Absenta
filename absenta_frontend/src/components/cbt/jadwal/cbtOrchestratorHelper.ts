@@ -210,8 +210,7 @@ export function assignClassToRoomSlot(
     k?.Jurusan?.singkatan ||
     k?.Jurusan?.ProgramKeahlian?.kode ||
     k?.Jurusan?.ProgramKeahlian?.singkatan ||
-    k?.Jurusan?.kode_jurusan ||
-    (k?.nama_kelas ? k.nama_kelas.match(/\b(AKL|AK|TKJ|TJKT|TKR|TSM|TP|TM|KUL|PHT|HTL|TOI|TAV|TE|TO)\b/i)?.[1]?.toUpperCase() : undefined);
+    k?.Jurusan?.kode_jurusan;
 
   const getJurusanNama = (k: any) =>
     k?.nama_jurusan ||
@@ -407,8 +406,7 @@ export function generateClassRoomMappings(
       k.Jurusan?.singkatan ||
       k.Jurusan?.ProgramKeahlian?.kode ||
       k.Jurusan?.ProgramKeahlian?.singkatan ||
-      k.Jurusan?.kode_jurusan ||
-      (k.nama_kelas ? k.nama_kelas.match(/\b(AKL|AK|TKJ|TJKT|TKR|TSM|TP|TM|KUL|PHT|HTL|TOI|TAV|TE|TO)\b/i)?.[1]?.toUpperCase() : undefined);
+      k.Jurusan?.kode_jurusan;
     const jurNama =
       k.nama_jurusan ||
       k.Jurusan?.nama ||

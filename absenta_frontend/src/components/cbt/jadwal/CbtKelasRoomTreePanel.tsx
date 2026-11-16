@@ -93,6 +93,37 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
   // Modal Studio Denah Spasial State
   const [isDenahModalOpen, setIsDenahModalOpen] = useState(false);
 
+  // Master lookup map untuk memastikan metadata kelas (jurusan, tingkat, nama) selalu SSoT melekat pada kelas backend
+  const kelasMap = useMemo(() => {
+    const map = new Map<string, any>();
+    kelasList.forEach((k) => {
+      if (k?.id) map.set(k.id, k);
+    });
+    return map;
+  }, [kelasList]);
+
+  // Helper resolver data jurusan resmi dari backend (SSoT melekat di kelas)
+  const resolveClassJurusan = (kelasId: string, fallbackKode?: string, fallbackNama?: string) => {
+    const master = kelasMap.get(kelasId);
+    const kode =
+      master?.kode_jurusan ||
+      master?.Jurusan?.kode ||
+      master?.Jurusan?.singkatan ||
+      master?.Jurusan?.ProgramKeahlian?.kode ||
+      master?.Jurusan?.ProgramKeahlian?.singkatan ||
+      master?.Jurusan?.kode_jurusan ||
+      fallbackKode ||
+      '';
+    const nama =
+      master?.nama_jurusan ||
+      master?.Jurusan?.nama ||
+      master?.Jurusan?.nama_jurusan ||
+      master?.Jurusan?.ProgramKeahlian?.nama ||
+      fallbackNama ||
+      '';
+    return { kode, nama };
+  };
+
   // Daftar seluruh kelas yang aktif untuk dipilih/ditempatkan ke dalam ruang ujian
   const availableKelasOptions = useMemo(() => {
     const list = [...kelasList].filter(
@@ -107,10 +138,13 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
 
     return list.map((k) => {
       const currentRoom = roomMappings.find((m) => m.kelas_id === k.id);
+      const jur = resolveClassJurusan(k.id, k.kode_jurusan, k.nama_jurusan);
       return {
         id: k.id,
         nama_kelas: k.nama_kelas || k.nama || 'Kelas',
         tingkat: Number(k.tingkat) || 10,
+        kode_jurusan: jur.kode,
+        nama_jurusan: jur.nama,
         currentSlot: currentRoom?.slot_ruang || '',
       };
     });
@@ -436,14 +470,27 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-black', tProps.badge)}>
-                      Tingkat {formatTingkatRomawi(cls.tingkat)}
-                    </span>
-                    {cls.kode_jurusan && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
-                        {cls.kode_jurusan}
-                      </span>
-                    )}
+                    {(() => {
+                      const jur = resolveClassJurusan(cls.kelas_id, cls.kode_jurusan, cls.nama_jurusan);
+                      const master = kelasMap.get(cls.kelas_id);
+                      const effectiveTingkat = Number(master?.tingkat) || Number(cls.tingkat) || 10;
+                      const badgeProps = getTingkatBadgeProps(effectiveTingkat);
+                      return (
+                        <>
+                          <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-black', badgeProps.badge)}>
+                            Tingkat {formatTingkatRomawi(effectiveTingkat)}
+                          </span>
+                          {jur.kode && (
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+                              title={jur.nama || jur.kode}
+                            >
+                              {jur.kode}
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -462,7 +509,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                         >
                           {availableKelasOptions.map((opt) => (
                             <option key={opt.id} value={opt.id}>
-                              {opt.nama_kelas} {opt.currentSlot ? `(di ${opt.currentSlot})` : ''}
+                              {opt.nama_kelas} {opt.kode_jurusan ? `(${opt.kode_jurusan})` : ''} {opt.currentSlot ? `[di ${opt.currentSlot}]` : ''}
                             </option>
                           ))}
                         </select>
@@ -596,7 +643,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
                             >
                               {availableKelasOptions.map((opt) => (
                                 <option key={opt.id} value={opt.id}>
-                                  {opt.nama_kelas} {opt.currentSlot ? `(di ${opt.currentSlot})` : ''}
+                                  {opt.nama_kelas} {opt.kode_jurusan ? `(${opt.kode_jurusan})` : ''} {opt.currentSlot ? `[di ${opt.currentSlot}]` : ''}
                                 </option>
                               ))}
                             </select>
@@ -628,20 +675,33 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
 
                       {/* 5. Tingkat */}
                       <td className="py-2.5 px-3 text-center">
-                        <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black', tProps.badge)}>
-                          Tingkat {formatTingkatRomawi(cls.tingkat)}
-                        </span>
+                        {(() => {
+                          const master = kelasMap.get(cls.kelas_id);
+                          const effectiveTingkat = Number(master?.tingkat) || Number(cls.tingkat) || 10;
+                          const badgeProps = getTingkatBadgeProps(effectiveTingkat);
+                          return (
+                            <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black', badgeProps.badge)}>
+                              Tingkat {formatTingkatRomawi(effectiveTingkat)}
+                            </span>
+                          );
+                        })()}
                       </td>
 
-                      {/* 6. Jurusan */}
+                      {/* 6. Jurusan (SSoT Melekat di Kelas Backend) */}
                       <td className="py-2.5 px-3">
-                        {cls.kode_jurusan ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
-                            {cls.kode_jurusan}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 text-[11px]">-</span>
-                        )}
+                        {(() => {
+                          const jur = resolveClassJurusan(cls.kelas_id, cls.kode_jurusan, cls.nama_jurusan);
+                          return jur.kode ? (
+                            <span
+                              className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300"
+                              title={jur.nama || jur.kode}
+                            >
+                              {jur.kode}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">-</span>
+                          );
+                        })()}
                       </td>
 
                       {/* 7. Label & Kartu Ruang Aksi */}
