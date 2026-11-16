@@ -784,6 +784,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                 {/* Direct KBM Execution Feed (Sesi Mengajar Langsung di Layar) */}
                 <DirectKbmFeed
                   timelineItems={timelineItems}
+                  guruId={guruId}
+                  guruNama={guruNama}
                   onOpenAttendance={handleOpenAttendance}
                   onOpenJournal={handleOpenJournal}
                 />
