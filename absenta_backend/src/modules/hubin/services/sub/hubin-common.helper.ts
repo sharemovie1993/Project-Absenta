@@ -45,7 +45,8 @@ export class HubinCommonHelper {
 
     const guruId = user?.Guru?.id;
     const isPembimbingForStudent = Boolean(guruId && pkl.pembimbing_id === guruId);
-    const isPengujiForStudent = Boolean(guruId && pkl.penguji_id === guruId);
+    const nilaiJson = (pkl.nilai_json as Record<string, any>) || {};
+    const isPengujiForStudent = Boolean(guruId && (nilaiJson.penguji_id === guruId || (pkl as any).penguji_id === guruId));
 
     const studentJurusanId = pkl.Siswa?.jurusan_id || pkl.Siswa?.Kelas?.jurusan_id;
     const isKaprogForStudent = Boolean(
