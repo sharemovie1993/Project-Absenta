@@ -431,7 +431,7 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
                 <option value="">-- Pilih Guru Produktif Penguji Sidang --</option>
                 {examinerOptions.map((g) => (
                   <option key={g.id} value={g.id}>
-                    {g.nama_guru} {g.nip ? `(NIP. ${g.nip})` : ''} - [{g.mapel}]
+                    {g.nama_guru}
                   </option>
                 ))}
               </select>
@@ -818,7 +818,7 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
                   <option value="">-- Pilih Guru Penguji Sidang --</option>
                   {examinerOptions.map((g) => (
                     <option key={g.id} value={g.id}>
-                      {g.nama_guru} {g.nip ? `(NIP. ${g.nip})` : ''} - [{g.mapel}]
+                      {g.nama_guru}
                     </option>
                   ))}
                 </select>
