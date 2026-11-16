@@ -786,14 +786,116 @@ html[data-theme="dark"] .glass-morphism {
   animation: scale-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* ============================================================================ */
+/* UNIVERSAL DOCUMENT PRINTING & BROWSER WYSIWYG ENGINE                         */
+/* ============================================================================ */
 @media print {
-  body > * { display: none !important; }
-  body > #print-jurnal-area {
+  @page {
+    size: auto;
+    margin: 0mm;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 100% !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 1. Sembunyikan seluruh UI Chrome web browser & tombol saat print */
+  .print\:hidden,
+  .no-print,
+  nav,
+  aside,
+  header,
+  footer,
+  button,
+  [data-backdrop="true"],
+  .modal-backdrop {
+    display: none !important;
+  }
+
+  /* 2. Jika ada modal cetak aktif (.print-sheet di portal/body), sembunyikan background app #root */
+  body:has(.print-sheet) > #root {
+    display: none !important;
+  }
+
+  /* 3. Jika modal cetak belum di-portal (masih di dalam #root), sembunyikan sibling di luar modal */
+  body:has(.print-sheet) #root > *:not(:has(.print-sheet)) {
+    display: none !important;
+  }
+
+  /* 4. Reset fixed overlay modal untuk media cetak */
+  .fixed.inset-0:has(.print-sheet),
+  .modal-wrapper:has(.print-sheet) {
+    position: static !important;
     display: block !important;
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  div[role="dialog"]:has(.print-sheet) {
+    position: static !important;
+    display: block !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+
+  /* 5. Reset PrintDeskCanvas & Canvas Area */
+  #print-desk-canvas-area,
+  .print-desk-canvas {
+    zoom: 1 !important;
+    transform: none !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    gap: 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+
+  /* 6. Aturan Lembar Kertas A4 Fisik */
+  .print-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 auto !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-sheet:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
 }
 /* Memaksa header agar berdampingan rapat */

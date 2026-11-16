@@ -197,9 +197,21 @@ export class SesiGuard {
     const isGuru = await prisma.guru.count({ where: { user_id: userId, tenant_id: tenantId } });
     const siswa = await prisma.siswa.findFirst({
       where: { user_id: userId, tenant_id: tenantId },
-      include: { SiswaAkademik: true }
+      include: {
+        SiswaAkademik: {
+          where: { status: 'AKTIF' },
+          orderBy: { created_at: 'desc' },
+        },
+      },
     });
-    const siswaKelasId = siswa?.SiswaAkademik?.[0]?.kelas_id || (siswa as any)?.kelas_id;
+    const validKelasIds = new Set(
+      [
+        (siswa as any)?.kelas_id,
+        ...(siswa?.SiswaAkademik || []).map((sa: any) => sa.kelas_id),
+      ]
+        .filter(Boolean)
+        .map(String)
+    );
 
     if (isGuru > 0) {
         const guruRecord = await prisma.guru.findFirst({ where: { user_id: userId, tenant_id: tenantId }, select: { id: true } });
@@ -265,7 +277,7 @@ export class SesiGuard {
 
         // Regular student: allow READ only for their own class
         if (method === 'GET') {
-           if (siswaKelasId === sesi.kelas_id) {
+           if (validKelasIds.has(String(sesi.kelas_id))) {
              return; // Allowed to view their own class session
            }
            reply.status(403).send({ success: false, message: 'Forbidden: Anda hanya dapat melihat sesi kelas Anda sendiri.' });
@@ -309,9 +321,22 @@ export class SesiGuard {
     const isGuru = await prisma.guru.count({ where: { tenant_id: tenantId, OR: [{ user_id: userId }, { id: userId }] } });
     const siswa = await prisma.siswa.findFirst({
       where: { tenant_id: tenantId, OR: [{ user_id: userId }, { id: userId }] },
-      include: { SiswaAkademik: true }
+      include: {
+        SiswaAkademik: {
+          where: { status: 'AKTIF' },
+          orderBy: { created_at: 'desc' },
+        },
+      },
     });
-    const siswaKelasId = siswa?.SiswaAkademik?.[0]?.kelas_id || (siswa as any)?.kelas_id;
+    const siswaKelasId = (siswa as any)?.kelas_id || siswa?.SiswaAkademik?.[0]?.kelas_id;
+    const validKelasIds = new Set(
+      [
+        (siswa as any)?.kelas_id,
+        ...(siswa?.SiswaAkademik || []).map((sa: any) => sa.kelas_id),
+      ]
+        .filter(Boolean)
+        .map(String)
+    );
 
     if (siswa) {
         const org = request.organizationalScope;
@@ -327,15 +352,19 @@ export class SesiGuard {
                  request.query.allowedKelasIds = activePetugasKelasIds;
             }
         } else {
-            if (!siswaKelasId) {
+            if (!siswaKelasId && validKelasIds.size === 0) {
                  reply.status(403).send({ success: false, message: 'Forbidden: Siswa tidak memiliki kelas aktif' });
                  return;
             }
-            if (kelas_id && kelas_id !== siswaKelasId) {
+            if (kelas_id && !validKelasIds.has(String(kelas_id))) {
                  reply.status(403).send({ success: false, message: 'Forbidden: Anda hanya dapat melihat sesi kelas Anda sendiri' });
                  return;
             }
-            request.query.allowedKelasIds = [siswaKelasId];
+            const effectiveKelasId = (kelas_id && validKelasIds.has(String(kelas_id))) ? kelas_id : siswaKelasId;
+            request.query.allowedKelasIds = [effectiveKelasId];
+            if (!request.query.kelas_id && effectiveKelasId) {
+                request.query.kelas_id = effectiveKelasId;
+            }
         }
     } else if (isGuru) {
         const guru = await prisma.guru.findFirst({ where: { tenant_id: tenantId, OR: [{ user_id: userId }, { id: userId }] }, select: { id: true } });

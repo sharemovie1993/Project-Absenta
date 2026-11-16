@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -138,12 +139,12 @@ export function Modal({
     };
   }, [isOpen, disableClose]);
 
-  return (
+  const modalElement = (
     <AnimatePresence>
       {isOpen && (
         <div 
           className={cn(
-            "fixed inset-0 flex p-2 sm:p-4",
+            "fixed inset-0 flex p-2 sm:p-4 print:p-0 print:static print:block",
             placement === 'bottom' ? 'items-end justify-center' : placement === 'top' ? 'items-start justify-center' : 'items-center justify-center'
           )} 
           style={{ zIndex }}
@@ -153,7 +154,7 @@ export function Modal({
           {/* Backdrop */}
           <motion.div
             data-backdrop="true"
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm z-0"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm z-0 print:hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -166,7 +167,7 @@ export function Modal({
             aria-labelledby={title ? "modal-title" : undefined}
             aria-describedby={description ? "modal-description" : undefined}
             className={cn(
-              'relative z-10 bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 w-full overflow-hidden max-h-[96vh] sm:max-h-[92vh] flex flex-col',
+              'relative z-10 bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 w-full overflow-hidden max-h-[96vh] sm:max-h-[92vh] flex flex-col print:border-none print:shadow-none print:max-h-none print:overflow-visible print:w-full print:bg-transparent print:static print:rounded-none',
               activeSizeClass,
               className
             )}
@@ -178,7 +179,7 @@ export function Modal({
           >
             {/* Header */}
             {title ? (
-              <div className="flex items-center justify-between p-3.5 sm:p-5 border-b border-gray-200 dark:border-slate-700 shrink-0">
+              <div className="flex items-center justify-between p-3.5 sm:p-5 border-b border-gray-200 dark:border-slate-700 shrink-0 print:hidden">
                 <h2 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-white">
                   {title}
                 </h2>
@@ -197,7 +198,7 @@ export function Modal({
               </div>
             ) : (
               !disableClose && (
-                <div className="absolute top-4 right-4 z-50">
+                <div className="absolute top-4 right-4 z-50 print:hidden">
                   <Button
                     type="button"
                     variant="ghost"
@@ -214,7 +215,7 @@ export function Modal({
             
             {/* Description */}
             {description && (
-              <div className={cn('px-6', title ? 'pt-2 pb-4' : 'pt-6 pb-4')}>
+              <div className={cn('px-6 print:hidden', title ? 'pt-2 pb-4' : 'pt-6 pb-4')}>
                 <p id="modal-description" className="text-sm text-gray-600 dark:text-gray-400">
                   {description}
                 </p>
@@ -222,7 +223,7 @@ export function Modal({
             )}
             
             {/* Content */}
-            <div className={cn('p-3 sm:p-6 overflow-y-auto flex-1', (title || description) && 'pt-2.5 sm:pt-4', 'max-h-[calc(96vh-80px)] sm:max-h-[calc(92vh-100px)]', contentClassName)}>
+            <div className={cn('p-3 sm:p-6 overflow-y-auto flex-1 print:overflow-visible print:p-0 print:max-h-none', (title || description) && 'pt-2.5 sm:pt-4', 'max-h-[calc(96vh-80px)] sm:max-h-[calc(92vh-100px)]', contentClassName)}>
               {children}
             </div>
           </motion.div>
@@ -230,6 +231,8 @@ export function Modal({
       )}
     </AnimatePresence>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalElement, document.body) : modalElement;
 }
 
 // Modal Footer component for consistent button layout
