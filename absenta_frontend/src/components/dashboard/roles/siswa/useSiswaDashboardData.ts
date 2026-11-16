@@ -132,6 +132,41 @@ export function useSiswaDashboardData(activeTab: string = 'ringkasan') {
     return name.slice(0, 2).toUpperCase();
   }, [siswaProfile, user]);
 
+  // 2. Attendance & Schedule Data
+  const studentKelasId =
+    siswaProfile?.kelas_id ||
+    (user as any)?.kelas_id ||
+    (user as any)?.siswa?.kelas_id ||
+    undefined;
+
+  const { data: dailyRecapRes, refetch: refetchDailyRecap } = useQuery({
+    queryKey: ['rekap-harian-siswa-me', selectedDate, user?.siswa_id],
+    queryFn: () => getRekapHarianSiswaMe({ tanggal: selectedDate }),
+    enabled: !!user && !!user?.siswa_id && (activeTab === 'ringkasan' || activeTab === 'kehadiran'),
+    staleTime: 60000,
+  });
+
+  const { data: monthlyRecapRes, refetch: refetchMonthlyRecap } = useQuery({
+    queryKey: ['rekap-bulanan-siswa-me', selectedMonth, user?.siswa_id],
+    queryFn: () => getRekapBulananSiswaMe({ bulan: selectedMonth }),
+    enabled: !!user && !!user?.siswa_id && (activeTab === 'ringkasan' || activeTab === 'kehadiran'),
+    staleTime: 60000,
+  });
+
+  const { data: scheduleRes, refetch: refetchSchedule, isLoading: isLoadingSchedule } = useQuery({
+    queryKey: ['jadwal-kbm-siswa-unified', selectedDate, studentKelasId],
+    queryFn: () =>
+      getSesiAbsensiList({
+        tanggal: selectedDate,
+        kelas_id: studentKelasId || undefined,
+        include_scheduled: true,
+        summary: true,
+        limit: 100,
+      } as any),
+    enabled: !!user && (activeTab === 'ringkasan' || activeTab === 'kehadiran'),
+    staleTime: 60000,
+  });
+
   const inferredClassFromSchedule = useMemo(() => {
     const rawList = (scheduleRes as any)?.data;
     const list = Array.isArray(rawList)
@@ -170,42 +205,6 @@ export function useSiswaDashboardData(activeTab: string = 'ringkasan') {
       .then((url) => setQrCodeDataUrl(url))
       .catch((err) => console.error('Failed to generate QR code:', err));
   }, [currentNisn]);
-
-  // 2. Attendance & Schedule Data
-  const studentKelasId =
-    siswaProfile?.kelas_id ||
-    (user as any)?.kelas_id ||
-    ((scheduleRes as any)?.data as any)?.data?.[0]?.kelas_id ||
-    ((scheduleRes as any)?.data as any)?.[0]?.kelas_id ||
-    undefined;
-
-  const { data: dailyRecapRes, refetch: refetchDailyRecap } = useQuery({
-    queryKey: ['rekap-harian-siswa-me', selectedDate, user?.siswa_id],
-    queryFn: () => getRekapHarianSiswaMe({ tanggal: selectedDate }),
-    enabled: !!user && !!user?.siswa_id && (activeTab === 'ringkasan' || activeTab === 'kehadiran'),
-    staleTime: 60000,
-  });
-
-  const { data: monthlyRecapRes, refetch: refetchMonthlyRecap } = useQuery({
-    queryKey: ['rekap-bulanan-siswa-me', selectedMonth, user?.siswa_id],
-    queryFn: () => getRekapBulananSiswaMe({ bulan: selectedMonth }),
-    enabled: !!user && !!user?.siswa_id && (activeTab === 'ringkasan' || activeTab === 'kehadiran'),
-    staleTime: 60000,
-  });
-
-  const { data: scheduleRes, refetch: refetchSchedule, isLoading: isLoadingSchedule } = useQuery({
-    queryKey: ['jadwal-kbm-siswa-unified', selectedDate, studentKelasId],
-    queryFn: () =>
-      getSesiAbsensiList({
-        tanggal: selectedDate,
-        kelas_id: studentKelasId || undefined,
-        include_scheduled: true,
-        summary: true,
-        limit: 100,
-      } as any),
-    enabled: !!user && (activeTab === 'ringkasan' || activeTab === 'kehadiran'),
-    staleTime: 60000,
-  });
 
   const { data: pelanggaranRes, refetch: refetchPelanggaran } = useQuery({
     queryKey: ['pelanggaran-me', user?.siswa_id || user?.id],
