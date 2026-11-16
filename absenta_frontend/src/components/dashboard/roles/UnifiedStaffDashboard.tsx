@@ -316,6 +316,14 @@ export const UnifiedStaffDashboard: React.FC = () => {
   // Pembimbing PKL: Hanya jika user adalah Guru, BUKAN Waka Hubin/Kepsek, punya kapabilitas guidance / penugasan PKL
   const isPembimbingPkl = !isHubin && !isKepsek && (
     Boolean(isPembimbingPklFromCaps) ||
+    Boolean(
+      guruProfile?.is_pembimbing_pkl || 
+      (guruProfile?.active_pkl_count && guruProfile.active_pkl_count > 0) ||
+      (guruProfile?.total_pkl_count && guruProfile.total_pkl_count > 0) ||
+      ((user?.guru_profile as any)?.is_pembimbing_pkl) ||
+      ((user?.guru_profile as any)?.active_pkl_count > 0) ||
+      ((user?.guru_profile as any)?.total_pkl_count > 0)
+    ) ||
     (can('hubin.guidance.manage') && Boolean(
       guruProfile?.is_pembimbing_pkl || 
       (guruProfile?.active_pkl_count && guruProfile.active_pkl_count > 0) ||

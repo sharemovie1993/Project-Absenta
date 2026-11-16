@@ -18,7 +18,8 @@ import {
   Printer,
   Scale,
   ClipboardCheck,
-  UserCheck
+  UserCheck,
+  ArrowUpRight
 } from 'lucide-react';
 import { Button, Badge, Loader } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
@@ -26,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { hubinApi } from '@/api/hubin.api';
 import { getKaprogStats } from '@/api/dashboard.api';
 import { useAuthStore } from '@/store/authStore';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import type { EditingMitraSlot } from '@/components/hubin/nilai-pkl/PklDeskripsiTpModal';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import toast from 'react-hot-toast';
@@ -94,6 +96,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   const { user: authUser } = useAuthStore();
 
   const currentUser = propUser || authUser;
+  const { isPembimbingPkl } = useCapabilities();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as KaprogTabId | null;
@@ -724,6 +727,22 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                         </button>
                       );
                     })}
+
+                    {/* Quick Access ke Dashboard Bimbingan PKL Pribadi jika Kaprog juga menjadi Pembimbing Siswa */}
+                    {cat.id === 'pkl' && isPembimbingPkl && (
+                      <button
+                        type="button"
+                        onClick={() => navigate('/dashboard?tab=pembimbing_pkl')}
+                        className="w-full mt-2 flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/80 hover:bg-teal-100 dark:hover:bg-teal-900/80 transition-all cursor-pointer shadow-2xs select-none"
+                        title="Buka Meja Kerja Guru Pembimbing PKL Pribadi"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Briefcase className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                          <span className="truncate">Meja Bimbingan Saya</span>
+                        </div>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                      </button>
+                    )}
                   </div>
                 </React.Fragment>
               );
@@ -733,6 +752,33 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
 
         {/* Main Content Area */}
         <main className="min-w-0 space-y-4">
+          {/* Quick Access Banner ke Meja Bimbingan PKL Pribadi bagi Kaprog */}
+          {isPembimbingPkl && ['pkl', 'ploting_pkl', 'presensi_pkl', 'nilai_pkl', 'ploting_penguji', 'sidang_pkl'].includes(activeTab) && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-teal-50 via-teal-50/60 to-emerald-50 dark:from-teal-950/40 dark:via-teal-950/20 dark:to-emerald-950/30 border border-teal-200/80 dark:border-teal-800/60 shadow-2xs">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-teal-500/15 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0">
+                  <Briefcase size={18} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                    <span>Peran Guru Pembimbing PKL Anda</span>
+                    <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-teal-200/60 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200">Aktif</span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400 truncate">
+                    Tab ini untuk manajemen satu jurusan. Untuk menilai & membimbing siswa bimbingan Anda, buka meja bimbingan pribadi.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard?tab=pembimbing_pkl')}
+                className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shrink-0 flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
+              >
+                <span>Bimbingan Saya</span>
+                <ArrowUpRight size={13} />
+              </button>
+            </div>
+          )}
           {isLoadingTotal ? (
             <div className="py-20 flex flex-col items-center justify-center gap-3">
               <Loader size="md" />

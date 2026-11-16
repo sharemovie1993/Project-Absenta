@@ -205,6 +205,24 @@ export const RoleDashboardSwitcherSheet: React.FC = () => {
         accentGlow: 'hover:border-orange-400 dark:hover:border-orange-600',
       },
     },
+    {
+      id: 'pembimbing_pkl',
+      tabKey: 'pembimbing_pkl',
+      name: 'Dashboard Pembimbing PKL',
+      shortName: 'Pembimbing PKL',
+      description: 'Bimbingan, Jurnal & Nilai PKL Siswa',
+      icon: Briefcase,
+      targetPath: '/dashboard?tab=pembimbing_pkl',
+      category: 'akademik',
+      color: {
+        bgLight: 'bg-teal-50',
+        bgDark: 'dark:bg-teal-950/50',
+        border: 'border-teal-200 dark:border-teal-800',
+        text: 'text-teal-700 dark:text-teal-300',
+        badge: 'bg-teal-600 text-white',
+        accentGlow: 'hover:border-teal-400 dark:hover:border-teal-600',
+      },
+    },
 
     // ── KELOMPOK 3: KESISWAAN, BIMBINGAN & LAYANAN ──────────────────────────
     {

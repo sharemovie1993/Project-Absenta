@@ -97,10 +97,10 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
   const userPhoto = rawPhoto ? resolveProfilePhotoUrl(rawPhoto) : null;
   const initialChar = (user?.full_name || (typeof userRec?.name === 'string' ? userRec.name : null) || 'G').slice(0, 1).toUpperCase();
 
-  const { isAdmin, isKurikulum, isKesiswaan, isSarpras, isHubin, isKaprog, isWaliKelas, isTU, isKepsek } = useCapabilities();
+  const { isAdmin, isKurikulum, isKesiswaan, isSarpras, isHubin, isKaprog, isWaliKelas, isTU, isKepsek, isPembimbingPkl } = useCapabilities();
   const rawRoleName = String(user?.role?.name || (typeof userRec?.role === 'string' ? userRec.role : '') || '').toUpperCase();
   const isAdminRole = isAdmin || rawRoleName === 'ADMIN' || rawRoleName === 'SUPERADMIN';
-  const canSwitchDashboard = !isKepsek && (isAdminRole || isKurikulum || isKesiswaan || isSarpras || isHubin || isKaprog || isWaliKelas || isTU);
+  const canSwitchDashboard = !isKepsek && (isAdminRole || isKurikulum || isKesiswaan || isSarpras || isHubin || isKaprog || isWaliKelas || isTU || isPembimbingPkl);
 
   // Resolusi aksi tombol kembali
   const handleBack = () => {

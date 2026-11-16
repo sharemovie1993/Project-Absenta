@@ -1011,14 +1011,22 @@ export class AuthService {
         }
       }
 
-      // Check active PKL guidance count for this teacher
-      const activePklCount = await prisma.siswaPkl.count({
-        where: {
-          tenant_id: user.tenant_id,
-          pembimbing_id: guru.id,
-          status: 'AKTIF',
-        }
-      });
+      // Check PKL guidance count for this teacher (both active and total assigned)
+      const [activePklCount, totalPklCount] = await Promise.all([
+        prisma.siswaPkl.count({
+          where: {
+            tenant_id: user.tenant_id,
+            pembimbing_id: guru.id,
+            status: 'AKTIF',
+          }
+        }),
+        prisma.siswaPkl.count({
+          where: {
+            tenant_id: user.tenant_id,
+            pembimbing_id: guru.id,
+          }
+        }),
+      ]);
 
       // Check active P5 projects count for this teacher
       const activeP5Count = await prisma.p5Fasilitator.count({
@@ -1042,8 +1050,9 @@ export class AuthService {
         jenis_ptk: guru.jenis_ptk,
         pangkat_golongan: guru.pangkat_golongan,
         tmt_guru: guru.tmt_guru,
-        is_pembimbing_pkl: activePklCount > 0,
-        active_pkl_count: activePklCount,
+        is_pembimbing_pkl: totalPklCount > 0,
+        active_pkl_count: activePklCount > 0 ? activePklCount : totalPklCount,
+        total_pkl_count: totalPklCount,
         is_fasilitator_p5: activeP5Count > 0,
         active_p5_count: activeP5Count,
         is_piket_guru: activePiketCount > 0,

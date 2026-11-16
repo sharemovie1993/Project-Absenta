@@ -120,7 +120,7 @@ export function getKaprogNavTabs(badges?: KaprogTabBadges): NavTabItem[] {
 }
 
 export function getKaprogMobileChildren(): KaprogMobileChildItem[] {
-  return KAPROG_SUBTABS_BASE.map((tab) => ({
+  const items: KaprogMobileChildItem[] = KAPROG_SUBTABS_BASE.map((tab) => ({
     id: tab.id,
     label: tab.label,
     shortLabel: tab.shortLabel,
@@ -129,4 +129,17 @@ export function getKaprogMobileChildren(): KaprogMobileChildItem[] {
     targetPath: tab.targetPath,
     color: tab.color,
   }));
+
+  // Shortcut langsung ke meja kerja guru pembimbing PKL pribadi
+  items.push({
+    id: 'pembimbing_pkl_link',
+    label: 'Meja Bimbingan PKL Saya',
+    shortLabel: 'Bimbingan Saya',
+    category: 'pkl',
+    icon: Briefcase,
+    targetPath: '/dashboard?tab=pembimbing_pkl',
+    color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400',
+  });
+
+  return items;
 }
