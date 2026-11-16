@@ -22,6 +22,8 @@ import {
   Loader2,
   LayoutGrid,
   Sparkles,
+  SlidersHorizontal,
+  ChevronDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import QRCode from 'qrcode';
@@ -628,15 +630,16 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
     return roomMappings.find((r) => r.kelas_id === activeKelasId) || roomMappings[0];
   }, [roomMappings, activeKelasId]);
 
-  // ── 3. Visual & Security Toggles & Inkjet Optimization ──
+  // ── 3. Visual & Security Toggles & Inkjet Optimization (Default Standar TKA Pusmendik + Inkjet HVS) ──
   const [showPassword, setShowPassword] = useState<boolean>(true);
   const [showFoto, setShowFoto] = useState<boolean>(true);
   const [showQrCode, setShowQrCode] = useState<boolean>(true);
   const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
-  const [qrSize, setQrSize] = useState<QrCodeSize>('normal');
-  const [qrPlacement, setQrPlacement] = useState<QrPlacement>('header');
-  const [qrPayloadMode, setQrPayloadMode] = useState<QrPayloadMode>('url_short');
+  const [qrSize, setQrSize] = useState<QrCodeSize>('jumbo'); // 20mm (Inkjet)
+  const [qrPlacement, setQrPlacement] = useState<QrPlacement>('header'); // Header pojok kanan atas
+  const [qrPayloadMode, setQrPayloadMode] = useState<QrPayloadMode>('credentials_only'); // Dot Raksasa Version 1
+  const [isOptionsOpen, setIsOptionsOpen] = useState<boolean>(false); // Tray Pengaturan Tersembunyi (Anti-Noise)
 
   // ── 4. Editable Text ──
   const [customEventName, setCustomEventName] = useState<string>(resolvedEventName);
@@ -1065,7 +1068,7 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
                 'px-2 py-0.5 rounded font-bold transition-all cursor-pointer flex items-center gap-1',
                 gridMode === '6_per_page'
                   ? 'bg-indigo-600 text-white shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-900'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
               )}
               title="6 Kartu per lembar (Grid 2x3 - Standar TKA Pusmendik)"
             >
@@ -1079,7 +1082,7 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
                 'px-2 py-0.5 rounded font-bold transition-all cursor-pointer flex items-center gap-1',
                 gridMode === '4_per_page'
                   ? 'bg-indigo-600 text-white shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-900'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
               )}
               title="4 Kartu per lembar (Grid 2x2 - Jumbo)"
             >
@@ -1106,179 +1109,208 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
             </select>
           </div>
 
-          {/* Input Edit Nama Event Asesmen */}
-          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-lg">
-            <Edit3 size={12} className="text-indigo-600 shrink-0" />
-            <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Event:</span>
-            <input
-              type="text"
-              value={customEventName}
-              onChange={(e) => setCustomEventName(e.target.value)}
-              placeholder="Nama Event Asesmen..."
-              aria-label="Edit nama event ujian pada kartu"
-              className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-44 sm:w-52"
-            />
-          </div>
-
-          {/* Input Edit Tahun Pelajaran */}
-          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-lg">
-            <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">TP:</span>
-            <input
-              type="text"
-              value={customTpText}
-              onChange={(e) => setCustomTpText(e.target.value)}
-              placeholder="Tahun Pelajaran..."
-              aria-label="Edit tahun pelajaran pada kartu ujian"
-              className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-40 sm:w-48"
-            />
-          </div>
-
-          {/* Toggle Password Visible / Hidden */}
+          {/* Tombol Expand/Collapse Pengaturan Kartu (Anti-Noise Toolbar) */}
           <button
             type="button"
-            onClick={() => setShowPassword((prev) => !prev)}
+            onClick={() => setIsOptionsOpen((prev) => !prev)}
             className={cn(
               'px-2.5 py-1 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer',
-              showPassword
-                ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:border-amber-700 dark:text-amber-300'
-                : 'bg-white dark:bg-slate-800 text-slate-600 border-slate-200 dark:border-slate-700'
+              isOptionsOpen
+                ? 'bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900 shadow-2xs'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400'
             )}
-            title="Sembunyikan atau tampilkan password/PIN di kartu"
+            title="Buka / Tutup Pengaturan Kartu Ujian (Event, TP, PIN, Foto, QR Code)"
           >
-            {showPassword ? <Eye size={12} /> : <EyeOff size={12} />}
-            <span>{showPassword ? 'PIN Terlihat' : 'PIN Sensor (••••••*)'}</span>
-          </button>
-
-          {/* Toggle QR Code */}
-          <button
-            type="button"
-            onClick={() => setShowQrCode((prev) => !prev)}
-            className={cn(
-              'px-2 py-1 text-xs font-bold rounded-lg border transition-all flex items-center gap-1 cursor-pointer',
-              showQrCode
-                ? 'bg-indigo-50 text-indigo-700 border-indigo-300 dark:bg-indigo-950/40 dark:border-indigo-700 dark:text-indigo-300'
-                : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
-            )}
-            title="Tampilkan QR Code Quick Login di kartu"
-          >
-            <QrCodeIcon size={12} />
-            <span>QR {showQrCode ? 'ON' : 'OFF'}</span>
-          </button>
-
-          {showQrCode && (
-            <>
-              {/* Group 1: Ukuran QR Code (Inkjet Friendly) */}
-              <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 rounded-lg text-[11px]">
-                <span className="text-[10px] font-bold text-slate-400 pl-1.5 pr-0.5">QR:</span>
-                <button
-                  type="button"
-                  onClick={() => setQrSize('normal')}
-                  className={cn(
-                    'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
-                    qrSize === 'normal'
-                      ? 'bg-blue-600 text-white shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-900'
-                  )}
-                  title="Ukuran Standar TKA (16.5 mm x 16.5 mm)"
-                >
-                  17mm
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQrSize('jumbo')}
-                  className={cn(
-                    'px-2 py-0.5 rounded font-bold transition-all cursor-pointer flex items-center gap-1',
-                    qrSize === 'jumbo'
-                      ? 'bg-blue-600 text-white shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-900'
-                  )}
-                  title="Ukuran Jumbo Inkjet (19.5 mm x 19.5 mm) - Sangat direkomendasikan untuk printer inkjet & kertas HVS"
-                >
-                  <Sparkles size={10} />
-                  <span>20mm (Inkjet)</span>
-                </button>
-              </div>
-
-              {/* Group 2: Posisi QR Code */}
-              <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 rounded-lg text-[11px]">
-                <span className="text-[10px] font-bold text-slate-400 pl-1.5 pr-0.5">Posisi:</span>
-                <button
-                  type="button"
-                  onClick={() => setQrPlacement('header')}
-                  className={cn(
-                    'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
-                    qrPlacement === 'header'
-                      ? 'bg-indigo-600 text-white shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-900'
-                  )}
-                  title="Pojok Kanan Atas Header (Standar Pusmendik TKA)"
-                >
-                  Header
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQrPlacement('photo_box')}
-                  className={cn(
-                    'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
-                    qrPlacement === 'photo_box'
-                      ? 'bg-indigo-600 text-white shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-900'
-                  )}
-                  title="Gantikan Kotak Pasfoto (Ukuran Jumbo 21mm x 21mm)"
-                >
-                  Ganti Foto
-                </button>
-              </div>
-
-              {/* Group 3: Mode Dot Inkjet */}
-              <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 rounded-lg text-[11px]">
-                <span className="text-[10px] font-bold text-slate-400 pl-1.5 pr-0.5">Dot:</span>
-                <button
-                  type="button"
-                  onClick={() => setQrPayloadMode('url_short')}
-                  className={cn(
-                    'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
-                    qrPayloadMode === 'url_short'
-                      ? 'bg-emerald-600 text-white shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-900'
-                  )}
-                  title="URL Singkat: Scan langsung pakai Kamera HP bawaan (Version 3 Matrix, ~50 karakter)"
-                >
-                  URL HP
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQrPayloadMode('credentials_only')}
-                  className={cn(
-                    'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
-                    qrPayloadMode === 'credentials_only'
-                      ? 'bg-emerald-600 text-white shadow-2xs'
-                      : 'text-slate-500 hover:text-slate-900'
-                  )}
-                  title="Kredensial Saja: Dot Kotak Raksasa Anti-Luber Inkjet (Version 1 Matrix 21x21, ~20 karakter)"
-                >
-                  Dot Raksasa
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* Toggle Foto Siswa */}
-          <button
-            type="button"
-            onClick={() => setShowFoto((prev) => !prev)}
-            className={cn(
-              'px-2 py-1 text-xs font-bold rounded-lg border transition-all flex items-center gap-1 cursor-pointer',
-              showFoto
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-700 dark:text-emerald-300'
-                : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
-            )}
-            title="Tampilkan foto siswa di kartu (Jika OFF, otomatis diisi QR Code)"
-          >
-            <User size={12} />
-            <span>Foto {showFoto ? 'ON' : 'OFF'}</span>
+            <SlidersHorizontal size={12} className={isOptionsOpen ? 'text-indigo-300 dark:text-indigo-600' : 'text-indigo-600'} />
+            <span>Opsi Kartu</span>
+            <ChevronDown size={12} className={cn('transition-transform duration-200', isOptionsOpen && 'rotate-180')} />
           </button>
         </div>
+      }
+      subHeader={
+        isOptionsOpen ? (
+          <div className="bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-xs space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200 print:hidden">
+            {/* Baris 1: Header Dokumen (Event & Tahun Pelajaran) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-2xs">
+                <Edit3 size={13} className="text-indigo-600 shrink-0" />
+                <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Event:</span>
+                <input
+                  type="text"
+                  value={customEventName}
+                  onChange={(e) => setCustomEventName(e.target.value)}
+                  placeholder="Nama Event Asesmen..."
+                  aria-label="Edit nama event ujian pada kartu"
+                  className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-full"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-2xs">
+                <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">TP:</span>
+                <input
+                  type="text"
+                  value={customTpText}
+                  onChange={(e) => setCustomTpText(e.target.value)}
+                  placeholder="Tahun Pelajaran..."
+                  aria-label="Edit tahun pelajaran pada kartu ujian"
+                  className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-full"
+                />
+              </div>
+            </div>
+
+            {/* Baris 2: Visual, Keamanan & Inkjet Optimization */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/80 dark:border-slate-800/80">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Toggle Password Visible / Hidden */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className={cn(
+                    'px-2.5 py-1 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer',
+                    showPassword
+                      ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:border-amber-700 dark:text-amber-300'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 border-slate-200 dark:border-slate-700'
+                  )}
+                  title="Sembunyikan atau tampilkan password/PIN di kartu"
+                >
+                  {showPassword ? <Eye size={12} /> : <EyeOff size={12} />}
+                  <span>{showPassword ? 'PIN Terlihat' : 'PIN Sensor (••••••*)'}</span>
+                </button>
+
+                {/* Toggle Foto Siswa */}
+                <button
+                  type="button"
+                  onClick={() => setShowFoto((prev) => !prev)}
+                  className={cn(
+                    'px-2 py-1 text-xs font-bold rounded-lg border transition-all flex items-center gap-1 cursor-pointer',
+                    showFoto
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-700 dark:text-emerald-300'
+                      : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
+                  )}
+                  title="Tampilkan foto siswa di kartu (Jika OFF, otomatis diisi QR Code)"
+                >
+                  <User size={12} />
+                  <span>Foto {showFoto ? 'ON' : 'OFF'}</span>
+                </button>
+
+                {/* Toggle QR Code */}
+                <button
+                  type="button"
+                  onClick={() => setShowQrCode((prev) => !prev)}
+                  className={cn(
+                    'px-2 py-1 text-xs font-bold rounded-lg border transition-all flex items-center gap-1 cursor-pointer',
+                    showQrCode
+                      ? 'bg-indigo-50 text-indigo-700 border-indigo-300 dark:bg-indigo-950/40 dark:border-indigo-700 dark:text-indigo-300'
+                      : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
+                  )}
+                  title="Tampilkan QR Code Quick Login di kartu"
+                >
+                  <QrCodeIcon size={12} />
+                  <span>QR {showQrCode ? 'ON' : 'OFF'}</span>
+                </button>
+              </div>
+
+              {/* Kelompok Opsi Khusus QR Code Inkjet */}
+              {showQrCode && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Group 1: Ukuran QR Code */}
+                  <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 rounded-lg text-[11px] shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-400 pl-1.5 pr-0.5">QR:</span>
+                    <button
+                      type="button"
+                      onClick={() => setQrSize('normal')}
+                      className={cn(
+                        'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
+                        qrSize === 'normal'
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+                      )}
+                      title="Ukuran Standar TKA (16.5 mm x 16.5 mm)"
+                    >
+                      17mm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQrSize('jumbo')}
+                      className={cn(
+                        'px-2 py-0.5 rounded font-bold transition-all cursor-pointer flex items-center gap-1',
+                        qrSize === 'jumbo'
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+                      )}
+                      title="Ukuran Jumbo Inkjet (19.5 mm x 19.5 mm) - Sangat direkomendasikan untuk printer inkjet & kertas HVS"
+                    >
+                      <Sparkles size={10} />
+                      <span>20mm (Inkjet)</span>
+                    </button>
+                  </div>
+
+                  {/* Group 2: Posisi QR Code */}
+                  <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 rounded-lg text-[11px] shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-400 pl-1.5 pr-0.5">Posisi:</span>
+                    <button
+                      type="button"
+                      onClick={() => setQrPlacement('header')}
+                      className={cn(
+                        'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
+                        qrPlacement === 'header'
+                          ? 'bg-indigo-600 text-white shadow-2xs'
+                          : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+                      )}
+                      title="Pojok Kanan Atas Header (Standar Pusmendik TKA)"
+                    >
+                      Header
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQrPlacement('photo_box')}
+                      className={cn(
+                        'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
+                        qrPlacement === 'photo_box'
+                          ? 'bg-indigo-600 text-white shadow-2xs'
+                          : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+                      )}
+                      title="Gantikan Kotak Pasfoto (Ukuran Jumbo 21mm x 21mm)"
+                    >
+                      Ganti Foto
+                    </button>
+                  </div>
+
+                  {/* Group 3: Mode Dot Inkjet */}
+                  <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 rounded-lg text-[11px] shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-400 pl-1.5 pr-0.5">Dot:</span>
+                    <button
+                      type="button"
+                      onClick={() => setQrPayloadMode('url_short')}
+                      className={cn(
+                        'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
+                        qrPayloadMode === 'url_short'
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+                      )}
+                      title="URL Singkat: Scan langsung pakai Kamera HP bawaan (Version 3 Matrix, ~50 karakter)"
+                    >
+                      URL HP
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQrPayloadMode('credentials_only')}
+                      className={cn(
+                        'px-2 py-0.5 rounded font-bold transition-all cursor-pointer',
+                        qrPayloadMode === 'credentials_only'
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+                      )}
+                      title="Kredensial Saja: Dot Kotak Raksasa Anti-Luber Inkjet (Version 1 Matrix 21x21, ~20 karakter)"
+                    >
+                      Dot Raksasa
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null
       }
     >
       <div ref={sheetContainerRef} className="space-y-8 print:space-y-0">

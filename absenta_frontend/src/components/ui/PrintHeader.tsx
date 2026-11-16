@@ -1204,7 +1204,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
         {/* ========================================================================= */}
         {/* ROW 1: PRIMARY ACTION TOOLBAR & BATCH NAVIGATOR (DESKTOP)                 */}
         {/* ========================================================================= */}
-        <div className="hidden md:flex flex-row items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800">
+        <div className="hidden md:flex flex-row items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800 print:hidden">
           {/* Left: Subtitle & Batch Switcher */}
           <div className="flex flex-wrap items-center gap-2.5">
             {batchTotal > 1 && (
@@ -1370,7 +1370,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
         {/* ROW 2: OPSI KOP & PILIHAN TEMPLATE DOKUMEN (DESKTOP)                      */}
         {/* ========================================================================= */}
         {(allowLogoToggles || (templateOptions && templateOptions.length > 0)) && (
-          <div className="hidden md:flex flex-row items-center justify-between gap-2.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0">
+          <div className="hidden md:flex flex-row items-center justify-between gap-2.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs shrink-0 print:hidden">
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               {/* Template Selector Dropdown */}
               {templateOptions && templateOptions.length > 0 && (
