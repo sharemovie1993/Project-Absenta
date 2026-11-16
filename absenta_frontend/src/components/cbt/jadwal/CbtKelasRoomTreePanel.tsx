@@ -12,7 +12,7 @@ import {
   CreditCard,
   ArrowRight,
   Filter,
-  Map,
+  Map as MapIcon,
   ChevronUp,
   ChevronDown,
   ArrowUpDown,
@@ -408,7 +408,7 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
               className="text-xs h-7 px-2 font-bold text-indigo-700 border-indigo-300 bg-indigo-50/70 hover:bg-indigo-100 cursor-pointer shadow-2xs shrink-0"
               title="Buka denah interaktif lokasi ujian dan kampus"
             >
-              <Map size={11} className="mr-1 text-indigo-600" />
+              <MapIcon size={11} className="mr-1 text-indigo-600" />
               <span>Denah</span>
             </Button>
 
