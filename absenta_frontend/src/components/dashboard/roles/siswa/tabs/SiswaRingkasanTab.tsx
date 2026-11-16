@@ -19,6 +19,7 @@ import {
   PlayCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { UniversalKbmCard } from '@/components/dashboard/shared/kbm/UniversalKbmCard';
 import type { SiswaMonthStats, SiswaGamification, SiswaDisciplineItem } from '../types';
 
 export interface SiswaRingkasanTabProps {
@@ -492,28 +493,35 @@ export const SiswaRingkasanTab: React.FC<SiswaRingkasanTabProps> = ({
             </button>
           </div>
 
-          <div className="space-y-2 overflow-y-auto max-h-[220px] custom-scrollbar">
+          <div className="space-y-3 overflow-y-auto max-h-[360px] custom-scrollbar pr-1">
             {isLoadingSchedule ? (
               <div className="text-xs text-slate-400 text-center py-6 animate-pulse">Memuat jadwal KBM...</div>
             ) : todayKbmSchedule.length > 0 ? (
-              todayKbmSchedule.map((sesi: any, idx: number) => (
-                <div
-                  key={sesi.id || idx}
-                  className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3"
-                >
-                  <div className="space-y-0.5 min-w-0">
-                    <h4 className="text-xs font-extrabold text-slate-900 dark:text-white truncate">
-                      {sesi.mata_pelajaran || sesi.mapel || 'Mata Pelajaran'}
-                    </h4>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
-                      Guru: {sesi.guru_pengampu || sesi.guru || '–'}
-                    </p>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-blue-500/15 text-blue-700 dark:text-blue-300 font-mono shrink-0">
-                    {sesi.jam_mulai || '07:00'} - {sesi.jam_selesai || '08:30'}
-                  </span>
-                </div>
-              ))
+              todayKbmSchedule.map((sesi: any, idx: number) => {
+                const targetId = sesi.id || `sesi-${idx}`;
+                const raw = sesi._raw || sesi;
+                return (
+                  <UniversalKbmCard
+                    key={targetId}
+                    mode="SISWA"
+                    item={{
+                      ...raw,
+                      id: targetId,
+                      mapel_nama: sesi.mapel || raw.mapel_nama || (typeof raw.sesi === 'string' ? raw.sesi.replace(/^KBM\s*-\s*/i, '').trim() : '') || 'Mata Pelajaran',
+                      guru_nama: sesi.guru || raw.guru_nama || 'Guru Pengampu',
+                      guru_pengganti_nama: sesi.guru_pengganti_nama || raw.guru_pengganti_nama || null,
+                      guru_pengampu_nama: sesi.guru_pengampu_nama || raw.guru_pengampu_nama || null,
+                      jam_mulai: raw.jam_mulai || (sesi.jam ? sesi.jam.split('-')[0]?.trim() : '') || '07:00',
+                      jam_selesai: raw.jam_selesai || (sesi.jam ? sesi.jam.split('-')[1]?.trim() : '') || '08:30',
+                      jamLabel: sesi.jamLabel || raw.jamLabel || raw.jam_label || null,
+                      status: raw.status || sesi.status || 'MENDATANG',
+                    }}
+                    hideKelas={true}
+                    canManage={false}
+                    canFinish={false}
+                  />
+                );
+              })
             ) : (
               <div className="text-center py-8 text-xs text-slate-400 font-medium">
                 Tidak ada jadwal KBM yang tercatat untuk hari ini.

@@ -43,9 +43,13 @@ export function useSiswaMe(options?: UseSiswaMeOptions) {
       // 3. Fallback embedded profile on user
       return (user as any)?.siswa_profile || (user as any)?.siswa || null;
     },
-    initialData: () => (user as any)?.siswa_profile || (user as any)?.siswa || null,
+    initialData: () => {
+      const embedded = (user as any)?.siswa_profile || (user as any)?.siswa;
+      return embedded ? embedded : undefined;
+    },
+    initialDataUpdatedAt: 0,
     enabled: Boolean(user && isEnabled),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
 
   return {

@@ -132,10 +132,28 @@ export function useSiswaDashboardData(activeTab: string = 'ringkasan') {
     return name.slice(0, 2).toUpperCase();
   }, [siswaProfile, user]);
 
+  const inferredClassFromSchedule = useMemo(() => {
+    const rawList = (scheduleRes as any)?.data;
+    const list = Array.isArray(rawList)
+      ? rawList
+      : Array.isArray((rawList as any)?.data)
+      ? (rawList as any).data
+      : Array.isArray((scheduleRes as any)?.items)
+      ? (scheduleRes as any).items
+      : [];
+    const first = list[0];
+    return first?.kelas_nama || first?.Kelas?.nama_kelas || null;
+  }, [scheduleRes]);
+
   const studentName =
     siswaProfile?.nama || siswaProfile?.nama_siswa || (user as any)?.nama_siswa || user?.full_name || user?.name || '-';
   const currentClassName =
-    siswaProfile?.Kelas?.nama_kelas || siswaProfile?.kelas?.nama_kelas || siswaProfile?.kelas_nama || (user as any)?.kelas_nama || '-';
+    siswaProfile?.Kelas?.nama_kelas ||
+    siswaProfile?.kelas?.nama_kelas ||
+    siswaProfile?.kelas_nama ||
+    (user as any)?.kelas_nama ||
+    inferredClassFromSchedule ||
+    '-';
   const currentNisn =
     (siswaProfile as any)?.nisn || (siswaProfile as any)?.nis || (user as any)?.nisn || (user as any)?.username || '-';
   const currentNik =
@@ -154,7 +172,12 @@ export function useSiswaDashboardData(activeTab: string = 'ringkasan') {
   }, [currentNisn]);
 
   // 2. Attendance & Schedule Data
-  const studentKelasId = siswaProfile?.kelas_id || (user as any)?.kelas_id;
+  const studentKelasId =
+    siswaProfile?.kelas_id ||
+    (user as any)?.kelas_id ||
+    ((scheduleRes as any)?.data as any)?.data?.[0]?.kelas_id ||
+    ((scheduleRes as any)?.data as any)?.[0]?.kelas_id ||
+    undefined;
 
   const { data: dailyRecapRes, refetch: refetchDailyRecap } = useQuery({
     queryKey: ['rekap-harian-siswa-me', selectedDate, user?.siswa_id],
@@ -180,7 +203,7 @@ export function useSiswaDashboardData(activeTab: string = 'ringkasan') {
         summary: true,
         limit: 100,
       } as any),
-    enabled: !!user && !!studentKelasId && (activeTab === 'ringkasan' || activeTab === 'kehadiran'),
+    enabled: !!user && (activeTab === 'ringkasan' || activeTab === 'kehadiran'),
     staleTime: 60000,
   });
 
