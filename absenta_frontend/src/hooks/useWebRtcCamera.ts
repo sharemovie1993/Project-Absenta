@@ -427,7 +427,7 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
   // Capture current photo frame from video element to Data URL with WYSIWYG crop & orientation awareness
   const capturePhoto = useCallback((
     stampDetails?: CameraStampDetails,
-    quality = 0.88,
+    quality = 0.75,
     captureAngle = 0
   ): string | null => {
     if (!videoRef.current) return null;
@@ -471,13 +471,20 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
       }
     }
 
-    if (isRotated) {
-      canvas.width = sH;
-      canvas.height = sW;
-    } else {
-      canvas.width = sW;
-      canvas.height = sH;
+    // ⚡ Optimasi Resolusi: Batasi dimensi maksimal ke 960px agar payload Base64 hemat & anti-ghost response
+    const rawOutW = isRotated ? sH : sW;
+    const rawOutH = isRotated ? sW : sH;
+    const maxDim = 960;
+    let finalW = rawOutW;
+    let finalH = rawOutH;
+    if (Math.max(rawOutW, rawOutH) > maxDim) {
+      const scale = maxDim / Math.max(rawOutW, rawOutH);
+      finalW = Math.round(rawOutW * scale);
+      finalH = Math.round(rawOutH * scale);
     }
+
+    canvas.width = finalW;
+    canvas.height = finalH;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
@@ -487,17 +494,17 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
     if (effectiveAngle === 90) {
       ctx.translate(canvas.width, 0);
       ctx.rotate((90 * Math.PI) / 180);
-      ctx.drawImage(video, sX, sY, sW, sH, 0, 0, sW, sH);
+      ctx.drawImage(video, sX, sY, sW, sH, 0, 0, finalH, finalW);
     } else if (effectiveAngle === 270) {
       ctx.translate(0, canvas.height);
       ctx.rotate((270 * Math.PI) / 180);
-      ctx.drawImage(video, sX, sY, sW, sH, 0, 0, sW, sH);
+      ctx.drawImage(video, sX, sY, sW, sH, 0, 0, finalH, finalW);
     } else if (effectiveAngle === 180) {
       ctx.translate(canvas.width, canvas.height);
       ctx.rotate((180 * Math.PI) / 180);
-      ctx.drawImage(video, sX, sY, sW, sH, 0, 0, sW, sH);
+      ctx.drawImage(video, sX, sY, sW, sH, 0, 0, finalW, finalH);
     } else {
-      ctx.drawImage(video, sX, sY, sW, sH, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, sX, sY, sW, sH, 0, 0, finalW, finalH);
     }
 
     ctx.restore();
@@ -507,9 +514,8 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
     }
 
     const dataUrl = canvas.toDataURL('image/jpeg', quality);
-    stopCamera();
     return dataUrl;
-  }, [idealWidth, idealHeight, applyStampToCanvas, stopCamera]);
+  }, [idealWidth, idealHeight, applyStampToCanvas]);
 
   useEffect(() => {
     if (autoStart) {

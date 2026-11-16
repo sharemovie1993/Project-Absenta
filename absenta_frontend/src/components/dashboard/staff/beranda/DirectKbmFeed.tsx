@@ -104,7 +104,6 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
         tanggal: today,
         waktu_mulai: nowISO,
         waktu_selesai: waktuSelesaiISO,
-        foto_bukti_url: foto,
         foto_kegiatan: foto,
       } as any);
     },

@@ -207,7 +207,6 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
         tanggal: today,
         waktu_mulai: nowISO,
         waktu_selesai: waktuSelesaiISO,  // ← wajib agar auto-close job bisa tutup sesi
-        foto_bukti_url: foto,
         foto_kegiatan: foto,
       } as any);
     },

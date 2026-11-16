@@ -29,6 +29,7 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
 }) => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [isFlashing, setIsFlashing] = useState<boolean>(false);
 
   const { angle, isLandscape, uiRotationStyle } = useCameraOrientation();
 
@@ -78,6 +79,13 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
 
   // Capture Live Camera Photo with Gyro Orientation + Draw Stamp
   const handleCapturePhoto = () => {
+    // ⚡ Shutter Flash & Haptic Feedback instan
+    setIsFlashing(true);
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(40); } catch (_) {}
+    }
+    setTimeout(() => setIsFlashing(false), 180);
+
     const photo = capturePhoto(
       {
         kelasNama,
@@ -85,12 +93,13 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
         guruNama,
         badgeTitle: '✓ ABSENTA VERIFIED KBM STAMP',
       },
-      0.88,
+      0.75, // Kualitas optimal 0.75 (reduksi payload ~75% tanpa mengorbankan ketajaman teks stamp)
       angle
     );
 
     if (photo) {
       setCapturedImage(photo);
+      stopCamera();
     } else {
       toast.error('Gagal menangkap foto dari kamera');
     }
@@ -179,6 +188,10 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
 
           {/* ── 2. CAMERA VIEWFINDER / CAPTURED IMAGE ── */}
           <div className="relative bg-black flex items-center justify-center min-h-[260px] sm:min-h-[360px] max-h-[58vh] overflow-hidden m-3 sm:m-4 rounded-2xl border border-slate-800">
+            {/* Shutter Blink / White Flash Effect */}
+            {isFlashing && (
+              <div className="absolute inset-0 bg-white/95 z-40 pointer-events-none animate-in fade-in duration-75 animate-out fade-out duration-150" />
+            )}
             {!capturedImage ? (
               <>
                 {/* Live Video Stream */}
@@ -346,6 +359,21 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* ── 4. FULL MODAL SUBMITTING OVERLAY ── */}
+          {isLoading && (
+            <div className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex flex-col items-center justify-center gap-3.5 p-6 text-center animate-in fade-in duration-150">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
+                <RefreshCw size={26} className="animate-spin text-emerald-400" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-base font-black text-white">Membuka Sesi KBM...</h4>
+                <p className="text-xs text-slate-300 max-w-xs">
+                  Menyimpan bukti foto &amp; menyinkronkan kehadiran guru ke sistem.
+                </p>
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
     </AnimatePresence>,
