@@ -1,6 +1,7 @@
 import React from 'react';
 import { 
   LayoutDashboard,
+  Calendar,
   FileText, 
   GraduationCap, 
   BarChart2, 
@@ -13,6 +14,7 @@ import { cn } from '@/lib/utils';
 
 export type TeacherSubTabId =
   | 'agenda'
+  | 'jadwal'
   | 'tugas'
   | 'perangkat'
   | 'cbt'
@@ -64,6 +66,11 @@ export const TeacherSubNavPills: React.FC<TeacherSubNavPillsProps> = React.memo(
       icon: LayoutDashboard,
       badgeCount: unfilledJournalsCount > 0 ? unfilledJournalsCount : undefined,
       badgeVariant: 'amber',
+    },
+    {
+      id: 'jadwal',
+      label: 'Jadwal Mengajar',
+      icon: Calendar,
     },
     {
       id: 'perangkat',

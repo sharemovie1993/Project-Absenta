@@ -22,6 +22,7 @@ import {
   MapPin,
   Lock,
   LayoutDashboard,
+  Calendar,
   Laptop,
   Rocket,
   QrCode,
@@ -281,6 +282,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
 
   const validSubTabs: TeacherSubTabId[] = useMemo(() => [
     'agenda',
+    'jadwal',
     'tugas',
     'perangkat',
     'cbt',
@@ -303,6 +305,11 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
         return {
           currentSubtabTitle: guruNama ? `Halo, ${guruNama}` : 'Beranda Pendidik',
           currentSubtabIcon: LayoutDashboard,
+        };
+      case 'jadwal':
+        return {
+          currentSubtabTitle: 'Jadwal Mengajar Guru',
+          currentSubtabIcon: Calendar,
         };
       case 'tugas':
         return {
@@ -433,6 +440,13 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
   // Pintasan Aksi Operasional Guru (Shopee-Grade Headerless Quick Action Slider)
   const teacherQuickActions: HubActionItem[] = useMemo(() => [
     {
+      id: 'jadwal',
+      label: 'Jadwal Mengajar',
+      icon: Calendar,
+      iconColorClass: 'text-indigo-600 dark:text-indigo-400',
+      onClick: () => handleSubTabChange('jadwal'),
+    },
+    {
       id: 'jurnal',
       label: 'Isi Jurnal KBM',
       icon: FileEdit,
@@ -546,6 +560,13 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
       icon: LayoutDashboard,
       badge: unfilledJournalsCount > 0 ? unfilledJournalsCount : undefined,
       badgeColor: 'bg-amber-500 text-white',
+      category: 'pembelajaran',
+    },
+    {
+      id: 'jadwal',
+      label: 'Jadwal Mengajar',
+      shortLabel: 'Jadwal',
+      icon: Calendar,
       category: 'pembelajaran',
     },
     {
@@ -770,8 +791,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                   unfilledJournalsCount={unfilledJournalsCount}
                   currentJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
                   targetJp={teacherBeban?.max_jp ?? 24}
-                  onOpenSchedule={() => {}}
-                  onOpenJournals={() => {}}
+                  onOpenSchedule={() => handleSubTabChange('jadwal')}
+                  onOpenJournals={() => handleSubTabChange('rekap')}
                   onOpenBeban={() => onNavigateTab('profil')}
                   onOpenRekapMapel={() => handleSubTabChange('rekap')}
                 />
@@ -790,8 +811,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                   onOpenJournal={handleOpenJournal}
                 />
 
-                {/* Desktop Wide View (Jadwal Mingguan & Beban Mengajar Luas) */}
-                <div className="hidden md:block space-y-4 pt-2">
+                {/* View Jadwal Mingguan & Beban Mengajar Luas (Responsif Mobile HP & Desktop) */}
+                <div className="space-y-4 pt-2">
                   <StaffWeeklyScheduleWidget
                     guruId={guruId}
                     guruNama={guruNama}
@@ -812,6 +833,31 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                     onOpenAjukanIzin={() => setShowIzinModal(true)}
                   />
                 </div>
+              </div>
+            )}
+
+            {/* SUB-TAB JADWAL MENGAJAR (Matriks Jadwal Pelajaran Mingguan & Beban Mengajar Khusus Guru) */}
+            {activeSubTab === 'jadwal' && (
+              <div className="space-y-4">
+                <StaffWeeklyScheduleWidget
+                  guruId={guruId}
+                  guruNama={guruNama}
+                />
+
+                <BebanMengajarWidget
+                  currentJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
+                  kbmJp={teacherBeban?.current_jp ?? 0}
+                  ekuivalenJp={teacherBeban?.ekuivalen_position_jp ?? 0}
+                  targetJp={teacherBeban?.max_jp ?? 24}
+                  teacherName={guruNama}
+                  positions={teacherBeban?.positions || []}
+                  hadirBulanIni={rekapStats.HADIR || 0}
+                  terlambatBulanIni={rekapStats.TERLAMBAT || 0}
+                  dinasLuarBulanIni={rekapStats.DISPEN || 0}
+                  izinBulanIni={(rekapStats.IZIN || 0) + (rekapStats.SAKIT || 0)}
+                  isLoading={loadingBeban || loadingRekap}
+                  onOpenAjukanIzin={() => setShowIzinModal(true)}
+                />
               </div>
             )}
 

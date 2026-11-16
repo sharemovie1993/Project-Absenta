@@ -359,6 +359,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
   useEffect(() => {
     if (!rawRequestedTab) {
       setSearchParams({ tab: defaultTabId }, { replace: true });
+    } else if (rawRequestedTab === 'jadwal') {
+      setSearchParams({ tab: 'ringkasan', subtab: 'jadwal' }, { replace: true });
     } else if (rawRequestedTab === 'action_hub') {
       setSearchParams({ tab: 'ringkasan', subtab: 'tugas' }, { replace: true });
     } else if (rawRequestedTab === 'rekap_mapel') {

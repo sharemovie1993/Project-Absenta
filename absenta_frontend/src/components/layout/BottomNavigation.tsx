@@ -13,6 +13,7 @@ import {
   CheckSquare,
   Eye,
   Award,
+  Calendar,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
@@ -179,7 +180,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
       // Untuk Layer 1 Guru/Portal: Tambahkan juga pintasan KBM operasional agar komprehensif
       if (activeEcosystem === 'portal') {
         const kbmOps: UniversalSubtabItem[] = [
-          { id: 'jadwal', label: 'Jadwal Mengajar', shortLabel: 'KBM', icon: Clock, category: 'operasional', targetPath: '/dashboard?tab=jadwal' },
+          { id: 'jadwal', label: 'Jadwal Mengajar', shortLabel: 'Jadwal', icon: Calendar, category: 'operasional', targetPath: '/dashboard?tab=ringkasan&subtab=jadwal' },
           { id: 'manual_presensi', label: 'Presensi KBM Harian', shortLabel: 'Presensi', icon: CheckCircle2, category: 'operasional', targetPath: '/dashboard?tab=manual_presensi' },
           { id: 'jurnal', label: 'Jurnal Mengajar Guru', shortLabel: 'Jurnal', icon: FileText, category: 'operasional', targetPath: '/kurikulum/jurnal' },
           { id: 'perangkat', label: 'Perangkat Ajar Saya', shortLabel: 'Perangkat', icon: FolderOpen, category: 'operasional', targetPath: '/dashboard?tab=ringkasan&subtab=perangkat' },
