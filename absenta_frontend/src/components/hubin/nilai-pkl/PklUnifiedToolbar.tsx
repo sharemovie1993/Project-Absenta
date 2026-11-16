@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { z } from 'zod';
-import { Sliders, ChevronDown, ChevronUp, Filter } from 'lucide-react';
+import { Sliders, ChevronDown, ChevronUp, Filter, User, Users } from 'lucide-react';
 import { Button, SearchableSelect } from '@/components/ui';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { AcademicFilterToolbar } from '@/components/common/academic-filter';
@@ -163,6 +163,44 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col xl:flex-row xl:items-center justify-between gap-2.5">
           {/* Kiri: Konteks Akademik & Filter Kelas Terpusat */}
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Scope Selector (Bimbingan Saya vs Siswa Jurusan/Semua) */}
+            {activeGuruId && (canManageAll || isKaprog || isWaliKelas) && myGuidanceCountNilai > 0 && (
+              <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800/80 rounded-lg text-xs font-semibold shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGuidanceScope('MY_GUIDANCE');
+                    setSelectedKelas('');
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] transition-all whitespace-nowrap cursor-pointer ${
+                    guidanceScope === 'MY_GUIDANCE'
+                      ? 'bg-amber-500 text-white shadow-2xs font-bold'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="Tampilkan khusus siswa bimbingan saya (termasuk lintas jurusan)"
+                >
+                  <User size={12} />
+                  <span>Bimbingan Saya ({myGuidanceCountNilai})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGuidanceScope('ALL');
+                    setSelectedKelas('');
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] transition-all whitespace-nowrap cursor-pointer ${
+                    guidanceScope === 'ALL'
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title={isKaprog ? 'Tampilkan seluruh siswa jurusan' : 'Tampilkan seluruh siswa'}
+                >
+                  <Users size={12} />
+                  <span>{isKaprog ? `Siswa Jurusan (${allScopedCount})` : `Semua Siswa (${allScopedCount})`}</span>
+                </button>
+              </div>
+            )}
+
             <AcademicFilterToolbar
               enableTp={true}
               enableSemester={true}

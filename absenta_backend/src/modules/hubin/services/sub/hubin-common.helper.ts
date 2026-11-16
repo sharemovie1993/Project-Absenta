@@ -35,12 +35,33 @@ export class HubinCommonHelper {
     if (isGlobalHubin) return true;
 
     const pkl = await prisma.siswaPkl.findFirst({
-      where: { id, tenant_id: tenantId }
+      where: { id, tenant_id: tenantId },
+      include: {
+        Siswa: { select: { jurusan_id: true, kelas_id: true, Kelas: { select: { jurusan_id: true } } } }
+      }
     });
 
     if (!pkl) throw new Error('Data penempatan PKL tidak ditemukan');
 
-    if (user?.Guru?.id && pkl.pembimbing_id !== user.Guru.id) {
+    const guruId = user?.Guru?.id;
+    const isPembimbingForStudent = Boolean(guruId && pkl.pembimbing_id === guruId);
+    const isPengujiForStudent = Boolean(guruId && pkl.penguji_id === guruId);
+
+    const studentJurusanId = pkl.Siswa?.jurusan_id || pkl.Siswa?.Kelas?.jurusan_id;
+    const isKaprogForStudent = Boolean(
+      studentJurusanId &&
+      user?.organizationalAssignments?.some((oa: any) => 
+        oa.Position?.code === 'KAPROG' && oa.unit_id === studentJurusanId
+      )
+    );
+    const isWaliKelasForStudent = Boolean(
+      pkl.Siswa?.kelas_id &&
+      user?.organizationalAssignments?.some((oa: any) => 
+        (oa.Position?.code === 'WALIKELAS' || oa.Position?.code === 'WALI_KELAS') && oa.kelas_id === pkl.Siswa?.kelas_id
+      )
+    );
+
+    if (!isPembimbingForStudent && !isPengujiForStudent && !isKaprogForStudent && !isWaliKelasForStudent) {
       throw new Error('Anda tidak memiliki akses ke data siswa ini');
     }
 

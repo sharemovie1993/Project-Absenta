@@ -106,25 +106,33 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   const { can, isKaprog: capIsKaprog, kaprogJurusan, isWaliKelas: capIsWaliKelas, walikelasKelas, activeGuruId: capActiveGuruId, isHubin } = useCapabilities();
   const { rawList: jurusanList } = useJurusanOptions();
 
-  // Mode Penguji Sidang Murni: Abaikan hak Kaprog/Wali Kelas agar antarmuka fokus 100% sebagai penguji
-  const isKaprog = isPengujiOnly ? false : capIsKaprog;
-  const isWaliKelas = isPengujiOnly ? false : capIsWaliKelas;
+  // Deteksi Konteks Pemanggilan Spesifik (Dedicated Mode)
+  const isDedicatedGuidance = Boolean(propGuruId);
+  const isDedicatedPenguji = Boolean(isPengujiOnly || propPengujiGuruId);
 
-  // Priority to explicit prop
-  const effectiveJurusanId = isPengujiOnly ? undefined : (propJurusanId || (isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined));
+  // Mode Penguji Sidang Murni atau Meja Bimbingan Pribadi: Abaikan hak Kaprog/Wali Kelas agar antarmuka fokus 100% pada peran tersebut
+  const isKaprog = (isDedicatedPenguji || isDedicatedGuidance) ? false : capIsKaprog;
+  const isWaliKelas = (isDedicatedPenguji || isDedicatedGuidance) ? false : capIsWaliKelas;
+
+  // Priority to explicit prop: Jika mode bimbingan / penguji, effectiveJurusanId TIDAK BOLEH fallback ke jurusan Kaprog!
+  const effectiveJurusanId = (isDedicatedPenguji || isDedicatedGuidance)
+    ? undefined 
+    : (propJurusanId || (isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined));
   const effectiveJurusanNama = propJurusanNama || kaprogJurusan?.nama || 'Kejuruan';
   const isJurusanScoped = Boolean(effectiveJurusanId);
 
-  const isPrivilegedHubin = !isPengujiOnly && !readOnly && (can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('hubin.pkl.manage') || isKaprog || isHubin || Boolean(propJurusanId));
-  const canManageAll = !isPengujiOnly && (isPrivilegedHubin || isWaliKelas);
-  const effectiveHideCetakRapor = hideCetakRapor || isPengujiOnly;
+  const isPrivilegedHubin = !isDedicatedPenguji && !readOnly && (can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('hubin.pkl.manage') || isKaprog || isHubin || Boolean(propJurusanId));
+  const canManageAll = !isDedicatedPenguji && (isPrivilegedHubin || isWaliKelas);
+  const effectiveHideCetakRapor = hideCetakRapor || isDedicatedPenguji;
   
   const typedUser = user as { guru_profile?: { id?: string }; guru_id?: string; Guru?: { id?: string } } | null;
   const activeGuruId = propGuruId || capActiveGuruId || typedUser?.guru_profile?.id || typedUser?.guru_id || typedUser?.Guru?.id || null;
   const canEditScheme = !readOnly && (can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN');
   const canViewScheme = canEditScheme || can('hubin.guidance.manage') || Boolean(activeGuruId) || isKaprog || isWaliKelas || isHubin;
   
-  const [guidanceScope, setGuidanceScope] = useState<'ALL' | 'MY_GUIDANCE'>(propGuruId ? 'MY_GUIDANCE' : canManageAll ? 'ALL' : 'MY_GUIDANCE');
+  const [guidanceScope, setGuidanceScope] = useState<'ALL' | 'MY_GUIDANCE'>(
+    isDedicatedGuidance ? 'MY_GUIDANCE' : canManageAll ? 'ALL' : 'MY_GUIDANCE'
+  );
   const [statusFilter, setStatusFilter] = useState<'ELIGIBLE' | 'AKTIF' | 'SELESAI' | 'ALL'>('ELIGIBLE');
   const [adminOverrideMode, setAdminOverrideMode] = useState(false);
 
@@ -299,14 +307,18 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     const map = new Map<string, { id: string; name: string; count: number }>();
     let itemsForOptions = rawList;
 
-    if (guidanceScope === 'ALL' && isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id && !effectiveJurusanId) {
-      itemsForOptions = rawList.filter((item) => {
-        const kId = item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id;
-        return kId === walikelasKelas.id;
-      });
-    } else if (guidanceScope === 'MY_GUIDANCE' && activeGuruId) {
+    // LAYER 1: Penguji Sidang Priority (Meja Penguji Sidang)
+    if (propPengujiGuruId || isPengujiOnly) {
+      const pIdTarget = propPengujiGuruId || activeGuruId;
+      itemsForOptions = rawList.filter((item) => (item.penguji_id === pIdTarget || (item as any).Penguji?.id === pIdTarget));
+    }
+    // LAYER 2: Guru Pembimbing PKL Priority (Meja Bimbingan Pribadi)
+    // Kaprog yang membimbing siswa jurusan lain HARUS BISA melihat semua kelas bimbingannya tanpa terpotong!
+    else if (guidanceScope === 'MY_GUIDANCE' && activeGuruId) {
       itemsForOptions = rawList.filter((item) => (item.Pembimbing?.id || item.pembimbing_id) === activeGuruId);
-    } else if (isJurusanScoped) {
+    }
+    // LAYER 3: Kaprog Monitoring Priority (Meja Monitoring Jurusan)
+    else if (guidanceScope === 'ALL' && isJurusanScoped) {
       const jIdTarget = effectiveJurusanId;
       const jSingkatan = (kaprogJurusan?.singkatan || '').toLowerCase();
       itemsForOptions = rawList.filter((item) => {
@@ -315,6 +327,13 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         const kName = (item.Siswa?.Kelas?.nama_kelas || item.SiswaAkademik?.kelas?.nama_kelas || '').toLowerCase();
         if (jSingkatan && kName.includes(jSingkatan)) return true;
         return false;
+      });
+    }
+    // LAYER 4: Wali Kelas Monitoring Priority (Meja Kelas)
+    else if (guidanceScope === 'ALL' && isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id && !effectiveJurusanId) {
+      itemsForOptions = rawList.filter((item) => {
+        const kId = item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id;
+        return kId === walikelasKelas.id;
       });
     }
 
@@ -337,24 +356,23 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         value: k.id,
         label: `${k.name} (${k.count} Siswa)`,
       })) || [];
-  }, [rawList, guidanceScope, isWaliKelas, isPrivilegedHubin, walikelasKelas, activeGuruId, isJurusanScoped, effectiveJurusanId, kaprogJurusan]);
+  }, [rawList, guidanceScope, activeGuruId, propPengujiGuruId, isPengujiOnly, isJurusanScoped, effectiveJurusanId, kaprogJurusan, isWaliKelas, isPrivilegedHubin, walikelasKelas]);
 
   const displayedScores = useMemo(() => {
     let filtered = scores;
-    if (guidanceScope === 'ALL' && isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id && !effectiveJurusanId) {
-      filtered = filtered.filter((s) => s.kelas_id === walikelasKelas.id);
-    }
-    if (guidanceScope === 'MY_GUIDANCE' && activeGuruId && !propPengujiGuruId && !isPengujiOnly) {
-      filtered = filtered.filter((s) => s.pembimbing_id === activeGuruId);
-    }
+
+    // LAYER 1: Penguji Sidang Priority (Meja Penguji Sidang)
     if (propPengujiGuruId || isPengujiOnly) {
       const pIdTarget = propPengujiGuruId || activeGuruId;
-      filtered = filtered.filter((s) => {
-        // KETAT: Meja penguji HANYA menampilkan siswa yang benar-benar terdaftar di ploting penguji
-        return Boolean(s.penguji_id && s.penguji_id === pIdTarget);
-      });
+      filtered = filtered.filter((s) => Boolean(s.penguji_id && s.penguji_id === pIdTarget));
     }
-    if (isJurusanScoped) {
+    // LAYER 2: Guru Pembimbing PKL Priority (Meja Bimbingan Pribadi)
+    // Kaprog yang membimbing siswa jurusan lain HARUS BISA melihat semua siswa bimbingannya tanpa terpotong!
+    else if (guidanceScope === 'MY_GUIDANCE' && activeGuruId) {
+      filtered = filtered.filter((s) => s.pembimbing_id === activeGuruId);
+    }
+    // LAYER 3: Kaprog Monitoring Priority (Meja Monitoring Jurusan)
+    else if (guidanceScope === 'ALL' && isJurusanScoped) {
       const jIdTarget = effectiveJurusanId;
       const jSingkatan = (kaprogJurusan?.singkatan || '').toLowerCase();
       filtered = filtered.filter((s) => {
@@ -364,9 +382,18 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         return false;
       });
     }
-    if (!selectedKelas) return filtered;
-    return filtered.filter((s) => s.kelas_id === selectedKelas);
-  }, [scores, selectedKelas, guidanceScope, activeGuruId, isWaliKelas, isPrivilegedHubin, walikelasKelas, isJurusanScoped, effectiveJurusanId, kaprogJurusan]);
+    // LAYER 4: Wali Kelas Monitoring Priority (Meja Kelas)
+    else if (guidanceScope === 'ALL' && isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id && !effectiveJurusanId) {
+      filtered = filtered.filter((s) => s.kelas_id === walikelasKelas.id);
+    }
+
+    // Secondary Filter: Specific Kelas Selected
+    if (selectedKelas) {
+      filtered = filtered.filter((s) => s.kelas_id === selectedKelas);
+    }
+
+    return filtered;
+  }, [scores, selectedKelas, guidanceScope, activeGuruId, propPengujiGuruId, isPengujiOnly, isWaliKelas, isPrivilegedHubin, walikelasKelas, isJurusanScoped, effectiveJurusanId, kaprogJurusan]);
 
   const kpiStats = useMemo(() => {
     const list = displayedScores || [];
@@ -380,6 +407,12 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   }, [displayedScores]);
 
   const allScopedCount = useMemo(() => {
+    if (guidanceScope === 'MY_GUIDANCE' && activeGuruId) {
+      return rawList.filter((item: RawPklItem) => {
+        const pId = item.Pembimbing?.id || item.pembimbing_id;
+        return pId === activeGuruId;
+      }).length;
+    }
     if (isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id && !effectiveJurusanId) {
       return rawList.filter((item: RawPklItem) => {
         const kId = item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id;
@@ -398,7 +431,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
       }).length;
     }
     return rawList.length;
-  }, [rawList, isWaliKelas, isPrivilegedHubin, walikelasKelas, isJurusanScoped, effectiveJurusanId, kaprogJurusan]);
+  }, [rawList, guidanceScope, activeGuruId, isWaliKelas, isPrivilegedHubin, walikelasKelas, isJurusanScoped, effectiveJurusanId, kaprogJurusan]);
 
   const myGuidanceCountNilai = useMemo(() => {
     if (!activeGuruId) return 0;
@@ -698,7 +731,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     <div className={cn('space-y-4', className)}>
       <SectionCard fullWidth className="flex flex-col w-full min-w-0 space-y-4 border-none shadow-none bg-transparent p-0">
         {/* Banner Khusus Kaprog: Hanya muncul jika bukan modal dan tidak di-hide */}
-        {isJurusanScoped && !isModal && !hideScopeBanner && (
+        {guidanceScope === 'ALL' && isJurusanScoped && !isModal && !hideScopeBanner && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200">
             <div className="flex items-center gap-2.5">
               <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
@@ -719,6 +752,19 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               <GraduationCap size={13} />
               <span>Dashboard Kaprog (Formulasi TP) →</span>
             </button>
+          </div>
+        )}
+
+        {/* Banner Bimbingan Saya untuk Multi-Peran Kaprog */}
+        {guidanceScope === 'MY_GUIDANCE' && isKaprog && !isModal && !hideScopeBanner && (
+          <div className="flex items-center gap-2.5 p-3 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 rounded-2xl text-xs text-amber-900 dark:text-amber-200">
+            <ShieldCheck size={18} className="text-amber-600 dark:text-amber-400 shrink-0" />
+            <div>
+              <span className="font-bold">Meja Guru Pembimbing PKL:</span>{' '}
+              <span>
+                Menampilkan seluruh siswa yang Anda bimbing langsung secara penuh (termasuk siswa penugasan lintas jurusan).
+              </span>
+            </div>
           </div>
         )}
 
@@ -865,7 +911,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
             selectedKelas={selectedKelas}
             setSelectedKelas={setSelectedKelas}
             smartClassOptions={smartClassOptions}
-            scoresCount={isJurusanScoped || isWaliKelas ? allScopedCount : scores.length}
+            scoresCount={guidanceScope === 'MY_GUIDANCE' ? myGuidanceCountNilai : (isJurusanScoped || isWaliKelas ? allScopedCount : scores.length)}
             isLoadingRekap={isLoadingRekap}
             onSaveBatch={handleSaveBatch}
             isSavingBatch={saveBatchMutation.isPending}

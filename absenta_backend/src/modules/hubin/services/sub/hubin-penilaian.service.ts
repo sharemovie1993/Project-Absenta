@@ -854,7 +854,8 @@ export class HubinPenilaianService extends HubinCommonHelper {
     const scopeKey = org?.is_unit_restricted && Array.isArray(org.unit_ids) 
       ? org.unit_ids.sort().join(',') 
       : (Array.isArray(org?.kelas_ids) && org.kelas_ids.length > 0 ? org.kelas_ids.sort().join(',') : 'all_units');
-    const cacheKey = `hubin:${tenantId}:pkl_rekap_v2:${params?.kelas_id || 'all'}:${params?.tahun_pelajaran_id || 'all'}:${params?.semester_id || 'all'}:${params?.pembimbing_id || 'all'}:${params?.status || 'all'}:${params?.search || 'all'}:${scopeKey}`;
+    const userScopeKey = userId || 'public';
+    const cacheKey = `hubin:${tenantId}:pkl_rekap_v2:${params?.kelas_id || 'all'}:${params?.tahun_pelajaran_id || 'all'}:${params?.semester_id || 'all'}:${params?.pembimbing_id || 'all'}:${params?.status || 'all'}:${params?.search || 'all'}:${scopeKey}:${userScopeKey}`;
 
     return await cacheService.getOrSet(
       cacheKey,
@@ -893,6 +894,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
               ];
               if (user?.Guru?.id) {
                 scopeOr.push({ pembimbing_id: user.Guru.id });
+                scopeOr.push({ penguji_id: user.Guru.id });
               }
               andConditions.push({ OR: scopeOr });
             } else if (Array.isArray(org.kelas_ids) && org.kelas_ids.length > 0) {
@@ -905,6 +907,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
               ];
               if (user?.Guru?.id) {
                 scopeOr.push({ pembimbing_id: user.Guru.id });
+                scopeOr.push({ penguji_id: user.Guru.id });
               }
               andConditions.push({ OR: scopeOr });
             }
@@ -941,6 +944,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
                 ];
                 if (user?.Guru?.id) {
                   scopeOr.push({ pembimbing_id: user.Guru.id });
+                  scopeOr.push({ penguji_id: user.Guru.id });
                 }
                 andConditions.push({ OR: scopeOr });
               } else if (walikelasAssignments && walikelasAssignments.length > 0) {
@@ -954,6 +958,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
                 ];
                 if (user?.Guru?.id) {
                   scopeOr.push({ pembimbing_id: user.Guru.id });
+                  scopeOr.push({ penguji_id: user.Guru.id });
                 }
                 andConditions.push({ OR: scopeOr });
               }
