@@ -758,7 +758,7 @@ export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
     <div
       ref={deskRef}
       className={cn(
-        'overflow-y-auto overflow-x-auto max-h-[76vh] p-2 sm:p-8 bg-slate-200/70 dark:bg-slate-950/80 rounded-xl border border-slate-300 dark:border-slate-800 flex flex-col items-center gap-4 sm:gap-8 select-text',
+        'print-desk-canvas-outer overflow-y-auto overflow-x-auto max-h-[76vh] p-2 sm:p-8 bg-slate-200/70 dark:bg-slate-950/80 rounded-xl border border-slate-300 dark:border-slate-800 flex flex-col items-center gap-4 sm:gap-8 select-text print:overflow-visible print:max-h-none print:h-auto print:w-full print:max-w-none print:p-0 print:m-0 print:border-none print:bg-transparent print:block print:shadow-none print:static',
         className
       )}
     >
@@ -770,7 +770,7 @@ export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
           width: `${baseWidth}px`,
           maxWidth: zoomMode === 'original' ? `${baseWidth}px` : undefined,
         }}
-        className="flex flex-col items-center gap-8 transition-all duration-150 origin-top"
+        className="print-desk-canvas flex flex-col items-center gap-8 transition-all duration-150 origin-top print:overflow-visible print:max-h-none print:h-auto print:w-full print:max-w-none print:p-0 print:m-0 print:border-none print:bg-transparent print:block print:gap-0 print:static"
       >
         {children}
       </div>
@@ -937,9 +937,59 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
     else setInternalLogoSekolah(checked);
   };
 
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      document.body.classList.add('universal-document-printing');
+      const deskCanvas = document.getElementById('print-desk-canvas-area');
+      if (deskCanvas) {
+        deskCanvas.style.zoom = '1';
+        deskCanvas.style.transform = 'none';
+        void deskCanvas.offsetHeight;
+      }
+    };
+
+    const handleAfterPrint = () => {
+      document.body.classList.remove('universal-document-printing');
+      window.dispatchEvent(new Event('resize'));
+    };
+
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    return () => {
+      document.body.classList.remove('universal-document-printing');
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
+
   const handlePrint = () => {
-    if (onPrint) onPrint();
-    else window.print();
+    const deskCanvas = document.getElementById('print-desk-canvas-area');
+    const prevZoom = deskCanvas ? deskCanvas.style.zoom : '';
+    if (deskCanvas) {
+      deskCanvas.style.zoom = '1';
+      deskCanvas.style.transform = 'none';
+      void deskCanvas.offsetHeight;
+    }
+
+    document.body.classList.add('universal-document-printing');
+
+    const cleanup = () => {
+      document.body.classList.remove('universal-document-printing');
+      if (deskCanvas) {
+        deskCanvas.style.zoom = prevZoom;
+      }
+      window.removeEventListener('afterprint', cleanup);
+    };
+
+    window.addEventListener('afterprint', cleanup, { once: true });
+
+    try {
+      if (onPrint) onPrint();
+      else window.print();
+    } finally {
+      setTimeout(cleanup, 2000);
+    }
   };
 
   return (
@@ -1595,9 +1645,59 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
     else setInternalLogoSekolah(checked);
   };
 
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      document.body.classList.add('universal-document-printing');
+      const deskCanvas = document.getElementById('print-desk-canvas-area');
+      if (deskCanvas) {
+        deskCanvas.style.zoom = '1';
+        deskCanvas.style.transform = 'none';
+        void deskCanvas.offsetHeight;
+      }
+    };
+
+    const handleAfterPrint = () => {
+      document.body.classList.remove('universal-document-printing');
+      window.dispatchEvent(new Event('resize'));
+    };
+
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    return () => {
+      document.body.classList.remove('universal-document-printing');
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
+
   const handlePrint = () => {
-    if (onPrint) onPrint();
-    else window.print();
+    const deskCanvas = document.getElementById('print-desk-canvas-area');
+    const prevZoom = deskCanvas ? deskCanvas.style.zoom : '';
+    if (deskCanvas) {
+      deskCanvas.style.zoom = '1';
+      deskCanvas.style.transform = 'none';
+      void deskCanvas.offsetHeight;
+    }
+
+    document.body.classList.add('universal-document-printing');
+
+    const cleanup = () => {
+      document.body.classList.remove('universal-document-printing');
+      if (deskCanvas) {
+        deskCanvas.style.zoom = prevZoom;
+      }
+      window.removeEventListener('afterprint', cleanup);
+    };
+
+    window.addEventListener('afterprint', cleanup, { once: true });
+
+    try {
+      if (onPrint) onPrint();
+      else window.print();
+    } finally {
+      setTimeout(cleanup, 2000);
+    }
   };
 
   return (

@@ -961,14 +961,16 @@ export class AuthService {
       }
     }
     
-    // Attach siswa_id if role is SISWA
+    // Attach siswa_id and class info if role is SISWA
     if (response.role?.name === 'SISWA') {
       const student = await prisma.siswa.findFirst({
         where: { user_id: user.id },
-        select: { id: true }
+        select: { id: true, kelas_id: true, Kelas: { select: { nama_kelas: true } } }
       });
       if (student) {
         response.siswa_id = student.id;
+        (response as any).kelas_id = student.kelas_id;
+        (response as any).kelas_nama = student.Kelas?.nama_kelas;
       }
     }
 

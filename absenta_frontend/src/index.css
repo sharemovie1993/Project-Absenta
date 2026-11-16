@@ -808,49 +808,51 @@ html[data-theme="dark"] .glass-morphism {
     print-color-adjust: exact !important;
   }
 
-  /* 1. Sembunyikan seluruh UI Chrome web browser & tombol saat print */
+  /* 1. Sembunyikan seluruh UI Chrome web browser, background & tombol saat print */
   .print\:hidden,
   .no-print,
   nav,
   aside,
-  header,
-  footer,
   button,
   [data-backdrop="true"],
-  .modal-backdrop {
+  .modal-backdrop,
+  header:not(.print-sheet *),
+  footer:not(.print-sheet *) {
     display: none !important;
   }
 
   /* 2. Jika ada modal cetak aktif (.print-sheet di portal/body), sembunyikan background app #root */
-  body:has(.print-sheet) > #root {
+  body:has(> * [role="dialog"] .print-sheet) > #root,
+  body:has(> [role="dialog"] .print-sheet) > #root,
+  body.universal-document-printing:has([role="dialog"] .print-sheet) > #root {
     display: none !important;
   }
 
-  /* 3. Jika modal cetak belum di-portal (masih di dalam #root), sembunyikan sibling di luar modal */
-  body:has(.print-sheet) #root > *:not(:has(.print-sheet)) {
+  /* 3. Jika modal/tab cetak masih di dalam #root, sembunyikan sibling di luar lembar cetak */
+  body:not(:has([role="dialog"] .print-sheet)):has(.print-sheet) #root > *:not(:has(.print-sheet)) {
     display: none !important;
   }
 
-  /* 4. Reset fixed overlay modal untuk media cetak */
+  /* 4. Reset fixed overlay modal, dialog, dan seluruh container ancestor dari .print-sheet */
   .fixed.inset-0:has(.print-sheet),
-  .modal-wrapper:has(.print-sheet) {
+  .modal-wrapper:has(.print-sheet),
+  div[role="dialog"]:has(.print-sheet),
+  div[role="document"]:has(.print-sheet),
+  div:has(> .print-sheet),
+  div:has(> * > .print-sheet),
+  div:has(> * > * > .print-sheet),
+  .print-desk-canvas-outer,
+  #print-desk-canvas-area,
+  .print-desk-canvas {
     position: static !important;
     display: block !important;
     overflow: visible !important;
     max-height: none !important;
-    height: auto !important;
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-
-  div[role="dialog"]:has(.print-sheet) {
-    position: static !important;
-    display: block !important;
-    overflow: visible !important;
-    max-height: none !important;
+    min-height: 0 !important;
     height: auto !important;
     width: 100% !important;
     max-width: none !important;
+    min-width: 0 !important;
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -858,26 +860,13 @@ html[data-theme="dark"] .glass-morphism {
     padding: 0 !important;
     margin: 0 !important;
     transform: none !important;
-  }
-
-  /* 5. Reset PrintDeskCanvas & Canvas Area */
-  #print-desk-canvas-area,
-  .print-desk-canvas {
     zoom: 1 !important;
-    transform: none !important;
-    overflow: visible !important;
-    max-height: none !important;
-    height: auto !important;
-    width: 100% !important;
-    max-width: none !important;
     gap: 0 !important;
-    background: transparent !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    display: block !important;
+    float: none !important;
+    flex: none !important;
   }
 
-  /* 6. Aturan Lembar Kertas A4 Fisik */
+  /* 5. Aturan Lembar Kertas A4 Fisik */
   .print-sheet {
     box-shadow: none !important;
     border: none !important;
@@ -889,6 +878,7 @@ html[data-theme="dark"] .glass-morphism {
     break-after: page !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    box-sizing: border-box !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }

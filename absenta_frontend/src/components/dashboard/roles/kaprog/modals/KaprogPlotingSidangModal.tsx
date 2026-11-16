@@ -63,32 +63,38 @@ export const KaprogPlotingSidangModal: React.FC<KaprogPlotingSidangModalProps> =
     onlyActive: false,
   });
 
-  // Resolusi Daftar Guru Penguji Khusus Produktif Jurusan
-  const examinerOptions = useMemo(() => {
-    const listProduktif: GuruProduktifItem[] =
-      (propGuruProduktif && propGuruProduktif.length > 0)
-        ? propGuruProduktif
-        : (statsData?.data?.guruProduktif || statsData?.guruProduktif || []);
-
-    if (listProduktif.length > 0) {
-      return listProduktif.map((g) => ({
-        id: g.id,
-        nama_guru: g.nama,
-        nip: g.nip || null,
-        mapel: g.mapel || 'Guru Produktif Kejuruan',
-        isProduktif: true,
-      }));
-    }
-
-    // Fallback jika belum ada jadwal KBM produktif terdata di database
-    return (allGuruList || []).map((g) => ({
+  // Resolusi Daftar Guru & Staf Penguji (Diperluas: Mencakup Seluruh Guru & TU dengan Pemisahan Blok PTK)
+  const { guruList, tuList, allExaminers } = useMemo(() => {
+    const rawAll = (allGuruList || []).map((g: any) => ({
       id: g.id,
-      nama_guru: g.nama_guru,
+      nama_guru: g.nama_guru || g.nama || 'Tanpa Nama',
       nip: g.nip || null,
-      mapel: 'Guru Pengajar',
-      isProduktif: false,
+      jenis_ptk: g.jenis_ptk || 'PENDIDIK',
     }));
-  }, [propGuruProduktif, statsData, allGuruList]);
+
+    const teachers: typeof rawAll = [];
+    const staffTu: typeof rawAll = [];
+
+    rawAll.forEach((g) => {
+      const ptk = String(g.jenis_ptk || '').toUpperCase();
+      if (ptk.includes('TENAGA') || ptk.includes('TU') || ptk === 'TENAGA_KEPENDIDIKAN') {
+        staffTu.push(g);
+      } else {
+        teachers.push(g);
+      }
+    });
+
+    teachers.sort((a, b) => a.nama_guru.localeCompare(b.nama_guru, 'id'));
+    staffTu.sort((a, b) => a.nama_guru.localeCompare(b.nama_guru, 'id'));
+
+    return {
+      guruList: teachers,
+      tuList: staffTu,
+      allExaminers: [...teachers, ...staffTu],
+    };
+  }, [allGuruList]);
+
+  const examinerOptions = allExaminers;
 
   // 2. Query Siswa PKL Jurusan
   const { data: pklData, isLoading: loadingSiswa, refetch } = useQuery({
@@ -270,7 +276,7 @@ export const KaprogPlotingSidangModal: React.FC<KaprogPlotingSidangModalProps> =
               <span className="text-rose-500">*</span>
             </label>
             <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-900/40">
-              {examinerOptions.length} Guru Produktif Terdata
+              {guruList.length} Guru • {tuList.length} TU Terdata
             </span>
           </div>
 
@@ -281,12 +287,25 @@ export const KaprogPlotingSidangModal: React.FC<KaprogPlotingSidangModalProps> =
               onChange={(e) => setSelectedGuruId(e.target.value)}
               className="w-full text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 sm:py-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none transition-all cursor-pointer truncate shadow-2xs"
             >
-              <option value="">-- Pilih Guru Produktif Penguji Sidang --</option>
-              {examinerOptions.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.nama_guru}
-                </option>
-              ))}
+              <option value="">-- Pilih Guru / Penguji Sidang --</option>
+              {guruList.length > 0 && (
+                <optgroup label={`── GURU / TENAGA PENDIDIK (${guruList.length}) ──`}>
+                  {guruList.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.nama_guru}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {tuList.length > 0 && (
+                <optgroup label={`── TATA USAHA (TU) / TENAGA KEPENDIDIKAN (${tuList.length}) ──`}>
+                  {tuList.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.nama_guru}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
         </div>

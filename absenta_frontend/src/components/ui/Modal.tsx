@@ -144,7 +144,7 @@ export function Modal({
       {isOpen && (
         <div 
           className={cn(
-            "fixed inset-0 flex p-2 sm:p-4 print:p-0 print:static print:block",
+            "fixed inset-0 flex p-2 sm:p-4 print:p-0 print:m-0 print:static print:block print:w-full print:h-auto print:max-h-none",
             placement === 'bottom' ? 'items-end justify-center' : placement === 'top' ? 'items-start justify-center' : 'items-center justify-center'
           )} 
           style={{ zIndex }}
@@ -167,7 +167,7 @@ export function Modal({
             aria-labelledby={title ? "modal-title" : undefined}
             aria-describedby={description ? "modal-description" : undefined}
             className={cn(
-              'relative z-10 bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 w-full overflow-hidden max-h-[96vh] sm:max-h-[92vh] flex flex-col print:border-none print:shadow-none print:max-h-none print:overflow-visible print:w-full print:bg-transparent print:static print:rounded-none',
+              'relative z-10 bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 w-full overflow-hidden max-h-[96vh] sm:max-h-[92vh] flex flex-col print:border-none print:shadow-none print:max-h-none print:h-auto print:overflow-visible print:w-full print:bg-transparent print:static print:rounded-none print:block print:p-0 print:m-0',
               activeSizeClass,
               className
             )}
@@ -223,7 +223,7 @@ export function Modal({
             )}
             
             {/* Content */}
-            <div className={cn('p-3 sm:p-6 overflow-y-auto flex-1 print:overflow-visible print:p-0 print:max-h-none', (title || description) && 'pt-2.5 sm:pt-4', 'max-h-[calc(96vh-80px)] sm:max-h-[calc(92vh-100px)]', contentClassName)}>
+            <div className={cn('p-3 sm:p-6 overflow-y-auto flex-1 print:overflow-visible print:p-0 print:m-0 print:max-h-none print:h-auto print:block print:w-full', (title || description) && 'pt-2.5 sm:pt-4', 'max-h-[calc(96vh-80px)] sm:max-h-[calc(92vh-100px)]', contentClassName)}>
               {children}
             </div>
           </motion.div>

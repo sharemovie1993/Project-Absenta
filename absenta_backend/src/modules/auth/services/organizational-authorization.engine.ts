@@ -223,6 +223,33 @@ export class OrganizationalAuthorizationEngine {
           capSet.add('attendance.piket.manage');
         }
       }
+
+      // Pembimbing & Penguji Sidang PKL:
+      // Guru yang di-ploting sebagai pembimbing PKL ATAU penguji sidang PKL (nilai_json->penguji_id)
+      const [pklCount, pengujiCount] = await Promise.all([
+        prisma.siswaPkl.count({
+          where: { pembimbing_id: guru.id },
+        }),
+        prisma.siswaPkl.count({
+          where: {
+            nilai_json: {
+              path: ['penguji_id'],
+              equals: guru.id,
+            },
+          },
+        }),
+      ]);
+
+      if (pklCount > 0 || pengujiCount > 0) {
+        capSet.add('hubin.pkl.manage');
+        capSet.add('hubin.guidance.manage');
+        capSet.add('hubin.pkl.view.list');
+        capSet.add('hubin.logbook.manage');
+        capSet.add('hubin.absensi.verify');
+        capSet.add('hubin.absensi.view.history');
+        capSet.add('hubin.absensi.recap');
+        capSet.add('dashboard.view.hubin');
+      }
     }
 
     // 4. Base Self-Service Capabilities (Overview, Notifications & Profile)

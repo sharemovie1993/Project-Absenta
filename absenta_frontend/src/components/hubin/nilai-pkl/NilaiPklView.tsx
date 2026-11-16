@@ -516,13 +516,14 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
 
   const handleSaveBatch = useCallback(() => {
     if (effectiveReadOnly) return;
-    if (scores.length === 0) {
+    const targetScores = isPengujiOnly ? displayedScores : scores;
+    if (!targetScores || targetScores.length === 0) {
       toast.error('Tidak ada data siswa untuk disimpan');
       return;
     }
     // Strict Mode: Filter UI is ONLY for reading data. Do not pass filter state to grade batch write.
     saveBatchMutation.mutate({
-      scores: scores?.map(s => ({
+      scores: targetScores?.map(s => ({
         siswa_pkl_id: s.siswa_pkl_id,
         hard_kompetensi_teknis: s.hard_kompetensi_teknis,
         hard_sop_k3lh: s.hard_sop_k3lh,
@@ -551,10 +552,12 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         deskripsi_tp: s.deskripsi_tp,
         instruktur_nama: s.instruktur_nama,
         penanggung_jawab_nama: s.penanggung_jawab_nama,
-        alamat_dudi: s.alamat_dudi
+        alamat_dudi: s.alamat_dudi,
+        tahun_pelajaran_id: selectedTp || undefined,
+        semester_id: selectedSemester || undefined
       })) || []
     });
-  }, [scores, selectedTp, selectedSemester, saveBatchMutation, effectiveReadOnly]);
+  }, [scores, displayedScores, isPengujiOnly, selectedTp, selectedSemester, saveBatchMutation, effectiveReadOnly]);
 
   const handleClearScores = useCallback((target: 'dudi' | 'sidang', specificSiswaPklId?: string) => {
     if (effectiveReadOnly) return;
@@ -670,7 +673,9 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         deskripsi_tp: s.deskripsi_tp,
         instruktur_nama: s.instruktur_nama,
         penanggung_jawab_nama: s.penanggung_jawab_nama,
-        alamat_dudi: s.alamat_dudi
+        alamat_dudi: s.alamat_dudi,
+        tahun_pelajaran_id: selectedTp || undefined,
+        semester_id: selectedSemester || undefined
       }))
     });
   }, [effectiveReadOnly, scores, displayedScores, saveBatchMutation]);

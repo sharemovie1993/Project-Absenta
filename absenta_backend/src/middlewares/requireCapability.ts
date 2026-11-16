@@ -1,5 +1,6 @@
 import { authorizationService } from '@/modules/auth/services/authorization.service';
 import { RoleName } from '../constants/enums';
+import { prisma } from '../utils/prisma';
 
 interface RequireCapabilityOptions {
   checkGuruOnly?: boolean; // Legacy option
@@ -41,6 +42,55 @@ export const requireCapability = (capabilityOrCapabilities: string | string[], o
     // Check Exempt Roles
     if (options.exemptRoles && options.exemptRoles.some(r => String(r).toUpperCase() === roleName)) {
         return;
+    }
+
+    // 🎯 Dynamic Pembimbing & Penguji Sidang PKL Authorization:
+    // Guru yang di-ploting sebagai Pembimbing (SiswaPkl.pembimbing_id)
+    // ATAU sebagai Penguji Sidang (SiswaPkl.nilai_json->penguji_id)
+    // berhak penuh melakukan CRUD Nilai PKL, Nilai Sidang, Logbook, Rekap, dan Monitoring PKL
+    const isPklCap = capabilities.some(c => 
+      c === 'hubin.pkl.manage' || 
+      c === 'hubin.guidance.manage' || 
+      c === 'hubin.pkl.view.list' ||
+      c === 'hubin.logbook.manage' ||
+      c === 'hubin.absensi.verify' ||
+      c === 'hubin.absensi.view.history' ||
+      c === 'hubin.absensi.recap' ||
+      c === 'dashboard.view.hubin'
+    );
+    if (isPklCap && roleName === 'GURU') {
+      try {
+        const guru = await prisma.guru.findFirst({
+          where: { user_id: String(userId) },
+          select: { id: true }
+        });
+        if (guru) {
+          // 1. Cek ploting pembimbing PKL
+          const isPembimbingPlotted = await prisma.siswaPkl.findFirst({
+            where: { pembimbing_id: guru.id },
+            select: { id: true }
+          });
+          if (isPembimbingPlotted) {
+            return; // Authorized directly as Pembimbing PKL!
+          }
+
+          // 2. Cek ploting penguji sidang PKL
+          const isPengujiPlotted = await prisma.siswaPkl.findFirst({
+            where: {
+              nilai_json: {
+                path: ['penguji_id'],
+                equals: guru.id
+              }
+            },
+            select: { id: true }
+          });
+          if (isPengujiPlotted) {
+            return; // Authorized directly as Penguji Sidang PKL!
+          }
+        }
+      } catch (e) {
+        request.log.warn({ err: e }, '[AUTH] Error checking SiswaPkl pembimbing/penguji plotting in requireCapability');
+      }
     }
 
     const res = await authorizationService.isUserAuthorized(String(userId), capabilities, { user });

@@ -536,24 +536,34 @@ export class HubinPenilaianService extends HubinCommonHelper {
       const pklRec = pklMap.get(item.siswa_pkl_id);
       if (!pklRec) continue;
 
-      // 1. Collect non-null grades to compute Nilai DUDI (8 Aspek)
+      // 1. Collect non-null grades to compute Nilai DUDI (8 Aspek) with fallback to existing DB values
+      const hardTeknis = item.hard_kompetensi_teknis !== undefined ? item.hard_kompetensi_teknis : pklRec.hard_kompetensi_teknis;
+      const hardSop = item.hard_sop_k3lh !== undefined ? item.hard_sop_k3lh : pklRec.hard_sop_k3lh;
+      const hardBisnis = item.hard_alur_bisnis !== undefined ? item.hard_alur_bisnis : pklRec.hard_alur_bisnis;
+      const softDisiplin = item.soft_kedisiplinan !== undefined ? item.soft_kedisiplinan : pklRec.soft_kedisiplinan;
+      const softInisiatif = item.soft_kerajinan_inisiatif !== undefined ? item.soft_kerajinan_inisiatif : pklRec.soft_kerajinan_inisiatif;
+      const softKerjasama = item.soft_kerjasama !== undefined ? item.soft_kerjasama : pklRec.soft_kerjasama;
+      const softKejujuran = item.soft_kejujuran !== undefined ? item.soft_kejujuran : pklRec.soft_kejujuran;
+      const softTanggungJawab = item.soft_tanggung_jawab !== undefined ? item.soft_tanggung_jawab : pklRec.soft_tanggung_jawab;
+
       const dudiGradeList = [
-        item.hard_kompetensi_teknis,
-        item.hard_sop_k3lh,
-        item.hard_alur_bisnis,
-        item.soft_kedisiplinan,
-        item.soft_kerajinan_inisiatif,
-        item.soft_kerjasama,
-        item.soft_kejujuran,
-        item.soft_tanggung_jawab,
+        hardTeknis,
+        hardSop,
+        hardBisnis,
+        softDisiplin,
+        softInisiatif,
+        softKerjasama,
+        softKejujuran,
+        softTanggungJawab,
       ].filter((v): v is number => v !== null && v !== undefined && !isNaN(v));
+
+      const prevNilaiJson = (pklRec.nilai_json as Record<string, any>) || {};
 
       const dudiAvg = dudiGradeList.length > 0
         ? Number((dudiGradeList.reduce((acc, curr) => acc + curr, 0) / dudiGradeList.length).toFixed(2))
-        : null;
+        : (prevNilaiJson.dudi_avg ?? null);
 
       // 2. Resolve Laporan, Sidang, and Penguji from payload or existing nilai_json
-      const prevNilaiJson = (pklRec.nilai_json as Record<string, any>) || {};
 
       const nilaiLaporan = item.nilai_laporan !== undefined 
         ? item.nilai_laporan 
@@ -781,9 +791,9 @@ export class HubinPenilaianService extends HubinCommonHelper {
             );
           }
         }
-      } else if (nilaiAkhir === null && mapelPkl) {
-        // Jika nilai dikosongkan/direset, kosongkan juga nilai mapel PKL di tabel NilaiSiswa
-        const pklRec = pklMap.get(item.siswa_pkl_id);
+      } else if (nilaiAkhir === null && mapelPkl && pklRec?.nilai_akhir_pkl !== null) {
+        // HANYA jika nilai sebelumnya ada lalu dikosongkan/direset oleh guru,
+        // hapus entri nilai rapor PKL siswa agar bersih
         const targetSiswaId = pklRec?.siswa_id;
         const targetTpId =
           item.tahun_pelajaran_id ||
@@ -798,19 +808,13 @@ export class HubinPenilaianService extends HubinCommonHelper {
 
         if (targetSiswaId && targetTpId && targetSemId) {
           operations.push(
-            prisma.nilaiSiswa.updateMany({
+            prisma.nilaiSiswa.deleteMany({
               where: {
                 tenant_id: tenantId,
                 siswa_id: targetSiswaId,
                 mapel_id: mapelPkl.id,
                 tahun_pelajaran_id: targetTpId,
                 semester_id: targetSemId,
-              },
-              data: {
-                nilai: null,
-                nilai_akhir_sumatif: null,
-                nilai_rapor_final: null,
-                capaian_kompetensi: null,
               },
             })
           );

@@ -1049,10 +1049,7 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
       }
       orientation="portrait"
       allowOrientationToggle={false}
-      allowLogoToggles={true}
-      showLogoSekolah={showLogoSekolah}
-      onToggleLogoSekolah={setShowLogoSekolah}
-      onPrint={handleBrowserPrint}
+      allowLogoToggles={false}
       onDownloadPdf={handleDownloadPdf}
       downloadPdfText={isExportingPdf ? 'Memproses PDF...' : 'Unduh PDF (A4 Portrait)'}
       printButtonText="Cetak Kartu Ujian"
@@ -1119,10 +1116,10 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
                 ? 'bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900 shadow-2xs'
                 : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400'
             )}
-            title="Buka / Tutup Pengaturan Kartu Ujian (Event, TP, PIN, Foto, QR Code)"
+            title="Buka / Tutup Pengaturan Kartu Ujian (Event, TP, Logo, PIN, Foto, QR Code)"
           >
             <SlidersHorizontal size={12} className={isOptionsOpen ? 'text-indigo-300 dark:text-indigo-600' : 'text-indigo-600'} />
-            <span>Opsi Kartu</span>
+            <span>Pengaturan Kartu</span>
             <ChevronDown size={12} className={cn('transition-transform duration-200', isOptionsOpen && 'rotate-180')} />
           </button>
         </div>
@@ -1130,9 +1127,9 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
       subHeader={
         isOptionsOpen ? (
           <div className="bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-xs space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200 print:hidden">
-            {/* Baris 1: Header Dokumen (Event & Tahun Pelajaran) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-              <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-2xs">
+            {/* Baris 1: Header Dokumen (Event, Tahun Pelajaran & Logo Sekolah) */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
+              <div className="md:col-span-6 flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-2xs">
                 <Edit3 size={13} className="text-indigo-600 shrink-0" />
                 <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Event:</span>
                 <input
@@ -1145,7 +1142,7 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
                 />
               </div>
 
-              <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-2xs">
+              <div className="md:col-span-4 flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-2xs">
                 <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">TP:</span>
                 <input
                   type="text"
@@ -1155,6 +1152,22 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
                   aria-label="Edit tahun pelajaran pada kartu ujian"
                   className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-full"
                 />
+              </div>
+
+              <div className="md:col-span-2 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoSekolah((prev) => !prev)}
+                  className={cn(
+                    'w-full py-1.5 px-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1.5 cursor-pointer',
+                    showLogoSekolah
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-700 dark:text-emerald-300'
+                      : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
+                  )}
+                  title="Tampilkan logo sekolah di header kartu ujian"
+                >
+                  <span>Logo {showLogoSekolah ? 'ON' : 'OFF'}</span>
+                </button>
               </div>
             </div>
 
