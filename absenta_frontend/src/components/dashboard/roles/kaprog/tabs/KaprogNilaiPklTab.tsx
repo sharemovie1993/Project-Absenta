@@ -29,10 +29,10 @@ export const KaprogNilaiPklTab: React.FC<KaprogNilaiPklTabProps> = React.memo(({
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <span>Monitoring Penilaian PKL DUDI Jurusan {jurusanNama}</span>
+              <span>Progres Input Nilai PKL Jurusan {jurusanNama}</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Pantau progres ketuntasan nilai capaian kompetensi industri (Hard Skill &amp; Soft Skill) dari instruktur DUDI untuk persiapan kelulusan &amp; rapor PKL.
+              Pantau progres ketuntasan nilai capaian kompetensi industri dari guru pembimbing PKL, audit sebaran nilai, serta mode koreksi Kaprog.
             </p>
           </div>
         </div>
@@ -42,7 +42,7 @@ export const KaprogNilaiPklTab: React.FC<KaprogNilaiPklTabProps> = React.memo(({
         fallback={
           <div className="p-12 text-center text-xs text-slate-400">
             <div className="animate-spin w-8 h-8 mx-auto text-blue-600 mb-2 border-2 border-current border-t-transparent rounded-full" />
-            Memuat lembar penilaian PKL DUDI...
+            Memuat progres penilaian PKL...
           </div>
         }
       >
@@ -54,8 +54,7 @@ export const KaprogNilaiPklTab: React.FC<KaprogNilaiPklTabProps> = React.memo(({
           jurusanNama={jurusanNama}
           tahunPelajaranId={tahunPelajaranId}
           semesterId={semesterId}
-          activeTabOnly="dudi"
-          initialTab="dudi"
+          initialTab="progres_pkl"
           layoutMode="hubin"
           className="w-full"
         />

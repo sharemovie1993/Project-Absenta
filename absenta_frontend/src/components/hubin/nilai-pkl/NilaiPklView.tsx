@@ -79,25 +79,6 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<string>(
-    activeTabOnly || (initialTab === 'sidang' ? 'sidang' : initialTab === 'monitoring_sidang' ? 'monitoring_sidang' : 'dudi')
-  );
-  const [selectedKelas, setSelectedKelas] = useState(propKelasId || '');
-  const [selectedMitra, setSelectedMitra] = useState('');
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-
-  useEffect(() => {
-    if (propKelasId) setSelectedKelas(propKelasId);
-  }, [propKelasId]);
-
-  useEffect(() => {
-    if (activeTabOnly) {
-      setActiveTab(activeTabOnly);
-    } else if (initialTab) {
-      setActiveTab(initialTab);
-    }
-  }, [activeTabOnly, initialTab]);
-
   // Settings Form State
   const [formMode, setFormMode] = useState<'DUDI_ONLY' | 'DUDI_SIDANG' | 'COMPOSITE'>('DUDI_ONLY');
   const [formWeightDudi, setFormWeightDudi] = useState<number>(70);
@@ -128,6 +109,33 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   const isPrivilegedHubin = !isDedicatedPenguji && !readOnly && (can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('hubin.pkl.manage') || isKaprog || isHubin || Boolean(propJurusanId));
   const canManageAll = !isDedicatedPenguji && (isPrivilegedHubin || isWaliKelas);
   const effectiveHideCetakRapor = hideCetakRapor || isDedicatedPenguji;
+
+  // Managerial Role: Waka Hubin & Kaprog (Bukan peran operasional guru pembimbing / penguji sidang)
+  const isManagerialRole = !isDedicatedPenguji && !isDedicatedGuidance && (isHubin || isKaprog || can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN');
+
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (activeTabOnly) return activeTabOnly;
+    if (initialTab) return initialTab;
+    if (isManagerialRole) return 'progres_pkl';
+    return 'dudi';
+  });
+  const [selectedKelas, setSelectedKelas] = useState(propKelasId || '');
+  const [selectedMitra, setSelectedMitra] = useState('');
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  useEffect(() => {
+    if (propKelasId) setSelectedKelas(propKelasId);
+  }, [propKelasId]);
+
+  useEffect(() => {
+    if (activeTabOnly) {
+      setActiveTab(activeTabOnly);
+    } else if (initialTab) {
+      setActiveTab(initialTab);
+    } else if (isManagerialRole && (activeTab === 'dudi' || activeTab === 'sidang')) {
+      setActiveTab('progres_pkl');
+    }
+  }, [activeTabOnly, initialTab, isManagerialRole, activeTab]);
   
   const typedUser = user as { guru_profile?: { id?: string }; guru_id?: string; Guru?: { id?: string } } | null;
   const activeGuruId = propGuruId || capActiveGuruId || typedUser?.guru_profile?.id || typedUser?.guru_id || typedUser?.Guru?.id || null;
@@ -232,11 +240,11 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   }, [effectiveSettings]);
 
   useEffect(() => {
-    // Hanya alihkan ke dudi jika settings sudah terload pasti dan bukan dalam mode sidang-only
-    if (effectiveSettings && !isCompositeMode && activeTab === 'sidang' && initialTab !== 'sidang' && activeTabOnly !== 'sidang' && !isPengujiOnly) {
+    // Hanya alihkan ke dudi jika settings sudah terload pasti dan bukan dalam mode sidang-only serta BUKAN peran manajerial (Hubin/Kaprog)
+    if (!isManagerialRole && effectiveSettings && !isCompositeMode && activeTab === 'sidang' && initialTab !== 'sidang' && activeTabOnly !== 'sidang' && !isPengujiOnly) {
       setActiveTab('dudi');
     }
-  }, [effectiveSettings, isCompositeMode, activeTab, initialTab, activeTabOnly, isPengujiOnly]);
+  }, [effectiveSettings, isCompositeMode, activeTab, initialTab, activeTabOnly, isPengujiOnly, isManagerialRole]);
 
   const updateSettingsMutation = useMutation({
     mutationFn: (data: Parameters<typeof hubinApi.updateSettings>[0]) => hubinApi.updateSettings(data),
@@ -730,25 +738,35 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   const isSidangAvailable = isCompositeMode || initialTab === 'sidang' || isKaprog || isPrivilegedHubin || isPengujiOnly;
   const isMonitoringAvailable = isPrivilegedHubin || canManageAll || isKaprog || isHubin;
   const tabs = useMemo(() => {
-    if (activeTabOnly === 'dudi') {
-      return [{ id: 'dudi', label: `🏢 DUDI (${displayedScores.length})` }];
-    }
     if (activeTabOnly === 'progres_pkl') {
       return [{ id: 'progres_pkl', label: `📊 Progres Input PKL (${displayedScores.length})` }];
-    }
-    if (activeTabOnly === 'sidang' || isPengujiOnly) {
-      return [{ id: 'sidang', label: `🎓 Sidang PKL (${displayedScores.length})` }];
     }
     if (activeTabOnly === 'monitoring_sidang') {
       return [{ id: 'monitoring_sidang', label: `📈 Monitoring Sidang (${displayedScores.length})` }];
     }
+    if (activeTabOnly === 'dudi') {
+      return [{ id: 'dudi', label: `🏢 DUDI (${displayedScores.length})` }];
+    }
+    if (activeTabOnly === 'sidang' || isPengujiOnly) {
+      return [{ id: 'sidang', label: `🎓 Sidang PKL (${displayedScores.length})` }];
+    }
+
+    // Role Waka Hubin & Kaprog: Tab operasional DUDI dan Sidang DILENYAPKAN dari pandangan!
+    // Hanya tampilkan subtab manajerial: Progres Input PKL & Monitoring Sidang
+    if (isManagerialRole) {
+      return [
+        { id: 'progres_pkl', label: `📊 Progres Input PKL (${displayedScores.length})` },
+        { id: 'monitoring_sidang', label: `📈 Monitoring Sidang (${displayedScores.length})` },
+      ];
+    }
+
+    // Peran Operasional: Guru Pembimbing PKL / Penguji Sidang
     return [
       { id: 'dudi', label: `🏢 DUDI (${displayedScores.length})` },
-      ...(isMonitoringAvailable ? [{ id: 'progres_pkl', label: `📊 Progres Input PKL (${displayedScores.length})` }] : []),
       ...(isSidangAvailable ? [{ id: 'sidang', label: `🎓 Sidang (${displayedScores.length})` }] : []),
       ...(isMonitoringAvailable ? [{ id: 'monitoring_sidang', label: `📈 Monitoring Sidang (${displayedScores.length})` }] : []),
     ];
-  }, [displayedScores.length, isSidangAvailable, isMonitoringAvailable, isPengujiOnly, activeTabOnly]);
+  }, [displayedScores.length, isManagerialRole, isSidangAvailable, isMonitoringAvailable, isPengujiOnly, activeTabOnly]);
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -1059,7 +1077,8 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               semesterOptions={semesterOptions}
               isKaprog={isKaprog || isJurusanScoped}
               canManageAll={canManageAll}
-              isHubin={isHubin || isPrivilegedHubin}
+              isHubin={isHubin}
+              canUseModeKoreksi={Boolean(isKaprog && !isHubin && !readOnly)}
               jurusanId={effectiveJurusanId}
               jurusanNama={effectiveJurusanNama && effectiveJurusanNama !== 'Kejuruan' ? effectiveJurusanNama : undefined}
               activeGuruId={activeGuruId || undefined}

@@ -14,12 +14,21 @@ import {
   Clock,
   X,
   Building2,
+  Edit3,
+  Lock,
+  AlertTriangle,
+  Save,
+  Loader2,
+  RotateCcw,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { Button, Input, SearchableSelect } from '@/components/ui';
 import { HubCard } from '@/components/ui/hub';
 import { ScoreRow } from './types';
 import { PklDudiCetakModal, PklDudiDocType } from './PklDudiCetakModal';
 import { useJurusanOptions } from '@/hooks/useJurusanOptions';
+import { hubinApi } from '@/api/hubin.api';
 import { cn } from '@/lib/utils';
 
 export interface PklMonitoringDudiTabProps {
@@ -33,6 +42,7 @@ export interface PklMonitoringDudiTabProps {
   isKaprog: boolean;
   canManageAll: boolean;
   isHubin: boolean;
+  canUseModeKoreksi?: boolean;
   jurusanId?: string;
   jurusanNama?: string;
   activeGuruId?: string;
@@ -54,6 +64,7 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
   isKaprog,
   canManageAll,
   isHubin,
+  canUseModeKoreksi: propCanUseModeKoreksi,
   jurusanId: propJurusanId,
   jurusanNama: propJurusanNama,
   activeGuruId,
@@ -64,6 +75,16 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
   onNavigateCetakRapor,
 }) => {
   const { options: jurusanOptions, rawList: rawJurusanList } = useJurusanOptions();
+  const queryClient = useQueryClient();
+
+  // Mode Koreksi: Khusus Kaprog (Waka Hubin dilarang)
+  const isEligibleForKoreksi = Boolean(propCanUseModeKoreksi ?? (isKaprog && !isHubin));
+  const [isModeKoreksi, setIsModeKoreksi] = useState<boolean>(false);
+  const [editDrafts, setEditDrafts] = useState<Record<string, Record<string, number | null>>>({});
+  const [isSavingKoreksi, setIsSavingKoreksi] = useState<boolean>(false);
+
+  const unsavedCount = Object.keys(editDrafts).length;
+  const hasUnsavedChanges = unsavedCount > 0;
 
   // ───────────────────────────────────────────────────────────────────────────
   // 1. FILTER & SCOPE STATE (Step 1: Jurusan, Step 2: Pembimbing)
@@ -378,12 +399,93 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
     setShowCetakModal(true);
   }, [selectedPembimbing]);
 
-  const modalScores = useMemo(() => {
-    if (targetPembimbingNama) {
-      return jurusanFilteredScores.filter((s) => s.pembimbing_nama === targetPembimbingNama);
+  // ───────────────────────────────────────────────────────────────────────────
+  // 4. MODE KOREKSI HANDLER (KHUSUS KAPROG - WAKA HUBIN DILARANG)
+  // ───────────────────────────────────────────────────────────────────────────
+  const handleScoreAspectChange = useCallback((siswaPklId: string, field: string, rawVal: string) => {
+    if (!isEligibleForKoreksi || !isModeKoreksi) return;
+
+    let val: number | null = null;
+    if (rawVal !== '' && rawVal !== null && rawVal !== undefined) {
+      const num = parseFloat(rawVal);
+      if (!isNaN(num)) {
+        val = Math.min(100, Math.max(0, num));
+      }
     }
-    return fullyFilteredScores;
-  }, [targetPembimbingNama, jurusanFilteredScores, fullyFilteredScores]);
+
+    setEditDrafts((prev) => {
+      const currentStudentDraft = prev[siswaPklId] || {};
+      return {
+        ...prev,
+        [siswaPklId]: {
+          ...currentStudentDraft,
+          [field]: val,
+        },
+      };
+    });
+  }, [isEligibleForKoreksi, isModeKoreksi]);
+
+  const handleSaveKoreksiBatch = useCallback(async () => {
+    if (!isEligibleForKoreksi || !hasUnsavedChanges || isSavingKoreksi) return;
+
+    setIsSavingKoreksi(true);
+    try {
+      const dirtyIds = Object.keys(editDrafts);
+      const payloadScores = dirtyIds.map((id) => {
+        const original = scores.find((s) => s.siswa_pkl_id === id) || ({} as Partial<ScoreRow>);
+        const draft = editDrafts[id] || {};
+        const merged = { ...original, ...draft };
+
+        return {
+          siswa_pkl_id: id,
+          hard_kompetensi_teknis: merged.hard_kompetensi_teknis ?? null,
+          hard_sop_k3lh: merged.hard_sop_k3lh ?? null,
+          hard_alur_bisnis: merged.hard_alur_bisnis ?? null,
+          soft_kedisiplinan: merged.soft_kedisiplinan ?? null,
+          soft_kerajinan_inisiatif: merged.soft_kerajinan_inisiatif ?? null,
+          soft_kerjasama: merged.soft_kerjasama ?? null,
+          soft_kejujuran: merged.soft_kejujuran ?? null,
+          soft_tanggung_jawab: merged.soft_tanggung_jawab ?? null,
+          instruktur_nama: merged.instruktur_nama,
+          penanggung_jawab_nama: merged.penanggung_jawab_nama,
+          alamat_dudi: merged.alamat_dudi,
+          tahun_pelajaran_id: selectedTp || undefined,
+          semester_id: selectedSemester || undefined,
+        };
+      });
+
+      await hubinApi.upsertNilaiPklBatch({
+        scores: payloadScores,
+        tahun_pelajaran_id: selectedTp || undefined,
+        semester_id: selectedSemester || undefined,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor'] });
+      queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+
+      toast.success(`Berhasil menyimpan koreksi nilai PKL untuk ${dirtyIds.length} siswa!`);
+      setEditDrafts({});
+    } catch (err: any) {
+      console.error('Gagal menyimpan koreksi nilai PKL:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Gagal menyimpan koreksi nilai PKL';
+      toast.error(msg);
+    } finally {
+      setIsSavingKoreksi(false);
+    }
+  }, [isEligibleForKoreksi, hasUnsavedChanges, isSavingKoreksi, editDrafts, scores, selectedTp, selectedSemester, queryClient]);
+
+  const modalScores = useMemo(() => {
+    const base = targetPembimbingNama
+      ? jurusanFilteredScores.filter((s) => s.pembimbing_nama === targetPembimbingNama)
+      : fullyFilteredScores;
+    return base.map((s) => {
+      const draft = editDrafts[s.siswa_pkl_id];
+      return draft ? { ...s, ...draft } : s;
+    });
+  }, [targetPembimbingNama, jurusanFilteredScores, fullyFilteredScores, editDrafts]);
 
   return (
     <div className="space-y-3">
@@ -624,8 +726,58 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
             </span>
           </div>
 
-          {/* Sisi Kanan: AKSI CETAK RESMI DI HEADER TABEL */}
-          <div className="flex items-center gap-2 self-start md:self-center shrink-0">
+          {/* Sisi Kanan: AKSI CETAK RESMI DI HEADER TABEL & MODE KOREKSI KAPROG */}
+          <div className="flex items-center gap-2 self-start md:self-center shrink-0 flex-wrap">
+            {/* Tombol Simpan Koreksi (muncul jika ada perubahan belum disimpan) */}
+            {isEligibleForKoreksi && isModeKoreksi && hasUnsavedChanges && (
+              <Button
+                type="button"
+                onClick={handleSaveKoreksiBatch}
+                disabled={isSavingKoreksi}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs h-8 px-3.5 flex items-center gap-1.5 shadow-md cursor-pointer animate-pulse"
+                title="Simpan seluruh perubahan nilai aspek DUDI ke server"
+              >
+                {isSavingKoreksi ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                <span>Simpan Koreksi ({unsavedCount})</span>
+              </Button>
+            )}
+
+            {/* Tombol Toggle Mode Koreksi (Khusus Kaprog - Waka Hubin Dilarang) */}
+            {isEligibleForKoreksi && (
+              <Button
+                type="button"
+                onClick={() => {
+                  if (isModeKoreksi && hasUnsavedChanges) {
+                    if (window.confirm('Ada perubahan nilai koreksi yang belum disimpan. Yakin ingin keluar? Perubahan belum tersimpan akan dibatalkan.')) {
+                      setEditDrafts({});
+                      setIsModeKoreksi(false);
+                    }
+                  } else {
+                    setIsModeKoreksi((prev) => !prev);
+                  }
+                }}
+                className={cn(
+                  "rounded-xl font-bold text-xs h-8 px-3 flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all",
+                  isModeKoreksi
+                    ? "bg-amber-600 hover:bg-amber-700 text-white ring-2 ring-amber-400/40"
+                    : "bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                )}
+                title={isModeKoreksi ? "Kunci lembar penilaian (Selesai koreksi)" : "Buka mode koreksi nilai aspek DUDI (Khusus Kaprog)"}
+              >
+                {isModeKoreksi ? (
+                  <>
+                    <Lock size={13} />
+                    <span>Kunci Koreksi</span>
+                  </>
+                ) : (
+                  <>
+                    <Edit3 size={13} />
+                    <span>Mode Koreksi</span>
+                  </>
+                )}
+              </Button>
+            )}
+
             <div className="relative" ref={printDropdownRef}>
               <Button
                 type="button"
@@ -693,6 +845,32 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
             )}
           </div>
         </div>
+
+        {/* Banner Notifikasi Mode Koreksi Kaprog Aktif */}
+        {isEligibleForKoreksi && isModeKoreksi && (
+          <div className="flex items-center justify-between gap-3 p-3 bg-amber-500/10 border-b border-amber-500/30 text-xs text-amber-900 dark:text-amber-200">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>
+                <strong>Mode Koreksi Kaprog Aktif:</strong> Anda berwenang mengoreksi nilai aspek DUDI siswa jurusan <strong>{activeJurusanNama}</strong>. Masukkan nilai (0-100), lalu klik <strong>Simpan Koreksi</strong>.
+              </span>
+            </div>
+            {hasUnsavedChanges && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Reset semua draft koreksi yang belum disimpan?')) {
+                    setEditDrafts({});
+                  }
+                }}
+                className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline shrink-0 cursor-pointer flex items-center gap-1"
+              >
+                <RotateCcw size={12} />
+                <span>Reset Draft ({unsavedCount})</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Sub-toolbar Tabel: Filter Status & Search Box */}
         <div className="p-2.5 sm:px-4 border-b border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white dark:bg-slate-900">
@@ -777,18 +955,38 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {paginatedScores.map((score, idx) => {
                   const globalIdx = (currentPage - 1) * itemsPerPage + idx + 1;
-                  const hasDudiScore = score.hard_kompetensi_teknis !== null && score.hard_kompetensi_teknis !== undefined;
+                  const draft = editDrafts[score.siswa_pkl_id];
+                  const mergedScore = draft ? { ...score, ...draft } : score;
+                  const isRowEdited = Boolean(draft && Object.keys(draft).length > 0);
+
                   const aspects = [
-                    score.hard_kompetensi_teknis, score.hard_sop_k3lh, score.hard_alur_bisnis,
-                    score.soft_kedisiplinan, score.soft_kerajinan_inisiatif, score.soft_kerjasama,
-                    score.soft_kejujuran, score.soft_tanggung_jawab
+                    mergedScore.hard_kompetensi_teknis, mergedScore.hard_sop_k3lh, mergedScore.hard_alur_bisnis,
+                    mergedScore.soft_kedisiplinan, mergedScore.soft_kerajinan_inisiatif, mergedScore.soft_kerjasama,
+                    mergedScore.soft_kejujuran, mergedScore.soft_tanggung_jawab
                   ].filter((v): v is number => typeof v === 'number' && v !== null);
                   const studentAvg = aspects.length > 0 ? (aspects.reduce((a, b) => a + b, 0) / aspects.length).toFixed(1) : '-';
+                  const hasDudiScore = aspects.length > 0;
+
+                  const aspectColumns: Array<{ key: keyof ScoreRow; title: string }> = [
+                    { key: 'hard_kompetensi_teknis', title: 'Kompetensi Teknis' },
+                    { key: 'hard_sop_k3lh', title: 'SOP & K3LH' },
+                    { key: 'hard_alur_bisnis', title: 'Alur Bisnis' },
+                    { key: 'soft_kedisiplinan', title: 'Kedisiplinan' },
+                    { key: 'soft_kerajinan_inisiatif', title: 'Kerajinan & Inisiatif' },
+                    { key: 'soft_kerjasama', title: 'Kerjasama' },
+                    { key: 'soft_kejujuran', title: 'Kejujuran' },
+                    { key: 'soft_tanggung_jawab', title: 'Tanggung Jawab' },
+                  ];
 
                   return (
                     <tr
                       key={score.siswa_pkl_id || idx}
-                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                      className={cn(
+                        "transition-colors",
+                        isRowEdited
+                          ? "bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-50/80"
+                          : "hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
+                      )}
                     >
                       <td className="py-2 px-3 text-center font-mono text-slate-400">
                         {globalIdx}
@@ -796,8 +994,11 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
 
                       {/* Identitas Siswa */}
                       <td className="py-2 px-3">
-                        <div className="font-bold text-slate-900 dark:text-slate-100">
-                          {score.nama_siswa}
+                        <div className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                          <span>{score.nama_siswa}</span>
+                          {isRowEdited && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title="Ada nilai terkoreksi" />
+                          )}
                         </div>
                         <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
                           <span>NIS: {score.nis || '-'}</span>
@@ -822,49 +1023,67 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
                         </div>
                       </td>
 
-                      {/* 3 Aspek Hard Skill */}
-                      <td className="py-2 px-2 text-center font-mono text-slate-600 dark:text-slate-300">
-                        {score.hard_kompetensi_teknis ?? '-'}
-                      </td>
-                      <td className="py-2 px-2 text-center font-mono text-slate-600 dark:text-slate-300">
-                        {score.hard_sop_k3lh ?? '-'}
-                      </td>
-                      <td className="py-2 px-2 text-center font-mono text-slate-600 dark:text-slate-300">
-                        {score.hard_alur_bisnis ?? '-'}
-                      </td>
+                      {/* 8 Kolom Aspek DUDI: Normal atau Editable saat Mode Koreksi */}
+                      {aspectColumns.map(({ key, title }) => {
+                        const currentVal = mergedScore[key] as number | null | undefined;
+                        const isFieldEdited = draft && draft[key as string] !== undefined;
 
-                      {/* 5 Aspek Soft Skill */}
-                      <td className="py-2 px-2 text-center font-mono text-slate-600 dark:text-slate-300">
-                        {score.soft_kedisiplinan ?? '-'}
-                      </td>
-                      <td className="py-2 px-2 text-center font-mono text-slate-600 dark:text-slate-300">
-                        {score.soft_kerajinan_inisiatif ?? '-'}
-                      </td>
-                      <td className="py-2 px-2 text-center font-mono text-slate-600 dark:text-slate-300">
-                        {score.soft_kerjasama ?? '-'}
-                      </td>
-                      <td className="py-2 px-2 text-center font-mono text-slate-600 dark:text-slate-300">
-                        {score.soft_kejujuran ?? '-'}
-                      </td>
-                      <td className="py-2 px-2 text-center font-mono text-slate-600 dark:text-slate-300">
-                        {score.soft_tanggung_jawab ?? '-'}
-                      </td>
+                        if (isModeKoreksi && isEligibleForKoreksi) {
+                          return (
+                            <td key={key as string} className="py-1 px-1 text-center">
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                step={1}
+                                value={currentVal !== null && currentVal !== undefined ? currentVal : ''}
+                                onChange={(e) => handleScoreAspectChange(score.siswa_pkl_id, key as string, e.target.value)}
+                                className={cn(
+                                  "w-12 h-7 text-center font-mono text-xs font-bold rounded border transition-colors outline-none",
+                                  isFieldEdited
+                                    ? "bg-amber-50 dark:bg-amber-950/60 border-amber-500 text-amber-900 dark:text-amber-200 ring-1 ring-amber-400/40"
+                                    : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                                )}
+                                placeholder="-"
+                                title={`${title}: ${score.nama_siswa}`}
+                              />
+                            </td>
+                          );
+                        }
+
+                        return (
+                          <td key={key as string} className="py-2 px-2 text-center font-mono text-slate-600 dark:text-slate-300">
+                            {currentVal ?? '-'}
+                          </td>
+                        );
+                      })}
 
                       {/* Rata-rata DUDI */}
-                      <td className="py-2 px-2 text-center font-bold font-mono text-xs bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300">
+                      <td className={cn(
+                        "py-2 px-2 text-center font-bold font-mono text-xs",
+                        isRowEdited
+                          ? "bg-amber-100/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200"
+                          : "bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300"
+                      )}>
                         {studentAvg}
                       </td>
 
                       {/* Status Nilai */}
                       <td className="py-2 px-3 text-center">
-                        <span className={cn(
-                          "px-2 py-0.5 rounded-full text-[10px] font-bold",
-                          hasDudiScore
-                            ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
-                            : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
-                        )}>
-                          {hasDudiScore ? 'Sudah Dinilai' : 'Belum Dinilai'}
-                        </span>
+                        {isRowEdited ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                            Terkoreksi
+                          </span>
+                        ) : (
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                            hasDudiScore
+                              ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                              : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
+                          )}>
+                            {hasDudiScore ? 'Sudah Dinilai' : 'Belum Dinilai'}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );
