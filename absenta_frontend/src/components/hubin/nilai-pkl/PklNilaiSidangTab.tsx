@@ -125,7 +125,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   onToggleAdminOverride,
 }) => {
   const [showCetakModal, setShowCetakModal] = useState(false);
-  const [cetakDocType, setCetakDocType] = useState<'PENGUJI' | 'JURUSAN' | 'DAFTAR_HADIR'>('PENGUJI');
+  const [cetakDocType, setCetakDocType] = useState<'BERITA_ACARA' | 'PENGUJI' | 'JURUSAN' | 'DAFTAR_HADIR' | 'REKAP_PENGUJI' | 'REKAP_JURUSAN'>('BERITA_ACARA');
   const [showSpinWheelModal, setShowSpinWheelModal] = useState(false);
   const [signingStudent, setSigningStudent] = useState<ScoreRow | null>(null);
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
@@ -852,7 +852,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           onApplyPengujiToAll={handleApplyPengujiToAll}
           onOpenSignModal={handleOpenSignModal}
           onOpenCetakModal={() => {
-            setCetakDocType('PENGUJI');
+            setCetakDocType('BERITA_ACARA');
             setShowCetakModal(true);
           }}
           onOpenSpinWheelModal={() => setShowSpinWheelModal(true)}
@@ -901,19 +901,34 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
                 <span>Daftar Hadir</span>
               </Button>
 
-              {/* Tombol Cetak Berita Acara & Rekap Sidang PKL */}
+              {/* Tombol Cetak Berita Acara Resmi Sidang PKL */}
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  setCetakDocType('PENGUJI');
+                  setCetakDocType('BERITA_ACARA');
                   setShowCetakModal(true);
                 }}
-                className="border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                title="Cetak Berita Acara Penguji & Rekap Hasil Sidang PKL"
+                className="border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Cetak Format Resmi Berita Acara Pelaksanaan Sidang PKL (Naskah Narasi, Jadwal & Rekapitulasi Ujian)"
               >
-                <Printer className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span>Cetak Berkas Sidang</span>
+                <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span>Berita Acara Sidang</span>
+              </Button>
+
+              {/* Tombol Cetak Rekap Nilai Sidang PKL */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setCetakDocType('REKAP_PENGUJI');
+                  setShowCetakModal(true);
+                }}
+                className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Cetak Lembar Rekapitulasi Nilai 4 Aspek Sidang PKL"
+              >
+                <Award className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>Rekap Nilai</span>
               </Button>
 
               {readOnly ? (
