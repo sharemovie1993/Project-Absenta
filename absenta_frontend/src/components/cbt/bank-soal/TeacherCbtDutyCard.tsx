@@ -11,6 +11,8 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowRight,
+  Layers,
+  BookOpen,
 } from 'lucide-react';
 import { useTeacherCbtDutyStatus, type TeacherDutyItem } from './useTeacherCbtDutyStatus';
 import type { CbtBankSoal } from '@/types/cbt.types';
@@ -149,25 +151,25 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
     );
   }
 
-  // ── VARIANT DETAILED (Untuk Ruang Kerja CBT Guru / CbtBankSoalView) ──
+  // ── VARIANT DETAILED: MATRIKS PENUGASAN MENGAJAR & KETERCAKUPAN CBT ──
   return (
     <div
       className={cn(
         'rounded-2xl border transition-all overflow-hidden shadow-2xs',
         isFullyExempt
-          ? 'bg-gradient-to-b from-emerald-50/80 to-teal-50/40 dark:from-emerald-950/30 dark:to-slate-900/40 border-emerald-200 dark:border-emerald-800/80'
+          ? 'bg-gradient-to-b from-emerald-50/70 via-white to-white dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900 border-emerald-200 dark:border-emerald-800/80'
           : uncreatedDuties === 0
-          ? 'bg-gradient-to-b from-amber-50/70 to-yellow-50/30 dark:from-amber-950/30 dark:to-slate-900/40 border-amber-300 dark:border-amber-800/80'
-          : 'bg-gradient-to-b from-amber-50/80 to-rose-50/30 dark:from-amber-950/30 dark:to-slate-900/40 border-amber-200 dark:border-amber-800/80',
+          ? 'bg-gradient-to-b from-amber-50/70 via-white to-white dark:from-amber-950/30 dark:via-slate-900 dark:to-slate-900 border-amber-300 dark:border-amber-800/80'
+          : 'bg-gradient-to-b from-rose-50/60 via-white to-white dark:from-rose-950/25 dark:via-slate-900 dark:to-slate-900 border-rose-200 dark:border-rose-900/60',
         className
       )}
     >
-      {/* Header Banner */}
-      <div className="p-3.5 sm:p-4 flex items-start justify-between gap-3">
+      {/* ── 1. Header Banner Ringkasan ── */}
+      <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 dark:border-slate-800/60">
         <div className="flex items-start gap-3 min-w-0">
           <div
             className={cn(
-              'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+              'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-2xs',
               isFullyExempt
                 ? 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-none'
                 : uncreatedDuties === 0
@@ -191,7 +193,7 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                   'text-sm font-black tracking-tight',
                   isFullyExempt
                     ? 'text-emerald-900 dark:text-emerald-100'
-                    : 'text-amber-950 dark:text-amber-100'
+                    : 'text-slate-900 dark:text-slate-100'
                 )}
               >
                 {isFullyExempt
@@ -213,20 +215,13 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
               </span>
 
               {activeEventName && (
-                <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
                   {activeEventName}
                 </span>
               )}
             </div>
 
-            <p
-              className={cn(
-                'text-xs mt-1 leading-relaxed',
-                isFullyExempt
-                  ? 'text-emerald-800/90 dark:text-emerald-300/90'
-                  : 'text-amber-900/90 dark:text-amber-300/90'
-              )}
-            >
+            <p className="text-xs mt-1 text-slate-600 dark:text-slate-300 leading-relaxed">
               {isFullyExempt
                 ? 'Seluruh rombel dan sasaran jurusan binaan Anda telah memiliki bank soal siap pakai (dibuat mandiri atau di-cover rekan MGMP). Anda tidak perlu membuat soal baru lagi.'
                 : pendingJurusanSummary
@@ -236,22 +231,268 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
           </div>
         </div>
 
-        {/* Toggle Collapse */}
-        <button
-          type="button"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer shrink-0"
-          title={isExpanded ? 'Sembunyikan rincian' : 'Tampilkan rincian'}
-        >
-          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+        {/* Action Toggle */}
+        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-xs h-7 px-2.5 rounded-lg border-slate-300 dark:border-slate-700 font-bold flex items-center gap-1 cursor-pointer"
+          >
+            <Layers size={12} />
+            <span>{isExpanded ? 'Sembunyikan Matriks' : 'Lihat Matriks Jadwal'}</span>
+            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </Button>
+        </div>
       </div>
 
-      {/* Rincian Penugasan Mapel Guru (Pills Grid) */}
+      {/* ── 2. Matriks Penugasan Mengajar vs Status Bank Soal ── */}
       {isExpanded && (
-        <div className="px-3.5 sm:px-4 pb-3.5 pt-0">
-          <div className="pt-3 border-t border-slate-200/60 dark:border-slate-800/60 grid grid-cols-1 md:grid-cols-2 gap-2">
-            {items.map((item) => {
+        <div className="p-3.5 sm:p-4 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+            <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+              <BookOpen size={14} className="text-indigo-600 dark:text-indigo-400" />
+              <span>Matriks Penugasan Mengajar &amp; Ketercakupan Bank Soal</span>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                <span>Siap: {coveredDuties}</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+                <span>Draf: {draftDuties}</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
+                <span>Belum Dibuat: {uncreatedDuties}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 text-slate-600 dark:text-slate-400 font-bold">
+                  <th className="py-2.5 px-3 w-8 text-center">#</th>
+                  <th className="py-2.5 px-3">Mata Pelajaran &amp; Sasaran</th>
+                  <th className="py-2.5 px-3">Rombel / Kelas Mengajar</th>
+                  <th className="py-2.5 px-3">Bank Soal Mandiri (Milik Anda)</th>
+                  <th className="py-2.5 px-3">Bank Soal MGMP (Beririsan / Berbagi)</th>
+                  <th className="py-2.5 px-3 text-center">Status Bebas Tugas</th>
+                  <th className="py-2.5 px-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-900">
+                {items.map((item, idx) => {
+                  const isCovered = item.status === 'COVERED_OWN' || item.status === 'COVERED_MGMP';
+                  const isDraft = item.status === 'DRAFT_OWN' || item.status === 'DRAFT_MGMP';
+
+                  const ownCount = item.ownBank?.jumlah_soal || item.ownBank?._count?.Soal || 0;
+                  const mgmpCount = item.mgmpBank?.jumlah_soal || item.mgmpBank?._count?.Soal || 0;
+
+                  return (
+                    <tr
+                      key={item.key}
+                      className={cn(
+                        'hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors',
+                        isCovered
+                          ? 'bg-emerald-50/20 dark:bg-emerald-950/10'
+                          : isDraft
+                          ? 'bg-amber-50/20 dark:bg-amber-950/10'
+                          : 'bg-rose-50/20 dark:bg-rose-950/10'
+                      )}
+                    >
+                      {/* # */}
+                      <td className="py-2.5 px-3 text-center font-bold text-slate-400">
+                        {idx + 1}
+                      </td>
+
+                      {/* Mapel & Sasaran */}
+                      <td className="py-2.5 px-3">
+                        <div className="font-bold text-slate-900 dark:text-slate-100">
+                          {item.mapelName}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                            Tingkat {item.tingkatRoman}
+                          </span>
+                          {item.targetJurusan ? (
+                            <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                              Jurusan {item.targetJurusan}
+                            </span>
+                          ) : (
+                            <span className="text-[9.5px] font-medium px-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
+                              Semua Jurusan
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Rombel Mengajar */}
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-1 flex-wrap max-w-xs">
+                          {item.rombelNames && item.rombelNames.length > 0 ? (
+                            item.rombelNames.map((r, rIdx) => (
+                              <span
+                                key={rIdx}
+                                className="text-[10.5px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700"
+                              >
+                                {r}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-slate-400 italic">Semua Rombel Tingkat {item.tingkatRoman}</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Bank Soal Mandiri */}
+                      <td className="py-2.5 px-3">
+                        {item.ownBank ? (
+                          <div className="space-y-0.5">
+                            <div className="font-medium text-slate-800 dark:text-slate-200 text-[11px] truncate max-w-[200px]" title={item.ownBank.judul}>
+                              {item.ownBank.judul}
+                            </div>
+                            <div className="flex items-center gap-1 text-[10px]">
+                              {ownCount > 0 ? (
+                                <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800">
+                                  <CheckCircle2 size={10} />
+                                  <span>{ownCount} Soal (Siap)</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/60 px-1.5 py-0.2 rounded border border-amber-200 dark:border-amber-800">
+                                  <AlertTriangle size={10} />
+                                  <span>0 Soal (Draf)</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">
+                            Belum dibuat
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Bank Soal MGMP / Kolaboratif */}
+                      <td className="py-2.5 px-3">
+                        {item.mgmpBank ? (
+                          <div className="space-y-0.5">
+                            <div className="font-medium text-indigo-900 dark:text-indigo-200 text-[11px] truncate max-w-[200px]" title={item.mgmpBank.judul}>
+                              {item.mgmpBank.judul}
+                            </div>
+                            <div className="flex items-center gap-1 text-[10px] flex-wrap">
+                              <span className="text-slate-500 dark:text-slate-400">
+                                Oleh: <strong className="text-indigo-700 dark:text-indigo-300">{item.masterAuthorName || item.mgmpBank.Guru?.nama_guru || 'Rekan Guru'}</strong>
+                              </span>
+                              <span className="inline-flex items-center gap-0.5 font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1 rounded">
+                                <Users size={9} />
+                                <span>{mgmpCount} Soal</span>
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">
+                            —
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Status Bebas Tugas */}
+                      <td className="py-2.5 px-3 text-center">
+                        {item.status === 'COVERED_OWN' && (
+                          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-950/80 px-2.5 py-1 rounded-md border border-emerald-300 dark:border-emerald-800">
+                            <CheckCircle2 size={11} className="text-emerald-600 shrink-0" />
+                            <span>Bebas Tugas (Mandiri)</span>
+                          </span>
+                        )}
+
+                        {item.status === 'COVERED_MGMP' && (
+                          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-indigo-800 dark:text-indigo-200 bg-indigo-100 dark:bg-indigo-950/80 px-2.5 py-1 rounded-md border border-indigo-300 dark:border-indigo-800">
+                            <Users size={11} className="text-indigo-600 shrink-0" />
+                            <span>Bebas Tugas (MGMP)</span>
+                          </span>
+                        )}
+
+                        {item.status === 'DRAFT_OWN' && (
+                          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/80 px-2.5 py-1 rounded-md border border-amber-300 dark:border-amber-800">
+                            <AlertTriangle size={11} className="text-amber-600 shrink-0" />
+                            <span>Perlu Diisi (0 Soal)</span>
+                          </span>
+                        )}
+
+                        {item.status === 'DRAFT_MGMP' && (
+                          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/80 px-2.5 py-1 rounded-md border border-amber-300 dark:border-amber-800">
+                            <AlertTriangle size={11} className="text-amber-600 shrink-0" />
+                            <span>Draf MGMP (0 Soal)</span>
+                          </span>
+                        )}
+
+                        {item.status === 'PENDING' && (
+                          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-rose-800 dark:text-rose-200 bg-rose-100 dark:bg-rose-950/80 px-2.5 py-1 rounded-md border border-rose-300 dark:border-rose-800">
+                            <AlertCircle size={11} className="text-rose-600 shrink-0" />
+                            <span>Wajib Buat Bank Soal</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Aksi */}
+                      <td className="py-2.5 px-3 text-right">
+                        {item.status === 'PENDING' && onCreateBankSoal && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() =>
+                              onCreateBankSoal(item.mapelId, item.tingkatRoman, item.targetJurusan)
+                            }
+                            className="text-[11px] h-7 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1 shadow-2xs ml-auto cursor-pointer"
+                            title={`Buat Bank Soal untuk ${item.mapelName}`}
+                          >
+                            <Plus size={11} />
+                            <span>Buat</span>
+                          </Button>
+                        )}
+
+                        {isDraft && item.bankSoal && onPreviewBankSoal && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => onPreviewBankSoal(item.bankSoal!)}
+                            className="text-[11px] h-7 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center gap-1 shadow-2xs ml-auto cursor-pointer"
+                            title={`Isi Butir Soal untuk ${item.mapelName}`}
+                          >
+                            <FileEdit size={12} />
+                            <span>Kelola Soal</span>
+                          </Button>
+                        )}
+
+                        {isCovered && item.bankSoal && onPreviewBankSoal && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onPreviewBankSoal(item.bankSoal!)}
+                            className="text-[11px] h-7 px-2 rounded-lg text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 ml-auto"
+                            title="Lihat Butir Soal"
+                          >
+                            <Eye size={12} className="mr-1" />
+                            <span>Lihat</span>
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Stacked Card View */}
+          <div className="md:hidden space-y-2">
+            {items.map((item, idx) => {
               const isCovered = item.status === 'COVERED_OWN' || item.status === 'COVERED_MGMP';
               const isDraft = item.status === 'DRAFT_OWN' || item.status === 'DRAFT_MGMP';
 
@@ -259,129 +500,117 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                 <div
                   key={item.key}
                   className={cn(
-                    'p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all text-xs',
+                    'p-3 rounded-xl border text-xs space-y-2 transition-all',
                     isCovered
-                      ? 'bg-white/90 dark:bg-slate-900/80 border-emerald-200/80 dark:border-emerald-900/50'
+                      ? 'bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-900/60'
                       : isDraft
                       ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-300/80 dark:border-amber-800/60'
                       : 'bg-rose-50/40 dark:bg-rose-950/20 border-rose-300/80 dark:border-rose-900/60'
                   )}
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-slate-800 dark:text-slate-100">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-bold text-slate-900 dark:text-slate-100">
                         {item.mapelName}
-                      </span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                        Tingkat {item.tingkatRoman}
-                      </span>
-                      {item.targetJurusan ? (
-                        <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                          Jurusan {item.targetJurusan}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          Tingkat {item.tingkatRoman}
+                        </span>
+                        {item.targetJurusan && (
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300">
+                            Jurusan {item.targetJurusan}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status Badge */}
+                    <div>
+                      {isCovered ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded">
+                          <CheckCircle2 size={10} />
+                          <span>Bebas Tugas</span>
+                        </span>
+                      ) : isDraft ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/80 px-2 py-0.5 rounded">
+                          <AlertTriangle size={10} />
+                          <span>Draf (0 Soal)</span>
                         </span>
                       ) : (
-                        <span className="text-[9.5px] font-medium px-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
-                          Semua Jurusan
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 mt-1 text-[11px] flex-wrap">
-                      {/* Rombel Binaan */}
-                      <span className="text-slate-400">Rombel:</span>
-                      <span
-                        className="font-medium text-slate-600 dark:text-slate-300 truncate max-w-[200px]"
-                        title={item.rombelNames.join(', ')}
-                      >
-                        {item.rombelNames.join(', ') || '-'}
-                      </span>
-                    </div>
-
-                    {/* Status Info */}
-                    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                      {item.status === 'COVERED_OWN' && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
-                          <CheckCircle2 size={11} className="text-emerald-600" />
-                          <span>Siap Uji ({item.soalCount} Soal)</span>
-                        </span>
-                      )}
-
-                      {item.status === 'COVERED_MGMP' && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800">
-                          <Users size={11} className="text-indigo-600" />
-                          <span>Di-cover MGMP ({item.masterAuthorName || 'Rekan Guru'} — {item.soalCount} Soal)</span>
-                        </span>
-                      )}
-
-                      {item.status === 'DRAFT_OWN' && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
-                          <AlertTriangle size={11} className="text-amber-600" />
-                          <span>Wadah Dibuat (0 Soal — Perlu Diisi)</span>
-                        </span>
-                      )}
-
-                      {item.status === 'DRAFT_MGMP' && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
-                          <AlertTriangle size={11} className="text-amber-600" />
-                          <span>Draf MGMP ({item.masterAuthorName || 'Rekan Guru'} — 0 Soal)</span>
-                        </span>
-                      )}
-
-                      {item.status === 'PENDING' && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded-md border border-rose-200 dark:border-rose-800">
-                          <AlertCircle size={11} className="text-rose-600" />
-                          <span>Belum Ada Bank Soal</span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-800 dark:text-rose-200 bg-rose-100 dark:bg-rose-950/80 px-2 py-0.5 rounded">
+                          <AlertCircle size={10} />
+                          <span>Wajib Buat</span>
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Action Button */}
-                  <div className="shrink-0 flex items-center gap-1.5">
-                    {/* Jika Belum Dibuat: Tombol "+ Buat" */}
-                    {item.status === 'PENDING' && onCreateBankSoal && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() =>
-                          onCreateBankSoal(item.mapelId, item.tingkatRoman, item.targetJurusan)
-                        }
-                        className="text-[11px] h-7 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
-                        title={`Buat Bank Soal untuk ${item.mapelName}${item.targetJurusan ? ` (${item.targetJurusan})` : ''}`}
-                      >
-                        <Plus size={11} />
-                        <span>Buat</span>
-                      </Button>
-                    )}
+                  {/* Rombel */}
+                  <div className="text-[11px]">
+                    <span className="text-slate-400">Rombel Mengajar: </span>
+                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                      {item.rombelNames.join(', ') || `Semua Rombel Tingkat ${item.tingkatRoman}`}
+                    </span>
+                  </div>
 
-                    {/* Jika Sudah Dibuat Tapi Masih Draf (0 Soal): Tombol "Kelola Soal" */}
-                    {isDraft && item.bankSoal && onPreviewBankSoal && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => onPreviewBankSoal(item.bankSoal!)}
-                        className="text-[11px] h-7 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
-                        title={`Isi Butir Soal untuk ${item.mapelName}`}
-                      >
-                        <FileEdit size={12} />
-                        <span>Kelola Soal</span>
-                      </Button>
-                    )}
+                  {/* Mandiri vs MGMP Info */}
+                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between gap-2">
+                    <div className="text-[10.5px]">
+                      {item.ownBank ? (
+                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                          Mandiri: {item.ownBank.jumlah_soal || item.ownBank._count?.Soal || 0} Soal
+                        </span>
+                      ) : item.mgmpBank ? (
+                        <span className="text-indigo-700 dark:text-indigo-400 font-medium">
+                          MGMP: {item.masterAuthorName || 'Rekan'} ({item.mgmpBank.jumlah_soal || item.mgmpBank._count?.Soal || 0} Soal)
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 italic">Belum ada bank soal</span>
+                      )}
+                    </div>
 
-                    {/* Jika Sudah Siap Uji (Ada Soal): Tombol "Lihat" */}
-                    {isCovered && item.bankSoal && onPreviewBankSoal && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onPreviewBankSoal(item.bankSoal!)}
-                        className="text-[11px] h-7 px-2 rounded-lg text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                        title="Lihat Butir Soal"
-                      >
-                        <Eye size={12} className="mr-1" />
-                        <span>Lihat</span>
-                      </Button>
-                    )}
+                    {/* Button */}
+                    <div>
+                      {item.status === 'PENDING' && onCreateBankSoal && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() =>
+                            onCreateBankSoal(item.mapelId, item.tingkatRoman, item.targetJurusan)
+                          }
+                          className="text-[11px] h-6 px-2.5 rounded bg-indigo-600 text-white font-bold"
+                        >
+                          <Plus size={10} className="mr-0.5" />
+                          <span>Buat</span>
+                        </Button>
+                      )}
+
+                      {isDraft && item.bankSoal && onPreviewBankSoal && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => onPreviewBankSoal(item.bankSoal!)}
+                          className="text-[11px] h-6 px-2.5 rounded bg-amber-500 text-white font-bold"
+                        >
+                          <FileEdit size={10} className="mr-0.5" />
+                          <span>Kelola Soal</span>
+                        </Button>
+                      )}
+
+                      {isCovered && item.bankSoal && onPreviewBankSoal && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onPreviewBankSoal(item.bankSoal!)}
+                          className="text-[11px] h-6 px-2 text-slate-600 dark:text-slate-300"
+                        >
+                          <Eye size={10} className="mr-0.5" />
+                          <span>Lihat</span>
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
