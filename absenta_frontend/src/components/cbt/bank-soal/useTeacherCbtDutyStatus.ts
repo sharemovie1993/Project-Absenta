@@ -442,8 +442,9 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
 
       const jurusanList = Array.from(jurusanMap.values());
 
-      // KASUS 1: Ada Bank Soal Umum yang mencakup seluruh jurusan, dan tidak ada varian spesifik
-      if ((ownGeneral || mgmpGeneral) && !hasSpecificBanks && jurusanList.length <= 1) {
+      // KASUS 1: Ada Bank Soal Umum yang mencakup seluruh jurusan, dan tidak ada varian spesifik per-jurusan
+      // Seluruh rombel binaan guru (misal TO, TE, KUL) ter-cover rapi dalam 1 target tunggal tanpa redundansi
+      if ((ownGeneral || mgmpGeneral) && !hasSpecificBanks) {
         totalDuties++;
         const effectiveBank = ownGeneral || mgmpGeneral;
         const count = effectiveBank?.jumlah_soal || effectiveBank?._count?.Soal || 0;
