@@ -302,6 +302,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       }
       const entry = map.get(t)!;
       entry.totalCount += 1;
+      if (d.teachingJurusans && d.teachingJurusans.length > 0) {
+        d.teachingJurusans.forEach((tj) => {
+          if (!entry.teachingJurusans.includes(tj)) {
+            entry.teachingJurusans.push(tj);
+          }
+        });
+      }
       if (d.targetJurusan && !entry.teachingJurusans.includes(d.targetJurusan)) {
         entry.teachingJurusans.push(d.targetJurusan);
       }
@@ -328,24 +335,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     const dutyInfo = tingkatDutyMap.get(tingkat);
     if (!dutyInfo) return { isLocked: false, authorName: undefined };
 
-    // 1. Jika seluruh tingkat sudah 100% covered oleh rekan MGMP
+    // 1. Jika seluruh tingkat sudah 100% covered oleh rekan MGMP:
+    // TINGKAT INI MUTLAK TERKUNCI! Guru tidak boleh membuat naskah tandingan untuk tingkat ini.
+    // Memilih jurusan apapun pada tingkat ini tidak akan membuka kunci.
     if (dutyInfo.isFullyCovered && dutyInfo.masterAuthorName) {
-      if (selectedJurusanList.length === 0) {
-        return { isLocked: true, authorName: dutyInfo.masterAuthorName };
-      }
-
-      const selectedDuties = relevantDutiesForMapel.filter(
-        (d) =>
-          d.tingkatRoman === tingkat &&
-          d.targetJurusan &&
-          selectedJurusanList.includes(d.targetJurusan.toUpperCase())
-      );
-
-      if (selectedDuties.length > 0 && selectedDuties.every((d) => d.status === 'COVERED_MGMP')) {
-        const author =
-          selectedDuties.find((d) => d.masterAuthorName)?.masterAuthorName || dutyInfo.masterAuthorName;
-        return { isLocked: true, authorName: author };
-      }
+      return { isLocked: true, authorName: dutyInfo.masterAuthorName };
     }
 
     // 2. Jika tingkat belum fully covered tapi jurusan spesifik yang dipilih guru semuanya sudah berstatus COVERED_MGMP
@@ -364,6 +358,40 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
     return { isLocked: false, authorName: undefined };
   }, [bankSoalToEdit, tingkat, tingkatDutyMap, selectedJurusanList, relevantDutiesForMapel]);
+
+  // Evaluasi apakah sasaran yang dipilih berada di luar jadwal mengajar guru (Mode Mandiri)
+  const isTargetOutOfSchedule = useMemo(() => {
+    if (isShared) return { isInvalid: false, message: '' }; // Mode MGMP terbuka skala sekolah
+    if (bankSoalToEdit) return { isInvalid: false, message: '' };
+    if (!tingkat) return { isInvalid: false, message: '' };
+
+    const dutyInfo = tingkatDutyMap.get(tingkat);
+    // Jika guru punya penugasan mengajar di mapel ini
+    if (relevantDutiesForMapel.length > 0) {
+      // a. Guru sama sekali tidak punya rombel/jadwal di tingkat ini
+      if (!dutyInfo || dutyInfo.teachingJurusans.length === 0) {
+        return {
+          isInvalid: true,
+          message: `Anda tidak memiliki jadwal mengajar di Tingkat ${tingkat}. Mode Mandiri hanya untuk rombel binaan Anda sendiri.`,
+        };
+      }
+
+      // b. Guru memilih jurusan di luar jadwal mengajarnya
+      if (selectedJurusanList.length > 0) {
+        const invalidJurusans = selectedJurusanList.filter(
+          (j) => !dutyInfo.teachingJurusans.includes(j.toUpperCase())
+        );
+        if (invalidJurusans.length > 0) {
+          return {
+            isInvalid: true,
+            message: `Jurusan ${invalidJurusans.join(', ')} bukan merupakan jadwal mengajar Anda di Tingkat ${tingkat}.`,
+          };
+        }
+      }
+    }
+
+    return { isInvalid: false, message: '' };
+  }, [isShared, bankSoalToEdit, tingkat, tingkatDutyMap, relevantDutiesForMapel, selectedJurusanList]);
 
   // Ambil data Unit Pengajaran aktif untuk mapel terpilih (membedakan Ujian Resmi Gabungan vs Kuis Unit)
   const { data: tenantUnitsRes } = useQuery({
@@ -639,6 +667,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       return;
     }
 
+    if (isTargetOutOfSchedule.isInvalid) {
+      toast.error(isTargetOutOfSchedule.message);
+      return;
+    }
+
     if (!tingkat || tingkat.trim() === '') {
       toast.error('Silakan pilih tingkat kelas sasaran soal (X, XI, atau XII) terlebih dahulu!');
       return;
@@ -687,6 +720,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
     if (isTargetCoveredByColleague.isLocked) {
       toast.error('Pembuatan bank soal dikunci karena sasaran ini telah di-cover oleh rekan guru MGMP.');
+      return;
+    }
+
+    if (isTargetOutOfSchedule.isInvalid) {
+      toast.error(isTargetOutOfSchedule.message);
       return;
     }
 
@@ -1382,6 +1420,16 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                             )}
                           </div>
                         </div>
+                      ) : relevantDutiesForMapel.length > 0 ? (
+                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200">
+                          <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-200">
+                            <AlertCircle size={14} className="text-amber-600 shrink-0" />
+                            <span>Tidak Ada Jadwal Mengajar di Tingkat {tingkat || '-'}</span>
+                          </div>
+                          <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 mt-1 leading-relaxed">
+                            Anda tidak memiliki rombel binaan di Tingkat {tingkat} untuk mata pelajaran ini. Mode Mandiri hanya untuk rombel binaan Anda sendiri. Silakan beralih ke <strong>Naskah Bersama (Master MGMP)</strong> jika ingin membuat naskah lintas jurusan se-sekolah.
+                          </p>
+                        </div>
                       ) : (
                         /* Fallback jika data rombel belum spesifik di jadwal */
                         <div className="space-y-1.5">
@@ -1411,6 +1459,16 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                               );
                             })}
                           </div>
+                        </div>
+                      )}
+
+                      {/* Notifikasi jika memilih jurusan di luar jadwal mengajar */}
+                      {isTargetOutOfSchedule.isInvalid && (
+                        <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
+                          <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                          <p className="text-[11px] leading-relaxed">
+                            {isTargetOutOfSchedule.message}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -1741,6 +1799,19 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               >
                 <Lock size={14} className="text-rose-500" />
                 <span>Terkunci: Sudah Di-cover Rekan MGMP</span>
+              </Button>
+            ) : isTargetOutOfSchedule.isInvalid ? (
+              <Button
+                key="btn-step1-invalid-schedule"
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={true}
+                className="bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed flex items-center gap-1.5 font-bold"
+                title={isTargetOutOfSchedule.message}
+              >
+                <Lock size={14} className="text-amber-500" />
+                <span>Terkunci: Bukan Jadwal Mengajar Anda</span>
               </Button>
             ) : (
               <Button

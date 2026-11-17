@@ -24,6 +24,7 @@ export interface TeacherDutyItem {
   tingkat: number;
   tingkatRoman: string;
   targetJurusan?: string;
+  teachingJurusans?: string[]; // Daftar jurusan yang riil diampu guru pada mapel & tingkat ini
   rombelNames: string[];
   status: DutyCoverStatus;
   soalCount: number;
@@ -462,6 +463,14 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
           draftTargets.push(`${mapelName} (Tingkat ${romanTingkat})`);
         }
 
+        const allTeachingJurusans = Array.from(
+          new Set(
+            jurusanList
+              .map((j) => j.jurusanKode)
+              .filter((code) => code && code !== 'UMUM')
+          )
+        );
+
         items.push({
           key: `${mapelId}_${tingkat}_ALL`,
           mapelId,
@@ -470,6 +479,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
           tingkat,
           tingkatRoman: romanTingkat,
           targetJurusan: undefined,
+          teachingJurusans: allTeachingJurusans,
           rombelNames: allRombels.length > 0 ? allRombels : [`Semua Rombel Tingkat ${romanTingkat}`],
           status,
           soalCount: count,
@@ -486,6 +496,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
         const { jurusanKode, rombelNames } = jg;
         totalDuties++;
         const rombelArr = Array.from(rombelNames);
+        const jCode = jurusanKode !== 'UMUM' ? jurusanKode : undefined;
 
         // Helper matching jurusan (mendukung single jurusan maupun multi-jurusan comma-separated seperti 'KUL, PHT')
         const matchJurusan = (bJurusan?: string | null, targetJurusan?: string) => {
@@ -525,7 +536,8 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
             mapelKode,
             tingkat,
             tingkatRoman: romanTingkat,
-            targetJurusan: jurusanKode !== 'UMUM' ? jurusanKode : undefined,
+            targetJurusan: jCode,
+            teachingJurusans: jCode ? [jCode] : [],
             rombelNames: rombelArr.length > 0 ? rombelArr : [`Semua Rombel Tingkat ${romanTingkat}`],
             status,
             soalCount: count,
@@ -548,7 +560,8 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
             mapelKode,
             tingkat,
             tingkatRoman: romanTingkat,
-            targetJurusan: jurusanKode !== 'UMUM' ? jurusanKode : undefined,
+            targetJurusan: jCode,
+            teachingJurusans: jCode ? [jCode] : [],
             rombelNames: rombelArr.length > 0 ? rombelArr : [`Semua Rombel Tingkat ${romanTingkat}`],
             status: 'PENDING',
             soalCount: 0,
