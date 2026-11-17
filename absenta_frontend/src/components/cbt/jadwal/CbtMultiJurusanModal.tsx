@@ -300,9 +300,7 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
               {jurusans.map((jur, idx) => {
                 const selectedBankId = assignments[jur.kode] || '';
                 const selectedOpt = subjectOptions.find((o) => o.id === selectedBankId);
-                const isAutoDraft = Boolean(
-                  selectedOpt?.isAutoDraft || (selectedBankId && selectedBankId.startsWith('auto_mapel_'))
-                );
+                const isZeroQuestions = Boolean(selectedOpt && selectedOpt.soalCount === 0);
 
                 return (
                   <tr
@@ -342,7 +340,7 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
                         className={cn(
                           'w-full h-8 px-2 text-xs rounded-md border font-medium transition-all cursor-pointer',
                           selectedBankId
-                            ? isAutoDraft
+                            ? isZeroQuestions
                               ? 'bg-amber-50 text-amber-950 border-amber-400 dark:bg-amber-950/40 dark:text-amber-200 font-semibold'
                               : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-indigo-400 font-semibold'
                             : 'bg-white dark:bg-slate-900 text-slate-400 border-slate-300 dark:border-slate-700'
@@ -360,14 +358,14 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
                     {/* Status */}
                     <td className="py-2 px-2.5 text-center align-middle">
                       {selectedBankId ? (
-                        isAutoDraft ? (
+                        isZeroQuestions ? (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                            ✨ Draft
+                            0 Soal
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                             <CheckCircle2 size={10} />
-                            <span>Siap</span>
+                            <span>Siap ({selectedOpt?.soalCount} Soal)</span>
                           </span>
                         )
                       ) : (
