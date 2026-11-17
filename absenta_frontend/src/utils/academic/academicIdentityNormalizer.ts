@@ -87,7 +87,11 @@ export interface TeacherIdentity {
   nipFormatted: string; // Zero-Fallback: "" jika non-PNS
   nuptk: string | null;
   nik: string | null;
+  noKk: string | null;
+  npwp: string | null;
+  namaIbuKandung: string | null;
   jenisKelaminLabel: 'Laki-laki' | 'Perempuan';
+  jenisKelamin: 'L' | 'P';
   agama: string;
 
   // Subsistem Foto Profil
@@ -101,6 +105,20 @@ export interface TeacherIdentity {
   jabatan: string;
   jenisPtk: string;
   pendidikanTerakhir: string;
+  tmtGuru: string | null;
+  maxJp: number;
+  noRfid: string | null;
+
+  // Penugasan Struktural & Fungsional
+  isWaliKelas: boolean;
+  waliKelasDi: string | null;
+  waliKelasId: string | null;
+  isPembimbingPkl: boolean;
+  activePklCount: number;
+  isPiketGuru: boolean;
+  activePiketCount: number;
+  isFasilitatorP5: boolean;
+  activeP5Count: number;
 
   // Tempat & Tanggal Lahir
   tempatLahir: string;
@@ -108,8 +126,17 @@ export interface TeacherIdentity {
   ttlFormatted: string;
 
   // Kontak & Alamat
+  email: string | null;
   noHp: string;
   alamatLengkap: string;
+  dusun: string;
+  rt: string;
+  rw: string;
+  kelurahan: string;
+  kecamatan: string;
+  kabupaten: string;
+  provinsi: string;
+  kodePos: string;
 }
 
 // ─── HELPER FUNCTIONS ───────────────────────────────────────────
@@ -432,6 +459,10 @@ export function normalizeTeacherIdentity(raw: any): TeacherIdentity {
       nipFormatted: '',
       nuptk: null,
       nik: null,
+      noKk: null,
+      npwp: null,
+      namaIbuKandung: null,
+      jenisKelamin: 'L',
       jenisKelaminLabel: 'Laki-laki',
       agama: '-',
       fotoUrl: null,
@@ -442,33 +473,55 @@ export function normalizeTeacherIdentity(raw: any): TeacherIdentity {
       jabatan: 'Tenaga Pendidik',
       jenisPtk: 'Guru Mapel',
       pendidikanTerakhir: '-',
+      tmtGuru: null,
+      maxJp: 24,
+      noRfid: null,
+      isWaliKelas: false,
+      waliKelasDi: null,
+      waliKelasId: null,
+      isPembimbingPkl: false,
+      activePklCount: 0,
+      isPiketGuru: false,
+      activePiketCount: 0,
+      isFasilitatorP5: false,
+      activeP5Count: 0,
       tempatLahir: '',
       tanggalLahir: null,
       ttlFormatted: '-',
+      email: null,
       noHp: '-',
       alamatLengkap: '-',
+      dusun: '',
+      rt: '',
+      rw: '',
+      kelurahan: '',
+      kecamatan: '',
+      kabupaten: '',
+      provinsi: '',
+      kodePos: '',
     };
   }
 
-  const nama = raw.nama_guru || raw.nama || raw.name || '';
-  const nipRaw = raw.nip || raw.nip_guru || null;
+  const nama = raw.nama_guru || raw.nama || raw.name || raw.Guru?.nama_guru || '';
+  const nipRaw = raw.nip || raw.nip_guru || raw.Guru?.nip || null;
   const nipCleanVal = cleanNip(nipRaw);
   const nipFormattedVal = formatNip(nipCleanVal);
 
-  const foto = raw.foto || raw.foto_url || raw.avatar || null;
+  const foto = raw.foto || raw.foto_url || raw.avatar || raw.Guru?.foto || null;
   const hasFoto = Boolean(foto && String(foto).trim().length > 0);
 
-  const tempatLahir = raw.tempat_lahir || '';
-  const tanggalLahir = raw.tanggal_lahir || null;
+  const tempatLahir = raw.tempat_lahir || raw.Guru?.tempat_lahir || '';
+  const tanggalLahir = raw.tanggal_lahir || raw.Guru?.tanggal_lahir || null;
   const ttlFormatted = formatTtl(tempatLahir, tanggalLahir);
 
-  const jkRaw = String(raw.jenis_kelamin || 'L').toUpperCase();
-  const jenisKelaminLabel = jkRaw.startsWith('P') ? 'Perempuan' : 'Laki-laki';
+  const jkRaw = String(raw.jenis_kelamin || raw.Guru?.jenis_kelamin || 'L').toUpperCase();
+  const jenisKelamin: 'L' | 'P' = jkRaw.startsWith('P') ? 'P' : 'L';
+  const jenisKelaminLabel = jenisKelamin === 'P' ? 'Perempuan' : 'Laki-laki';
 
   let namaLengkapGelar = raw.nama_lengkap || raw.nama_dengan_gelar || '';
   if (!namaLengkapGelar && nama) {
-    const gDepan = (raw.gelar_depan || '').trim();
-    const gBelakang = (raw.gelar_belakang || '').trim();
+    const gDepan = (raw.gelar_depan || raw.Guru?.gelar_depan || '').trim();
+    const gBelakang = (raw.gelar_belakang || raw.Guru?.gelar_belakang || '').trim();
     const parts: string[] = [];
     if (gDepan) parts.push(gDepan);
     parts.push(nama);
@@ -478,29 +531,57 @@ export function normalizeTeacherIdentity(raw: any): TeacherIdentity {
   }
   if (!namaLengkapGelar) namaLengkapGelar = nama || 'Guru';
 
+  const waliKelasDi = raw.wali_kelas_di?.nama_kelas || raw.wali_kelas_di?.nama || (typeof raw.wali_kelas_di === 'string' ? raw.wali_kelas_di : null);
+  const isWaliKelas = Boolean(raw.wali_kelas_di || (raw.jabatan && String(raw.jabatan).toLowerCase().includes('wali')));
+
   return {
-    id: raw.id || raw.guru_id || '',
+    id: raw.id || raw.guru_id || raw.Guru?.id || '',
     nama,
     namaLengkapGelar,
     nip: nipCleanVal || null,
     nipClean: nipCleanVal,
     nipFormatted: nipFormattedVal,
-    nuptk: raw.nuptk || null,
-    nik: raw.nik || null,
+    nuptk: raw.nuptk || raw.Guru?.nuptk || null,
+    nik: raw.nik || raw.Guru?.nik || null,
+    noKk: raw.no_kk || raw.Guru?.no_kk || null,
+    npwp: raw.npwp || raw.Guru?.npwp || null,
+    namaIbuKandung: raw.nama_ibu_kandung || raw.Guru?.nama_ibu_kandung || null,
+    jenisKelamin,
     jenisKelaminLabel,
-    agama: raw.agama || 'Islam',
+    agama: raw.agama || raw.Guru?.agama || 'Islam',
     fotoUrl: foto,
     hasFoto,
     initials: formatInitials(nama),
-    statusKepegawaian: raw.status_kepegawaian || raw.status || 'PNS',
-    pangkatGolongan: raw.pangkat_golongan || raw.golongan || '-',
-    jabatan: raw.jabatan || 'Guru Mata Pelajaran',
-    jenisPtk: raw.jenis_ptk || 'Guru Mapel',
-    pendidikanTerakhir: raw.pendidikan_terakhir || '-',
+    statusKepegawaian: raw.status_kepegawaian || raw.Guru?.status_kepegawaian || raw.status || 'PNS',
+    pangkatGolongan: raw.pangkat_golongan || raw.Guru?.pangkat_golongan || raw.golongan || '-',
+    jabatan: raw.jabatan || raw.Guru?.jabatan || 'Guru Mata Pelajaran',
+    jenisPtk: raw.jenis_ptk || raw.Guru?.jenis_ptk || 'Guru Mapel',
+    pendidikanTerakhir: raw.pendidikan_terakhir || raw.Guru?.pendidikan_terakhir || '-',
+    tmtGuru: raw.tmt_guru ? formatTanggalIndonesia(raw.tmt_guru) : null,
+    maxJp: Number(raw.max_jp || raw.Guru?.max_jp || 24),
+    noRfid: raw.no_rfid || raw.Guru?.no_rfid || null,
+    isWaliKelas,
+    waliKelasDi,
+    waliKelasId: raw.wali_kelas_di?.id || null,
+    isPembimbingPkl: Boolean(raw.is_pembimbing_pkl || (raw.active_pkl_count && raw.active_pkl_count > 0)),
+    activePklCount: Number(raw.active_pkl_count || raw.total_pkl_count || 0),
+    isPiketGuru: Boolean(raw.is_piket_guru || (raw.active_piket_count && raw.active_piket_count > 0)),
+    activePiketCount: Number(raw.active_piket_count || 0),
+    isFasilitatorP5: Boolean(raw.is_fasilitator_p5 || (raw.active_p5_count && raw.active_p5_count > 0)),
+    activeP5Count: Number(raw.active_p5_count || 0),
     tempatLahir,
     tanggalLahir,
     ttlFormatted,
-    noHp: raw.no_hp || raw.telepon || '-',
-    alamatLengkap: formatAlamatLengkap(raw),
+    email: raw.email || raw.User?.email || null,
+    noHp: raw.no_hp || raw.telepon || raw.User?.no_hp || '-',
+    alamatLengkap: formatAlamatLengkap(raw.Guru || raw),
+    dusun: raw.dusun || raw.Guru?.dusun || '',
+    rt: raw.rt || raw.Guru?.rt || '',
+    rw: raw.rw || raw.Guru?.rw || '',
+    kelurahan: raw.kelurahan || raw.Guru?.kelurahan || raw.desa || '',
+    kecamatan: raw.kecamatan || raw.Guru?.kecamatan || '',
+    kabupaten: raw.kabupaten || raw.Guru?.kabupaten || raw.kota || '',
+    provinsi: raw.provinsi || raw.Guru?.provinsi || '',
+    kodePos: raw.kode_pos || raw.Guru?.kode_pos || '',
   };
 }
