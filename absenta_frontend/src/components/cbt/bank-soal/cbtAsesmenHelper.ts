@@ -548,7 +548,7 @@ export function getAllowedTingkatForAsesmen(
 // ==========================================
 export const cbtBankSoalStep1Schema = z.object({
   mapel_id: z.string().min(1, 'Mata pelajaran wajib dipilih'),
-  tingkat: z.string().min(1, 'Pilih tingkat/kelas bank soal'),
+  tingkat: z.string().min(1, 'Tingkat kelas sasaran wajib dipilih (X, XI, atau XII)'),
 });
 
 export const cbtBankSoalPayloadSchema = z.object({
@@ -556,7 +556,7 @@ export const cbtBankSoalPayloadSchema = z.object({
   judul: z.string().min(3, 'Judul bank soal minimal 3 karakter').max(200),
   guru_id: z.string().min(1, 'Guru pembuat/penyusun soal wajib dipilih'),
   mapel_id: z.string().min(1, 'Mata pelajaran wajib dipilih'),
-  tingkat: z.string().min(1, 'Pilih tingkat/kelas bank soal'),
+  tingkat: z.string().min(1, 'Tingkat kelas sasaran wajib dipilih (X, XI, atau XII)'),
   jurusan: z.string().optional().nullable(),
   alokasi_menit: z.number().int().min(10, 'Alokasi durasi minimal 10 menit').max(300),
 });

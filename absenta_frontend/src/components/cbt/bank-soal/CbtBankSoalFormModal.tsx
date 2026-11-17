@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
-import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users } from 'lucide-react';
+import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users, AlertCircle, AlertTriangle } from 'lucide-react';
 import {
   type CbtBankSoalScope,
   getOfficialAsesmenTypes,
@@ -132,13 +132,14 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       const romanList = effectiveTingkatList.map((t) => getTingkatRoman(t));
       if (romanList.includes(r)) return r;
     }
-    return effectiveTingkatList.length > 0 ? getTingkatRoman(effectiveTingkatList[0]) : 'X';
+    return ''; // Wajib kosong jika tidak diberikan spesifik agar guru memilih secara sadar
   }, [defaultTingkat, effectiveTingkatList]);
 
   const { activeSemester } = useSemesterOptions();
   const [tingkat, setTingkat] = useState<string>(() => {
     return bankSoalToEdit?.tingkat || defaultInitialTingkat;
   });
+  const [tingkatTouched, setTingkatTouched] = useState<boolean>(false);
 
   // Deteksi cerdas asesmen resmi berdasarkan kalender bulan, semester aktif, & jenjang
   const smartDetection = useMemo(() => {
@@ -338,11 +339,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     setJenisKegiatanMassal(targetKey);
     const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', targetKey, effectiveTingkatList, jenjang);
     let nextTingkat = tingkat;
-    if (validTingkat.length > 0 && !validTingkat.includes(tingkat)) {
-      nextTingkat = validTingkat[0];
-      setTingkat(nextTingkat);
+    if (tingkat && validTingkat.length > 0 && !validTingkat.includes(tingkat)) {
+      nextTingkat = '';
+      setTingkat('');
     }
-    if (mapelId) {
+    if (mapelId && nextTingkat) {
       triggerAutoFillMassal(mapelId, nextTingkat, targetKey);
     }
   };
@@ -360,6 +361,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setUnitPengajaranId(bankSoalToEdit.unit_pengajaran_id || '');
       setJurusan(bankSoalToEdit.jurusan || '');
       setTingkat(bankSoalToEdit.tingkat);
+      setTingkatTouched(false);
       setAlokasiMenit(bankSoalToEdit.alokasi_menit);
       setAcakSoal(bankSoalToEdit.acak_soal);
       setAcakOpsi(bankSoalToEdit.acak_opsi);
@@ -403,17 +405,20 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         effectiveTingkatList,
         jenjang
       );
-      const autoDetectedTingkat = (defaultTingkat && validTingkat.includes(defaultTingkat))
+      // Validasi anti human-error: defaultTingkat hanya dipakai jika secara spesifik dikirim dari konteks luar.
+      // Jika tidak ada defaultTingkat spesifik, tingkat dikosongkan agar guru WAJIB memilih sendiri secara sadar.
+      const initialTingkat = (defaultTingkat && validTingkat.includes(defaultTingkat))
         ? defaultTingkat
-        : (validTingkat[0] || defaultInitialTingkat);
+        : '';
 
+      setTingkatTouched(false);
       setJenisKegiatanMassal(recKey);
-      setKodeBank(isMassal ? `${recKey}-${year}-MAPEL-${autoDetectedTingkat}` : `CBT-${year}-${randomSuffix}`);
+      setKodeBank(isMassal ? `${recKey}-${year}-MAPEL${initialTingkat ? `-${initialTingkat}` : ''}` : `CBT-${year}-${randomSuffix}`);
       setJudul('');
       setGuruId(initialGuruId);
       setMapelId(defaultMapelId || '');
       setUnitPengajaranId('');
-      setTingkat(autoDetectedTingkat);
+      setTingkat(initialTingkat);
       setAlokasiMenit(60);
       setAcakSoal(true);
       setAcakOpsi(true);
@@ -431,10 +436,10 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setIsShared(true);
       const recKey = lockedEventKey || smartDetection.recommendedKey;
       const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', recKey, effectiveTingkatList, jenjang);
-      const targetTingkat = validTingkat.includes(tingkat) ? tingkat : (validTingkat[0] || defaultInitialTingkat);
+      const targetTingkat = (tingkat && validTingkat.includes(tingkat)) ? tingkat : '';
       setJenisKegiatanMassal(recKey);
       setTingkat(targetTingkat);
-      if (mapelId) {
+      if (mapelId && targetTingkat) {
         triggerAutoFillMassal(mapelId, targetTingkat, recKey);
       }
     } else {
@@ -454,6 +459,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const handleNextStep = (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
+
+    setTingkatTouched(true);
+
+    if (!tingkat || tingkat.trim() === '') {
+      toast.error('Silakan pilih tingkat kelas sasaran soal (X, XI, atau XII) terlebih dahulu!');
+      return;
+    }
 
     const val = cbtBankSoalStep1Schema.safeParse({ mapel_id: mapelId, tingkat });
     if (!val.success) {
@@ -476,7 +488,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
             judul.startsWith(`${t.singkatan} -`)
         );
       if (isAutoTitle) {
-        triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal);
+        triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, jurusan);
       }
     } else if (scope === 'MANDIRI_GURU' && !judul) {
       const selectedMapel = mapelOptions.find((m) => m.value === mapelId);
@@ -493,6 +505,12 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
     // Guard ketat: Cegah form submission jika belum berada di Tahap 2
     if (step !== 2) {
+      return;
+    }
+
+    if (!tingkat || tingkat.trim() === '') {
+      setTingkatTouched(true);
+      toast.error('Tingkat kelas sasaran wajib dipilih!');
       return;
     }
 
@@ -933,12 +951,25 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               )}
             </div>
 
-            {/* 4. Tingkat Kelas (Terproteksi Anti Human-Error) */}
+            {/* 4. Tingkat Kelas (Terproteksi Anti Human-Error & Wajib Dipilih Sadar) */}
             <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Tingkat Kelas
-                </label>
+                <div className="flex items-center gap-1.5">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Tingkat Sasaran Bank Soal <span className="text-rose-500">*</span>
+                  </label>
+                  {!tingkat ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-800 animate-pulse">
+                      <AlertCircle size={10} />
+                      Wajib Dipilih
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                      <CheckCircle2 size={10} />
+                      Tingkat {tingkat} Terpilih
+                    </span>
+                  )}
+                </div>
                 {activeAsesmenDef?.tingkatRuleExplanation && (
                   <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">
                     ⚠️ {activeAsesmenDef.tingkatRuleExplanation}
@@ -946,37 +977,69 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 )}
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {dynamicTingkatOptions.map((item) => {
-                  const isAllowed = allowedTingkatList.includes(item.value);
-                  const isSelected = tingkat === item.value;
+              <div
+                className={cn(
+                  'p-2 rounded-xl transition-all',
+                  !tingkat && tingkatTouched
+                    ? 'bg-rose-50/70 dark:bg-rose-950/30 ring-2 ring-rose-500 border border-rose-300 dark:border-rose-800'
+                    : 'bg-slate-50/50 dark:bg-slate-800/30 border border-slate-200/70 dark:border-slate-800'
+                )}
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  {dynamicTingkatOptions.map((item) => {
+                    const isAllowed = allowedTingkatList.includes(item.value);
+                    const isSelected = tingkat === item.value;
 
-                  return (
-                    <button
-                      key={item.value}
-                      type="button"
-                      disabled={!isAllowed}
-                      onClick={() => {
-                        if (!isAllowed) return;
-                        setTingkat(item.value);
-                        if (scope === 'TERPUSAT_MASSAL' && mapelId) {
-                          triggerAutoFillMassal(mapelId, item.value, jenisKegiatanMassal);
-                        }
-                      }}
-                      className={cn(
-                        'py-2 px-3 rounded-lg border text-xs font-bold transition-all text-center flex items-center justify-center gap-1 min-w-[70px]',
-                        !isAllowed
-                          ? 'opacity-35 bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed line-through'
-                          : isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs cursor-pointer'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300 cursor-pointer'
-                      )}
-                      title={!isAllowed ? `Tidak relevan untuk ${jenisKegiatanMassal}` : item.label}
-                    >
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
+                    return (
+                      <button
+                        key={item.value}
+                        type="button"
+                        disabled={!isAllowed}
+                        onClick={() => {
+                          if (!isAllowed) return;
+                          setTingkat(item.value);
+                          setTingkatTouched(false);
+                          if (scope === 'TERPUSAT_MASSAL' && mapelId) {
+                            triggerAutoFillMassal(mapelId, item.value, jenisKegiatanMassal, jurusan);
+                          }
+                        }}
+                        className={cn(
+                          'py-2.5 px-3 rounded-lg border text-sm font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer',
+                          !isAllowed
+                            ? 'opacity-35 bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed line-through'
+                            : isSelected
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-400 dark:ring-indigo-500'
+                            : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30'
+                        )}
+                        title={!isAllowed ? `Tidak relevan untuk ${jenisKegiatanMassal}` : `Pilih sasaran untuk ${item.label}`}
+                      >
+                        {isSelected && <CheckCircle2 size={15} className="text-white shrink-0" />}
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {!tingkat && (
+                  <p
+                    className={cn(
+                      'text-[11px] mt-2 flex items-center gap-1.5 font-medium',
+                      tingkatTouched ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
+                    )}
+                  >
+                    {tingkatTouched ? (
+                      <>
+                        <AlertCircle size={13} className="shrink-0 text-rose-500" />
+                        <span>Perhatian: Guru wajib memilih salah satu tingkat (X, XI, atau XII) di atas sebelum melanjutkan!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={12} className="shrink-0 text-amber-500" />
+                        <span>Pilih tingkat kelas sasaran soal ini secara sadar untuk menghindari kesalahan pengarsipan bank soal.</span>
+                      </>
+                    )}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1091,6 +1154,33 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         ) : (
           /* ── TAHAP 2: IDENTITAS, DURASI, & PENYUSUN SOAL ── */
           <div className="space-y-3">
+            {/* Ringkasan Sasaran Bank Soal (Konfirmasi Visual Anti Human-Error) */}
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                  Sasaran Terpilih:
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs font-black px-2.5 py-1 rounded-md bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  🎯 Tingkat {tingkat || '-'}
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-md bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  📚 {mapelOptions.find((m) => m.value === mapelId)?.label?.split('(')[0]?.trim() || 'Mata Pelajaran'}
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                  👥 {jurusan ? `Jurusan ${jurusan}` : 'Semua Jurusan'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline cursor-pointer flex items-center gap-1 ml-auto"
+                title="Kembali ke langkah 1 untuk mengubah mata pelajaran atau tingkat sasaran"
+              >
+                <span>Ubah Sasaran</span>
+                <ArrowLeft size={12} className="rotate-180" />
+              </button>
+            </div>
+
             {/* Judul & Kode Bank Soal */}
             <div className="space-y-2">
               <div className="space-y-1">
