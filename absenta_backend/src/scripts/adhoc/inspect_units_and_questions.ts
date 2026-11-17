@@ -38,7 +38,6 @@ async function main() {
       select: {
         id: true,
         nama_unit: true,
-        kode_unit: true,
         is_active: true,
       },
     });
@@ -47,7 +46,7 @@ async function main() {
     units.forEach((u, i) => {
       const qCount = kodingBank.Soal.filter((s) => s.unit_pengajaran_id === u.id).length;
       console.log(
-        `${i + 1}. ID: ${u.id.slice(0, 8)} | nama_unit: "${u.nama_unit}" | kode: "${u.kode_unit}" | active: ${u.is_active} | Soal: ${qCount}`
+        `${i + 1}. ID: ${u.id.slice(0, 8)} | nama_unit: "${u.nama_unit}" | active: ${u.is_active} | Soal: ${qCount}`
       );
     });
   }
