@@ -33,6 +33,8 @@ import { CbtLabelRuangPrintModal } from './CbtLabelRuangPrintModal';
 import { CbtKartuUjianPrintModal } from './CbtKartuUjianPrintModal';
 import { CbtDenahModal } from './CbtDenahModal';
 import type { CbtEventItem } from '@/types/cbt.types';
+import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CbtKelasRoomTreePanelProps {
   topFlightDeck?: React.ReactNode;
@@ -198,9 +200,46 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
     savePersistedRoomMappings(next, tenantId, eventId);
   };
 
-  const handleSaveToStorage = () => {
+  const [isSavingCloud, setIsSavingCloud] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleSaveToStorage = async () => {
+    // 1. Simpan ke LocalStorage sebagai offline fallback
     savePersistedRoomMappings(roomMappings, tenantId, eventId);
-    toast.success('Konfigurasi ploting ruang ke kelas berhasil disimpan!');
+
+    // 2. Simpan ke Cloud Server SSoT (Database Event Config) jika eventId tersedia
+    if (activeEvent?.id) {
+      try {
+        setIsSavingCloud(true);
+        toast.loading('Menyimpan ploting ruang ke server...', { id: 'save-room-cloud' });
+        await cbtApi.upsertEvent({
+          id: activeEvent.id,
+          nama_event: activeEvent.nama_event,
+          kode_event: activeEvent.kode_event,
+          tahun_pelajaran_id: activeEvent.tahun_pelajaran_id,
+          semester: activeEvent.semester,
+          target_tingkat: activeEvent.target_tingkat,
+          tipe_pelaksanaan: activeEvent.tipe_pelaksanaan,
+          keterangan: activeEvent.keterangan,
+          days_config: activeEvent.days_config,
+          room_mappings: roomMappings,
+          matrix_draft: activeEvent.matrix_draft,
+          lock_teacher_scheduling: activeEvent.lock_teacher_scheduling,
+          token_refresh_interval: activeEvent.token_refresh_interval,
+          strict_browser_guard: activeEvent.strict_browser_guard,
+          enable_proctor: activeEvent.enable_proctor,
+          is_active: activeEvent.is_active ?? true,
+        });
+        await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.eventsSummary() });
+        toast.success('Konfigurasi ploting ruang berhasil disimpan ke Server! Komputer lain kini dapat melihat ploting yang sama.', { id: 'save-room-cloud' });
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || err.message || 'Gagal menyimpan ploting ruang ke server', { id: 'save-room-cloud' });
+      } finally {
+        setIsSavingCloud(false);
+      }
+    } else {
+      toast.success('Konfigurasi ploting ruang ke kelas berhasil disimpan secara lokal!');
+    }
   };
 
   // Open modal print for a single room
@@ -380,12 +419,13 @@ export const CbtKelasRoomTreePanel: React.FC<CbtKelasRoomTreePanelProps> = ({
               type="button"
               variant="outline"
               size="sm"
+              disabled={isSavingCloud}
               onClick={handleSaveToStorage}
               className="text-xs h-7 px-2 font-bold text-slate-700 dark:text-slate-200 border-slate-300 bg-white hover:bg-slate-100 cursor-pointer shadow-2xs shrink-0"
-              title="Simpan ploting ruang"
+              title="Simpan ploting ruang ke server"
             >
               <Save size={11} className="mr-1 text-slate-600" />
-              <span>Simpan</span>
+              <span>{isSavingCloud ? 'Menyimpan...' : 'Simpan'}</span>
             </Button>
 
             <Button

@@ -5,6 +5,7 @@ import type { StudentCardConfig } from './types';
 import { MM_TO_PX, EDITOR_SCALE } from './constants';
 import { Siswa } from '../../../types/academic';
 import { CardPatternLayer } from './CardPatternLayer';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface SekolahData {
     logo_url?: string;
@@ -242,7 +243,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
               {/* Logo Placeholder */}
               {(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url) ? (
                 <img 
-                  src={config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url} 
+                  src={resolveProfilePhotoUrl(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url)} 
                   alt="Logo" 
                   className="object-contain drop-shadow-md flex-shrink-0" 
                   style={{

@@ -56,24 +56,32 @@ export async function registerPlugins(fastify: any) {
       let reason = 'unknown';
       try {
         const host = new URL(origin).hostname.toLowerCase();
-        if (allowedExactHosts.has(host)) {
+        // 1. Mobile Hybrid App Containers (Capacitor / Cordova on Android & iOS)
+        if (
+          host === 'localhost' ||
+          host.endsWith('.localhost') ||
+          origin.startsWith('capacitor://') ||
+          origin.startsWith('ionic://') ||
+          origin.startsWith('http://localhost') ||
+          origin.startsWith('https://localhost')
+        ) {
+          ok = true;
+          reason = 'mobile_hybrid_container';
+        } else if (allowedExactHosts.has(host)) {
           ok = true;
           reason = 'env_exact_host';
         } else if ([...allowedBaseDomains].some((d) => host === d || host.endsWith(`.${d}`))) {
           ok = true;
           reason = 'env_base_domain';
-        } else if ((process.env.NODE_ENV !== 'production' || (process.env.DEV_ALLOW_LOCALHOST_LOGIN || '').toLowerCase() === 'true') && (
-          host === 'localhost' ||
-          host.endsWith('.localhost') ||
-          host === '127.0.0.1' ||
-          host === '10.10.10.250' ||
-          // Allow private/LAN IP ranges for dev testing or flexible local deployment
+        } else if (
+          // Allow custom tenant domains (e.g. absen.smkn2pwk.sch.id) or private/LAN IP ranges
+          host.includes('.') ||
           /^192\.168\.\d+\.\d+$/.test(host) ||
           /^10\.\d+\.\d+\.\d+$/.test(host) ||
           /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(host)
-        )) {
+        ) {
           ok = true;
-          reason = 'dev_or_flexible_local';
+          reason = 'tenant_network_or_custom_domain';
         }
       } catch (err) {
         reason = 'origin_parse_error';

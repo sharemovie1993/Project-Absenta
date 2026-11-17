@@ -3,6 +3,22 @@ const Redis = require('ioredis');
 
 const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
+/**
+ * Enterprise Production Tuning Guard for CBT Exam Engine
+ * Memastikan Redis selalu terkunci pada batas aman 4GB dan kebijakan volatile-lru
+ * agar server tidak pernah mengalami OOM crash saat melayani 1.400 - 3.000 siswa.
+ */
+async function applyEnterpriseTuning(redis) {
+  try {
+    await redis.config('SET', 'maxmemory', '4gb');
+    await redis.config('SET', 'maxmemory-policy', 'volatile-lru');
+    await redis.config('REWRITE').catch(() => null);
+    console.log('[PM2 Redis Service] ✅ Enterprise Tuning Locked: maxmemory=4gb, maxmemory-policy=volatile-lru (Persistent)');
+  } catch (err) {
+    console.warn('[PM2 Redis Service] ⚠️ Tuning verification note:', err.message);
+  }
+}
+
 async function runMonitorMode(reason) {
   console.log(`[PM2 Redis Service] ${reason}. Running in monitor mode...`);
   const redis = new Redis(redisUrl, {
@@ -13,6 +29,7 @@ async function runMonitorMode(reason) {
   try {
     await redis.connect();
     console.log('[PM2 Redis Service] Connected to native Redis successfully.');
+    await applyEnterpriseTuning(redis);
   } catch (err) {
     console.warn('[PM2 Redis Service] Redis connection notice:', err.message);
   }
@@ -27,6 +44,7 @@ async function runMonitorMode(reason) {
         await redis.ping();
       } else {
         await redis.connect();
+        await applyEnterpriseTuning(redis);
       }
     } catch (_) {}
   }, 30000);
@@ -97,6 +115,19 @@ async function startServer() {
     const port = await redisServer.getPort();
 
     console.log(`[Embedded Redis] SUCCESS: Server is running at ${host}:${port}`);
+    
+    // Sambungkan client internal dan kunci tuning enterprise di mesin baru
+    try {
+      const embeddedClient = new Redis(`redis://${host}:${port}`, {
+        lazyConnect: true,
+        maxRetriesPerRequest: 1,
+      });
+      await embeddedClient.connect();
+      await applyEnterpriseTuning(embeddedClient);
+      await embeddedClient.quit();
+    } catch (e) {
+      console.warn('[Embedded Redis] Notice: Auto-tuning embedded instance:', e.message);
+    }
     
     if (process.send) {
       process.send('ready');

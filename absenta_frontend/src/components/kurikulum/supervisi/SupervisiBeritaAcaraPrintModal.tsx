@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/PrintHeader';
 import type { Supervisi } from '@/api/kurikulum.api';
 import { formatDate } from '@/utils/layoutUtils';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { SlidersHorizontal, RotateCcw, UserCheck, Calendar, MapPin } from 'lucide-react';
 
@@ -510,7 +511,7 @@ export const SupervisiBeritaAcaraPrintModal: React.FC<SupervisiBeritaAcaraPrintM
               </h2>
               <div className="flex items-center gap-3 border border-black/30 p-2 bg-white">
                 <img
-                  src={supervisi.foto_kegiatan}
+                  src={resolveProfilePhotoUrl(supervisi.foto_kegiatan)}
                   alt="Dokumentasi KBM"
                   className="w-36 h-24 object-cover border border-slate-300 rounded-xs shadow-2xs"
                 />

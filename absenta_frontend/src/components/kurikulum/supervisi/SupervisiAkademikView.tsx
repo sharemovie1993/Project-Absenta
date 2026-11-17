@@ -9,7 +9,7 @@ import { kurikulumApi } from '../../../api/kurikulum.api';
 import type { Supervisi } from '../../../api/kurikulum.api';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
 import { TabSwitcher } from '../../ui/TabSwitcher';
-import { cn } from '../../../lib/utils';
+import { cn, resolveProfilePhotoUrl } from '../../../lib/utils';
 import { ClipboardList, Plus, Clock, Award, BookOpen, User, Calendar, List, BarChart2, ShieldCheck, AlertCircle, Eye, CheckCircle2, Printer, Camera } from 'lucide-react';
 import { z } from 'zod';
 import { useAuthStore } from '../../../store/authStore';
@@ -930,7 +930,7 @@ export const SupervisiAkademikView: React.FC<UniversalSupervisiAkademikViewProps
                   </label>
                   <div className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/50 flex items-center gap-3">
                     <img
-                      src={detailItem.foto_kegiatan}
+                      src={resolveProfilePhotoUrl(detailItem.foto_kegiatan)}
                       alt="Dokumentasi KBM"
                       className="w-24 h-16 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs"
                     />

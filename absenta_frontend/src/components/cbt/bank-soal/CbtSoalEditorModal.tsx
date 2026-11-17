@@ -21,7 +21,7 @@ import { cbtQueryKeys } from '@/api/cbt.api';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import type { CbtSoal, CbtUnitPengajaranSummary, OpsiJawaban } from '@/types/cbt.types';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import { getOptionBadgeColor } from '../common/CbtOptionsRenderer';
 import {
   parseFullQuestionText,
@@ -1047,7 +1047,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
         ) : gambarStimulusUrl ? (
           <div className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 flex items-start justify-between gap-3">
             <img
-              src={gambarStimulusUrl}
+              src={resolveProfilePhotoUrl(gambarStimulusUrl)}
               alt="Stimulus soal"
               className="max-h-36 object-contain rounded-lg border border-slate-200 dark:border-slate-800 bg-white"
             />
@@ -1176,7 +1176,7 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
               ) : opt.gambar_url ? (
                 <div className="ml-8 flex items-center gap-2">
                   <img
-                    src={opt.gambar_url}
+                    src={resolveProfilePhotoUrl(opt.gambar_url)}
                     alt={`Opsi ${opt.kode}`}
                     className="h-12 w-auto object-contain rounded border border-slate-200 bg-white"
                   />

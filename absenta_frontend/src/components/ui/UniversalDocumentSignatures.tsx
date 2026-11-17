@@ -4,7 +4,7 @@ import {
   type UseDocumentSignersParams,
   type SignerPerson,
 } from '@/hooks/useDocumentSigners';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 
 export type DocumentSignatureLayout =
   | 'single_kepsek'
@@ -127,7 +127,7 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
         >
           {person.signatureImage ? (
             <img
-              src={person.signatureImage}
+              src={resolveProfilePhotoUrl(person.signatureImage)}
               alt={`TTD ${person.personName}`}
               className="max-h-[95%] max-w-[55mm] object-contain select-none"
             />

@@ -89,6 +89,8 @@ export const demoProfilesController = {
       const tokenPayload = {
         id: targetUser.id,
         email: targetUser.email,
+        full_name: targetUser.full_name,
+        name: targetUser.full_name,
         tenantId: targetUser.tenant_id,
         roleId: targetUser.Role?.id || targetUser.role_id || '',
         roleName: targetUser.Role?.name || 'USER',

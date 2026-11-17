@@ -25,7 +25,7 @@ import { Modal } from './Modal';
 import { Button } from './Button';
 import { SendDocumentWaModal, type WaCustomPdfGenerator } from './SendDocumentWaModal';
 import { sanitizePdfFileName } from '@/utils/print/capturePrintSheetsToPdf';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 
 // ============================================================================
 // 1. TYPES & INTERFACES
@@ -229,7 +229,7 @@ export function usePrintHeaderData(
   useEffect(() => {
     let active = true;
     if (resolvedTenantInfo.logo_daerah_url) {
-      resolveCoverImageBase64(resolvedTenantInfo.logo_daerah_url)
+      resolveCoverImageBase64(resolveProfilePhotoUrl(resolvedTenantInfo.logo_daerah_url))
         .then((b64) => {
           if (active) setLogoDaerahBase64(b64);
         })
@@ -241,7 +241,7 @@ export function usePrintHeaderData(
     }
 
     if (resolvedTenantInfo.logo_url) {
-      resolveCoverImageBase64(resolvedTenantInfo.logo_url)
+      resolveCoverImageBase64(resolveProfilePhotoUrl(resolvedTenantInfo.logo_url))
         .then((b64) => {
           if (active) setLogoSekolahBase64(b64);
         })
@@ -291,8 +291,8 @@ export const PrintHeaderPure: React.FC<PrintHeaderProps> = ({
   className,
   style,
 }) => {
-  const logoSekolah = showLogoSekolah ? (tenantInfo?.logo_url || null) : null;
-  const logoDaerah = showLogoDaerah ? (tenantInfo?.logo_daerah_url || DEFAULT_JABAR_LOGO_SVG) : null;
+  const logoSekolah = showLogoSekolah ? (resolveProfilePhotoUrl(tenantInfo?.logo_url) || null) : null;
+  const logoDaerah = showLogoDaerah ? (resolveProfilePhotoUrl(tenantInfo?.logo_daerah_url) || DEFAULT_JABAR_LOGO_SVG) : null;
 
   const alamatLengkap = tenantInfo?.address || '';
   const telepon = tenantInfo?.phone || '';

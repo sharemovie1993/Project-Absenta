@@ -90,6 +90,7 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
     queryFn: getKelasForDropdown,
     staleTime: 5 * 60 * 1000,
     enabled: isOpen,
+    refetchOnWindowFocus: false,
   });
 
   const { data: tpOptions = [], isLoading: isLoadingTp } = useQuery({
@@ -97,6 +98,7 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
     queryFn: getTahunPelajaranForDropdown,
     staleTime: 10 * 60 * 1000,
     enabled: isOpen,
+    refetchOnWindowFocus: false,
   });
 
   const { data: semOptions = [], isLoading: isLoadingSem } = useQuery({
@@ -104,6 +106,7 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
     queryFn: getSemesterForDropdown,
     staleTime: 10 * 60 * 1000,
     enabled: isOpen,
+    refetchOnWindowFocus: false,
   });
 
   // 2. State Konteks Akademik & Pemetaan Rombel

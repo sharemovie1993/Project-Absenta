@@ -59,24 +59,33 @@ import {
 } from './common';
 import toast from 'react-hot-toast';
 
-// Tab Subcomponents
-import { KurikulumBerandaTab } from './kurikulum/tabs/KurikulumBerandaTab';
-import { KurikulumJadwalTab } from './kurikulum/tabs/KurikulumJadwalTab';
-import { KurikulumGuruMapelTab } from './kurikulum/tabs/KurikulumGuruMapelTab';
-import { KurikulumStrukturTab } from './kurikulum/tabs/KurikulumStrukturTab';
-import { KurikulumPiketTab } from './kurikulum/tabs/KurikulumPiketTab';
-import { KurikulumPerangkatTab } from './kurikulum/tabs/KurikulumPerangkatTab';
-import { KurikulumSupervisiTab } from './kurikulum/tabs/KurikulumSupervisiTab';
-import { KurikulumRaporTab } from './kurikulum/tabs/KurikulumRaporTab';
-import { KurikulumTitimangsaRaporTab } from './kurikulum/tabs/KurikulumTitimangsaRaporTab';
-import { KurikulumKalenderTab } from './kurikulum/tabs/KurikulumKalenderTab';
-import { KurikulumJamKbmTab } from './kurikulum/tabs/KurikulumJamKbmTab';
-import { KurikulumDelegasiTab } from './kurikulum/tabs/KurikulumDelegasiTab';
-import { KurikulumCetakTab } from './kurikulum/tabs/KurikulumCetakTab';
-import { KurikulumRekapKbmTab } from './kurikulum/tabs/KurikulumRekapKbmTab';
-import { KurikulumWaliKelasTab } from './kurikulum/tabs/KurikulumWaliKelasTab';
-import { KurikulumCbtTab } from './kurikulum/tabs/KurikulumCbtTab';
-import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
+// Tab Subcomponents (Code-Split via React.lazy untuk eliminasi bundle overhead & zero network leak)
+const KurikulumBerandaTab = React.lazy(() => import('./kurikulum/tabs/KurikulumBerandaTab').then((m) => ({ default: m.KurikulumBerandaTab })));
+const KurikulumJadwalTab = React.lazy(() => import('./kurikulum/tabs/KurikulumJadwalTab').then((m) => ({ default: m.KurikulumJadwalTab })));
+const KurikulumGuruMapelTab = React.lazy(() => import('./kurikulum/tabs/KurikulumGuruMapelTab').then((m) => ({ default: m.KurikulumGuruMapelTab })));
+const KurikulumStrukturTab = React.lazy(() => import('./kurikulum/tabs/KurikulumStrukturTab').then((m) => ({ default: m.KurikulumStrukturTab })));
+const KurikulumPiketTab = React.lazy(() => import('./kurikulum/tabs/KurikulumPiketTab').then((m) => ({ default: m.KurikulumPiketTab })));
+const KurikulumPerangkatTab = React.lazy(() => import('./kurikulum/tabs/KurikulumPerangkatTab').then((m) => ({ default: m.KurikulumPerangkatTab })));
+const KurikulumSupervisiTab = React.lazy(() => import('./kurikulum/tabs/KurikulumSupervisiTab').then((m) => ({ default: m.KurikulumSupervisiTab })));
+const KurikulumRaporTab = React.lazy(() => import('./kurikulum/tabs/KurikulumRaporTab').then((m) => ({ default: m.KurikulumRaporTab })));
+const KurikulumTitimangsaRaporTab = React.lazy(() => import('./kurikulum/tabs/KurikulumTitimangsaRaporTab').then((m) => ({ default: m.KurikulumTitimangsaRaporTab })));
+const KurikulumKalenderTab = React.lazy(() => import('./kurikulum/tabs/KurikulumKalenderTab').then((m) => ({ default: m.KurikulumKalenderTab })));
+const KurikulumJamKbmTab = React.lazy(() => import('./kurikulum/tabs/KurikulumJamKbmTab').then((m) => ({ default: m.KurikulumJamKbmTab })));
+const KurikulumDelegasiTab = React.lazy(() => import('./kurikulum/tabs/KurikulumDelegasiTab').then((m) => ({ default: m.KurikulumDelegasiTab })));
+const KurikulumCetakTab = React.lazy(() => import('./kurikulum/tabs/KurikulumCetakTab').then((m) => ({ default: m.KurikulumCetakTab })));
+const KurikulumRekapKbmTab = React.lazy(() => import('./kurikulum/tabs/KurikulumRekapKbmTab').then((m) => ({ default: m.KurikulumRekapKbmTab })));
+const KurikulumWaliKelasTab = React.lazy(() => import('./kurikulum/tabs/KurikulumWaliKelasTab').then((m) => ({ default: m.KurikulumWaliKelasTab })));
+const KurikulumCbtTab = React.lazy(() => import('./kurikulum/tabs/KurikulumCbtTab').then((m) => ({ default: m.KurikulumCbtTab })));
+const DivisiStrukturOrganisasiView = React.lazy(() =>
+  import('@/components/academic/struktur/DivisiStrukturOrganisasiView').then((m) => ({ default: m.DivisiStrukturOrganisasiView }))
+);
+
+const TabFallback: React.FC<{ label?: string }> = ({ label = 'Memuat modul kurikulum...' }) => (
+  <div className="py-20 flex flex-col items-center justify-center gap-3">
+    <Loader size="md" />
+    <span className="text-xs text-slate-500 font-medium">{label}</span>
+  </div>
+);
 const TenantAttendanceForm = React.lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
 const KurikulumEvaluasiKinerjaTab = React.lazy(() => import('./kurikulum/tabs/KurikulumEvaluasiKinerjaTab'));
 const RapatSosialisasiPanel = React.lazy(() =>
@@ -186,29 +195,38 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
   const { can } = useCapabilities();
   const hasSupervisiAccess = can('curriculum.supervision.view.schedule');
 
-  // React Query Caching
+  // Active Tab Scopes (Anti-Connection Storm: Hanya tembak query saat tab yang bersangkutan dibuka)
+  const isBerandaActive = activeTab === 'ringkasan';
+  const isGuruMapelActive = activeTab === 'guru_mapel';
+  const isSupervisiActive = activeTab === 'supervisi';
+  const isPerangkatActive = activeTab === 'perangkat';
+
+  // React Query Caching with Smart Tab-Scope Execution Guard
   const { data: guruR, isLoading: lGuru } = useQuery({
     queryKey: ['guru', 'all-dash-kuri'],
     queryFn: () => guruApi.getAll({ limit: 1000, jenis_ptk: 'PENDIDIK' }),
+    enabled: isBerandaActive || isGuruMapelActive,
     staleTime: 10 * 60 * 1000,
   });
 
   const { data: kelasR, isLoading: lKelas } = useQuery({
     queryKey: ['kelas', 'all-dash-kuri'],
     queryFn: () => kelasApi.getAll({ limit: 500, is_active: true } as Record<string, unknown>),
+    enabled: isBerandaActive,
     staleTime: 10 * 60 * 1000,
   });
 
   const { data: mapelR, isLoading: lMapel } = useQuery({
     queryKey: ['mapel', 'all-dash-kuri'],
     queryFn: () => mapelApi.getAll({ limit: 500 }),
+    enabled: isBerandaActive,
     staleTime: 10 * 60 * 1000,
   });
 
   const { data: strR, isLoading: lStr } = useQuery({
     queryKey: ['kurikulum', 'struktur-dash', resolvedTahunPelajaranId],
     queryFn: () => kurikulumApi.getStruktur({ tahun_pelajaran_id: resolvedTahunPelajaranId, limit: 500 }),
-    enabled: !!resolvedTahunPelajaranId,
+    enabled: isBerandaActive && !!resolvedTahunPelajaranId,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -219,14 +237,14 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
       tahun_pelajaran_id: resolvedTahunPelajaranId,
       semester_id: resolvedSemesterId,
     }),
-    enabled: hasSupervisiAccess,
+    enabled: (isBerandaActive || isSupervisiActive) && hasSupervisiAccess,
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: jwR, isLoading: lJw } = useQuery({
     queryKey: ['attendance', 'jadwal-kbm-dash', resolvedSemesterId],
     queryFn: () => getJadwalKBM({ semester_id: resolvedSemesterId }),
-    enabled: !!resolvedSemesterId,
+    enabled: (isBerandaActive || isGuruMapelActive) && !!resolvedSemesterId,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -237,7 +255,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
         tahun_pelajaran_id: resolvedTahunPelajaranId,
         semester_id: resolvedSemesterId,
       }),
-    enabled: !!resolvedTahunPelajaranId && !!resolvedSemesterId,
+    enabled: (isBerandaActive || isPerangkatActive) && !!resolvedTahunPelajaranId && !!resolvedSemesterId,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -642,6 +660,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'ringkasan'}
               className={cn('w-full min-w-0', activeTab === 'ringkasan' ? 'block' : 'hidden')}
             >
+              <Suspense fallback={<TabFallback label="Memuat Analitik Beranda Kurikulum..." />}>
               <KurikulumBerandaTab
                 semNama={semNama}
                 tpTahun={tpTahun}
@@ -664,6 +683,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
                 loading={lStr || lSup || lPerangkat}
                 onTabSelect={handleTabSelect}
               />
+              </Suspense>
             </div>
           )}
 
@@ -674,10 +694,12 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'jadwal'}
               className={cn('w-full min-w-0', activeTab === 'jadwal' ? 'block' : 'hidden')}
             >
-              <KurikulumJadwalTab
-                semesterId={resolvedSemesterId}
-                tahunPelajaranId={resolvedTahunPelajaranId}
-              />
+              <Suspense fallback={<TabFallback label="Memuat Jadwal Pelajaran Mingguan..." />}>
+                <KurikulumJadwalTab
+                  semesterId={resolvedSemesterId}
+                  tahunPelajaranId={resolvedTahunPelajaranId}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -688,11 +710,13 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'guru_mapel'}
               className={cn('w-full min-w-0', activeTab === 'guru_mapel' ? 'block' : 'hidden')}
             >
-              <KurikulumGuruMapelTab
-                tahunPelajaranId={resolvedTahunPelajaranId}
-                teachersLoad={teachersLoad}
-                loading={lGuru || lJw}
-              />
+              <Suspense fallback={<TabFallback label="Memuat Plotting Guru & Mata Pelajaran..." />}>
+                <KurikulumGuruMapelTab
+                  tahunPelajaranId={resolvedTahunPelajaranId}
+                  teachersLoad={teachersLoad}
+                  loading={lGuru || lJw}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -703,13 +727,15 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'struktur'}
               className={cn('w-full min-w-0', activeTab === 'struktur' ? 'block' : 'hidden')}
             >
-              <KurikulumStrukturTab
-                tahunPelajaranId={resolvedTahunPelajaranId}
-                strRows={strRows}
-                kelompokOptions={kelompokOptions}
-                isVocational={isVocational}
-                loading={lStr}
-              />
+              <Suspense fallback={<TabFallback label="Memuat Struktur Kurikulum..." />}>
+                <KurikulumStrukturTab
+                  tahunPelajaranId={resolvedTahunPelajaranId}
+                  strRows={strRows}
+                  kelompokOptions={kelompokOptions}
+                  isVocational={isVocational}
+                  loading={lStr}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -720,10 +746,12 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'piket'}
               className={cn('w-full min-w-0', activeTab === 'piket' ? 'block' : 'hidden')}
             >
-              <KurikulumPiketTab
-                tahunPelajaranId={resolvedTahunPelajaranId}
-                semesterId={resolvedSemesterId}
-              />
+              <Suspense fallback={<TabFallback label="Memuat Jadwal Piket Guru..." />}>
+                <KurikulumPiketTab
+                  tahunPelajaranId={resolvedTahunPelajaranId}
+                  semesterId={resolvedSemesterId}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -734,12 +762,14 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'perangkat'}
               className={cn('w-full min-w-0', activeTab === 'perangkat' ? 'block' : 'hidden')}
             >
-              <KurikulumPerangkatTab
-                perangkatStats={perangkatStats}
-                activeEducators={activeEducators}
-                perangkatList={safeArr(perangkatR)}
-                loading={lPerangkat}
-              />
+              <Suspense fallback={<TabFallback label="Memuat Perangkat Ajar Kurikulum..." />}>
+                <KurikulumPerangkatTab
+                  perangkatStats={perangkatStats}
+                  activeEducators={activeEducators}
+                  perangkatList={safeArr(perangkatR)}
+                  loading={lPerangkat}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -750,13 +780,15 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'supervisi'}
               className={cn('w-full min-w-0', activeTab === 'supervisi' ? 'block' : 'hidden')}
             >
-              <KurikulumSupervisiTab
-                tahunPelajaranId={resolvedTahunPelajaranId}
-                semesterId={resolvedSemesterId}
-                supRows={supRows}
-                supPct={supPct}
-                loading={lSup}
-              />
+              <Suspense fallback={<TabFallback label="Memuat Meja Supervisi Akademik..." />}>
+                <KurikulumSupervisiTab
+                  tahunPelajaranId={resolvedTahunPelajaranId}
+                  semesterId={resolvedSemesterId}
+                  supRows={supRows}
+                  supPct={supPct}
+                  loading={lSup}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -824,7 +856,9 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'rapor'}
               className={cn('w-full min-w-0', activeTab === 'rapor' ? 'block' : 'hidden')}
             >
-              <KurikulumRaporTab />
+              <Suspense fallback={<TabFallback label="Memuat Pengaturan Rapor..." />}>
+                <KurikulumRaporTab />
+              </Suspense>
             </div>
           )}
 
@@ -835,10 +869,12 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'rekap_kbm'}
               className={cn('w-full min-w-0', activeTab === 'rekap_kbm' ? 'block' : 'hidden')}
             >
-              <KurikulumRekapKbmTab
-                tahunPelajaranId={resolvedTahunPelajaranId}
-                semesterId={resolvedSemesterId}
-              />
+              <Suspense fallback={<TabFallback label="Memuat Rekapitulasi Realisasi KBM..." />}>
+                <KurikulumRekapKbmTab
+                  tahunPelajaranId={resolvedTahunPelajaranId}
+                  semesterId={resolvedSemesterId}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -849,9 +885,11 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'wali_kelas'}
               className={cn('w-full min-w-0', activeTab === 'wali_kelas' ? 'block' : 'hidden')}
             >
-              <KurikulumWaliKelasTab
-                tahunPelajaranId={resolvedTahunPelajaranId}
-              />
+              <Suspense fallback={<TabFallback label="Memuat Penugasan Wali Kelas..." />}>
+                <KurikulumWaliKelasTab
+                  tahunPelajaranId={resolvedTahunPelajaranId}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -862,10 +900,12 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'delegasi'}
               className={cn('w-full min-w-0', activeTab === 'delegasi' ? 'block' : 'hidden')}
             >
-              <KurikulumDelegasiTab
-                tahunPelajaranId={resolvedTahunPelajaranId}
-                semesterId={resolvedSemesterId}
-              />
+              <Suspense fallback={<TabFallback label="Memuat Delegasi Guru Inval..." />}>
+                <KurikulumDelegasiTab
+                  tahunPelajaranId={resolvedTahunPelajaranId}
+                  semesterId={resolvedSemesterId}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -876,10 +916,12 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'kalender'}
               className={cn('w-full min-w-0', activeTab === 'kalender' ? 'block' : 'hidden')}
             >
-              <KurikulumKalenderTab
-                tahunPelajaranId={resolvedTahunPelajaranId}
-                tahunPelajaranNama={tpTahun}
-              />
+              <Suspense fallback={<TabFallback label="Memuat Kalender Akademik..." />}>
+                <KurikulumKalenderTab
+                  tahunPelajaranId={resolvedTahunPelajaranId}
+                  tahunPelajaranNama={tpTahun}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -890,7 +932,9 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'jam_kbm'}
               className={cn('w-full min-w-0', activeTab === 'jam_kbm' ? 'block' : 'hidden')}
             >
-              <KurikulumJamKbmTab />
+              <Suspense fallback={<TabFallback label="Memuat Master Jam KBM & Shift..." />}>
+                <KurikulumJamKbmTab />
+              </Suspense>
             </div>
           )}
 
@@ -921,7 +965,9 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'titimangsa_rapor'}
               className={cn('w-full min-w-0', activeTab === 'titimangsa_rapor' ? 'block' : 'hidden')}
             >
-              <KurikulumTitimangsaRaporTab />
+              <Suspense fallback={<TabFallback label="Memuat Titimangsa Rapor..." />}>
+                <KurikulumTitimangsaRaporTab />
+              </Suspense>
             </div>
           )}
 
@@ -932,7 +978,9 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'cetak'}
               className={cn('w-full min-w-0', activeTab === 'cetak' ? 'block' : 'hidden')}
             >
-              <KurikulumCetakTab />
+              <Suspense fallback={<TabFallback label="Memuat Cetak Berkas Kurikulum..." />}>
+                <KurikulumCetakTab />
+              </Suspense>
             </div>
           )}
 
@@ -943,11 +991,13 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
               aria-hidden={activeTab !== 'struktur_organisasi'}
               className={cn('w-full min-w-0', activeTab === 'struktur_organisasi' ? 'block' : 'hidden')}
             >
-              <DivisiStrukturOrganisasiView
-                divisionCode="KURIKULUM"
-                divisionTitle="Struktur Organisasi Kurikulum"
-                hideLayout={true}
-              />
+              <Suspense fallback={<TabFallback label="Memuat Struktur Organisasi Kurikulum..." />}>
+                <DivisiStrukturOrganisasiView
+                  divisionCode="KURIKULUM"
+                  divisionTitle="Struktur Organisasi Kurikulum"
+                  hideLayout={true}
+                />
+              </Suspense>
             </div>
           )}
         </main>

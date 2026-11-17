@@ -3,6 +3,7 @@ import { RefreshCw } from 'lucide-react';
 import { BiometricHudOverlay } from '../ai/BiometricHudOverlay';
 import { SmartStudentPicker, type Student } from '../../common/SmartStudentPicker';
 import { Button, Switch } from '../../ui';
+import { resolveProfilePhotoUrl } from '../../lib/utils';
 
 interface VerificationData {
   success: boolean;
@@ -184,7 +185,7 @@ const GerbangFaceInputComponent: React.FC<GerbangFaceInputProps> = ({
                 >
                   {lastVerification.success && lastIdentifiedStudent?.siswa_info?.foto_url ? (
                     <img
-                      src={lastIdentifiedStudent.siswa_info.foto_url}
+                      src={resolveProfilePhotoUrl(lastIdentifiedStudent.siswa_info.foto_url)}
                       alt="Siswa"
                       className="w-full h-full object-cover"
                       onError={(e) => {

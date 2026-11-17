@@ -242,8 +242,11 @@ export const ProfileBiodataTab: React.FC<ProfileBiodataTabProps> = React.memo(({
             <div className="relative group mb-4">
               {fotoUrl ? (
                 <img
-                  src={fotoUrl}
+                  src={resolveProfilePhotoUrl(fotoUrl)}
                   alt={summaryName}
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
                   className="w-24 h-24 rounded-full object-cover shadow-md border-4 border-white dark:border-slate-800 transition-all duration-300 group-hover:brightness-90"
                 />
               ) : (

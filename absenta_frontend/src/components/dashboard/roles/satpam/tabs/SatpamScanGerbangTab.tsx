@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 import type { RecentScanRecord } from '../types';
 
@@ -224,7 +224,7 @@ export const SatpamScanGerbangTab: React.FC<SatpamScanGerbangTabProps> = ({
             <div className="flex items-center gap-3.5 min-w-0">
               <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700">
                 {lastScanned.foto ? (
-                  <img src={lastScanned.foto} alt={lastScanned.nama} className="w-full h-full object-cover" />
+                  <img src={resolveProfilePhotoUrl(lastScanned.foto)} alt={lastScanned.nama} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-400">
                     <User size={24} />

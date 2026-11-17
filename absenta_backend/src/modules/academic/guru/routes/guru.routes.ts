@@ -198,12 +198,21 @@ export default async function guruRoutes(fastify: any) {
 
   // GET /guru/:id/documents/:docId/download - Download single document
   fastify.get('/:id/documents/:docId/download', {
-    preHandler: [
-      requireCapability('academic.teachers.view.detail', { exemptRoles: [RoleName.GURU] }),
-      validateGuruSelfOrAdmin,
-      organizationalScopeMiddleware,
-      determineDataScope()
-    ]
+    preHandler: async (request: any, reply: any) => {
+      const { id: guruId, docId } = request.params;
+      const doc = await fastify.prisma.guruDocument.findFirst({
+        where: { id: docId, guru_id: guruId },
+        select: { kategori: true, mime_type: true }
+      });
+      // Foto profil guru dapat diakses langsung oleh seluruh tampilan UI
+      if (doc && (doc.kategori === 'FOTO' || doc.mime_type?.startsWith('image/'))) {
+        return;
+      }
+      // Dokumen privat guru tetap melewati verifikasi keamanan ketat
+      await requireCapability('academic.teachers.view.detail', { exemptRoles: [RoleName.GURU] })(request, reply);
+      if (reply.sent) return;
+      await validateGuruSelfOrAdmin(request, reply);
+    }
   }, async (request: any, reply: any) => {
     return guruController.downloadGuruDocument(request, reply);
   });

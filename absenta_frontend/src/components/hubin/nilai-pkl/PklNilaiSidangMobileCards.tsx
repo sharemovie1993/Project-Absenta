@@ -17,9 +17,10 @@ import {
   Printer,
   Sparkles,
   Eraser,
+  PenTool,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 
 export interface PklNilaiSidangMobileCardsProps {
   paginatedScores: ScoreRow[];
@@ -44,6 +45,7 @@ export interface PklNilaiSidangMobileCardsProps {
   guruList?: GuruItem[];
   isLoadingGuru?: boolean;
   onApplyPengujiToAll?: (namaPenguji: string) => void;
+  onOpenSignModal?: (score: ScoreRow) => void;
   onOpenCetakModal?: () => void;
   onOpenSpinWheelModal?: () => void;
 }
@@ -68,6 +70,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
   guruList = [],
   isLoadingGuru = false,
   onApplyPengujiToAll,
+  onOpenSignModal,
   onOpenCetakModal,
   onOpenSpinWheelModal,
 }) => {
@@ -331,6 +334,14 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                       <span className="text-[10px] font-mono font-black bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
                         Akhir: {score.nilai_akhir_pkl ?? '-'}
                       </span>
+
+                      {/* TTD Siswa Badge */}
+                      {score.ttd_siswa && (
+                        <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800 flex items-center gap-0.5">
+                          <CheckCircle2 size={10} className="text-emerald-600 dark:text-emerald-400" />
+                          <span>TTD ✓</span>
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -549,6 +560,60 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                       </a>
                     </div>
                   )}
+
+                  {/* Seksi Presensi & Tanda Tangan Digital Siswa */}
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <PenTool className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                        Presensi & TTD Siswa
+                      </span>
+                      {score.ttd_siswa ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 size={12} />
+                          Sudah Bertanda Tangan
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                          Belum Bertanda Tangan
+                        </span>
+                      )}
+                    </div>
+
+                    {score.ttd_siswa ? (
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-9 w-24 bg-white dark:bg-slate-900 rounded border border-emerald-200 dark:border-emerald-800 flex items-center justify-center p-1">
+                            <img src={resolveProfilePhotoUrl(score.ttd_siswa)} alt="TTD Siswa" className="max-h-full max-w-full object-contain" />
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            <div className="font-semibold text-slate-700 dark:text-slate-300">Tersimpan Resmi</div>
+                            <div>{score.waktu_ttd_siswa ? new Date(score.waktu_ttd_siswa).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Siap Cetak'}</div>
+                          </div>
+                        </div>
+                        {onOpenSignModal && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onOpenSignModal(score)}
+                            className="h-7 px-2 text-[10px] font-bold text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer"
+                          >
+                            TTD Ulang
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        onClick={() => onOpenSignModal?.(score)}
+                        className="w-full h-8 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                      >
+                        <PenTool className="w-3.5 h-3.5" />
+                        <span>Buka Kanvas Tanda Tangan Siswa</span>
+                      </Button>
+                    )}
+                  </div>
 
                   {/* Seksi 2: Informasi Penguji & Catatan Revisi */}
                   <div className="space-y-2">

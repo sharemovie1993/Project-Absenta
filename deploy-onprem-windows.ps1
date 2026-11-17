@@ -1,4 +1,4 @@
-# Wizard Instalasi & Deployment - Project Absenta
+﻿# Wizard Instalasi & Deployment - Project Absenta
 # Untuk Windows PowerShell
 
 param (
@@ -839,6 +839,17 @@ if ($hasPM2) {
     & pm2 delete ecosystem.config.js 2>&1 | Out-Null
     & pm2 start ecosystem.config.js --update-env
     & pm2 save
+
+    # Mengunci Enterprise Production Tuning pada Redis di mesin baru
+    Write-Host "Mengunci Enterprise Tuning Redis (4GB, volatile-lru)..." -ForegroundColor Cyan
+    try {
+        if (Get-Command redis-cli -ErrorAction SilentlyContinue) {
+            & redis-cli config set maxmemory 4gb 2>&1 | Out-Null
+            & redis-cli config set maxmemory-policy volatile-lru 2>&1 | Out-Null
+            & redis-cli config rewrite 2>&1 | Out-Null
+            Write-Host "Tuning Redis Enterprise Berhasil Dikunci." -ForegroundColor Green
+        }
+    } catch {}
 } else {
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd absenta_backend; npm start"
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd absenta_frontend; npm run preview -- --port $FrontendPort --host 0.0.0.0"

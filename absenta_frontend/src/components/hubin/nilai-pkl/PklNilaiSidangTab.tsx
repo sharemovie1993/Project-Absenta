@@ -2,13 +2,16 @@ import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicFilterToolbar } from '@/components/common/academic-filter';
-import { Info, Lock, Save, FileText, Check, Printer, Sparkles, Edit3, Eraser } from 'lucide-react';
+import { Info, Lock, Save, FileText, Check, Printer, Sparkles, Edit3, Eraser, PenTool, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
 import { PklNilaiSidangMobileCards } from './PklNilaiSidangMobileCards';
 import { PengujiCombobox } from './PengujiCombobox';
 import { PklSidangCetakModal } from './PklSidangCetakModal';
 import { PklSidangSpinWheelModal } from './PklSidangSpinWheelModal';
+import { DigitalSignaturePadModal } from '@/components/ui/DigitalSignaturePadModal';
+import { hubinApi } from '@/api/hubin.api';
+import { toast } from 'sonner';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
 import { getKaprogStats } from '@/api/dashboard.api';
 import {
@@ -122,9 +125,50 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   onToggleAdminOverride,
 }) => {
   const [showCetakModal, setShowCetakModal] = useState(false);
+  const [cetakDocType, setCetakDocType] = useState<'PENGUJI' | 'JURUSAN' | 'DAFTAR_HADIR'>('PENGUJI');
   const [showSpinWheelModal, setShowSpinWheelModal] = useState(false);
+  const [signingStudent, setSigningStudent] = useState<ScoreRow | null>(null);
+  const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+  const [isSavingSignature, setIsSavingSignature] = useState(false);
   const isComposite3Unsur = effectiveSettings?.assessmentMode === 'COMPOSITE';
   const isDudiSidang = effectiveSettings?.assessmentMode === 'DUDI_SIDANG';
+
+  const handleOpenSignModal = (student: ScoreRow) => {
+    setSigningStudent(student);
+    setIsSignModalOpen(true);
+  };
+
+  const handleSaveStudentSignature = async (signatureBase64: string) => {
+    if (!signingStudent) return;
+    try {
+      setIsSavingSignature(true);
+      const waktuTtd = new Date().toISOString();
+
+      handleScoreChange(signingStudent.siswa_pkl_id, 'ttd_siswa', signatureBase64);
+      handleScoreChange(signingStudent.siswa_pkl_id, 'waktu_ttd_siswa', waktuTtd);
+
+      await hubinApi.upsertNilaiPklBatch({
+        tahun_pelajaran_id: selectedTp,
+        semester_id: selectedSemester,
+        scores: [
+          {
+            siswa_pkl_id: signingStudent.siswa_pkl_id,
+            ttd_siswa: signatureBase64,
+            waktu_ttd_siswa: waktuTtd,
+          },
+        ],
+      });
+
+      toast.success(`Tanda tangan digital ${signingStudent.nama_siswa} berhasil disimpan.`);
+      setIsSignModalOpen(false);
+      setSigningStudent(null);
+    } catch (err: any) {
+      console.error('Gagal menyimpan tanda tangan digital:', err);
+      toast.error(err?.message || 'Gagal menyimpan tanda tangan digital siswa.');
+    } finally {
+      setIsSavingSignature(false);
+    }
+  };
 
   const { handleKeyDown: handleKeyDownScore } = useSpreadsheetNavigation({
     totalRows: paginatedScores?.length || 0,
@@ -192,7 +236,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
     {
       key: 'pelaksanaan',
       title: 'Pelaksanaan Sidang PKL',
-      colSpan: 3,
+      colSpan: 4,
       className: 'bg-slate-100/90 dark:bg-slate-800/90',
     },
     {
@@ -523,6 +567,43 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
       },
     },
     {
+      key: 'ttd_siswa',
+      header: 'TTD Siswa',
+      width: 90,
+      align: 'center',
+      renderCell: (score) => {
+        const hasSigned = Boolean(score.ttd_siswa);
+        return (
+          <div className="flex items-center justify-center">
+            {hasSigned ? (
+              <button
+                type="button"
+                onClick={() => handleOpenSignModal(score)}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all cursor-pointer shadow-2xs"
+                title={`Siswa telah bertanda tangan digital. Klik untuk melihat atau tanda tangan ulang.`}
+              >
+                <CheckCircle2 size={11} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="truncate">Sudah TTD</span>
+              </button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleOpenSignModal(score)}
+                disabled={readOnly}
+                className="h-6 px-2 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-md gap-1 shadow-2xs cursor-pointer"
+                title="Buka kanvas tanda tangan digital untuk siswa ini"
+              >
+                <PenTool size={10} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span>TTD Siswa</span>
+              </Button>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       key: 'nilai_akhir_pkl',
       header: 'Nilai Akhir',
       subHeader: 'Predikat',
@@ -769,7 +850,11 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           guruList={guruList}
           isLoadingGuru={isLoadingGuru}
           onApplyPengujiToAll={handleApplyPengujiToAll}
-          onOpenCetakModal={() => setShowCetakModal(true)}
+          onOpenSignModal={handleOpenSignModal}
+          onOpenCetakModal={() => {
+            setCetakDocType('PENGUJI');
+            setShowCetakModal(true);
+          }}
           onOpenSpinWheelModal={() => setShowSpinWheelModal(true)}
         />
       ) : (
@@ -801,11 +886,29 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
                 <span>Acak Siswa (Spin)</span>
               </Button>
 
+              {/* Tombol Cetak Daftar Hadir Peserta Sidang PKL */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setCetakDocType('DAFTAR_HADIR');
+                  setShowCetakModal(true);
+                }}
+                className="border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Cetak Lembar Daftar Hadir Peserta Ujian Sidang PKL (True WYSIWYG & Digital Signature)"
+              >
+                <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>Daftar Hadir</span>
+              </Button>
+
               {/* Tombol Cetak Berita Acara & Rekap Sidang PKL */}
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setShowCetakModal(true)}
+                onClick={() => {
+                  setCetakDocType('PENGUJI');
+                  setShowCetakModal(true);
+                }}
                 className="border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
                 title="Cetak Berita Acara Penguji & Rekap Hasil Sidang PKL"
               >
@@ -944,11 +1047,12 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
         />
       )}
 
-      {/* Modal Cetak Berita Acara & Rekapitulasi Sidang PKL */}
+      {/* Modal Cetak Berita Acara, Rekapitulasi & Daftar Hadir Sidang PKL */}
       {showCetakModal && (
         <PklSidangCetakModal
           isOpen={showCetakModal}
           onClose={() => setShowCetakModal(false)}
+          initialDocType={cetakDocType}
           scores={displayedScores || []}
           jurusanId={jurusanId}
           jurusanNama={jurusanNama}
@@ -956,6 +1060,25 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           selectedSemesterNama={selectedSemester ? (semesterOptions || []).find((s) => s.value === selectedSemester)?.label : ''}
           activePengujiNama={(guruList || []).find((g) => g.id === activeGuruId)?.nama_guru || ''}
           isKaprog={isKaprog}
+        />
+      )}
+
+      {/* Modal Tanda Tangan Digital Siswa */}
+      {isSignModalOpen && signingStudent && (
+        <DigitalSignaturePadModal
+          isOpen={isSignModalOpen}
+          onClose={() => {
+            if (!isSavingSignature) {
+              setIsSignModalOpen(false);
+              setSigningStudent(null);
+            }
+          }}
+          onSave={handleSaveStudentSignature}
+          title="Tanda Tangan Digital Siswa"
+          subtitle={`Presensi Kehadiran Sidang PKL • ${signingStudent.nama_siswa} (${signingStudent.nama_kelas || '-'})`}
+          penName={signingStudent.nama_siswa}
+          initialSignature={signingStudent.ttd_siswa}
+          allowUploadAlternative={true}
         />
       )}
 

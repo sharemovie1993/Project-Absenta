@@ -49,6 +49,8 @@ export interface ScoreRow {
   penguji_id?: string | null;
   penguji_nama: string;
   catatan_sidang: string;
+  ttd_siswa?: string | null;
+  waktu_ttd_siswa?: string | null;
   file_portofolio?: string | null;
   nilai_akhir_pkl: number | null;
   predikat_pkl: string;
@@ -124,6 +126,8 @@ export interface RawPklItem {
     penguji_id?: string | null;
     catatan_sidang?: string | null;
     tanggal_sidang?: string | null;
+    ttd_siswa?: string | null;
+    waktu_ttd_siswa?: string | null;
   };
   nilai_akhir_pkl?: number | null;
   predikat_pkl?: string;

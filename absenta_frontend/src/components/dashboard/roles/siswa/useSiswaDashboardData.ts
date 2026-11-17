@@ -217,7 +217,7 @@ export function useSiswaDashboardData(activeTab: string = 'ringkasan') {
       }
     },
     enabled: !!user && (activeTab === 'ringkasan' || activeTab === 'catatan'),
-    staleTime: 60000,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: prestasiRes } = useQuery({
@@ -231,14 +231,14 @@ export function useSiswaDashboardData(activeTab: string = 'ringkasan') {
       }
     },
     enabled: !!user && (activeTab === 'ringkasan' || activeTab === 'catatan'),
-    staleTime: 60000,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: kelasLeaderboardRes } = useQuery({
     queryKey: ['class-leaderboard-me-dashboard', selectedMonth],
     queryFn: () => getRekapBulananKelasMe({ bulan: selectedMonth }),
     enabled: !!user && activeTab === 'ringkasan',
-    staleTime: 120000,
+    staleTime: 10 * 60 * 1000,
   });
 
   const myRank = useMemo(() => {
@@ -335,30 +335,38 @@ export function useSiswaDashboardData(activeTab: string = 'ringkasan') {
   const dailyRecap = dailyRecapRes?.data ?? null;
   const monthlyRecap = monthlyRecapRes?.data ?? null;
 
-  // Socket Live Subscription
+  // Socket Live Subscription (Scoped to Student & Class Only — Anti-Thundering Herd Guard)
   useEffect(() => {
     if (!user) return;
     const studentId = user.siswa_id || user.id;
     const kelasId = siswaProfile?.kelas_id || (user as any)?.kelas_id;
 
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const handleFeedUpdate = () => {
-      refetchDailyRecap();
-      refetchMonthlyRecap();
-      refetchSchedule();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        refetchDailyRecap();
+        refetchMonthlyRecap();
+        refetchSchedule();
+      }, 2500);
     };
 
-    subscribe(`attendance_feed_student:${studentId}`, handleFeedUpdate);
-    subscribe('attendance_feed_update', handleFeedUpdate);
-    subscribe('sesi_status_update', handleFeedUpdate);
+    // ONLY listen to events directly targeted at this student or their specific class.
+    // NEVER listen to global 'attendance_feed_update' or 'sesi_status_update' broadcasts
+    // to prevent 1,400+ students from simultaneously refetching APIs on a single scan.
+    if (studentId) {
+      subscribe(`attendance_feed_student:${studentId}`, handleFeedUpdate);
+    }
     if (kelasId) {
       subscribe(`sesi:created:${kelasId}`, handleFeedUpdate);
       subscribe(`sesi:updated:${kelasId}`, handleFeedUpdate);
     }
 
     return () => {
-      unsubscribe(`attendance_feed_student:${studentId}`, handleFeedUpdate);
-      unsubscribe('attendance_feed_update', handleFeedUpdate);
-      unsubscribe('sesi_status_update', handleFeedUpdate);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (studentId) {
+        unsubscribe(`attendance_feed_student:${studentId}`, handleFeedUpdate);
+      }
       if (kelasId) {
         unsubscribe(`sesi:created:${kelasId}`, handleFeedUpdate);
         unsubscribe(`sesi:updated:${kelasId}`, handleFeedUpdate);

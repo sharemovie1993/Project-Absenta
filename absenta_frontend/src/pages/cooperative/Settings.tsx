@@ -4,6 +4,7 @@ import api from '../../lib/axiosInstance';
 import { Button, SectionCard } from '../../components/ui';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { formatDate } from '../../utils/layoutUtils';
+import { resolveProfilePhotoUrl } from '../../lib/utils';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Building2, Layers, Percent, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -332,7 +333,7 @@ const Settings: React.FC = React.memo(() => {
   const schoolLogoUrl = (user?.tenant as {
     logo_url?: string;
   })?.logo_url || '/logo.png';
-  const effectiveLogoUrl = formData.cooperative_logo_url || schoolLogoUrl;
+  const effectiveLogoUrl = resolveProfilePhotoUrl(formData.cooperative_logo_url || schoolLogoUrl);
   const breadcrumbs = useMemo(() => [
     { label: 'Koperasi', path: '/cooperative/dashboard' },
     { label: 'Pengaturan Koperasi' }

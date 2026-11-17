@@ -14,7 +14,7 @@ import { Button, Input, Label } from '@/components/ui';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { Check, AlertCircle, FileText, UserCheck, Award, PenTool, RotateCcw, Download } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 
 export interface PklSidangCetakModalProps {
   isOpen: boolean;
@@ -26,6 +26,7 @@ export interface PklSidangCetakModalProps {
   selectedSemesterNama?: string;
   activePengujiNama?: string;
   isKaprog?: boolean;
+  initialDocType?: 'PENGUJI' | 'JURUSAN' | 'DAFTAR_HADIR';
 }
 
 export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
@@ -38,6 +39,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
   selectedSemesterNama = '',
   activePengujiNama = '',
   isKaprog = false,
+  initialDocType,
 }) => {
   const { tenantInfo, rawSekolah } = usePrintHeaderData();
   const { rawList: allJurusanListRaw } = useJurusanOptions();
@@ -47,10 +49,18 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
   const printSheetRef = useRef<HTMLDivElement>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-  // Mode Dokumen: 'PENGUJI' (Berita Acara Penguji) | 'JURUSAN' (Rekap Hasil Sidang Jurusan)
-  const [docType, setDocType] = useState<'PENGUJI' | 'JURUSAN'>(() => {
+  // Mode Dokumen: 'DAFTAR_HADIR' (Presensi Sidang) | 'PENGUJI' (Berita Acara Penguji) | 'JURUSAN' (Rekap Hasil Sidang Jurusan)
+  const [docType, setDocType] = useState<'PENGUJI' | 'JURUSAN' | 'DAFTAR_HADIR'>(() => {
+    if (initialDocType) return initialDocType;
     return isKaprog ? 'JURUSAN' : 'PENGUJI';
   });
+
+  // Sinkronisasi jika initialDocType berubah dari luar
+  useEffect(() => {
+    if (initialDocType) {
+      setDocType(initialDocType);
+    }
+  }, [initialDocType]);
 
   // =========================================================================
   // 1. RESOLUSI PROGRAM KEAHLIAN YANG AKURAT (SSOT)
@@ -200,7 +210,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
         if (!matchId && !matchClass) return false;
       }
       // Filter Penguji
-      if (docType === 'PENGUJI' && selectedPengujiFilter !== 'ALL') {
+      if ((docType === 'PENGUJI' || docType === 'DAFTAR_HADIR') && selectedPengujiFilter !== 'ALL') {
         if (s.penguji_nama !== selectedPengujiFilter) return false;
       }
       // Filter Kelas
@@ -211,7 +221,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
     });
   }, [scores, selectedJurusanFilter, availableJurusanList, docType, selectedPengujiFilter, selectedKelasFilter]);
 
-  // Statistik Hasil Sidang
+  // Statistik Hasil Sidang & Presensi
   const stats = useMemo(() => {
     const total = filteredScores.length;
     let lulus = 0;
@@ -219,8 +229,16 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
     let belum = 0;
     let totalScore = 0;
     let countScored = 0;
+    let sudahTtd = 0;
+    let belumTtd = 0;
 
     filteredScores.forEach((s) => {
+      if (s.ttd_siswa) {
+        sudahTtd++;
+      } else {
+        belumTtd++;
+      }
+
       if (s.nilai_sidang !== null && s.nilai_sidang !== undefined && s.nilai_sidang !== '') {
         const num = Number(s.nilai_sidang);
         totalScore += num;
@@ -233,7 +251,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
     });
 
     const avg = countScored > 0 ? (totalScore / countScored).toFixed(1) : '-';
-    return { total, lulus, revisi, belum, avg, countScored };
+    return { total, lulus, revisi, belum, avg, countScored, sudahTtd, belumTtd };
   }, [filteredScores]);
 
   // Titimangsa & Tanggal Dokumen
@@ -326,6 +344,9 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
   const pdfFileName = useMemo(() => {
     const cleanJurusan = displayJurusanTitle.replace(/[^a-zA-Z0-9]/g, '_');
     const cleanPenguji = (selectedPengujiFilter !== 'ALL' ? selectedPengujiFilter : 'Semua_Penguji').replace(/[^a-zA-Z0-9]/g, '_');
+    if (docType === 'DAFTAR_HADIR') {
+      return `Daftar_Hadir_Sidang_PKL_${cleanJurusan}_${cleanPenguji}`;
+    }
     return docType === 'PENGUJI'
       ? `Berita_Acara_Sidang_PKL_${cleanJurusan}_${cleanPenguji}`
       : `Rekap_Hasil_Sidang_PKL_${cleanJurusan}`;
@@ -362,7 +383,9 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
     }
   };
 
-  const documentTitle = docType === 'PENGUJI'
+  const documentTitle = docType === 'DAFTAR_HADIR'
+    ? 'DAFTAR HADIR PESERTA UJIAN SIDANG PRAKTIK KERJA LAPANGAN (PKL)'
+    : docType === 'PENGUJI'
     ? 'BERITA ACARA & LEMBAR PENILAIAN UJIAN SIDANG PKL'
     : 'REKAPITULASI HASIL UJIAN SIDANG PRAKTIK KERJA LAPANGAN (PKL)';
 
@@ -380,6 +403,18 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             {/* Toggle Jenis Dokumen */}
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
+              <button
+                type="button"
+                onClick={() => setDocType('DAFTAR_HADIR')}
+                className={cn(
+                  'px-2.5 py-1 rounded-md font-bold transition-all',
+                  docType === 'DAFTAR_HADIR'
+                    ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-300 shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                )}
+              >
+                Daftar Hadir (Presensi)
+              </button>
               <button
                 type="button"
                 onClick={() => setDocType('PENGUJI')}
@@ -425,8 +460,8 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
               </div>
             )}
 
-            {/* Filter Penguji (Jika Format Penguji) */}
-            {docType === 'PENGUJI' && pengujiList.length > 0 && (
+            {/* Filter Penguji (Jika Format Penguji atau Daftar Hadir) */}
+            {(docType === 'PENGUJI' || docType === 'DAFTAR_HADIR') && pengujiList.length > 0 && (
               <div className="flex items-center gap-1.5 text-xs">
                 <span className="text-slate-500 font-medium">Penguji:</span>
                 <select
@@ -506,7 +541,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                     {displayJurusanTitle}
                   </span>
                 </div>
-                {docType === 'PENGUJI' && (
+                {(docType === 'PENGUJI' || docType === 'DAFTAR_HADIR') && (
                   <div className="flex">
                     <span className="w-36 font-semibold">Guru Penguji</span>
                     <span className="w-3">:</span>
@@ -529,16 +564,95 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                   <span className="font-semibold">Jumlah Peserta Terdata:</span>
                   <span className="font-bold font-mono">{stats.total} Siswa</span>
                 </div>
-                <div className="flex justify-end gap-3 text-[10px]">
-                  <span className="text-emerald-700 font-bold">Lulus: {stats.lulus}</span>
-                  <span className="text-amber-700 font-bold">Revisi: {stats.revisi}</span>
-                  <span className="text-slate-500 font-medium">Belum Diuji: {stats.belum}</span>
-                  <span className="text-indigo-700 font-bold font-mono">Rata-rata: {stats.avg}</span>
-                </div>
+                {docType === 'DAFTAR_HADIR' ? (
+                  <div className="flex justify-end gap-3 text-[10px]">
+                    <span className="text-emerald-700 font-bold">Sudah TTD Digital: {stats.sudahTtd}</span>
+                    <span className="text-slate-500 font-medium">Belum TTD: {stats.belumTtd}</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-end gap-3 text-[10px]">
+                    <span className="text-emerald-700 font-bold">Lulus: {stats.lulus}</span>
+                    <span className="text-amber-700 font-bold">Revisi: {stats.revisi}</span>
+                    <span className="text-slate-500 font-medium">Belum Diuji: {stats.belum}</span>
+                    <span className="text-indigo-700 font-bold font-mono">Rata-rata: {stats.avg}</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* TABEL DATA HASIL SIDANG DENGAN 4 ASPEK */}
+            {/* TABEL DATA (DAFTAR HADIR PRESENSI ATAU NILAI SIDANG 4 ASPEK) */}
+            {docType === 'DAFTAR_HADIR' ? (
+              <table className="w-full text-[10px] border-collapse border border-black mb-4">
+                <thead>
+                  <tr className="bg-slate-100 text-center font-bold">
+                    <th className="border border-black px-1.5 py-2 w-8">No</th>
+                    <th className="border border-black px-2 py-2 w-24">NIS / NISN</th>
+                    <th className="border border-black px-2 py-2 text-left min-w-[150px]">Nama Lengkap Siswa</th>
+                    <th className="border border-black px-1.5 py-2 w-16">Kelas</th>
+                    <th className="border border-black px-2 py-2 text-left min-w-[140px]">Tempat PKL (DUDI)</th>
+                    <th className="border border-black px-2 py-2 text-left w-36">Guru Penguji</th>
+                    <th className="border border-black px-2 py-2 text-center w-56">Tanda Tangan Kehadiran</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredScores.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="border border-black p-4 text-center italic text-slate-500">
+                        Tidak ada data peserta sidang yang memenuhi kriteria filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredScores.map((row, idx) => {
+                      const rowNum = idx + 1;
+                      const isOdd = rowNum % 2 !== 0;
+
+                      return (
+                        <tr key={row.siswa_pkl_id || idx} className="h-10 hover:bg-slate-50/50">
+                          <td className="border border-black px-1 py-1 text-center font-mono align-middle">{rowNum}</td>
+                          <td className="border border-black px-1.5 py-1 font-mono text-center align-middle">{row.nis || '-'}</td>
+                          <td className="border border-black px-2 py-1 font-semibold align-middle">{row.nama_siswa}</td>
+                          <td className="border border-black px-1.5 py-1 text-center align-middle">{row.nama_kelas || '-'}</td>
+                          <td className="border border-black px-2 py-1 text-slate-800 align-middle truncate max-w-[150px]">
+                            {row.mitra_nama || '-'}
+                          </td>
+                          <td className="border border-black px-2 py-1 text-slate-800 align-middle truncate max-w-[140px]">
+                            {row.penguji_nama || '-'}
+                          </td>
+                          <td className="border border-black px-2 py-1 align-middle">
+                            <div className="flex items-center h-full">
+                              {/* Pola Berselang-seling Standar Dinas: Ganjil di Kiri, Genap di Kanan */}
+                              <div className={cn("w-full flex items-center", isOdd ? "justify-start pl-1" : "justify-end pr-1")}>
+                                <div className="flex items-center gap-1.5 min-w-[110px]">
+                                  <span className="font-mono font-bold text-[10px] text-slate-700">{rowNum}.</span>
+                                  {row.ttd_siswa ? (
+                                    <div className="flex flex-col items-start leading-none">
+                                      <img
+                                        src={resolveProfilePhotoUrl(row.ttd_siswa)}
+                                        alt={`TTD ${row.nama_siswa}`}
+                                        className="h-8 max-w-[90px] object-contain filter contrast-125"
+                                      />
+                                      {row.waktu_ttd_siswa && (
+                                        <span className="text-[7px] text-slate-400 font-mono scale-90 -mt-0.5">
+                                          {new Date(row.waktu_ttd_siswa).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-slate-400 font-mono tracking-wider text-[11px] select-none">
+                                      ..............................
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            ) : (
             <table className="w-full text-[10px] border-collapse border border-black mb-4">
               <thead>
                 <tr className="bg-slate-100 text-center font-bold">
@@ -633,16 +747,24 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                 )}
               </tbody>
             </table>
+            )}
 
-            {/* CATATAN & AMBANG KELULUSAN */}
-            <div className="text-[9px] text-slate-600 mb-6 space-y-0.5">
-              <p className="font-semibold">* Kriteria Ketuntasan Minimal (KKM) Sidang PKL: 70,00.</p>
-              <p>* Siswa dengan status REVISI wajib menyelesaikan perbaikan laporan/portofolio paling lambat 7 hari kerja setelah tanggal ujian sidang.</p>
-            </div>
+            {/* CATATAN & KETERANGAN DOKUMEN */}
+            {docType === 'DAFTAR_HADIR' ? (
+              <div className="text-[9px] text-slate-600 mb-6 space-y-0.5">
+                <p className="font-semibold">* Dokumen ini merupakan bukti presensi resmi pelaksanaan Ujian Sidang Praktik Kerja Lapangan (PKL).</p>
+                <p>* Kehadiran dan tanda tangan digital terverifikasi secara elektronik melalui modul digitalisasi Absenta Hubin.</p>
+              </div>
+            ) : (
+              <div className="text-[9px] text-slate-600 mb-6 space-y-0.5">
+                <p className="font-semibold">* Kriteria Ketuntasan Minimal (KKM) Sidang PKL: 70,00.</p>
+                <p>* Siswa dengan status REVISI wajib menyelesaikan perbaikan laporan/portofolio paling lambat 7 hari kerja setelah tanggal ujian sidang.</p>
+              </div>
+            )}
 
             {/* TANDA TANGAN RESMI 2-TIER (UNIVERSAL INDUSTRIAL STANDARD) */}
             <div className="space-y-6 pt-3 break-inside-avoid">
-              {docType === 'PENGUJI' ? (
+              {docType === 'PENGUJI' || docType === 'DAFTAR_HADIR' ? (
                 <>
                   {/* Baris 1: Kiri (Kaprog) & Kanan (Guru Penguji + Titimangsa) */}
                   <div className="flex items-start justify-between w-full text-[11px]">

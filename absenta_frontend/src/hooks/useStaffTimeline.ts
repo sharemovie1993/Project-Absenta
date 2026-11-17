@@ -48,17 +48,25 @@ export const useStaffTimeline = (guruId?: string, options?: { enabled?: boolean 
     return items.map((item: any) => normalizeFromSesiAbsensi(item));
   }, [timelineRes]);
 
-  // Sockets untuk update real-time
+  // Sockets untuk update real-time (Anti-Thundering Herd: Debounced Guard)
   useEffect(() => {
     if (!guruId) return;
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const handleSesiChange = () => {
-      refetch();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        refetch();
+      }, 2500);
     };
+
     subscribe(`sesi:created:${guruId}`, handleSesiChange);
     subscribe(`sesi:updated:${guruId}`, handleSesiChange);
     subscribe('sesi_status_update', handleSesiChange);
     subscribe('absen_guru_update', handleSesiChange);
+
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       unsubscribe(`sesi:created:${guruId}`, handleSesiChange);
       unsubscribe(`sesi:updated:${guruId}`, handleSesiChange);
       unsubscribe('sesi_status_update', handleSesiChange);

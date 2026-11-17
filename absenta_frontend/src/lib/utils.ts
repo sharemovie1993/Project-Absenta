@@ -39,17 +39,22 @@ export function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
+import { getActiveServerOrigin } from '../services/serverConfig';
+
 export function resolveProfilePhotoUrl(url?: string | null): string {
   if (!url) return '';
-  if (url.startsWith('data:')) return url;
+  if (url.startsWith('data:') || url.startsWith('blob:')) return url;
 
   let targetPath = url.trim();
+
+  // If already absolute with http/https
   if (targetPath.startsWith('http://') || targetPath.startsWith('https://')) {
     try {
       const u = new URL(targetPath);
-      // If it points to an upload asset or api endpoint, extract relative pathname
-      if (u.pathname.includes('/uploads/') || u.pathname.includes('/academic/') || u.pathname.includes('/api/')) {
-        targetPath = u.pathname;
+      const isLocalhostHost = u.hostname === 'localhost' || u.hostname === '127.0.0.1' || u.hostname.startsWith('10.0.2.2');
+      if (isLocalhostHost) {
+        // Strip localhost origin on mobile container
+        targetPath = u.pathname + u.search;
       } else {
         return url;
       }
@@ -58,31 +63,44 @@ export function resolveProfilePhotoUrl(url?: string | null): string {
     }
   }
 
-  // Remove leading slashes
-  let relativePath = targetPath.replace(/^\/+/, '');
+  // Prepend active server origin protocol + domain (supports custom domains seamlessly)
+  const host = getActiveServerOrigin();
 
-  // Strip 'api/' prefix if present to normalize
-  if (relativePath.startsWith('api/')) {
-    relativePath = relativePath.replace(/^api\//, '');
+  // If static public assets bundled with frontend app (e.g. /logo.png, /favicon.png, /assets/...)
+  if (targetPath === '/logo.png' || targetPath === 'logo.png' || targetPath.startsWith('/assets/') || targetPath.startsWith('assets/') || targetPath.endsWith('.svg')) {
+    return targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
   }
 
-  // Ensure upload assets have 'uploads/' prefix for fastify static route
-  if (!relativePath.startsWith('uploads/') && !relativePath.startsWith('academic/')) {
+  // Case 1: MinIO S3 object storage path (/absenta-storage/...)
+  if (targetPath.includes('/absenta-storage/') || targetPath.startsWith('absenta-storage/')) {
+    const cleanStoragePath = targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
+    return `${host}${cleanStoragePath}`;
+  }
+
+  // Case 2: Academic document download route (/academic/... or /api/academic/...)
+  if (targetPath.includes('/academic/') || targetPath.startsWith('academic/')) {
+    let cleanAcademic = targetPath.replace(/^\/+/, '');
+    if (cleanAcademic.startsWith('api/')) {
+      cleanAcademic = cleanAcademic.substring(4);
+    }
+    const cleanUrl = `/api/${cleanAcademic}`;
+    return `${host}${cleanUrl}`;
+  }
+
+  // Case 3: Already an /api/... route
+  if (targetPath.startsWith('/api/') || targetPath.startsWith('api/')) {
+    const cleanApi = targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
+    return `${host}${cleanApi}`;
+  }
+
+  // Case 4: Standard uploads (/uploads/... or uploads/...)
+  let relativePath = targetPath.replace(/^\/+/, '');
+  if (!relativePath.startsWith('uploads/')) {
     relativePath = `uploads/${relativePath}`;
   }
 
   const cleanUrl = `/api/${relativePath}`;
-  
-  // Prepend backend base host URL (removing trailing /api if necessary to avoid double /api)
-  const apiBase = resolvePublicApiBaseUrl() || '';
-  const host = apiBase.endsWith('/api') ? apiBase.substring(0, apiBase.length - 4) : apiBase;
-  
-  let resolvedUrl = `${host}${cleanUrl}`;
-  
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    const separator = resolvedUrl.includes('?') ? '&' : '?';
-    return `${resolvedUrl}${separator}token=${encodeURIComponent(token)}`;
-  }
-  return resolvedUrl;
+  return `${host}${cleanUrl}`;
 }
+
+export const resolveMediaUrl = resolveProfilePhotoUrl;

@@ -22,6 +22,7 @@ const LoginQrScannerModal = React.lazy(() =>
   import('@/components/auth/LoginQrScannerModal').then((m) => ({ default: m.LoginQrScannerModal }))
 );
 import { getSavedServerDomain, isCapacitorApp } from '@/services/serverConfig';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { isSystemSuperAdmin } from '@/utils/rbac';
 import { getUserPositions } from '@/config/navigation.config';
 import toast from 'react-hot-toast';
@@ -273,7 +274,8 @@ export default function LoginPage() {
         const hostname = window.location.hostname;
         const isIP = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname);
         const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local');
-        if (!isIP && !isLocalhost) {
+        const isMobile = isCapacitorApp();
+        if (isMobile || (!isIP && !isLocalhost)) {
           const res = await axiosInstance.get('/auth/tenant-info');
           if (res.data?.success) {
             setTenantName(res.data.data?.name || '');
@@ -664,7 +666,9 @@ export default function LoginPage() {
               }} animate={{
                 opacity: 1,
                 scale: 1
-              }} src={tenantLogo} alt={tenantName} className="w-16 h-16 object-contain mb-4 rounded-xl bg-slate-50 p-2 border border-slate-100 dark:border-slate-800" /> : <motion.img initial={{
+              }} src={resolveProfilePhotoUrl(tenantLogo)} alt={tenantName || 'Logo Sekolah'} onError={(e) => {
+                (e.target as HTMLImageElement).src = '/logo.png';
+              }} className="w-16 h-16 object-contain mb-4 rounded-xl bg-slate-50 p-2 border border-slate-100 dark:border-slate-800" /> : <motion.img initial={{
                 opacity: 0,
                 scale: 0.8
               }} animate={{

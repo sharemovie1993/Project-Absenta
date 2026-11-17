@@ -28,6 +28,7 @@ import {
 // Lazy load Table to improve mobile performance (TBT)
 const Table = lazy(() => import('../../ui/Table').then(module => ({ default: module.Table })));
 import { MobileAcademicList } from '../shared/MobileAcademicList';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { getJurusanList, deleteJurusan, jurusanQueryKeys } from '../../../api/academic/jurusan.api';
 import type { Jurusan } from '../../../types/academic';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -198,7 +199,7 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 overflow-hidden font-bold text-[10px] text-slate-600 dark:text-slate-300">
             {jurusan.logo_url ? (
-              <img src={jurusan.logo_url} alt={value} className="w-full h-full object-contain p-0.5" />
+              <img src={resolveProfilePhotoUrl(jurusan.logo_url)} alt={value} className="w-full h-full object-contain p-0.5" />
             ) : (
               jurusan.singkatan || jurusan.kode || 'JUR'
             )}

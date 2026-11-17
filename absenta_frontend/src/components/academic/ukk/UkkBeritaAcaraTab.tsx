@@ -28,6 +28,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Loader } from '@/components/ui/Loader';
 import { DigitalSignatureField } from '@/components/ui/DigitalSignatureField';
 import { raporApi } from '@/api/rapor.api';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { sekolahApi } from '@/api/academic/sekolah.api';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
 import { useConfirm } from '@/providers/ConfirmProvider';
@@ -584,7 +585,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                         return (
                           <img
                             key={fIdx}
-                            src={photoUrl}
+                            src={resolveProfilePhotoUrl(photoUrl)}
                             alt={`Dokumentasi ${fIdx + 1}`}
                             className="w-16 h-12 object-cover rounded-xl border border-slate-200/80 dark:border-slate-800 shrink-0 bg-slate-100 dark:bg-slate-800 shadow-2xs"
                           />
@@ -887,7 +888,7 @@ export const UkkBeritaAcaraTab: React.FC<UkkBeritaAcaraTabProps> = ({
                   >
                     <div className="relative h-28 rounded-xl overflow-hidden">
                       <img
-                        src={photoUrl}
+                        src={resolveProfilePhotoUrl(photoUrl)}
                         alt={`Preview ${idx + 1}`}
                         className="w-full h-full object-cover bg-slate-100 dark:bg-slate-800"
                       />

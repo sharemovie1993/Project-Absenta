@@ -123,13 +123,18 @@ export const PlatformComplianceFollowUpPage: React.FC<PlatformComplianceFollowUp
 
   const [nudgeModalTarget, setNudgeModalTarget] = useState<NudgeModalTarget | null>(null);
 
+  const isGuruScopeActive = activeTab === 'GURU' || activeTab === 'TREND';
+  const isSiswaScopeActive = activeTab === 'SISWA' || activeTab === 'TREND';
+
   const { data: rawGurusData, isLoading: loadingGurus } = useQuery<Guru[]>({
     queryKey: ['compliance-guru-list'],
     queryFn: async () => {
       const res = await getGuruList(1, 1000);
       return Array.isArray(res) ? res : res?.data || [];
     },
-    staleTime: 60 * 1000,
+    enabled: isGuruScopeActive,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: rawSiswaData, isLoading: loadingSiswa } = useQuery<Siswa[]>({
@@ -138,7 +143,9 @@ export const PlatformComplianceFollowUpPage: React.FC<PlatformComplianceFollowUp
       const res = await getSiswaList(1, 5000, '', '', 'AKTIF');
       return Array.isArray(res) ? res : res?.data || [];
     },
-    staleTime: 60 * 1000,
+    enabled: isSiswaScopeActive,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const processedTeachers: TeacherComplianceItem[] = useMemo(() => {

@@ -4,6 +4,7 @@ import { Eye, BookOpen, BookMarked, ChevronLeft, ChevronRight, Printer, X, User,
 import { BukuIndukPrintModal } from './BukuIndukPrintModal';
 import { KlapperPrintModal } from './KlapperPrintModal';
 import { SuratKeteranganModal } from '@/components/correspondence/surat-keterangan/SuratKeteranganModal';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 import { useAcademicFilter, AcademicFilterToolbar } from '@/components/common/academic-filter';
 import { Loader, SectionCard } from '@/components/ui';
@@ -169,7 +170,7 @@ function BukuIndukTable({ data, isLoading, onDetail, onPrint }: BukuIndukTablePr
                 <div className="flex items-center gap-2.5 min-w-0">
                   {siswa.foto_url ? (
                     <img
-                      src={siswa.foto_url}
+                      src={resolveProfilePhotoUrl(siswa.foto_url)}
                       alt={siswa.nama_siswa}
                       className="w-7 h-7 rounded-full object-cover shrink-0 ring-1 ring-slate-200 dark:ring-slate-700"
                     />
@@ -449,7 +450,7 @@ function DetailPanel360({ siswaId, onClose, onPrint, onTerbitkanSurat }: DetailP
             {/* Foto + identitas singkat */}
             <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
               {siswa.foto ? (
-                <img src={siswa.foto} alt={siswa.nama_siswa} className="w-14 h-14 rounded-full object-cover ring-2 ring-white dark:ring-slate-700 shrink-0" />
+                <img src={resolveProfilePhotoUrl(siswa.foto)} alt={siswa.nama_siswa} className="w-14 h-14 rounded-full object-cover ring-2 ring-white dark:ring-slate-700 shrink-0" />
               ) : (
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-xl font-black shrink-0">
                   {(siswa.nama_siswa || '?')[0].toUpperCase()}

@@ -211,10 +211,14 @@ export const useAuthStore = create<AuthState>()(
             const isPlatform = user.tenant_id === 'system' || actualRoleName.startsWith('PLATFORM_') || actualRoleName === 'SUPERADMIN';
             const isStudent = actualRoleName === 'SISWA' || actualRoleName === 'STUDENT';
 
-            // Extract tenant domain directly from login response payload to avoid redundant API call
-            const loginTenantDomain = user.tenant?.subdomain || (user.tenant as any)?.domain;
+            // Extract tenant domain directly from login response payload (prioritize custom_domain)
+            const loginTenantDomain = (user.tenant as any)?.custom_domain || user.tenant?.subdomain || (user.tenant as any)?.domain;
             if (typeof loginTenantDomain === 'string' && loginTenantDomain.trim().length > 0) {
               const normDomain = loginTenantDomain.trim().toLowerCase();
+              let fullDomain = normDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+              if (!fullDomain.includes('.') && fullDomain.length > 0) fullDomain = `${fullDomain}.absenta.id`;
+              localStorage.setItem('absenta_custom_server_domain', fullDomain);
+
               if (rememberMe) {
                 localStorage.setItem('tenant_domain', normDomain);
               } else {
@@ -346,9 +350,13 @@ export const useAuthStore = create<AuthState>()(
               try {
                 // Optimasi Performa: Ambil subdomain/domain langsung dari payload auth/me jika tersedia
                 const directTenant = (response.data as any)?.tenant;
-                const directDomain = directTenant?.subdomain || directTenant?.domain;
+                const directDomain = directTenant?.custom_domain || directTenant?.subdomain || directTenant?.domain;
                 if (typeof directDomain === 'string' && directDomain.trim().length > 0) {
                   const normDomain = directDomain.trim().toLowerCase();
+                  let fullDomain = normDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+                  if (!fullDomain.includes('.') && fullDomain.length > 0) fullDomain = `${fullDomain}.absenta.id`;
+                  localStorage.setItem('absenta_custom_server_domain', fullDomain);
+
                   const isRemember = typeof localStorage !== 'undefined' && localStorage.getItem('absenta_remember_me') !== 'false';
                   if (isRemember) {
                     localStorage.setItem('tenant_domain', normDomain);

@@ -11,6 +11,8 @@ export interface CbtEventItem {
   tipe_pelaksanaan?: 'MASSAL' | 'MANDIRI';
   keterangan?: string;
   days_config?: any[]; // Struktur ExamDayConfig (hari, tanggal, sesi, jam)
+  room_mappings?: any[]; // Pemetaan kelas ke ruang ujian (KelasRoomMapping[])
+  matrix_draft?: any; // Draft rancangan mapel per sesi & tingkat (TimetableMatrixState)
   lock_teacher_scheduling: boolean;
   token_refresh_interval?: number;
   strict_browser_guard: boolean;
@@ -250,6 +252,8 @@ export class CbtSettingsService {
       tipe_pelaksanaan: payload.tipe_pelaksanaan !== undefined ? payload.tipe_pelaksanaan : (existing?.tipe_pelaksanaan || 'MASSAL'),
       keterangan: payload.keterangan !== undefined ? payload.keterangan : (existing?.keterangan || ''),
       days_config: Array.isArray(payload.days_config) ? payload.days_config : (existing?.days_config || []),
+      room_mappings: Array.isArray(payload.room_mappings) ? payload.room_mappings : (existing?.room_mappings || []),
+      matrix_draft: payload.matrix_draft !== undefined ? payload.matrix_draft : (existing?.matrix_draft || {}),
       lock_teacher_scheduling: payload.lock_teacher_scheduling !== undefined ? payload.lock_teacher_scheduling : (existing?.lock_teacher_scheduling ?? true),
       token_refresh_interval: payload.token_refresh_interval !== undefined ? payload.token_refresh_interval : (existing?.token_refresh_interval ?? 0),
       strict_browser_guard: payload.strict_browser_guard !== undefined ? payload.strict_browser_guard : (existing?.strict_browser_guard ?? true),

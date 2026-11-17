@@ -4,7 +4,7 @@ import { X, Printer, Download, Filter, BookOpen, User, School, CheckCircle2, Cal
 import { Button } from '../../ui/Button';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { SendDocumentWaButton } from '../../ui/SendDocumentWaModal';
-import { cn } from '../../../lib/utils';
+import { cn, resolveProfilePhotoUrl } from '../../../lib/utils';
 import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { getMyTenant } from '../../../api/tenants.api';
@@ -400,7 +400,7 @@ export const JadwalPrintPreviewModal: React.FC<Props> = React.memo(({
             <div className="border-b-2 border-slate-900 pb-3 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 {printHeader.logo || sekolahProfileRes?.logo_url ? (
-                  <img src={printHeader.logo || sekolahProfileRes?.logo_url} alt="Logo" className="w-14 h-14 object-contain" />
+                  <img src={resolveProfilePhotoUrl(printHeader.logo || sekolahProfileRes?.logo_url)} alt="Logo" className="w-14 h-14 object-contain" />
                 ) : (
                   <div className="w-12 h-12 bg-indigo-600 text-white font-black text-xl rounded-2xl flex items-center justify-center shadow-md">
                     A

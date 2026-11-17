@@ -14,6 +14,7 @@ import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import toast from 'react-hot-toast';
 import { formatLocalTimeFromISO, getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
 import { DigitalSignaturePadModal } from '@/components/ui/DigitalSignaturePadModal';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface CbtBeritaAcaraPrintModalProps {
   isOpen: boolean;
@@ -397,7 +398,7 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
                   {pengawas1Signature ? (
                     <>
                       <img
-                        src={pengawas1Signature}
+                        src={resolveProfilePhotoUrl(pengawas1Signature)}
                         alt="TTD Pengawas"
                         className="h-6 max-w-[55px] object-contain border border-amber-300 rounded bg-white p-0.5"
                       />

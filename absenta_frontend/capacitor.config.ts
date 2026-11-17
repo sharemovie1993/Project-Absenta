@@ -10,6 +10,8 @@ const config: CapacitorConfig = {
     allowNavigation: [
       '*.absenta.id',
       'absenta.id',
+      'ota.absenta.id',
+      '103.127.133.113',
       'localhost',
       '*.localhost',
       '127.0.0.1',
@@ -21,6 +23,10 @@ const config: CapacitorConfig = {
       overlaysWebView: false,
       style: 'DARK',
       backgroundColor: '#ffffff'
+    },
+    CapacitorUpdater: {
+      autoUpdate: false,
+      resetWhenUpdate: false
     }
   }
 };

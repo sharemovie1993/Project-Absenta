@@ -456,6 +456,8 @@ export class HubinPenilaianService extends HubinCommonHelper {
       penguji_id?: string | null;
       catatan_sidang?: string | null;
       tanggal_sidang?: string | null;
+      ttd_siswa?: string | null;
+      waktu_ttd_siswa?: string | null;
     }>
   ) {
     // 1. Fetch relevant SiswaPkl records to identify Siswa and Academic Context
@@ -635,6 +637,14 @@ export class HubinPenilaianService extends HubinCommonHelper {
         ? item.tanggal_sidang 
         : (prevNilaiJson.tanggal_sidang ?? null);
 
+      const ttdSiswa = item.ttd_siswa !== undefined
+        ? item.ttd_siswa
+        : (prevNilaiJson.ttd_siswa ?? null);
+
+      const waktuTtdSiswa = item.waktu_ttd_siswa !== undefined
+        ? item.waktu_ttd_siswa
+        : (item.ttd_siswa ? (prevNilaiJson.waktu_ttd_siswa || new Date().toISOString()) : (prevNilaiJson.waktu_ttd_siswa ?? null));
+
       const updatedNilaiJson = {
         ...prevNilaiJson,
         dudi_avg: dudiAvg,
@@ -648,6 +658,8 @@ export class HubinPenilaianService extends HubinCommonHelper {
         penguji_id: pengujiId,
         catatan_sidang: catatanSidang,
         tanggal_sidang: tanggalSidang,
+        ttd_siswa: ttdSiswa,
+        waktu_ttd_siswa: waktuTtdSiswa,
       };
 
       // 3. Compute Nilai Akhir with Smart Dynamic Proportional Fallback

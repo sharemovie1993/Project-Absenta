@@ -739,7 +739,7 @@ export class CbtBankSoalService {
         judul: data.judul.trim(),
         tingkat: data.tingkat,
         jurusan: data.jurusan || null,
-        alokasi_menit: data.alokasi_menit ?? 90,
+        alokasi_menit: data.alokasi_menit ?? 60,
         acak_soal: data.acak_soal ?? true,
         acak_opsi: data.acak_opsi ?? true,
         status: resolvedStatus,

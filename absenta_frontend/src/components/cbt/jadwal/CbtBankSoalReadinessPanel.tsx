@@ -7,6 +7,7 @@ import {
   BookOpen,
   CheckCircle2,
   AlertCircle,
+  LayoutGrid,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
@@ -31,6 +32,8 @@ import {
 } from './cbtMgmpHelper';
 import { CbtReadinessTeacherTable } from './CbtReadinessTeacherTable';
 import { CbtReadinessPaketTable } from './CbtReadinessPaketTable';
+import { buildClassSubjectMatrix } from './cbtClassSubjectMatrixHelper';
+import { CbtClassSubjectMatrixTable } from './CbtClassSubjectMatrixTable';
 import toast from 'react-hot-toast';
 
 interface CbtBankSoalReadinessPanelProps {
@@ -45,7 +48,7 @@ interface CbtBankSoalReadinessPanelProps {
   onRefreshBankList?: () => void;
 }
 
-export type ViewTabMode = 'BELUM' | 'SUDAH' | 'PAKET_MAPEL';
+export type ViewTabMode = 'BELUM' | 'SUDAH' | 'PAKET_MAPEL' | 'MATRIKS';
 
 export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps> = ({
   topFlightDeck,
@@ -100,6 +103,9 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
   const { data: guruMapelRes } = useQuery({
     queryKey: ['guru-mapel-readiness', activeTpId],
     queryFn: () => listGuruMapel({ tahun_pelajaran_id: activeTpId }),
+    enabled: !!activeTpId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
   const rawGuruMapel = guruMapelRes?.data || [];
 
@@ -473,6 +479,30 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
     setIsFormModalOpen(true);
   };
 
+  // ── 7. Evaluasi Matriks Kesiapan (Kelas x Mapel) ──
+  const matrixSelectedTingkat = useMemo(() => {
+    if (typeof filterTingkat === 'number') return filterTingkat;
+    if (targetTingkat && targetTingkat.length > 0) return targetTingkat[0];
+    return tingkatList[0] || 10;
+  }, [filterTingkat, targetTingkat, tingkatList]);
+
+  const matrixResult = useMemo(() => {
+    return buildClassSubjectMatrix({
+      rawGuruMapel: guruMapelRes?.data || [],
+      bankList,
+      tingkat: matrixSelectedTingkat,
+    });
+  }, [guruMapelRes?.data, bankList, matrixSelectedTingkat]);
+
+  const handleCreateForMatrixCell = (mapelId: string, cellTingkat: number, guruId?: string, _jurusan?: string) => {
+    setSelectedBankToEdit(null);
+    setDefaultMapelForCreate(mapelId);
+    setDefaultGuruForCreate(guruId);
+    const romanTingkat = cellTingkat === 11 ? 'XI' : cellTingkat === 12 ? 'XII' : 'X';
+    setDefaultTingkatForCreate(romanTingkat);
+    setIsFormModalOpen(true);
+  };
+
   return (
     <div className="space-y-3 w-full">
       {/* ── 1 RUANG SEAMLESS FLIGHT DECK + TOOLBAR ── */}
@@ -523,6 +553,20 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             >
               <BookOpen size={12} />
               <span>Paket ({activeStats.totalTeoriPaket})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('MATRIKS')}
+              className={cn(
+                'px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
+                activeTab === 'MATRIKS'
+                  ? 'bg-indigo-600 text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+              )}
+            >
+              <LayoutGrid size={12} />
+              <span>Matriks Kelas</span>
             </button>
           </div>
 
@@ -673,6 +717,18 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             setDefaultTingkatForCreate(romanTingkat);
             setIsFormModalOpen(true);
           }}
+        />
+      )}
+
+      {activeTab === 'MATRIKS' && (
+        <CbtClassSubjectMatrixTable
+          matrixResult={matrixResult}
+          searchQuery={searchQuery}
+          onPeriksaButir={(bank) => {
+            setSelectedBankForDetail(bank);
+            setIsDetailModalOpen(true);
+          }}
+          onCreateForCell={handleCreateForMatrixCell}
         />
       )}
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { UniversalDocumentSignatures } from '@/components/ui/PrintHeader';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import type { LoanDetailData, CooperativeSettings } from './types';
 
 interface PrintLoanReceiptProps {
@@ -22,7 +23,7 @@ export const PrintLoanReceipt = React.memo<PrintLoanReceiptProps>(({ loan, coopS
       <div className="flex items-center justify-between border-b-4 border-double border-black pb-3 mb-6">
         <div className="w-16 h-16 flex items-center justify-center">
           <img 
-            src={coopSettings?.cooperative_logo_url || '/logo.png'} 
+            src={resolveProfilePhotoUrl(coopSettings?.cooperative_logo_url || '/logo.png')} 
             alt="Logo Koperasi" 
             className="max-h-16 max-w-full object-contain"
             onError={(e) => {

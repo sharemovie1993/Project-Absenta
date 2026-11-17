@@ -30,7 +30,7 @@ import {
   getUkkRegulatoryEdition,
   calculateUkkPredikat,
 } from '@/config/ukkRegulatoryRegistry';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 export interface UkkStudentItem {
@@ -796,7 +796,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
                   <div className="h-12 flex items-center justify-center my-1">
                     {certData.ukk.ttd_kepala_sekolah ? (
                       <img
-                        src={certData.ukk.ttd_kepala_sekolah}
+                        src={resolveProfilePhotoUrl(certData.ukk.ttd_kepala_sekolah)}
                         alt="TTD Kepala Sekolah"
                         className="max-h-11 max-w-full object-contain"
                       />
@@ -819,7 +819,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
                   <div className="h-12 flex items-center justify-center my-1">
                     {certData.ukk.ttd_asesor_eksternal ? (
                       <img
-                        src={certData.ukk.ttd_asesor_eksternal}
+                        src={resolveProfilePhotoUrl(certData.ukk.ttd_asesor_eksternal)}
                         alt="TTD Penguji Eksternal"
                         className="max-h-11 max-w-full object-contain"
                       />
@@ -939,7 +939,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
                   <div className="h-12 flex items-center justify-center my-1">
                     {certData.ukk.ttd_asesor_internal ? (
                       <img
-                        src={certData.ukk.ttd_asesor_internal}
+                        src={resolveProfilePhotoUrl(certData.ukk.ttd_asesor_internal)}
                         alt="TTD Penguji Internal"
                         className="max-h-11 max-w-full object-contain"
                       />
@@ -962,7 +962,7 @@ export const UkkSertifikatView: React.FC<UniversalUkkSertifikatViewProps> = ({
                   <div className="h-12 flex items-center justify-center my-1">
                     {certData.ukk.ttd_asesor_eksternal ? (
                       <img
-                        src={certData.ukk.ttd_asesor_eksternal}
+                        src={resolveProfilePhotoUrl(certData.ukk.ttd_asesor_eksternal)}
                         alt="TTD Penguji Eksternal"
                         className="max-h-11 max-w-full object-contain"
                       />

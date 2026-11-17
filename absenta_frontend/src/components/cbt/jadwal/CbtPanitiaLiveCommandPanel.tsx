@@ -453,7 +453,7 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
       const kodeBank = j.BankSoal?.kode_bank || '-';
       const bankJudul = j.BankSoal?.judul || mapelName;
       const guruNama = j.BankSoal?.Guru?.nama_guru || 'Tim Guru MGMP';
-      const alokasiMenit = j.durasi_menit || j.BankSoal?.alokasi_menit || 90;
+      const alokasiMenit = j.durasi_menit || j.BankSoal?.alokasi_menit || 60;
       const jumlahSoal = j.BankSoal?.jumlah_soal || 0;
 
       const info = parseRoomAndClass(j);

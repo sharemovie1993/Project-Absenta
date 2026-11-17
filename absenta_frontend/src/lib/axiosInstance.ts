@@ -2,21 +2,12 @@ import axios from 'axios';
 import { LogService } from '../utils/LogService';
 import { useAuthStore } from '../store/authStore';
 import { MAIN_DOMAIN } from '../config/env-config';
+import { getActiveServerOrigin } from '../services/serverConfig';
 
 // 1. Startup Guard & Configuration
 const getEnvBaseUrl = () => {
-  // Check custom server domain configured via Capacitor or setup screen
-  if (typeof window !== 'undefined') {
-    try {
-      const customDomain = localStorage.getItem('absenta_custom_server_domain');
-      if (customDomain) {
-        const clean = customDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-        const isLocal = clean.includes('localhost') || clean.includes('127.0.0.1') || clean.includes('10.0.2.2');
-        const protocol = isLocal ? 'http://' : 'https://';
-        return `${protocol}${clean}/api`;
-      }
-    } catch {}
-  }
+  const origin = getActiveServerOrigin();
+  if (origin) return `${origin}/api`;
 
   const definedBaseUrl = (globalThis as any).__VITE_API_BASE_URL__ as string | undefined;
   if (definedBaseUrl) return definedBaseUrl;
@@ -28,7 +19,7 @@ const getEnvBaseUrl = () => {
   if (typeof window !== 'undefined' && window.location?.origin) {
     return `${window.location.origin}/api`;
   }
-  return undefined;
+  return 'https://smkn1pld.absenta.id/api';
 };
 
 const BASE_URL = getEnvBaseUrl();
@@ -52,39 +43,8 @@ const axiosInstance = axios.create({
 });
 
 export const resolvePublicApiBaseUrl = (): string => {
-  // Highest priority: explicitly provided public API base
-  const injected = (globalThis as any).__VITE_PUBLIC_API_BASE_URL__ as string | undefined;
-  if (injected && injected.trim().length > 0) return injected.replace(/\/+$/, '');
-  if ((globalThis as any).process?.env?.VITE_PUBLIC_API_BASE_URL) {
-    return String((globalThis as any).process.env.VITE_PUBLIC_API_BASE_URL).replace(/\/+$/, '');
-  }
-
-  const fallbackOrigin =
-    typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost';
-  const u = new URL(BASE_URL, fallbackOrigin);
-  const host = u.hostname.toLowerCase();
-  const protocol = u.protocol;
-
-  // Prefer explicit public API base if provided; otherwise use origin derived from BASE_URL
-
-  // Local/dev heuristic: if UI runs on :5173 or other non-API ports, prefer :3001 on same host
-  const hasExplicitPort = typeof window !== 'undefined' && window.location?.port;
-  const winHost = typeof window !== 'undefined' ? window.location.hostname : u.hostname;
-  const winProto = typeof window !== 'undefined' ? window.location.protocol : protocol;
-  const winPort = typeof window !== 'undefined' ? window.location.port : '';
-
-  if (winPort === '5173' || (!hasExplicitPort && BASE_URL.includes('5173'))) {
-    // When running under Vite dev server, /api is cleanly proxied to backend target (e.g. port 3004)
-    // Using current origin preserves Vite proxy and avoids wrong hardcoded port (3001)
-    if (typeof window !== 'undefined' && window.location?.origin) {
-      return `${window.location.origin}/api`;
-    }
-    const finalProto = winProto || 'http:';
-    return `${finalProto}//${winHost}:5173/api`;
-  }
-
-  // Default: use same origin as protected API (keep /api suffix)
-  return API_URL.replace(/\/+$/, '');
+  const origin = getActiveServerOrigin();
+  return `${origin}/api`;
 };
 
 // Cache JWT payload in-memory to prevent repeated atob + JSON.parse on every single HTTP request
@@ -112,18 +72,9 @@ function parseJwtPayload(token: string): any {
 // 3. Request Interceptor
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Dynamic baseURL override if custom domain is set
-    if (typeof window !== 'undefined') {
-      try {
-        const customDomain = localStorage.getItem('absenta_custom_server_domain');
-        if (customDomain) {
-          const clean = customDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-          const isLocal = clean.includes('localhost') || clean.includes('127.0.0.1') || clean.includes('10.0.2.2');
-          const protocol = isLocal ? 'http://' : 'https://';
-          config.baseURL = `${protocol}${clean}/api/`;
-        }
-      } catch {}
-    }
+    // Dynamic baseURL from active server origin
+    const origin = getActiveServerOrigin();
+    config.baseURL = `${origin}/api/`;
 
     // If request data is FormData, remove Content-Type to let browser set boundary
     if (config.data instanceof FormData && config.headers) {

@@ -29,6 +29,7 @@ import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import { CbtBankSoalFormModal } from './CbtBankSoalFormModal';
 import { CbtBankSoalDetailModal } from './CbtBankSoalDetailModal';
+import { TeacherCbtDutyCard } from './TeacherCbtDutyCard';
 import { CbtJadwalFormModal } from '../jadwal/CbtJadwalFormModal';
 import { getTingkatRoman } from './cbtAsesmenHelper';
 import { useCbtOperationMode } from '../cbtModeHelper';
@@ -77,6 +78,9 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedBankSoal, setSelectedBankSoal] = useState<CbtBankSoal | null>(null);
+  const [defaultMapelForCreate, setDefaultMapelForCreate] = useState<string | undefined>(undefined);
+  const [defaultTingkatForCreate, setDefaultTingkatForCreate] = useState<string | undefined>(undefined);
+  const [defaultJurusanForCreate, setDefaultJurusanForCreate] = useState<string | undefined>(undefined);
   const [isJadwalModalOpen, setIsJadwalModalOpen] = useState(false);
   const [bankSoalForJadwal, setBankSoalForJadwal] = useState<CbtBankSoal | null>(null);
 
@@ -435,6 +439,25 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
 
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
+      {/* ── Banner Status Kesiapan / Bebas Tugas Bank Soal (Mode Guru) ── */}
+      {!isPanitiaCbt && (
+        <TeacherCbtDutyCard
+          guruId={currentGuruId}
+          variant="detailed"
+          onCreateBankSoal={(mId, tRoman, jur) => {
+            setSelectedBankSoal(null);
+            setDefaultMapelForCreate(mId);
+            setDefaultTingkatForCreate(tRoman);
+            setDefaultJurusanForCreate(jur);
+            setIsFormModalOpen(true);
+          }}
+          onPreviewBankSoal={(bank) => {
+            setSelectedBankSoal(bank);
+            setIsDetailModalOpen(true);
+          }}
+        />
+      )}
+
       {/* ── Toolbar: Panitia CBT menggunakan AcademicFilterToolbar, Guru cukup tombol '+ Buat Bank Soal' ── */}
       {isPanitiaCbt ? (
         <AcademicFilterToolbar
@@ -693,20 +716,32 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           onClose={() => {
             setIsFormModalOpen(false);
             setSelectedBankSoal(null);
+            setDefaultMapelForCreate(undefined);
+            setDefaultTingkatForCreate(undefined);
+            setDefaultJurusanForCreate(undefined);
           }}
           bankSoalToEdit={selectedBankSoal}
           defaultGuruId={guruId}
-          defaultMapelId={mapelId || (filter.values.mapelId as string) || undefined}
+          defaultMapelId={defaultMapelForCreate || mapelId || (filter.values.mapelId as string) || undefined}
+          defaultTingkat={defaultTingkatForCreate}
+          defaultJurusan={defaultJurusanForCreate}
           roleContext={roleContext}
           activeEvent={activeEvent}
           eventName={eventName}
           targetTingkat={targetTingkat}
           onSuccess={async () => {
             setPage(1);
+            setDefaultMapelForCreate(undefined);
+            setDefaultTingkatForCreate(undefined);
+            setDefaultJurusanForCreate(undefined);
             await queryClient.invalidateQueries({
               queryKey: cbtQueryKeys.bankSoal(),
               exact: false,
               refetchType: 'all',
+            });
+            await queryClient.invalidateQueries({
+              queryKey: ['cbt-bank-soal-for-teacher-duty'],
+              exact: false,
             });
           }}
         />

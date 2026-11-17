@@ -16,6 +16,7 @@ import { formatLocalTimeFromISO, getTimezoneLabel } from '@/utils/attendance/tim
 import { formatLocalDateIndo } from '@/utils/date.utils';
 import { DigitalSignaturePadModal } from '@/components/ui/DigitalSignaturePadModal';
 import { normalizeStudentIdentity } from '@/utils/academic/academicIdentityNormalizer';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface CbtDaftarHadirPrintModalProps {
   isOpen: boolean;
@@ -431,7 +432,7 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
                   {pengawas1Signature ? (
                     <>
                       <img
-                        src={pengawas1Signature}
+                        src={resolveProfilePhotoUrl(pengawas1Signature)}
                         alt="TTD Pengawas"
                         className="h-6 max-w-[55px] object-contain border border-emerald-300 rounded bg-white p-0.5"
                       />
@@ -641,7 +642,7 @@ export const CbtDaftarHadirPrintModal: React.FC<CbtDaftarHadirPrintModalProps> =
                           {signatureImg ? (
                             <div className="flex flex-col items-center justify-center">
                               <img
-                                src={signatureImg}
+                                src={resolveProfilePhotoUrl(signatureImg)}
                                 alt={`TTD ${namaSiswa}`}
                                 className="h-7 max-w-[85px] object-contain"
                               />

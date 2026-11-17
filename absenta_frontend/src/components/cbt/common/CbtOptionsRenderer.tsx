@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Check, CheckCircle2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import type { OpsiJawaban } from '@/types/cbt.types';
 
 export type CbtOptionGridMode = 'grid-1-row' | 'grid-2-col' | 'grid-1-col';
@@ -232,7 +232,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                 )}
                 {opt.gambar_url && (
                   <img
-                    src={opt.gambar_url}
+                    src={resolveProfilePhotoUrl(opt.gambar_url)}
                     alt={`Opsi ${opt.kode}`}
                     decoding="async"
                     className="max-h-36 object-contain rounded-lg border border-slate-200 dark:border-slate-700 bg-white p-1"
@@ -347,7 +347,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
               )}
               {opt.gambar_url && (
                 <img
-                  src={opt.gambar_url}
+                  src={resolveProfilePhotoUrl(opt.gambar_url)}
                   alt={`Opsi ${opt.kode}`}
                   className="max-h-24 object-contain rounded-lg border border-slate-200 dark:border-slate-700 bg-white p-1"
                 />

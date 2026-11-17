@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Card,
   Button,
@@ -25,6 +26,10 @@ import {
   LogOut,
   Send,
   Eye,
+  RefreshCw,
+  CloudOff,
+  Check,
+  RotateCcw,
 } from 'lucide-react';
 import { cbtApi } from '@/api/cbt.api';
 import { cbtOfflineStorage, LocalAnswerRecord } from '@/utils/cbtOfflineStorage';
@@ -37,7 +42,40 @@ import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
+const CBT_SESSION_STORAGE_KEY = 'cbt_active_exam_session_v1';
+
+interface PersistedExamSession {
+  jadwalId: string;
+  token: string;
+  signature: string;
+  lastSavedIdx: number;
+  savedAt: number;
+}
+
+const saveSessionToStorage = (data: PersistedExamSession) => {
+  try {
+    sessionStorage.setItem(CBT_SESSION_STORAGE_KEY, JSON.stringify(data));
+  } catch {}
+};
+
+const getSessionFromStorage = (): PersistedExamSession | null => {
+  try {
+    const raw = sessionStorage.getItem(CBT_SESSION_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const clearSessionStorage = () => {
+  try {
+    sessionStorage.removeItem(CBT_SESSION_STORAGE_KEY);
+  } catch {}
+};
+
 export default function CbtExamRoomPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const studentId = user?.siswa_id || (user as any)?.siswa?.id || user?.id;
 
@@ -46,6 +84,9 @@ export default function CbtExamRoomPage() {
   const [tokenInput, setTokenInput] = useState('');
   const [examOverview, setExamOverview] = useState<any>(null);
   const [loadingVerify, setLoadingVerify] = useState(false);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('synced');
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [errorDiagnosis, setErrorDiagnosis] = useState<{
     code: string;
     message: string;
@@ -72,16 +113,118 @@ export default function CbtExamRoomPage() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const isSubmittingRef = useRef(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Network listener
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    const handleOnline = () => {
+      setIsOnline(true);
+      setSyncStatus((prev) => (prev === 'offline' ? 'synced' : prev));
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setSyncStatus('offline');
+    };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // 0. Auto-Restore & Auto-Fill URL Params pada Mounting
+  useEffect(() => {
+    let isMounted = true;
+
+    const restoreOrInitialize = async () => {
+      const persisted = getSessionFromStorage();
+      const urlJadwalId = searchParams.get('jadwal_id');
+      const urlToken = searchParams.get('token');
+
+      // ── SKENARIO 1: PEMULIHAN SESI AKTIF (RELOAD / F5 / RECONNECT) ──
+      if (persisted?.jadwalId && persisted?.token && persisted?.signature) {
+        try {
+          setIsRestoringSession(true);
+          if (!isMounted) return;
+          setJadwalId(persisted.jadwalId);
+          setTokenInput(persisted.token);
+          setSignature(persisted.signature);
+
+          const res = await cbtApi.startExamSession({
+            jadwal_ujian_id: persisted.jadwalId,
+            token_masuk: persisted.token,
+            metadata_perangkat: {
+              userAgent: navigator.userAgent,
+              reconnected: true,
+              waktu_reconnect: new Date().toISOString(),
+            },
+          });
+
+          if (!isMounted) return;
+
+          const loadedSoal = res.soal || [];
+          setSoalList(loadedSoal);
+          setSisaWaktuDetik(res.sisa_waktu_detik || res.durasi_menit * 60);
+          setMaxViolations(res.setting_keamanan?.max_tab_switches || 3);
+
+          // Muat jawaban lokal & server
+          const localAnswers = await cbtOfflineStorage.getAllAnswers(persisted.jadwalId, studentId || 'siswa');
+          const mergedMap: Record<string, { jawaban: string; isRagu: boolean }> = {};
+          if (Array.isArray(res.jawaban_tersimpan)) {
+            res.jawaban_tersimpan.forEach((item) => {
+              mergedMap[item.soal_id] = { jawaban: item.jawaban_siswa, isRagu: item.is_ragu };
+            });
+          }
+          localAnswers.forEach((item) => {
+            mergedMap[item.soal_id] = { jawaban: item.jawaban_siswa, isRagu: item.is_ragu };
+          });
+          setAnswersMap(mergedMap);
+
+          if (persisted.lastSavedIdx >= 0 && persisted.lastSavedIdx < loadedSoal.length) {
+            setCurrentIdx(persisted.lastSavedIdx);
+          }
+
+          setStep('EXAM_ROOM');
+          toast.success('Sesi ujian Anda berhasil dipulihkan!');
+          return;
+        } catch (err: any) {
+          console.warn('[CBT Session Restore Failed]', err?.message);
+          clearSessionStorage();
+        } finally {
+          if (isMounted) setIsRestoringSession(false);
+        }
+      }
+
+      // ── SKENARIO 2: MASUK DARI DASHBOARD SISWA (URL QUERY PARAMS) ──
+      if (urlToken) {
+        setTokenInput(urlToken.toUpperCase());
+      }
+
+      if (urlJadwalId && urlToken) {
+        try {
+          setLoadingVerify(true);
+          const res = await cbtApi.verifyToken(urlToken.toUpperCase(), urlJadwalId);
+          if (isMounted) {
+            setExamOverview(res);
+            setJadwalId(res.jadwal_id);
+            setStep('CONFIRMATION');
+          }
+        } catch (err: any) {
+          // Token belum dibuka atau belum aktif, biarkan siswa di TOKEN_GATE dengan field terisi
+        } finally {
+          if (isMounted) setLoadingVerify(false);
+        }
+      }
+
+      if (isMounted) setIsRestoringSession(false);
+    };
+
+    restoreOrInitialize();
+
+    return () => {
+      isMounted = false;
     };
   }, []);
 
@@ -188,7 +331,8 @@ export default function CbtExamRoomPage() {
         },
       });
 
-      setSoalList(res.soal || []);
+      const loadedSoal = res.soal || [];
+      setSoalList(loadedSoal);
       setSisaWaktuDetik(res.sisa_waktu_detik || res.durasi_menit * 60);
       setMaxViolations(res.setting_keamanan?.max_tab_switches || 3);
 
@@ -210,6 +354,16 @@ export default function CbtExamRoomPage() {
 
       setAnswersMap(mergedMap);
       setStep('EXAM_ROOM');
+
+      // Simpan sesi aktif ke session storage
+      saveSessionToStorage({
+        jadwalId,
+        token: tokenInput.trim().toUpperCase(),
+        signature,
+        lastSavedIdx: 0,
+        savedAt: Date.now(),
+      });
+
       toast.success('Selamat mengerjakan! Layar terkunci ke mode ujian.');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Gagal memulai sesi ujian');
@@ -218,7 +372,33 @@ export default function CbtExamRoomPage() {
     }
   };
 
-  // 3. Countdown Timer Interval
+  // 2b. Fungsi Recovery Darurat jika soal gagal termuat
+  const handleRecoverExamSession = async () => {
+    try {
+      setLoadingVerify(true);
+      const res = await cbtApi.startExamSession({
+        jadwal_ujian_id: jadwalId,
+        token_masuk: tokenInput.trim().toUpperCase(),
+        metadata_perangkat: {
+          userAgent: navigator.userAgent,
+          recovery: true,
+          waktu_recovery: new Date().toISOString(),
+        },
+      });
+
+      const loadedSoal = res.soal || [];
+      setSoalList(loadedSoal);
+      setSisaWaktuDetik(res.sisa_waktu_detik || res.durasi_menit * 60);
+      setCurrentIdx(0);
+      toast.success('Soal berhasil dimuat ulang!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Gagal memuat ulang soal. Hubungi pengawas.');
+    } finally {
+      setLoadingVerify(false);
+    }
+  };
+
+  // 3. Countdown Timer Interval (Aman dari infinite re-trigger)
   useEffect(() => {
     if (step !== 'EXAM_ROOM' || sisaWaktuDetik <= 0) return;
 
@@ -226,7 +406,9 @@ export default function CbtExamRoomPage() {
       setSisaWaktuDetik((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          handleForceAutoSubmit();
+          if (!isSubmittingRef.current) {
+            handleForceAutoSubmit();
+          }
           return 0;
         }
         return prev - 1;
@@ -266,7 +448,50 @@ export default function CbtExamRoomPage() {
   const sisaWaktuDetikRef = useRef(sisaWaktuDetik);
   sisaWaktuDetikRef.current = sisaWaktuDetik;
 
-  // 4. Background Sync ke Redis setiap 20 detik (Debounced Autosave Stabil)
+  // 4a. Debounced Autosave Realtime (1.2 detik setelah memilih jawaban)
+  const triggerDebouncedSync = useCallback(() => {
+    if (!navigator.onLine) {
+      setSyncStatus('offline');
+      return;
+    }
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    setSyncStatus('syncing');
+
+    debounceTimerRef.current = setTimeout(async () => {
+      const currentAnswers = answersMapRef.current;
+      const currentSisaWaktu = sisaWaktuDetikRef.current;
+
+      const answersArray: CbtStudentAnswerItem[] = Object.entries(currentAnswers).map(
+        ([soalId, val]) => ({
+          soal_id: soalId,
+          jawaban_siswa: val.jawaban,
+          is_ragu: val.isRagu,
+          timestamp: Date.now(),
+        })
+      );
+
+      if (answersArray.length > 0 && jadwalId && navigator.onLine) {
+        try {
+          await cbtApi.syncAnswers(jadwalId, {
+            jawaban: answersArray,
+            sisa_waktu_detik: currentSisaWaktu,
+          });
+          await cbtOfflineStorage.markAnswersSynced(jadwalId, studentId || 'siswa');
+          setSyncStatus('synced');
+        } catch {
+          setSyncStatus('error');
+        }
+      } else {
+        setSyncStatus('synced');
+      }
+    }, 1200);
+  }, [jadwalId, studentId]);
+
+  // 4b. Background Safety Sync Heartbeat ke Redis setiap 20 detik
   useEffect(() => {
     if (step !== 'EXAM_ROOM' || !jadwalId) return;
 
@@ -290,6 +515,7 @@ export default function CbtExamRoomPage() {
             sisa_waktu_detik: currentSisaWaktu,
           });
           await cbtOfflineStorage.markAnswersSynced(jadwalId, studentId || 'siswa');
+          setSyncStatus('synced');
         } catch {
           // Gagal sync sementara tidak masalah karena IndexedDB sudah memegang data secara aman
         }
@@ -310,8 +536,6 @@ export default function CbtExamRoomPage() {
     };
 
     const handleWindowBlur = async () => {
-      // Pada smartphone/tablet (data selular & WiFi), popup sistem (baterai, SMS) & keyboard virtual memicu window.blur.
-      // Deteksi kecurangan buka aplikasi lain/tab lain pada mobile dijamin 100% oleh document.hidden (visibilitychange).
       const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       if (!isTouchDevice) {
         await triggerViolation('BLUR_WINDOW', 'Kursor keluar dari jendela aplikasi ujian');
@@ -328,12 +552,45 @@ export default function CbtExamRoomPage() {
     window.addEventListener('blur', handleWindowBlur);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
 
+    // ── 5b. Anti-Stampede Keyboard & Navigation Interceptor (Cegah Ledakan F5 / Hot Reload) ──
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Tangkap F5, Ctrl+R, Cmd+R, Ctrl+F5
+      const isF5 = e.key === 'F5' || e.keyCode === 116;
+      const isCtrlR = (e.ctrlKey || e.metaKey) && (e.key === 'r' || e.key === 'R' || e.keyCode === 82);
+
+      if (isF5 || isCtrlR) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Ganti Hard Reload dengan Soft In-App Re-Sync (0ms Network Overload)
+        toast('Halaman tidak perlu di-refresh. Seluruh jawaban Anda aman di perangkat!', {
+          icon: '🛡️',
+          duration: 3500,
+        });
+
+        // Trigger safe lightweight sync
+        triggerDebouncedSync();
+        return false;
+      }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Sesi ujian sedang berlangsung. Jawaban Anda tersimpan otomatis. Tetap di halaman ini?';
+      return e.returnValue;
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleWindowBlur);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [step, violationsCount, maxViolations]);
+  }, [step, violationsCount, maxViolations, triggerDebouncedSync]);
 
   const triggerViolation = async (tipe: string, detail: string) => {
     const nextCount = violationsCount + 1;
@@ -351,7 +608,7 @@ export default function CbtExamRoomPage() {
     }
   };
 
-  // 6. Pilih Jawaban Siswa (Instan ke IndexedDB)
+  // 6. Pilih Jawaban Siswa (Instan ke IndexedDB + Debounced Cloud Sync)
   const handleSelectAnswer = async (soalId: string, kodeOpsi: string) => {
     const currentRagu = answersMap[soalId]?.isRagu || false;
     setAnswersMap((prev) => ({
@@ -361,6 +618,20 @@ export default function CbtExamRoomPage() {
 
     // Simpan instan ke IndexedDB lokal (<1ms)
     await cbtOfflineStorage.saveAnswer(jadwalId, user?.id || 'siswa', soalId, kodeOpsi, currentRagu);
+
+    // Update session storage index
+    if (signature) {
+      saveSessionToStorage({
+        jadwalId,
+        token: tokenInput.trim().toUpperCase(),
+        signature,
+        lastSavedIdx: currentIdx,
+        savedAt: Date.now(),
+      });
+    }
+
+    // Panggil sync asinkron ke server
+    triggerDebouncedSync();
   };
 
   // Toggle Ragu-ragu
@@ -380,6 +651,8 @@ export default function CbtExamRoomPage() {
       current.jawaban,
       nextRagu
     );
+
+    triggerDebouncedSync();
   };
 
   // 7. Submit Final Ujian
@@ -388,8 +661,12 @@ export default function CbtExamRoomPage() {
   };
 
   const executeFinalSubmit = async () => {
+    if (isSubmittingRef.current) return;
     try {
+      isSubmittingRef.current = true;
       setIsSubmitting(true);
+      setSubmitError(null);
+
       const answersArray: CbtStudentAnswerItem[] = (soalList || []).map((s) => ({
         soal_id: s.id,
         jawaban_siswa: answersMap[s.id]?.jawaban || '',
@@ -401,8 +678,9 @@ export default function CbtExamRoomPage() {
         jawaban_final: answersArray,
       });
 
-      // Bersihkan IndexedDB lokal
+      // Bersihkan IndexedDB lokal dan Session Storage
       await cbtOfflineStorage.clearSession(jadwalId, user?.id || 'siswa');
+      clearSessionStorage();
 
       // Keluar dari Fullscreen
       if (document.exitFullscreen && document.fullscreenElement) {
@@ -411,12 +689,19 @@ export default function CbtExamRoomPage() {
 
       setFinalResult(res);
       setStep('COMPLETED');
+      setIsSubmitConfirmOpen(false);
       toast.success('Ujian berhasil diserahkan!');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Gagal menyerahkan ujian');
+      const errMsg =
+        err.response?.data?.message ||
+        'Gagal menyerahkan ujian ke server institusi. Periksa koneksi WiFi/Data Anda.';
+      setSubmitError(errMsg);
+      toast.error(errMsg, { duration: 6000 });
+      // Tetap buka modal konfirmasi submit agar siswa memiliki tombol coba lagi yang jelas
+      setIsSubmitConfirmOpen(true);
     } finally {
       setIsSubmitting(false);
-      setIsSubmitConfirmOpen(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -448,6 +733,25 @@ export default function CbtExamRoomPage() {
   }, [examOverview]);
 
   const renderContent = () => {
+    // ─── RENDER 0: RESTORING ACTIVE SESSION (SEAMLESS RELOAD) ───────────────────
+    if (isRestoringSession) {
+      return (
+        <div className="min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-4">
+          <Card className="w-full max-w-sm p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm rounded-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto border border-indigo-100 dark:border-indigo-900/40">
+              <RefreshCw size={24} className="animate-spin" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Memulihkan Sesi Ujian</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Menghubungkan kembali ke lembar soal dan menyinkronkan jawaban Anda...
+              </p>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
     // ─── RENDER 1: TOKEN GATEKEEPER ─────────────────────────────────────────────
     if (step === 'TOKEN_GATE') {
       return (
@@ -801,27 +1105,63 @@ export default function CbtExamRoomPage() {
             </span>
           </div>
 
-          {/* Status Network & Countdown Timer */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          {/* Status Network, Sinkronisasi Cloud, & Countdown Timer */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Status Jaringan Offline/Online */}
             <div
               className={`flex items-center gap-1.5 text-xs font-semibold ${
                 isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400 animate-pulse'
               }`}
-              title={isOnline ? 'Terhubung ke server' : 'Mode Offline (Jawaban tersimpan lokal di IndexedDB)'}
+              title={isOnline ? 'Terhubung ke jaringan' : 'Mode Offline: Jawaban tersimpan lokal di IndexedDB'}
             >
               {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
-              <span className="hidden md:inline">{isOnline ? 'Online' : 'Offline Buffer'}</span>
+              <span className="hidden md:inline">{isOnline ? 'Online' : 'Offline'}</span>
+            </div>
+
+            {/* Status Sinkronisasi Server / Cloud SSoT */}
+            <div
+              className={cn(
+                'flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all border',
+                syncStatus === 'synced' && 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+                syncStatus === 'syncing' && 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800 animate-pulse',
+                syncStatus === 'offline' && 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
+                syncStatus === 'error' && 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800'
+              )}
+              title={
+                syncStatus === 'synced'
+                  ? 'Seluruh jawaban tersinkronisasi aman ke server'
+                  : syncStatus === 'syncing'
+                  ? 'Sedang menyinkronkan jawaban ke server...'
+                  : syncStatus === 'offline'
+                  ? 'Koneksi offline: Jawaban aman di penyimpanan lokal perangkat'
+                  : 'Koneksi server tersendat: Jawaban aman di penyimpanan lokal'
+              }
+            >
+              {syncStatus === 'synced' ? (
+                <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400" />
+              ) : syncStatus === 'syncing' ? (
+                <RefreshCw size={12} className="animate-spin text-indigo-600 dark:text-indigo-400" />
+              ) : (
+                <CloudOff size={12} className="text-amber-600 dark:text-amber-400" />
+              )}
+              <span className="hidden lg:inline">
+                {syncStatus === 'synced'
+                  ? 'Tersimpan'
+                  : syncStatus === 'syncing'
+                  ? 'Menyimpan...'
+                  : 'Buffer Lokal'}
+              </span>
             </div>
 
             {/* Timer Display */}
             <div
-              className={`flex items-center gap-2 px-3 py-1 rounded-xl font-mono text-sm font-bold border transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl font-mono text-xs sm:text-sm font-bold border transition-colors ${
                 sisaWaktuDetik < 300
                   ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-600 text-rose-600 dark:text-rose-400 animate-pulse'
                   : 'bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-indigo-300'
               }`}
             >
-              <Clock size={16} />
+              <Clock size={15} />
               <span>{formatTimer(sisaWaktuDetik)}</span>
             </div>
 
@@ -829,7 +1169,10 @@ export default function CbtExamRoomPage() {
               type="button"
               variant="primary"
               size="sm"
-              onClick={() => setIsSubmitConfirmOpen(true)}
+              onClick={() => {
+                setSubmitError(null);
+                setIsSubmitConfirmOpen(true);
+              }}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 shadow-xs"
             >
               <Send size={13} className="mr-1.5" />
@@ -918,9 +1261,60 @@ export default function CbtExamRoomPage() {
                   </Button>
                 </div>
               </div>
+            ) : soalList.length === 0 ? (
+              /* Fallback Cerdas: Bebas Infinite Loading */
+              <div className="max-w-md mx-auto my-16 p-6 sm:p-8 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl text-center space-y-4 shadow-sm">
+                <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto border border-amber-200/80 dark:border-amber-900/60">
+                  <AlertTriangle size={28} />
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    Naskah Soal Belum Siap / Kosong
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Butir soal belum terunduh sempurna ke peramban atau paket bank soal belum diterbitkan. Silakan coba muat ulang atau laporkan kepada pengawas ruang.
+                  </p>
+                </div>
+                <div className="flex gap-2.5 justify-center pt-2">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={handleRecoverExamSession}
+                    disabled={loadingVerify}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+                  >
+                    <RefreshCw size={13} className={cn('mr-1.5', loadingVerify && 'animate-spin')} />
+                    <span>{loadingVerify ? 'Memuat...' : 'Muat Ulang Soal'}</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      clearSessionStorage();
+                      setStep('TOKEN_GATE');
+                    }}
+                    className="text-xs font-bold"
+                  >
+                    Kembali ke Depan
+                  </Button>
+                </div>
+              </div>
             ) : (
-              <div className="py-24 text-center">
+              /* Recovery jika currentIdx melebihi daftar soal */
+              <div className="py-20 text-center space-y-3">
                 <Loader size="lg" />
+                <p className="text-xs text-slate-400 font-medium">Menyiapkan lembar soal...</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentIdx(0)}
+                  className="text-xs"
+                >
+                  Buka Soal Nomor 1
+                </Button>
               </div>
             )}
           </main>
@@ -990,7 +1384,10 @@ export default function CbtExamRoomPage() {
               <Button
                 type="button"
                 variant="primary"
-                onClick={() => setIsSubmitConfirmOpen(true)}
+                onClick={() => {
+                  setSubmitError(null);
+                  setIsSubmitConfirmOpen(true);
+                }}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow-md"
               >
                 Kumpulkan Ujian Sekarang
@@ -1034,10 +1431,14 @@ export default function CbtExamRoomPage() {
         </div>
       </Modal>
 
-      {/* Modal Konfirmasi Submit Final */}
+      {/* Modal Konfirmasi & Pemulihan Submit Final (Resilient & Anti-Data Loss) */}
       <Modal
         isOpen={isSubmitConfirmOpen}
-        onClose={() => setIsSubmitConfirmOpen(false)}
+        onClose={() => {
+          if (!isSubmitting) {
+            setIsSubmitConfirmOpen(false);
+          }
+        }}
         title="Konfirmasi Pengumpulan Ujian"
         size="sm"
       >
@@ -1061,29 +1462,65 @@ export default function CbtExamRoomPage() {
             </div>
           </div>
 
+          {/* Banner Peringatan Gagal Submit (Jika Jaringan Terputus) */}
+          {submitError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200 space-y-1 animate-in fade-in">
+              <div className="flex items-center gap-1.5 font-bold text-rose-700 dark:text-rose-400">
+                <AlertCircle size={15} className="shrink-0" />
+                <span>Gagal Mengirim ke Server</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
+                {submitError}
+              </p>
+              <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 pt-1 border-t border-rose-200 dark:border-rose-800/60">
+                ✓ Seluruh jawaban Anda ({totalTerjawab} butir) tersimpan aman di IndexedDB perangkat ini. Jangan tutup peramban Anda dan tekan tombol di bawah untuk kirim ulang.
+              </p>
+            </div>
+          )}
+
           <p className="text-xs text-slate-600 dark:text-slate-400">
-            Apakah Anda yakin ingin menyelesaikan dan mengumpulkan ujian ini? Tindakan ini bersifat final dan tidak dapat dibatalkan.
+            {sisaWaktuDetik <= 0
+              ? 'Waktu pengerjaan ujian telah berakhir. Lembar jawaban Anda harus diserahkan ke server institusi.'
+              : 'Apakah Anda yakin ingin menyelesaikan dan mengumpulkan ujian ini? Tindakan ini bersifat final dan tidak dapat dibatalkan.'}
           </p>
 
           <div className="flex items-center gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsSubmitConfirmOpen(false)}
-              className="flex-1"
-            >
-              Lanjutkan Mengerjakan
-            </Button>
+            {sisaWaktuDetik > 0 && !submitError && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isSubmitting}
+                onClick={() => setIsSubmitConfirmOpen(false)}
+                className="flex-1 text-xs"
+              >
+                Lanjutkan Mengerjakan
+              </Button>
+            )}
             <Button
               type="button"
               variant="primary"
               size="sm"
               onClick={executeFinalSubmit}
               disabled={isSubmitting}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 font-bold text-white"
+              className={cn(
+                'flex-1 font-bold text-white text-xs',
+                submitError ? 'bg-rose-600 hover:bg-rose-700 w-full' : 'bg-emerald-600 hover:bg-emerald-700'
+              )}
             >
-              {isSubmitting ? 'Mengumpulkan...' : 'Ya, Kumpulkan'}
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-1.5">
+                  <RefreshCw size={13} className="animate-spin" />
+                  <span>Mengirimkan...</span>
+                </span>
+              ) : submitError ? (
+                <span className="flex items-center justify-center gap-1.5">
+                  <RefreshCw size={13} />
+                  <span>Coba Kirim Ulang</span>
+                </span>
+              ) : (
+                'Ya, Kumpulkan'
+              )}
             </Button>
           </div>
         </div>

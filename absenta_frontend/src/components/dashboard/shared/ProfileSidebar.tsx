@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Pencil, Eye, ChevronDown, ChevronRight, Diamond, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 /**
  * ProfileSidebar — Kartu profil di sisi kiri ala MyASN.
@@ -80,7 +81,14 @@ export const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
         {/* Avatar */}
         <div className="w-[72px] h-[72px] rounded-full mx-auto mb-3 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-600 shadow-sm relative z-10">
           {avatarUrl ? (
-            <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
+            <img
+              src={resolveProfilePhotoUrl(avatarUrl)}
+              alt={name}
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+              className="w-full h-full object-cover"
+            />
           ) : (
             <User className="w-8 h-8 text-blue-400 dark:text-slate-400" />
           )}

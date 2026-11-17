@@ -42,7 +42,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
   const [tipePelaksanaan, setTipePelaksanaan] = useState<'MASSAL' | 'MANDIRI'>('MASSAL');
   const [keterangan, setKeterangan] = useState('');
   const [lockTeacherScheduling, setLockTeacherScheduling] = useState(true);
-  const [tokenRefreshInterval, setTokenRefreshInterval] = useState(15);
+  const [tokenRefreshInterval, setTokenRefreshInterval] = useState(0);
   const [strictBrowserGuard, setStrictBrowserGuard] = useState(true);
   const [enableProctor, setEnableProctor] = useState(false);
   const [isActive, setIsActive] = useState(false);
@@ -466,10 +466,10 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
                 onChange={(e) => setTokenRefreshInterval(Number(e.target.value))}
                 className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                <option value={15}>Otomatis Berganti Tiap 15 Menit (Rekomendasi)</option>
+                <option value={0}>Manual / Token Statis Sepanjang Sesi (Default)</option>
+                <option value={15}>Otomatis Berganti Tiap 15 Menit</option>
                 <option value={30}>Otomatis Berganti Tiap 30 Menit</option>
                 <option value={60}>Otomatis Berganti Tiap 60 Menit</option>
-                <option value={0}>Manual / Token Statis Sepanjang Sesi</option>
               </select>
             </div>
 

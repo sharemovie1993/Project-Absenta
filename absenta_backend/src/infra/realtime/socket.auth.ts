@@ -1,4 +1,5 @@
 import * as jwt from 'jsonwebtoken';
+import { prisma } from '../../utils/prisma';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 
@@ -41,7 +42,19 @@ export function setupSocketAuth(
         const userId = decoded?.id || '';
         const userTenant = decoded?.tenantId || decoded?.tenant_id || '';
         const userRole = decoded?.roleName || decoded?.role?.name || (typeof decoded?.role === 'string' ? decoded.role : '') || (decoded?.Role?.name) || 'ADMIN';
-        const userName = decoded?.full_name || decoded?.fullName || decoded?.name || decoded?.username || 'Pengguna';
+        let userName = decoded?.full_name || decoded?.fullName || decoded?.name || decoded?.username;
+        if (!userName && userId) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: userId },
+              select: { full_name: true, email: true }
+            });
+            userName = dbUser?.full_name || dbUser?.email;
+          } catch (dbErr) {
+            // fallback silently
+          }
+        }
+        if (!userName) userName = 'Pengguna';
         if (!userRole) {
           fastify.log.warn('[WS AUTH] Unauthorized: missing role');
           return next(new Error('Unauthorized: missing role'));
@@ -122,7 +135,19 @@ export function setupSocketAuth(
         const userId = decoded?.id || '';
         const userTenant = decoded?.tenantId || decoded?.tenant_id || '';
         const userRole = decoded?.roleName || decoded?.role?.name || (typeof decoded?.role === 'string' ? decoded.role : '') || (decoded?.Role?.name) || 'ADMIN';
-        const userName = decoded?.full_name || decoded?.fullName || decoded?.name || decoded?.username || 'Pengguna';
+        let userName = decoded?.full_name || decoded?.fullName || decoded?.name || decoded?.username;
+        if (!userName && userId) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: userId },
+              select: { full_name: true, email: true }
+            });
+            userName = dbUser?.full_name || dbUser?.email;
+          } catch (dbErr) {
+            // fallback silently
+          }
+        }
+        if (!userName) userName = 'Pengguna';
         
         // Guard: Ensure provided tenantId (if any) matches token
         const providedTenantId = (socket.handshake.query as any)?.tenantId || (socket.handshake.auth as any)?.tenantId;

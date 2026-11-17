@@ -307,6 +307,8 @@ export const authSessionController = {
       const tokenPayload = {
         id: user.id,
         email: user.email,
+        full_name: user.full_name,
+        name: user.full_name,
         tenantId: user.tenant_id,
         roleId: user.role.id,
         roleName: user.role.name,
@@ -488,6 +490,8 @@ async refresh(request: any, reply: any) {
       const newToken = jwt.sign({
         id: dbUser.id,
         email: dbUser.email,
+        full_name: dbUser.full_name,
+        name: dbUser.full_name,
         tenantId: dbUser.tenant_id,
         roleId: dbUser.role_id,
         roleName: dbUser.Role?.name,
@@ -634,6 +638,8 @@ async impersonate(request: any, reply: any) {
       const tokenPayload = {
         id: targetAdminUser.id,
         email: targetAdminUser.email,
+        full_name: targetAdminUser.full_name,
+        name: targetAdminUser.full_name,
         tenantId: targetAdminUser.tenant_id,
         roleId: targetAdminUser.Role.id,
         roleName: targetAdminUser.Role.name,
@@ -643,6 +649,8 @@ async impersonate(request: any, reply: any) {
       const refreshTokenPayload = {
         id: targetAdminUser.id,
         email: targetAdminUser.email,
+        full_name: targetAdminUser.full_name,
+        name: targetAdminUser.full_name,
         tenantId: targetAdminUser.tenant_id,
         roleId: targetAdminUser.Role.id,
         roleName: targetAdminUser.Role.name,

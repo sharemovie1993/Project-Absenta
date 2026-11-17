@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axiosInstance';
 import type { CooperativeSettings } from '../settings/types';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface CoopDocumentKopProps {
   coopSettings?: CooperativeSettings | null;
@@ -44,7 +45,7 @@ export const CoopDocumentKop: React.FC<CoopDocumentKopProps> = React.memo(({
       {/* ── LOGO KOPERASI RESMI ────────────────────────────────────────── */}
       <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center shrink-0">
         <img
-          src={effectiveLogoUrl}
+          src={resolveProfilePhotoUrl(effectiveLogoUrl)}
           alt="Logo Koperasi"
           className="max-h-16 max-w-16 sm:max-h-20 sm:max-w-20 object-contain"
           onError={(e) => {

@@ -229,7 +229,14 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
             nama_hari: getNamaHariIndo(d.tanggal) || d.nama_hari,
           }))
         : createDefaultExamDays(defaultTodayStr, 5));
-    let effectiveMatrix: TimetableMatrixState = persisted?.matrix ? { ...persisted.matrix } : {};
+    // Prioritaskan draft matriks dari Cloud Server (DB SSoT), fallback ke localStorage
+    const serverMatrixDraft = activeEvent?.matrix_draft && typeof activeEvent.matrix_draft === 'object' && Object.keys(activeEvent.matrix_draft).length > 0
+      ? activeEvent.matrix_draft
+      : null;
+
+    let effectiveMatrix: TimetableMatrixState = serverMatrixDraft
+      ? { ...serverMatrixDraft }
+      : (persisted?.matrix ? { ...persisted.matrix } : {});
 
     // B. Rekonstruksi & Sinkronisasi dari Jadwal Database (SSoT Tertinggi jika sudah pernah diterbitkan)
     if (existingSchedules && existingSchedules.length > 0 && bankList.length > 0) {
@@ -300,7 +307,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
 
     try {
       setIsSavingTimeConfig(true);
-      toast.loading('Menyimpan format tanggal & jam sesi ke server...', { id: 'save-time-config' });
+      toast.loading('Menyimpan format tanggal, jam sesi & rancangan mapel ke server...', { id: 'save-time-config' });
       await cbtApi.upsertEvent({
         id: activeEvent.id,
         nama_event: activeEvent.nama_event,
@@ -316,6 +323,8 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
         enable_proctor: activeEvent.enable_proctor,
         is_active: activeEvent.is_active ?? true,
         days_config: days,
+        room_mappings: activeEvent.room_mappings,
+        matrix_draft: matrix,
       });
 
       // Simpan juga ke local storage sebagai backup draft
@@ -328,7 +337,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       );
 
       toast.success(
-        `Format waktu & sesi (${days.length} hari) berhasil disimpan ke Server! Panitia lain kini dapat melihat jadwal waktu yang sama.`,
+        `Jadwal waktu & rancangan sesi (${days.length} hari) berhasil disimpan ke Server! Komputer lain kini langsung tersinkronkan.`,
         { id: 'save-time-config', duration: 4000 }
       );
       await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.eventsSummary() });
@@ -676,7 +685,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
 
           if (field === 'jam_mulai') {
             const newStart = String(value);
-            const currentDur = s.durasi_menit || 90;
+            const currentDur = s.durasi_menit || 60;
             const autoEnd = addMinutesToTime(newStart, currentDur);
             return {
               ...s,
@@ -697,7 +706,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
           }
 
           if (field === 'durasi_menit') {
-            const numDur = Math.max(15, Number(value) || 90);
+            const numDur = Math.max(15, Number(value) || 60);
             const autoEnd = addMinutesToTime(s.jam_mulai, numDur);
             return {
               ...s,
@@ -747,14 +756,14 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
         const lastSess = d.sessions[d.sessions.length - 1];
         const nextIdx = (lastSess?.session_index || 0) + 1;
         const defaultStart = lastSess ? addMinutesToTime(lastSess.jam_selesai, 30) : '07:30';
-        const defaultEnd = addMinutesToTime(defaultStart, 90);
+        const defaultEnd = addMinutesToTime(defaultStart, 60);
 
         const newSession: ExamSessionSlot = {
           session_index: nextIdx,
           nama_sesi: `Sesi ${nextIdx}`,
           jam_mulai: defaultStart,
           jam_selesai: defaultEnd,
-          durasi_menit: 90,
+          durasi_menit: 60,
         };
 
         return {
@@ -778,14 +787,14 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       return prev.map((d) => {
         const lastSess = d.sessions[d.sessions.length - 1];
         const defaultStart = lastSess ? addMinutesToTime(lastSess.jam_selesai, 30) : '07:30';
-        const defaultEnd = addMinutesToTime(defaultStart, 90);
+        const defaultEnd = addMinutesToTime(defaultStart, 60);
 
         const newSession: ExamSessionSlot = {
           session_index: nextIdx,
           nama_sesi: `Sesi ${nextIdx}`,
           jam_mulai: defaultStart,
           jam_selesai: defaultEnd,
-          durasi_menit: 90,
+          durasi_menit: 60,
         };
 
         return {
@@ -845,8 +854,8 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
           nama_hari: getNamaHariIndo(dateStr) || `Hari ke-${prev.length + 1}`,
           tanggal: dateStr,
           sessions: last?.sessions || [
-            { session_index: 1, nama_sesi: 'Sesi 1', jam_mulai: '07:30', jam_selesai: '09:00', durasi_menit: 90 },
-            { session_index: 2, nama_sesi: 'Sesi 2', jam_mulai: '09:30', jam_selesai: '11:00', durasi_menit: 90 },
+            { session_index: 1, nama_sesi: 'Sesi 1', jam_mulai: '07:30', jam_selesai: '08:30', durasi_menit: 60 },
+            { session_index: 2, nama_sesi: 'Sesi 2', jam_mulai: '09:00', jam_selesai: '10:00', durasi_menit: 60 },
           ],
         },
       ];

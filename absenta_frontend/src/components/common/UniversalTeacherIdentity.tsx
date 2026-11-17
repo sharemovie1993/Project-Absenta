@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTeacherIdentity } from '@/hooks/useAcademicIdentity';
 import type { TeacherIdentity } from '@/utils/academic/academicIdentityNormalizer';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import {
   Briefcase,
   Award,
@@ -66,7 +66,7 @@ export const UniversalTeacherIdentity: React.FC<UniversalTeacherIdentityProps> =
         <div className="w-[24mm] h-[32mm] border-[1.5px] border-black bg-white flex flex-col items-center justify-center text-center text-black shrink-0 overflow-hidden select-none">
           {hasRealPhoto ? (
             <img
-              src={identity.fotoUrl!}
+              src={resolveProfilePhotoUrl(identity.fotoUrl)}
               alt={identity.nama}
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}
@@ -86,7 +86,7 @@ export const UniversalTeacherIdentity: React.FC<UniversalTeacherIdentityProps> =
         <div className="w-12 h-12 rounded-2xl overflow-hidden ring-2 ring-emerald-500/20 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-sm">
           {hasRealPhoto ? (
             <img
-              src={identity.fotoUrl!}
+              src={resolveProfilePhotoUrl(identity.fotoUrl)}
               alt={identity.nama}
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}

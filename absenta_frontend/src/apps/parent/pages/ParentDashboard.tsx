@@ -9,7 +9,7 @@ import { Bell, ChevronRight, LogOut, Activity, UserCheck, Award, FileText, Messa
 import ReportAbsenceModal from '../components/ReportAbsenceModal';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Button } from '@/components/ui/Button';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 export default function ParentDashboard() {
   const {
@@ -288,7 +288,7 @@ export default function ParentDashboard() {
             {/* Right Badge: Connected Student Profile Card */}
             <div className="p-2.5 px-3.5 rounded-2xl bg-black/20 backdrop-blur-md border border-white/20 flex items-center gap-3 shrink-0 self-start md:self-auto shadow-inner">
               <div className="w-11 h-11 rounded-xl bg-white/20 text-white font-black text-sm flex items-center justify-center border border-white/30 shadow-xs overflow-hidden">
-                {student.foto ? <img src={student.foto} alt={student.nama_siswa} className="w-full h-full object-cover" /> : <span className="font-black text-xs">{childInitials}</span>}
+                {student.foto ? <img src={resolveProfilePhotoUrl(student.foto)} alt={student.nama_siswa} className="w-full h-full object-cover" /> : <span className="font-black text-xs">{childInitials}</span>}
               </div>
               <div>
                 <span className="text-[9px] font-black text-amber-200 uppercase tracking-widest block">

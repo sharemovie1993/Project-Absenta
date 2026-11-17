@@ -144,7 +144,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
   const [namaSesi, setNamaSesi] = useState('');
   const [tanggalMulai, setTanggalMulai] = useState('');
   const [tanggalSelesai, setTanggalSelesai] = useState('');
-  const [durasiMenit, setDurasiMenit] = useState<number>(90);
+  const [durasiMenit, setDurasiMenit] = useState<number>(60);
   const [toleransiMenit, setToleransiMenit] = useState<number>(15);
   const [targetKelasIds, setTargetKelasIds] = useState<string[]>([]);
   const [blockTabSwitch, setBlockTabSwitch] = useState(true);
@@ -242,7 +242,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           : `Sesi Ujian ${now.toLocaleDateString('id-ID', { month: 'short', day: '2-digit', timeZone: activeTz })}`
       );
       setTanggalMulai(startStr);
-      const defaultDuration = targetBank?.alokasi_menit || 90;
+      const defaultDuration = targetBank?.alokasi_menit || 60;
       setTanggalSelesai(computeEndFromStart(startStr, defaultDuration, activeTz));
       setDurasiMenit(defaultDuration);
       setToleransiMenit(15);
@@ -274,7 +274,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
             return prev;
           });
           if (b.alokasi_menit) {
-            setDurasiMenit((prev) => (prev === 90 ? b.alokasi_menit : prev));
+            setDurasiMenit((prev) => (prev === 90 || prev === 60 ? b.alokasi_menit : prev));
           }
         }
       } else if (bankSoalOptions.length === 1 && !bankSoalId) {
@@ -422,6 +422,7 @@ export const CbtJadwalFormModal: React.FC<CbtJadwalFormModalProps> = ({
           show_result_instant: showResultInstant,
           auto_transfer_rapor: autoTransferRapor,
           target_rapor_slot: autoTransferRapor ? targetRaporSlot : null,
+          token_refresh_interval: 0,
           created_by_guru_id: teacherGuruId || null,
           kelas_room_map: kelasRoomMap,
           room_mappings: kelasRoomMap,

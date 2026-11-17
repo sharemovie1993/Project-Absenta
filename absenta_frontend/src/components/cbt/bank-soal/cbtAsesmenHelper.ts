@@ -421,9 +421,10 @@ export function generateAutoFillMassal(params: {
   targetMapelId: string;
   targetTingkat: string;
   targetKegiatanKey: string;
+  targetJurusan?: string;
   jenjang?: string;
 }): { kodeBank: string; judul: string } {
-  const { mapelOptions, targetMapelId, targetTingkat, targetKegiatanKey, jenjang } = params;
+  const { mapelOptions, targetMapelId, targetTingkat, targetKegiatanKey, targetJurusan, jenjang } = params;
   const selectedMapel = mapelOptions.find((m) => m.value === targetMapelId);
   const mapelLabel = selectedMapel?.label || 'Mata Pelajaran';
   const mapelName = mapelLabel.split('(')[0]?.trim() || 'Mata Pelajaran';
@@ -437,12 +438,16 @@ export function generateAutoFillMassal(params: {
   const romanTingkat = getTingkatRoman(targetTingkat);
   const isSemua = !targetTingkat || targetTingkat.toUpperCase() === 'SEMUA';
 
+  const cleanJurusan = (targetJurusan || '').trim().toUpperCase();
+  const jurSuffix = cleanJurusan ? `-${cleanJurusan}` : '';
+  const jurTitle = cleanJurusan ? ` (${cleanJurusan})` : '';
+
   const generatedCode = isSemua
-    ? `${prefix}-${year}-${mapelShortCode}`
-    : `${prefix}-${year}-${mapelShortCode}-${romanTingkat}`;
+    ? `${prefix}-${year}-${mapelShortCode}${jurSuffix}`
+    : `${prefix}-${year}-${mapelShortCode}-${romanTingkat}${jurSuffix}`;
   const generatedTitle = isSemua
-    ? `${prefix} - ${mapelName}`
-    : `${prefix} - ${mapelName} Tingkat ${romanTingkat}`;
+    ? `${prefix} - ${mapelName}${jurTitle}`
+    : `${prefix} - ${mapelName} Tingkat ${romanTingkat}${jurTitle}`;
 
   return { kodeBank: generatedCode, judul: generatedTitle };
 }
@@ -492,5 +497,6 @@ export const cbtBankSoalPayloadSchema = z.object({
   guru_id: z.string().min(1, 'Guru pembuat/penyusun soal wajib dipilih'),
   mapel_id: z.string().min(1, 'Mata pelajaran wajib dipilih'),
   tingkat: z.string().min(1, 'Pilih tingkat/kelas bank soal'),
+  jurusan: z.string().optional().nullable(),
   alokasi_menit: z.number().int().min(10, 'Alokasi durasi minimal 10 menit').max(300),
 });

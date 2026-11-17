@@ -60,7 +60,15 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
   const rawLogoUrl = (systemConfig as any)?.logo_url;
   const resolvedLogoUrl = rawLogoUrl ? resolveProfilePhotoUrl(rawLogoUrl) : null;
   const { user, subscription, tenantMode, logout } = useAuthStore();
-  const rawUserPhoto = user?.profile_photo_url || (user as any)?.avatar || (user?.guru_profile as any)?.foto_url;
+  const rawUserPhoto =
+    user?.profile_photo_url ||
+    (user as any)?.foto ||
+    (user as any)?.foto_url ||
+    (user as any)?.avatar ||
+    (user?.guru_profile as any)?.foto_url ||
+    (user?.guru_profile as any)?.foto ||
+    (user?.siswa_profile as any)?.foto ||
+    (user?.siswa_profile as any)?.foto_url;
   const userPhoto = rawUserPhoto ? resolveProfilePhotoUrl(rawUserPhoto) : null;
   const userInitial = (user?.full_name || (user as any)?.name || 'U').slice(0, 1).toUpperCase();
 

@@ -28,6 +28,7 @@ import {
   SertifikatPklPrintData 
 } from '../../utils/print/modules/pdfSertifikatPkl';
 import { resolveCoverImageBase64 } from '../../utils/print/rapor/raporShared';
+import { resolveProfilePhotoUrl } from '../../lib/utils';
 import { 
   PengaturanCetakSertifikatModal, 
   SertifikatPklPrintSettings, 
@@ -580,7 +581,7 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                 {/* Photo 3x4 Box */}
                 <div className="w-[114px] h-[152px] border border-slate-950 flex flex-col items-center justify-center text-slate-600 ml-6 bg-slate-50 font-sans text-xs">
                   {certData.siswa.foto ? (
-                    <img src={certData.siswa.foto} alt="Pasfoto Siswa" className="w-full h-full object-cover" />
+                    <img src={resolveProfilePhotoUrl(certData.siswa.foto)} alt="Pasfoto Siswa" className="w-full h-full object-cover" />
                   ) : (
                     <>
                       <span>foto</span>
@@ -871,7 +872,7 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
             <div className="flex items-end justify-between pt-4">
               <div className="w-[30mm] h-[40mm] border border-black flex flex-col items-center justify-center text-black text-[9pt] font-sans ml-6">
                 {certData.siswa.foto ? (
-                  <img src={certData.siswa.foto} alt="Pasfoto" className="w-full h-full object-cover" />
+                  <img src={resolveProfilePhotoUrl(certData.siswa.foto)} alt="Pasfoto" className="w-full h-full object-cover" />
                 ) : (
                   <><span>foto</span><span>3x4</span></>
                 )}

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { StudentCardConfig } from './types';
 import { MM_TO_PX, EDITOR_SCALE } from './constants';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface CardBackPreviewProps {
     config: StudentCardConfig;
@@ -88,7 +89,7 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = React.memo(({ con
                 >
                     {config.logo_url ? (
                         <img 
-                            src={config.logo_url} 
+                            src={resolveProfilePhotoUrl(config.logo_url)} 
                             crossOrigin="anonymous"
                             alt="Logo" 
                             style={{ 
@@ -185,7 +186,7 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = React.memo(({ con
                         {/* Stamp Image */}
                         {config.back_stamp_image_url && (
                             <img 
-                                src={config.back_stamp_image_url} 
+                                src={resolveProfilePhotoUrl(config.back_stamp_image_url)} 
                                 crossOrigin="anonymous"
                                 alt="Stempel"
                                 style={{
@@ -205,7 +206,7 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = React.memo(({ con
                         {/* Signature Image */}
                         {config.back_signature_image_url && (
                             <img 
-                                src={config.back_signature_image_url} 
+                                src={resolveProfilePhotoUrl(config.back_signature_image_url)} 
                                 crossOrigin="anonymous"
                                 alt="Tanda Tangan"
                                 style={{

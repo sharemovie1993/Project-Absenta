@@ -8,6 +8,8 @@ export interface UserPayload {
   tenantId?: string;
   roleId: string;
   roleName: RoleName;
+  full_name?: string;
+  name?: string;
 }
 
 export interface DataScope {

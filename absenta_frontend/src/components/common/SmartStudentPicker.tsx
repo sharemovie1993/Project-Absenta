@@ -8,6 +8,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+import { resolveProfilePhotoUrl } from '../../lib/utils';
 import toast from 'react-hot-toast';
 
 export interface Student {
@@ -366,7 +367,7 @@ export const SmartStudentPicker = React.forwardRef(function SmartStudentPicker(
                 >
                   <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 shrink-0 overflow-hidden">
                     {item.foto_profile_url ? (
-                      <img src={item.foto_profile_url} alt="" className="w-full h-full object-cover" />
+                      <img src={resolveProfilePhotoUrl(item.foto_profile_url)} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <User size={18} />
                     )}

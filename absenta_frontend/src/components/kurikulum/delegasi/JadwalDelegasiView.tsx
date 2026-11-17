@@ -107,12 +107,14 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
     queryKey: ['guru-all-delegasi'],
     queryFn: () => getGuruList(1, 300),
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: mapelListRes } = useQuery({
     queryKey: ['mapel-all-delegasi'],
     queryFn: () => getMapelList(1, 300),
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const guruOptions = useMemo(() => {
@@ -132,7 +134,8 @@ export const JadwalDelegasiView: React.FC<UniversalJadwalDelegasiViewProps> = ({
       ...(academic.selectedTahunPelajaran ? { tahun_pelajaran_id: academic.selectedTahunPelajaran } : {}),
       ...(academic.selectedSemester ? { semester_id: academic.selectedSemester } : {}),
     }),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const rawJadwalList: JadwalKBM[] = useMemo(() => {

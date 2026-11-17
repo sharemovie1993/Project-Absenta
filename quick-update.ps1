@@ -1,4 +1,4 @@
-# Script Update Cepat (Tanpa Wizard) - Project Absenta
+﻿# Script Update Cepat (Tanpa Wizard) - Project Absenta
 # Hanya Pull, Build, dan Restart PM2
 
 $ErrorActionPreference = "Stop"
@@ -106,6 +106,20 @@ pm2 start ecosystem.config.js --update-env
 # Cleanup
 Remove-Item -Path "$appRoot\absenta_backend\dist_old" -Recurse -Force -ErrorAction SilentlyContinue
 
+# 6. Verifikasi & Kunci Tuning Redis (CBT High-Concurrency Guard)
+Write-Host "[6/6] Memverifikasi Enterprise Tuning Redis..." -ForegroundColor Yellow
+try {
+    if (Get-Command redis-cli -ErrorAction SilentlyContinue) {
+        redis-cli config set maxmemory 4gb | Out-Null
+        redis-cli config set maxmemory-policy volatile-lru | Out-Null
+        redis-cli config rewrite | Out-Null
+        Write-Host "✅ Redis Enterprise Tuning Terkunci (maxmemory: 4GB, policy: volatile-lru)." -ForegroundColor Green
+    } else {
+        Write-Host "ℹ️  Redis auto-tuning aktif secara otomatis via absenta-redis service." -ForegroundColor Cyan
+    }
+} catch {
+    Write-Host "ℹ️  Redis tuning dikelola otomatis oleh runtime PM2 absenta-redis." -ForegroundColor Gray
+}
+
 Write-Host "=== UPDATE BERHASIL SELESAI! ===" -ForegroundColor Green
-Read-Host "Tekan [ENTER] untuk menutup..."
 Read-Host "Tekan [ENTER] untuk menutup..."

@@ -168,6 +168,7 @@ export const RekapKBMView: React.FC<UniversalRekapKBMViewProps> = React.memo(({
         })
         .catch(() => null),
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const guruDataList = useMemo(() => {

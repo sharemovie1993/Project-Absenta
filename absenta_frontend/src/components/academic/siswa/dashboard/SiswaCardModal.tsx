@@ -5,7 +5,7 @@ import { PreviewCard } from '@/components/academic/student-card/PreviewCard';
 import { CardBackPreview } from '@/components/academic/student-card/CardBackPreview';
 import { PrintableCard } from '@/components/academic/student-card/PrintableCard';
 import { CardBackPrint } from '@/components/academic/student-card/CardBackPrint';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 
 export interface SiswaCardModalProps {
   isOpen: boolean;
@@ -100,7 +100,7 @@ export const SiswaCardModal: React.FC<SiswaCardModalProps> = ({
                 <div className="flex items-center justify-between gap-3 border-b border-white/15 pb-3">
                   <div className="flex items-center gap-3">
                     {dynamicLogoUrl ? (
-                      <img src={dynamicLogoUrl} alt="Logo Sekolah" className="w-10 h-10 rounded-xl object-contain bg-white p-0.5 shadow-md shrink-0" />
+                      <img src={resolveProfilePhotoUrl(dynamicLogoUrl)} alt="Logo Sekolah" className="w-10 h-10 rounded-xl object-contain bg-white p-0.5 shadow-md shrink-0" />
                     ) : (
                       <div className="w-10 h-10 rounded-xl bg-white text-emerald-700 font-black text-xl flex items-center justify-center shadow-md shrink-0">
                         {sekolahName ? sekolahName.charAt(0) : 'A'}
@@ -122,7 +122,7 @@ export const SiswaCardModal: React.FC<SiswaCardModalProps> = ({
                   <div className="relative shrink-0">
                     {studentPhotoUrl ? (
                       <img
-                        src={studentPhotoUrl}
+                        src={resolveProfilePhotoUrl(studentPhotoUrl)}
                         alt={siswaProfile?.nama}
                         onError={(e) => {
                           (e.target as HTMLElement).style.display = 'none';

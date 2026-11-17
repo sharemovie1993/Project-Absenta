@@ -349,9 +349,11 @@ export const SiswaCbtTab: React.FC = () => {
   } = useQuery({
     queryKey: cbtQueryKeys.myExams(),
     queryFn: cbtApi.getMyExams,
-    staleTime: 15000,
-    refetchInterval: 30000, // pantau ujian yang baru diaktifkan pengawas
-    refetchOnWindowFocus: true,
+    staleTime: 30000,
+    // Polling dengan interval 45 detik untuk menghindari thundering herd pada 1,400+ siswa
+    refetchInterval: 45000,
+    // Cegah mobile wake-up stampede saat siswa HP mengunci/membuka layar
+    refetchOnWindowFocus: false,
   });
 
   const counts = useMemo(
@@ -418,7 +420,21 @@ export const SiswaCbtTab: React.FC = () => {
     return Math.round(max * 10) / 10;
   }, [finishedWithScore]);
 
-  const goToExamRoom = () => navigate('/cbt/ruang-ujian');
+  const goToExamRoom = useCallback(
+    (item?: CbtStudentExamItem) => {
+      if (item?.id) {
+        const params = new URLSearchParams();
+        params.set('jadwal_id', item.id);
+        if (item.token_ujian) {
+          params.set('token', item.token_ujian);
+        }
+        navigate(`/cbt/ruang-ujian?${params.toString()}`);
+      } else {
+        navigate('/cbt/ruang-ujian');
+      }
+    },
+    [navigate]
+  );
 
   return (
     <div className="space-y-3">
@@ -802,7 +818,7 @@ export const SiswaCbtTab: React.FC = () => {
                     {/* Tombol Utama: Kerjakan Ujian (Fokus Aksi) */}
                     <button
                       type="button"
-                      onClick={goToExamRoom}
+                      onClick={() => goToExamRoom(item)}
                       disabled={isPaused}
                       className={cn(
                         'w-full py-3 px-4 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-98',

@@ -12,6 +12,8 @@ import {
   Rocket,
   X,
   Layers,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
@@ -94,11 +96,21 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
     return map;
   }, [availableUnits]);
 
-  // Fetch list of questions for this bank
-  const { data: soalList = [], isLoading, refetch } = useQuery({
+  // Fetch list of questions for this bank with robust network resilience
+  const {
+    data: soalList = [],
+    isLoading,
+    isError,
+    error: soalError,
+    refetch,
+  } = useQuery({
     queryKey: cbtQueryKeys.soalList(bankSoal?.id || ''),
     queryFn: () => (bankSoal?.id ? cbtApi.getSoalList(bankSoal.id) : Promise.resolve([])),
     enabled: Boolean(isOpen && bankSoal?.id),
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 3000),
   });
 
   // Jika bank soal masih kosong dan tidak readOnly, langsung buka kartu Soal #1 secara inline
@@ -309,6 +321,29 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
               <div className="py-16 flex flex-col items-center justify-center space-y-3 bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-800">
                 <Loader size="lg" className="text-indigo-600" />
                 <p className="text-xs font-bold text-slate-500">Memuat daftar soal...</p>
+              </div>
+            ) : isError ? (
+              <div className="py-12 px-6 flex flex-col items-center justify-center text-center space-y-3 bg-white dark:bg-slate-900 rounded-2xl shadow-xs border border-rose-200/80 dark:border-rose-900/50">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                  <AlertCircle size={24} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Gagal Mengambil Butir Soal
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
+                    {(soalError as any)?.response?.data?.message || (soalError as any)?.message || 'Terjadi gangguan jaringan saat memuat daftar pertanyaan.'}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => refetch()}
+                  className="mt-2 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw size={13} />
+                  <span>Coba Lagi</span>
+                </Button>
               </div>
             ) : (
               <>

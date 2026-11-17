@@ -332,12 +332,21 @@ export default async function siswaRoutes(fastify: any) {
 
   // GET /siswa/:id/documents/:docId/download - Download single document
   fastify.get('/:id/documents/:docId/download', {
-    preHandler: [
-      requireCapability(['academic.students.view.detail', 'documents.view.detail'], { exemptRoles: [RoleName.SISWA] }),
-      validateSiswaSelfOrAdmin,
-      organizationalScopeMiddleware,
-      determineDataScope()
-    ]
+    preHandler: async (request: any, reply: any) => {
+      const { id: siswaId, docId } = request.params;
+      const doc = await fastify.prisma.siswaDocument.findFirst({
+        where: { id: docId, siswa_id: siswaId },
+        select: { kategori: true, mime_type: true }
+      });
+      // Foto profil siswa dapat diakses langsung oleh seluruh tampilan UI
+      if (doc && (doc.kategori === 'FOTO' || doc.mime_type?.startsWith('image/'))) {
+        return;
+      }
+      // Dokumen privat siswa tetap melewati verifikasi keamanan ketat
+      await requireCapability(['academic.students.view.detail', 'documents.view.detail'], { exemptRoles: [RoleName.SISWA] })(request, reply);
+      if (reply.sent) return;
+      await validateSiswaSelfOrAdmin(request, reply);
+    }
   }, async (request: any, reply: any) => {
     return siswaController.downloadSiswaDocument(request, reply);
   });

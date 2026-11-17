@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { FileText, CheckCircle } from 'lucide-react';
 import { SectionCard } from '../../ui';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface KopSuratPreviewProps {
   cooperativeName: string;
@@ -39,7 +40,7 @@ export const KopSuratPreview = React.memo<KopSuratPreviewProps>(({
         <div className="flex gap-4 items-start border-b border-dashed border-slate-200 dark:border-slate-800/60 pb-3">
           <div className="w-12 h-12 bg-white rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center p-1 shrink-0 overflow-hidden shadow-sm">
             <img 
-              src={effectiveLogoUrl} 
+              src={resolveProfilePhotoUrl(effectiveLogoUrl)} 
               alt="Logo Preview" 
               className="w-full h-full object-contain"
               onError={(e) => {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useStudentIdentity } from '@/hooks/useAcademicIdentity';
 import type { StudentIdentity } from '@/utils/academic/academicIdentityNormalizer';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import {
   GraduationCap,
   Calendar,
@@ -92,7 +92,7 @@ export const UniversalStudentIdentity: React.FC<UniversalStudentIdentityProps> =
         >
           {hasRealPhoto ? (
             <img
-              src={identity.fotoUrl!}
+              src={resolveProfilePhotoUrl(identity.fotoUrl)}
               alt={identity.nama}
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}
@@ -114,7 +114,7 @@ export const UniversalStudentIdentity: React.FC<UniversalStudentIdentityProps> =
         <div className="w-12 h-12 rounded-2xl overflow-hidden ring-2 ring-indigo-500/20 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-sm">
           {hasRealPhoto ? (
             <img
-              src={identity.fotoUrl!}
+              src={resolveProfilePhotoUrl(identity.fotoUrl)}
               alt={identity.nama}
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}

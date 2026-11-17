@@ -5843,7 +5843,7 @@ model CbtBankSoal {
   tingkat            String        // 'X' | 'XI' | 'XII' | 'SEMUA'
   jurusan            String?       // Nama jurusan atau null untuk semua jurusan
   jumlah_soal        Int           @default(0)
-  alokasi_menit      Int           @default(90)
+  alokasi_menit      Int           @default(60)
   acak_soal          Boolean       @default(true)
   acak_opsi          Boolean       @default(true)
   status             CbtBankStatus @default(DRAFT)
@@ -5922,7 +5922,7 @@ model CbtJadwalUjian {
   token_ujian               String          @db.VarChar(10)
   tanggal_mulai             DateTime        @db.Timestamptz
   tanggal_selesai           DateTime        @db.Timestamptz
-  durasi_menit              Int             @default(90)
+  durasi_menit              Int             @default(60)
   toleransi_terlambat_menit Int             @default(15)
   status                    CbtJadwalStatus @default(DRAFT)
   waktu_diaktifkan          DateTime?       @db.Timestamptz // Dicatat saat pengawas klik "Aktifkan Sesi"

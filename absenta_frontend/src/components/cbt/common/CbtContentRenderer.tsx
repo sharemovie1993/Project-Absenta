@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ZoomIn, X, ImageIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface CbtContentRendererProps {
   content: string;
@@ -45,7 +45,7 @@ export const CbtContentRenderer: React.FC<CbtContentRendererProps> = ({
         <div className="mt-3 inline-block">
           <div className="relative group rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-white p-1.5 max-w-md shadow-xs">
             <img
-              src={imageUrl}
+              src={resolveProfilePhotoUrl(imageUrl)}
               alt={imageAlt}
               decoding="async"
               className="max-h-64 object-contain rounded-lg transition-transform duration-200 group-hover:scale-[1.02] cursor-pointer bg-white"
@@ -84,7 +84,7 @@ export const CbtContentRenderer: React.FC<CbtContentRendererProps> = ({
               <X size={16} />
             </button>
             <img
-              src={imageUrl}
+              src={resolveProfilePhotoUrl(imageUrl)}
               alt={imageAlt}
               decoding="async"
               className="max-h-[80vh] w-auto object-contain rounded-xl bg-white"

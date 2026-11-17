@@ -16,13 +16,13 @@ import toast from 'react-hot-toast';
 import type { PklTabId, PklNavTabItem, PklDashboardStats, SiswaBimbinganItem, KunjunganMonitoringItem } from './pembimbing-pkl/types';
 import { PembimbingPklDashboardSkeleton } from './pembimbing-pkl/PembimbingPklDashboardSkeleton';
 
-// Subtabs
-import { PklRingkasanTab } from './pembimbing-pkl/tabs/PklRingkasanTab';
-import { PklBimbinganTab } from './pembimbing-pkl/tabs/PklBimbinganTab';
-import { PklJurnalTab } from './pembimbing-pkl/tabs/PklJurnalTab';
-import { PklMonitoringTab } from './pembimbing-pkl/tabs/PklMonitoringTab';
-import { PklPenilaianTab } from './pembimbing-pkl/tabs/PklPenilaianTab';
-import { PklRekapTab } from './pembimbing-pkl/tabs/PklRekapTab';
+// Lazy-loaded Subtabs with Suspense (Pilar 21B & TBT Optimization)
+const PklRingkasanTab = lazy(() => import('./pembimbing-pkl/tabs/PklRingkasanTab').then(m => ({ default: m.PklRingkasanTab })));
+const PklBimbinganTab = lazy(() => import('./pembimbing-pkl/tabs/PklBimbinganTab').then(m => ({ default: m.PklBimbinganTab })));
+const PklJurnalTab = lazy(() => import('./pembimbing-pkl/tabs/PklJurnalTab').then(m => ({ default: m.PklJurnalTab })));
+const PklMonitoringTab = lazy(() => import('./pembimbing-pkl/tabs/PklMonitoringTab').then(m => ({ default: m.PklMonitoringTab })));
+const PklPenilaianTab = lazy(() => import('./pembimbing-pkl/tabs/PklPenilaianTab').then(m => ({ default: m.PklPenilaianTab })));
+const PklRekapTab = lazy(() => import('./pembimbing-pkl/tabs/PklRekapTab').then(m => ({ default: m.PklRekapTab })));
 import { extractLogbooksFromPenempatan, rejectLogbookAction, mapSiswaBimbingan } from './pembimbing-pkl/logbookUtils';
 import { 
   UniversalMobileSubtabSidebar, 
@@ -133,6 +133,8 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
       const allRes = await hubinApi.getPenempatan({ limit: 50 }).catch(() => ({ data: [] }));
       return allRes?.data || [];
     },
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const handleRefresh = async () => {
@@ -529,12 +531,12 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
               <>
                 {visitedTabs.has('ringkasan') && (
                   <div className={cn(activeTab === 'ringkasan' ? 'block' : 'hidden')}>
-                    <PklRingkasanTab stats={stats} tpTahun={tpTahun} semesterNama={semesterNama} onSelectTab={handleTabSelect} onOpenSiswaDetail={(s) => { setModalInitialTab('presensi'); setSelectedDetailSiswa(s); }} />
+                    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat ringkasan bimbingan...</div>}><PklRingkasanTab stats={stats} tpTahun={tpTahun} semesterNama={semesterNama} onSelectTab={handleTabSelect} onOpenSiswaDetail={(s) => { setModalInitialTab('presensi'); setSelectedDetailSiswa(s); }} /></Suspense>
                   </div>
                 )}
                 {visitedTabs.has('bimbingan') && (
                   <div className={cn(activeTab === 'bimbingan' ? 'block' : 'hidden')}>
-                    <PklBimbinganTab guruId={guruId} tahunPelajaranId={tpId} semesterId={academicFilter.values.semesterId} siswaList={siswaList} onOpenSiswaDetail={(s) => { setModalInitialTab('presensi'); setSelectedDetailSiswa(s); }} onOpenKunjunganModal={() => handleTabSelect('monitoring')} />
+                    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat data bimbingan siswa...</div>}><PklBimbinganTab guruId={guruId} tahunPelajaranId={tpId} semesterId={academicFilter.values.semesterId} siswaList={siswaList} onOpenSiswaDetail={(s) => { setModalInitialTab('presensi'); setSelectedDetailSiswa(s); }} onOpenKunjunganModal={() => handleTabSelect('monitoring')} /></Suspense>
                   </div>
                 )}
                 {visitedTabs.has('verifikasi_absensi') && (
@@ -553,7 +555,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                 )}
                 {visitedTabs.has('jurnal') && (
                   <div className={cn(activeTab === 'jurnal' ? 'block' : 'hidden')}>
-                    <PklJurnalTab
+                    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat jurnal siswa...</div>}><PklJurnalTab
                       siswaList={siswaList}
                       logbookList={logbookList}
                       onApproveLogbook={handleApproveLogbook}
@@ -562,28 +564,28 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                         const target = siswaList.find((s) => s.id === pId);
                         if (target) { setModalInitialTab('logbook'); setSelectedDetailSiswa(target); }
                       }}
-                    />
+                    /></Suspense>
                   </div>
                 )}
                 {visitedTabs.has('monitoring') && (
                   <div className={cn(activeTab === 'monitoring' ? 'block' : 'hidden')}>
-                    <PklMonitoringTab
+                    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat monitoring industri...</div>}><PklMonitoringTab
                       key={monitoringKey}
                       guruId={guruId}
                       tahunPelajaranId={tpId}
                       semesterId={academicFilter.values.semesterId}
                       siswaList={siswaList}
-                    />
+                    /></Suspense>
                   </div>
                 )}
                 {visitedTabs.has('penilaian') && (
                   <div className={cn(activeTab === 'penilaian' ? 'block' : 'hidden')}>
-                    <PklPenilaianTab guruId={guruId} tahunPelajaranId={tpId} semesterId={academicFilter.values.semesterId} siswaList={siswaList} />
+                    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat lembar penilaian PKL...</div>}><PklPenilaianTab guruId={guruId} tahunPelajaranId={tpId} semesterId={academicFilter.values.semesterId} siswaList={siswaList} /></Suspense>
                   </div>
                 )}
                 {visitedTabs.has('rekap') && (
                   <div className={cn(activeTab === 'rekap' ? 'block' : 'hidden')}>
-                    <PklRekapTab siswaList={siswaList} kunjunganList={kunjunganList} tpTahun={tpTahun} semesterNama={semesterNama} />
+                    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat pusat cetak nilai...</div>}><PklRekapTab siswaList={siswaList} kunjunganList={kunjunganList} tpTahun={tpTahun} semesterNama={semesterNama} /></Suspense>
                   </div>
                 )}
               </>

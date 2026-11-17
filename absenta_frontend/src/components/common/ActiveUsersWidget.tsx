@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Users, Wifi, Search, X, Shield, GraduationCap, School, HeartHandshake } from 'lucide-react';
 import { usePresence } from '../../hooks/usePresence';
+import { useAuth } from '../../hooks/useAuth';
 
 interface ActiveUsersWidgetProps {
   className?: string;
@@ -12,6 +13,7 @@ export const ActiveUsersWidget: React.FC<ActiveUsersWidgetProps> = ({
   variant = 'navbar'
 }) => {
   const { summary, activeCount, isLoading, refresh } = usePresence();
+  const { user: currentUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -198,32 +200,57 @@ export const ActiveUsersWidget: React.FC<ActiveUsersWidgetProps> = ({
                 {search ? 'Tidak ada user yang cocok' : 'Belum ada user yang terhubung'}
               </div>
             ) : (
-              filteredUsers.map(user => (
-                <div key={user.userId} className="p-2.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-xl transition-colors">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-7 h-7 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-[10px] font-black shrink-0">
-                      {user.name ? user.name.slice(0, 2).toUpperCase() : 'U'}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                        {user.name}
-                      </p>
-                      <div className="flex items-center gap-1.5 text-[9px] text-slate-400">
-                        <span className="flex items-center gap-1">
-                          {getRoleIcon(user.role)}
-                          <span className="font-semibold uppercase">{user.role}</span>
-                        </span>
-                        {user.tabsCount > 1 && (
-                          <span>• {user.tabsCount} tab</span>
-                        )}
+              filteredUsers.map(user => {
+                const isMe = Boolean(currentUser?.id && user.userId === currentUser.id);
+                const displayName = (isMe && currentUser?.full_name && user.name === 'Pengguna')
+                  ? currentUser.full_name
+                  : (user.name || (isMe ? (currentUser?.full_name || 'Anda') : 'Pengguna'));
+
+                return (
+                  <div
+                    key={user.userId}
+                    className={`p-2.5 flex items-center justify-between rounded-xl transition-colors ${
+                      isMe
+                        ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/50'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-[10px] font-black shrink-0 ${
+                        isMe
+                          ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-300 dark:border-emerald-700'
+                          : 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400'
+                      }`}>
+                        {displayName ? displayName.slice(0, 2).toUpperCase() : 'U'}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            {displayName}
+                          </p>
+                          {isMe && (
+                            <span className="px-1.5 py-0.2 rounded-md text-[9px] font-extrabold bg-emerald-500 text-white shrink-0">
+                              Anda
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[9px] text-slate-400">
+                          <span className="flex items-center gap-1">
+                            {getRoleIcon(user.role)}
+                            <span className="font-semibold uppercase">{user.role}</span>
+                          </span>
+                          {user.tabsCount > 1 && (
+                            <span>• {user.tabsCount} tab</span>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    <span className="text-[9px] font-medium text-slate-400 shrink-0">
+                      {user.connectedAt ? new Date(user.connectedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : ''}
+                    </span>
                   </div>
-                  <span className="text-[9px] font-medium text-slate-400 shrink-0">
-                    {user.connectedAt ? new Date(user.connectedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : ''}
-                  </span>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 

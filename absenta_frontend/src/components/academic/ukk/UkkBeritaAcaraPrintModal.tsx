@@ -11,6 +11,7 @@ import {
   type UkkBeritaAcaraItem,
   type UkkBeritaAcaraPrintData,
 } from '@/utils/print/modules/pdfUkkBeritaAcara';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 export interface UkkBeritaAcaraPrintModalProps {
@@ -238,7 +239,7 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
               <div className="h-16 flex items-center justify-center my-1">
                 {beritaAcara.ttd_penguji_internal ? (
                   <img
-                    src={beritaAcara.ttd_penguji_internal}
+                    src={resolveProfilePhotoUrl(beritaAcara.ttd_penguji_internal)}
                     alt="TTD Penguji Internal"
                     className="max-h-14 max-w-full object-contain"
                   />
@@ -254,7 +255,7 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
               <div className="h-16 flex items-center justify-center my-1">
                 {beritaAcara.ttd_penguji_eksternal ? (
                   <img
-                    src={beritaAcara.ttd_penguji_eksternal}
+                    src={resolveProfilePhotoUrl(beritaAcara.ttd_penguji_eksternal)}
                     alt="TTD Penguji Eksternal"
                     className="max-h-14 max-w-full object-contain"
                   />
@@ -335,7 +336,7 @@ export const UkkBeritaAcaraPrintModal: React.FC<UkkBeritaAcaraPrintModalProps> =
                   >
                     <div className="w-full h-44 sm:h-48 overflow-hidden rounded bg-white border border-slate-100 flex items-center justify-center">
                       <img
-                        src={photoUrl}
+                        src={resolveProfilePhotoUrl(photoUrl)}
                         alt={photoCaption}
                         className="w-full h-full object-cover"
                       />

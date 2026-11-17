@@ -243,7 +243,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
       } catch { return undefined; }
     },
     enabled: isRingkasanActive,
-    staleTime: 60 * 1000,
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: academicRes, isLoading: isAcademicLoading } = useQuery({
@@ -260,7 +261,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
       } catch { return undefined; }
     },
     enabled: isRingkasanActive,
-    staleTime: 60 * 1000,
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const handleRefresh = async () => {

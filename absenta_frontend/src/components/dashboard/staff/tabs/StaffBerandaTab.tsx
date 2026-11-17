@@ -57,6 +57,7 @@ import { TeacherActionHubWidget } from '../beranda/TeacherActionHubWidget';
 import { TeacherSidebarNav } from '../beranda/TeacherSidebarNav';
 import { TeacherSubTabId } from '../beranda/TeacherSubNavPills';
 import { DirectKbmFeed } from '../beranda/DirectKbmFeed';
+import { TeacherCbtDutyCard } from '@/components/cbt/bank-soal/TeacherCbtDutyCard';
 import { raporApi } from '@/api/rapor.api';
 import { hubinApi } from '@/api/hubin.api';
 import { cbtApi } from '@/api/cbt.api';
@@ -203,7 +204,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     queryKey: ['my-perangkat-workspace', guruId],
     queryFn: () => kurikulumApi.getPerangkatAjar({ guru_id: guruId }).catch(() => ({ success: true, data: [] })),
     enabled: Boolean(guruId) && isActualTeachingStaff,
-    staleTime: 60 * 1000,
+    staleTime: 3 * 60 * 1000,
   });
 
   const perangkatList = safeArr<any>(myPerangkatRes?.data || myPerangkatRes);
@@ -214,8 +215,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     queryKey: ['my-action-hub-dashboard'],
     queryFn: () => getMyActionHub().catch(() => ({ success: true, data: { summary: { total: 0, critical: 0, today: 0, upcoming: 0 }, actions: [] } })),
     enabled: isActualTeachingStaff,
-    staleTime: 60 * 1000,
-    refetchOnWindowFocus: true,
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const actionHubData = actionHubRes?.data || { summary: { total: 0, critical: 0, today: 0, upcoming: 0 }, actions: [] };
@@ -225,7 +226,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     queryKey: ['rapor-radar-remedial-badge', guruId],
     queryFn: () => raporApi.getRadarRemedial({ guru_id: guruId }).catch(() => ({ success: true, data: null })),
     enabled: isActualTeachingStaff,
-    staleTime: 60 * 1000,
+    staleTime: 3 * 60 * 1000,
   });
 
   const remedialCount = radarRes?.data?.stats?.total_perlu_remedial || 0;
@@ -248,7 +249,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
       });
     },
     enabled: Boolean(effectiveGuruId) && isActualTeachingStaff,
-    staleTime: 60 * 1000,
+    staleTime: 3 * 60 * 1000,
   });
 
   const isPengujiSidang = (mySidangData?.length ?? 0) > 0;
@@ -795,6 +796,13 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                   onOpenJournals={() => handleSubTabChange('rekap')}
                   onOpenBeban={() => onNavigateTab('profil')}
                   onOpenRekapMapel={() => handleSubTabChange('rekap')}
+                />
+
+                {/* Status Kesiapan / Bebas Tugas Bank Soal CBT Guru (Saat Event CBT Aktif) */}
+                <TeacherCbtDutyCard
+                  guruId={effectiveGuruId}
+                  variant="compact"
+                  onNavigateToCbt={() => handleSubTabChange('cbt')}
                 />
 
                 {/* Pintasan Aksi Operasional Guru (Shopee-Grade Quick Action Slider) */}

@@ -10,7 +10,8 @@ import { InfraErrorBoundary } from '../components/superadmin/infra/InfraErrorBou
 import { User, Lock, Eye, EyeOff, LogIn, QrCode, Server, Sparkles } from 'lucide-react';
 import { LoginQrScannerModal, type ScannedQrPayload } from '../components/auth/LoginQrScannerModal';
 import { ServerDomainSetupModal } from '../components/auth/ServerDomainSetupModal';
-import { getSavedServerDomain } from '../services/serverConfig';
+import { getSavedServerDomain, isCapacitorApp } from '../services/serverConfig';
+import { getActiveOtaVersion, checkOtaUpdate, downloadAndApplyOtaUpdate } from '../services/otaUpdateService';
 import toast from 'react-hot-toast';
 
 const hardeningModuleKey = "auth_login";
@@ -30,11 +31,46 @@ const Login: React.FC = () => {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isServerModalOpen, setIsServerModalOpen] = useState(false);
   const [isQuickLoggingIn, setIsQuickLoggingIn] = useState(false);
+  const isMobile = useMemo(() => isCapacitorApp(), []);
+  const [appVersion, setAppVersion] = useState('1.0.3');
+  const [isCheckingOta, setIsCheckingOta] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const { loginAction, isAuthenticated, isLoading, error } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isMobile) {
+      getActiveOtaVersion().then(v => {
+        if (v) setAppVersion(v);
+      }).catch(() => {});
+    }
+  }, [isMobile]);
+
+  const handleManualOtaCheck = async () => {
+    if (isCheckingOta) return;
+    setIsCheckingOta(true);
+    toast.loading('Memeriksa update aplikasi...', { id: 'manual-ota' });
+    try {
+      const res = await checkOtaUpdate(true);
+      if (res.hasUpdate && res.manifest) {
+        toast.loading(`Mengunduh versi ${res.remoteVersion}...`, { id: 'manual-ota' });
+        const success = await downloadAndApplyOtaUpdate(res.manifest);
+        if (success) {
+          toast.success(`Versi ${res.remoteVersion} siap dipasang!`, { id: 'manual-ota' });
+        } else {
+          toast.error('Gagal mengunduh berkas update.', { id: 'manual-ota' });
+        }
+      } else {
+        toast.success(res.message || 'Aplikasi sudah versi terbaru.', { id: 'manual-ota' });
+      }
+    } catch {
+      toast.error('Gagal menghubungi server OTA.', { id: 'manual-ota' });
+    } finally {
+      setIsCheckingOta(false);
+    }
+  };
 
   const savedDomain = useMemo(() => getSavedServerDomain() || (typeof window !== 'undefined' ? window.location.hostname : 'Default'), []);
   const tenantName = useMemo(() => {
@@ -281,20 +317,38 @@ const Login: React.FC = () => {
                 )}
               </button>
 
-              {/* Server Domain Switcher */}
-              <div className="pt-2 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setIsServerModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold transition-all cursor-pointer"
-                >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-slate-400">Server:</span>
-                  <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
-                    {getSavedServerDomain() || (typeof window !== 'undefined' ? window.location.hostname : 'Default')}
-                  </span>
-                  <span className="text-blue-500 font-bold ml-1 hover:underline">Ganti</span>
-                </button>
+              {/* Server Domain Switcher & OTA Info */}
+              <div className="pt-2 flex flex-col items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setIsServerModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold transition-all cursor-pointer"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-slate-400">Server:</span>
+                    <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
+                      {getSavedServerDomain() || (typeof window !== 'undefined' ? window.location.hostname : 'Default')}
+                    </span>
+                    <span className="text-blue-500 font-bold ml-1 hover:underline">Ganti</span>
+                  </button>
+
+                  {isMobile && (
+                    <button
+                      type="button"
+                      onClick={handleManualOtaCheck}
+                      disabled={isCheckingOta}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[11px] font-semibold transition-all cursor-pointer disabled:opacity-50"
+                      title="Klik untuk mengecek pembaruan aplikasi"
+                    >
+                      <Sparkles className="w-3 h-3 text-blue-500" />
+                      <span>v{appVersion}</span>
+                      <span className="text-[10px] text-blue-500/70 font-normal">
+                        {isCheckingOta ? 'Cek...' : 'Update'}
+                      </span>
+                    </button>
+                  )}
+                </div>
               </div>
             </form>
           </Card>

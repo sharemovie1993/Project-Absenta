@@ -126,12 +126,15 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     queryKey: ['dapodik-server-info'],
     queryFn: getDapodikServerInfo,
     staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   // 2. Fetch Saved Config
   const { data: configData, isLoading: _isLoadingConfig } = useQuery({
     queryKey: ['dapodik-config'],
     queryFn: getDapodikConfig,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
@@ -161,6 +164,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     queryFn: () => getDapodikStudentComparison(compareOptions, false, sourceMode),
     enabled: Boolean(configData?.data?.is_configured),
     staleTime: 5 * 60 * 1000, // 5 menit cache di client
+    refetchOnWindowFocus: false,
     retry: false,
   });
 

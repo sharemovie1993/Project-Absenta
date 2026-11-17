@@ -8,6 +8,7 @@ import { SectionCard, DetailRow } from './FormShared';
 import { getProgramKeahlianList, createProgramKeahlian } from '../../../../api/academic/program-keahlian.api';
 import { getGlobalPresets } from '../../../../api/academic/jurusan-presets.api';
 import type { ProgramKeahlian } from '../../../../types/academic';
+import { resolveProfilePhotoUrl } from '../../../../lib/utils';
 import toast from 'react-hot-toast';
 
 export const TAILWIND_COLOR_MAP: Record<string, string> = {
@@ -128,7 +129,7 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
             label="Logo Jurusan"
             value={
               <img 
-                src={watchedLogoUrl} 
+                src={resolveProfilePhotoUrl(watchedLogoUrl)} 
                 alt="Logo Jurusan" 
                 className="w-10 h-10 object-contain rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1" 
               />
@@ -341,7 +342,7 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
             {watchedLogoUrl ? (
               <>
                 <img 
-                  src={watchedLogoUrl} 
+                  src={resolveProfilePhotoUrl(watchedLogoUrl)} 
                   alt="Logo Jurusan" 
                   className="w-full h-full object-contain p-1"
                 />

@@ -1,5 +1,6 @@
 import React from 'react';
 import type { StudentCardConfig } from './types';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface CardBackPrintProps {
     config: StudentCardConfig;
@@ -77,7 +78,7 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = React.memo(({ config 
                 >
                     {config.logo_url ? (
                         <img 
-                            src={config.logo_url} 
+                            src={resolveProfilePhotoUrl(config.logo_url)} 
                             crossOrigin="anonymous"
                             alt="Logo" 
                             style={{ 
@@ -173,7 +174,7 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = React.memo(({ config 
                         {/* Stamp Image */}
                         {config.back_stamp_image_url && (
                             <img 
-                                src={config.back_stamp_image_url} 
+                                src={resolveProfilePhotoUrl(config.back_stamp_image_url)} 
                                 crossOrigin="anonymous"
                                 alt="Stempel"
                                 style={{
@@ -193,7 +194,7 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = React.memo(({ config 
                         {/* Signature Image */}
                         {config.back_signature_image_url && (
                             <img 
-                                src={config.back_signature_image_url} 
+                                src={resolveProfilePhotoUrl(config.back_signature_image_url)} 
                                 crossOrigin="anonymous"
                                 alt="Tanda Tangan"
                                 style={{

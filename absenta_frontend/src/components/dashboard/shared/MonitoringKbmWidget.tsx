@@ -55,15 +55,19 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
   const [targetDate, setTargetDate] = useState(toLocalDate());
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Real-time cache invalidation via Socket.io
+  // Real-time cache invalidation via Socket.io (Debounced Anti-Stampede Guard)
   useEffect(() => {
     if (!isConnected) return;
 
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const handleInvalidate = () => {
-      queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
-      queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi-piket'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard', 'kurikulum', 'monitoring-global'] });
-      queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance'] });
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
+        queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi-piket'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard', 'kurikulum', 'monitoring-global'] });
+        queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance'] });
+      }, 2000);
     };
 
     subscribe('attendance_feed_update', handleInvalidate);
@@ -76,6 +80,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
     subscribe('SESI_UPDATED', handleInvalidate);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       unsubscribe('attendance_feed_update', handleInvalidate);
       unsubscribe('sesi_status_update', handleInvalidate);
       unsubscribe('absen_guru_update', handleInvalidate);

@@ -119,7 +119,8 @@ export const RekapSesiKbmPrintModal: React.FC<RekapSesiKbmPrintModalProps> = ({
         semester_id: semesterId || undefined,
       } as any),
     enabled: isOpen && Boolean(targetDate),
-    staleTime: 60 * 1000,
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   // Normalisasi seluruh item sesi

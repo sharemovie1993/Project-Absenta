@@ -17,6 +17,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
+import { resolveProfilePhotoUrl } from '../../lib/utils';
 import {
   AlertCircle,
   Clock,
@@ -707,7 +708,7 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
                   <div className="flex items-center gap-4">
                     <div className="h-12 w-12 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 overflow-hidden">
                       {selectedSiswa.foto_profile_url ? (
-                        <img src={selectedSiswa.foto_profile_url} alt="" className="h-full w-full object-cover" />
+                        <img src={resolveProfilePhotoUrl(selectedSiswa.foto_profile_url)} alt="" className="h-full w-full object-cover" />
                       ) : (
                         <User className="h-6 w-6 text-indigo-500" />
                       )}

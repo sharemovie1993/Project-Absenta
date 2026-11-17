@@ -26,6 +26,7 @@ import { EcosystemProvider } from './context/EcosystemContext';
 import { LogService } from './utils/LogService';
 import { loadActiveSystemConfig } from './services/systemConfig';
 import { isCapacitorApp } from './services/serverConfig';
+import { initOtaUpdateLifecycle } from './services/otaUpdateService';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { AttendanceErrorBoundary } from './components/attendance/AttendanceErrorBoundary';
 import ScrollToTop from './components/common/ScrollToTop';
@@ -291,12 +292,19 @@ function App() {
     String(import.meta.env.VITE_DEMO_MODE || '').toLowerCase() === 'true'
   );
 
-  // Prevent Mobile Status Bar from overlapping web content in Capacitor
+  // Prevent Mobile Status Bar from overlapping web content in Capacitor & Initialize OTA Live Updates
   useEffect(() => {
     if (isCapacitorApp() || (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.())) {
       StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
       StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
       StatusBar.setBackgroundColor({ color: '#ffffff' }).catch(() => {});
+
+      // Inisialisasi OTA Live Updates (Capgo) ke VPS Dedicated
+      try {
+        initOtaUpdateLifecycle();
+      } catch (otaErr) {
+        console.warn('[OTA] Inisialisasi lifecycle dilewati:', otaErr);
+      }
     }
   }, []);
 

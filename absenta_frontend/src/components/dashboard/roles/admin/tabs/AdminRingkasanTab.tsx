@@ -162,7 +162,8 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
     queryKey: ['admin-attendance-chart'],
     queryFn: () => getAttendanceChart(),
     enabled: activeAnalyticsTab === 'chart' && isChartReady,
-    staleTime: 60 * 1000,
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const effectiveChartData = chartData ?? localChartRes?.data ?? null;
@@ -196,7 +197,8 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
     queryKey: ['admin-recent-logs'],
     queryFn: () => getTenantActivityLogs({ limit: 4 }),
     enabled: isLogsInView,
-    staleTime: 60 * 1000,
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const effectiveLogs = (recentLogs && recentLogs.length > 0) ? recentLogs : (localLogsRes?.data?.logs || []);

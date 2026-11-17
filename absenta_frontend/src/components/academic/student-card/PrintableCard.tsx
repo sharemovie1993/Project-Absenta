@@ -234,7 +234,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     {/* Logo */}
                     {(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url) ? (
                          <img 
-                           src={config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url} 
+                           src={resolveProfilePhotoUrl(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url)} 
                            crossOrigin="anonymous"
                            alt="Logo" 
                            className="object-contain drop-shadow-sm flex-shrink-0" 

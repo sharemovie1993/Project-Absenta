@@ -6,11 +6,14 @@ import {
   LayoutGrid, 
   Columns, 
   Rows, 
-  Clock
+  Clock,
+  AlertTriangle,
+  Layers
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { ViewMode, ToolMode, ColorByMode, GridOrientation } from './types';
 import { DropdownOption } from '../../../api/dropdown.api';
+import type { UnslottedAuditSummary } from './unslottedScheduleEngine';
 
 interface Props {
   viewMode: ViewMode;
@@ -41,6 +44,8 @@ interface Props {
   showLeftPanel?: boolean;
   onToggleLeftPanel?: () => void;
   onOpenPrintPreview?: () => void;
+  unslottedSummary?: UnslottedAuditSummary;
+  onOpenUnslottedModal?: () => void;
 }
 
 export const JadwalBuilderHeader: React.FC<Props> = React.memo(({
@@ -72,6 +77,8 @@ export const JadwalBuilderHeader: React.FC<Props> = React.memo(({
   showLeftPanel = true,
   onToggleLeftPanel,
   onOpenPrintPreview,
+  unslottedSummary,
+  onOpenUnslottedModal,
 }) => {
   return (
     <div className="pb-3 mb-3 border-b border-slate-100 dark:border-slate-800 space-y-3 relative z-20">
@@ -164,6 +171,59 @@ export const JadwalBuilderHeader: React.FC<Props> = React.memo(({
                 <span>Hari Horizontal</span>
               </button>
             </div>
+          )}
+        </div>
+
+        {/* Action Buttons: Audit Ploting Belum Ada Jadwal & Cetak */}
+        <div className="flex items-center gap-2">
+          {onOpenUnslottedModal && (
+            <button
+              type="button"
+              onClick={onOpenUnslottedModal}
+              className={cn(
+                "px-3 py-1.5 text-xs font-bold rounded-xl transition-all duration-150 flex items-center gap-1.5 border shadow-2xs cursor-pointer select-none",
+                unslottedSummary && unslottedSummary.unscheduledCount > 0
+                  ? "bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-300/80 dark:border-amber-700/60"
+                  : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
+              )}
+              title="Audit penugasan guru/mapel yang belum dibuatkan slot jadwalnya"
+            >
+              <AlertTriangle
+                className={cn(
+                  "w-3.5 h-3.5",
+                  unslottedSummary && unslottedSummary.unscheduledCount > 0
+                    ? "text-amber-500 animate-pulse"
+                    : "text-slate-400"
+                )}
+              />
+              <span>Audit Ploting</span>
+              {unslottedSummary && (
+                <span
+                  className={cn(
+                    "px-1.5 py-0.2 rounded-md text-[10px] font-black",
+                    unslottedSummary.unscheduledCount > 0
+                      ? "bg-amber-500 text-white shadow-2xs"
+                      : "bg-emerald-500 text-white"
+                  )}
+                >
+                  {unslottedSummary.unscheduledCount > 0
+                    ? `${unslottedSummary.unscheduledCount} Kosong`
+                    : 'Lengkap'}
+                </span>
+              )}
+            </button>
+          )}
+
+          {onOpenPrintPreview && (
+            <button
+              type="button"
+              onClick={onOpenPrintPreview}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-2xs flex items-center gap-1.5 cursor-pointer"
+              title="Pratinjau Cetak Dokumen Jadwal KBM Resmi"
+            >
+              <Layers className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Cetak Jadwal</span>
+            </button>
           )}
         </div>
       </div>

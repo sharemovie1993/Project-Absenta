@@ -177,16 +177,20 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     isLoadingSem,
   } = academicFilter;
 
-  // Single SSOT Query
+  // Single SSOT Query (Scoping Protected & Performance Optimized)
+  const effectivePembimbingId = (isDedicatedGuidance && activeGuruId) ? activeGuruId : undefined;
+
   const { data: pklRekapResponse, isLoading: isLoadingRekap } = useQuery({
-    queryKey: ['pkl-rekap', tenantId, selectedTp, selectedSemester, statusFilter, effectiveJurusanId],
+    queryKey: ['pkl-rekap', tenantId, selectedTp, selectedSemester, statusFilter, effectiveJurusanId, effectivePembimbingId || 'all'],
     queryFn: () =>
       hubinApi.getRekapPklSiswa({
         tahun_pelajaran_id: selectedTp || undefined,
         semester_id: selectedSemester || undefined,
         status: statusFilter === 'ALL' ? undefined : statusFilter,
+        pembimbing_id: effectivePembimbingId,
       }),
-    staleTime: 60 * 1000,
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const rawList = useMemo<RawPklItem[]>(() => {
@@ -203,6 +207,8 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   const { data: hubinSettings } = useQuery({
     queryKey: ['hubin-settings', tenantId, selectedTp],
     queryFn: () => hubinApi.getSettings({ tahun_pelajaran_id: selectedTp || undefined }),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const effectiveSettings = useMemo((): HubinAssessmentSettings | undefined => {
@@ -283,6 +289,8 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
           penguji_id: item.nilai_json?.penguji_id || null,
           penguji_nama: item.nilai_json?.penguji_nama || '',
           catatan_sidang: item.nilai_json?.catatan_sidang || '',
+          ttd_siswa: item.nilai_json?.ttd_siswa || null,
+          waktu_ttd_siswa: item.nilai_json?.waktu_ttd_siswa || null,
           file_portofolio: item.jurnal_json?.file_url || null,
           nilai_akhir_pkl: item.nilai_akhir_pkl ?? null,
           predikat_pkl: item.predikat_pkl || '-',

@@ -43,7 +43,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { formatDate } from '@/utils/date.utils';
 import { normalizeStudentIdentity } from '@/utils/academic/academicIdentityNormalizer';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 
 export interface CbtKartuUjianPrintModalProps {
   isOpen: boolean;
@@ -303,7 +303,7 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
         <div className={cn('shrink-0 flex items-center justify-center', is6Grid ? 'w-[12mm] h-[12mm]' : 'w-[15mm] h-[15mm]')}>
           {showLogoSekolah && (
             <img
-              src={sekolahData?.logo_url || tenantInfo?.logo_url || '/logo.png'}
+              src={resolveProfilePhotoUrl(sekolahData?.logo_url || tenantInfo?.logo_url || '/logo.png')}
               alt="Logo"
               className={cn('object-contain', is6Grid ? 'w-[11mm] h-[11mm]' : 'w-[14mm] h-[14mm]')}
               onError={(e) => {
@@ -453,7 +453,7 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
             )
           ) : showFoto && normIdentity.fotoUrl ? (
             <img
-              src={normIdentity.fotoUrl}
+              src={resolveProfilePhotoUrl(normIdentity.fotoUrl)}
               alt={normIdentity.nama}
               className={cn(
                 'object-cover rounded-xs border border-slate-300 shadow-2xs',

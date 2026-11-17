@@ -31,7 +31,7 @@ import {
   AvailableModulItem
 } from '../../../api/bahan-ajar.api';
 import { toast } from 'react-hot-toast';
-import { cn } from '../../../lib/utils';
+import { cn, resolveProfilePhotoUrl } from '../../../lib/utils';
 
 interface BahanAjarReaderModalProps {
   isOpen: boolean;

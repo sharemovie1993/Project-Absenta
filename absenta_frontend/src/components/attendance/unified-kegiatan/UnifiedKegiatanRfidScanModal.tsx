@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import {
   tapUnifiedPendampingRfid,
   type UnifiedRfidTapResponse
@@ -304,7 +305,7 @@ export const UnifiedKegiatanRfidScanModal: React.FC<UnifiedKegiatanRfidScanModal
                         <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200/80 dark:border-emerald-700/50">
                           {lastResult.data.guru?.foto ? (
                             <img
-                              src={lastResult.data.guru.foto}
+                              src={resolveProfilePhotoUrl(lastResult.data.guru.foto)}
                               alt={lastResult.data.guru.nama_guru}
                               className="w-full h-full rounded-2xl object-cover"
                             />

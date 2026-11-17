@@ -36,11 +36,56 @@ export const normalizeServerUrl = (inputDomain: string): { host: string; apiUrl:
   return { host, apiUrl, fullUrl };
 };
 
+/** Get active server origin protocol + domain (e.g. https://smkn1pld.absenta.id or https://absen.smkn2pwk.sch.id) */
+export const getActiveServerOrigin = (): string => {
+  if (typeof window === 'undefined') return 'https://smkn1pld.absenta.id';
+
+  const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('tenant_domain');
+  if (saved && saved.trim()) {
+    let clean = saved.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    if (!clean.includes('.') && clean.length > 0) clean = `${clean}.absenta.id`;
+    const isLocal = clean.includes('localhost') || clean.includes('127.0.0.1') || clean.includes('10.0.2.2');
+    const protocol = isLocal ? 'http://' : 'https://';
+    return `${protocol}${clean}`;
+  }
+
+  // If running in browser (not native mobile webview), use browser's current origin
+  if (!isCapacitorApp() && window.location.origin && !window.location.origin.includes('localhost')) {
+    return window.location.origin;
+  }
+
+  // Default fallback for initial native app launch before user configuration
+  return 'https://smkn1pld.absenta.id';
+};
+
 /** Get the currently configured server domain */
 export const getSavedServerDomain = (): string | null => {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(STORAGE_KEY) || null;
+  const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('tenant_domain');
+  if (saved && saved.trim()) {
+    let clean = saved.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    if (!clean.includes('.') && clean.length > 0) clean = `${clean}.absenta.id`;
+    return clean;
+  }
+  // In browser, default to current origin hostname
+  if (!isCapacitorApp() && window.location.hostname && window.location.hostname !== 'localhost') {
+    return window.location.hostname;
+  }
+  // Default fallback untuk aplikasi mobile Android/iOS
+  if (isCapacitorApp()) {
+    return 'smkn1pld.absenta.id';
+  }
+  return null;
 };
+
+// Immediate sync from Capacitor Preferences on native mobile startup
+if (typeof window !== 'undefined' && isCapacitorApp()) {
+  Preferences.get({ key: STORAGE_KEY }).then((res: { value: string | null }) => {
+    if (res?.value && !localStorage.getItem(STORAGE_KEY)) {
+      localStorage.setItem(STORAGE_KEY, res.value);
+    }
+  }).catch(() => {});
+}
 
 /** Save new server domain and verify connectivity */
 export const saveServerDomain = async (inputDomain: string): Promise<{ success: boolean; message: string; apiUrl: string }> => {

@@ -44,7 +44,9 @@ import { MasterGridGuruTimetable } from './jadwal-builder/MasterGridGuruTimetabl
 import { ConflictResolverModal, type ConflictDetails } from './jadwal-builder/ConflictResolverModal';
 import { MasterGridKelasTimetable } from './jadwal-builder/MasterGridKelasTimetable';
 import { EditJadwalModal, type EditJadwalPayload, type CreateJadwalModalPayload } from './jadwal-builder/EditJadwalModal';
-import { UnallocatedCardsPanel } from './jadwal-builder/UnallocatedCardsPanel';
+import { UnallocatedCardsPanel, type UnallocatedCardItem } from './jadwal-builder/UnallocatedCardsPanel';
+import { UnslottedAssignmentsModal } from './jadwal-builder/UnslottedAssignmentsModal';
+import { auditUnslottedSchedules, type UnslottedAuditSummary, type UnslottedDutyItem } from './jadwal-builder/unslottedScheduleEngine';
 import { calculateSmartJpStatus, calculateClassJpStatus } from './jadwal-builder/jpCalculationHelper';
 import { getSlotsForDay } from './jam-kbm/JamKBMTypes';
 
@@ -389,6 +391,92 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       setSelectedKelasId(kelasList[0].value);
     }
   }, [kelasList, selectedKelasId]);
+
+  // ── Engine Audit Penugasan vs Ploting Kurikulum ──────────────────────────
+  const [isUnslottedModalOpen, setIsUnslottedModalOpen] = useState<boolean>(false);
+
+  const unslottedAuditSummary = useMemo<UnslottedAuditSummary>(() => {
+    const rawMapel = (allGuruMapelRes?.success && Array.isArray(allGuruMapelRes.data))
+      ? allGuruMapelRes.data
+      : (Array.isArray(allGuruMapelRes) ? (allGuruMapelRes as any) : []);
+    return auditUnslottedSchedules({
+      allGuruMapel: rawMapel,
+      allJadwal,
+      targetJpMap,
+    });
+  }, [allGuruMapelRes, allJadwal, targetJpMap]);
+
+  // Unallocated Cards untuk Target Aktif (Kelas atau Guru yang sedang dipilih)
+  const unallocatedCardsForActiveTarget = useMemo<UnallocatedCardItem[]>(() => {
+    if (viewMode === 'KELAS' && selectedKelasId) {
+      return unslottedAuditSummary.items
+        .filter((item) => item.kelasId === selectedKelasId && item.remainingJp > 0)
+        .map((item) => ({
+          id: item.id,
+          nama_mapel: item.mapelNama,
+          nama_guru: item.guruNama,
+          nama_kelas: item.kelasNama,
+          total_jp: item.targetJp,
+          durasi_jp: item.remainingJp,
+          jumlah_kartu: 1,
+          mapel_id: item.mapelId,
+          guru_id: item.guruId,
+          kelas_id: item.kelasId,
+        }));
+    }
+    if (viewMode === 'GURU' && selectedGuruId) {
+      return unslottedAuditSummary.items
+        .filter((item) => item.guruId === selectedGuruId && item.remainingJp > 0)
+        .map((item) => ({
+          id: item.id,
+          nama_mapel: item.mapelNama,
+          nama_guru: item.guruNama,
+          nama_kelas: item.kelasNama,
+          total_jp: item.targetJp,
+          durasi_jp: item.remainingJp,
+          jumlah_kartu: 1,
+          mapel_id: item.mapelId,
+          guru_id: item.guruId,
+          kelas_id: item.kelasId,
+        }));
+    }
+    return [];
+  }, [viewMode, selectedKelasId, selectedGuruId, unslottedAuditSummary]);
+
+  const activeTargetName = useMemo(() => {
+    if (viewMode === 'KELAS' && selectedKelasId) {
+      const k = kelasList.find((c) => c.value === selectedKelasId);
+      return k?.label || 'Kelas Terpilih';
+    }
+    if (viewMode === 'GURU' && selectedGuruId) {
+      const g = guruList.find((u) => u.id === selectedGuruId);
+      return g?.nama_guru || 'Guru Terpilih';
+    }
+    return undefined;
+  }, [viewMode, selectedKelasId, selectedGuruId, kelasList, guruList]);
+
+  // Handler saat kartu Unallocated diklik -> otomatis aktifkan kuas mapel & guru
+  const handleCardClickFromUnallocatedPanel = useCallback((card: UnallocatedCardItem) => {
+    if (card.mapel_id) setPaintMapelId(card.mapel_id);
+    if (card.guru_id) setPaintGuruId(card.guru_id);
+    if (card.kelas_id && viewMode === 'GURU') {
+      toast.success(`Kuas aktif: ${card.nama_mapel} (${card.nama_kelas || card.nama_guru}). Klik sel jam kosong di grid.`);
+    } else {
+      toast.success(`Kuas aktif: ${card.nama_mapel} (${card.durasi_jp} JP tersisa). Klik sel jam kosong di grid.`);
+    }
+  }, [viewMode]);
+
+  // Handler saat baris di Modal Audit Ploting dipilih -> lompat ke grid & kuas aktif
+  const handleSelectUnslottedAssignment = useCallback((item: UnslottedDutyItem) => {
+    setSelectedKelasId(item.kelasId);
+    setSelectedGuruId(item.guruId);
+    setPaintMapelId(item.mapelId);
+    setPaintGuruId(item.guruId);
+    if (viewMode !== 'KELAS' && viewMode !== 'GURU') {
+      setViewMode('KELAS');
+    }
+    toast.success(`Kuas aktif: ${item.mapelNama} - ${item.guruNama} (${item.kelasNama}). Siap di-plot ke grid.`);
+  }, [viewMode]);
 
   const guruMapelSelectOptions = useMemo(() => {
     let baseList = [];
@@ -1418,7 +1506,20 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           loadingData={loadingData}
           onRefreshSchedules={fetchSchedules}
           onOpenPrintPreview={onOpenPrintPreview}
+          unslottedSummary={unslottedAuditSummary}
+          onOpenUnslottedModal={() => setIsUnslottedModalOpen(true)}
         />
+
+        {/* Unallocated Cards Panel (Kartu Sisa Belum Diplott per Kelas / Guru) */}
+        {(viewMode === 'KELAS' || viewMode === 'GURU') && (
+          <UnallocatedCardsPanel
+            selectedKelasId={viewMode === 'KELAS' ? selectedKelasId : undefined}
+            selectedGuruId={viewMode === 'GURU' ? selectedGuruId : undefined}
+            targetName={activeTargetName}
+            unallocatedList={unallocatedCardsForActiveTarget}
+            onCardClick={handleCardClickFromUnallocatedPanel}
+          />
+        )}
 
         {/* Mode 1 & 2: Single Grid Timetable (Per Kelas & Per Guru) */}
         {(viewMode === 'KELAS' || viewMode === 'GURU') && (
@@ -1578,6 +1679,15 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             viewMode={viewMode}
           />
         )}
+
+        {/* Modal Audit Ploting Penugasan Belum Terjadwal */}
+        <UnslottedAssignmentsModal
+          isOpen={isUnslottedModalOpen}
+          onClose={() => setIsUnslottedModalOpen(false)}
+          auditSummary={unslottedAuditSummary}
+          summary={unslottedAuditSummary}
+          onSelectAssignment={handleSelectUnslottedAssignment}
+        />
       </div>
     </>
   );

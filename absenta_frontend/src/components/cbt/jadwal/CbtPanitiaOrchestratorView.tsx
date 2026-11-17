@@ -84,6 +84,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   const { data: eventsData } = useQuery({
     queryKey: cbtQueryKeys.eventsSummary(),
     queryFn: () => cbtApi.getEventsSummary(),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
   const activeEvent = eventsData?.active_event;
 
@@ -151,6 +153,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
     queryKey: spasialQueryKeys.list({ tipe: 'EVENT_UJIAN' }),
     queryFn: () => fetchDenahList({ tipe: 'EVENT_UJIAN' }),
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const denahMapByKelasId = useMemo(() => {
@@ -238,7 +241,11 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
     }
 
     const eventId = activeEvent?.id;
-    const persistedList = loadPersistedRoomMappingsList(tenantId, eventId);
+    // Prioritaskan room_mappings dari Cloud Server (DB SSoT), fallback ke LocalStorage
+    const cloudRoomMappings = (activeEvent?.room_mappings && Array.isArray(activeEvent.room_mappings) && activeEvent.room_mappings.length > 0)
+      ? activeEvent.room_mappings
+      : null;
+    const persistedList = cloudRoomMappings || loadPersistedRoomMappingsList(tenantId, eventId);
     const persistedMap = loadPersistedRoomMappings(tenantId, eventId);
 
     // 1. Jika sudah ada susunan array tersimpan (format v2), pertahankan urutan persis yang diatur panitia
@@ -352,7 +359,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   const { data: bankRes, refetch: refetchBankSoal } = useQuery({
     queryKey: cbtQueryKeys.bankSoal({ limit: 500 }),
     queryFn: () => cbtApi.getBankSoalList({ limit: 500 }),
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const rawBankList: CbtBankSoal[] = bankRes?.items || [];
@@ -364,6 +372,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   const { data: jadwalRes, isLoading: isLoadingJadwal, refetch: refetchJadwal } = useQuery({
     queryKey: cbtQueryKeys.jadwal({ limit: 150 }),
     queryFn: () => cbtApi.getJadwalList({ limit: 150 }),
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const jadwalList: CbtJadwalUjian[] = jadwalRes?.items || [];
@@ -373,7 +383,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
     queryKey: ['guru-mapel-readiness', activeTp?.id],
     queryFn: () => listGuruMapel({ tahun_pelajaran_id: activeTp?.id }),
     enabled: !!activeTp?.id,
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
   const rawGuruMapel = guruMapelRes?.data || [];
 

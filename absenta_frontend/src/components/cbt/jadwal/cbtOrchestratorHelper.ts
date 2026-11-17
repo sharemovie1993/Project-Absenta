@@ -23,8 +23,8 @@ export interface ExamSessionSlot {
   session_index: number; // 1, 2, 3
   nama_sesi: string; // Misal: 'Sesi 1'
   jam_mulai: string; // Misal: '07:30'
-  jam_selesai: string; // Misal: '09:00'
-  durasi_menit: number; // Misal: 90
+  jam_selesai: string; // Misal: '08:30'
+  durasi_menit: number; // Misal: 60
 }
 
 export interface ExamDayConfig {
@@ -509,22 +509,22 @@ export function createDefaultExamDays(startDateStr: string, totalDays = 5): Exam
           session_index: 1,
           nama_sesi: 'Sesi 1',
           jam_mulai: '07:30',
-          jam_selesai: '09:00',
-          durasi_menit: 90,
+          jam_selesai: '08:30',
+          durasi_menit: 60,
         },
         {
           session_index: 2,
           nama_sesi: 'Sesi 2',
-          jam_mulai: '09:30',
-          jam_selesai: '11:00',
-          durasi_menit: 90,
+          jam_mulai: '09:00',
+          jam_selesai: '10:00',
+          durasi_menit: 60,
         },
         {
           session_index: 3,
           nama_sesi: 'Sesi 3',
-          jam_mulai: '11:30',
-          jam_selesai: '13:00',
-          durasi_menit: 90,
+          jam_mulai: '10:30',
+          jam_selesai: '11:30',
+          durasi_menit: 60,
         },
       ],
     });
@@ -566,7 +566,7 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
     activeSemId,
     generationMode,
     toleransiTerlambatMenit = 15,
-    tokenRefreshInterval = 15,
+    tokenRefreshInterval = 0,
     strictBrowserGuard = true,
     eventId,
     targetTingkat,
@@ -645,7 +645,7 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
               nama_sesi: `${normalizedPrefix} - ${mapelName} (${cls.nama_kelas} - ${slotRuang})`,
               tanggal_mulai: startIso,
               tanggal_selesai: endIso,
-              durasi_menit: session.durasi_menit || bank.alokasi_menit || 90,
+              durasi_menit: session.durasi_menit || bank.alokasi_menit || 60,
               toleransi_terlambat_menit: toleransiTerlambatMenit,
               target_kelas_ids: [cls.kelas_id],
               setting_keamanan: {
@@ -672,21 +672,44 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
 
           const mapelName = bank.Mapel?.nama_mapel || bank.MataPelajaran?.nama_mapel || bank.judul;
 
+          const resolveBankForClass = (cls: (typeof classesInTingkat)[number]) => {
+            const clsJurCode = (cls.kode_jurusan || '').toUpperCase().trim();
+            const clsName = (cls.nama_kelas || '').toUpperCase();
+
+            const specificBank = bankList.find((b) => {
+              if (b.id === bank.id) return false;
+              if (b.mapel_id !== bank.mapel_id) return false;
+              const bTingkat = resolveBankTingkatNumber(b);
+              if (bTingkat !== tingkat) return false;
+              if (!b.jurusan) return false;
+
+              const bJurUpper = b.jurusan.toUpperCase().trim();
+              if (clsJurCode && bJurUpper === clsJurCode) return true;
+              const reg = new RegExp(`\\b${bJurUpper}\\b`, 'i');
+              return reg.test(clsName);
+            });
+
+            return specificBank || bank;
+          };
+
           if (generationMode === 'per_rombel_ruang') {
             // OPSI A (KONTRAK RESMI KELAS-CENTRIK): 1 Jadwal Ujian untuk setiap Ruang/Rombel
             classesInTingkat.forEach((cls) => {
+              const effectiveBank = resolveBankForClass(cls);
+              const mapelName = effectiveBank.Mapel?.nama_mapel || effectiveBank.MataPelajaran?.nama_mapel || effectiveBank.judul;
+              const jurTag = effectiveBank.jurusan ? ` [${effectiveBank.jurusan}]` : '';
               const rMapping = roomMapByKelasId.get(cls.kelas_id);
               const slotRuang = rMapping?.slot_ruang || `R.01`;
               const namaRuang = rMapping?.nama_ruang || slotRuang;
 
               payloads.push({
-                bank_soal_id: bank.id,
+                bank_soal_id: effectiveBank.id,
                 tahun_pelajaran_id: activeTpId,
                 semester_id: activeSemId,
-                nama_sesi: `${normalizedPrefix} - ${mapelName} (${cls.nama_kelas} - ${slotRuang})`,
+                nama_sesi: `${normalizedPrefix} - ${mapelName}${jurTag} (${cls.nama_kelas} - ${slotRuang})`,
                 tanggal_mulai: startIso,
                 tanggal_selesai: endIso,
-                durasi_menit: session.durasi_menit || bank.alokasi_menit || 90,
+                durasi_menit: session.durasi_menit || effectiveBank.alokasi_menit || 60,
                 toleransi_terlambat_menit: toleransiTerlambatMenit,
                 target_kelas_ids: [cls.kelas_id],
                 setting_keamanan: {
@@ -707,44 +730,59 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
               });
             });
           } else {
-            // OPSI B: 1 Jadwal Terpadu per Tingkat (Disertai Peta Ruang Fisik per Rombel Siswa)
-            const kelasRoomMap: Record<string, { slot_ruang: string; nama_ruang: string }> = {};
+            // OPSI B: 1 Jadwal Terpadu per Tingkat (Dikelompokkan secara Cerdas jika ada Varian Jurusan)
+            const groupsByBank = new Map<string, { bank: typeof bank; classes: typeof classesInTingkat }>();
+
             classesInTingkat.forEach((cls) => {
-              const rMapping = roomMapByKelasId.get(cls.kelas_id);
-              if (rMapping) {
-                kelasRoomMap[cls.kelas_id] = {
-                  slot_ruang: rMapping.slot_ruang,
-                  nama_ruang: rMapping.nama_ruang,
-                };
+              const effectiveBank = resolveBankForClass(cls);
+              if (!groupsByBank.has(effectiveBank.id)) {
+                groupsByBank.set(effectiveBank.id, { bank: effectiveBank, classes: [] });
               }
+              groupsByBank.get(effectiveBank.id)!.classes.push(cls);
             });
 
-            payloads.push({
-              bank_soal_id: bank.id,
-              tahun_pelajaran_id: activeTpId,
-              semester_id: activeSemId,
-              nama_sesi: `${normalizedPrefix} - ${mapelName} (Tingkat ${tingkat} - ${session.nama_sesi})`,
-              tanggal_mulai: startIso,
-              tanggal_selesai: endIso,
-              durasi_menit: session.durasi_menit || bank.alokasi_menit || 90,
-              toleransi_terlambat_menit: toleransiTerlambatMenit,
-              target_kelas_ids: classesInTingkat.map((c) => c.kelas_id),
-              setting_keamanan: {
-                lock_device: true,
-                block_tab_switch: true,
-                max_violations: 3,
-                shuffle_questions: true,
-                shuffle_options: true,
-                show_result_instant: false,
-                auto_transfer_rapor: false,
-                kelas_room_map: kelasRoomMap,
-                room_mappings: kelasRoomMap,
-                ruang_ujian: 'Multi-Ruang Kelas',
-                nama_sesi_waktu: session.nama_sesi,
-                token_refresh_interval: tokenRefreshInterval,
-                strict_browser_guard: strictBrowserGuard,
-                event_id: eventId,
-              },
+            groupsByBank.forEach(({ bank: effectiveBank, classes: groupedClasses }) => {
+              const kelasRoomMap: Record<string, { slot_ruang: string; nama_ruang: string }> = {};
+              groupedClasses.forEach((cls) => {
+                const rMapping = roomMapByKelasId.get(cls.kelas_id);
+                if (rMapping) {
+                  kelasRoomMap[cls.kelas_id] = {
+                    slot_ruang: rMapping.slot_ruang,
+                    nama_ruang: rMapping.nama_ruang,
+                  };
+                }
+              });
+
+              const mapelName = effectiveBank.Mapel?.nama_mapel || effectiveBank.MataPelajaran?.nama_mapel || effectiveBank.judul;
+              const jurTag = effectiveBank.jurusan ? ` [${effectiveBank.jurusan}]` : '';
+
+              payloads.push({
+                bank_soal_id: effectiveBank.id,
+                tahun_pelajaran_id: activeTpId,
+                semester_id: activeSemId,
+                nama_sesi: `${normalizedPrefix} - ${mapelName}${jurTag} (Tingkat ${tingkat} - ${session.nama_sesi})`,
+                tanggal_mulai: startIso,
+                tanggal_selesai: endIso,
+                durasi_menit: session.durasi_menit || effectiveBank.alokasi_menit || 60,
+                toleransi_terlambat_menit: toleransiTerlambatMenit,
+                target_kelas_ids: groupedClasses.map((c) => c.kelas_id),
+                setting_keamanan: {
+                  lock_device: true,
+                  block_tab_switch: true,
+                  max_violations: 3,
+                  shuffle_questions: true,
+                  shuffle_options: true,
+                  show_result_instant: false,
+                  auto_transfer_rapor: false,
+                  kelas_room_map: kelasRoomMap,
+                  room_mappings: kelasRoomMap,
+                  ruang_ujian: 'Multi-Ruang Kelas',
+                  nama_sesi_waktu: session.nama_sesi,
+                  token_refresh_interval: tokenRefreshInterval,
+                  strict_browser_guard: strictBrowserGuard,
+                  event_id: eventId,
+                },
+              });
             });
           }
         }
@@ -897,7 +935,7 @@ export function reconstructMatrixFromExistingSchedules(
       // SINKRONISASI JAM DARI DATABASE: Pastikan jam sesi mengikuti jadwal yang terbit di DB
       matchedSess.jam_mulai = jTime;
       matchedSess.jam_selesai = endJTime;
-      matchedSess.durasi_menit = j.durasi_menit || matchedSess.durasi_menit || 90;
+      matchedSess.durasi_menit = j.durasi_menit || matchedSess.durasi_menit || 60;
     } else {
       // Rekonstruksi slot sesi baru jika belum ada di targetDay
       const sessMatch = (sessLabel || j.nama_sesi || '').match(/Sesi\s*(\d+)/i);
@@ -908,7 +946,7 @@ export function reconstructMatrixFromExistingSchedules(
         nama_sesi: sessLabel || `Sesi ${sessIdx}`,
         jam_mulai: jTime,
         jam_selesai: endJTime,
-        durasi_menit: j.durasi_menit || 90,
+        durasi_menit: j.durasi_menit || 60,
       };
       targetDay.sessions.push(matchedSess);
       targetDay.sessions.sort((a, b) => a.session_index - b.session_index);
