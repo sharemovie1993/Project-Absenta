@@ -103,6 +103,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
 
   // Active Tab State (beranda | siswa | pkl | ploting_pkl | presensi_pkl | nilai_pkl | ploting_penguji | sidang_pkl | kehadiran | pelanggaran | prestasi | guru | sarana | ukk | rapor)
   const [activeTab, setActiveTab] = useState<KaprogTabId>(() => {
+    if (subtabParam === 'sidang_pkl') return 'nilai_pkl';
     if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'ploting_pkl', 'presensi_pkl', 'nilai_pkl', 'ploting_penguji', 'sidang_pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk', 'rapor'].includes(subtabParam)) {
       return subtabParam;
     }
@@ -115,12 +116,13 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   const [visitedTabs, setVisitedTabs] = useState<Set<KaprogTabId>>(() => new Set([activeTab]));
 
   useEffect(() => {
-    if (subtabParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'ploting_pkl', 'presensi_pkl', 'nilai_pkl', 'ploting_penguji', 'sidang_pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk', 'rapor'].includes(subtabParam)) {
+    const effectiveParam = subtabParam === 'sidang_pkl' ? 'nilai_pkl' : subtabParam;
+    if (effectiveParam && ['beranda', 'siswa', 'prestasi', 'pkl', 'ploting_pkl', 'presensi_pkl', 'nilai_pkl', 'ploting_penguji', 'sidang_pkl', 'kehadiran', 'pelanggaran', 'guru', 'sarana', 'ukk', 'rapor'].includes(effectiveParam)) {
       setActiveTab((curr) => {
-        if (curr !== subtabParam) return subtabParam;
+        if (curr !== effectiveParam) return effectiveParam;
         return curr;
       });
-      setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
+      setVisitedTabs((prev) => (prev.has(effectiveParam) ? prev : new Set(prev).add(effectiveParam)));
     } else if (!subtabParam) {
       setActiveTab('beranda');
       setVisitedTabs((prev) => (prev.has('beranda') ? prev : new Set(prev).add('beranda')));
@@ -567,9 +569,9 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
       case 'pkl': return 'Formulasi TP DUDI';
       case 'ploting_pkl': return 'Ploting Siswa PKL';
       case 'presensi_pkl': return 'Absensi PKL';
-      case 'nilai_pkl': return 'Penilaian PKL';
+      case 'nilai_pkl': return 'Nilai & Sidang';
       case 'ploting_penguji': return 'Ploting Penguji';
-      case 'sidang_pkl': return 'Sidang PKL';
+      case 'sidang_pkl': return 'Nilai & Sidang';
       case 'kehadiran': return 'Presensi Jurusan';
       case 'pelanggaran': return 'Pelanggaran Siswa';
       case 'prestasi': return 'Prestasi Siswa';
@@ -838,7 +840,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                   onSelectEditingSlot={handleSelectEditingSlot}
                   onOpenPlottingModal={() => handleTabSelect('ploting_pkl')}
                   onOpenRekapNilai={() => handleTabSelect('nilai_pkl')}
-                  onOpenSidangPkl={() => handleTabSelect('sidang_pkl')}
+                  onOpenSidangPkl={() => handleTabSelect('nilai_pkl')}
                   onOpenMonitoringPkl={() => handleTabSelect('presensi_pkl')}
                   onOpenPrintMatriksModal={() => setIsPrintMatriksModalOpen(true)}
                   onRolloverAllTp={() => rolloverTpMutation.mutate()}

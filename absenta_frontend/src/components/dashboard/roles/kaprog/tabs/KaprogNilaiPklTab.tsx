@@ -29,10 +29,10 @@ export const KaprogNilaiPklTab: React.FC<KaprogNilaiPklTabProps> = React.memo(({
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <span>Progres Input Nilai PKL Jurusan {jurusanNama}</span>
+              <span>Nilai &amp; Sidang PKL Jurusan {jurusanNama}</span>
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Pantau progres ketuntasan nilai capaian kompetensi industri dari guru pembimbing PKL, audit sebaran nilai, serta mode koreksi Kaprog.
+              Pantau progres ketuntasan nilai capaian kompetensi DUDI, monitoring ujian sidang, audit pembimbing &amp; penguji, serta mode koreksi Kaprog.
             </p>
           </div>
         </div>

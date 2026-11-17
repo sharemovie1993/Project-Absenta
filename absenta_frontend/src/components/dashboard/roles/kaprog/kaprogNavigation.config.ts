@@ -80,9 +80,8 @@ export const KAPROG_SUBTABS_BASE: KaprogTabDefinition[] = [
   { id: 'pkl', label: 'Formulasi TP DUDI', shortLabel: 'Formulasi TP', category: 'pkl', icon: Briefcase, targetPath: '/dashboard?tab=kaprog&subtab=pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'ploting_pkl', label: 'Ploting', shortLabel: 'Ploting', category: 'pkl', icon: UserCheck, targetPath: '/dashboard?tab=kaprog&subtab=ploting_pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'presensi_pkl', label: 'Absensi', shortLabel: 'Absensi', category: 'pkl', icon: CalendarCheck, targetPath: '/dashboard?tab=kaprog&subtab=presensi_pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-  { id: 'nilai_pkl', label: 'Penilaian', shortLabel: 'Penilaian', category: 'pkl', icon: ClipboardCheck, targetPath: '/dashboard?tab=kaprog&subtab=nilai_pkl', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+  { id: 'nilai_pkl', label: 'Nilai & Sidang', shortLabel: 'Nilai & Sidang', category: 'pkl', icon: Award, targetPath: '/dashboard?tab=kaprog&subtab=nilai_pkl', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
   { id: 'ploting_penguji', label: 'Penguji', shortLabel: 'Penguji', category: 'pkl', icon: Users, targetPath: '/dashboard?tab=kaprog&subtab=ploting_penguji', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
-  { id: 'sidang_pkl', label: 'Sidang', shortLabel: 'Sidang', category: 'pkl', icon: Scale, targetPath: '/dashboard?tab=kaprog&subtab=sidang_pkl', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
 
   // Kategori 4: ASESMEN & SERTIFIKASI
   { id: 'ukk', label: 'UKK', shortLabel: 'UKK', category: 'asesmen', icon: Award, targetPath: '/dashboard?tab=kaprog&subtab=ukk', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
