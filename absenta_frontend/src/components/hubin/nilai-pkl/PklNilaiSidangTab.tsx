@@ -1069,8 +1069,16 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           onClose={() => setShowCetakModal(false)}
           initialDocType={cetakDocType}
           scores={displayedScores || []}
-          jurusanId={jurusanId}
-          jurusanNama={jurusanNama}
+          jurusanId={
+            jurusanId ||
+            (displayedScores || []).find((s) => s.jurusan_id)?.jurusan_id ||
+            undefined
+          }
+          jurusanNama={
+            (jurusanNama && jurusanNama !== 'Kejuruan' && jurusanNama !== 'Semua Program Keahlian')
+              ? jurusanNama
+              : (displayedScores || []).find((s) => s.nama_jurusan)?.nama_jurusan || undefined
+          }
           selectedTpNama={selectedTp ? (tpOptions || []).find((t) => t.value === selectedTp)?.label : ''}
           selectedSemesterNama={selectedSemester ? (semesterOptions || []).find((s) => s.value === selectedSemester)?.label : ''}
           activePengujiNama={(guruList || []).find((g) => g.id === activeGuruId)?.nama_guru || ''}
