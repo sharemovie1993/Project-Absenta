@@ -11,6 +11,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { publicPortalApi, PublicArticleDetail, PublicSchoolProfile } from '../../../api/public-portal.api';
+import { resolveProfilePhotoUrl } from '../../../lib/utils';
 
 export const PublicArticleDetailPage: React.FC = () => {
   const { tenantSlug, articleSlug } = useParams<{ tenantSlug: string; articleSlug: string }>();
@@ -162,7 +163,7 @@ export const PublicArticleDetailPage: React.FC = () => {
         {article.cover_image && (
           <div className="rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-slate-900 max-h-[480px]">
             <img
-              src={article.cover_image}
+              src={resolveProfilePhotoUrl(article.cover_image)}
               alt={article.title}
               className="w-full h-full object-cover"
             />

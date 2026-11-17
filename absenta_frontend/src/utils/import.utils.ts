@@ -34,9 +34,7 @@ export const importDataFromExcel = async (
   const formData = new FormData();
   formData.append('file', file);
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'multipart/form-data',
-  };
+  const headers: Record<string, string> = {};
 
   if (socketId) {
     headers['x-socket-id'] = socketId;

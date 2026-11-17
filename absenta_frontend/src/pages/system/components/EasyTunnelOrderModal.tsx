@@ -1,6 +1,7 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { Modal, Button, Input } from '@/components/ui';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface Props {
   isOpen: boolean;
@@ -186,7 +187,7 @@ export const EasyTunnelOrderModal: React.FC<Props> = React.memo(({
                         return (
                           <div className="flex items-center gap-2">
                             {ch.icon_url || ch.logo_url || ch.logo ? (
-                              <img src={ch.icon_url || ch.logo_url || ch.logo} alt={ch.name} className="h-5 object-contain max-w-full" />
+                              <img src={resolveProfilePhotoUrl(ch.icon_url || ch.logo_url || ch.logo)} alt={ch.name} className="h-5 object-contain max-w-full" />
                             ) : (
                               <span>💳</span>
                             )}
@@ -220,7 +221,7 @@ export const EasyTunnelOrderModal: React.FC<Props> = React.memo(({
                           }}
                         >
                           {ch.icon_url || ch.logo_url || ch.logo ? (
-                            <img src={ch.icon_url || ch.logo_url || ch.logo} alt={ch.name} className="h-5 w-12 object-contain shrink-0" />
+                            <img src={resolveProfilePhotoUrl(ch.icon_url || ch.logo_url || ch.logo)} alt={ch.name} className="h-5 w-12 object-contain shrink-0" />
                           ) : (
                             <span className="w-12 text-center text-sm shrink-0">💳</span>
                           )}
@@ -333,7 +334,7 @@ export const EasyTunnelOrderModal: React.FC<Props> = React.memo(({
             {invoice.qr_url ? (
               <div className="flex flex-col items-center py-4">
                 <div className="bg-white p-4 rounded-2xl shadow-xl inline-block">
-                  <img src={invoice.qr_url} alt="QRIS Code" className="w-44 h-44 block object-contain mx-auto" />
+                  <img src={resolveProfilePhotoUrl(invoice.qr_url)} alt="QRIS Code" className="w-44 h-44 block object-contain mx-auto" />
                 </div>
                 <span className="text-[10px] font-bold text-slate-400 mt-4 text-center max-w-sm leading-relaxed">
                   Pindai kode QRIS di atas menggunakan aplikasi e-wallet Anda.

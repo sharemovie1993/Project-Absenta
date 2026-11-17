@@ -182,7 +182,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
 
   // Per-Section Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [activeEditSection, setActiveEditSection] = useState<'pribadi' | 'akademik' | 'orangtua' | 'alamat'>('pribadi');
+  const [activeEditSection, setActiveEditSection] = useState<'identitas' | 'pribadi' | 'akademik' | 'orangtua' | 'alamat'>('identitas');
   const [isSavingSection, setIsSavingSection] = useState(false);
   const [isReactivatingDirect, setIsReactivatingDirect] = useState(false);
 
@@ -191,6 +191,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
   const [editNis, setEditNis] = useState('');
   const [editNisn, setEditNisn] = useState('');
   const [editNik, setEditNik] = useState('');
+  const [editNoRfid, setEditNoRfid] = useState('');
   const [editNoKk, setEditNoKk] = useState('');
   const [editJenisKelamin, setEditJenisKelamin] = useState('');
   const [editTempatLahir, setEditTempatLahir] = useState('');
@@ -258,6 +259,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
       setEditNis(siswa.nis || '');
       setEditNisn(siswa.nisn || '');
       setEditNik(siswa.nik || '');
+      setEditNoRfid((siswa as any).no_rfid || '');
       setEditNoKk((siswa as any).no_kk || '');
       setEditJenisKelamin(siswa.jenis_kelamin || 'L');
       setEditTempatLahir(siswa.tempat_lahir || '');
@@ -297,7 +299,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
     }
   }, [siswa]);
 
-  const handleOpenEditSection = (section: 'pribadi' | 'akademik' | 'orangtua' | 'alamat') => {
+  const handleOpenEditSection = (section: 'identitas' | 'pribadi' | 'akademik' | 'orangtua' | 'alamat') => {
     setActiveEditSection(section);
     setIsEditModalOpen(true);
   };
@@ -311,7 +313,16 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
       setIsSavingSection(true);
       let payload: any = {};
 
-      if (activeEditSection === 'pribadi') {
+      if (activeEditSection === 'identitas') {
+        payload = {
+          nama_siswa: editNamaSiswa ? editNamaSiswa.trim() : undefined,
+          nis: editNis ? editNis.trim() : undefined,
+          nisn: editNisn ? editNisn.trim() : null,
+          nik: editNik ? editNik.trim() : null,
+          no_rfid: editNoRfid ? editNoRfid.trim() : null,
+          kelas_id: editKelasId || null,
+        };
+      } else if (activeEditSection === 'pribadi') {
         payload = {
           nama_siswa: editNamaSiswa ? editNamaSiswa.trim() : undefined,
           jenis_kelamin: editJenisKelamin || 'L',
@@ -651,9 +662,21 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
 
             {/* Nama & Badges Siswa */}
             <div className="text-center space-y-1">
-              <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
-                {siswa.nama_siswa}
-              </h3>
+              <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
+                  {siswa.nama_siswa}
+                </h3>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditSection('identitas')}
+                    className="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    title="Edit Nama Siswa & Identitas"
+                  >
+                    <Edit3 size={13} />
+                  </button>
+                )}
+              </div>
               
               <div className="flex flex-wrap gap-1.5 justify-center pt-0.5">
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-xl border text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20">
@@ -669,10 +692,34 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
 
             {/* Quick Detail Key-Value List */}
             <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs">
+              <div className="flex items-center justify-between pb-1 border-b border-dashed border-slate-200/80 dark:border-slate-800">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Blok Identitas Pokok</span>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditSection('identitas')}
+                    className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Edit3 size={11} />
+                    <span>Edit Identitas</span>
+                  </button>
+                )}
+              </div>
+
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">NISN</span>
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono font-extrabold text-slate-800 dark:text-slate-200">{siswa.nisn || '-'}</span>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditSection('identitas')}
+                      className="text-slate-400 hover:text-indigo-600 p-0.5 rounded cursor-pointer"
+                      title="Edit NISN"
+                    >
+                      <Edit3 size={11} />
+                    </button>
+                  )}
                   {siswaId && (
                     <FieldDocumentTrigger
                       entityType="SISWA"
@@ -686,12 +733,34 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">NIS</span>
-                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{siswa.nis || '-'}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{siswa.nis || '-'}</span>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditSection('identitas')}
+                      className="text-slate-400 hover:text-indigo-600 p-0.5 rounded cursor-pointer"
+                      title="Edit NIS"
+                    >
+                      <Edit3 size={11} />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">NIK (KTP/KIA)</span>
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNik || '-'}</span>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditSection('identitas')}
+                      className="text-slate-400 hover:text-indigo-600 p-0.5 rounded cursor-pointer"
+                      title="Edit NIK"
+                    >
+                      <Edit3 size={11} />
+                    </button>
+                  )}
                   {siswaId && (
                     <FieldDocumentTrigger
                       entityType="SISWA"
@@ -704,8 +773,36 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
                 </div>
               </div>
               <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-bold">No. Kartu RFID</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{siswa.no_rfid || '-'}</span>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditSection('identitas')}
+                      className="text-slate-400 hover:text-indigo-600 p-0.5 rounded cursor-pointer"
+                      title="Edit RFID"
+                    >
+                      <Edit3 size={11} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">Rombel Kelas</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">{namaKelas}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{namaKelas}</span>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditSection('identitas')}
+                      className="text-slate-400 hover:text-indigo-600 p-0.5 rounded cursor-pointer"
+                      title="Pindah / Edit Kelas"
+                    >
+                      <Edit3 size={11} />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-bold">Jurusan</span>
@@ -946,6 +1043,38 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
 
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
             <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">NISN</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="font-mono font-extrabold text-slate-800 dark:text-slate-200">{editNisn || '-'}</p>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditSection('identitas')}
+                    className="text-slate-400 hover:text-indigo-600 p-0.5 rounded cursor-pointer"
+                    title="Edit NISN"
+                  >
+                    <Edit3 size={11} />
+                  </button>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">NIS</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNis || '-'}</p>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditSection('identitas')}
+                    className="text-slate-400 hover:text-indigo-600 p-0.5 rounded cursor-pointer"
+                    title="Edit NIS"
+                  >
+                    <Edit3 size={11} />
+                  </button>
+                )}
+              </div>
+            </div>
+            <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase">Status Siswa</p>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className={cn(
@@ -1103,6 +1232,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         title={
+          activeEditSection === 'identitas' ? 'Edit Identitas Pokok Siswa' :
           activeEditSection === 'pribadi' ? 'Edit Data Pribadi Siswa' :
           activeEditSection === 'akademik' ? 'Edit Data Akademik Siswa' :
           activeEditSection === 'orangtua' ? 'Edit Data Orang Tua / Wali Siswa' :
@@ -1111,6 +1241,119 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
         size="2xl"
       >
         <form onSubmit={handleSaveSection} className="p-5 space-y-4">
+          {/* Section: Identitas Pokok */}
+          {activeEditSection === 'identitas' && (
+            <div className="space-y-3.5">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="editNamaSiswaIdentitas">Nama Lengkap Siswa</Label>
+                  {siswaId && (
+                    <FieldDocumentTrigger
+                      entityType="SISWA"
+                      entityId={siswaId}
+                      entityName={editNamaSiswa}
+                      kategori="AKTA"
+                      label="Akta Lahir"
+                      disabled={!canEdit}
+                    />
+                  )}
+                </div>
+                <Input
+                  id="editNamaSiswaIdentitas"
+                  value={editNamaSiswa}
+                  onChange={(e) => setEditNamaSiswa(e.target.value)}
+                  placeholder="Nama Lengkap Siswa"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="editNisnIdentitas">NISN (Nomor Induk Siswa Nasional)</Label>
+                    {siswaId && (
+                      <FieldDocumentTrigger
+                        entityType="SISWA"
+                        entityId={siswaId}
+                        entityName={editNamaSiswa}
+                        kategori="NISN"
+                        label="Kartu NISN"
+                        disabled={!canEdit}
+                      />
+                    )}
+                  </div>
+                  <Input
+                    id="editNisnIdentitas"
+                    value={editNisn}
+                    onChange={(e) => setEditNisn(e.target.value)}
+                    placeholder="10 Digit NISN"
+                    maxLength={10}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="editNisIdentitas">NIS (Nomor Induk Sekolah)</Label>
+                  <Input
+                    id="editNisIdentitas"
+                    value={editNis}
+                    onChange={(e) => setEditNis(e.target.value)}
+                    placeholder="NIS Sekolah"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="editNikIdentitas">NIK Siswa (KTP/KIA)</Label>
+                    {siswaId && (
+                      <FieldDocumentTrigger
+                        entityType="SISWA"
+                        entityId={siswaId}
+                        entityName={editNamaSiswa}
+                        kategori="KK"
+                        label="KTP/KK Siswa"
+                        disabled={!canEdit}
+                      />
+                    )}
+                  </div>
+                  <Input
+                    id="editNikIdentitas"
+                    value={editNik}
+                    onChange={(e) => setEditNik(e.target.value)}
+                    placeholder="16 Digit NIK"
+                    maxLength={16}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="editNoRfidIdentitas">Nomor Kartu RFID / Tap Absensi</Label>
+                  <Input
+                    id="editNoRfidIdentitas"
+                    value={editNoRfid}
+                    onChange={(e) => setEditNoRfid(e.target.value)}
+                    placeholder="Contoh: 0012345678"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="editKelasIdIdentitas">Rombel Kelas</Label>
+                <SearchableSelect
+                  id="editKelasIdIdentitas"
+                  value={editKelasId}
+                  onValueChange={setEditKelasId}
+                  options={kelasList.map((k) => ({
+                    value: k.value,
+                    label: k.label,
+                  }))}
+                  placeholder="Pilih Rombel Kelas"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Section: Data Pribadi */}
           {activeEditSection === 'pribadi' && (
             <div className="space-y-3.5">

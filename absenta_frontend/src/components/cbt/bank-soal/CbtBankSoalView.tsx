@@ -18,6 +18,8 @@ import {
   Plus,
   Rocket,
   Users,
+  FileEdit,
+  FileEdit,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -31,7 +33,7 @@ import { CbtBankSoalFormModal } from './CbtBankSoalFormModal';
 import { CbtBankSoalDetailModal } from './CbtBankSoalDetailModal';
 import { TeacherCbtDutyCard } from './TeacherCbtDutyCard';
 import { CbtJadwalFormModal } from '../jadwal/CbtJadwalFormModal';
-import { getTingkatRoman } from './cbtAsesmenHelper';
+import { getTingkatRoman, formatDisplayJudulBankSoal } from './cbtAsesmenHelper';
 import { useCbtOperationMode } from '../cbtModeHelper';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
@@ -166,7 +168,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const duplicateMutation = useMutation({
     mutationFn: (id: string) => cbtApi.duplicateBankSoal(id, currentGuruId),
     onSuccess: async () => {
-      toast.success('Master soal MGMP berhasil diklaim & masuk ke Bank Soal Anda!');
+      toast.success('Bank soal berhasil disalin!');
       await queryClient.invalidateQueries({
         queryKey: cbtQueryKeys.bankSoal(),
         exact: false,
@@ -179,16 +181,10 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   });
 
   const handleDuplicate = async (bankSoal: CbtBankSoal) => {
-    const isFromColleague = Boolean(currentGuruId && bankSoal.guru_id !== currentGuruId);
-    const count = bankSoal.jumlah_soal || bankSoal._count?.Soal || 0;
-    const authorName = bankSoal.Guru?.nama_guru || 'Koordinator MGMP';
-
     const isConfirmed = await confirm({
-      title: isFromColleague ? 'Klaim & Gunakan Master Soal MGMP?' : 'Salin Bank Soal?',
-      message: isFromColleague
-        ? `Salin paket "${bankSoal.judul}" (${bankSoal.kode_bank}) karya ${authorName} beserta ${count} butir soalnya ke akun Anda? Anda bisa langsung mengaktifkan sesi ujian untuk kelas binaan Anda tanpa mengetik ulang.`
-        : `Salin paket "${bankSoal.judul}" beserta seluruh butir soalnya menjadi Bank Soal milik Anda sendiri?`,
-      confirmText: isFromColleague ? 'Ya, Klaim Master' : 'Ya, Salin',
+      title: 'Salin Bank Soal?',
+      message: `Salin paket "${bankSoal.judul}" beserta seluruh butir soalnya menjadi Bank Soal milik Anda sendiri?`,
+      confirmText: 'Ya, Salin',
       cancelText: 'Batal',
       style: 'info',
     });
@@ -199,79 +195,90 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   };
 
   // Table Columns Definition
-  const columns: Column[] = useMemo(
-    () => [
+  const columns: Column[] = useMemo(() => {
+    const isRowMassalPackage = (row: CbtBankSoal): boolean => {
+      const code = (row.kode_bank || '').toUpperCase();
+      return (
+        Boolean(row.is_shared) ||
+        Boolean(row.kolaborasi_badge) ||
+        Boolean(row.Kontributor && row.Kontributor.length > 0) ||
+        Boolean(row.judul && row.judul.trim().startsWith('[')) ||
+        code.startsWith('PSAS-') ||
+        code.startsWith('PSAT-') ||
+        code.startsWith('PSTS-') ||
+        code.startsWith('PSAJ-') ||
+        code.startsWith('UKK-') ||
+        code.startsWith('SAS-') ||
+        code.startsWith('SAT-') ||
+        code.startsWith('STS-') ||
+        code.startsWith('PAS-') ||
+        code.startsWith('PAT-') ||
+        code.startsWith('PTS-') ||
+        code.startsWith('US-') ||
+        code.startsWith('UAS-') ||
+        code.startsWith('TRYOUT-')
+      );
+    };
+
+    return [
       {
         key: 'kode_bank',
         title: 'Kode & Judul Bank Soal',
         label: 'Kode & Judul Bank Soal',
-        className: 'min-w-[240px]',
+        className: 'min-w-[280px]',
         render: (_val: unknown, row: CbtBankSoal) => {
           const isSharedBank = row.status === 'PUBLISHED' || Boolean(row.is_shared);
           const isFromColleague = Boolean(currentGuruId && row.guru_id !== currentGuruId);
-          const code = (row.kode_bank || '').toUpperCase();
-          const isMassalPackage =
-            Boolean(row.is_shared) ||
-            (row.Kontributor && row.Kontributor.length > 0) ||
-            (row.judul && row.judul.trim().startsWith('[')) ||
-            code.startsWith('PSAS-') ||
-            code.startsWith('PSAT-') ||
-            code.startsWith('PSTS-') ||
-            code.startsWith('PSAJ-') ||
-            code.startsWith('UKK-') ||
-            code.startsWith('SAS-') ||
-            code.startsWith('SAT-') ||
-            code.startsWith('STS-') ||
-            code.startsWith('PAS-') ||
-            code.startsWith('PAT-') ||
-            code.startsWith('PTS-') ||
-            code.startsWith('US-') ||
-            code.startsWith('UAS-') ||
-            code.startsWith('TRYOUT-');
+          const isMassalPackage = isRowMassalPackage(row);
+
+          const cleanJudul = formatDisplayJudulBankSoal(row.judul, row.kode_bank, row.tingkat);
+          const authorShortName = (row.Guru?.nama_guru || '').split(',')[0]?.trim();
 
           return (
-            <div className="space-y-0.5">
+            <div className="space-y-1 py-0.5">
+              <div className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-100 line-clamp-1 leading-snug" title={row.judul}>
+                {cleanJudul}
+              </div>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-900/40">
+                <span className="font-mono text-[11px] font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50/70 dark:bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-800/50">
                   {row.kode_bank}
                 </span>
-                <Badge variant="outline" className="text-[10px] font-bold">
-                  Tingkat {row.tingkat}
-                </Badge>
+                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200/60 dark:border-slate-700/60">
+                  Tingkat {getTingkatRoman(row.tingkat)}
+                </span>
                 {row.kolaborasi_badge && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                    <Users size={10} />
-                    <span>{row.kolaborasi_badge}</span>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800/50">
+                    {row.kolaborasi_badge}
                   </span>
                 )}
                 {row.UnitPengajaran && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                  <span className="text-[10px] font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 px-1.5 py-0.5 rounded border border-sky-200/60 dark:border-sky-800/50">
                     Unit: {row.UnitPengajaran.nama_unit}
                   </span>
                 )}
                 {isFromColleague ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60">
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60"
+                    title={`Paket ujian MGMP disusun oleh rekan: ${row.Guru?.nama_guru || 'Rekan Pengampu'}`}
+                  >
                     <Users size={10} />
-                    <span>Master MGMP ({row.Guru?.nama_guru || 'Rekan'})</span>
+                    <span>Paket MGMP (Penyusun: {authorShortName || 'Rekan'})</span>
                   </span>
-                ) : isMassalPackage ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                    🏛️ Paket Terpusat (MGMP)
+                ) : (row.kolaborasi_badge || isMassalPackage) ? (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                    title="Paket Soal MGMP Terpusat (Anda adalah Penyusun Utamanya)"
+                  >
+                    <Users size={10} />
+                    <span>Paket MGMP (Milik Anda)</span>
                   </span>
                 ) : isSharedBank ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60">
                     <Share2 size={10} />
                     <span>Dibagikan</span>
                   </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700">
-                    Mandiri
-                  </span>
-                )}
+                ) : null}
               </div>
-              <p className="font-bold text-xs text-slate-800 dark:text-slate-200 line-clamp-1 pt-0.5">
-                {row.judul}
-              </p>
             </div>
           );
         },
@@ -324,17 +331,32 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         title: 'Guru Pengampu',
         label: 'Guru Pengampu',
         className: 'min-w-[180px]',
-        render: (_val: unknown, row: CbtBankSoal) => (
-          <div className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
-            {row.Guru?.nama_guru || '-'}
-          </div>
-        ),
+        render: (_val: unknown, row: CbtBankSoal) => {
+          const isFromColleague = Boolean(currentGuruId && row.guru_id !== currentGuruId);
+          const isMassalPackage = isRowMassalPackage(row);
+          return (
+            <div className="space-y-0.5">
+              <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                {row.Guru?.nama_guru || '-'}
+              </div>
+              {isFromColleague ? (
+                <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 block">
+                  Penyusun Rekan MGMP
+                </span>
+              ) : (row.kolaborasi_badge || isMassalPackage) ? (
+                <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 block">
+                  Penyusun Utama (Anda)
+                </span>
+              ) : null}
+            </div>
+          );
+        },
       },
       {
         key: 'aksi',
         title: 'Aksi',
         label: 'Aksi',
-        className: 'min-w-[220px] text-right',
+        className: 'min-w-[260px] text-right',
         render: (_val: unknown, row: CbtBankSoal) => {
           const isFromColleague = Boolean(currentGuruId && row.guru_id !== currentGuruId);
           const isContributor = Boolean(
@@ -344,7 +366,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           const canManageSoal = !readOnly && (!isFromColleague || isContributor);
           const questionCount = row.jumlah_soal || row._count?.Soal || 0;
           return (
-            <div className="flex items-center justify-end gap-1 flex-nowrap" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-end gap-1.5 flex-nowrap whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
               <Button
                 type="button"
                 variant="outline"
@@ -353,89 +375,65 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                   setSelectedBankSoal(row);
                   setIsDetailModalOpen(true);
                 }}
-                className="text-xs h-7 px-2.5 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold rounded-lg cursor-pointer flex items-center gap-1"
+                className="text-xs h-7 px-2.5 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold rounded-lg cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0"
               >
-                <Eye size={13} />
-                <span>{canManageSoal ? (isFromColleague ? 'Kontribusi Soal' : 'Kelola Soal') : 'Lihat Soal'}</span>
+                <Eye size={13} className="shrink-0" />
+                <span className="whitespace-nowrap">{canManageSoal ? (isFromColleague ? 'Kontribusi Soal' : 'Kelola Soal') : 'Lihat Soal'}</span>
               </Button>
 
-              {!readOnly && !isFromColleague && questionCount > 0 && (
+              {!readOnly && questionCount > 0 && (
                 <Button
                   type="button"
                   variant="default"
                   size="sm"
                   onClick={() => handleOpenJadwalModal(row)}
-                  className="text-xs h-7 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg flex items-center gap-1 shadow-2xs cursor-pointer"
+                  className="text-xs h-7 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg flex items-center gap-1 shadow-2xs cursor-pointer whitespace-nowrap shrink-0"
                   title="Jadwalkan & Aktifkan Ujian untuk Kelas Binaan Anda"
                 >
-                  <Rocket size={12} />
-                  <span>Aktifkan</span>
-                </Button>
-              )}
-
-              {!readOnly && isFromColleague && (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleDuplicate(row)}
-                  disabled={duplicateMutation.isPending}
-                  className="text-xs h-7 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg flex items-center gap-1 shadow-2xs cursor-pointer"
-                  title="Klaim & Salin Master Soal MGMP ini ke Akun Anda"
-                >
-                  <Copy size={12} />
-                  <span>Klaim Master</span>
+                  <Rocket size={12} className="shrink-0" />
+                  <span className="whitespace-nowrap">Aktifkan</span>
                 </Button>
               )}
 
               {!readOnly && !isFromColleague && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDuplicate(row)}
-                  disabled={duplicateMutation.isPending}
-                  className="text-xs h-7 px-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg cursor-pointer"
-                  title="Duplikat Bank Soal"
-                >
-                  <Copy size={13} />
-                </Button>
-              )}
-
-              {!readOnly && !isFromColleague && (
-                <>
-                  <Button
+                <div className="flex items-center gap-0.5 pl-1 ml-0.5 border-l border-slate-200 dark:border-slate-700/60 shrink-0">
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
+                    onClick={() => handleDuplicate(row)}
+                    disabled={duplicateMutation.isPending}
+                    className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                    title="Duplikat Bank Soal"
+                  >
+                    <Copy size={13} />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => {
                       setSelectedBankSoal(row);
                       setIsFormModalOpen(true);
                     }}
-                    className="text-xs h-7 px-2 text-slate-600 hover:text-slate-900 rounded-lg"
-                    title="Edit Bank Soal"
+                    className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer"
+                    title="Edit Informasi Bank Soal"
                   >
                     <Edit2 size={13} />
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
                     onClick={() => handleDelete(row)}
-                    className="text-xs h-7 px-2 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg"
+                    disabled={deleteMutation.isPending}
+                    className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
                     title="Hapus Bank Soal"
                   >
                     <Trash2 size={13} />
-                  </Button>
-                </>
+                  </button>
+                </div>
               )}
             </div>
           );
         },
       },
-    ],
-    [readOnly, currentGuruId, duplicateMutation.isPending]
-  );
+    ];
+  }, [readOnly, currentGuruId, duplicateMutation.isPending]);
 
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
@@ -537,7 +535,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                         {item.kode_bank}
                       </span>
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                        Tingkat {item.tingkat}
+                        Tingkat {getTingkatRoman(item.tingkat)}
                       </span>
                       {item.kolaborasi_badge && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
@@ -550,8 +548,8 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                         </span>
                       )}
                     </div>
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mt-1 leading-tight line-clamp-2">
-                      {item.judul}
+                    <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mt-1 leading-tight line-clamp-2" title={item.judul}>
+                      {formatDisplayJudulBankSoal(item.judul, item.kode_bank, item.tingkat)}
                     </h4>
                   </div>
 
@@ -561,17 +559,17 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                       isFromColleague
                         ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800"
                         : isSharedBank
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+                        ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800"
                         : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
                     )}
                   >
                     {isFromColleague ? (
                       <>
                         <Users size={10} />
-                        <span>Master MGMP</span>
+                        <span>Paket MGMP</span>
                       </>
                     ) : isSharedBank ? (
-                      'Telah Terbit'
+                      'Penyusun Utama'
                     ) : (
                       'Draft'
                     )}
@@ -599,31 +597,38 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                   </div>
                 </div>
 
-                {/* Tombol Aksi: Jika Master dari Rekan -> Klaim & Pratinjau; Jika Milik Sendiri -> Kelola & Aktifkan */}
+                {/* Tombol Aksi: Jika Master dari Rekan -> Pratinjau & Aktifkan; Jika Milik Sendiri -> Kelola & Aktifkan */}
                 {isFromColleague && !readOnly ? (
                   <div className="space-y-1.5 pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => handleDuplicate(item)}
-                      disabled={duplicateMutation.isPending}
-                      className="w-full py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
-                    >
-                      <Copy size={14} />
-                      <span>{duplicateMutation.isPending ? 'Mengklaim...' : 'Klaim & Gunakan Master Soal'}</span>
-                    </button>
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedBankSoal(item);
                         setIsDetailModalOpen(true);
                       }}
-                      className="w-full py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      className={cn(
+                        "w-full py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1.5",
+                        questionCount > 0
+                          ? "border border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100"
+                          : "border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                      )}
                     >
-                      <Eye size={14} />
+                      {canManageSoal ? <FileEdit size={14} /> : <Eye size={14} />}
                       <span>
                         {canManageSoal ? 'Kontribusi & Kelola Soal' : `Lihat Butir Soal (${questionCount} Soal)`}
                       </span>
                     </button>
+
+                    {questionCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenJadwalModal(item)}
+                        className="w-full py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
+                      >
+                        <Rocket size={14} />
+                        <span>Aktifkan Ujian untuk Kelas Binaan</span>
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-1.5 pt-0.5">

@@ -2,7 +2,7 @@
  * cbtMgmpHelper.ts
  * Helper untuk manajemen kolaborasi 2 arah Bank Soal MGMP (Pusat & Paralel)
  * - Arah 1 (Push): Pembuat master menceklis rekan guru paralel yang ter-cover
- * - Arah 2 (Pull): Rekan paralel mengklaim master bank untuk kelas mereka
+ * - Arah 2: Rekan paralel mengadopsi & mengaktifkan master bank untuk kelas mereka tanpa duplikasi
  * - Pelacak Colek WhatsApp terintegrasi kontak guru & riwayat pengingat
  */
 

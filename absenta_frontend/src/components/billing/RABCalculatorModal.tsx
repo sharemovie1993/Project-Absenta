@@ -17,6 +17,7 @@ import {
   Package
 } from 'lucide-react';
 import { RABProductItem } from './UnifiedCatalog';
+import { resolveProfilePhotoUrl } from '../../lib/utils';
 
 export interface RABCalculatorModalProps {
   isOpen: boolean;
@@ -36,7 +37,7 @@ interface RABSlotSelection {
 const getProductRealImage = (plan: RABProductItem | undefined): string => {
   if (!plan) return '';
   const img = (plan as any).image_url || (plan as any).thumbnail_url || (plan as any).image;
-  if (img) return img;
+  if (img) return resolveProfilePhotoUrl(img);
 
   const idUpper = (plan.id || '').toUpperCase();
   const nameUpper = (plan.name || '').toUpperCase();

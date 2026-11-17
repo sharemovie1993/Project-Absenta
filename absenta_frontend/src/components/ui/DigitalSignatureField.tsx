@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { PenTool, CheckCircle2, Trash2, Edit3 } from 'lucide-react';
 import { DigitalSignaturePadModal } from './DigitalSignaturePadModal';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 
 export interface DigitalSignatureFieldProps {
   label: string;
@@ -60,7 +60,7 @@ export const DigitalSignatureField: React.FC<DigitalSignatureFieldProps> = ({
             disabled ? 'cursor-default' : 'cursor-pointer hover:border-primary/50'
           )}
         >
-          <img src={value} alt="Tanda Tangan Digital" className="max-h-16 object-contain" />
+          <img src={resolveProfilePhotoUrl(value)} alt="Tanda Tangan Digital" className="max-h-16 object-contain" />
           <div className="absolute top-1.5 right-1.5">
             <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1">
               <CheckCircle2 className="w-2.5 h-2.5" />

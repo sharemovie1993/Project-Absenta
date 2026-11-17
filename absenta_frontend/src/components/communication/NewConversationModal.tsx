@@ -16,6 +16,7 @@ import {
 } from '@/api/internal-communication.api';
 import { SmartStudentPicker, type Student } from '@/components/common/SmartStudentPicker';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface NewConversationModalProps {
   isOpen: boolean;
@@ -320,7 +321,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0 shadow-xs border-2 border-white dark:border-slate-800 overflow-hidden">
                     {selectedContact.avatar ? (
-                      <img src={selectedContact.avatar} alt={selectedContact.name} className="w-full h-full object-cover" />
+                      <img src={resolveProfilePhotoUrl(selectedContact.avatar)} alt={selectedContact.name} className="w-full h-full object-cover" />
                     ) : selectedContact.name ? (
                       selectedContact.name.slice(0, 2).toUpperCase()
                     ) : (

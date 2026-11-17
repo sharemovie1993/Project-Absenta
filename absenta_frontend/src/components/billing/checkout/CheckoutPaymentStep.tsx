@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { formatCurrency } from '@/api/plans.api';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
 
 interface CheckoutPaymentStepProps {
@@ -117,7 +118,7 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
             <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50/20 dark:bg-slate-900/30">
               <div className="bg-white p-4 rounded-2xl shadow-xl inline-block">
                 <img
-                  src={activeTx.qr_url}
+                  src={resolveProfilePhotoUrl(activeTx.qr_url)}
                   alt="QRIS Code"
                   className="w-48 h-48 block object-contain"
                 />

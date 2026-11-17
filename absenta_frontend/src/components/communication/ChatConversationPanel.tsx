@@ -24,6 +24,7 @@ import { MessageBubble } from './MessageBubble';
 import { QuickTemplatesModal } from './QuickTemplatesModal';
 import { format, isToday, isYesterday } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface ChatConversationPanelProps {
   thread: InternalThreadItem;
@@ -196,7 +197,7 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
           {/* Avatar Profile */}
           <div className="relative w-10 h-10 rounded-full bg-[#00a884] text-white flex items-center justify-center text-sm font-extrabold shrink-0 overflow-hidden shadow-2xs">
             {otherUser?.avatar ? (
-              <img src={otherUser.avatar} alt={interlocutorName} className="w-full h-full object-cover" />
+              <img src={resolveProfilePhotoUrl(otherUser.avatar)} alt={interlocutorName} className="w-full h-full object-cover" />
             ) : (
               interlocutorName.slice(0, 2).toUpperCase()
             )}

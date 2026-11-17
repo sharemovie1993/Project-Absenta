@@ -77,6 +77,10 @@ export interface ReconciliationReport {
     dapodikOnlyCount: number;
     absentaOnlyCount: number;
   };
+  academicContext?: {
+    tahunPelajaran?: { id: string; tahun: string } | null;
+    semester?: { id: string; nama_semester: string } | null;
+  };
   lastCheckAt: string;
   cacheInfo: {
     isFromCache: boolean;
@@ -743,20 +747,60 @@ export class DapodikService {
       studentWhereClause.status = 'AKTIF';
     }
 
+    // Ambil Konteks Tahun Pelajaran & Semester Aktif Tenant Ini
+    const [activeTp, activeSem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
+      prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
+    ]);
+
     const absentaStudents = await prisma.siswa.findMany({
       where: studentWhereClause,
       include: {
+        Kelas: {
+          select: { id: true, nama_kelas: true, tingkat: true },
+        },
         SiswaAkademik: {
           where: { status: 'AKTIF' },
           include: {
             kelas: {
               select: { id: true, nama_kelas: true, tingkat: true },
             },
+            tahunPelajaran: {
+              select: { id: true, tahun: true, is_active: true },
+            },
+            semester: {
+              select: { id: true, nama_semester: true, is_active: true },
+            },
           },
-          take: 1,
+          orderBy: [
+            { tahunPelajaran: { tahun: 'desc' } },
+            { created_at: 'desc' },
+          ],
         },
       },
     });
+
+    // Helper resolusi rombel aktif yang presisi:
+    // 1. SiswaAkademik pada Tahun Pelajaran Aktif
+    // 2. Kelas master siswa (Siswa.Kelas / kelas_id)
+    // 3. SiswaAkademik terbaru (fallback)
+    const getResolvedKelas = (s: typeof absentaStudents[0]) => {
+      if (activeTp && s.SiswaAkademik && s.SiswaAkademik.length > 0) {
+        const saActive = s.SiswaAkademik.find(
+          (sa) => sa.tahun_pelajaran_id === activeTp.id && sa.kelas
+        );
+        if (saActive?.kelas) {
+          return saActive.kelas;
+        }
+      }
+      if (s.Kelas) {
+        return s.Kelas;
+      }
+      if (s.SiswaAkademik && s.SiswaAkademik.length > 0 && s.SiswaAkademik[0]?.kelas) {
+        return s.SiswaAkademik[0].kelas;
+      }
+      return null;
+    };
 
     // 3. Bangun Indeks Pencocokan (Lookup Maps) untuk Efisiensi O(N)
     const absentaByNisn = new Map<string, typeof absentaStudents[0]>();
@@ -816,6 +860,7 @@ export class DapodikService {
         matchedAbsentaIds.add(match.id);
         const diffs: StudentDiffItem[] = [];
 
+        const resolvedKelas = getResolvedKelas(match);
         const aNama = norm(match.nama_siswa);
         const aNis = (match.nis || '').trim();
         const aNisn = (match.nisn || '').trim();
@@ -823,7 +868,7 @@ export class DapodikService {
         const aJk = norm(match.jenis_kelamin).charAt(0) || 'L';
         const aTglLahir = match.tanggal_lahir ? new Date(match.tanggal_lahir).toISOString().split('T')[0] : null;
         const aTempatLahir = norm(match.tempat_lahir);
-        const aKelas = norm(match.SiswaAkademik[0]?.kelas?.nama_kelas);
+        const aKelas = norm(resolvedKelas?.nama_kelas);
 
         // Bandingkan atribut sesuai opsi yang dipilih operator
         if (opt.checkNama && dNama !== aNama) {
@@ -901,7 +946,7 @@ export class DapodikService {
               field: 'kelas',
               label: 'Rombongan Belajar / Kelas',
               dapodikValue: dRow.nama_rombel || dRow.rombongan_belajar?.nama || dRow.rombel,
-              absentaValue: match.SiswaAkademik[0]?.kelas?.nama_kelas,
+              absentaValue: resolvedKelas?.nama_kelas || null,
             });
           }
         }
@@ -917,11 +962,16 @@ export class DapodikService {
           jenis_kelamin: match.jenis_kelamin,
           tempat_lahir: match.tempat_lahir,
           tanggal_lahir: aTglLahir || dTglLahir,
-          rombel: aKelas || dRombel || null,
+          rombel: resolvedKelas?.nama_kelas || aKelas || dRombel || null,
           status: isMatch ? 'MATCH' : 'MISMATCH',
           diffs,
           dapodikRaw: dRow,
-          absentaRaw: match,
+          absentaRaw: {
+            ...match,
+            SiswaAkademik: resolvedKelas
+              ? [{ kelas: resolvedKelas, status: 'AKTIF' }, ...(match.SiswaAkademik || [])]
+              : match.SiswaAkademik,
+          },
         });
       }
     }
@@ -929,6 +979,7 @@ export class DapodikService {
     // 5. Tambahkan Siswa Absenta yang Tidak Ditemukan di Dapodik
     for (const aStudent of absentaStudents) {
       if (!matchedAbsentaIds.has(aStudent.id)) {
+        const resolvedKelas = getResolvedKelas(aStudent);
         const aTgl = aStudent.tanggal_lahir ? new Date(aStudent.tanggal_lahir).toISOString().split('T')[0] : null;
         resultList.push({
           id: aStudent.id,
@@ -939,10 +990,15 @@ export class DapodikService {
           jenis_kelamin: aStudent.jenis_kelamin,
           tempat_lahir: aStudent.tempat_lahir,
           tanggal_lahir: aTgl,
-          rombel: aStudent.SiswaAkademik[0]?.kelas?.nama_kelas || null,
+          rombel: resolvedKelas?.nama_kelas || null,
           status: 'ABSENTA_ONLY',
           diffs: [],
-          absentaRaw: aStudent,
+          absentaRaw: {
+            ...aStudent,
+            SiswaAkademik: resolvedKelas
+              ? [{ kelas: resolvedKelas, status: 'AKTIF' }, ...(aStudent.SiswaAkademik || [])]
+              : aStudent.SiswaAkademik,
+          },
         });
       }
     }
@@ -961,6 +1017,10 @@ export class DapodikService {
 
     return {
       summary,
+      academicContext: {
+        tahunPelajaran: activeTp ? { id: activeTp.id, tahun: activeTp.tahun } : null,
+        semester: activeSem ? { id: activeSem.id, nama_semester: activeSem.nama_semester } : null,
+      },
       lastCheckAt: new Date().toISOString(),
       cacheInfo: {
         isFromCache,
@@ -985,6 +1045,7 @@ export class DapodikService {
       action: 'UPDATE_SELECTED' | 'IMPORT_SELECTED';
       tahun_pelajaran_id?: string;
       semester_id?: string;
+      fields_to_update?: string[];
       students: {
         absentaId?: string;
         nisn?: string;
@@ -1024,35 +1085,56 @@ export class DapodikService {
       const targetSemId = item.semester_id || defaultSemId || undefined;
 
       if (payload.action === 'UPDATE_SELECTED' && item.absentaId) {
-        const updateData: any = {
-          nama_siswa: item.nama,
-          nis: item.nis || undefined,
-          nisn: item.nisn || undefined,
-          nik: item.nik || undefined,
-          jenis_kelamin: item.jenis_kelamin || undefined,
-          tempat_lahir: item.tempat_lahir || undefined,
-          tanggal_lahir: item.tanggal_lahir ? new Date(item.tanggal_lahir) : undefined,
-        };
-        if (item.kelas_id) {
-          updateData.kelas_id = item.kelas_id;
+        // Tentukan daftar kolom yang diizinkan untuk diperbarui
+        // Jika payload.fields_to_update tidak dikirimkan, gunakan default aman (biodata KECUALI kelas_id)
+        const allowedFields = Array.isArray(payload.fields_to_update) && payload.fields_to_update.length > 0
+          ? payload.fields_to_update.map((f) => f.toLowerCase().trim())
+          : ['nama', 'nis', 'nisn', 'nik', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir'];
+
+        const updateData: any = {};
+
+        if (allowedFields.includes('nama') && item.nama) {
+          updateData.nama_siswa = item.nama;
         }
-        if (targetTpId) {
-          updateData.tahun_pelajaran_id = targetTpId;
+        if (allowedFields.includes('nis') && item.nis !== undefined) {
+          updateData.nis = item.nis || null;
         }
-        if (targetSemId) {
-          updateData.semester_id = targetSemId;
+        if (allowedFields.includes('nisn') && item.nisn !== undefined) {
+          updateData.nisn = item.nisn || null;
+        }
+        if (allowedFields.includes('nik') && item.nik !== undefined) {
+          updateData.nik = item.nik || null;
+        }
+        if (allowedFields.includes('jenis_kelamin') && item.jenis_kelamin) {
+          updateData.jenis_kelamin = (item.jenis_kelamin || 'L').toUpperCase().startsWith('P') ? 'P' : 'L';
+        }
+        if (allowedFields.includes('tempat_lahir') && item.tempat_lahir !== undefined) {
+          updateData.tempat_lahir = item.tempat_lahir || null;
+        }
+        if (allowedFields.includes('tanggal_lahir') && item.tanggal_lahir) {
+          updateData.tanggal_lahir = new Date(item.tanggal_lahir);
         }
 
-        await prisma.siswa.updateMany({
-          where: {
-            id: item.absentaId,
-            tenant_id: tenantId,
-          },
-          data: updateData,
-        });
+        // Pengecekan Eksplisit Kelas: Hanya diperbarui jika kelas_id eksplisit disertakan dalam allowedFields
+        const shouldUpdateKelas = allowedFields.includes('kelas_id') && Boolean(item.kelas_id);
+        if (shouldUpdateKelas) {
+          updateData.kelas_id = item.kelas_id;
+          if (targetTpId) updateData.tahun_pelajaran_id = targetTpId;
+          if (targetSemId) updateData.semester_id = targetSemId;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await prisma.siswa.updateMany({
+            where: {
+              id: item.absentaId,
+              tenant_id: tenantId,
+            },
+            data: updateData,
+          });
+        }
 
         // Jika kelas_id disertakan, sinkronkan juga rekam akademik aktif
-        if (item.kelas_id && targetTpId && targetSemId) {
+        if (shouldUpdateKelas && item.kelas_id && targetTpId && targetSemId) {
           try {
             await prisma.siswaAkademik.upsert({
               where: {

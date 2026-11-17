@@ -66,6 +66,10 @@ export interface StagingStorageMeta {
 
 export interface ReconciliationReport {
   summary: ReconciliationSummary;
+  academicContext?: {
+    tahunPelajaran?: { id: string; tahun: string } | null;
+    semester?: { id: string; nama_semester: string } | null;
+  };
   lastCheckAt: string;
   cacheInfo?: {
     isFromCache: boolean;
@@ -98,6 +102,7 @@ export interface SyncStudentsPayload {
   action: 'UPDATE_SELECTED' | 'IMPORT_SELECTED';
   tahun_pelajaran_id?: string;
   semester_id?: string;
+  fields_to_update?: string[];
   students: {
     absentaId?: string;
     nisn?: string;

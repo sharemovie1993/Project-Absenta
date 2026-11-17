@@ -56,8 +56,7 @@ export const KaprogNilaiSidangTab: React.FC<KaprogNilaiSidangTabProps> = React.m
           jurusanNama={jurusanNama}
           tahunPelajaranId={tahunPelajaranId}
           semesterId={semesterId}
-          activeTabOnly="sidang"
-          initialTab="sidang"
+          initialTab="monitoring_sidang"
           layoutMode="hubin"
           className="w-full"
         />

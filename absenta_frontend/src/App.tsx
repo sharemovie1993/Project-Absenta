@@ -30,6 +30,7 @@ import { initOtaUpdateLifecycle } from './services/otaUpdateService';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { AttendanceErrorBoundary } from './components/attendance/AttendanceErrorBoundary';
 import ScrollToTop from './components/common/ScrollToTop';
+import GlobalOtaUpdateModal from './components/common/GlobalOtaUpdateModal';
 const FloatingDemoSwitcher = lazy(() => import('./components/common/FloatingDemoSwitcher').then(m => ({ default: m.FloatingDemoSwitcher })));
 
 // Lazy Loaded Pages
@@ -514,6 +515,7 @@ function App() {
                 }}
               />
               <ScrollToTop />
+              <GlobalOtaUpdateModal />
 
             {isLoading ? (
               <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">

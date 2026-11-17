@@ -9,6 +9,7 @@ import {
   UserIcon
 } from '@heroicons/react/24/outline';
 import { CallState, CallType } from '@/hooks/communication/useWebRTCCall';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface ActiveCallOverlayProps {
   callState: CallState;
@@ -83,7 +84,7 @@ export const ActiveCallOverlay: React.FC<ActiveCallOverlayProps> = ({
             <span className="w-2.5 h-2.5 bg-[#25d366] rounded-full absolute -top-0.5 -right-0.5 animate-pulse" />
             <div className="w-8 h-8 rounded-full bg-[#00a884] text-white flex items-center justify-center text-xs font-bold overflow-hidden">
               {targetUser.avatar ? (
-                <img src={targetUser.avatar} alt={targetUser.name} className="w-full h-full object-cover" />
+                <img src={resolveProfilePhotoUrl(targetUser.avatar)} alt={targetUser.name} className="w-full h-full object-cover" />
               ) : (
                 targetUser.name.slice(0, 2).toUpperCase()
               )}
@@ -186,7 +187,7 @@ export const ActiveCallOverlay: React.FC<ActiveCallOverlayProps> = ({
                 )}
                 <div className="relative w-28 h-28 rounded-full bg-[#00a884] text-white flex items-center justify-center text-3xl font-extrabold shadow-2xl border-4 border-[#202c33] overflow-hidden">
                   {targetUser.avatar ? (
-                    <img src={targetUser.avatar} alt={targetUser.name} className="w-full h-full object-cover" />
+                    <img src={resolveProfilePhotoUrl(targetUser.avatar)} alt={targetUser.name} className="w-full h-full object-cover" />
                   ) : targetUser.name ? (
                     targetUser.name.slice(0, 2).toUpperCase()
                   ) : (

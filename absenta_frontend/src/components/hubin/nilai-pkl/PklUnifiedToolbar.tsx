@@ -101,7 +101,7 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
   hideLocalFilters = false,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const isNilaiTab = activeTab === 'dudi' || activeTab === 'sidang' || activeTab === 'nilai';
+  const isNilaiTab = activeTab === 'dudi' || activeTab === 'sidang' || activeTab === 'nilai' || activeTab === 'monitoring_sidang';
 
   const classSelectOptions = useMemo(() => [
     { value: '', label: `-- Semua Kelas (${scoresCount}) --` },

@@ -432,7 +432,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
 
     const msg =
       target.status === 'UNCREATED'
-        ? `Halo Bapak/Ibu ${teacherName},\n\nMengingatkan persiapan Asesmen Ujian CBT untuk mata pelajaran ${mapelName} ${tingkatStr} yang saat ini belum terdaftar di sistem.\nMohon kesediaannya segera menginput butir soal atau mengklaim paket master MGMP sebelum batas waktu yang ditentukan.\n\nTerima kasih.\n— Panitia CBT (${senderName})`
+        ? `Halo Bapak/Ibu ${teacherName},\n\nMengingatkan persiapan Asesmen Ujian CBT untuk mata pelajaran ${mapelName} ${tingkatStr} yang saat ini belum terdaftar di sistem.\nMohon kesediaannya segera menginput butir soal atau mengonfirmasi kesiapan paket master MGMP sebelum batas waktu yang ditentukan.\n\nTerima kasih.\n— Panitia CBT (${senderName})`
         : `Halo Bapak/Ibu ${teacherName},\n\nMengingatkan bahwa bank soal untuk mata pelajaran ${mapelName} ${tingkatStr} saat ini masih kosong (0 butir soal).\nMohon kesediaannya melengkapi butir soal agar jadwal ujian dapat segera diterbitkan.\n\nTerima kasih.\n— Panitia CBT (${senderName})`;
 
     if (!cleanHp) {

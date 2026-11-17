@@ -3,6 +3,7 @@ import { createPayment, getSupportedGateways, getTripayChannels } from '../../ap
 import type { CreatePaymentFormProps, PaymentGateway, PaymentMethod, PaymentStatusData, GatewayConfig } from '../../types/paymentGateway.d';
 import { Loader, Button, SearchableSelect } from '../ui';
 import { useAuth } from '../../hooks/useAuth';
+import { resolveProfilePhotoUrl } from '../../lib/utils';
 const GATEWAY_OPTIONS: {
   value: PaymentGateway;
   label: string;
@@ -260,7 +261,7 @@ export default function CreatePaymentForm({
           {paymentResult.qrString && <div className="text-center">
               <h4 className="font-medium mb-2">Scan QR Code untuk Pembayaran</h4>
               <div className="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
-                <img src={paymentResult.qrString} alt="QR Code Pembayaran" className="w-48 h-48 mx-auto" />
+                <img src={resolveProfilePhotoUrl(paymentResult.qrString)} alt="QR Code Pembayaran" className="w-48 h-48 mx-auto" />
               </div>
               {paymentResult.expiresAt && <p className="text-sm text-gray-600 mt-2">
                   Berlaku hingga: {new Date(paymentResult.expiresAt).toLocaleString('id-ID')}

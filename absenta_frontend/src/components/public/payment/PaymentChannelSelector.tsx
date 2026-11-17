@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { Search, ChevronDown, Wallet, Check } from 'lucide-react';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { type TripayChannel } from '@/types/invoice';
 
 interface PaymentChannelSelectorProps {
@@ -48,7 +49,7 @@ export const PaymentChannelSelector: React.FC<PaymentChannelSelectorProps> = ({
       >
         <div className="flex items-center gap-4">
           {selectedChannelObj?.icon_url ? (
-            <img src={selectedChannelObj.icon_url} alt="" className="h-6 w-auto max-w-[80px] object-contain" />
+            <img src={resolveProfilePhotoUrl(selectedChannelObj.icon_url)} alt="" className="h-6 w-auto max-w-[80px] object-contain" />
           ) : <Wallet className="w-6 h-6 text-slate-300" />}
           <span className={`text-lg font-bold ${selectedChannelObj ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
             {selectedChannelObj?.name || 'Pilih Metode Pembayaran'}
@@ -88,7 +89,7 @@ export const PaymentChannelSelector: React.FC<PaymentChannelSelectorProps> = ({
                   >
                     <div className="flex items-center gap-4">
                       {c.icon_url ? (
-                        <img src={c.icon_url} alt="" className="h-5 w-auto max-w-[60px] object-contain grayscale group-hover:grayscale-0" />
+                        <img src={resolveProfilePhotoUrl(c.icon_url)} alt="" className="h-5 w-auto max-w-[60px] object-contain grayscale group-hover:grayscale-0" />
                       ) : <Wallet className="w-5 h-5 text-slate-300" />}
                       <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{c.name}</span>
                     </div>

@@ -268,6 +268,38 @@ export class CbtJadwalService {
     // masih dalam proses penyusunan oleh guru (cangkang draft bank soal).
     // Validasi kelengkapan soal ditegakkan saat siswa mulai mengerjakan ujian di test-engine.
 
+    // 2. Guard Deteksi Bentrok Jadwal Kelas (Overlap Schedule Guard)
+    const newStart = new Date(data.tanggal_mulai);
+    const newEnd = new Date(data.tanggal_selesai);
+    const targetKelas: string[] = Array.isArray(data.target_kelas_ids) ? data.target_kelas_ids : [];
+
+    if (targetKelas.length > 0 && !data.bypass_overlap_guard) {
+      const conflictingJadwals = await prisma.cbtJadwalUjian.findMany({
+        where: {
+          tenant_id: tenantId,
+          status: { in: ['DRAFT', 'ACTIVE', 'PAUSED'] },
+          tanggal_mulai: { lt: newEnd },
+          tanggal_selesai: { gt: newStart },
+        },
+        select: {
+          id: true,
+          nama_sesi: true,
+          target_kelas_ids: true,
+          BankSoal: { select: { judul: true, kode_bank: true } },
+        },
+      });
+
+      for (const conf of conflictingJadwals) {
+        const confKelas: string[] = Array.isArray(conf.target_kelas_ids) ? (conf.target_kelas_ids as string[]) : [];
+        const hasOverlapClass = targetKelas.some((kId) => confKelas.includes(kId));
+        if (hasOverlapClass) {
+          throw new Error(
+            `Jadwal ujian bentrok dengan sesi '${conf.nama_sesi}' (${conf.BankSoal?.judul || conf.BankSoal?.kode_bank || 'Ujian Lain'}) untuk kelas binaan pada rentang jam tersebut.`
+          );
+        }
+      }
+    }
+
     const token = this.generateToken();
 
     return prisma.cbtJadwalUjian.create({

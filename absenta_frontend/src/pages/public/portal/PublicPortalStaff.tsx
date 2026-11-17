@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Users, GraduationCap, BookOpen, Search, UserCheck } from 'lucide-react';
 import { PublicStaffMember } from '../../../api/public-portal.api';
+import { resolveProfilePhotoUrl } from '../../../lib/utils';
 
 interface PublicPortalStaffProps {
   staff: PublicStaffMember[];
@@ -85,7 +86,7 @@ export const PublicPortalStaff: React.FC<PublicPortalStaffProps> = ({ staff }) =
               <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-slate-100 mb-3 border-2 border-slate-100 group-hover:scale-105 transition-transform">
                 {member.foto ? (
                   <img
-                    src={member.foto}
+                    src={resolveProfilePhotoUrl(member.foto)}
                     alt={member.nama_guru}
                     className="w-full h-full object-cover object-top"
                   />

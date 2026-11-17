@@ -40,9 +40,19 @@ export const normalizeServerUrl = (inputDomain: string): { host: string; apiUrl:
 export const getActiveServerOrigin = (): string => {
   if (typeof window === 'undefined') return 'https://smkn1pld.absenta.id';
 
+  // Jika sedang berjalan di browser dev mode (localhost/127.0.0.1), utamakan window.location.origin
+  // agar memanfaatkan proxy Vite ke backend lokal (port 3004) dan tidak salah tembak ke dev.absenta.id
+  if (!isCapacitorApp() && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return window.location.origin;
+  }
+
   const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('tenant_domain');
   if (saved && saved.trim()) {
     let clean = saved.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    // Di web browser dev, tenant 'dev' diarahkan ke proxy localhost
+    if (!isCapacitorApp() && (clean === 'dev' || clean === 'dev.absenta.id')) {
+      return window.location.origin;
+    }
     if (!clean.includes('.') && clean.length > 0) clean = `${clean}.absenta.id`;
     const isLocal = clean.includes('localhost') || clean.includes('127.0.0.1') || clean.includes('10.0.2.2');
     const protocol = isLocal ? 'http://' : 'https://';
@@ -64,6 +74,10 @@ export const getSavedServerDomain = (): string | null => {
   const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('tenant_domain');
   if (saved && saved.trim()) {
     let clean = saved.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    // Di web browser dev, tenant 'dev' adalah localhost
+    if (!isCapacitorApp() && (clean === 'dev' || clean === 'dev.absenta.id')) {
+      return 'localhost';
+    }
     if (!clean.includes('.') && clean.length > 0) clean = `${clean}.absenta.id`;
     return clean;
   }

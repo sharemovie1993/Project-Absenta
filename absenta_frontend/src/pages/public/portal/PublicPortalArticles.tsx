@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Newspaper, Calendar, Eye, ArrowRight, Trophy, Bell, BookOpen, Search } from 'lucide-react';
 import { PublicArticleSummary, PublicAchievement } from '../../../api/public-portal.api';
+import { resolveProfilePhotoUrl } from '../../../lib/utils';
 
 interface PublicPortalArticlesProps {
   articles: PublicArticleSummary[];
@@ -113,8 +114,9 @@ export const PublicPortalArticles: React.FC<PublicPortalArticlesProps> = ({
                     <div className="relative h-48 w-full overflow-hidden bg-slate-100">
                       <img
                         src={
-                          art.cover_image ||
-                          'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80'
+                          art.cover_image
+                            ? resolveProfilePhotoUrl(art.cover_image)
+                            : 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80'
                         }
                         alt={art.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

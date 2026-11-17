@@ -12,13 +12,15 @@ import {
   HelpCircle, Search, ArrowRight, Database, Server, HardDrive,
   SlidersHorizontal, Settings2,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock, Sparkles,
-  Printer, Bookmark, User, ExternalLink, X, ShieldCheck, Wrench
+  Printer, Bookmark, User, ExternalLink, X, ShieldCheck, Wrench,
+  UserPlus, Edit3, LogOut
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Button, Input, Badge, Loader, Modal } from '@/components/ui';
+import { Button, Input, Badge, Loader, Modal, ModalFooter, Label, Textarea } from '@/components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { SiswaDetailModal } from '@/components/academic/siswa/SiswaDetailModal';
+import { bulkUpdateStatus } from '@/api/academic/siswa.api';
 import { FieldDocumentTrigger } from '@/components/documents/FieldDocumentTrigger';
 import {
   getDapodikServerInfo,
@@ -40,6 +42,7 @@ import { DapodikCriteriaModal } from './DapodikCriteriaModal';
 import { DapodikRombelMappingModal } from './DapodikRombelMappingModal';
 import { DapodikToolsModal, type DapodikToolKey } from './DapodikToolsModal';
 import { DapodikLppdUsiaModal } from './DapodikLppdUsiaModal';
+import { DapodikFieldSyncModal } from './DapodikFieldSyncModal';
 import { getTodayIsoDate } from '@/utils/dapodik/dapodikAgeStats';
 
 export interface UniversalDapodikIntegrationViewProps {
@@ -59,6 +62,21 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   const [lppdCutoffDate, setLppdCutoffDate] = useState<string>(getTodayIsoDate());
   const [isRombelMappingModalOpen, setIsRombelMappingModalOpen] = useState(false);
   const [selectedSiswaDetailId, setSelectedSiswaDetailId] = useState<string | null>(null);
+
+  // Single & Bulk Import State
+  const [importTargetStudents, setImportTargetStudents] = useState<ReconciledStudent[] | null>(null);
+
+  // Granular Field Sync State (Pilih Kolom Pembaruan Data dari Dapodik)
+  const [isFieldSyncModalOpen, setIsFieldSyncModalOpen] = useState(false);
+  const [fieldSyncTargetStudents, setFieldSyncTargetStudents] = useState<ReconciledStudent[]>([]);
+
+  // Mutasi / Keluar State (Terintegrasi Langsung dengan Modul Data Siswa Absenta)
+  const [isMutasiModalOpen, setIsMutasiModalOpen] = useState(false);
+  const [mutasiTargetStudents, setMutasiTargetStudents] = useState<ReconciledStudent[]>([]);
+  const [mutasiStatus, setMutasiStatus] = useState<string>('PINDAH');
+  const [mutasiDate, setMutasiDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [mutasiReason, setMutasiReason] = useState<string>('');
+  const [isSubmittingMutasi, setIsSubmittingMutasi] = useState(false);
 
   // Form State
   const [configForm, setConfigForm] = useState<DapodikConfig>({
@@ -295,7 +313,9 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
 
   // Helper Ekstraksi Tingkat Siswa
   const getStudentTingkat = useCallback((s: ReconciledStudent): string => {
-    const absTingkat = s.absentaRaw?.SiswaAkademik?.[0]?.kelas?.tingkat;
+    const absTingkat =
+      s.absentaRaw?.SiswaAkademik?.[0]?.kelas?.tingkat ||
+      (s.absentaRaw as any)?.Kelas?.tingkat;
     if (absTingkat) return String(absTingkat);
 
     const dapTingkat = s.dapodikRaw?.tingkat_pendidikan_id || s.dapodikRaw?.tingkat;
@@ -443,36 +463,45 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   }, [students, selectedStudentIds]);
 
   const handleBulkUpdate = () => {
-    const targets = selectedStudents
-      .filter((s) => s.status === 'MISMATCH' && s.absentaRaw)
-      .map((s) => ({
-        absentaId: s.absentaRaw.id,
-        nisn: s.dapodikRaw?.nisn || s.nisn,
-        nik: s.dapodikRaw?.nik || s.nik || undefined,
-        nis: s.dapodikRaw?.registrasi_peserta_didik?.nipd || s.nis || undefined,
-        nama: s.dapodikRaw?.nama || s.nama,
-        jenis_kelamin: s.dapodikRaw?.jenis_kelamin || s.jenis_kelamin,
-        tempat_lahir: s.dapodikRaw?.tempat_lahir || s.tempat_lahir || undefined,
-        tanggal_lahir: s.dapodikRaw?.tanggal_lahir || s.tanggal_lahir || undefined,
-      }));
+    const eligible = selectedStudents.filter((s) => Boolean(s.absentaRaw && s.dapodikRaw));
 
-    if (targets.length === 0) {
-      toast.warning('Tidak ada siswa berstatus Selisih (Mismatch) dalam pilihan Anda.');
+    if (eligible.length === 0) {
+      toast.warning('Pilih setidaknya 1 siswa yang terdaftar di Absenta dan memiliki data di Dapodik.');
       return;
     }
 
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Perbarui Biodata ke Absenta',
-      message: `Perbarui ${targets.length} siswa di Absenta dengan data dari Dapodik? Data biodata lokal akan diselaraskan secara otomatis.`,
-      confirmText: 'Ya, Perbarui Sekarang',
-      onConfirm: () => {
-        setConfirmDialog(null);
-        syncMutation.mutate({
-          action: 'UPDATE_SELECTED',
-          students: targets,
-        });
-      },
+    setFieldSyncTargetStudents(eligible);
+    setIsFieldSyncModalOpen(true);
+  };
+
+  const handleSingleUpdate = (student: ReconciledStudent) => {
+    if (!student.absentaRaw || !student.dapodikRaw) {
+      toast.warning('Data siswa ini tidak memiliki pasangan di Absenta & Dapodik.');
+      return;
+    }
+    setFieldSyncTargetStudents([student]);
+    setIsFieldSyncModalOpen(true);
+  };
+
+  const handleExecuteFieldSync = (selectedFields: string[]) => {
+    const targets = fieldSyncTargetStudents.map((s) => ({
+      absentaId: s.absentaRaw.id,
+      nisn: s.dapodikRaw?.nisn || s.nisn,
+      nik: s.dapodikRaw?.nik || s.nik || undefined,
+      nis: s.dapodikRaw?.registrasi_peserta_didik?.nipd || s.nis || undefined,
+      nama: s.dapodikRaw?.nama || s.nama,
+      jenis_kelamin: s.dapodikRaw?.jenis_kelamin || s.jenis_kelamin,
+      tempat_lahir: s.dapodikRaw?.tempat_lahir || s.tempat_lahir || undefined,
+      tanggal_lahir: s.dapodikRaw?.tanggal_lahir || s.tanggal_lahir || undefined,
+      rombel: s.dapodikRaw?.nama_rombel || s.rombel || undefined,
+      kelas_id: s.absentaRaw?.kelas_id || undefined,
+    }));
+
+    setIsFieldSyncModalOpen(false);
+    syncMutation.mutate({
+      action: 'UPDATE_SELECTED',
+      fields_to_update: selectedFields,
+      students: targets,
     });
   };
 
@@ -484,8 +513,80 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
       return;
     }
 
+    setImportTargetStudents(targets);
     // Buka Wizard Pemetaan Rombel Dapodik ke Kelas Platform
     setIsRombelMappingModalOpen(true);
+  };
+
+  const handleSingleImport = (s: ReconciledStudent) => {
+    setImportTargetStudents([s]);
+    setIsRombelMappingModalOpen(true);
+  };
+
+  // Handlers Mutasi & Keluar Siswa (Tunggal & Massal)
+  const handleOpenSingleMutasi = (student: ReconciledStudent) => {
+    setMutasiTargetStudents([student]);
+    setMutasiStatus('PINDAH');
+    setMutasiDate(new Date().toISOString().split('T')[0]);
+    setMutasiReason('Siswa mutasi keluar (tidak terdaftar di Dapodik)');
+    setIsMutasiModalOpen(true);
+  };
+
+  const handleOpenBulkMutasi = () => {
+    const targets = selectedStudents.filter((s) => Boolean(s.absentaRaw));
+    if (targets.length === 0) {
+      toast.warning('Pilih setidaknya 1 siswa Absenta untuk memproses mutasi.');
+      return;
+    }
+    setMutasiTargetStudents(targets);
+    setMutasiStatus('PINDAH');
+    setMutasiDate(new Date().toISOString().split('T')[0]);
+    setMutasiReason('Mutasi massal hasil audit & sinkronisasi Dapodik');
+    setIsMutasiModalOpen(true);
+  };
+
+  const handleConfirmMutasi = async () => {
+    if (!mutasiDate) {
+      toast.error('Tanggal efektif mutasi wajib diisi.');
+      return;
+    }
+    if (!mutasiReason.trim()) {
+      toast.error('Alasan mutasi/keluar wajib diisi.');
+      return;
+    }
+    const studentIds = mutasiTargetStudents
+      .map((s) => s.absentaRaw?.id || s.id)
+      .filter(Boolean);
+
+    if (studentIds.length === 0) {
+      toast.error('Tidak ditemukan ID siswa Absenta yang valid.');
+      return;
+    }
+
+    try {
+      setIsSubmittingMutasi(true);
+      await bulkUpdateStatus({
+        ids: studentIds,
+        status: mutasiStatus,
+        tanggal: new Date(mutasiDate),
+        keterangan: mutasiReason.trim(),
+      });
+
+      toast.success(
+        `Berhasil memproses status mutasi (${mutasiStatus}) untuk ${studentIds.length} siswa.`
+      );
+      setIsMutasiModalOpen(false);
+      setSelectedStudentIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ['dapodik-student-comparison'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      refetchComparison();
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || err?.message || 'Gagal memproses mutasi siswa.'
+      );
+    } finally {
+      setIsSubmittingMutasi(false);
+    }
   };
 
   // Format Helper Status Badge
@@ -587,6 +688,16 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 <Users className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                 <span>{compareOptions.onlyActiveStudents !== false ? 'Konteks: Siswa Aktif' : 'Konteks: Semua Siswa'}</span>
               </div>
+
+              {comparisonData?.data?.academicContext?.tahunPelajaran && (
+                <div className="hidden sm:flex items-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-200/60 dark:border-emerald-800/50 font-semibold">
+                  <School className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                  <span>
+                    T.A. {comparisonData.data.academicContext.tahunPelajaran.tahun}
+                    {comparisonData.data.academicContext.semester?.nama_semester ? ` • ${comparisonData.data.academicContext.semester.nama_semester}` : ''}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Sisi Kanan: Action Buttons Terpadu & Switcher Mode Dapodik */}
@@ -963,16 +1074,30 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                   </button>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {selectedStudents.some((s) => Boolean(s.absentaRaw)) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleOpenBulkMutasi}
+                      disabled={syncMutation.isPending || isSubmittingMutasi}
+                      className="h-7 text-xs font-semibold gap-1.5 border-rose-300 bg-rose-50/50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-300"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      Mutasi / Keluarkan Terpilih ({selectedStudents.filter((s) => Boolean(s.absentaRaw)).length})
+                    </Button>
+                  )}
+
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handleBulkUpdate}
                     disabled={syncMutation.isPending}
-                    className="h-7 text-xs font-semibold gap-1.5 border-amber-300 bg-amber-50/50 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300"
+                    className="h-7 text-xs font-semibold gap-1.5 border-indigo-300 bg-indigo-50/50 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-300"
+                    title="Pilih kolom data (misal hanya tempat & tgl lahir) dan perbarui ke Absenta"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    Perbarui Selisih Terpilih
+                    Perbarui Biodata Terpilih ({selectedStudents.filter((s) => Boolean(s.absentaRaw && s.dapodikRaw)).length})
                   </Button>
 
                   <Button
@@ -1121,17 +1246,64 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                             {s.dapodikRaw?.nama_rombel || '-'}
                           </td>
                           <td className="p-2.5 text-slate-600 dark:text-slate-400">
-                            {s.absentaRaw?.SiswaAkademik?.[0]?.kelas?.nama_kelas || '-'}
+                            {s.absentaRaw?.SiswaAkademik?.[0]?.kelas?.nama_kelas || (s.absentaRaw as any)?.Kelas?.nama_kelas || s.rombel || '-'}
                           </td>
                           <td className="p-2.5 text-right whitespace-nowrap">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setInspectedStudent(s)}
-                              className="h-6 px-2 text-[11px] gap-1 text-slate-500 hover:text-indigo-600"
-                            >
-                              <Eye className="w-3 h-3" /> Intip Detail
-                            </Button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              {s.status === 'DAPODIK_ONLY' ? (
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={() => handleSingleImport(s)}
+                                  className="h-6.5 px-2.5 text-[11px] font-bold gap-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-xs"
+                                  title="Tarik & Daftarkan Siswa Dapodik ini ke Absenta"
+                                >
+                                  <UserPlus className="w-3 h-3" /> Tarik ke Absenta
+                                </Button>
+                              ) : (
+                                <>
+                                  {Boolean(s.absentaRaw && s.dapodikRaw) && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleSingleUpdate(s)}
+                                      className="h-6.5 px-2 text-[11px] font-semibold gap-1 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg"
+                                      title="Tarik & Perbarui Kolom Tertentu dari Dapodik"
+                                    >
+                                      <RefreshCw className="w-3 h-3 text-indigo-600" /> Perbarui
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setSelectedSiswaDetailId(s.absentaRaw?.id || s.id)}
+                                    className="h-6.5 px-2 text-[11px] font-semibold gap-1 text-slate-700 dark:text-slate-300 hover:text-indigo-600 hover:border-indigo-300 rounded-lg"
+                                    title="Buka & Edit Data Siswa (NIS, NISN, NIK, Biodata)"
+                                  >
+                                    <Edit3 className="w-3 h-3 text-indigo-500" /> Detail / Edit
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleOpenSingleMutasi(s)}
+                                    className="h-6.5 px-2 text-[11px] font-semibold gap-1 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg"
+                                    title="Mutasikan atau Keluarkan Siswa dari Absenta"
+                                  >
+                                    <LogOut className="w-3 h-3" /> Mutasi
+                                  </Button>
+                                </>
+                              )}
+
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setInspectedStudent(s)}
+                                className="h-6.5 px-1.5 text-[11px] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                                title="Intip Perbandingan Detail Dapodik vs Absenta"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1394,8 +1566,15 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
       {/* ─── MODAL 7: PEMETAAN ROMBEL DAPODIK KE KELAS PLATFORM ─── */}
       <DapodikRombelMappingModal
         isOpen={isRombelMappingModalOpen}
-        onClose={() => setIsRombelMappingModalOpen(false)}
-        students={selectedStudents.filter((s) => s.status === 'DAPODIK_ONLY')}
+        onClose={() => {
+          setIsRombelMappingModalOpen(false);
+          setImportTargetStudents(null);
+        }}
+        students={
+          importTargetStudents && importTargetStudents.length > 0
+            ? importTargetStudents
+            : selectedStudents.filter((s) => s.status === 'DAPODIK_ONLY')
+        }
         onConfirmImport={(studentsWithKelas, academicContext) => {
           syncMutation.mutate(
             {
@@ -1407,6 +1586,10 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
             {
               onSuccess: () => {
                 setIsRombelMappingModalOpen(false);
+                setImportTargetStudents(null);
+                queryClient.invalidateQueries({ queryKey: ['dapodik-student-comparison'] });
+                queryClient.invalidateQueries({ queryKey: ['siswa'] });
+                refetchComparison();
               },
             }
           );
@@ -1441,6 +1624,137 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
           setPrintModalTemplate('lppd_usia');
           setIsPrintModalOpen(true);
         }}
+      />
+
+      {/* ─── MODAL 10: MUTASI & STATUS KELUAR SISWA DARI DAPODIK VIEW ─── */}
+      <Modal
+        isOpen={isMutasiModalOpen}
+        onClose={() => !isSubmittingMutasi && setIsMutasiModalOpen(false)}
+        title={
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-rose-50 dark:bg-rose-950/50 rounded-xl text-rose-600 dark:text-rose-400">
+              <LogOut size={20} />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                Proses Mutasi &amp; Status Keluar Siswa
+              </h3>
+              <p className="text-[11px] text-slate-400 font-medium">
+                Pembaruan status kesiswaan terintegrasi langsung ke sistem Absenta
+              </p>
+            </div>
+          </div>
+        }
+        size="md"
+      >
+        <div className="p-5 space-y-4">
+          {/* Ringkasan Target Siswa */}
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 flex items-center justify-between text-xs">
+            <div>
+              <p className="text-[10px] uppercase font-bold text-slate-400">Target Siswa</p>
+              <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">
+                {mutasiTargetStudents.length === 1
+                  ? mutasiTargetStudents[0].absentaRaw?.nama_siswa ||
+                    mutasiTargetStudents[0].nama ||
+                    '1 Siswa'
+                  : `${mutasiTargetStudents.length} Siswa Terpilih`}
+              </p>
+              {mutasiTargetStudents.length === 1 && (
+                <p className="text-[10px] text-slate-500 font-mono">
+                  NISN: {mutasiTargetStudents[0].nisn || '-'} • Rombel: {mutasiTargetStudents[0].absentaRaw?.SiswaAkademik?.[0]?.kelas?.nama_kelas || '-'}
+                </p>
+              )}
+            </div>
+            <Badge variant="outline" className="border-rose-200 text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 font-bold">
+              {mutasiTargetStudents.length} Siswa
+            </Badge>
+          </div>
+
+          {/* Form Options */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="space-y-1">
+              <Label htmlFor="dapodikMutasiStatus" className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                Jenis Status Keluar
+              </Label>
+              <SearchableSelect
+                id="dapodikMutasiStatus"
+                value={mutasiStatus}
+                onValueChange={setMutasiStatus}
+                options={[
+                  { value: 'PINDAH', label: 'Pindah Sekolah (Mutasi Keluar)' },
+                  { value: 'KELUAR', label: 'Keluar / Mengundurkan Diri' },
+                  { value: 'DO', label: 'Dikeluarkan / Drop Out' },
+                  { value: 'MENINGGAL', label: 'Meninggal Dunia' },
+                ]}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="dapodikMutasiDate" className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                Tanggal Efektif
+              </Label>
+              <Input
+                id="dapodikMutasiDate"
+                type="date"
+                value={mutasiDate}
+                onChange={(e) => setMutasiDate(e.target.value)}
+                className="h-9 text-xs"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1 text-xs">
+            <Label htmlFor="dapodikMutasiReason" className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+              Alasan / Keterangan Mutasi <span className="text-rose-500">*</span>
+            </Label>
+            <Textarea
+              id="dapodikMutasiReason"
+              value={mutasiReason}
+              onChange={(e) => setMutasiReason(e.target.value)}
+              placeholder="Contoh: Pindah ke sekolah lain / Data tidak tercatat pada Dapodik..."
+              rows={3}
+              className="text-xs"
+              required
+            />
+          </div>
+
+          <ModalFooter className="pt-3 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsMutasiModalOpen(false)}
+              disabled={isSubmittingMutasi}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              onClick={handleConfirmMutasi}
+              disabled={isSubmittingMutasi || !mutasiReason.trim()}
+              className="gap-1.5"
+            >
+              {isSubmittingMutasi ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <LogOut className="w-3.5 h-3.5" />
+              )}
+              <span>{isSubmittingMutasi ? 'Memproses...' : 'Konfirmasi Mutasi'}</span>
+            </Button>
+          </ModalFooter>
+        </div>
+      </Modal>
+
+      {/* Modal Granular Kolom Dapodik Sync */}
+      <DapodikFieldSyncModal
+        isOpen={isFieldSyncModalOpen}
+        onClose={() => setIsFieldSyncModalOpen(false)}
+        targetStudents={fieldSyncTargetStudents}
+        onConfirm={handleExecuteFieldSync}
+        isLoading={syncMutation.isPending}
       />
     </div>
   );

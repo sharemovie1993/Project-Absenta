@@ -1,5 +1,5 @@
-import React from 'react';
-import { Capacitor } from '@capacitor/core';
+import React, { useState, useEffect } from 'react';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { Preferences } from '@capacitor/preferences';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
@@ -22,192 +22,270 @@ export interface OtaManifest {
   released_at?: string;
 }
 
-export interface OtaCheckResult {
+export interface OtaState {
+  isChecking: boolean;
   hasUpdate: boolean;
+  isDownloading: boolean;
+  downloadProgress: number; // 0 - 100
+  isReadyToReload: boolean;
+  manifest: OtaManifest | null;
   currentVersion: string;
-  remoteVersion?: string;
-  manifest?: OtaManifest;
-  message: string;
+  remoteVersion: string;
+  error: string | null;
+  isModalOpen: boolean;
+  lastCheckedAt: number | null;
 }
 
-/** Mengecek apakah aplikasi berjalan di perangkat native (Android / iOS) */
+// ── Global Reactive State Store ─────────────────────────────────────────────
+type Listener = (state: OtaState) => void;
+const listeners = new Set<Listener>();
+
+let state: OtaState = {
+  isChecking: false,
+  hasUpdate: false,
+  isDownloading: false,
+  downloadProgress: 0,
+  isReadyToReload: false,
+  manifest: null,
+  currentVersion: '1.0.3',
+  remoteVersion: '',
+  error: null,
+  isModalOpen: false,
+  lastCheckedAt: null,
+};
+
+function setState(partial: Partial<OtaState>) {
+  state = { ...state, ...partial };
+  listeners.forEach((l) => l(state));
+}
+
+/** Hook React untuk membaca status OTA terkini secara reaktif */
+export function useOtaState(): OtaState {
+  const [current, setCurrent] = useState<OtaState>(state);
+  useEffect(() => {
+    const l: Listener = (s) => setCurrent(s);
+    listeners.add(l);
+    return () => {
+      listeners.delete(l);
+    };
+  }, []);
+  return current;
+}
+
+/** Cek apakah platform adalah native mobile (Android / iOS) */
 export const isMobileNative = (): boolean => {
   return Capacitor.isNativePlatform();
 };
 
-/** Mengambil versi bundle aktif di perangkat */
+/** Mengambil versi bundle OTA yang saat ini aktif di perangkat */
 export const getActiveOtaVersion = async (): Promise<string> => {
   if (!isMobileNative()) return '1.0.3';
   try {
     const current = await CapacitorUpdater.current();
-    if (current && current.bundle && current.bundle.version) {
+    if (current && current.bundle && current.bundle.version && current.bundle.version !== 'builtin') {
       return current.bundle.version;
     }
-  } catch (err) {
-    // Fallback ke Preferences
+    if (current && current.native) {
+      return current.native;
+    }
+  } catch {
+    // Abaikan jika plugin belum inisialisasi
   }
 
   try {
     const { value } = await Preferences.get({ key: CURRENT_OTA_VERSION_KEY });
-    return value || '1.0.3';
-  } catch {
-    return '1.0.3';
-  }
+    if (value) return value;
+  } catch {}
+
+  return '1.0.3';
 };
 
-/**
- * Memeriksa ketersediaan pembaruan OTA ke VPS Dedicated
- * Menggunakan throttling (maksimal 1 pengecekan per 3 menit untuk menghemat baterai & kuota)
- */
-export const checkOtaUpdate = async (forceCheck: boolean = false): Promise<OtaCheckResult> => {
-  if (!isMobileNative()) {
-    return {
-      hasUpdate: false,
-      currentVersion: 'web',
-      message: 'Aplikasi berjalan di browser desktop, OTA dilewati.',
-    };
-  }
+/** Fetch manifest OTA dari server dengan fallback multi-layer (CapacitorHttp -> fetch) */
+async function fetchRemoteManifest(): Promise<OtaManifest> {
+  const urlWithCacheBuster = `${OTA_MANIFEST_URL}?_t=${Date.now()}`;
 
-  const currentVersion = await getActiveOtaVersion();
+  // 1. Coba via CapacitorHttp (native Android stack - kebal CORS & WebView limits)
+  if (isMobileNative()) {
+    try {
+      const response = await CapacitorHttp.get({
+        url: urlWithCacheBuster,
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+        connectTimeout: 8000,
+        readTimeout: 8000,
+      });
 
-  try {
-    // Throttle check interval jika bukan force check
-    if (!forceCheck) {
-      const { value: lastCheckStr } = await Preferences.get({ key: LAST_OTA_CHECK_KEY });
-      if (lastCheckStr) {
-        const lastCheck = parseInt(lastCheckStr, 10);
-        const elapsedMinutes = (Date.now() - lastCheck) / (1000 * 60);
-        if (elapsedMinutes < 3) {
-          return {
-            hasUpdate: false,
-            currentVersion,
-            message: 'Pengecekan OTA baru saja dilakukan, throttling aktif.',
-          };
+      if (response && response.status === 200 && response.data) {
+        if (typeof response.data === 'object') {
+          return response.data as OtaManifest;
+        }
+        if (typeof response.data === 'string') {
+          const cleanText = response.data.replace(/^\uFEFF/, '').trim();
+          return JSON.parse(cleanText) as OtaManifest;
         }
       }
+    } catch (httpErr) {
+      console.warn('[OTA] CapacitorHttp fallback ke native fetch:', httpErr);
     }
+  }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+  // 2. Fallback via browser fetch API
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 9000);
 
-    const res = await fetch(`${OTA_MANIFEST_URL}?_t=${Date.now()}`, {
+  try {
+    const res = await fetch(urlWithCacheBuster, {
       method: 'GET',
       headers: {
+        'Accept': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
-        Pragma: 'no-cache',
+        'Pragma': 'no-cache',
       },
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      return {
-        hasUpdate: false,
-        currentVersion,
-        message: `Gagal menghubungi server OTA (HTTP ${res.status}).`,
-      };
+      throw new Error(`Server OTA mengembalikan HTTP ${res.status}`);
     }
 
-    const manifest: OtaManifest = await res.json();
-    await Preferences.set({ key: LAST_OTA_CHECK_KEY, value: Date.now().toString() });
+    const text = await res.text();
+    const cleanText = text.replace(/^\uFEFF/, '').trim();
+    return JSON.parse(cleanText) as OtaManifest;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
+/**
+ * Memeriksa ketersediaan pembaruan OTA ke VPS Dedicated
+ * @param forceCheck Jika true, lewati throttling dan paksa cek
+ * @param showNotificationIfNoUpdate Jika true, tampilkan toast jika sudah versi terbaru (untuk cek manual)
+ */
+export const checkOtaUpdate = async (
+  forceCheck: boolean = false,
+  showNotificationIfNoUpdate: boolean = false
+): Promise<OtaState> => {
+  if (!isMobileNative()) {
+    const curr = 'web';
+    setState({ isChecking: false, currentVersion: curr });
+    if (showNotificationIfNoUpdate) {
+      toast.success('Aplikasi berjalan di browser web, OTA tidak diperlukan.');
+    }
+    return state;
+  }
+
+  const currentVersion = await getActiveOtaVersion();
+  setState({ isChecking: true, error: null, currentVersion });
+
+  try {
+    const manifest = await fetchRemoteManifest();
+    const now = Date.now();
+    await Preferences.set({ key: LAST_OTA_CHECK_KEY, value: now.toString() });
 
     if (!manifest.version || !manifest.bundle_url) {
-      return {
-        hasUpdate: false,
-        currentVersion,
-        message: 'Format manifest OTA tidak valid.',
-      };
+      throw new Error('Format manifest OTA tidak valid.');
     }
 
-    // Cek apakah versi remote berbeda dengan versi saat ini
     const isNewer = manifest.version !== currentVersion;
 
-    return {
+    setState({
+      isChecking: false,
       hasUpdate: isNewer,
-      currentVersion,
-      remoteVersion: manifest.version,
       manifest,
-      message: isNewer
-        ? `Tersedia pembaruan versi ${manifest.version}`
-        : 'Aplikasi sudah menggunakan versi terbaru.',
-    };
+      remoteVersion: manifest.version,
+      isModalOpen: isNewer ? true : state.isModalOpen,
+      lastCheckedAt: now,
+      error: null,
+    });
+
+    if (!isNewer && showNotificationIfNoUpdate) {
+      toast.success(`Aplikasi sudah menggunakan versi terbaru (v${currentVersion}).`, {
+        id: 'ota-up-to-date',
+      });
+    }
+
+    return state;
   } catch (err: any) {
-    return {
-      hasUpdate: false,
-      currentVersion,
-      message: err.name === 'AbortError' ? 'Koneksi ke server OTA timeout.' : err.message || 'Gagal mengecek OTA.',
-    };
+    const errMsg = err?.name === 'AbortError' ? 'Koneksi ke server OTA timeout.' : err?.message || 'Gagal memeriksa pembaruan OTA.';
+    console.warn('[OTA] Pengecekan pembaruan gagal:', errMsg);
+    setState({
+      isChecking: false,
+      error: errMsg,
+    });
+
+    if (showNotificationIfNoUpdate) {
+      toast.error(errMsg, { id: 'ota-error' });
+    }
+
+    return state;
   }
 };
 
 /**
- * Download & Pasang Update di Latar Belakang (Silent Background Download)
- * Memanfaatkan @capgo/capacitor-updater
+ * Mengunduh dan memasang bundle pembaruan OTA
  */
-export const downloadAndApplyOtaUpdate = async (manifest: OtaManifest): Promise<boolean> => {
-  if (!isMobileNative()) return false;
+export const startOtaDownload = async (): Promise<boolean> => {
+  if (!state.manifest || !isMobileNative()) return false;
 
+  setState({ isDownloading: true, downloadProgress: 0, error: null });
+
+  let progressHandle: any = null;
   try {
-    console.log('[OTA] Memulai unduhan silent bundle dari:', manifest.bundle_url);
+    // Pasang progress listener
+    try {
+      progressHandle = await CapacitorUpdater.addListener('download', (event: any) => {
+        const percent = Math.min(100, Math.max(0, Math.round(event.percent || 0)));
+        setState({ downloadProgress: percent });
+      });
+    } catch {}
+
+    console.log('[OTA] Memulai unduhan bundle:', state.manifest.bundle_url);
     const downloaded = await CapacitorUpdater.download({
-      url: manifest.bundle_url,
-      version: manifest.version,
-      checksum: manifest.checksum_sha256,
+      url: state.manifest.bundle_url,
+      version: state.manifest.version,
+      checksum: state.manifest.checksum_sha256,
     });
 
     if (downloaded && downloaded.id) {
-      // Set bundle ini agar aktif pada restart / cold-start berikutnya
+      // Pasang bundle sebagai next aktif
       await CapacitorUpdater.set({ id: downloaded.id });
-      await Preferences.set({ key: CURRENT_OTA_VERSION_KEY, value: manifest.version });
-      console.log('[OTA] ✅ Bundle baru berhasil disimpan dan siap diterapkan saat restart aplikasi!');
+      await Preferences.set({ key: CURRENT_OTA_VERSION_KEY, value: state.manifest.version });
+      console.log('[OTA] ✅ Bundle baru berhasil disimpan dan siap diterapkan!');
 
-      // Tampilkan toast interaktif ke user agar bisa muat ulang seketika tanpa tutup app
-      try {
-        toast(
-          (t) =>
-            React.createElement(
-              'div',
-              { className: 'flex items-center gap-3 py-1' },
-              React.createElement(
-                'div',
-                { className: 'flex-1 text-left' },
-                React.createElement('p', { className: 'text-xs font-bold text-slate-800 dark:text-slate-100' }, '🚀 Update Aplikasi Siap!'),
-                React.createElement('p', { className: 'text-[11px] text-slate-500 dark:text-slate-400' }, `Versi ${manifest.version} telah diunduh.`)
-              ),
-              React.createElement(
-                'button',
-                {
-                  type: 'button',
-                  onClick: () => {
-                    toast.dismiss(t.id);
-                    CapacitorUpdater.reload();
-                  },
-                  className: 'px-3 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-xl shadow-md hover:bg-blue-700 active:scale-95 transition-all cursor-pointer'
-                },
-                'Muat Ulang'
-              )
-            ),
-          {
-            duration: 15000,
-            position: 'top-center',
-            id: 'ota-update-toast',
-          }
-        );
-      } catch {}
+      setState({
+        isDownloading: false,
+        downloadProgress: 100,
+        isReadyToReload: true,
+      });
 
       return true;
+    } else {
+      throw new Error('Hasil unduhan bundle tidak valid.');
     }
-  } catch (err) {
-    console.error('[OTA] Gagal mengunduh atau memasang update OTA:', err);
+  } catch (err: any) {
+    console.error('[OTA] Gagal mengunduh bundle OTA:', err);
+    setState({
+      isDownloading: false,
+      error: err?.message || 'Gagal mengunduh pembaruan OTA.',
+    });
+    toast.error('Gagal mengunduh berkas pembaruan. Silakan coba lagi.', { id: 'ota-download-fail' });
+    return false;
+  } finally {
+    if (progressHandle && typeof progressHandle.remove === 'function') {
+      try {
+        await progressHandle.remove();
+      } catch {}
+    }
   }
-
-  return false;
 };
 
-/**
- * Muat ulang WebView untuk langsung menerapkan bundle OTA yang sudah terunduh
- */
-export const applyPendingOtaUpdate = async (): Promise<void> => {
+/** Muat ulang WebView seketika untuk menerapkan bundle yang telah diunduh */
+export const applyOtaReload = async (): Promise<void> => {
   if (!isMobileNative()) return;
   try {
     await CapacitorUpdater.reload();
@@ -216,40 +294,28 @@ export const applyPendingOtaUpdate = async (): Promise<void> => {
   }
 };
 
-/**
- * Helper terpadu: Inisialisasi OTA saat aplikasi startup & listener saat app resume
- */
+/** Buka / tutup modal OTA secara global */
+export const openOtaModal = () => setState({ isModalOpen: true });
+export const dismissOtaModal = () => setState({ isModalOpen: false });
+
+/** Inisialisasi lifecycle OTA saat aplikasi mulai berjalan */
 export const initOtaUpdateLifecycle = () => {
   if (!isMobileNative()) return;
 
-  // 1. Beri tahu plugin bahwa bundle yang sedang aktif berhasil dimuat tanpa crash (anti-rollback)
+  // 1. Konfirmasi ke plugin bahwa aplikasi berjalan baik (anti-rollback)
   CapacitorUpdater.notifyAppReady().catch(() => {});
 
-  const runSilentOtaCheck = async () => {
-    try {
-      const result = await checkOtaUpdate(false);
-      if (result.hasUpdate && result.manifest) {
-        console.log(`[OTA] Menemukan rilis baru (${result.remoteVersion}), mengunduh di background...`);
-        await downloadAndApplyOtaUpdate(result.manifest);
-      }
-    } catch (err) {
-      console.warn('[OTA] Pengecekan background update terlewati:', err);
-    }
-  };
-
-  // 2. Jalankan pengecekan 3 detik setelah aplikasi terbuka (agar tidak mengganggu render awal login/dashboard)
+  // 2. Jalankan pengecekan otomatis setelah 1.5 detik
   setTimeout(() => {
-    runSilentOtaCheck();
-  }, 3000);
+    checkOtaUpdate(false);
+  }, 1500);
 
-  // 3. Pasang listener saat aplikasi dibuka kembali dari background (App Resume)
+  // 3. Pasang listener saat aplikasi dibuka kembali dari background
   try {
-    App.addListener('appStateChange', (state) => {
-      if (state.isActive) {
-        runSilentOtaCheck();
+    App.addListener('appStateChange', (appState) => {
+      if (appState.isActive) {
+        checkOtaUpdate(false);
       }
     });
-  } catch (err) {
-    // App listener fallback
-  }
+  } catch {}
 };

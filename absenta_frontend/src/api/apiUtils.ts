@@ -181,6 +181,11 @@ export async function requestWithFallback<T>(
 
   if (options?.data instanceof FormData) {
     delete config.headers['Content-Type'];
+    delete config.headers['content-type'];
+    if (typeof (config.headers as any).delete === 'function') {
+      (config.headers as any).delete('Content-Type');
+      (config.headers as any).delete('content-type');
+    }
   }
 
   let res;

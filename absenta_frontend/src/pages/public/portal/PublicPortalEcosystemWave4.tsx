@@ -22,6 +22,7 @@ import {
   Medal,
 } from 'lucide-react';
 import { PublicWave4Ecosystem } from '../../../api/public-portal.api';
+import { resolveProfilePhotoUrl } from '../../../lib/utils';
 import { InteractiveDenahCanvas } from '../../../components/spasial/InteractiveDenahCanvas';
 import { StrukturDiagram } from '../../../components/academic/struktur/StrukturDiagram';
 import { TabSwitcher } from '../../../components/ui/TabSwitcher';
@@ -166,7 +167,7 @@ export const PublicPortalEcosystemWave4: React.FC<PublicPortalEcosystemWave4Prop
                       >
                         <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 overflow-hidden">
                           {leader.foto ? (
-                            <img src={leader.foto} alt={leader.nama_pejabat} className="w-full h-full object-cover" />
+                            <img src={resolveProfilePhotoUrl(leader.foto)} alt={leader.nama_pejabat} className="w-full h-full object-cover" />
                           ) : (
                             <Award className="w-8 h-8 text-amber-300" />
                           )}

@@ -1067,11 +1067,12 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
 
           const eventLabel = activeEvent?.nama_event || eventPrefix || 'Ujian';
           const isMassalEvent = activeEvent?.tipe_pelaksanaan !== 'MANDIRI';
+          const romanTingkat = formatTingkatRomawi(tingkatNum);
 
           try {
             const newBank = await cbtApi.createBankSoal({
               kode_bank: kodeBank,
-              judul: `[${eventLabel}] ${mapelName} Tingkat ${tingkatNum}`,
+              judul: `${resolvedPrefix} - ${mapelName} Tingkat ${romanTingkat}`,
               mapel_id: mapelId,
               guru_id: guruId,
               tingkat: String(tingkatNum),
@@ -1081,6 +1082,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
               contributor_guru_ids: uniqueContributors,
               tahun_pelajaran_id: activeTpId,
               semester_id: activeSemId,
+              ...({ bypass_mgmp_guard: true } as any),
             });
 
             if (newBank && newBank.id) {

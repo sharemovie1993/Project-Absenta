@@ -238,7 +238,7 @@ export class CbtBankSoalService {
           ],
         });
       } else {
-        // Cari mapel & tingkat yang diampu guru ini di kurikulum (SK GuruMapel, UnitPengajaran, atau Delegasi Pelaksana)
+        // Cari mapel, tingkat & jurusan yang diampu guru ini di kurikulum (SK GuruMapel, UnitPengajaran, atau Delegasi Pelaksana)
         const [assignments, unitAssignments, delegatedJadwals] = await Promise.all([
           prisma.guruMapel.findMany({
             where: {
@@ -247,8 +247,13 @@ export class CbtBankSoalService {
             },
             include: {
               Kelas: {
-                select: { tingkat: true },
+                select: {
+                  tingkat: true,
+                  jurusan_id: true,
+                  Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
+                },
               },
+              Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
             },
           }),
           prisma.unitPengajaran.findMany({
@@ -257,9 +262,15 @@ export class CbtBankSoalService {
               guru_id: query.guru_id,
               is_active: true,
             },
-            select: {
-              mapel_id: true,
-              Kelas: { select: { tingkat: true } },
+            include: {
+              Kelas: {
+                select: {
+                  tingkat: true,
+                  jurusan_id: true,
+                  Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
+                },
+              },
+              Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
             },
           }),
           prisma.jadwalKBM.findMany({
@@ -267,48 +278,108 @@ export class CbtBankSoalService {
               tenant_id: tenantId,
               guru_pelaksana_id: query.guru_id,
             },
-            select: {
-              mapel_id: true,
-              Kelas: { select: { tingkat: true } },
+            include: {
+              Kelas: {
+                select: {
+                  tingkat: true,
+                  jurusan_id: true,
+                  Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
+                },
+              },
             },
           }),
         ]);
 
-        const assignedMapelIds = Array.from(
-          new Set(
-            [
-              ...assignments.map((a) => a.mapel_id),
-              ...unitAssignments.map((u) => u.mapel_id),
-              ...delegatedJadwals.map((j) => j.mapel_id),
-            ].filter((id): id is string => Boolean(id))
-          )
-        );
+        // Struktur Penugasan Berpasangan Presisi (Mapel + Tingkat + Jurusan)
+        const scopeMap = new Map<
+          string,
+          {
+            mapelId: string;
+            tingkatVariants: string[];
+            jurusans: Set<string>;
+            hasGeneralClass: boolean;
+          }
+        >();
 
-        const assignedTingkats = new Set<string>(['SEMUA']);
-        const collectTingkat = (rawTingkatVal: unknown) => {
-          const rawTingkat = String(rawTingkatVal || '').toUpperCase().trim();
-          if (rawTingkat === '10' || rawTingkat === 'X') assignedTingkats.add('X');
-          else if (rawTingkat === '11' || rawTingkat === 'XI') assignedTingkats.add('XI');
-          else if (rawTingkat === '12' || rawTingkat === 'XII') assignedTingkats.add('XII');
+        const getTingkatVariants = (
+          rawTingkatVal: unknown
+        ): { normalized: string; variants: string[] } | null => {
+          const raw = String(rawTingkatVal || '').toUpperCase().trim();
+          if (raw === '10' || raw === 'X') return { normalized: 'X', variants: ['X', '10', 'SEMUA'] };
+          if (raw === '11' || raw === 'XI') return { normalized: 'XI', variants: ['XI', '11', 'SEMUA'] };
+          if (raw === '12' || raw === 'XII') return { normalized: 'XII', variants: ['XII', '12', 'SEMUA'] };
+          if (raw === '13' || raw === 'XIII') return { normalized: 'XIII', variants: ['XIII', '13', 'SEMUA'] };
+          if (raw) return { normalized: raw, variants: [raw, 'SEMUA'] };
+          return null;
         };
-        assignments.forEach((a) => collectTingkat(a.Kelas?.tingkat));
-        unitAssignments.forEach((u) => collectTingkat(u.Kelas?.tingkat));
-        delegatedJadwals.forEach((j) => collectTingkat(j.Kelas?.tingkat));
+
+        const registerTeachingScope = (mapelId?: string | null, kelas?: any, directJurusan?: any) => {
+          if (!mapelId) return;
+          const tingkatInfo = getTingkatVariants(kelas?.tingkat);
+          if (!tingkatInfo) return;
+
+          const key = `${mapelId}__${tingkatInfo.normalized}`;
+          let entry = scopeMap.get(key);
+          if (!entry) {
+            entry = {
+              mapelId,
+              tingkatVariants: tingkatInfo.variants,
+              jurusans: new Set<string>(),
+              hasGeneralClass: false,
+            };
+            scopeMap.set(key, entry);
+          }
+
+          const jObj = kelas?.Jurusan || directJurusan;
+          if (jObj) {
+            if (jObj.kode) entry.jurusans.add(jObj.kode.trim());
+            if (jObj.singkatan) entry.jurusans.add(jObj.singkatan.trim());
+            if (jObj.nama) entry.jurusans.add(jObj.nama.trim());
+          } else {
+            entry.hasGeneralClass = true;
+          }
+        };
+
+        assignments.forEach((a: any) => registerTeachingScope(a.mapel_id, a.Kelas, a.Jurusan));
+        unitAssignments.forEach((u: any) => registerTeachingScope(u.mapel_id, u.Kelas, u.Jurusan));
+        delegatedJadwals.forEach((j: any) => registerTeachingScope(j.mapel_id, j.Kelas));
+
+        const sharedScopeConditions: Prisma.CbtBankSoalWhereInput[] = [];
+
+        for (const scope of scopeMap.values()) {
+          const jurusanCandidates: string[] = [];
+          for (const j of scope.jurusans) {
+            jurusanCandidates.push(j);
+            jurusanCandidates.push(j.toUpperCase());
+            jurusanCandidates.push(j.toLowerCase());
+          }
+
+          const jurusanOR: Prisma.CbtBankSoalWhereInput[] = [
+            { jurusan: null },
+            { jurusan: '' },
+            { jurusan: 'SEMUA' },
+            { jurusan: 'semua' },
+          ];
+
+          if (jurusanCandidates.length > 0) {
+            jurusanOR.push({
+              jurusan: { in: Array.from(new Set(jurusanCandidates)) },
+            });
+          }
+
+          sharedScopeConditions.push({
+            status: 'PUBLISHED',
+            mapel_id: scope.mapelId,
+            tingkat: { in: scope.tingkatVariants },
+            OR: jurusanOR,
+          });
+        }
 
         const orConditions: Prisma.CbtBankSoalWhereInput[] = [
           { guru_id: query.guru_id },
           { Kontributor: { some: { guru_id: query.guru_id, tenant_id: tenantId } } },
+          ...sharedScopeConditions,
         ];
-
-        if (assignedMapelIds.length > 0) {
-          orConditions.push({
-            status: 'PUBLISHED',
-            mapel_id: { in: assignedMapelIds },
-            ...(assignedTingkats.size > 1
-              ? { tingkat: { in: Array.from(assignedTingkats) } }
-              : {}),
-          });
-        }
 
         andConditions.push({ OR: orConditions });
       }
@@ -726,6 +797,57 @@ export class CbtBankSoalService {
 
     const resolvedStatus =
       data.status || (data.is_shared ? 'PUBLISHED' : 'DRAFT');
+
+    // 2. Guard Validasi Duplikasi Bank Soal Resmi MGMP / Terpusat
+    // Jika bank soal berstatus publik/terpusat, tolak jika rekan MGMP lain sudah menyusun bank soal resmi untuk mapel & tingkat ini
+    if (
+      !data.bypass_mgmp_guard &&
+      (data.is_shared || data.scope === 'TERPUSAT_MASSAL' || resolvedStatus === 'PUBLISHED') &&
+      !data.unit_pengajaran_id // Khusus bank soal evaluasi umum/resmi, bukan kuis sub-unit
+    ) {
+      const rawTingkat = String(data.tingkat || '').trim().toUpperCase();
+      const tingkatVariants = [rawTingkat];
+      const ROMAN_MAP: Record<string, string> = {
+        '10': 'X', '11': 'XI', '12': 'XII', '13': 'XIII',
+        'X': '10', 'XI': '11', 'XII': '12', 'XIII': '13',
+      };
+      if (ROMAN_MAP[rawTingkat]) {
+        tingkatVariants.push(ROMAN_MAP[rawTingkat]);
+      }
+
+      const targetJurusan = (data.jurusan || '').trim().toUpperCase();
+
+      const existingMgmpBank = await prisma.cbtBankSoal.findFirst({
+        where: {
+          tenant_id: tenantId,
+          mapel_id: data.mapel_id,
+          tingkat: { in: tingkatVariants },
+          ...(resolvedTpId ? { tahun_pelajaran_id: resolvedTpId } : {}),
+          ...(resolvedSemId ? { semester_id: resolvedSemId } : {}),
+          status: 'PUBLISHED',
+          unit_pengajaran_id: null,
+          guru_id: { not: data.guru_id },
+          OR: [
+            { jurusan: null },
+            { jurusan: '' },
+            { jurusan: 'SEMUA' },
+            ...(targetJurusan ? [{ jurusan: targetJurusan }] : []),
+          ],
+        },
+        include: {
+          Guru: { select: { nama_guru: true } },
+          Mapel: { select: { nama_mapel: true } },
+        },
+      });
+
+      if (existingMgmpBank) {
+        const author = existingMgmpBank.Guru?.nama_guru || 'Ketua/Rekan MGMP';
+        const mapelName = existingMgmpBank.Mapel?.nama_mapel || 'Mata Pelajaran ini';
+        throw new Error(
+          `Bank Soal resmi untuk ${mapelName} Tingkat ${rawTingkat} sudah disusun oleh ${author} (${existingMgmpBank.kode_bank}). Anda tidak perlu membuat soal baru lagi, silakan gunakan paket tersebut atau hubungi penyusun untuk kolaborasi.`
+        );
+      }
+    }
 
     const created = await prisma.cbtBankSoal.create({
       data: {

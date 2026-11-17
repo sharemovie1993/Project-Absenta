@@ -470,7 +470,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                       <div className="lg:col-span-5">
                         <div className="rounded-3xl overflow-hidden border-2 border-amber-500/40 bg-slate-950 shadow-2xl flex flex-col">
                           <img
-                            src={currentPertemuan.langkah_kbm.pendahuluan.gambar_url}
+                            src={resolveProfilePhotoUrl(currentPertemuan.langkah_kbm.pendahuluan.gambar_url)}
                             alt="Foto Pemantik"
                             className="w-full max-h-[420px] object-contain mx-auto bg-slate-950 p-2"
                           />
@@ -546,7 +546,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                         <div className="lg:col-span-5 sticky top-0">
                           <div className="rounded-3xl overflow-hidden border-2 border-blue-500/40 bg-slate-950 shadow-2xl flex flex-col">
                             <img
-                              src={activeSlide.gambar_url}
+                              src={resolveProfilePhotoUrl(activeSlide.gambar_url)}
                               alt="Diagram Materi"
                               className="w-full max-h-[460px] object-contain mx-auto bg-slate-950 p-2"
                             />
@@ -604,7 +604,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                       <div className="lg:col-span-5">
                         <div className="rounded-3xl overflow-hidden border-2 border-emerald-500/40 bg-slate-950 shadow-2xl flex flex-col">
                           <img
-                            src={currentPertemuan.langkah_kbm.inti.lkpd.gambar_url}
+                            src={resolveProfilePhotoUrl(currentPertemuan.langkah_kbm.inti.lkpd.gambar_url)}
                             alt="Gambar LKPD"
                             className="w-full max-h-[420px] object-contain mx-auto bg-slate-950 p-2"
                           />
@@ -860,7 +860,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                     {currentPertemuan.langkah_kbm.pendahuluan.gambar_url && (
                       <div className="rounded-2xl overflow-hidden border border-amber-200 dark:border-amber-900/60 max-w-md mt-2 bg-slate-900/40">
                         <img
-                          src={currentPertemuan.langkah_kbm.pendahuluan.gambar_url}
+                          src={resolveProfilePhotoUrl(currentPertemuan.langkah_kbm.pendahuluan.gambar_url)}
                           alt="Foto Pemantik"
                           className="w-full max-h-56 object-cover"
                         />
@@ -908,7 +908,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                         {currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_url && (
                           <div className="rounded-2xl overflow-hidden border border-blue-200 dark:border-blue-900 max-w-lg my-2 bg-slate-900/40">
                             <img
-                              src={currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_url}
+                              src={resolveProfilePhotoUrl(currentPertemuan.langkah_kbm.inti.teks_bacaan.gambar_url)}
                               alt="Diagram Materi"
                               className="w-full max-h-72 object-contain bg-slate-950"
                             />
@@ -939,7 +939,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                         {currentPertemuan.langkah_kbm.inti.lkpd.gambar_url && (
                           <div className="rounded-2xl overflow-hidden border border-emerald-200 dark:border-emerald-900 max-w-md my-2 bg-slate-900/40">
                             <img
-                              src={currentPertemuan.langkah_kbm.inti.lkpd.gambar_url}
+                              src={resolveProfilePhotoUrl(currentPertemuan.langkah_kbm.inti.lkpd.gambar_url)}
                               alt="Gambar LKPD"
                               className="w-full max-h-60 object-contain bg-slate-950"
                             />

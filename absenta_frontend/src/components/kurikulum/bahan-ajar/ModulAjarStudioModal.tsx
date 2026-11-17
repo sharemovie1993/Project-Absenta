@@ -40,7 +40,7 @@ import {
   BahanAjarPresetData
 } from '../../../api/bahan-ajar.api';
 import { toast } from 'react-hot-toast';
-import { cn } from '../../../lib/utils';
+import { cn, resolveProfilePhotoUrl } from '../../../lib/utils';
 import { BahanAjarReaderModal } from './BahanAjarReaderModal';
 
 export interface BabItem {
@@ -1440,7 +1440,7 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
                     {currentMeeting.langkah_kbm?.pendahuluan?.gambar_url && (
                       <div className="relative rounded-2xl overflow-hidden border border-amber-300 dark:border-amber-800 max-w-xs bg-slate-900/40 mt-1">
                         <img
-                          src={currentMeeting.langkah_kbm?.pendahuluan?.gambar_url}
+                          src={resolveProfilePhotoUrl(currentMeeting.langkah_kbm?.pendahuluan?.gambar_url)}
                           alt="Preview Pemantik"
                           className="w-full h-32 object-cover"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -1756,7 +1756,7 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
                         {activeSlide.gambar_url && (
                           <div className="relative rounded-2xl overflow-hidden border border-blue-300 dark:border-blue-800 max-w-xs bg-slate-900/40 mt-1">
                             <img
-                              src={activeSlide.gambar_url}
+                              src={resolveProfilePhotoUrl(activeSlide.gambar_url)}
                               alt={`Preview Materi Slide ${activeMateriSlideIdx + 1}`}
                               className="w-full h-32 object-cover"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -1944,7 +1944,7 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
                       {currentMeeting.langkah_kbm?.inti?.lkpd?.gambar_url && (
                         <div className="relative rounded-2xl overflow-hidden border border-emerald-300 dark:border-emerald-800 max-w-xs bg-slate-900/40 mt-1">
                           <img
-                            src={currentMeeting.langkah_kbm?.inti?.lkpd?.gambar_url}
+                            src={resolveProfilePhotoUrl(currentMeeting.langkah_kbm?.inti?.lkpd?.gambar_url)}
                             alt="Preview LKPD"
                             className="w-full h-32 object-cover"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}

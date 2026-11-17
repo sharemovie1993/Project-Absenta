@@ -103,12 +103,34 @@ export class HubinMitraController {
         return reply.status(401).send({ success: false, message: 'Unauthorized: Tenant ID required' });
       }
 
-      const part = await request.file();
-      if (!part) {
-        return reply.status(400).send({ success: false, message: 'File tidak ditemukan' });
+      let buffer: Buffer | null = null;
+      if (typeof request.file === 'function') {
+        try {
+          const part = await request.file();
+          if (part) {
+            buffer = await part.toBuffer();
+          }
+        } catch {
+          // Fallback ke parts() jika file() gagal
+        }
+      }
+      if (!buffer && typeof request.parts === 'function') {
+        try {
+          const parts = request.parts();
+          for await (const part of parts) {
+            if (part.file) {
+              buffer = await part.toBuffer();
+              break;
+            }
+          }
+        } catch {
+          // Ignore
+        }
       }
 
-      const buffer = await part.toBuffer();
+      if (!buffer) {
+        return reply.status(400).send({ success: false, message: 'File tidak ditemukan atau format multipart tidak valid' });
+      }
       const wb = XLSX.read(buffer, { type: 'buffer' });
       const sheetName = wb.SheetNames[0];
       const ws = wb.Sheets[sheetName];

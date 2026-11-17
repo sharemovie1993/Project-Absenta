@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { PublicHubinData } from '../../../api/public-portal.api';
+import { resolveProfilePhotoUrl } from '../../../lib/utils';
 
 interface PublicPortalHubinBkkProps {
   hubin: PublicHubinData;
@@ -415,7 +416,7 @@ export const PublicPortalHubinBkk: React.FC<PublicPortalHubinBkkProps> = ({
                 >
                   {m.logo_url ? (
                     <img
-                      src={m.logo_url}
+                      src={resolveProfilePhotoUrl(m.logo_url)}
                       alt={m.nama}
                       className="w-12 h-12 object-contain filter grayscale hover:grayscale-0 transition-all"
                     />

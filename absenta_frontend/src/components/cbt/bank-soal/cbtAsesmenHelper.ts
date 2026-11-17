@@ -453,6 +453,66 @@ export function generateAutoFillMassal(params: {
 }
 
 /**
+ * Normalisasi Display Judul Bank Soal:
+ * Membersihkan kurung siku event panjang yang di-generate panitia (misal: '[Asesmen Sumatif Akhir Semester (ASAS) Ganjil] MP-KODING AI Tingkat 10')
+ * menjadi format standar ringkas yang rapi dan konsisten: 'PSAS - MP-KODING AI Tingkat X'.
+ */
+export function formatDisplayJudulBankSoal(rawJudul?: string | null, kodeBank?: string | null, tingkat?: string | number | null): string {
+  if (!rawJudul) return '-';
+  const trimmed = rawJudul.trim();
+
+  if (trimmed.startsWith('[')) {
+    // Ambil isi teks setelah kurung siku penutup ]
+    const afterBracket = trimmed.replace(/^\[[^\]]+\]\s*/i, '').trim();
+
+    // Tentukan prefix standar dari kode bank atau event di kurung siku
+    let resolvedPrefix = 'PSAS';
+    const codeUpper = (kodeBank || '').toUpperCase();
+    if (codeUpper.startsWith('PSAT-') || codeUpper.startsWith('SAT-') || codeUpper.startsWith('PAT-')) {
+      resolvedPrefix = 'PSAT';
+    } else if (codeUpper.startsWith('PSTS-') || codeUpper.startsWith('STS-') || codeUpper.startsWith('PTS-')) {
+      resolvedPrefix = 'PSTS';
+    } else if (codeUpper.startsWith('PSAJ-') || codeUpper.startsWith('AM-') || codeUpper.startsWith('US-')) {
+      resolvedPrefix = 'PSAJ';
+    } else if (codeUpper.startsWith('UKK-')) {
+      resolvedPrefix = 'UKK';
+    } else if (codeUpper.startsWith('TRYOUT-') || codeUpper.startsWith('SIMULASI-')) {
+      resolvedPrefix = 'TRYOUT';
+    } else if (codeUpper.startsWith('PSAS-') || codeUpper.startsWith('SAS-') || codeUpper.startsWith('PAS-')) {
+      resolvedPrefix = 'PSAS';
+    } else {
+      // Cek isi dalam kurung siku
+      const bracketMatch = trimmed.match(/^\[([^\]]+)\]/);
+      const bracketContent = (bracketMatch ? bracketMatch[1] : '').toUpperCase();
+      if (bracketContent.includes('AKHIR TAHUN') || bracketContent.includes('PSAT') || bracketContent.includes('KENAIKAN')) {
+        resolvedPrefix = 'PSAT';
+      } else if (bracketContent.includes('TENGAH') || bracketContent.includes('PSTS') || bracketContent.includes('PTS')) {
+        resolvedPrefix = 'PSTS';
+      } else if (bracketContent.includes('JENJANG') || bracketContent.includes('PSAJ') || bracketContent.includes('KELULUSAN')) {
+        resolvedPrefix = 'PSAJ';
+      } else if (bracketContent.includes('UKK')) {
+        resolvedPrefix = 'UKK';
+      }
+    }
+
+    // Normalisasi 'Tingkat 10/11/12' menjadi Romawi 'Tingkat X/XI/XII'
+    const normalizedBody = afterBracket
+      .replace(/\bTingkat\s+10\b/gi, 'Tingkat X')
+      .replace(/\bTingkat\s+11\b/gi, 'Tingkat XI')
+      .replace(/\bTingkat\s+12\b/gi, 'Tingkat XII')
+      .replace(/\bTingkat\s+13\b/gi, 'Tingkat XIII');
+
+    return `${resolvedPrefix} - ${normalizedBody}`;
+  }
+
+  // Jika judul tidak diawali kurung siku, pastikan tingkat angka dinormalisasi ke Romawi
+  return trimmed
+    .replace(/\bTingkat\s+10\b/gi, 'Tingkat X')
+    .replace(/\bTingkat\s+11\b/gi, 'Tingkat XI')
+    .replace(/\bTingkat\s+12\b/gi, 'Tingkat XII');
+}
+
+/**
  * Menghitung daftar tingkat kelas yang sah untuk asesmen tertentu secara dinamis
  * berdasarkan jenjang sekolah (SD: 1-6, SMP: 7-9, SMA: 10-12, SMK: 10-12/13).
  */

@@ -21,6 +21,7 @@ import {
   FileSearch,
 } from 'lucide-react';
 import { PublicSchoolProfile } from '../../../api/public-portal.api';
+import { resolveProfilePhotoUrl } from '../../../lib/utils';
 
 interface PublicPortalNavbarProps {
   profile: PublicSchoolProfile;
@@ -135,7 +136,7 @@ export const PublicPortalNavbar: React.FC<PublicPortalNavbarProps> = ({
         >
           {profile.logo_url ? (
             <img
-              src={profile.logo_url}
+              src={resolveProfilePhotoUrl(profile.logo_url)}
               alt={profile.nama}
               className="w-12 h-12 rounded-xl object-contain shadow-sm border border-slate-100 group-hover:scale-105 transition-transform"
             />

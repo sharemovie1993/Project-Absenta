@@ -11,6 +11,7 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { PublicSchoolProfile } from '../../../api/public-portal.api';
+import { resolveProfilePhotoUrl } from '../../../lib/utils';
 
 interface PublicPortalFooterProps {
   profile: PublicSchoolProfile;
@@ -44,7 +45,7 @@ export const PublicPortalFooter: React.FC<PublicPortalFooterProps> = ({
             <div className="flex items-center gap-3">
               {profile.logo_url ? (
                 <img
-                  src={profile.logo_url}
+                  src={resolveProfilePhotoUrl(profile.logo_url)}
                   alt={profile.nama}
                   className="w-12 h-12 rounded-xl object-contain bg-white p-1"
                 />

@@ -6,6 +6,7 @@ import {
   UserIcon
 } from '@heroicons/react/24/outline';
 import { CallerInfo } from '@/hooks/communication/useWebRTCCall';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface IncomingCallModalProps {
   incomingCall: CallerInfo | null;
@@ -34,7 +35,7 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
           <span className="absolute inset-0 rounded-full bg-[#00a884]/40 animate-ping" />
           <div className="relative w-24 h-24 rounded-full bg-[#00a884] text-white flex items-center justify-center text-2xl font-extrabold shadow-xl border-4 border-[#202c33] overflow-hidden">
             {incomingCall.callerAvatar ? (
-              <img src={incomingCall.callerAvatar} alt={incomingCall.callerName} className="w-full h-full object-cover" />
+              <img src={resolveProfilePhotoUrl(incomingCall.callerAvatar)} alt={incomingCall.callerName} className="w-full h-full object-cover" />
             ) : incomingCall.callerName ? (
               incomingCall.callerName.slice(0, 2).toUpperCase()
             ) : (

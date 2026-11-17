@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 
 const PklNilaiIndustriTab = lazy(() => import('./PklNilaiIndustriTab'));
 const PklNilaiSidangTab = lazy(() => import('./PklNilaiSidangTab'));
+const PklMonitoringSidangTab = lazy(() => import('./PklMonitoringSidangTab'));
 const PklSkemaSettingsModal = lazy(() => import('./PklSkemaSettingsModal'));
 
 export interface UniversalNilaiPklViewProps {
@@ -39,8 +40,8 @@ export interface UniversalNilaiPklViewProps {
   isPengujiOnly?: boolean;
   tahunPelajaranId?: string;
   semesterId?: string;
-  initialTab?: 'dudi' | 'sidang';
-  activeTabOnly?: 'dudi' | 'sidang';
+  initialTab?: 'dudi' | 'sidang' | 'monitoring_sidang';
+  activeTabOnly?: 'dudi' | 'sidang' | 'monitoring_sidang';
   layoutMode?: 'hubin' | 'rapor';
   isModal?: boolean;
   readOnly?: boolean;
@@ -77,7 +78,9 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<string>(activeTabOnly || (initialTab === 'sidang' ? 'sidang' : 'dudi'));
+  const [activeTab, setActiveTab] = useState<string>(
+    activeTabOnly || (initialTab === 'sidang' ? 'sidang' : initialTab === 'monitoring_sidang' ? 'monitoring_sidang' : 'dudi')
+  );
   const [selectedKelas, setSelectedKelas] = useState(propKelasId || '');
   const [selectedMitra, setSelectedMitra] = useState('');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -90,7 +93,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     if (activeTabOnly) {
       setActiveTab(activeTabOnly);
     } else if (initialTab) {
-      setActiveTab(initialTab === 'sidang' ? 'sidang' : 'dudi');
+      setActiveTab(initialTab);
     }
   }, [activeTabOnly, initialTab]);
 
@@ -722,6 +725,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
   }, [effectiveReadOnly, scores, displayedScores, saveBatchMutation]);
 
   const isSidangAvailable = isCompositeMode || initialTab === 'sidang' || isKaprog || isPrivilegedHubin || isPengujiOnly;
+  const isMonitoringAvailable = isPrivilegedHubin || canManageAll || isKaprog || isHubin;
   const tabs = useMemo(() => {
     if (activeTabOnly === 'dudi') {
       return [{ id: 'dudi', label: `🏢 DUDI (${displayedScores.length})` }];
@@ -729,11 +733,15 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     if (activeTabOnly === 'sidang' || isPengujiOnly) {
       return [{ id: 'sidang', label: `🎓 Sidang PKL (${displayedScores.length})` }];
     }
+    if (activeTabOnly === 'monitoring_sidang') {
+      return [{ id: 'monitoring_sidang', label: `📊 Monitoring Sidang (${displayedScores.length})` }];
+    }
     return [
       { id: 'dudi', label: `🏢 DUDI (${displayedScores.length})` },
       ...(isSidangAvailable ? [{ id: 'sidang', label: `🎓 Sidang (${displayedScores.length})` }] : []),
+      ...(isMonitoringAvailable ? [{ id: 'monitoring_sidang', label: `📊 Monitoring Sidang (${displayedScores.length})` }] : []),
     ];
-  }, [displayedScores.length, isSidangAvailable, isPengujiOnly, activeTabOnly]);
+  }, [displayedScores.length, isSidangAvailable, isMonitoringAvailable, isPengujiOnly, activeTabOnly]);
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -790,7 +798,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         )}
 
         {/* KPI Strip Monitoring Progres Nilai PKL (Shopee-Grade Hairline Strip) */}
-        {!isPengujiOnly && !hideHeaderStats && (
+        {!isPengujiOnly && !hideHeaderStats && activeTab !== 'monitoring_sidang' && (
           <HubCard noPadding className="w-full">
             <div className={cn(
               "grid divide-x divide-slate-100 dark:divide-slate-800/80 py-2 sm:py-2.5 text-center",
@@ -1030,6 +1038,29 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               readOnly={effectiveReadOnly}
               isAdminOverride={adminOverrideMode}
               onToggleAdminOverride={canManageAll ? () => setAdminOverrideMode(prev => !prev) : undefined}
+            />
+          )}
+
+          {activeTab === 'monitoring_sidang' && (
+            <PklMonitoringSidangTab
+              scores={scores}
+              totalRawScores={scores.length}
+              isLoadingRekap={isLoadingRekap}
+              selectedTp={selectedTp}
+              selectedSemester={selectedSemester}
+              tpOptions={tpOptions}
+              semesterOptions={semesterOptions}
+              isKaprog={isKaprog || isJurusanScoped}
+              canManageAll={canManageAll}
+              isHubin={isHubin || isPrivilegedHubin}
+              jurusanId={effectiveJurusanId}
+              jurusanNama={effectiveJurusanNama && effectiveJurusanNama !== 'Kejuruan' ? effectiveJurusanNama : undefined}
+              activeGuruId={activeGuruId || undefined}
+              isMobile={isMobile}
+              smartClassOptions={smartClassOptions}
+              selectedKelas={selectedKelas}
+              setSelectedKelas={setSelectedKelas}
+              onNavigateCetakRapor={effectiveHideCetakRapor ? undefined : handleNavigateCetakRapor}
             />
           )}
         </Suspense>

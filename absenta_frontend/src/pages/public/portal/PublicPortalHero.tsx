@@ -11,6 +11,7 @@ import {
   BookUser,
 } from 'lucide-react';
 import { PublicSchoolProfile } from '../../../api/public-portal.api';
+import { resolveProfilePhotoUrl } from '../../../lib/utils';
 
 interface PublicPortalHeroProps {
   profile: PublicSchoolProfile;
@@ -28,9 +29,10 @@ export const PublicPortalHero: React.FC<PublicPortalHeroProps> = ({
   onOpenGuestBookModal,
 }) => {
   const isSmk = profile.jenjang === 'SMK';
-  const heroImage =
-    profile.web_config?.hero_images?.[0] ||
-    'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1600&q=80';
+  const rawHeroImage = profile.web_config?.hero_images?.[0];
+  const heroImage = rawHeroImage
+    ? resolveProfilePhotoUrl(rawHeroImage)
+    : 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1600&q=80';
 
   const statsList = [
     {

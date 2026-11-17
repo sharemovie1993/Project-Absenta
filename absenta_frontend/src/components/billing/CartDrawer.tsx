@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import { resolveProfilePhotoUrl } from '../../lib/utils';
 
 interface CartDrawerProps {
   onCheckoutSuccess?: (invoiceData: any) => void;
@@ -262,7 +263,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckoutSuccess }) => 
                 {/* QRIS / VA Code Display */}
                 {createdInvoice.qr_url ? (
                   <div className="p-4 rounded-2xl bg-white text-center space-y-2 shadow-xl max-w-xs mx-auto">
-                    <img src={createdInvoice.qr_url} alt="QRIS Code Pembayaran" className="w-48 h-48 mx-auto object-contain block" />
+                    <img src={resolveProfilePhotoUrl(createdInvoice.qr_url)} alt="QRIS Code Pembayaran" className="w-48 h-48 mx-auto object-contain block" />
                     <p className="text-[11px] font-semibold text-slate-800">
                       Pindai QRIS di atas dengan BCA Mobile, GoPay, OVO, ShopeePay, atau m-Banking
                     </p>
@@ -504,7 +505,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckoutSuccess }) => 
                               >
                                 {ch.icon_url ? (
                                   <div className="w-8 h-8 rounded-lg bg-white p-1 flex items-center justify-center shrink-0 shadow-xs">
-                                    <img src={ch.icon_url} alt={ch.name} className="max-h-full max-w-full object-contain" />
+                                    <img src={resolveProfilePhotoUrl(ch.icon_url)} alt={ch.name} className="max-h-full max-w-full object-contain" />
                                   </div>
                                 ) : (
                                   <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
@@ -541,7 +542,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckoutSuccess }) => 
                               >
                                 {ch.icon_url ? (
                                   <div className="w-8 h-8 rounded-lg bg-white p-1 flex items-center justify-center shrink-0 shadow-xs">
-                                    <img src={ch.icon_url} alt={ch.name} className="max-h-full max-w-full object-contain" />
+                                    <img src={resolveProfilePhotoUrl(ch.icon_url)} alt={ch.name} className="max-h-full max-w-full object-contain" />
                                   </div>
                                 ) : (
                                   <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
@@ -578,7 +579,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckoutSuccess }) => 
                               >
                                 {ch.icon_url ? (
                                   <div className="w-8 h-8 rounded-lg bg-white p-1 flex items-center justify-center shrink-0 shadow-xs">
-                                    <img src={ch.icon_url} alt={ch.name} className="max-h-full max-w-full object-contain" />
+                                    <img src={resolveProfilePhotoUrl(ch.icon_url)} alt={ch.name} className="max-h-full max-w-full object-contain" />
                                   </div>
                                 ) : (
                                   <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">

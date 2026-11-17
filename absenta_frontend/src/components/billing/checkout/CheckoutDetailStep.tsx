@@ -13,6 +13,7 @@ import {
 import { Button, Card } from '@/components/ui';
 import { formatCurrency } from '@/api/plans.api';
 import { formatDate } from '@/utils/layoutUtils';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import type { Plan } from '@/types/plans';
 
 interface PaymentChannel {
@@ -150,7 +151,7 @@ export const CheckoutDetailStep: React.FC<CheckoutDetailStepProps> = React.memo(
                             <div className="flex items-center gap-3">
                               {activeCh.icon_url && (
                                 <img 
-                                  src={activeCh.icon_url} 
+                                  src={resolveProfilePhotoUrl(activeCh.icon_url)} 
                                   alt={activeCh.name} 
                                   className="h-6 w-auto object-contain bg-white px-1.5 py-0.5 rounded-lg border border-slate-200" 
                                 />
@@ -203,7 +204,7 @@ export const CheckoutDetailStep: React.FC<CheckoutDetailStepProps> = React.memo(
                                 <div className="flex items-center gap-3">
                                   {channel.icon_url && (
                                     <img 
-                                      src={channel.icon_url} 
+                                      src={resolveProfilePhotoUrl(channel.icon_url)} 
                                       alt={channel.name} 
                                       className="h-6 w-auto object-contain bg-white px-1.5 py-0.5 rounded-lg border border-slate-100" 
                                     />

@@ -10,6 +10,7 @@ import axiosInstance from '@/lib/axiosInstance';
 import { toast } from 'react-hot-toast';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
 import { formatDate } from '@/utils/layoutUtils';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface PublicViewData {
   id: string;
@@ -83,8 +84,10 @@ export const SuratKeluarPublicViewPage: React.FC = React.memo(() => {
     if (!data) return;
     setDownloading(true);
     try {
-      const logoDaerahUrl = data.sekolah?.logo_url || data.tenantInfo?.logo_url;
-      const logoSekolahUrl = data.tenantInfo?.logo_url;
+      const rawLogoDaerah = data.sekolah?.logo_url || data.tenantInfo?.logo_url;
+      const rawLogoSekolah = data.tenantInfo?.logo_url;
+      const logoDaerahUrl = rawLogoDaerah ? resolveProfilePhotoUrl(rawLogoDaerah) : null;
+      const logoSekolahUrl = rawLogoSekolah ? resolveProfilePhotoUrl(rawLogoSekolah) : null;
 
       const [logoDaerahBase64, logoSekolahBase64] = await Promise.all([
         logoDaerahUrl ? getBase64(logoDaerahUrl) : Promise.resolve(null),
@@ -195,7 +198,7 @@ export const SuratKeluarPublicViewPage: React.FC = React.memo(() => {
             <div className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl flex items-center justify-between shadow-sm w-full min-w-0 max-w-full">
               <div className="flex items-center gap-3 min-w-0">
                 {data.sekolah?.logo_url ? (
-                  <img src={data.sekolah.logo_url} alt="Logo" className="h-10 w-10 object-contain rounded-lg shrink-0" />
+                  <img src={resolveProfilePhotoUrl(data.sekolah.logo_url)} alt="Logo" className="h-10 w-10 object-contain rounded-lg shrink-0" />
                 ) : (
                   <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl text-indigo-600 dark:text-indigo-400 shrink-0">
                     <Building2 className="h-5 w-5" />

@@ -3,6 +3,7 @@ import { CreditCard, Download, Zap, Wallet, ChevronDown, Check, Search } from 'l
 import { motion } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui';
+import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { type TripayChannel } from '@/types/invoice';
 
 interface InvoiceSummaryCardProps {
@@ -82,7 +83,7 @@ export const InvoiceSummaryCard: React.FC<InvoiceSummaryCardProps> = ({
                 >
                   <div className="flex items-center gap-3">
                     {selectedChannelObj ? (
-                      <img src={selectedChannelObj.icon_url} alt="" className="h-5 w-auto max-w-[60px] object-contain" />
+                      <img src={resolveProfilePhotoUrl(selectedChannelObj.icon_url)} alt="" className="h-5 w-auto max-w-[60px] object-contain" />
                     ) : <Wallet className="w-5 h-5 text-slate-300" />}
                     <span className={`text-xs font-bold truncate max-w-[150px] ${selectedChannelObj ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
                       {selectedChannelObj?.name || 'Pilih Cara Bayar'}
@@ -120,7 +121,7 @@ export const InvoiceSummaryCard: React.FC<InvoiceSummaryCardProps> = ({
                                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors text-left ${selectedChannel === c.code ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                               >
                                 <div className="flex items-center gap-3">
-                                  <img src={c.icon_url} alt="" className="h-4 w-auto max-w-[50px] object-contain" />
+                                  <img src={resolveProfilePhotoUrl(c.icon_url)} alt="" className="h-4 w-auto max-w-[50px] object-contain" />
                                   <span className={`text-[11px] font-bold ${selectedChannel === c.code ? 'text-blue-600' : 'text-slate-600 dark:text-slate-300'}`}>{c.name}</span>
                                 </div>
                                 {selectedChannel === c.code && <Check className="w-3 h-3 text-blue-600" />}

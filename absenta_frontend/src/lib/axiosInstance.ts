@@ -79,6 +79,11 @@ axiosInstance.interceptors.request.use(
     // If request data is FormData, remove Content-Type to let browser set boundary
     if (config.data instanceof FormData && config.headers) {
       delete (config.headers as any)['Content-Type'];
+      delete (config.headers as any)['content-type'];
+      if (typeof (config.headers as any).delete === 'function') {
+        (config.headers as any).delete('Content-Type');
+        (config.headers as any).delete('content-type');
+      }
     }
 
     // DEFENSIVE FIX: Remove /api prefix if present in the call

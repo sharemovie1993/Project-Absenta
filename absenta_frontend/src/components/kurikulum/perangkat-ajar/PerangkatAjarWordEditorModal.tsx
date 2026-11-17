@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Modal, Button, Badge } from '../../ui';
 import { toast } from 'sonner';
+import { resolveProfilePhotoUrl } from '../../../lib/utils';
 import { kurikulumApi } from '../../../api/kurikulum.api';
 import { useAuthStore } from '../../../store/authStore';
 import { getTenantById } from '../../../api/tenants.api';
@@ -90,8 +91,8 @@ export default React.memo(function PerangkatAjarWordEditorModal({
   // Helper untuk membangun Kop Surat Resmi Sekolah presisi (sesuai konfigurasi Tenant & PrintHeader)
   const buildKopHeaderHtml = (dataOverride?: any): string => {
     const data = dataOverride || tenantInfo;
-    const logoSekolah = data?.logo_url || null;
-    const logoDaerah = data?.logo_daerah_url || null;
+    const logoSekolah = data?.logo_url ? resolveProfilePhotoUrl(data.logo_url) : null;
+    const logoDaerah = data?.logo_daerah_url ? resolveProfilePhotoUrl(data.logo_daerah_url) : null;
 
     const alamatLengkap = data?.address || itemData?.nama_sekolah || '';
     const telepon = data?.phone || '';

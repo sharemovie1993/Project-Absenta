@@ -283,51 +283,6 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
     return { total, lulus, revisi, belum, avg, countScored, sudahTtd, belumTtd };
   }, [filteredScores]);
 
-  // Titimangsa & Tanggal Dokumen Resmi (Nama Kota Saja, Misal: Purwakarta, 17 November 2026)
-  const titimangsaCity = useMemo(() => {
-    // 1. Cek langsung dari field kota / kabupaten sekolah
-    const rawKota =
-      (rawSekolah as any)?.kota ||
-      (rawSekolah as any)?.kabupaten ||
-      (tenantInfo as any)?.city ||
-      (tenantInfo as any)?.kabupaten ||
-      '';
-
-    if (rawKota && typeof rawKota === 'string') {
-      const cleaned = rawKota
-        .replace(/^kabupaten\s+|^kab\.\s+|^kota\s+/i, '')
-        .replace(/\s*\d{5}\s*$/, '')
-        .trim();
-      if (cleaned && !/^(tempat|-|null|undefined)$/i.test(cleaned)) {
-        return cleaned;
-      }
-    }
-
-    // 2. Deteksi dari alamat lengkap jika menyebut Purwakarta / kota lain
-    const fullAddr = tenantInfo.address || (rawSekolah as any)?.alamat || '';
-    if (fullAddr && typeof fullAddr === 'string') {
-      if (fullAddr.toLowerCase().includes('purwakarta')) {
-        return 'Purwakarta';
-      }
-      const match = fullAddr.match(/(?:Kab\.|Kabupaten|Kota)\s+([A-Za-z\s]+?)(?:,?\s*\d{5}|,?\s*Jawa|$)/i);
-      if (match && match[1]) {
-        return match[1].trim();
-      }
-      const parts = fullAddr.split(',');
-      for (const p of parts) {
-        const c = p
-          .replace(/^kabupaten\s+|^kab\.\s+|^kota\s+/i, '')
-          .replace(/\s*\d{5}\s*$/, '')
-          .trim();
-        if (c && !/^(indonesia|jawa barat|jabar)$/i.test(c.toLowerCase())) {
-          return c;
-        }
-      }
-    }
-
-    return 'Purwakarta';
-  }, [tenantInfo, rawSekolah]);
-
   const currentDateFormatted = useMemo(() => {
     const now = new Date();
     return now.toLocaleDateString('id-ID', {
@@ -381,6 +336,77 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
   const signersHook = useDocumentSigners({
     jurusanId: effectiveJurusanIdForSigners,
   });
+
+  // Titimangsa & Tanggal Dokumen Resmi (Nama Kota Saja, Misal: Purwakarta, 17 November 2026)
+  const titimangsaCity = useMemo(() => {
+    // 1. Cek langsung dari field kota / kabupaten sekolah
+    const rawKota =
+      (rawSekolah as any)?.kota ||
+      (rawSekolah as any)?.kabupaten ||
+      (tenantInfo as any)?.city ||
+      (tenantInfo as any)?.kabupaten ||
+      signersHook.city ||
+      '';
+
+    if (rawKota && typeof rawKota === 'string') {
+      const cleaned = rawKota
+        .replace(/^kabupaten\s+|^kab\.\s+|^kota\s+/i, '')
+        .replace(/\s*\d{5}\s*$/, '')
+        .trim();
+      if (
+        cleaned &&
+        !/^(tempat|-|null|undefined)$/i.test(cleaned) &&
+        !/^(jl\.|jalan|kp\.|kampung|desa|kel\.|dusun|rt|rw)/i.test(cleaned)
+      ) {
+        return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      }
+    }
+
+    // 2. Deteksi dari nama sekolah (contoh "SMKN 1 PLERED - PURWAKARTA")
+    const schoolName = (rawSekolah as any)?.nama || tenantInfo?.name || '';
+    if (/purwakar/i.test(schoolName)) {
+      return 'Purwakarta';
+    }
+    const nameMatch = schoolName.match(/[-–]\s*([A-Za-z\s]+)$/);
+    if (nameMatch && nameMatch[1]) {
+      const candidate = nameMatch[1].trim();
+      if (
+        candidate.length >= 3 &&
+        !/^(smk|sma|smp|negeri|swasta|indonesia)$/i.test(candidate)
+      ) {
+        return candidate.charAt(0).toUpperCase() + candidate.slice(1).toLowerCase();
+      }
+    }
+
+    // 3. Deteksi dari alamat lengkap jika menyebut Purwakarta / kota lain
+    const fullAddr = tenantInfo.address || (rawSekolah as any)?.alamat || '';
+    if (fullAddr && typeof fullAddr === 'string') {
+      if (/purwakar/i.test(fullAddr)) {
+        return 'Purwakarta';
+      }
+      const match = fullAddr.match(/(?:Kab\.|Kabupaten|Kota)\s+([A-Za-z\s]+?)(?:,?\s*\d{5}|,?\s*Jawa|$)/i);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+      const parts = fullAddr.split(/[,–-]/);
+      for (const p of parts) {
+        const c = p
+          .replace(/^kabupaten\s+|^kab\.\s+|^kota\s+/i, '')
+          .replace(/\s*\d{5}\s*$/, '')
+          .trim();
+        if (
+          c &&
+          !/^(indonesia|jawa barat|jabar)$/i.test(c.toLowerCase()) &&
+          !/^(jl\.|jalan|kp\.|kampung|desa|kel\.|kelurahan|dusun|rt|rw|blok|komplek|gang|gg\.)/i.test(c.toLowerCase()) &&
+          c.length >= 3
+        ) {
+          return c.charAt(0).toUpperCase() + c.slice(1).toLowerCase();
+        }
+      }
+    }
+
+    return 'Purwakarta';
+  }, [tenantInfo, rawSekolah, signersHook.city]);
 
   const cleanNip = (rawDetails?: string): string => {
     if (!rawDetails) return '-';
@@ -518,8 +544,21 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
     }
 
     // 4. Kepala Sekolah
-    const kepsekNama = tenantInfo.kepala_sekolah || rawSekolah?.kepala_sekolah || signersHook.kepsek?.personName || 'Kepala Sekolah';
-    const kepsekNip = tenantInfo.nip_kepala || rawSekolah?.nip_kepala || signersHook.kepsek?.nip || '-';
+    let kepsekNama =
+      rawSekolah?.kepala_sekolah ||
+      signersHook.kepsek?.personName ||
+      (tenantInfo as any)?.kepala_sekolah ||
+      '';
+    let kepsekNip =
+      rawSekolah?.nip_kepala ||
+      signersHook.kepsek?.nip ||
+      (tenantInfo as any)?.nip_kepala ||
+      '-';
+
+    if (!kepsekNama || kepsekNama === 'Kepala Sekolah') {
+      kepsekNama = 'Wahyu Tamimbarkah, S.Pd.';
+      kepsekNip = '197111022008011001';
+    }
 
     return {
       kaprog: { nama: kaprogNama, nip: kaprogNip },
@@ -968,7 +1007,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                       <td className="p-1.5 align-top font-bold text-center bg-slate-50 border-r border-slate-300">7.</td>
                       <td className="p-1.5 align-top font-semibold bg-slate-50 border-r border-slate-300">Data Kehadiran Peserta</td>
                       <td className="p-1.5 align-top">
-                        : Terdaftar <strong>{stats.total}</strong> orang, Hadir & Selesai Diuji <strong>{stats.total - stats.belum}</strong> orang, Belum / Tidak Hadir <strong>{stats.belum}</strong> orang
+                        : Terdaftar <strong>{stats.total}</strong> orang, Hadir & Selesai Diuji <strong>{stats.sudahTtd}</strong> orang, Belum / Tidak Hadir <strong>{stats.belumTtd}</strong> orang
                       </td>
                     </tr>
                     <tr>
@@ -1040,22 +1079,22 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Baris 2: Tengah Bawah (Wakil Kepala Sekolah Bidang Hubin) */}
+                  {/* Baris 2: Tengah Bawah (Mengetahui Kepala Sekolah) */}
                   <div className="flex flex-col items-center justify-center text-center w-full pt-1">
                     <div className="w-[90mm]">
                       <div>
-                        <p className="font-semibold text-slate-700">Mengetahui / Menyetujui,</p>
+                        <p className="font-semibold text-slate-700">Mengetahui,</p>
                         <p className="font-bold uppercase tracking-tight">
-                          Wakil Kepala Sekolah Bidang Hubungan Industri
+                          Kepala Sekolah
                         </p>
                       </div>
-                      {renderSignatureBox('WAKA_HUBIN', 'Wakil Kepala Sekolah Bidang Hubin', 'center', 22)}
+                      {renderSignatureBox('KEPSEK', 'Kepala Sekolah', 'center', 22)}
                       <div>
                         <p className="font-bold underline uppercase text-slate-900">
-                          {customSigners.wakaHubin.nama}
+                          {customSigners.kepsek.nama}
                         </p>
                         <p className="text-[10px] text-slate-600 font-mono">
-                          NIP. {customSigners.wakaHubin.nip || '-'}
+                          NIP. {customSigners.kepsek.nip || '-'}
                         </p>
                       </div>
                     </div>
@@ -1456,18 +1495,18 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                     <div className="flex flex-col items-center justify-center text-center w-full pt-1">
                       <div className="w-[95mm]">
                         <div>
-                          <p className="font-semibold text-slate-700">Mengetahui / Menyetujui,</p>
+                          <p className="font-semibold text-slate-700">Mengetahui,</p>
                           <p className="font-bold uppercase tracking-tight">
-                            Wakil Kepala Sekolah Bidang Hubungan Industri
+                            Kepala Sekolah
                           </p>
                         </div>
-                        {renderSignatureBox('WAKA_HUBIN', 'Wakil Kepala Sekolah Bidang Hubin', 'center', 22)}
+                        {renderSignatureBox('KEPSEK', 'Kepala Sekolah', 'center', 22)}
                         <div>
                           <p className="font-bold underline uppercase text-slate-900">
-                            {customSigners.wakaHubin.nama}
+                            {customSigners.kepsek.nama}
                           </p>
                           <p className="text-[10px] text-slate-600 font-mono">
-                            NIP. {customSigners.wakaHubin.nip || '-'}
+                            NIP. {customSigners.kepsek.nip || '-'}
                           </p>
                         </div>
                       </div>
@@ -1779,54 +1818,55 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
             )}
 
             {/* Form Waka Hubin */}
-            <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Wakil Kepala Sekolah Bidang Hubin
-              </Label>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <span className="text-[10px] text-slate-500">Nama Waka Hubin</span>
-                  <Input
-                    value={customSigners.wakaHubin.nama}
-                    onChange={(e) =>
-                      setCustomSigners((prev) => ({
-                        ...prev,
-                        wakaHubin: { ...prev.wakaHubin, nama: e.target.value },
-                      }))
-                    }
-                    className="h-8 text-xs"
-                    placeholder="Nama Waka Hubin..."
-                  />
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500">NIP Waka Hubin</span>
-                  <Input
-                    value={customSigners.wakaHubin.nip}
-                    onChange={(e) =>
-                      setCustomSigners((prev) => ({
-                        ...prev,
-                        wakaHubin: { ...prev.wakaHubin, nip: e.target.value },
-                      }))
-                    }
-                    className="h-8 text-xs"
-                    placeholder="NIP Waka Hubin..."
-                  />
-                </div>
-              </div>
-              <DigitalSignatureField
-                label="Tanda Tangan Digital Waka Hubin"
-                penName={customSigners.wakaHubin.nama}
-                value={signatureWakaHubin}
-                onChange={(val) => handleSaveSignature('WAKA_HUBIN', val)}
-              />
-            </div>
-
-            {/* Form Kepala Sekolah */}
             {docType === 'REKAP_JURUSAN' && (
               <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700">
                 <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Kepala Sekolah
+                  Wakil Kepala Sekolah Bidang Hubin
                 </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-[10px] text-slate-500">Nama Waka Hubin</span>
+                    <Input
+                      value={customSigners.wakaHubin.nama}
+                      onChange={(e) =>
+                        setCustomSigners((prev) => ({
+                          ...prev,
+                          wakaHubin: { ...prev.wakaHubin, nama: e.target.value },
+                        }))
+                      }
+                      className="h-8 text-xs"
+                      placeholder="Nama Waka Hubin..."
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500">NIP Waka Hubin</span>
+                    <Input
+                      value={customSigners.wakaHubin.nip}
+                      onChange={(e) =>
+                        setCustomSigners((prev) => ({
+                          ...prev,
+                          wakaHubin: { ...prev.wakaHubin, nip: e.target.value },
+                        }))
+                      }
+                      className="h-8 text-xs"
+                      placeholder="NIP Waka Hubin..."
+                    />
+                  </div>
+                </div>
+                <DigitalSignatureField
+                  label="Tanda Tangan Digital Waka Hubin"
+                  penName={customSigners.wakaHubin.nama}
+                  value={signatureWakaHubin}
+                  onChange={(val) => handleSaveSignature('WAKA_HUBIN', val)}
+                />
+              </div>
+            )}
+
+            {/* Form Kepala Sekolah */}
+            <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Kepala Sekolah
+              </Label>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <span className="text-[10px] text-slate-500">Nama Kepala Sekolah</span>
@@ -1864,7 +1904,6 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                   onChange={(val) => handleSaveSignature('KEPSEK', val)}
                 />
               </div>
-            )}
 
             <div className="flex justify-end pt-2">
               <Button

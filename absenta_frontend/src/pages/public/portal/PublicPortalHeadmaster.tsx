@@ -1,6 +1,7 @@
 import React from 'react';
 import { Quote, CheckCircle2, Target, Eye, Sparkles } from 'lucide-react';
 import { PublicSchoolProfile } from '../../../api/public-portal.api';
+import { resolveProfilePhotoUrl } from '../../../lib/utils';
 
 interface PublicPortalHeadmasterProps {
   profile: PublicSchoolProfile;
@@ -9,9 +10,10 @@ interface PublicPortalHeadmasterProps {
 export const PublicPortalHeadmaster: React.FC<PublicPortalHeadmasterProps> = ({ profile }) => {
   const kepsekName = profile.kepala_sekolah || 'Kepala Sekolah';
   const kepsekNip = profile.nip_kepala ? `NIP. ${profile.nip_kepala}` : null;
-  const fotoKepsek =
-    profile.web_config?.foto_kepsek ||
-    'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=600&q=80';
+  const rawFotoKepsek = profile.web_config?.foto_kepsek;
+  const fotoKepsek = rawFotoKepsek
+    ? resolveProfilePhotoUrl(rawFotoKepsek)
+    : 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=600&q=80';
 
   const sambutan =
     profile.web_config?.sambutan_kepsek ||

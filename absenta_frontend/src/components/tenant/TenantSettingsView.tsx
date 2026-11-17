@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent, Button, Alert, AlertTitle, AlertDescription, Loader, Input, Label, Switch, Badge } from '@/components/ui';
 import { AlertTriangle, Trash2, Clock, XCircle, ShieldAlert, Plus, Save, Edit2, X, Globe, Phone, Mail, MapPin, Eye, Upload, Loader2, Layers, School, Palette, Shuffle, Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import { requestDeletion, cancelDeletion, getTenantById, updateTenant, type Tenant } from '@/api/tenants.api';
 import { getGuruList } from '@/api/academic/guru.api';
 import { PrintHeader, type PrintHeaderLine } from '../ui/PrintHeader';
@@ -1200,7 +1200,7 @@ export const TenantSettingsView: React.FC<UniversalTenantSettingsViewProps> = ({
                   <div className="absolute top-0 left-0 w-1 h-full bg-slate-300 dark:bg-slate-700"></div>
                   <span className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Logo Pemda / Yayasan</span>
                   {logoDaerahUrl ? (
-                    <img src={logoDaerahUrl} alt="Logo Pemda" className="h-14 sm:h-16 w-auto object-contain transition-transform group-hover:scale-105" />
+                    <img src={resolveProfilePhotoUrl(logoDaerahUrl)} alt="Logo Pemda" className="h-14 sm:h-16 w-auto object-contain transition-transform group-hover:scale-105" />
                   ) : (
                     <div className="h-14 w-14 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center rounded-xl font-bold text-[10px] text-slate-400">Belum Unggah</div>
                   )}
@@ -1211,7 +1211,7 @@ export const TenantSettingsView: React.FC<UniversalTenantSettingsViewProps> = ({
                   <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
                   <span className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Logo Resmi Sekolah</span>
                   {logoUrl ? (
-                    <img src={logoUrl} alt="Logo Sekolah" className="h-14 sm:h-16 w-auto object-contain transition-transform group-hover:scale-105" />
+                    <img src={resolveProfilePhotoUrl(logoUrl)} alt="Logo Sekolah" className="h-14 sm:h-16 w-auto object-contain transition-transform group-hover:scale-105" />
                   ) : (
                     <div className="h-14 w-14 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center rounded-xl font-bold text-[10px] text-slate-400">Belum Unggah</div>
                   )}

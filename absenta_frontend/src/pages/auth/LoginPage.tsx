@@ -22,6 +22,7 @@ const LoginQrScannerModal = React.lazy(() =>
   import('@/components/auth/LoginQrScannerModal').then((m) => ({ default: m.LoginQrScannerModal }))
 );
 import { getSavedServerDomain, isCapacitorApp } from '@/services/serverConfig';
+import { useOtaState, checkOtaUpdate } from '@/services/otaUpdateService';
 import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { isSystemSuperAdmin } from '@/utils/rbac';
 import { getUserPositions } from '@/config/navigation.config';
@@ -54,6 +55,7 @@ export default function LoginPage() {
   const [devTenantsLoading, setDevTenantsLoading] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isServerModalOpen, setIsServerModalOpen] = useState(false);
+  const otaState = useOtaState();
 
   // Auto-open server configuration gateway if running on mobile and no server is configured yet
   useEffect(() => {
@@ -780,8 +782,8 @@ export default function LoginPage() {
                        </Button>
                      </motion.div>
 
-                     {/* Server Domain Switcher Badge */}
-                     <div className="pt-2 flex justify-center">
+                     {/* Server Domain Switcher & OTA Update Badges */}
+                     <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
                        <button type="button" onClick={() => setIsServerModalOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold transition-all cursor-pointer">
                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                          <span className="text-slate-400">Server:</span>
@@ -790,6 +792,22 @@ export default function LoginPage() {
                          </span>
                          <span className="text-blue-500 font-bold ml-1 hover:underline">Ganti</span>
                        </button>
+
+                       {isCapacitorApp() && (
+                         <button
+                           type="button"
+                           onClick={() => checkOtaUpdate(true, true)}
+                           disabled={otaState.isChecking || otaState.isDownloading}
+                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[11px] font-semibold transition-all border border-blue-200/50 dark:border-blue-800/50 cursor-pointer disabled:opacity-60"
+                           title="Periksa Pembaruan Aplikasi Over-The-Air"
+                         >
+                           <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                           <span>{otaState.currentVersion ? `App ${otaState.currentVersion}` : 'App'}</span>
+                           <span className="text-blue-600 dark:text-blue-400 font-bold ml-0.5 hover:underline">
+                             {otaState.isChecking ? '• Memeriksa...' : otaState.hasUpdate ? '• Update Tersedia!' : '• Cek Update'}
+                           </span>
+                         </button>
+                       )}
                      </div>
                  </form>
                </>}
