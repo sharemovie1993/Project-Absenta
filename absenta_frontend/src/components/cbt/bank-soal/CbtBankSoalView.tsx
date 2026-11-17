@@ -65,7 +65,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const confirm = useConfirm();
   const { user } = useAuthStore();
   const { isAdmin, isKurikulum } = useCapabilities();
-  const { activeEvent, eventName, targetTingkat } = useCbtOperationMode();
+  const { activeEvent, eventName, targetTingkat, isOrkestrasi, lockTeacherScheduling } = useCbtOperationMode();
   const currentGuruId = guruId || user?.guru_profile?.id;
 
   // Konteks Mode: Panitia CBT (Kurikulum / Admin) vs Guru Mandiri
@@ -75,6 +75,15 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
     if (guruId) return false;
     return Boolean(isAdmin || isKurikulum);
   }, [roleContext, guruId, isAdmin, isKurikulum]);
+
+  // Hak menjadwalkan/mengaktifkan ujian:
+  // Dalam event Ujian Orkestrasi (ASAS/PSAS terpusat), aktivasi dikendalikan penuh oleh Panitia CBT,
+  // sehingga tombol "Aktifkan" disembunyikan dari guru agar tidak membingungkan atau menimbulkan konflik jadwal.
+  const canSchedule = useMemo(() => {
+    if (readOnly) return false;
+    if (isPanitiaCbt) return true;
+    return !isOrkestrasi && !lockTeacherScheduling;
+  }, [readOnly, isPanitiaCbt, isOrkestrasi, lockTeacherScheduling]);
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -406,7 +415,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                 <span className="whitespace-nowrap">{canManageSoal ? (isFromColleague ? 'Kontribusi Soal' : 'Kelola Soal') : 'Lihat Soal'}</span>
               </Button>
 
-              {!readOnly && questionCount > 0 && (
+              {canSchedule && questionCount > 0 && (
                 <Button
                   type="button"
                   variant="default"
@@ -644,7 +653,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                       </span>
                     </button>
 
-                    {questionCount > 0 && (
+                    {canSchedule && questionCount > 0 && (
                       <button
                         type="button"
                         onClick={() => handleOpenJadwalModal(item)}
@@ -700,7 +709,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                       )}
                     </div>
 
-                    {questionCount > 0 && !readOnly && (
+                    {canSchedule && questionCount > 0 && (
                       <button
                         type="button"
                         onClick={() => handleOpenJadwalModal(item)}
@@ -794,10 +803,14 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
               !selectedBankSoal.Kontributor?.some((c) => c.guru_id === currentGuruId && c.can_edit_soal !== false)
             )
           }
-          onAktifkanUjian={(b) => {
-            setIsDetailModalOpen(false);
-            handleOpenJadwalModal(b);
-          }}
+          onAktifkanUjian={
+            canSchedule
+              ? (b) => {
+                  setIsDetailModalOpen(false);
+                  handleOpenJadwalModal(b);
+                }
+              : undefined
+          }
         />
       )}
 
