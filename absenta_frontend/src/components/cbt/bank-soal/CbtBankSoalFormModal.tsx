@@ -656,129 +656,23 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         {step === 1 ? (
           /* ── TAHAP 1: KONTEKS, SASARAN, MATA PELAJARAN, & DISTRIBUSI MGMP ── */
           <div className="space-y-3">
-            {/* 1. Konteks Penggunaan */}
-            {lockedEventKey ? (
-              <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-2xs shrink-0">
-                    <Users size={16} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-xs text-indigo-950 dark:text-indigo-100">
-                        Master MGMP / Bersama
-                      </span>
-                      <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-indigo-200/80 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
-                        Ujian Orkestrasi
-                      </span>
-                    </div>
-                    <div className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      Event: <strong>{activeEvent?.nama_event || eventName || 'ASAS Ganjil'}</strong>
-                    </div>
-                  </div>
-                </div>
-                <Badge variant="primary" className="text-[9px] font-bold shrink-0">
-                  Event Aktif
-                </Badge>
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Peruntukan Bank Soal
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleChangeScope('TERPUSAT_MASSAL')}
-                    className={cn(
-                      'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 relative',
-                      scope === 'TERPUSAT_MASSAL'
-                        ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100 shadow-2xs'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        'p-2 rounded-xl shrink-0 mt-0.5',
-                        scope === 'TERPUSAT_MASSAL' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                      )}
-                    >
-                      <Users size={16} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-xs">Master MGMP / Bersama</span>
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
-                          Ujian Orkestrasi
-                        </span>
-                      </div>
-                      <div className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
-                        1 koordinator membuat soal untuk dibagikan ke rekan guru se-mapel &amp; tingkat
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleChangeScope('MANDIRI_GURU')}
-                    className={cn(
-                      'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 relative',
-                      scope === 'MANDIRI_GURU'
-                        ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100 shadow-2xs'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        'p-2 rounded-xl shrink-0 mt-0.5',
-                        scope === 'MANDIRI_GURU' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                      )}
-                    >
-                      <User size={16} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-xs">Mandiri Guru</span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          Internal Kelas
-                        </span>
-                      </div>
-                      <div className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
-                        Ulangan harian, kuis &amp; latihan khusus kelas binaan Anda sendiri
-                      </div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* 2. Kegiatan Asesmen (Hanya pada Paket Massal) */}
-            {scope === 'TERPUSAT_MASSAL' && (
+            {/* 1. Kegiatan / Event Asesmen */}
+            {scope === 'TERPUSAT_MASSAL' ? (
               lockedEventKey ? (
-                <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Kegiatan Asesmen
-                    </label>
-                    <span className="text-[10.5px] text-indigo-600 dark:text-indigo-400 font-semibold">
-                      Permendikbud 21/2022
-                    </span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Kegiatan Asesmen
+                  </label>
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-xs shadow-2xs">
+                      <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-bold text-xs shadow-2xs">
                         {lockedEventKey}
                       </span>
-                      <div>
-                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                          {activeEvent?.nama_event || eventName || activeAsesmenDef?.namaResmi || lockedEventKey}
-                        </div>
-                        <div className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                          Terkunci otomatis mengikuti Pengaturan Event Meja Kerja Panitia
-                        </div>
-                      </div>
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {activeEvent?.nama_event || eventName || activeAsesmenDef?.namaResmi || lockedEventKey}
+                      </span>
                     </div>
-                    <Badge variant="outline" className="text-[9px] font-bold border-indigo-300 text-indigo-700 bg-indigo-50/50">
+                    <Badge variant="outline" className="text-[9.5px] font-bold border-indigo-200 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/40">
                       Terkunci
                     </Badge>
                   </div>
@@ -786,17 +680,12 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               ) : (
                 <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        Kegiatan Asesmen
-                      </label>
-                      <span className="text-[10.5px] text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
-                        <Sparkles size={11} />
-                        <span>Saran {smartDetection.monthName}: <strong>{smartDetection.recommendedKey}</strong></span>
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-slate-400">
-                      Permendikbud 21/2022
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Kegiatan Asesmen
+                    </label>
+                    <span className="text-[10.5px] text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
+                      <Sparkles size={11} />
+                      <span>Saran: <strong>{smartDetection.recommendedKey}</strong></span>
                     </span>
                   </div>
 
@@ -848,9 +737,72 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   </div>
                 </div>
               )
+            ) : (
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Peruntukan Bank Soal
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleChangeScope('TERPUSAT_MASSAL')}
+                    className={cn(
+                      'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 relative',
+                      scope === 'TERPUSAT_MASSAL'
+                        ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100 shadow-2xs'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'p-2 rounded-xl shrink-0 mt-0.5',
+                        scope === 'TERPUSAT_MASSAL' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                      )}
+                    >
+                      <Users size={16} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-xs">Master MGMP / Bersama</span>
+                      </div>
+                      <div className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
+                        Dibuat untuk dibagikan ke rekan guru se-mapel &amp; tingkat
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleChangeScope('MANDIRI_GURU')}
+                    className={cn(
+                      'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 relative',
+                      scope === 'MANDIRI_GURU'
+                        ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 text-indigo-950 dark:text-indigo-100 shadow-2xs'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'p-2 rounded-xl shrink-0 mt-0.5',
+                        scope === 'MANDIRI_GURU' ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                      )}
+                    >
+                      <User size={16} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-xs">Mandiri Guru</span>
+                      </div>
+                      <div className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
+                        Ulangan harian, kuis &amp; latihan khusus kelas binaan Anda sendiri
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
             )}
 
-            {/* 3. Mata Pelajaran */}
+            {/* 2. Mata Pelajaran */}
             <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between gap-2">
                 <label htmlFor="form-mapel" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -888,215 +840,146 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 aria-label="Pilih Mata Pelajaran"
               />
 
-              {/* Cakupan Unit Pengajaran */}
-              {mapelId && availableUnits.length > 0 && (
-                scope === 'TERPUSAT_MASSAL' ? (
-                  /* Di Mode Orkestrator / MGMP Master: Selalu Mapel Induk Kolaborasi (Anti-Bingung) */
-                  <div className="mt-2 p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800 flex items-center justify-between gap-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-indigo-600 text-white shrink-0">
-                        <Layers size={14} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            Cakupan: Gabungan Mapel Induk
-                          </span>
-                          <span className="text-[9.5px] px-1.5 py-0.2 rounded-full font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
-                            {availableUnits.length} Unit Terintegrasi
-                          </span>
-                        </div>
-                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5">
-                          Ujian bersama menguji kompetensi mapel induk secara terpadu. Seluruh guru pengampu unit otomatis mendapat akses kontributor bank soal.
-                        </p>
-                      </div>
-                    </div>
+              {/* Cakupan Unit Pengajaran (Hanya di mode Mandiri Guru jika memiliki unit materi) */}
+              {mapelId && availableUnits.length > 0 && scope === 'MANDIRI_GURU' && (
+                <div className="mt-2 p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/70 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                      <Layers size={12} className="text-indigo-600 dark:text-indigo-400" />
+                      <span>Cakupan Unit Pengajaran</span>
+                    </span>
+                    <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+                      {availableUnits.length} Unit Aktif
+                    </span>
                   </div>
-                ) : (
-                  /* Di Mode Mandiri Guru: Guru dapat memilih Mapel Induk atau Khusus Unit Mandiri */
-                  <div className="mt-2 p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/70 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                        <Layers size={12} className="text-indigo-600 dark:text-indigo-400" />
-                        <span>Cakupan Unit Pengajaran</span>
-                      </span>
-                      <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
-                        {availableUnits.length} Unit Aktif
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setUnitPengajaranId('')}
-                        className={cn(
-                          'p-2 rounded-lg border text-left transition-all cursor-pointer',
-                          !unitPengajaranId
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
-                        )}
-                      >
-                        <div className="text-[11px] font-bold flex items-center justify-between gap-1">
-                          <span>Gabungan Mapel Induk</span>
-                          <span
-                            className={cn(
-                              'text-[9px] px-1.5 py-0.2 rounded-full font-bold',
-                              !unitPengajaranId
-                                ? 'bg-white/20 text-white'
-                                : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
-                            )}
-                          >
-                            Umum
-                          </span>
-                        </div>
-                        <p className={cn('text-[10px] mt-0.5', !unitPengajaranId ? 'text-indigo-100' : 'text-slate-500')}>
-                          Mencakup seluruh materi kurikulum mapel induk.
-                        </p>
-                      </button>
-                      <div
-                        className={cn(
-                          'p-2 rounded-lg border transition-all',
-                          unitPengajaranId
-                            ? 'bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-400 dark:border-indigo-700'
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
-                        )}
-                      >
-                        <label htmlFor="form-unit-pengajaran" className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-1">
-                          Khusus Unit / Modul Guru:
-                        </label>
-                        <select
-                          id="form-unit-pengajaran"
-                          value={unitPengajaranId}
-                          onChange={(e) => setUnitPengajaranId(e.target.value)}
-                          className="w-full text-[11px] font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setUnitPengajaranId('')}
+                      className={cn(
+                        'p-2 rounded-lg border text-left transition-all cursor-pointer',
+                        !unitPengajaranId
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
+                      )}
+                    >
+                      <div className="text-[11px] font-bold flex items-center justify-between gap-1">
+                        <span>Gabungan Mapel Induk</span>
+                        <span
+                          className={cn(
+                            'text-[9px] px-1.5 py-0.2 rounded-full font-bold',
+                            !unitPengajaranId
+                              ? 'bg-white/20 text-white'
+                              : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
+                          )}
                         >
-                          <option value="">-- Pilih Unit Pengajaran Tertentu --</option>
-                          {availableUnits.map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.nama_unit}{u.guru_nama ? ` — ${u.guru_nama}` : ''}
-                            </option>
-                          ))}
-                        </select>
+                          Umum
+                        </span>
                       </div>
+                      <p className={cn('text-[10px] mt-0.5', !unitPengajaranId ? 'text-indigo-100' : 'text-slate-500')}>
+                        Mencakup seluruh materi kurikulum mapel induk.
+                      </p>
+                    </button>
+                    <div
+                      className={cn(
+                        'p-2 rounded-lg border transition-all',
+                        unitPengajaranId
+                          ? 'bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-400 dark:border-indigo-700'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                      )}
+                    >
+                      <label htmlFor="form-unit-pengajaran" className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                        Khusus Unit / Modul Guru:
+                      </label>
+                      <select
+                        id="form-unit-pengajaran"
+                        value={unitPengajaranId}
+                        onChange={(e) => setUnitPengajaranId(e.target.value)}
+                        className="w-full text-[11px] font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      >
+                        <option value="">-- Pilih Unit Pengajaran Tertentu --</option>
+                        {availableUnits.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.nama_unit}{u.guru_nama ? ` — ${u.guru_nama}` : ''}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                )
+                </div>
               )}
             </div>
 
-            {/* 4. Tingkat Kelas (Terproteksi Anti Human-Error & Wajib Dipilih Sadar) */}
+            {/* 3. Tingkat Kelas */}
             <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Tingkat Sasaran Bank Soal <span className="text-rose-500">*</span>
-                  </label>
-                  {!tingkat ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-800 animate-pulse">
-                      <AlertCircle size={10} />
-                      Wajib Dipilih
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                      <CheckCircle2 size={10} />
-                      Tingkat {tingkat} Terpilih
-                    </span>
-                  )}
-                </div>
-                {activeAsesmenDef?.tingkatRuleExplanation && (
-                  <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                    ⚠️ {activeAsesmenDef.tingkatRuleExplanation}
+              <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                <span>Tingkat Sasaran Bank Soal</span>
+                <span className="text-rose-500">*</span>
+                {!tingkat && (
+                  <span className="text-[10px] font-normal text-rose-500 ml-1">
+                    (Wajib dipilih)
                   </span>
                 )}
+              </label>
+
+              <div className="grid grid-cols-3 gap-2">
+                {dynamicTingkatOptions.map((item) => {
+                  const isAllowed = allowedTingkatList.includes(item.value);
+                  const isSelected = tingkat === item.value;
+
+                  return (
+                    <button
+                      key={item.value}
+                      type="button"
+                      disabled={!isAllowed}
+                      onClick={() => {
+                        if (!isAllowed) return;
+                        setTingkat(item.value);
+                        setTingkatTouched(false);
+                        if (scope === 'TERPUSAT_MASSAL' && mapelId) {
+                          triggerAutoFillMassal(mapelId, item.value, jenisKegiatanMassal, jurusan);
+                        }
+                      }}
+                      className={cn(
+                        'py-2.5 px-3 rounded-lg border text-sm font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer',
+                        !isAllowed
+                          ? 'opacity-35 bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed line-through'
+                          : isSelected
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-400 dark:ring-indigo-500'
+                          : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30'
+                      )}
+                      title={!isAllowed ? `Tidak relevan untuk ${jenisKegiatanMassal}` : `Pilih sasaran untuk ${item.label}`}
+                    >
+                      {isSelected && <CheckCircle2 size={15} className="text-white shrink-0" />}
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
               </div>
 
-              <div
-                className={cn(
-                  'p-2 rounded-xl transition-all',
-                  !tingkat && tingkatTouched
-                    ? 'bg-rose-50/70 dark:bg-rose-950/30 ring-2 ring-rose-500 border border-rose-300 dark:border-rose-800'
-                    : 'bg-slate-50/50 dark:bg-slate-800/30 border border-slate-200/70 dark:border-slate-800'
-                )}
-              >
-                <div className="grid grid-cols-3 gap-2">
-                  {dynamicTingkatOptions.map((item) => {
-                    const isAllowed = allowedTingkatList.includes(item.value);
-                    const isSelected = tingkat === item.value;
-
-                    return (
-                      <button
-                        key={item.value}
-                        type="button"
-                        disabled={!isAllowed}
-                        onClick={() => {
-                          if (!isAllowed) return;
-                          setTingkat(item.value);
-                          setTingkatTouched(false);
-                          if (scope === 'TERPUSAT_MASSAL' && mapelId) {
-                            triggerAutoFillMassal(mapelId, item.value, jenisKegiatanMassal, jurusan);
-                          }
-                        }}
-                        className={cn(
-                          'py-2.5 px-3 rounded-lg border text-sm font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer',
-                          !isAllowed
-                            ? 'opacity-35 bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed line-through'
-                            : isSelected
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-400 dark:ring-indigo-500'
-                            : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30'
-                        )}
-                        title={!isAllowed ? `Tidak relevan untuk ${jenisKegiatanMassal}` : `Pilih sasaran untuk ${item.label}`}
-                      >
-                        {isSelected && <CheckCircle2 size={15} className="text-white shrink-0" />}
-                        <span>{item.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {!tingkat && (
-                  <p
-                    className={cn(
-                      'text-[11px] mt-2 flex items-center gap-1.5 font-medium',
-                      tingkatTouched ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
-                    )}
-                  >
-                    {tingkatTouched ? (
-                      <>
-                        <AlertCircle size={13} className="shrink-0 text-rose-500" />
-                        <span>Perhatian: Guru wajib memilih salah satu tingkat (X, XI, atau XII) di atas sebelum melanjutkan!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={12} className="shrink-0 text-amber-500" />
-                        <span>Pilih tingkat kelas sasaran soal ini secara sadar untuk menghindari kesalahan pengarsipan bank soal.</span>
-                      </>
-                    )}
-                  </p>
-                )}
-              </div>
+              {!tingkat && tingkatTouched && (
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1 mt-1">
+                  <AlertCircle size={12} />
+                  <span>Silakan pilih salah satu tingkat (X, XI, atau XII) di atas.</span>
+                </p>
+              )}
             </div>
 
-            {/* 4b. Sasaran Konsentrasi Keahlian / Jurusan */}
+            {/* 4. Sasaran Konsentrasi Keahlian / Jurusan */}
             <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between gap-2">
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Sasaran Konsentrasi Keahlian / Jurusan
                 </label>
-                {jurusan ? (
-                  <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800">
-                    Khusus {jurusan}
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-400 font-medium">
-                    Berlaku untuk semua rombel
-                  </span>
-                )}
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {jurusan ? `Khusus ${jurusan}` : 'Berlaku untuk semua rombel'}
+                </span>
               </div>
 
               <div className="flex flex-wrap gap-1.5">
                 {/* Chip Semua Jurusan (Umum) */}
                 {(() => {
                   const isGeneralOcc = jurusanOccupancy.isGeneralOccupied;
-                  const genInfo = jurusanOccupancy.generalInfo;
                   const isSelected = !jurusan;
                   return (
                     <button
@@ -1110,24 +993,36 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         }
                       }}
                       className={cn(
-                        'py-1.5 px-2.5 rounded-lg border text-xs font-bold transition-all text-left flex items-center gap-1',
+                        'py-1.5 px-2.5 rounded-lg border text-xs font-semibold transition-all text-left flex items-center gap-1 cursor-pointer',
                         isGeneralOcc
-                          ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed line-through'
+                          ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
                           : isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs cursor-pointer'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300 cursor-pointer'
+                          ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
                       )}
-                      title={isGeneralOcc ? `Bank soal umum/semua jurusan sudah dibuat oleh ${genInfo?.guruName || 'guru lain'}` : 'Semua Jurusan (Umum)'}
                     >
                       <span>Semua Jurusan (Umum)</span>
                       {isGeneralOcc && (
-                        <span className="text-[9px] font-bold px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 ml-1">
+                        <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
                           Sudah Ada
                         </span>
                       )}
                     </button>
                   );
                 })()}
+
+                {/* Custom chip jika jurusan dari default/prop tidak ada di daftar master */}
+                {jurusan && !rawJurusanList.some((j) => ((j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string).trim().toUpperCase() === jurusan.toUpperCase()) && (
+                  <button
+                    type="button"
+                    onClick={() => setJurusan('')}
+                    className="py-1.5 px-2.5 rounded-lg border text-xs font-bold bg-indigo-600 text-white border-indigo-600 shadow-2xs cursor-pointer flex items-center gap-1"
+                    title="Klik untuk membatalkan jurusan khusus ini"
+                  >
+                    <span>{jurusan}</span>
+                    <span className="text-[9px] ml-0.5 opacity-80">✕</span>
+                  </button>
+                )}
 
                 {/* Chip Jurusan Spesifik */}
                 {rawJurusanList && rawJurusanList.map((j) => {
@@ -1149,19 +1044,19 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         }
                       }}
                       className={cn(
-                        'py-1.5 px-2.5 rounded-lg border text-xs font-bold transition-all text-left flex items-center gap-1',
+                        'py-1.5 px-2.5 rounded-lg border text-xs font-medium transition-all text-left flex items-center gap-1 cursor-pointer',
                         isOccupied
-                          ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed line-through'
+                          ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
                           : isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs cursor-pointer'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300 cursor-pointer'
+                          ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
                       )}
                       title={isOccupied ? `Bank soal jurusan ${code} sudah dibuat oleh ${occInfo?.guruName || 'rekan guru'}` : j.nama}
                     >
                       <span>{code}</span>
                       {isOccupied && (
-                        <span className="text-[8.5px] font-bold px-1 rounded bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 ml-0.5" title={`Dibuat oleh: ${occInfo?.guruName}`}>
-                          Terisi
+                        <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
+                          Sudah Ada
                         </span>
                       )}
                     </button>
