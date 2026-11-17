@@ -154,10 +154,10 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                 size="sm"
                 onClick={onOpenSpinWheelModal}
                 className="h-8 px-2.5 rounded-xl border border-purple-300 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 font-bold text-xs shadow-2xs flex items-center gap-1 cursor-pointer"
-                title="Buka Roda Pengacak Siswa (Spin Wheel)"
+                title="Buka Roda Pengacak Siswa (Spin Siswa)"
               >
                 <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                <span className="hidden xxs:inline">Spin</span>
+                <span className="hidden xxs:inline">Spin Siswa</span>
               </Button>
             )}
 
@@ -167,11 +167,11 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
                 size="sm"
                 variant="outline"
                 onClick={onOpenCetakModal}
-                className="h-8 px-2.5 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-2xs flex items-center gap-1 cursor-pointer"
-                title="Cetak Berkas Hasil Sidang"
+                className="h-8 px-2.5 rounded-xl border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 font-bold text-xs shadow-2xs flex items-center gap-1 cursor-pointer"
+                title="Cetak Berita Acara Sidang PKL"
               >
-                <Printer className="w-3.5 h-3.5 text-indigo-500" />
-                <span className="hidden xxs:inline">Cetak</span>
+                <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span className="hidden xxs:inline">Berita Acara</span>
               </Button>
             )}
 

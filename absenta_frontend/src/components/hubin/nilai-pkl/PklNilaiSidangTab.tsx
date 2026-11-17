@@ -875,7 +875,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           headerTitle={readOnly ? "Rekapitulasi Sidang PKL (Monitoring)" : (isAdminOverride ? "Lembar Sidang PKL (Mode Koreksi Admin)" : "Lembar Penilaian Laporan & Sidang PKL")}
           headerActions={
             <div className="flex items-center gap-2">
-              {/* Tombol Acak Siswa (Spin Wheel) */}
+              {/* Tombol Spin Siswa (Spin Wheel) */}
               <Button
                 type="button"
                 onClick={() => setShowSpinWheelModal(true)}
@@ -883,7 +883,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
                 title="Buka Roda Putar / Pengacak Siswa yang akan diuji sidang"
               >
                 <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 animate-pulse shrink-0" />
-                <span>Acak Siswa (Spin)</span>
+                <span>Spin Siswa</span>
               </Button>
 
               {/* Tombol Cetak Daftar Hadir Peserta Sidang PKL */}
@@ -913,7 +913,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
                 title="Cetak Format Resmi Berita Acara Pelaksanaan Sidang PKL (Naskah Narasi, Jadwal & Rekapitulasi Ujian)"
               >
                 <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span>Berita Acara Sidang</span>
+                <span>Berita Acara</span>
               </Button>
 
               {/* Tombol Cetak Rekap Nilai Sidang PKL */}
