@@ -38,6 +38,7 @@ export interface TeacherCbtDutyStatusResult {
   isLoading: boolean;
   activeEventName?: string;
   hasActiveEvent: boolean;
+  teacherName?: string;
   totalDuties: number;
   coveredDuties: number;
   draftDuties: number;
@@ -600,10 +601,19 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
     };
   }, [guruId, rawAssignedList, rawJadwalList, rawBankList, targetTingkat]);
 
+  const detectedTeacherName = useMemo(() => {
+    const fromGm = rawAssignedList.find((gm) => gm.Guru?.nama_guru)?.Guru?.nama_guru;
+    if (fromGm) return fromGm;
+    const fromJk = rawJadwalList.find((j) => (j as any)?.Guru?.nama_guru)?.Guru?.nama_guru;
+    if (fromJk) return fromJk;
+    return undefined;
+  }, [rawAssignedList, rawJadwalList]);
+
   return {
     isLoading: isMapelLoading || isJadwalLoading || isBankLoading,
     activeEventName: eventName || activeEvent?.nama_event || undefined,
     hasActiveEvent: Boolean(activeEvent),
+    teacherName: detectedTeacherName,
     ...evaluation,
   };
 }

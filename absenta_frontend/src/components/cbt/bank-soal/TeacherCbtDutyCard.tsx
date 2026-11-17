@@ -40,13 +40,12 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
   className,
 }) => {
   const { user } = useAuthStore();
-  const teacherFullName = user?.guru_profile?.nama_guru || user?.name || 'Bapak/Ibu Guru';
-  const teacherShortName = teacherFullName.split(',')[0].trim();
 
   const {
     isLoading,
     activeEventName,
     hasActiveEvent,
+    teacherName,
     totalDuties,
     coveredDuties,
     draftDuties,
@@ -58,6 +57,20 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
     items,
     pendingJurusanSummary,
   } = useTeacherCbtDutyStatus(guruId);
+
+  // Ambil nama lengkap guru yang login/ditugaskan
+  const teacherFullName =
+    teacherName ||
+    user?.full_name ||
+    (user as any)?.nama_guru ||
+    (user as any)?.nama_lengkap ||
+    user?.name ||
+    (user as any)?.username ||
+    'Bapak/Ibu Guru';
+
+  const teacherShortName = teacherFullName.includes(',')
+    ? teacherFullName.split(',')[0].trim()
+    : teacherFullName.trim();
 
   // Jika sudah 100% bebas tugas, default-kan tertutup (compact) agar area kerja utama tidak tergeser.
   // Jika masih ada tugas yang belum selesai, buka agar guru langsung melihat apa yang perlu dibuat/diisi.
@@ -96,7 +109,7 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                 )}
               </div>
               <p className="text-[11px] text-emerald-700/80 dark:text-emerald-300/80 truncate">
-                Seluruh {totalDuties} sasaran mengajar Anda telah ter-cover bank soal siap pakai.
+                Seluruh {totalDuties} bank soal penugasan Anda telah siap pakai.
               </p>
             </div>
           </div>
@@ -133,7 +146,7 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-xs text-amber-900 dark:text-amber-100">
                 {uncreatedDuties > 0
-                  ? `Tugas CBT: ${uncreatedDuties} Belum Dibuat${draftDuties > 0 ? `, ${draftDuties} Masih Draf` : ''}`
+                  ? `Tugas CBT: ${uncreatedDuties} Bank Soal Belum Dibuat${draftDuties > 0 ? `, ${draftDuties} Masih Draf` : ''}`
                   : `Tugas CBT: ${draftDuties} Bank Soal Masih 0 Butir Soal`}
               </span>
               <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
@@ -205,7 +218,7 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                 {isFullyExempt
                   ? `Bagus sekali, ${teacherShortName}! Anda Bebas Tugas CBT 🎉`
                   : uncreatedDuties > 0
-                  ? `Halo ${teacherShortName}, Ada ${uncreatedDuties} Sasaran Belum Dibuat`
+                  ? `Halo ${teacherShortName}, Ada ${uncreatedDuties} Bank Soal Belum Dibuat`
                   : `Halo ${teacherShortName}, Ada ${draftDuties} Bank Soal Masih Draf (0 Soal)`}
               </h3>
 
