@@ -274,15 +274,50 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
     return { total, lulus, revisi, belum, avg, countScored, sudahTtd, belumTtd };
   }, [filteredScores]);
 
-  // Titimangsa & Tanggal Dokumen
+  // Titimangsa & Tanggal Dokumen Resmi (Nama Kota Saja, Misal: Purwakarta, 17 November 2026)
   const titimangsaCity = useMemo(() => {
-    if (tenantInfo.address) {
-      const parts = tenantInfo.address.split(',');
-      const candidate = parts[parts.length - 1]?.trim() || parts[0]?.trim();
-      return candidate.replace(/^kabupaten\s+|^kab\.\s+|^kota\s+/i, '').trim();
+    // 1. Cek langsung dari field kota / kabupaten sekolah
+    const rawKota =
+      (rawSekolah as any)?.kota ||
+      (rawSekolah as any)?.kabupaten ||
+      (tenantInfo as any)?.city ||
+      (tenantInfo as any)?.kabupaten ||
+      '';
+
+    if (rawKota && typeof rawKota === 'string') {
+      const cleaned = rawKota
+        .replace(/^kabupaten\s+|^kab\.\s+|^kota\s+/i, '')
+        .replace(/\s*\d{5}\s*$/, '')
+        .trim();
+      if (cleaned && !/^(tempat|-|null|undefined)$/i.test(cleaned)) {
+        return cleaned;
+      }
     }
-    return 'Tempat';
-  }, [tenantInfo.address]);
+
+    // 2. Deteksi dari alamat lengkap jika menyebut Purwakarta / kota lain
+    const fullAddr = tenantInfo.address || (rawSekolah as any)?.alamat || '';
+    if (fullAddr && typeof fullAddr === 'string') {
+      if (fullAddr.toLowerCase().includes('purwakarta')) {
+        return 'Purwakarta';
+      }
+      const match = fullAddr.match(/(?:Kab\.|Kabupaten|Kota)\s+([A-Za-z\s]+?)(?:,?\s*\d{5}|,?\s*Jawa|$)/i);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+      const parts = fullAddr.split(',');
+      for (const p of parts) {
+        const c = p
+          .replace(/^kabupaten\s+|^kab\.\s+|^kota\s+/i, '')
+          .replace(/\s*\d{5}\s*$/, '')
+          .trim();
+        if (c && !/^(indonesia|jawa barat|jabar)$/i.test(c.toLowerCase())) {
+          return c;
+        }
+      }
+    }
+
+    return 'Purwakarta';
+  }, [tenantInfo, rawSekolah]);
 
   const currentDateFormatted = useMemo(() => {
     const now = new Date();
@@ -579,13 +614,16 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
 
     return (
       <div
-        onClick={() => setActiveSigningTarget(target)}
+        onClick={() => !isGeneratingPdf && setActiveSigningTarget(target)}
         style={{ height: `${heightMm}mm` }}
         className={cn(
-          'flex items-center my-1 cursor-pointer group relative rounded border border-transparent hover:border-dashed hover:border-indigo-400 p-1 transition-all',
+          'flex items-center my-1 group relative rounded transition-all',
+          isGeneratingPdf
+            ? 'cursor-default border-transparent'
+            : 'cursor-pointer border border-transparent hover:border-dashed hover:border-indigo-400 p-1',
           justifyClass
         )}
-        title={`Klik untuk membuat / mengubah Tanda Tangan Digital ${title}`}
+        title={isGeneratingPdf ? undefined : `Klik untuk membuat / mengubah Tanda Tangan Digital ${title}`}
       >
         {sigImg ? (
           <img
@@ -594,11 +632,14 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
             style={{ maxHeight: `${heightMm - 2}mm` }}
             className="max-w-[55mm] object-contain select-none"
           />
-        ) : (
-          <div className={cn(
-            'h-full w-full flex items-center gap-1.5 text-slate-400 group-hover:text-indigo-600 print:hidden text-[9px] font-mono select-none',
-            justifyClass
-          )}>
+        ) : isGeneratingPdf ? null : (
+          <div
+            data-html2canvas-ignore="true"
+            className={cn(
+              'h-full w-full flex items-center gap-1.5 text-slate-400 group-hover:text-indigo-600 print:hidden text-[9px] font-mono select-none',
+              justifyClass
+            )}
+          >
             <PenTool className="w-3.5 h-3.5 shrink-0" />
             <span>(Klik untuk TTD Digital)</span>
           </div>
@@ -641,8 +682,31 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
     try {
       setIsGeneratingPdf(true);
       toast.info('Sedang merender lembar dokumen ke berkas PDF True WYSIWYG...', { duration: 3000 });
+      // Berikan jeda render agar DOM selesai melepaskan placeholder sebelum di-capture html2canvas
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
       const res = await capturePrintSheetsToPdfBlob(printSheetRef.current, {
         orientation: docType === 'BERITA_ACARA' ? 'portrait' : 'landscape',
+        fileName: pdfFileName,
+        scale: 2.5,
+      });
+
+      const url = URL.createObjectURL(res.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('Dokumen PDF berhasil diunduh!');
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal membuat file PDF.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
         fileName: pdfFileName,
         scale: 2.5,
       });
