@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
-import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users, AlertCircle, AlertTriangle, Share2, Check, ShieldCheck, Star } from 'lucide-react';
+import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users, AlertCircle, AlertTriangle, Share2, Check, ShieldCheck, Star, Lock } from 'lucide-react';
 import {
   type CbtBankSoalScope,
   getOfficialAsesmenTypes,
@@ -320,6 +320,51 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     return map;
   }, [relevantDutiesForMapel]);
 
+  // Hard Lock Evaluator: Periksa apakah sasaran tingkat / jurusan saat ini SUDAH di-cover oleh rekan MGMP
+  const isTargetCoveredByColleague = useMemo(() => {
+    if (bankSoalToEdit) return { isLocked: false, authorName: undefined };
+    if (!tingkat) return { isLocked: false, authorName: undefined };
+
+    const dutyInfo = tingkatDutyMap.get(tingkat);
+    if (!dutyInfo) return { isLocked: false, authorName: undefined };
+
+    // 1. Jika seluruh tingkat sudah 100% covered oleh rekan MGMP
+    if (dutyInfo.isFullyCovered && dutyInfo.masterAuthorName) {
+      if (selectedJurusanList.length === 0) {
+        return { isLocked: true, authorName: dutyInfo.masterAuthorName };
+      }
+
+      const selectedDuties = relevantDutiesForMapel.filter(
+        (d) =>
+          d.tingkatRoman === tingkat &&
+          d.targetJurusan &&
+          selectedJurusanList.includes(d.targetJurusan.toUpperCase())
+      );
+
+      if (selectedDuties.length > 0 && selectedDuties.every((d) => d.status === 'COVERED_MGMP')) {
+        const author =
+          selectedDuties.find((d) => d.masterAuthorName)?.masterAuthorName || dutyInfo.masterAuthorName;
+        return { isLocked: true, authorName: author };
+      }
+    }
+
+    // 2. Jika tingkat belum fully covered tapi jurusan spesifik yang dipilih guru semuanya sudah berstatus COVERED_MGMP
+    if (selectedJurusanList.length > 0) {
+      const matchingDuties = relevantDutiesForMapel.filter(
+        (d) =>
+          d.tingkatRoman === tingkat &&
+          d.targetJurusan &&
+          selectedJurusanList.includes(d.targetJurusan.toUpperCase())
+      );
+      if (matchingDuties.length > 0 && matchingDuties.every((d) => d.status === 'COVERED_MGMP')) {
+        const author = matchingDuties.find((d) => d.masterAuthorName)?.masterAuthorName;
+        return { isLocked: true, authorName: author };
+      }
+    }
+
+    return { isLocked: false, authorName: undefined };
+  }, [bankSoalToEdit, tingkat, tingkatDutyMap, selectedJurusanList, relevantDutiesForMapel]);
+
   // Ambil data Unit Pengajaran aktif untuk mapel terpilih (membedakan Ujian Resmi Gabungan vs Kuis Unit)
   const { data: tenantUnitsRes } = useQuery({
     queryKey: ['kurikulum-units-by-mapel', mapelId],
@@ -587,6 +632,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
     setTingkatTouched(true);
 
+    if (isTargetCoveredByColleague.isLocked) {
+      toast.error(
+        `Pembuatan bank soal dikunci karena sasaran ini telah resmi di-cover oleh rekan guru MGMP (${isTargetCoveredByColleague.authorName || 'Rekan Guru'}).`
+      );
+      return;
+    }
+
     if (!tingkat || tingkat.trim() === '') {
       toast.error('Silakan pilih tingkat kelas sasaran soal (X, XI, atau XII) terlebih dahulu!');
       return;
@@ -630,6 +682,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
     // Guard ketat: Cegah form submission jika belum berada di Tahap 2
     if (step !== 2) {
+      return;
+    }
+
+    if (isTargetCoveredByColleague.isLocked) {
+      toast.error('Pembuatan bank soal dikunci karena sasaran ini telah di-cover oleh rekan guru MGMP.');
       return;
     }
 
@@ -1113,8 +1170,21 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 })}
               </div>
 
-              {/* Alert Penjelas Jika Guru Memilih Tingkat yang Sebenarnya Sudah Bebas Tugas */}
-              {tingkat && tingkatDutyMap.get(tingkat)?.isFullyCovered && (
+              {/* Proteksi Hard Lock jika Tingkat / Rombel Sasaran Sudah Di-cover Rekan MGMP */}
+              {isTargetCoveredByColleague.isLocked ? (
+                <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200 space-y-2 animate-in fade-in">
+                  <div className="flex items-center gap-2 font-bold text-rose-800 dark:text-rose-200">
+                    <Lock size={16} className="text-rose-600 shrink-0" />
+                    <span>Pembuatan Bank Soal Dikunci (Anti-Duplikasi Ujian)</span>
+                  </div>
+                  <p className="text-[11px] text-rose-700 dark:text-rose-300 leading-relaxed pl-6">
+                    Rombel sasaran Anda pada Tingkat {tingkat} telah resmi <strong>di-cover oleh naskah master rekan sejawat Anda: {isTargetCoveredByColleague.authorName || 'Rekan Guru'}</strong>. Anda telah bebas tugas dan tidak diperkenankan membuat naskah tandingan untuk mapel &amp; tingkat yang sama.
+                  </p>
+                  <div className="p-2 rounded-lg bg-rose-100/70 dark:bg-rose-900/40 text-[11px] text-rose-800 dark:text-rose-200 pl-3 border border-rose-200 dark:border-rose-800 leading-relaxed">
+                    💡 <strong>Prosedur jika ingin membuat naskah mandiri terpisah:</strong> Silakan hubungi <strong>{isTargetCoveredByColleague.authorName || 'rekan guru tersebut'}</strong> untuk melepaskan <em>(uncheck)</em> centang nama Anda dari daftar penerima share naskah beliau terlebih dahulu.
+                  </div>
+                </div>
+              ) : tingkat && tingkatDutyMap.get(tingkat)?.isFullyCovered ? (
                 <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200 flex items-start gap-2.5 animate-in fade-in">
                   <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
                   <div>
@@ -1131,7 +1201,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     </p>
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {!tingkat && tingkatTouched && (
                 <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1 mt-1">
@@ -1659,17 +1729,32 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           )}
 
           {step === 1 ? (
-            <Button
-              key="btn-step1-next"
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={handleNextStep}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
-            >
-              <span>Lanjut: Identitas &amp; Waktu</span>
-              <ArrowRight size={14} />
-            </Button>
+            isTargetCoveredByColleague.isLocked ? (
+              <Button
+                key="btn-step1-locked"
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={true}
+                className="bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed flex items-center gap-1.5 font-bold"
+                title={`Terkunci: Rombel sasaran ini telah di-cover oleh rekan guru MGMP Anda (${isTargetCoveredByColleague.authorName || 'Rekan Guru'})`}
+              >
+                <Lock size={14} className="text-rose-500" />
+                <span>Terkunci: Sudah Di-cover Rekan MGMP</span>
+              </Button>
+            ) : (
+              <Button
+                key="btn-step1-next"
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleNextStep}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <span>Lanjut: Identitas &amp; Waktu</span>
+                <ArrowRight size={14} />
+              </Button>
+            )
           ) : (
             <Button
               key="btn-step2-submit"
