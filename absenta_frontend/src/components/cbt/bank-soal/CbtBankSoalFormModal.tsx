@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
-import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users, AlertCircle, AlertTriangle, Share2, Check, ShieldCheck } from 'lucide-react';
+import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users, AlertCircle, AlertTriangle, Share2, Check, ShieldCheck, Star } from 'lucide-react';
 import {
   type CbtBankSoalScope,
   getOfficialAsesmenTypes,
@@ -29,6 +29,7 @@ import { CbtMgmpColleaguePicker } from './CbtMgmpColleaguePicker';
 import { evaluateJurusanOccupancy } from './cbtJurusanAvailabilityHelper';
 import { getMgmpSharedTeacherIds, setMgmpSharedTeacherIds } from '../jadwal/cbtMgmpHelper';
 import { useCbtOperationMode } from '../cbtModeHelper';
+import { useTeacherCbtDutyStatus } from './useTeacherCbtDutyStatus';
 
 export * from './cbtAsesmenHelper';
 
@@ -219,6 +220,68 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const [showAllMapels, setShowAllMapels] = useState(isPrivilegedRole || initialScope === 'TERPUSAT_MASSAL');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Ambil data kewajiban mengajar guru untuk evaluasi anti human-error pada pilihan Tingkat & Jurusan
+  const { items: teacherDutyItems = [] } = useTeacherCbtDutyStatus(guruId || initialGuruId);
+
+  const relevantDutiesForMapel = useMemo(() => {
+    if (!mapelId || !teacherDutyItems || teacherDutyItems.length === 0) return [];
+    const curMapel = mapelOptions.find((m) => m.value === mapelId);
+    const curMapelName = (curMapel?.label?.split('(')[0]?.trim() || '').toLowerCase();
+
+    return teacherDutyItems.filter((item) => {
+      if (item.mapelId === mapelId) return true;
+      if (curMapelName && item.mapelName.toLowerCase().trim() === curMapelName) return true;
+      return false;
+    });
+  }, [mapelId, teacherDutyItems, mapelOptions]);
+
+  const tingkatDutyMap = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        isFullyCovered: boolean;
+        hasPending: boolean;
+        coveredCount: number;
+        pendingCount: number;
+        totalCount: number;
+        masterAuthorName?: string;
+        teachingJurusans: string[];
+      }
+    >();
+
+    relevantDutiesForMapel.forEach((d) => {
+      const t = d.tingkatRoman;
+      if (!map.has(t)) {
+        map.set(t, {
+          isFullyCovered: true,
+          hasPending: false,
+          coveredCount: 0,
+          pendingCount: 0,
+          totalCount: 0,
+          masterAuthorName: undefined,
+          teachingJurusans: [],
+        });
+      }
+      const entry = map.get(t)!;
+      entry.totalCount += 1;
+      if (d.targetJurusan && !entry.teachingJurusans.includes(d.targetJurusan)) {
+        entry.teachingJurusans.push(d.targetJurusan);
+      }
+      if (d.status === 'COVERED_OWN' || d.status === 'COVERED_MGMP') {
+        entry.coveredCount += 1;
+        if (d.masterAuthorName && !entry.masterAuthorName) {
+          entry.masterAuthorName = d.masterAuthorName;
+        }
+      } else {
+        entry.isFullyCovered = false;
+        entry.hasPending = true;
+        entry.pendingCount += 1;
+      }
+    });
+
+    return map;
+  }, [relevantDutiesForMapel]);
+
   // Ambil data Unit Pengajaran aktif untuk mapel terpilih (membedakan Ujian Resmi Gabungan vs Kuis Unit)
   const { data: tenantUnitsRes } = useQuery({
     queryKey: ['kurikulum-units-by-mapel', mapelId],
@@ -405,11 +468,29 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         effectiveTingkatList,
         jenjang
       );
-      // Validasi anti human-error: defaultTingkat hanya dipakai jika secara spesifik dikirim dari konteks luar.
-      // Jika tidak ada defaultTingkat spesifik, tingkat dikosongkan agar guru WAJIB memilih sendiri secara sadar.
-      const initialTingkat = (defaultTingkat && validTingkat.includes(defaultTingkat))
+      // Prioritas 1: Jika ada defaultTingkat spesifik dari klik baris matriks, gunakan itu
+      // Prioritas 2: Jika tidak ada, rekomendasikan otomatis tingkat pertama yang MASIH BELUM SELESAI (hasPending)
+      let initialTingkat = (defaultTingkat && validTingkat.includes(defaultTingkat))
         ? defaultTingkat
         : '';
+
+      if (!initialTingkat && relevantDutiesForMapel.length > 0) {
+        const pendingEntry = Array.from(tingkatDutyMap.entries()).find(
+          ([t, stat]) => stat.hasPending && validTingkat.includes(t)
+        );
+        if (pendingEntry) {
+          initialTingkat = pendingEntry[0];
+        }
+      }
+
+      // Prioritas jurusan: jika ada defaultJurusan dari klik baris matriks, langsung pre-fill
+      let initialJurusan = defaultJurusan || '';
+      if (!initialJurusan && initialTingkat) {
+        const tDuty = tingkatDutyMap.get(initialTingkat);
+        if (tDuty && tDuty.teachingJurusans.length === 1) {
+          initialJurusan = tDuty.teachingJurusans[0];
+        }
+      }
 
       setTingkatTouched(false);
       setJenisKegiatanMassal(recKey);
@@ -419,14 +500,19 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setMapelId(defaultMapelId || '');
       setUnitPengajaranId('');
       setTingkat(initialTingkat);
+      setJurusan(initialJurusan);
       setAlokasiMenit(60);
       setAcakSoal(true);
       setAcakOpsi(true);
       setIsShared(false);
       setSelectedColleagueIds([]);
       setShowAllMapels(isPrivilegedRole || isMassal);
+
+      if (defaultMapelId && initialTingkat && isMassal) {
+        triggerAutoFillMassal(defaultMapelId, initialTingkat, recKey, initialJurusan);
+      }
     }
-  }, [isOpen, bankSoalToEdit, lockedEventKey, effectiveTingkatList, defaultTingkat, defaultMapelId]);
+  }, [isOpen, bankSoalToEdit, lockedEventKey, effectiveTingkatList, defaultTingkat, defaultJurusan, defaultMapelId]);
 
   const handleChangeScope = (newScope: CbtBankSoalScope) => {
     setScope(newScope);
@@ -922,10 +1008,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 )}
               </label>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {dynamicTingkatOptions.map((item) => {
                   const isAllowed = allowedTingkatList.includes(item.value);
                   const isSelected = tingkat === item.value;
+                  const dutyInfo = tingkatDutyMap.get(item.value);
 
                   return (
                     <button
@@ -941,7 +1028,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         }
                       }}
                       className={cn(
-                        'py-2.5 px-3 rounded-lg border text-sm font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer',
+                        'p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-1.5 cursor-pointer relative',
                         !isAllowed
                           ? 'opacity-35 bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed line-through'
                           : isSelected
@@ -950,12 +1037,63 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                       )}
                       title={!isAllowed ? `Tidak relevan untuk ${jenisKegiatanMassal}` : `Pilih sasaran untuk ${item.label}`}
                     >
-                      {isSelected && <CheckCircle2 size={15} className="text-white shrink-0" />}
-                      <span>{item.label}</span>
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-xs">{item.label}</span>
+                        {isSelected && <CheckCircle2 size={14} className="text-white shrink-0" />}
+                      </div>
+
+                      {/* Badge Indikator Ketercoveran / Kewajiban Mengajar Guru */}
+                      {dutyInfo && (
+                        <div className="w-full">
+                          {dutyInfo.isFullyCovered ? (
+                            <span
+                              className={cn(
+                                'text-[9px] px-1.5 py-0.5 rounded-md font-bold inline-flex items-center gap-0.5',
+                                isSelected
+                                  ? 'bg-emerald-400 text-emerald-950 font-black'
+                                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                              )}
+                            >
+                              ✓ Siap Diuji
+                            </span>
+                          ) : dutyInfo.hasPending ? (
+                            <span
+                              className={cn(
+                                'text-[9px] px-1.5 py-0.5 rounded-md font-bold inline-flex items-center gap-0.5',
+                                isSelected
+                                  ? 'bg-amber-300 text-amber-950 font-black'
+                                  : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300'
+                              )}
+                            >
+                              ⚠️ Belum Dibuat
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
                     </button>
                   );
                 })}
               </div>
+
+              {/* Alert Penjelas Jika Guru Memilih Tingkat yang Sebenarnya Sudah Bebas Tugas */}
+              {tingkat && tingkatDutyMap.get(tingkat)?.isFullyCovered && (
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200 flex items-start gap-2.5 animate-in fade-in">
+                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold flex items-center gap-1.5">
+                      <span>Tingkat {tingkat} Anda Sudah 100% Selesai (Bebas Tugas)</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-200 text-emerald-800 font-bold">
+                        Siap Diuji
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5 leading-relaxed">
+                      Seluruh rombel binaan Anda di Tingkat {tingkat} telah siap diuji
+                      {tingkatDutyMap.get(tingkat)?.masterAuthorName ? ` (di-cover oleh naskah MGMP ${tingkatDutyMap.get(tingkat)?.masterAuthorName})` : ''}
+                      . Anda <strong>tidak wajib</strong> membuat bank soal baru lagi di tingkat ini.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {!tingkat && tingkatTouched && (
                 <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1 mt-1">
@@ -971,98 +1109,200 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Sasaran Konsentrasi Keahlian / Jurusan
                 </label>
-                <span className="text-[10px] text-slate-400 font-medium">
-                  {jurusan ? `Khusus ${jurusan}` : 'Berlaku untuk semua rombel'}
+                <span className="text-[10px] text-slate-500 font-medium">
+                  {jurusan ? `Khusus Jurusan ${jurusan}` : 'Berlaku untuk semua rombel'}
                 </span>
               </div>
 
-              <div className="flex flex-wrap gap-1.5">
-                {/* Chip Semua Jurusan (Umum) */}
-                {(() => {
-                  const isGeneralOcc = jurusanOccupancy.isGeneralOccupied;
-                  const isSelected = !jurusan;
-                  return (
-                    <button
-                      type="button"
-                      disabled={isGeneralOcc}
-                      onClick={() => {
-                        if (isGeneralOcc) return;
-                        setJurusan('');
-                        if (scope === 'TERPUSAT_MASSAL' && mapelId) {
-                          triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, '');
-                        }
-                      }}
-                      className={cn(
-                        'py-1.5 px-2.5 rounded-lg border text-xs font-semibold transition-all text-left flex items-center gap-1 cursor-pointer',
-                        isGeneralOcc
-                          ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-                          : isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
-                      )}
-                    >
-                      <span>Semua Jurusan (Umum)</span>
-                      {isGeneralOcc && (
-                        <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
-                          Sudah Ada
+              {/* Banner Penjelas jika Semua Jurusan Sudah Ada */}
+              {jurusanOccupancy.isGeneralOccupied && (
+                <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-2 animate-in fade-in">
+                  <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    Paket naskah <strong>Umum (Semua Jurusan)</strong> untuk Tingkat {tingkat || '-'} sudah dibuat oleh{' '}
+                    <strong>{jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}</strong>. Untuk membuat naskah varian lain, pilih salah satu jurusan spesifik binaan Anda di bawah.
+                  </span>
+                </div>
+              )}
+
+              {/* 1. Baris Rekomendasi Utama: Jurusan Binaan Guru Sendiri */}
+              {(() => {
+                const currentTingkatDuty = tingkat ? tingkatDutyMap.get(tingkat) : undefined;
+                const myTeachingJurusans = currentTingkatDuty?.teachingJurusans || [];
+
+                return (
+                  <div className="space-y-2">
+                    {myTeachingJurusans.length > 0 && (
+                      <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/70 space-y-1.5">
+                        <span className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                          <Star size={12} className="text-amber-500 fill-amber-500" />
+                          <span>Jurusan Binaan Anda di Tingkat {tingkat}:</span>
                         </span>
-                      )}
-                    </button>
-                  );
-                })()}
+                        <div className="flex flex-wrap gap-1.5">
+                          {myTeachingJurusans.map((code) => {
+                            const isSelected = jurusan.toUpperCase() === code.toUpperCase();
+                            const occInfo = jurusanOccupancy.getOccupiedInfo(code);
+                            const isOccupied = Boolean(occInfo);
 
-                {/* Custom chip jika jurusan dari default/prop tidak ada di daftar master */}
-                {jurusan && !rawJurusanList.some((j) => ((j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string).trim().toUpperCase() === jurusan.toUpperCase()) && (
-                  <button
-                    type="button"
-                    onClick={() => setJurusan('')}
-                    className="py-1.5 px-2.5 rounded-lg border text-xs font-bold bg-indigo-600 text-white border-indigo-600 shadow-2xs cursor-pointer flex items-center gap-1"
-                    title="Klik untuk membatalkan jurusan khusus ini"
-                  >
-                    <span>{jurusan}</span>
-                    <span className="text-[9px] ml-0.5 opacity-80">✕</span>
-                  </button>
-                )}
+                            return (
+                              <button
+                                key={code}
+                                type="button"
+                                disabled={isOccupied}
+                                onClick={() => {
+                                  if (isOccupied) return;
+                                  setJurusan(code);
+                                  if (scope === 'TERPUSAT_MASSAL' && mapelId) {
+                                    triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, code);
+                                  }
+                                }}
+                                className={cn(
+                                  'py-1.5 px-3 rounded-lg border text-xs font-bold transition-all text-left flex items-center gap-1.5 cursor-pointer',
+                                  isOccupied
+                                    ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
+                                    : isSelected
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs ring-1 ring-indigo-400'
+                                    : 'bg-white dark:bg-slate-900 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-200 hover:border-indigo-500'
+                                )}
+                                title={
+                                  isOccupied
+                                    ? `Bank soal jurusan ${code} sudah dibuat oleh ${occInfo?.guruName || 'rekan guru'}`
+                                    : `Pilih jurusan binaan Anda ${code}`
+                                }
+                              >
+                                <span>Jurusan {code}</span>
+                                {isOccupied ? (
+                                  <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
+                                    Sudah Ada
+                                  </span>
+                                ) : (
+                                  <span className="text-[8.5px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-black ml-0.5">
+                                    Binaan Anda
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
-                {/* Chip Jurusan Spesifik */}
-                {rawJurusanList && rawJurusanList.map((j) => {
-                  const code = ((j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string).trim();
-                  const isSelected = jurusan.toUpperCase() === code.toUpperCase();
-                  const occInfo = jurusanOccupancy.getOccupiedInfo(code);
-                  const isOccupied = Boolean(occInfo);
+                    {/* 2. Seluruh Pilihan Jurusan (Semua Jurusan & Jurusan Lainnya di Sekolah) */}
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      {/* Chip Semua Jurusan (Umum) */}
+                      {(() => {
+                        const isGeneralOcc = jurusanOccupancy.isGeneralOccupied;
+                        const isSelected = !jurusan;
+                        return (
+                          <button
+                            type="button"
+                            disabled={isGeneralOcc}
+                            onClick={() => {
+                              if (isGeneralOcc) return;
+                              setJurusan('');
+                              if (scope === 'TERPUSAT_MASSAL' && mapelId) {
+                                triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, '');
+                              }
+                            }}
+                            className={cn(
+                              'py-1.5 px-2.5 rounded-lg border text-xs font-semibold transition-all text-left flex items-center gap-1 cursor-pointer',
+                              isGeneralOcc
+                                ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
+                                : isSelected
+                                ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                            )}
+                            title={
+                              isGeneralOcc
+                                ? `Bank soal Umum sudah dibuat oleh ${jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}`
+                                : 'Berlaku untuk semua rombel'
+                            }
+                          >
+                            <span>Semua Jurusan (Umum)</span>
+                            {isGeneralOcc && (
+                              <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
+                                Sudah Ada
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })()}
 
-                  return (
-                    <button
-                      key={j.id}
-                      type="button"
-                      disabled={isOccupied}
-                      onClick={() => {
-                        if (isOccupied) return;
-                        setJurusan(code);
-                        if (scope === 'TERPUSAT_MASSAL' && mapelId) {
-                          triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, code);
-                        }
-                      }}
-                      className={cn(
-                        'py-1.5 px-2.5 rounded-lg border text-xs font-medium transition-all text-left flex items-center gap-1 cursor-pointer',
-                        isOccupied
-                          ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-                          : isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
-                      )}
-                      title={isOccupied ? `Bank soal jurusan ${code} sudah dibuat oleh ${occInfo?.guruName || 'rekan guru'}` : j.nama}
-                    >
-                      <span>{code}</span>
-                      {isOccupied && (
-                        <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
-                          Sudah Ada
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                      {/* Custom chip jika jurusan dari default/prop tidak ada di daftar master */}
+                      {jurusan &&
+                        !rawJurusanList.some(
+                          (j) =>
+                            ((j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string)
+                              .trim()
+                              .toUpperCase() === jurusan.toUpperCase()
+                        ) && (
+                          <button
+                            type="button"
+                            onClick={() => setJurusan('')}
+                            className="py-1.5 px-2.5 rounded-lg border text-xs font-bold bg-indigo-600 text-white border-indigo-600 shadow-2xs cursor-pointer flex items-center gap-1"
+                            title="Klik untuk membatalkan jurusan khusus ini"
+                          >
+                            <span>{jurusan}</span>
+                            <span className="text-[9px] ml-0.5 opacity-80">✕</span>
+                          </button>
+                        )}
+
+                      {/* Chip Jurusan Lainnya di Sekolah (Kecuali yang sudah masuk kelompok binaan) */}
+                      {rawJurusanList &&
+                        rawJurusanList
+                          .filter((j) => {
+                            const code = (
+                              (j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string
+                            ).trim();
+                            return !myTeachingJurusans.includes(code);
+                          })
+                          .map((j) => {
+                            const code = (
+                              (j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string
+                            ).trim();
+                            const isSelected = jurusan.toUpperCase() === code.toUpperCase();
+                            const occInfo = jurusanOccupancy.getOccupiedInfo(code);
+                            const isOccupied = Boolean(occInfo);
+
+                            return (
+                              <button
+                                key={j.id}
+                                type="button"
+                                disabled={isOccupied}
+                                onClick={() => {
+                                  if (isOccupied) return;
+                                  setJurusan(code);
+                                  if (scope === 'TERPUSAT_MASSAL' && mapelId) {
+                                    triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, code);
+                                  }
+                                }}
+                                className={cn(
+                                  'py-1.5 px-2.5 rounded-lg border text-xs font-medium transition-all text-left flex items-center gap-1 cursor-pointer',
+                                  isOccupied
+                                    ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
+                                    : isSelected
+                                    ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
+                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                                )}
+                                title={
+                                  isOccupied
+                                    ? `Bank soal jurusan ${code} sudah dibuat oleh ${occInfo?.guruName || 'rekan guru'}`
+                                    : j.nama
+                                }
+                              >
+                                <span>{code}</span>
+                                {isOccupied && (
+                                  <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
+                                    Sudah Ada
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* 5. Opsi Distribusi Bank Soal (Mencegah Human Error & Memperjelas Niat Guru) */}
