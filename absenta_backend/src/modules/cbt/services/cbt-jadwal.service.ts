@@ -244,9 +244,12 @@ export class CbtJadwalService {
    * Membuat Jadwal Ujian baru
    */
   static async create(tenantId: string, data: any, userRole?: string) {
+    const isRemedial = Boolean(data.setting_keamanan?.is_remedial);
+
     // 1. Guard Kunci Jadwal Guru Mandiri saat Event Massal Aktif
+    // Catatan: Remedial dikecualikan agar guru tetap bisa membuka sesi remedial siswa binaan
     const normalizedRole = (userRole || '').toUpperCase();
-    if (normalizedRole === 'GURU') {
+    if (normalizedRole === 'GURU' && !isRemedial) {
       const activeEvent = await CbtSettingsService.getActiveEvent(tenantId);
       if (activeEvent && activeEvent.lock_teacher_scheduling) {
         throw new Error(
@@ -269,11 +272,12 @@ export class CbtJadwalService {
     // Validasi kelengkapan soal ditegakkan saat siswa mulai mengerjakan ujian di test-engine.
 
     // 2. Guard Deteksi Bentrok Jadwal Kelas (Overlap Schedule Guard)
+    // Sesi remedial dikecualikan dari bentrok karena berjalan asinkron/fleksibel khusus siswa remedial
     const newStart = new Date(data.tanggal_mulai);
     const newEnd = new Date(data.tanggal_selesai);
     const targetKelas: string[] = Array.isArray(data.target_kelas_ids) ? data.target_kelas_ids : [];
 
-    if (targetKelas.length > 0 && !data.bypass_overlap_guard) {
+    if (targetKelas.length > 0 && !data.bypass_overlap_guard && !isRemedial) {
       const conflictingJadwals = await prisma.cbtJadwalUjian.findMany({
         where: {
           tenant_id: tenantId,
@@ -300,7 +304,7 @@ export class CbtJadwalService {
       }
     }
 
-    const token = this.generateToken();
+    const token = data.token_ujian ? String(data.token_ujian).trim().toUpperCase() : this.generateToken();
 
     return prisma.cbtJadwalUjian.create({
       data: {
@@ -325,7 +329,7 @@ export class CbtJadwalService {
           token_refresh_interval: 0,
           ...(data.setting_keamanan || {}),
         },
-        status: 'DRAFT',
+        status: (data.status as any) || 'DRAFT',
       },
       include: {
         BankSoal: { select: { kode_bank: true, judul: true } },

@@ -19,7 +19,8 @@ import {
   Rocket,
   Users,
   FileEdit,
-  FileEdit,
+  RotateCw,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -33,6 +34,7 @@ import { CbtBankSoalFormModal } from './CbtBankSoalFormModal';
 import { CbtBankSoalDetailModal } from './CbtBankSoalDetailModal';
 import { TeacherCbtDutyCard } from './TeacherCbtDutyCard';
 import { CbtJadwalFormModal } from '../jadwal/CbtJadwalFormModal';
+import { CbtMultiClassRemedialModal } from '../jadwal/CbtMultiClassRemedialModal';
 import { CbtSharedDistributionModal } from './CbtSharedDistributionModal';
 import { getTingkatRoman, formatDisplayJudulBankSoal } from './cbtAsesmenHelper';
 import { useCbtOperationMode } from '../cbtModeHelper';
@@ -95,6 +97,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const [defaultJurusanForCreate, setDefaultJurusanForCreate] = useState<string | undefined>(undefined);
   const [isJadwalModalOpen, setIsJadwalModalOpen] = useState(false);
   const [bankSoalForJadwal, setBankSoalForJadwal] = useState<CbtBankSoal | null>(null);
+  const [multiRemedialBank, setMultiRemedialBank] = useState<CbtBankSoal | null>(null);
   const [distributionBank, setDistributionBank] = useState<CbtBankSoal | null>(null);
 
   const handleOpenJadwalModal = (bankSoal: CbtBankSoal) => {
@@ -429,6 +432,20 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                 </Button>
               )}
 
+              {questionCount > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMultiRemedialBank(row)}
+                  className="text-xs h-7 px-2.5 bg-amber-50/70 hover:bg-amber-100 text-amber-700 dark:text-amber-300 border-amber-300/80 dark:border-amber-800 font-bold rounded-lg cursor-pointer flex items-center gap-1 shadow-2xs whitespace-nowrap shrink-0"
+                  title="Aktivasi Sesi Remedial Akbar Terpadu Seluruh Rombel Binaan (1-Click)"
+                >
+                  <RotateCw size={12} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span className="whitespace-nowrap">Remedial Akbar</span>
+                </Button>
+              )}
+
               {!readOnly && !isFromColleague && (
                 <div className="flex items-center gap-0.5 pl-1 ml-0.5 border-l border-slate-200 dark:border-slate-700/60 shrink-0">
                   <button
@@ -663,6 +680,17 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                         <span>Aktifkan Ujian untuk Kelas Binaan</span>
                       </button>
                     )}
+
+                    {questionCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setMultiRemedialBank(item)}
+                        className="w-full py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-200 border border-amber-300/80 dark:border-amber-700/80 flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
+                      >
+                        <RotateCw size={13} className="text-amber-600 dark:text-amber-400" />
+                        <span>Sesi Remedial Terpadu (Multi-Rombel)</span>
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-1.5 pt-0.5">
@@ -717,6 +745,17 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                       >
                         <Rocket size={14} />
                         <span>Aktifkan Ujian untuk Kelas Binaan</span>
+                      </button>
+                    )}
+
+                    {questionCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setMultiRemedialBank(item)}
+                        className="w-full py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-200 border border-amber-300/80 dark:border-amber-700/80 flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
+                      >
+                        <RotateCw size={13} className="text-amber-600 dark:text-amber-400" />
+                        <span>Sesi Remedial Terpadu (Multi-Rombel)</span>
                       </button>
                     )}
                   </div>
@@ -811,6 +850,10 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                 }
               : undefined
           }
+          onMultiRemedial={(b) => {
+            setIsDetailModalOpen(false);
+            setMultiRemedialBank(b);
+          }}
         />
       )}
 
@@ -834,6 +877,19 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
               refetchType: 'all',
             });
             toast.success(`Ujian "${judul || 'Bank Soal'}" berhasil diaktifkan!`);
+            onScheduleSuccess?.();
+          }}
+        />
+      )}
+
+      {/* Modal Sesi Remedial Terpadu Multi-Rombel (1-Click) */}
+      {Boolean(multiRemedialBank) && (
+        <CbtMultiClassRemedialModal
+          isOpen={Boolean(multiRemedialBank)}
+          onClose={() => setMultiRemedialBank(null)}
+          bankSoal={multiRemedialBank}
+          onSuccess={() => {
+            setMultiRemedialBank(null);
             onScheduleSuccess?.();
           }}
         />

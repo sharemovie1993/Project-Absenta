@@ -14,6 +14,7 @@ import {
   Layers,
   AlertCircle,
   RefreshCw,
+  RotateCw,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
@@ -32,6 +33,7 @@ interface CbtBankSoalDetailModalProps {
   bankSoal: CbtBankSoal | null;
   readOnly?: boolean;
   onAktifkanUjian?: (bankSoal: CbtBankSoal) => void;
+  onMultiRemedial?: (bankSoal: CbtBankSoal) => void;
 }
 
 export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
@@ -40,6 +42,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
   bankSoal,
   readOnly = false,
   onAktifkanUjian,
+  onMultiRemedial,
 }) => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -271,6 +274,20 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                     <Rocket size={14} />
                     <span className="hidden sm:inline">Aktifkan Ujian</span>
                     <span className="sm:hidden">Aktifkan</span>
+                  </Button>
+                )}
+
+                {soalList.length > 0 && onMultiRemedial && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onMultiRemedial(bankSoal)}
+                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-300/80 dark:border-amber-700 font-bold text-xs h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    title="Aktivasi Sesi Remedial Akbar Terpadu Seluruh Rombel Binaan (1-Click)"
+                  >
+                    <RotateCw size={13} className="text-amber-600 dark:text-amber-400" />
+                    <span className="hidden sm:inline">Remedial Akbar</span>
+                    <span className="sm:hidden">Remedial</span>
                   </Button>
                 )}
 

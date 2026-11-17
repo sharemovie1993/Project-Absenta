@@ -19,6 +19,7 @@ import type { CbtJadwalUjian, CbtPesertaUjian, CbtBankSoal } from '@/types/cbt.t
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { localDateTimeInputToISO } from '@/utils/attendance/time';
+import { CbtMultiClassRemedialModal } from './CbtMultiClassRemedialModal';
 
 interface CbtRemedialModalProps {
   isOpen: boolean;
@@ -81,6 +82,7 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
   const [customToken, setCustomToken] = useState<string>('');
   const [scorePolicy, setScorePolicy] = useState<RemedialScorePolicy>('max_kktp');
   const [isTokenless, setIsTokenless] = useState<boolean>(true);
+  const [isMultiModalOpen, setIsMultiModalOpen] = useState<boolean>(false);
 
   // Generator Token 6 Karakter Acak (misal: RM8K2X)
   const generateRemedialToken = () => {
@@ -262,6 +264,33 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
       size="3xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Shortcut Banner Multi-Rombel (1-Click) */}
+        {jadwal.BankSoal && (
+          <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-indigo-500/10 border border-amber-300 dark:border-amber-800/60 flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap shadow-2xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                <Sparkles size={16} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-black text-slate-800 dark:text-slate-100 truncate">
+                  Ingin Aktifkan Sekaligus untuk Seluruh Rombel Binaan?
+                </div>
+                <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                  Agregasi otomatis siswa di bawah KKTP dari seluruh kelas yang Anda ampu dalam 1 sesi remedial terpadu.
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsMultiModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-700 hover:to-rose-700 text-white shadow-xs cursor-pointer transition-all flex items-center gap-1.5 shrink-0"
+            >
+              <RotateCw size={12} />
+              <span>Buka Remedial Akbar (1-Click)</span>
+            </button>
+          </div>
+        )}
+
         {/* ── 1. BANNER INFORMASI SESI ASAL & KKTP THRESHOLD ── */}
         <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-indigo-500/10 border border-amber-200/80 dark:border-amber-900/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="space-y-1 min-w-0">
@@ -729,6 +758,21 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
           </Button>
         </div>
       </form>
+
+      {/* Modal Remedial Akbar Terpadu Multi-Rombel */}
+      {isMultiModalOpen && jadwal.BankSoal && (
+        <CbtMultiClassRemedialModal
+          isOpen={isMultiModalOpen}
+          onClose={() => setIsMultiModalOpen(false)}
+          bankSoal={jadwal.BankSoal}
+          initialJadwalId={jadwal.id}
+          onSuccess={() => {
+            setIsMultiModalOpen(false);
+            if (onSuccess) onSuccess();
+            onClose();
+          }}
+        />
+      )}
     </Modal>
   );
 };
