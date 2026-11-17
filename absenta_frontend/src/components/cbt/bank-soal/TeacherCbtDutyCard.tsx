@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import {
   ShieldCheck,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   Users,
   Plus,
   Eye,
+  FileEdit,
   ChevronDown,
   ChevronUp,
   ArrowRight,
@@ -38,6 +40,8 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
     hasActiveEvent,
     totalDuties,
     coveredDuties,
+    draftDuties,
+    uncreatedDuties,
     pendingDuties,
     completionPercentage,
     isFullyExempt,
@@ -108,21 +112,23 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
       >
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0 text-amber-600 dark:text-amber-400">
-            <AlertCircle size={18} />
+            {uncreatedDuties > 0 ? <AlertCircle size={18} /> : <AlertTriangle size={18} />}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-xs text-amber-900 dark:text-amber-100">
-                Tugas CBT: {pendingDuties} Sasaran Belum Ada Soal
+                {uncreatedDuties > 0
+                  ? `Tugas CBT: ${uncreatedDuties} Belum Dibuat${draftDuties > 0 ? `, ${draftDuties} Masih Draf` : ''}`
+                  : `Tugas CBT: ${draftDuties} Bank Soal Masih 0 Butir Soal`}
               </span>
               <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
-                {coveredDuties}/{totalDuties} Selesai ({completionPercentage}%)
+                {coveredDuties}/{totalDuties} Siap ({completionPercentage}%)
               </span>
             </div>
             <p className="text-[11px] text-amber-700/90 dark:text-amber-300/80 truncate">
               {pendingJurusanSummary
-                ? `Sasaran belum siap: ${pendingJurusanSummary}`
-                : 'Segera buat bank soal atau konfirmasi dengan rekan MGMP sekolah.'}
+                ? `Perlu perhatian: ${pendingJurusanSummary}`
+                : 'Buka Meja CBT untuk melengkapi pembuatan & pengisian butir soal.'}
             </p>
           </div>
         </div>
@@ -135,7 +141,7 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
             onClick={onNavigateToCbt}
             className="text-xs h-7 px-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold shrink-0 flex items-center gap-1 shadow-2xs cursor-pointer"
           >
-            <span>Selesaikan</span>
+            <span>Buka CBT</span>
             <ArrowRight size={11} />
           </Button>
         )}
@@ -150,6 +156,8 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
         'rounded-2xl border transition-all overflow-hidden shadow-2xs',
         isFullyExempt
           ? 'bg-gradient-to-b from-emerald-50/80 to-teal-50/40 dark:from-emerald-950/30 dark:to-slate-900/40 border-emerald-200 dark:border-emerald-800/80'
+          : uncreatedDuties === 0
+          ? 'bg-gradient-to-b from-amber-50/70 to-yellow-50/30 dark:from-amber-950/30 dark:to-slate-900/40 border-amber-300 dark:border-amber-800/80'
           : 'bg-gradient-to-b from-amber-50/80 to-rose-50/30 dark:from-amber-950/30 dark:to-slate-900/40 border-amber-200 dark:border-amber-800/80',
         className
       )}
@@ -162,10 +170,18 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
               'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
               isFullyExempt
                 ? 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-none'
-                : 'bg-amber-500 text-white shadow-amber-200 dark:shadow-none'
+                : uncreatedDuties === 0
+                ? 'bg-amber-500 text-white shadow-amber-200 dark:shadow-none'
+                : 'bg-rose-500 text-white shadow-rose-200 dark:shadow-none'
             )}
           >
-            {isFullyExempt ? <ShieldCheck size={22} /> : <AlertCircle size={22} />}
+            {isFullyExempt ? (
+              <ShieldCheck size={22} />
+            ) : uncreatedDuties === 0 ? (
+              <AlertTriangle size={22} />
+            ) : (
+              <AlertCircle size={22} />
+            )}
           </div>
 
           <div className="min-w-0">
@@ -180,7 +196,9 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
               >
                 {isFullyExempt
                   ? 'Bebas Tugas Pembuatan Bank Soal CBT'
-                  : `Perhatian: ${pendingDuties} dari ${totalDuties} Sasaran Bank Soal Belum Tersedia`}
+                  : uncreatedDuties > 0
+                  ? `Perhatian: ${uncreatedDuties} Sasaran Belum Dibuat${draftDuties > 0 ? `, ${draftDuties} Masih Draf (0 Soal)` : ''}`
+                  : `Perhatian: ${draftDuties} dari ${totalDuties} Bank Soal Masih Draf (0 Soal)`}
               </h3>
 
               <span
@@ -191,7 +209,7 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                     : 'bg-amber-600 text-white'
                 )}
               >
-                {isFullyExempt ? 'Bebas Tugas' : `${completionPercentage}% Terpenuhi`}
+                {isFullyExempt ? 'Bebas Tugas' : `${coveredDuties}/${totalDuties} Siap (${completionPercentage}%)`}
               </span>
 
               {activeEventName && (
@@ -212,8 +230,8 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
               {isFullyExempt
                 ? 'Seluruh rombel dan sasaran jurusan binaan Anda telah memiliki bank soal siap pakai (dibuat mandiri atau di-cover rekan MGMP). Anda tidak perlu membuat soal baru lagi.'
                 : pendingJurusanSummary
-                ? `Rombel untuk sasaran jurusan ${pendingJurusanSummary} belum memiliki bank soal. Jika Anda membuat bank soal spesifik untuk 1 jurusan (misal KUL), sasaran jurusan lainnya tetap perlu dibuatkan bank soal.`
-                : 'Terdapat kelas binaan Anda yang belum memiliki bank soal aktif. Anda dapat membuat soal mandiri atau meminta rekan MGMP membagikan paket Master MGMP.'}
+                ? `Sasaran yang membutuhkan perhatian: ${pendingJurusanSummary}. Klik "Kelola Soal" untuk mengisi butir soal pada draf yang sudah dibuat, atau "+ Buat" jika bank soal belum ada.`
+                : 'Terdapat kelas binaan Anda yang belum memiliki bank soal siap pakai. Anda dapat membuat soal mandiri atau meminta rekan MGMP membagikan paket Master MGMP.'}
             </p>
           </div>
         </div>
@@ -234,7 +252,9 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
         <div className="px-3.5 sm:px-4 pb-3.5 pt-0">
           <div className="pt-3 border-t border-slate-200/60 dark:border-slate-800/60 grid grid-cols-1 md:grid-cols-2 gap-2">
             {items.map((item) => {
-              const isCovered = item.status !== 'PENDING';
+              const isCovered = item.status === 'COVERED_OWN' || item.status === 'COVERED_MGMP';
+              const isDraft = item.status === 'DRAFT_OWN' || item.status === 'DRAFT_MGMP';
+
               return (
                 <div
                   key={item.key}
@@ -242,7 +262,9 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                     'p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all text-xs',
                     isCovered
                       ? 'bg-white/90 dark:bg-slate-900/80 border-emerald-200/80 dark:border-emerald-900/50'
-                      : 'bg-white/90 dark:bg-slate-900/80 border-rose-300/80 dark:border-rose-900/60'
+                      : isDraft
+                      ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-300/80 dark:border-amber-800/60'
+                      : 'bg-rose-50/40 dark:bg-rose-950/20 border-rose-300/80 dark:border-rose-900/60'
                   )}
                 >
                   <div className="min-w-0 flex-1">
@@ -267,30 +289,47 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                     <div className="flex items-center gap-1.5 mt-1 text-[11px] flex-wrap">
                       {/* Rombel Binaan */}
                       <span className="text-slate-400">Rombel:</span>
-                      <span className="font-medium text-slate-600 dark:text-slate-300 truncate max-w-[200px]" title={item.rombelNames.join(', ')}>
+                      <span
+                        className="font-medium text-slate-600 dark:text-slate-300 truncate max-w-[200px]"
+                        title={item.rombelNames.join(', ')}
+                      >
                         {item.rombelNames.join(', ') || '-'}
                       </span>
                     </div>
 
                     {/* Status Info */}
-                    <div className="mt-1 flex items-center gap-1.5">
+                    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                       {item.status === 'COVERED_OWN' && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                          <CheckCircle2 size={10} />
-                          <span>Mandiri ({item.soalCount} Soal)</span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                          <CheckCircle2 size={11} className="text-emerald-600" />
+                          <span>Siap Uji ({item.soalCount} Soal)</span>
                         </span>
                       )}
 
                       {item.status === 'COVERED_MGMP' && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                          <Users size={10} />
-                          <span>Di-cover MGMP ({item.masterAuthorName || 'Rekan Guru'})</span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800">
+                          <Users size={11} className="text-indigo-600" />
+                          <span>Di-cover MGMP ({item.masterAuthorName || 'Rekan Guru'} — {item.soalCount} Soal)</span>
+                        </span>
+                      )}
+
+                      {item.status === 'DRAFT_OWN' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                          <AlertTriangle size={11} className="text-amber-600" />
+                          <span>Wadah Dibuat (0 Soal — Perlu Diisi)</span>
+                        </span>
+                      )}
+
+                      {item.status === 'DRAFT_MGMP' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                          <AlertTriangle size={11} className="text-amber-600" />
+                          <span>Draf MGMP ({item.masterAuthorName || 'Rekan Guru'} — 0 Soal)</span>
                         </span>
                       )}
 
                       {item.status === 'PENDING' && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800">
-                          <AlertCircle size={10} />
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded-md border border-rose-200 dark:border-rose-800">
+                          <AlertCircle size={11} className="text-rose-600" />
                           <span>Belum Ada Bank Soal</span>
                         </span>
                       )}
@@ -298,7 +337,8 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                   </div>
 
                   {/* Action Button */}
-                  <div className="shrink-0 flex items-center gap-1">
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    {/* Jika Belum Dibuat: Tombol "+ Buat" */}
                     {item.status === 'PENDING' && onCreateBankSoal && (
                       <Button
                         type="button"
@@ -314,7 +354,22 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                       </Button>
                     )}
 
-                    {item.bankSoal && onPreviewBankSoal && (
+                    {/* Jika Sudah Dibuat Tapi Masih Draf (0 Soal): Tombol "Kelola Soal" */}
+                    {isDraft && item.bankSoal && onPreviewBankSoal && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => onPreviewBankSoal(item.bankSoal!)}
+                        className="text-[11px] h-7 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
+                        title={`Isi Butir Soal untuk ${item.mapelName}`}
+                      >
+                        <FileEdit size={12} />
+                        <span>Kelola Soal</span>
+                      </Button>
+                    )}
+
+                    {/* Jika Sudah Siap Uji (Ada Soal): Tombol "Lihat" */}
+                    {isCovered && item.bankSoal && onPreviewBankSoal && (
                       <Button
                         type="button"
                         variant="ghost"

@@ -8,7 +8,12 @@ import { useCbtOperationMode } from '../cbtModeHelper';
 import { resolveBankTingkatNumber } from '../jadwal/cbtJadwalHelper';
 import { formatTingkatRomawi } from './cbtAsesmenHelper';
 
-export type DutyCoverStatus = 'COVERED_OWN' | 'COVERED_MGMP' | 'PENDING';
+export type DutyCoverStatus =
+  | 'COVERED_OWN'   // Siap pakai (mandiri & ada butir soal)
+  | 'COVERED_MGMP'  // Siap pakai (di-cover master MGMP rekan guru & ada butir soal)
+  | 'DRAFT_OWN'     // Draf mandiri (bank soal sudah dibuat, tapi masih 0 butir soal)
+  | 'DRAFT_MGMP'    // Draf MGMP (master MGMP sudah ada, tapi masih 0 butir soal)
+  | 'PENDING';      // Belum ada bank soal sama sekali
 
 export interface TeacherDutyItem {
   key: string;
@@ -30,6 +35,8 @@ export interface TeacherCbtDutyStatusResult {
   hasActiveEvent: boolean;
   totalDuties: number;
   coveredDuties: number;
+  draftDuties: number;
+  uncreatedDuties: number;
   pendingDuties: number;
   completionPercentage: number;
   isFullyExempt: boolean;
@@ -79,6 +86,8 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       return {
         totalDuties: 0,
         coveredDuties: 0,
+        draftDuties: 0,
+        uncreatedDuties: 0,
         pendingDuties: 0,
         completionPercentage: 100,
         isFullyExempt: false,
@@ -183,6 +192,8 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       return {
         totalDuties: 0,
         coveredDuties: 0,
+        draftDuties: 0,
+        uncreatedDuties: 0,
         pendingDuties: 0,
         completionPercentage: 100,
         isFullyExempt: false,
@@ -193,9 +204,12 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
     }
 
     const items: TeacherDutyItem[] = [];
-    const pendingTargets: string[] = [];
+    const draftTargets: string[] = [];
+    const uncreatedTargets: string[] = [];
     let totalDuties = 0;
     let coveredDuties = 0;
+    let draftDuties = 0;
+    let uncreatedDuties = 0;
 
     mapelTingkatList.forEach((mt) => {
       const { mapelId, mapelName, tingkat, jurusanMap } = mt;
@@ -208,29 +222,27 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
         return bTingkat === tingkat || bTingkat === undefined;
       });
 
-      // Cek apakah ada Bank Soal UMUM (tanpa spesifikasi jurusan / 'SEMUA')
-      const generalOwnBank = candidateBanks.find(
+      // Pisahkan bank milik guru vs bank master MGMP (yang di-share atau guru sebagai kontributor)
+      const ownBanks = candidateBanks.filter((b) => b.guru_id === guruId);
+      const mgmpBanks = candidateBanks.filter(
         (b) =>
-          b.guru_id === guruId &&
-          (b.jumlah_soal || b._count?.Soal || 0) > 0 &&
-          (!b.jurusan || b.jurusan === 'SEMUA' || b.jurusan === 'UMUM')
+          b.guru_id !== guruId &&
+          (b.status === 'PUBLISHED' ||
+            Boolean(b.is_shared) ||
+            Boolean(b.Kontributor && b.Kontributor.some((c) => c.guru_id === guruId)))
       );
 
-      const generalMgmpBank = candidateBanks.find((b) => {
-        const count = b.jumlah_soal || b._count?.Soal || 0;
-        if (count === 0) return false;
+      // Helper Bank Soal Umum (mencakup SEMUA jurusan / UMUM / tanpa jurusan)
+      const isGeneralBank = (b: CbtBankSoal) => {
         const rawJur = (b.jurusan || '').toUpperCase().trim();
-        const isGeneral = !rawJur || rawJur === 'SEMUA' || rawJur === 'UMUM';
-        if (!isGeneral) return false;
-        return (
-          b.status === 'PUBLISHED' ||
-          (b.Kontributor && b.Kontributor.some((c) => c.guru_id === guruId))
-        );
-      });
+        return !rawJur || rawJur === 'SEMUA' || rawJur === 'UMUM';
+      };
 
-      const effectiveGeneralBank = generalOwnBank || generalMgmpBank;
+      const ownGeneral = ownBanks.find(isGeneralBank);
+      const mgmpGeneral = mgmpBanks.find(isGeneralBank);
+      const effectiveGeneralBank = ownGeneral || mgmpGeneral;
 
-      // Cek apakah ada bank soal spesifik jurusan yang dibuat untuk tingkat ini
+      // Cek apakah ada bank soal spesifik jurusan untuk tingkat ini
       const hasSpecificBanks = candidateBanks.some(
         (b) => b.jurusan && b.jurusan !== 'SEMUA' && b.jurusan !== 'UMUM'
       );
@@ -240,13 +252,21 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       // KASUS 1: Ada Bank Soal Umum yang mencakup seluruh jurusan, dan tidak ada varian spesifik yang bentrok
       if (effectiveGeneralBank && !hasSpecificBanks) {
         totalDuties++;
-        coveredDuties++;
-        const isOwn = effectiveGeneralBank === generalOwnBank;
+        const isOwn = effectiveGeneralBank === ownGeneral;
         const count = effectiveGeneralBank.jumlah_soal || effectiveGeneralBank._count?.Soal || 0;
-
         const allRombels = Array.from(
           new Set(jurusanList.flatMap((j) => Array.from(j.rombelNames)))
         );
+
+        let status: DutyCoverStatus;
+        if (count > 0) {
+          status = isOwn ? 'COVERED_OWN' : 'COVERED_MGMP';
+          coveredDuties++;
+        } else {
+          status = isOwn ? 'DRAFT_OWN' : 'DRAFT_MGMP';
+          draftDuties++;
+          draftTargets.push(`${mapelName} (Tingkat ${romanTingkat})`);
+        }
 
         items.push({
           key: `${mapelId}_${tingkat}_ALL`,
@@ -256,7 +276,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
           tingkatRoman: romanTingkat,
           targetJurusan: undefined,
           rombelNames: allRombels,
-          status: isOwn ? 'COVERED_OWN' : 'COVERED_MGMP',
+          status,
           soalCount: count,
           bankSoal: effectiveGeneralBank,
           masterAuthorName: isOwn ? undefined : effectiveGeneralBank.Guru?.nama_guru,
@@ -265,25 +285,42 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       }
 
       // KASUS 2: Evaluasi granular per-Jurusan
-      // (Terjadi saat guru membuat bank soal spesifik untuk 1 jurusan tertentu seperti KUL,
-      //  sehingga jurusan lain seperti PHT atau TSM tetap harus dibuatkan/di-cover)
       jurusanList.forEach((jg) => {
         const { jurusanKode, rombelNames } = jg;
         totalDuties++;
         const rombelArr = Array.from(rombelNames);
 
-        // 1. Cek Bank Soal Mandiri spesifik untuk jurusan ini
-        const specificOwnBank = candidateBanks.find(
-          (b) =>
-            b.guru_id === guruId &&
-            (b.jumlah_soal || b._count?.Soal || 0) > 0 &&
-            b.jurusan &&
-            b.jurusan.toUpperCase().trim() === jurusanKode
+        // Cari bank yang paling spesifik terlebih dahulu
+        const ownSpecific = ownBanks.find(
+          (b) => b.jurusan && b.jurusan.toUpperCase().trim() === jurusanKode
+        );
+        const mgmpSpecific = mgmpBanks.find(
+          (b) => b.jurusan && b.jurusan.toUpperCase().trim() === jurusanKode
         );
 
-        if (specificOwnBank) {
-          coveredDuties++;
-          const count = specificOwnBank.jumlah_soal || specificOwnBank._count?.Soal || 0;
+        // Prioritas pencocokan:
+        // 1. Bank Mandiri Spesifik Jurusan
+        // 2. Bank MGMP Spesifik Jurusan
+        // 3. Fallback Bank Mandiri Umum
+        // 4. Fallback Bank MGMP Umum
+        const matchedBank = ownSpecific || mgmpSpecific || ownGeneral || mgmpGeneral;
+
+        if (matchedBank) {
+          const isOwn = matchedBank.guru_id === guruId;
+          const count = matchedBank.jumlah_soal || matchedBank._count?.Soal || 0;
+          let status: DutyCoverStatus;
+
+          if (count > 0) {
+            status = isOwn ? 'COVERED_OWN' : 'COVERED_MGMP';
+            coveredDuties++;
+          } else {
+            status = isOwn ? 'DRAFT_OWN' : 'DRAFT_MGMP';
+            draftDuties++;
+            draftTargets.push(
+              `${mapelName}${jurusanKode !== 'UMUM' ? ` Jurusan ${jurusanKode}` : ''} (Tingkat ${romanTingkat})`
+            );
+          }
+
           items.push({
             key: `${mapelId}_${tingkat}_${jurusanKode}`,
             mapelId,
@@ -292,27 +329,18 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
             tingkatRoman: romanTingkat,
             targetJurusan: jurusanKode !== 'UMUM' ? jurusanKode : undefined,
             rombelNames: rombelArr,
-            status: 'COVERED_OWN',
+            status,
             soalCount: count,
-            bankSoal: specificOwnBank,
+            bankSoal: matchedBank,
+            masterAuthorName: isOwn ? undefined : matchedBank.Guru?.nama_guru,
           });
-          return;
-        }
-
-        // 2. Cek Bank Soal Master MGMP spesifik untuk jurusan ini
-        const specificMgmpBank = candidateBanks.find((b) => {
-          const count = b.jumlah_soal || b._count?.Soal || 0;
-          if (count === 0) return false;
-          if (!b.jurusan || b.jurusan.toUpperCase().trim() !== jurusanKode) return false;
-          return (
-            b.status === 'PUBLISHED' ||
-            (b.Kontributor && b.Kontributor.some((c) => c.guru_id === guruId))
+        } else {
+          // Benar-benar belum pernah dibuat sama sekali
+          uncreatedDuties++;
+          uncreatedTargets.push(
+            `${mapelName}${jurusanKode !== 'UMUM' ? ` Jurusan ${jurusanKode}` : ''} (Tingkat ${romanTingkat})`
           );
-        });
 
-        if (specificMgmpBank) {
-          coveredDuties++;
-          const count = specificMgmpBank.jumlah_soal || specificMgmpBank._count?.Soal || 0;
           items.push({
             key: `${mapelId}_${tingkat}_${jurusanKode}`,
             mapelId,
@@ -321,48 +349,10 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
             tingkatRoman: romanTingkat,
             targetJurusan: jurusanKode !== 'UMUM' ? jurusanKode : undefined,
             rombelNames: rombelArr,
-            status: 'COVERED_MGMP',
-            soalCount: count,
-            bankSoal: specificMgmpBank,
-            masterAuthorName: specificMgmpBank.Guru?.nama_guru || 'Rekan MGMP',
+            status: 'PENDING',
+            soalCount: 0,
           });
-          return;
         }
-
-        // 3. Fallback: Jika ada bank umum yang berlaku untuk semua jurusan
-        if (effectiveGeneralBank) {
-          coveredDuties++;
-          const isOwn = effectiveGeneralBank === generalOwnBank;
-          const count = effectiveGeneralBank.jumlah_soal || effectiveGeneralBank._count?.Soal || 0;
-          items.push({
-            key: `${mapelId}_${tingkat}_${jurusanKode}`,
-            mapelId,
-            mapelName,
-            tingkat,
-            tingkatRoman: romanTingkat,
-            targetJurusan: jurusanKode !== 'UMUM' ? jurusanKode : undefined,
-            rombelNames: rombelArr,
-            status: isOwn ? 'COVERED_OWN' : 'COVERED_MGMP',
-            soalCount: count,
-            bankSoal: effectiveGeneralBank,
-            masterAuthorName: isOwn ? undefined : effectiveGeneralBank.Guru?.nama_guru,
-          });
-          return;
-        }
-
-        // 4. Belum ada bank soal untuk jurusan ini
-        pendingTargets.push(`${jurusanKode} (Tingkat ${romanTingkat})`);
-        items.push({
-          key: `${mapelId}_${tingkat}_${jurusanKode}`,
-          mapelId,
-          mapelName,
-          tingkat,
-          tingkatRoman: romanTingkat,
-          targetJurusan: jurusanKode !== 'UMUM' ? jurusanKode : undefined,
-          rombelNames: rombelArr,
-          status: 'PENDING',
-          soalCount: 0,
-        });
       });
     });
 
@@ -370,12 +360,20 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
     const completionPercentage = totalDuties > 0 ? Math.round((coveredDuties / totalDuties) * 100) : 100;
     const isFullyExempt = totalDuties > 0 && coveredDuties === totalDuties;
 
-    const pendingJurusanSummary =
-      pendingTargets.length > 0 ? pendingTargets.join(', ') : undefined;
+    const summaryParts: string[] = [];
+    if (uncreatedTargets.length > 0) {
+      summaryParts.push(`Belum dibuat: ${uncreatedTargets.join(', ')}`);
+    }
+    if (draftTargets.length > 0) {
+      summaryParts.push(`Masih draf (0 butir soal): ${draftTargets.join(', ')}`);
+    }
+    const pendingJurusanSummary = summaryParts.length > 0 ? summaryParts.join('; ') : undefined;
 
     return {
       totalDuties,
       coveredDuties,
+      draftDuties,
+      uncreatedDuties,
       pendingDuties,
       completionPercentage,
       isFullyExempt,
