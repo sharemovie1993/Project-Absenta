@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
-import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users, AlertCircle, AlertTriangle, Share2, Check, ShieldCheck } from 'lucide-react';
 import {
   type CbtBankSoalScope,
   getOfficialAsesmenTypes,
@@ -214,7 +214,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const [alokasiMenit, setAlokasiMenit] = useState<number>(60);
   const [acakSoal, setAcakSoal] = useState(true);
   const [acakOpsi, setAcakOpsi] = useState(true);
-  const [isShared, setIsShared] = useState(true);
+  const [isShared, setIsShared] = useState(false);
   const [selectedColleagueIds, setSelectedColleagueIds] = useState<string[]>([]);
   const [showAllMapels, setShowAllMapels] = useState(isPrivilegedRole || initialScope === 'TERPUSAT_MASSAL');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -365,12 +365,12 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setAlokasiMenit(bankSoalToEdit.alokasi_menit);
       setAcakSoal(bankSoalToEdit.acak_soal);
       setAcakOpsi(bankSoalToEdit.acak_opsi);
-      setIsShared(bankSoalToEdit.status === 'PUBLISHED' || Boolean(bankSoalToEdit.is_shared));
-      setSelectedColleagueIds(
-        getMgmpSharedTeacherIds(bankSoalToEdit, user?.tenant_id).filter(
-          (id) => id !== bankSoalToEdit.guru_id
-        )
+      const existingColleagues = getMgmpSharedTeacherIds(bankSoalToEdit, user?.tenant_id).filter(
+        (id) => id !== bankSoalToEdit.guru_id
       );
+      setSelectedColleagueIds(existingColleagues);
+      const isSharedBank = Boolean(bankSoalToEdit.is_shared) || existingColleagues.length > 0;
+      setIsShared(isSharedBank);
       setShowAllMapels(true);
 
       const detected = findMatchingAsesmenType(bankSoalToEdit.kode_bank, officialAsesmenTypes);
@@ -422,7 +422,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setAlokasiMenit(60);
       setAcakSoal(true);
       setAcakOpsi(true);
-      setIsShared(true);
+      setIsShared(false);
       setSelectedColleagueIds([]);
       setShowAllMapels(isPrivilegedRole || isMassal);
     }
@@ -433,7 +433,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     const year = new Date().getFullYear();
     if (newScope === 'TERPUSAT_MASSAL') {
       setShowAllMapels(true);
-      setIsShared(true);
+      setIsShared(false);
       setUnitPengajaranId('');
       const recKey = lockedEventKey || smartDetection.recommendedKey;
       const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', recKey, effectiveTingkatList, jenjang);
@@ -551,20 +551,20 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         acak_soal: acakSoal,
         acak_opsi: acakOpsi,
         status: (scope === 'TERPUSAT_MASSAL' || isShared ? 'PUBLISHED' : 'DRAFT') as 'PUBLISHED' | 'DRAFT',
-        is_shared: scope === 'TERPUSAT_MASSAL' ? true : isShared,
-        contributor_guru_ids: selectedColleagueIds,
-        auto_sync_kolaborasi: !unitPengajaranId,
+        is_shared: isShared,
+        contributor_guru_ids: isShared ? selectedColleagueIds : [],
+        auto_sync_kolaborasi: isShared && !unitPengajaranId,
       };
 
       if (bankSoalToEdit) {
         await cbtApi.updateBankSoal(bankSoalToEdit.id, payload);
-        setMgmpSharedTeacherIds(bankSoalToEdit.id, selectedColleagueIds, user?.tenant_id);
+        setMgmpSharedTeacherIds(bankSoalToEdit.id, isShared ? selectedColleagueIds : [], user?.tenant_id);
         toast.success('Bank soal berhasil diperbarui');
       } else {
         const createRes = await cbtApi.createBankSoal(payload);
         const newBankId = (createRes as any)?.data?.id || (createRes as any)?.id;
         if (newBankId) {
-          setMgmpSharedTeacherIds(newBankId, selectedColleagueIds, user?.tenant_id);
+          setMgmpSharedTeacherIds(newBankId, isShared ? selectedColleagueIds : [], user?.tenant_id);
         }
         toast.success(
           scope === 'TERPUSAT_MASSAL'
@@ -596,7 +596,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         bankSoalToEdit
           ? 'Edit Paket Bank Soal'
           : scope === 'TERPUSAT_MASSAL'
-          ? 'Buat Master Bank Soal MGMP (Ujian Bersama)'
+          ? (isShared ? 'Buat Master Bank Soal MGMP (Ujian Bersama)' : 'Buat Bank Soal Ujian Mandiri')
           : 'Buat Bank Soal Mandiri'
       }
       size="lg"
@@ -626,7 +626,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           >
             {step > 1 ? '✓' : '1'}
           </span>
-          <span>1. Sasaran &amp; Rekan MGMP</span>
+          <span>1. Sasaran &amp; Distribusi</span>
         </button>
 
         <button
@@ -1065,18 +1065,108 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               </div>
             </div>
 
-            {/* 5. Target Pembagian MGMP (Langsung ditanyakan di Tahap 1) */}
-            {scope === 'TERPUSAT_MASSAL' && (
-              <CbtMgmpColleaguePicker
-                mapelId={mapelId}
-                tingkat={tingkat}
-                jurusan={jurusan}
-                currentGuruId={guruId}
-                selectedIds={selectedColleagueIds}
-                onChangeSelectedIds={setSelectedColleagueIds}
-                title="Target Distribusi: Mau dibagi ke rekan guru siapa saja?"
-              />
-            )}
+            {/* 5. Opsi Distribusi Bank Soal (Mencegah Human Error & Memperjelas Niat Guru) */}
+            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Share2 size={13} className="text-indigo-600 dark:text-indigo-400" />
+                  <span>Apakah naskah ini akan dibagikan ke rekan guru lain?</span>
+                </label>
+                <span
+                  className={cn(
+                    'text-[10px] font-bold px-2 py-0.5 rounded-full border',
+                    isShared
+                      ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800'
+                      : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                  )}
+                >
+                  {isShared ? 'Mode MGMP (Bersama)' : 'Mode Mandiri'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* Opsi 1: Mandiri */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsShared(false);
+                    setSelectedColleagueIds([]);
+                  }}
+                  className={cn(
+                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 relative',
+                    !isShared
+                      ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-500 ring-1 ring-indigo-500 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                      <User size={13} className={!isShared ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} />
+                      <span>Tidak, Khusus Mandiri</span>
+                    </span>
+                    {!isShared && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-600 text-white flex items-center gap-0.5">
+                        <Check size={10} /> Terpilih
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                    Khusus untuk diri sendiri dan rombel kelas binaan Anda. Rekan guru lain tidak menerima naskah ini.
+                  </p>
+                </button>
+
+                {/* Opsi 2: Dibagikan (MGMP) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsShared(true);
+                  }}
+                  className={cn(
+                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 relative',
+                    isShared
+                      ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-500 ring-1 ring-indigo-500 shadow-2xs'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                      <Users size={13} className={isShared ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} />
+                      <span>Ya, Dibagikan (MGMP)</span>
+                    </span>
+                    {isShared && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-600 text-white flex items-center gap-0.5">
+                        <Check size={10} /> Terpilih
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                    Naskah bersama se-mapel &amp; tingkat. Rekan paralel yang dipilih otomatis bebas tugas membuat soal.
+                  </p>
+                </button>
+              </div>
+
+              {/* Tampilan Kondisional: Colleague Picker jika isShared, Info Box Aman jika Mandiri */}
+              {isShared ? (
+                <div className="pt-2 animate-in fade-in duration-200">
+                  <CbtMgmpColleaguePicker
+                    mapelId={mapelId}
+                    tingkat={tingkat}
+                    jurusan={jurusan}
+                    currentGuruId={guruId}
+                    selectedIds={selectedColleagueIds}
+                    onChangeSelectedIds={setSelectedColleagueIds}
+                    title="Pilih Rekan Guru Paralel Penerima Naskah:"
+                  />
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-300 animate-in fade-in duration-200">
+                  <ShieldCheck size={16} className="text-emerald-500 shrink-0" />
+                  <span>
+                    <strong>Mode Mandiri Aktif:</strong> Naskah ini aman dan privat hanya untuk rombel kelas Anda. Tidak ada rekan guru lain yang akan terhubung.
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           /* ── TAHAP 2: IDENTITAS, DURASI, & PENYUSUN SOAL ── */
@@ -1207,72 +1297,35 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               </div>
             </div>
 
-            {/* Visibilitas & Berbagi Soal */}
-            {scope === 'TERPUSAT_MASSAL' ? (
-              <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
+            {/* Konfirmasi Status Distribusi di Langkah 2 (Read-only, Bebas Redudansi) */}
+            <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
+              {isShared ? (
                 <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11.5px] text-emerald-900 dark:text-emerald-200 space-y-1">
                   <div className="flex items-center gap-2 font-bold">
                     <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-                    <span>Master MGMP Siap Diterbitkan &amp; Terdistribusi</span>
+                    <span>Paket MGMP Siap Diterbitkan &amp; Terdistribusi</span>
                   </div>
-                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300 pl-5 leading-relaxed">
-                    Paket soal otomatis berstatus <strong>PUBLISHED</strong> untuk penjadwalan terpusat sekolah.
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300 pl-6 leading-relaxed">
+                    Naskah dibagikan sebagai paket MGMP bersama.
                     {selectedColleagueIds.length > 0 ? (
                       <> Terdistribusi ke <strong>{selectedColleagueIds.length} rekan guru paralel</strong> yang telah Anda pilih.</>
                     ) : (
-                      <> Siap digunakan langsung untuk rombel binaan Anda.</>
+                      <> Belum ada rekan guru spesifik yang dipilih (Anda dapat kembali ke Langkah 1 jika ingin memilih rekan).</>
                     )}
                   </p>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Visibilitas &amp; Berbagi Soal
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsShared(true)}
-                    className={cn(
-                      'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
-                      isShared
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
-                    )}
-                  >
-                    Ya, Bagikan Se-Mapel
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsShared(false)}
-                    className={cn(
-                      'py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center',
-                      !isShared
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
-                    )}
-                  >
-                    Pribadi
-                  </button>
-                </div>
-
-                {isShared && (
-                  <div className="pt-2">
-                    <CbtMgmpColleaguePicker
-                      mapelId={mapelId}
-                      tingkat={tingkat}
-                      jurusan={jurusan}
-                      currentGuruId={guruId}
-                      selectedIds={selectedColleagueIds}
-                      onChangeSelectedIds={setSelectedColleagueIds}
-                      title="Mau dibagi ke siapa saja?"
-                    />
+              ) : (
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11.5px] text-slate-800 dark:text-slate-200 space-y-1">
+                  <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200">
+                    <ShieldCheck size={16} className="text-emerald-600 shrink-0" />
+                    <span>Naskah Khusus Mandiri (Kelas Binaan Anda)</span>
                   </div>
-                )}
-              </div>
-            )}
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 pl-6 leading-relaxed">
+                    Naskah ini tersimpan khusus untuk kelas yang Anda ampu dan tidak dibagikan ke rekan guru lain. Jika ingin mengubahnya menjadi paket MGMP bersama, silakan kembali ke Langkah 1.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1329,7 +1382,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               disabled={isSubmitting}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold cursor-pointer shadow-2xs"
             >
-              {isSubmitting ? 'Menyimpan...' : scope === 'TERPUSAT_MASSAL' ? 'Terbitkan Master MGMP' : 'Simpan Bank Soal'}
+              {isSubmitting ? 'Menyimpan...' : isShared ? 'Terbitkan Master MGMP' : 'Simpan Bank Soal Mandiri'}
             </Button>
           )}
         </div>
