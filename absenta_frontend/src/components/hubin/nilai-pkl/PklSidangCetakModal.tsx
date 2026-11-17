@@ -707,26 +707,6 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
       setIsGeneratingPdf(false);
     }
   };
-        fileName: pdfFileName,
-        scale: 2.5,
-      });
-
-      const url = URL.createObjectURL(res.blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = res.fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast.success('Dokumen PDF berhasil diunduh!');
-    } catch (err: any) {
-      toast.error(err?.message || 'Gagal membuat file PDF.');
-    } finally {
-      setIsGeneratingPdf(false);
-    }
-  };
 
   const isPortraitDoc = docType === 'BERITA_ACARA';
 
