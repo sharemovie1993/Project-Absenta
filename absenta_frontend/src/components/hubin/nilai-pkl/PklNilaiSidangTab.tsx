@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicFilterToolbar } from '@/components/common/academic-filter';
-import { Info, Lock, Save, FileText, Check, Printer, Sparkles, Edit3, Eraser, PenTool, CheckCircle2 } from 'lucide-react';
+import { Info, Lock, Save, FileText, Check, Printer, Sparkles, Edit3, Eraser, PenTool, CheckCircle2, Award } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
 import { PklNilaiSidangMobileCards } from './PklNilaiSidangMobileCards';
