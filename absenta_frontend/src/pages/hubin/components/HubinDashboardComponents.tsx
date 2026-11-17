@@ -810,9 +810,9 @@ export const HubinQuickActionsBar: React.FC<HubinQuickActionsBarProps> = React.m
     },
     {
       id: 'nilai-pkl',
-      title: 'Nilai & Rapor PKL',
-      shortTitle: 'Nilai PKL',
-      desc: 'Input nilai teknis & cetak rapor',
+      title: 'Nilai & Sidang PKL',
+      shortTitle: 'Nilai & Sidang',
+      desc: 'Rekap nilai DUDI, input & monitoring sidang',
       icon: Award,
       badge: stats?.penilaianStats ? `${stats.penilaianStats.persenSelesai}% selesai` : 'Rapor Merdeka',
       badgeColor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',

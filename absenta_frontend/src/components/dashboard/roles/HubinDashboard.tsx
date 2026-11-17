@@ -189,7 +189,7 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
       case 'mitra': return 'Mitra DUDI';
       case 'penempatan': return 'Penempatan PKL';
       case 'absensi': return 'Presensi PKL';
-      case 'nilai': return 'Penilaian PKL';
+      case 'nilai': return 'Nilai & Sidang PKL';
       case 'rekap': return 'Cetak Dokumen';
       case 'pengaturan': return 'Pengaturan & Kuota';
       case 'struktur_organisasi': return 'Struktur Organisasi';

@@ -54,7 +54,7 @@ export const HUBIN_SUBTABS_BASE: HubinTabDefinition[] = [
   { id: 'mitra', label: 'Mitra DU-DI', shortLabel: 'Mitra', category: 'kemitraan', icon: Building2, targetPath: '/dashboard?tab=hubin&subtab=mitra', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'penempatan', label: 'Penempatan', shortLabel: 'Penempatan', category: 'kemitraan', icon: Users, targetPath: '/dashboard?tab=hubin&subtab=penempatan', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
   { id: 'absensi', label: 'Presensi', shortLabel: 'Presensi', category: 'kemitraan', icon: ClipboardList, targetPath: '/dashboard?tab=hubin&subtab=absensi', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
-  { id: 'nilai', label: 'Penilaian', shortLabel: 'Penilaian', category: 'kemitraan', icon: Award, targetPath: '/dashboard?tab=hubin&subtab=nilai', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
+  { id: 'nilai', label: 'Nilai & Sidang', shortLabel: 'Nilai & Sidang', category: 'kemitraan', icon: Award, targetPath: '/dashboard?tab=hubin&subtab=nilai', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
 
   // 📋 KATEGORI 2: ADMINISTRASI & TATA KELOLA
   { id: 'rekap', label: 'Cetak Berkas', shortLabel: 'Cetak', category: 'administrasi', icon: Printer, targetPath: '/dashboard?tab=hubin&subtab=rekap', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
