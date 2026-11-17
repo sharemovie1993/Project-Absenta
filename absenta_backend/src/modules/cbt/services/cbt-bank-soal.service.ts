@@ -1017,7 +1017,7 @@ export class CbtBankSoalService {
             tenant_id: tenantId,
             bank_soal_id: clonedBank.id,
             unit_pengajaran_id: s.unit_pengajaran_id,
-            nomor_urut: s.nomor_urut || idx + 1,
+            nomor_urut: idx + 1,
             jenis_soal: s.jenis_soal,
             konten_pertanyaan: s.konten_pertanyaan,
             gambar_stimulus_url: s.gambar_stimulus_url,
@@ -1373,9 +1373,24 @@ export class CbtBankSoalService {
         where: { id: questionId },
       });
 
-      const totalSoal = await tx.cbtSoal.count({
+      // Renormalisasi nomor urut butir soal yang tersisa agar tetap sekuensial (1..N) tanpa celah/lompatan
+      const remainingQuestions = await tx.cbtSoal.findMany({
         where: { tenant_id: tenantId, bank_soal_id: existing.bank_soal_id },
+        orderBy: [{ nomor_urut: 'asc' }, { created_at: 'asc' }],
+        select: { id: true, nomor_urut: true },
       });
+
+      for (let i = 0; i < remainingQuestions.length; i++) {
+        const expectedNomor = i + 1;
+        if (remainingQuestions[i].nomor_urut !== expectedNomor) {
+          await tx.cbtSoal.update({
+            where: { id: remainingQuestions[i].id },
+            data: { nomor_urut: expectedNomor },
+          });
+        }
+      }
+
+      const totalSoal = remainingQuestions.length;
 
       await tx.cbtBankSoal.update({
         where: { id: existing.bank_soal_id },
@@ -1422,7 +1437,7 @@ export class CbtBankSoalService {
             tenant_id: tenantId,
             bank_soal_id: bankSoalId,
             unit_pengajaran_id: itemUnitId,
-            nomor_urut: item.nomor_urut || currentOrder,
+            nomor_urut: currentOrder,
             jenis_soal: 'PG',
             konten_pertanyaan: item.konten_pertanyaan,
             gambar_stimulus_url: item.gambar_stimulus_url || null,

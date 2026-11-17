@@ -72,12 +72,16 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
   const availableUnits: CbtUnitPengajaranSummary[] = useMemo(() => {
     if (bankSoal?.unit_pengajaran_id) return [];
     if (Array.isArray(bankSoal?.available_units) && bankSoal.available_units.length > 0) {
-      return bankSoal.available_units;
+      return bankSoal.available_units.filter((u) => {
+        const name = (u.nama_unit || '').trim();
+        return name && name.toLowerCase() !== 'null';
+      });
     }
     const raw = tenantUnitsRes?.data || [];
     const seen = new Map<string, CbtUnitPengajaranSummary>();
     raw.forEach((u) => {
-      if (u.id && !seen.has(u.id)) {
+      const name = (u.nama_unit || '').trim();
+      if (u.id && name && name.toLowerCase() !== 'null' && !seen.has(u.id)) {
         seen.set(u.id, {
           id: u.id,
           nama_unit: u.nama_unit,
@@ -89,6 +93,13 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
     });
     return Array.from(seen.values());
   }, [bankSoal?.unit_pengajaran_id, bankSoal?.available_units, tenantUnitsRes?.data]);
+
+  // Hanya unit yang valid dan memiliki minimal 1 soal yang relevan di bank soal ini
+  const relevantUnits = useMemo(() => {
+    return availableUnits.filter((unit) => {
+      return soalList.some((s) => s.unit_pengajaran_id === unit.id);
+    });
+  }, [availableUnits, soalList]);
 
   const unitMap = useMemo(() => {
     const map = new Map<string, CbtUnitPengajaranSummary>();
@@ -153,10 +164,21 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
     },
   });
 
-  const handleDeleteSoal = async (soal: CbtSoal) => {
+  // Reset filter unit jika unit aktif tidak lagi relevan
+  useEffect(() => {
+    if (filterUnitId !== 'ALL' && filterUnitId !== 'UNASSIGNED') {
+      const exists = relevantUnits.some((u) => u.id === filterUnitId);
+      if (!exists) {
+        setFilterUnitId('ALL');
+      }
+    }
+  }, [relevantUnits, filterUnitId]);
+
+  const handleDeleteSoal = async (soal: CbtSoal, displayNomor?: number) => {
+    const nomor = displayNomor || soal.nomor_urut || 1;
     const isConfirmed = await confirm({
       title: 'Hapus Butir Soal?',
-      message: `Apakah Anda yakin ingin menghapus butir soal nomor ${soal.nomor_urut}?`,
+      message: `Apakah Anda yakin ingin menghapus butir soal nomor ${nomor}?`,
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
       style: 'danger',
@@ -264,8 +286,8 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Filter Unit Pengajaran (Khusus Bank Soal Kolaborasi Mapel Induk) */}
-          {availableUnits.length > 0 && soalList.length > 0 && (
+          {/* Filter Unit Pengajaran (Hanya muncul jika ada unit valid yang memiliki butir soal) */}
+          {relevantUnits.length > 0 && soalList.length > 0 && (
             <div className="px-3.5 py-2 sm:px-6 bg-slate-50/90 dark:bg-slate-900/80 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
               <Layers size={12} className="text-sky-600 dark:text-sky-400 shrink-0 mr-1" />
               <button
@@ -280,7 +302,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
               >
                 Semua Unit ({soalList.length})
               </button>
-              {availableUnits.map((unit) => {
+              {relevantUnits.map((unit) => {
                 const count = soalList.filter((s) => s.unit_pengajaran_id === unit.id).length;
                 return (
                   <button
@@ -298,18 +320,20 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                   </button>
                 );
               })}
-              <button
-                type="button"
-                onClick={() => setFilterUnitId('UNASSIGNED')}
-                className={cn(
-                  'px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer border',
-                  filterUnitId === 'UNASSIGNED'
-                    ? 'bg-slate-700 text-white border-slate-700'
-                    : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
-                )}
-              >
-                Umum ({soalList.filter((s) => !s.unit_pengajaran_id).length})
-              </button>
+              {soalList.some((s) => !s.unit_pengajaran_id) && (
+                <button
+                  type="button"
+                  onClick={() => setFilterUnitId('UNASSIGNED')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer border',
+                    filterUnitId === 'UNASSIGNED'
+                      ? 'bg-slate-700 text-white border-slate-700'
+                      : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                  )}
+                >
+                  Umum ({soalList.filter((s) => !s.unit_pengajaran_id).length})
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -365,20 +389,24 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                     soal.UnitPengajaran ||
                     (soal.unit_pengajaran_id ? unitMap.get(soal.unit_pengajaran_id) : null);
 
+                  // Hitung nomor urut kontinu (anti nomor lompat) sesuai urutan asli bank soal
+                  const globalIndex = soalList.findIndex((s) => s.id === soal.id);
+                  const displayNomor = (globalIndex !== -1 ? globalIndex : index) + 1;
+
                   if (isEditingThisCard) {
                     return (
                       <CbtInlineSoalCard
                         key={soal.id}
                         bankSoalId={bankSoal.id}
                         soal={soal}
-                        nomorUrut={soal.nomor_urut || index + 1}
+                        nomorUrut={displayNomor}
                         availableUnits={availableUnits}
                         onSaved={() => {
                           setActiveCardId(null);
                           refetch();
                         }}
                         onCancel={() => setActiveCardId(null)}
-                        onDelete={() => handleDeleteSoal(soal)}
+                        onDelete={() => handleDeleteSoal(soal, displayNomor)}
                       />
                     );
                   }
@@ -399,12 +427,12 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                       <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
                         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
                           <span className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-black text-xs font-mono shrink-0">
-                            {soal.nomor_urut || index + 1}
+                            {displayNomor}
                           </span>
                           <span className="text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                            Soal #{soal.nomor_urut || index + 1}
+                            Soal #{displayNomor}
                           </span>
-                          {taggedUnit && (
+                          {taggedUnit && taggedUnit.nama_unit && (
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800 whitespace-nowrap">
                               Unit: {taggedUnit.nama_unit}
                             </span>
@@ -431,16 +459,16 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                                 onClick={() => setActiveCardId(soal.id)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors cursor-pointer"
                                 title="Edit Soal"
-                                aria-label={`Edit Soal Nomor ${soal.nomor_urut}`}
+                                aria-label={`Edit Soal Nomor ${displayNomor}`}
                               >
                                 <Edit2 size={14} />
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleDeleteSoal(soal)}
+                                onClick={() => handleDeleteSoal(soal, displayNomor)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
                                 title="Hapus Soal"
-                                aria-label={`Hapus Soal Nomor ${soal.nomor_urut}`}
+                                aria-label={`Hapus Soal Nomor ${displayNomor}`}
                               >
                                 <Trash2 size={14} />
                               </button>
