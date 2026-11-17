@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck, GraduationCap, Award, AlertTriangle, Lock, Edit3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -127,15 +127,21 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     if (propKelasId) setSelectedKelas(propKelasId);
   }, [propKelasId]);
 
+  const prevInitialTabRef = useRef(initialTab);
   useEffect(() => {
     if (activeTabOnly) {
       setActiveTab(activeTabOnly);
-    } else if (initialTab) {
+    } else if (initialTab && initialTab !== prevInitialTabRef.current) {
+      prevInitialTabRef.current = initialTab;
       setActiveTab(initialTab);
-    } else if (isManagerialRole && (activeTab === 'dudi' || activeTab === 'sidang')) {
+    }
+  }, [activeTabOnly, initialTab]);
+
+  useEffect(() => {
+    if (isManagerialRole && (activeTab === 'dudi' || activeTab === 'sidang')) {
       setActiveTab('progres_pkl');
     }
-  }, [activeTabOnly, initialTab, isManagerialRole, activeTab]);
+  }, [isManagerialRole, activeTab]);
   
   const typedUser = user as { guru_profile?: { id?: string }; guru_id?: string; Guru?: { id?: string } } | null;
   const activeGuruId = propGuruId || capActiveGuruId || typedUser?.guru_profile?.id || typedUser?.guru_id || typedUser?.Guru?.id || null;
