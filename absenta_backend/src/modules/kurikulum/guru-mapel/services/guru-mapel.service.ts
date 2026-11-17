@@ -69,8 +69,16 @@ export class GuruMapelService {
       include: {
         Guru: { select: { id: true, nama_guru: true, max_jp: true, no_hp: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
-        Kelas: { select: { id: true, nama_kelas: true, tingkat: true, jurusan_id: true } },
-        Jurusan: { select: { id: true, nama: true } },
+        Kelas: {
+          select: {
+            id: true,
+            nama_kelas: true,
+            tingkat: true,
+            jurusan_id: true,
+            Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
+          },
+        },
+        Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
         UnitPengajaran: {
           include: {
             Guru: { select: { id: true, nama_guru: true } },
@@ -263,8 +271,15 @@ export class GuruMapelService {
         include: {
           Guru: { select: { id: true, nama_guru: true } },
           Mapel: { select: { id: true, nama_mapel: true } },
-          Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
-          Jurusan: { select: { id: true, nama: true } },
+          Kelas: {
+            select: {
+              id: true,
+              nama_kelas: true,
+              tingkat: true,
+              Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
+            },
+          },
+          Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
           UnitPengajaran: {
             include: { Guru: { select: { id: true, nama_guru: true } } },
             orderBy: [{ urutan: 'asc' }],

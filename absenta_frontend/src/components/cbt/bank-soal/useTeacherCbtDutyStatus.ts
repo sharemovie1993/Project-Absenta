@@ -152,19 +152,15 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       return tNum;
     };
 
-    // Helper ekstraksi jurusan dari nama kelas / jurusan
-    const resolveJurusanKode = (kName?: string, jurRef?: any): string => {
-      let jurKode =
-        jurRef?.kode ||
-        jurRef?.singkatan ||
-        jurRef?.nama_jurusan;
-      if (!jurKode && kName) {
-        const tokens = kName.trim().split(/\s+/);
-        if (tokens.length >= 2) {
-          jurKode = tokens[1].toUpperCase();
-        }
-      }
-      return (jurKode || 'UMUM').toUpperCase().trim();
+    // Helper ekstraksi kode jurusan resmi (HANYA dari relasi database resmi: Kelas.Jurusan atau GM.Jurusan)
+    // DILARANG keras melakukan string parsing dari nama rombel/kelas untuk mencegah kesalahan identifikasi
+    const resolveJurusanKode = (jurRef?: any, kelasRef?: any): string => {
+      const jur = jurRef || kelasRef?.Jurusan;
+      if (!jur) return 'UMUM';
+      const code = jur.kode || jur.singkatan || (jur.nama ? String(jur.nama).trim() : '');
+      if (!code) return 'UMUM';
+      const clean = code.toUpperCase().trim();
+      return clean === 'SEMUA' || clean === 'UMUM' ? 'UMUM' : clean;
     };
 
     // Helper filter penugasan non-akademik (Piket, BK, Upacara, Ekskul, dll) yang tidak memerlukan Bank Soal CBT
@@ -219,7 +215,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       if (isNonAcademicDuty(mName, j.jenis_kegiatan)) return;
 
       const tNum = resolveTingkatHelper(j.Kelas?.tingkat, kName);
-      const jurKode = resolveJurusanKode(kName);
+      const jurKode = resolveJurusanKode((j as any)?.Jurusan, j.Kelas);
 
       const item: ScheduleClassItem = {
         mapelId: j.mapel_id,
@@ -290,7 +286,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
 
       if (kName) {
         // Jika sudah ada nama kelas eksplisit dari GuruMapel
-        const jurKode = resolveJurusanKode(kName, gm.Jurusan || (gm.Kelas as any)?.Jurusan);
+        const jurKode = resolveJurusanKode(gm.Jurusan, gm.Kelas);
         if (!mtEntry.jurusanMap.has(jurKode)) {
           mtEntry.jurusanMap.set(jurKode, {
             jurusanKode: jurKode,
@@ -316,7 +312,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
           });
         } else {
           // Fallback jika tidak ada di JadwalKBM juga: Jadikan Rombel Umum
-          const jurKode = resolveJurusanKode(undefined, gm.Jurusan);
+          const jurKode = resolveJurusanKode(gm.Jurusan, undefined);
           if (!mtEntry.jurusanMap.has(jurKode)) {
             mtEntry.jurusanMap.set(jurKode, {
               jurusanKode: jurKode,
@@ -348,7 +344,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
           (e) => e.tingkat === tNum && e.mapelName.trim().toLowerCase() === mName.trim().toLowerCase()
         );
         if (existingByName) {
-          const jurKode = resolveJurusanKode(kName);
+          const jurKode = resolveJurusanKode((j as any)?.Jurusan, j.Kelas);
           if (!existingByName.jurusanMap.has(jurKode)) {
             existingByName.jurusanMap.set(jurKode, {
               jurusanKode: jurKode,
@@ -369,7 +365,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       }
 
       const mtEntry = mapelTingkatMap.get(mtKey)!;
-      const jurKode = resolveJurusanKode(kName);
+      const jurKode = resolveJurusanKode((j as any)?.Jurusan, j.Kelas);
       if (!mtEntry.jurusanMap.has(jurKode)) {
         mtEntry.jurusanMap.set(jurKode, {
           jurusanKode: jurKode,
@@ -519,15 +515,17 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
           const count = matchedBank.jumlah_soal || matchedBank._count?.Soal || 0;
           let status: DutyCoverStatus;
 
+          const targetLabel = jCode && !mapelName.toUpperCase().includes(jCode)
+            ? `${mapelName} Jurusan ${jCode} (Tingkat ${romanTingkat})`
+            : `${mapelName} (Tingkat ${romanTingkat})`;
+
           if (count > 0) {
             status = isOwn ? 'COVERED_OWN' : 'COVERED_MGMP';
             coveredDuties++;
           } else {
             status = isOwn ? 'DRAFT_OWN' : 'DRAFT_MGMP';
             draftDuties++;
-            draftTargets.push(
-              `${mapelName}${jurusanKode !== 'UMUM' ? ` Jurusan ${jurusanKode}` : ''} (Tingkat ${romanTingkat})`
-            );
+            draftTargets.push(targetLabel);
           }
 
           items.push({
@@ -549,10 +547,12 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
           });
         } else {
           // Belum pernah dibuat sama sekali (Mandiri maupun MGMP)
+          const targetLabel = jCode && !mapelName.toUpperCase().includes(jCode)
+            ? `${mapelName} Jurusan ${jCode} (Tingkat ${romanTingkat})`
+            : `${mapelName} (Tingkat ${romanTingkat})`;
+
           uncreatedDuties++;
-          uncreatedTargets.push(
-            `${mapelName}${jurusanKode !== 'UMUM' ? ` Jurusan ${jurusanKode}` : ''} (Tingkat ${romanTingkat})`
-          );
+          uncreatedTargets.push(targetLabel);
 
           items.push({
             key: `${mapelId}_${tingkat}_${jurusanKode}`,

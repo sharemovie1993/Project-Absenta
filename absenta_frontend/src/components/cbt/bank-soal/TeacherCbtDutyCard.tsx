@@ -322,15 +322,11 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                           <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                             Tingkat {item.tingkatRoman}
                           </span>
-                          {item.targetJurusan ? (
+                          {item.targetJurusan && item.targetJurusan !== 'UMUM' ? (
                             <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300">
                               Jurusan {item.targetJurusan}
                             </span>
-                          ) : (
-                            <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
-                              Semua Jurusan
-                            </span>
-                          )}
+                          ) : null}
                           <span className="text-slate-300 dark:text-slate-700">•</span>
                           {/* Rombel chips */}
                           <div className="flex items-center gap-1 flex-wrap">

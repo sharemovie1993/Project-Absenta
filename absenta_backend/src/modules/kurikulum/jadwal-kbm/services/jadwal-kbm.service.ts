@@ -233,7 +233,7 @@ export class JadwalKBMService {
           hari: { in: hariUrut as any[] },
           ...semFilter,
         },
-        include: { Kelas: true, Mapel: true },
+        include: { Kelas: { include: { Jurusan: true } }, Mapel: true },
         orderBy: [{ hari: 'asc' }, { slot_index: 'asc' }],
       }),
       prisma.jadwalPiketGuru.findMany({
@@ -256,7 +256,7 @@ export class JadwalKBMService {
             ],
             hari: { in: hariUrut as any[] },
           },
-          include: { Kelas: true, Mapel: true },
+          include: { Kelas: { include: { Jurusan: true } }, Mapel: true },
           orderBy: [{ hari: 'asc' }, { slot_index: 'asc' }],
         }),
         prisma.jadwalPiketGuru.findMany({
