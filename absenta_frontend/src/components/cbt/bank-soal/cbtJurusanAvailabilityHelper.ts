@@ -70,15 +70,22 @@ export function evaluateJurusanOccupancy(params: {
       };
       occupiedMap.set('SEMUA', generalInfo);
     } else {
-      // Menandai jurusan spesifik (misal KUL, TSM, PHT, dll)
-      const info: OccupiedJurusanInfo = {
-        jurusanCode: rawJurusan,
-        guruName,
-        judul: b.judul || b.kode_bank,
-        bankId: b.id,
-        tingkat: b.tingkat,
-      };
-      occupiedMap.set(rawJurusan, info);
+      // Menandai jurusan spesifik (bisa single 'KUL' maupun multi 'KUL, PHT')
+      const codes = rawJurusan
+        .split(/[,;/|]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      codes.forEach((code) => {
+        const info: OccupiedJurusanInfo = {
+          jurusanCode: code,
+          guruName,
+          judul: b.judul || b.kode_bank,
+          bankId: b.id,
+          tingkat: b.tingkat,
+        };
+        occupiedMap.set(code, info);
+      });
     }
   });
 

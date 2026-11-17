@@ -487,13 +487,16 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
         totalDuties++;
         const rombelArr = Array.from(rombelNames);
 
+        // Helper matching jurusan (mendukung single jurusan maupun multi-jurusan comma-separated seperti 'KUL, PHT')
+        const matchJurusan = (bJurusan?: string | null, targetJurusan?: string) => {
+          if (!bJurusan || !targetJurusan) return false;
+          const parts = bJurusan.toUpperCase().split(/[,;/|]+/).map((s) => s.trim()).filter(Boolean);
+          return parts.includes(targetJurusan.toUpperCase().trim());
+        };
+
         // Cari bank spesifik jurusan
-        const ownSpecific = ownBanks.find(
-          (b) => b.jurusan && b.jurusan.toUpperCase().trim() === jurusanKode
-        );
-        const mgmpSpecific = mgmpBanks.find(
-          (b) => b.jurusan && b.jurusan.toUpperCase().trim() === jurusanKode
-        );
+        const ownSpecific = ownBanks.find((b) => matchJurusan(b.jurusan, jurusanKode));
+        const mgmpSpecific = mgmpBanks.find((b) => matchJurusan(b.jurusan, jurusanKode));
 
         const effectiveOwn = ownSpecific || ownGeneral;
         const effectiveMgmp = mgmpSpecific || mgmpGeneral;

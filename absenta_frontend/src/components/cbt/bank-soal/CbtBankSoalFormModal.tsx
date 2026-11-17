@@ -201,6 +201,44 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
   const [jurusan, setJurusan] = useState<string>(() => bankSoalToEdit?.jurusan || defaultJurusan || '');
 
+  const selectedJurusanList = useMemo(() => {
+    if (!jurusan) return [];
+    return jurusan
+      .split(/[,;/|]+/)
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+  }, [jurusan]);
+
+  const toggleJurusan = (code: string) => {
+    const cleanCode = code.trim().toUpperCase();
+    let nextList: string[];
+    if (selectedJurusanList.includes(cleanCode)) {
+      nextList = selectedJurusanList.filter((c) => c !== cleanCode);
+    } else {
+      nextList = [...selectedJurusanList, cleanCode];
+    }
+    const nextJurusan = nextList.join(', ');
+    setJurusan(nextJurusan);
+    if (scope === 'TERPUSAT_MASSAL' && mapelId) {
+      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, nextJurusan);
+    }
+  };
+
+  const selectAllTeachingJurusans = (jurusans: string[]) => {
+    const nextJurusan = jurusans.join(', ');
+    setJurusan(nextJurusan);
+    if (scope === 'TERPUSAT_MASSAL' && mapelId) {
+      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, nextJurusan);
+    }
+  };
+
+  const clearJurusan = () => {
+    setJurusan('');
+    if (scope === 'TERPUSAT_MASSAL' && mapelId) {
+      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, '');
+    }
+  };
+
   useEffect(() => {
     if (defaultJurusan && !bankSoalToEdit) {
       setJurusan(defaultJurusan);
@@ -1103,224 +1141,22 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               )}
             </div>
 
-            {/* 4. Sasaran Konsentrasi Keahlian / Jurusan */}
-            <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between gap-2">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Sasaran Konsentrasi Keahlian / Jurusan
-                </label>
-                <span className="text-[10px] text-slate-500 font-medium">
-                  {jurusan ? `Khusus Jurusan ${jurusan}` : 'Berlaku untuk semua rombel'}
-                </span>
-              </div>
-
-              {/* Banner Penjelas jika Semua Jurusan Sudah Ada */}
-              {jurusanOccupancy.isGeneralOccupied && (
-                <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-2 animate-in fade-in">
-                  <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
-                  <span>
-                    Paket naskah <strong>Umum (Semua Jurusan)</strong> untuk Tingkat {tingkat || '-'} sudah dibuat oleh{' '}
-                    <strong>{jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}</strong>. Untuk membuat naskah varian lain, pilih salah satu jurusan spesifik binaan Anda di bawah.
-                  </span>
-                </div>
-              )}
-
-              {/* 1. Baris Rekomendasi Utama: Jurusan Binaan Guru Sendiri */}
-              {(() => {
-                const currentTingkatDuty = tingkat ? tingkatDutyMap.get(tingkat) : undefined;
-                const myTeachingJurusans = currentTingkatDuty?.teachingJurusans || [];
-
-                return (
-                  <div className="space-y-2">
-                    {myTeachingJurusans.length > 0 && (
-                      <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/70 space-y-1.5">
-                        <span className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
-                          <Star size={12} className="text-amber-500 fill-amber-500" />
-                          <span>Jurusan Binaan Anda di Tingkat {tingkat}:</span>
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {myTeachingJurusans.map((code) => {
-                            const isSelected = jurusan.toUpperCase() === code.toUpperCase();
-                            const occInfo = jurusanOccupancy.getOccupiedInfo(code);
-                            const isOccupied = Boolean(occInfo);
-
-                            return (
-                              <button
-                                key={code}
-                                type="button"
-                                disabled={isOccupied}
-                                onClick={() => {
-                                  if (isOccupied) return;
-                                  setJurusan(code);
-                                  if (scope === 'TERPUSAT_MASSAL' && mapelId) {
-                                    triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, code);
-                                  }
-                                }}
-                                className={cn(
-                                  'py-1.5 px-3 rounded-lg border text-xs font-bold transition-all text-left flex items-center gap-1.5 cursor-pointer',
-                                  isOccupied
-                                    ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-                                    : isSelected
-                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs ring-1 ring-indigo-400'
-                                    : 'bg-white dark:bg-slate-900 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-200 hover:border-indigo-500'
-                                )}
-                                title={
-                                  isOccupied
-                                    ? `Bank soal jurusan ${code} sudah dibuat oleh ${occInfo?.guruName || 'rekan guru'}`
-                                    : `Pilih jurusan binaan Anda ${code}`
-                                }
-                              >
-                                <span>Jurusan {code}</span>
-                                {isOccupied ? (
-                                  <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
-                                    Sudah Ada
-                                  </span>
-                                ) : (
-                                  <span className="text-[8.5px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-black ml-0.5">
-                                    Binaan Anda
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 2. Seluruh Pilihan Jurusan (Semua Jurusan & Jurusan Lainnya di Sekolah) */}
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                      {/* Chip Semua Jurusan (Umum) */}
-                      {(() => {
-                        const isGeneralOcc = jurusanOccupancy.isGeneralOccupied;
-                        const isSelected = !jurusan;
-                        return (
-                          <button
-                            type="button"
-                            disabled={isGeneralOcc}
-                            onClick={() => {
-                              if (isGeneralOcc) return;
-                              setJurusan('');
-                              if (scope === 'TERPUSAT_MASSAL' && mapelId) {
-                                triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, '');
-                              }
-                            }}
-                            className={cn(
-                              'py-1.5 px-2.5 rounded-lg border text-xs font-semibold transition-all text-left flex items-center gap-1 cursor-pointer',
-                              isGeneralOcc
-                                ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-                                : isSelected
-                                ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
-                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
-                            )}
-                            title={
-                              isGeneralOcc
-                                ? `Bank soal Umum sudah dibuat oleh ${jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}`
-                                : 'Berlaku untuk semua rombel'
-                            }
-                          >
-                            <span>Semua Jurusan (Umum)</span>
-                            {isGeneralOcc && (
-                              <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
-                                Sudah Ada
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })()}
-
-                      {/* Custom chip jika jurusan dari default/prop tidak ada di daftar master */}
-                      {jurusan &&
-                        !rawJurusanList.some(
-                          (j) =>
-                            ((j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string)
-                              .trim()
-                              .toUpperCase() === jurusan.toUpperCase()
-                        ) && (
-                          <button
-                            type="button"
-                            onClick={() => setJurusan('')}
-                            className="py-1.5 px-2.5 rounded-lg border text-xs font-bold bg-indigo-600 text-white border-indigo-600 shadow-2xs cursor-pointer flex items-center gap-1"
-                            title="Klik untuk membatalkan jurusan khusus ini"
-                          >
-                            <span>{jurusan}</span>
-                            <span className="text-[9px] ml-0.5 opacity-80">✕</span>
-                          </button>
-                        )}
-
-                      {/* Chip Jurusan Lainnya di Sekolah (Kecuali yang sudah masuk kelompok binaan) */}
-                      {rawJurusanList &&
-                        rawJurusanList
-                          .filter((j) => {
-                            const code = (
-                              (j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string
-                            ).trim();
-                            return !myTeachingJurusans.includes(code);
-                          })
-                          .map((j) => {
-                            const code = (
-                              (j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string
-                            ).trim();
-                            const isSelected = jurusan.toUpperCase() === code.toUpperCase();
-                            const occInfo = jurusanOccupancy.getOccupiedInfo(code);
-                            const isOccupied = Boolean(occInfo);
-
-                            return (
-                              <button
-                                key={j.id}
-                                type="button"
-                                disabled={isOccupied}
-                                onClick={() => {
-                                  if (isOccupied) return;
-                                  setJurusan(code);
-                                  if (scope === 'TERPUSAT_MASSAL' && mapelId) {
-                                    triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, code);
-                                  }
-                                }}
-                                className={cn(
-                                  'py-1.5 px-2.5 rounded-lg border text-xs font-medium transition-all text-left flex items-center gap-1 cursor-pointer',
-                                  isOccupied
-                                    ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-                                    : isSelected
-                                    ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
-                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
-                                )}
-                                title={
-                                  isOccupied
-                                    ? `Bank soal jurusan ${code} sudah dibuat oleh ${occInfo?.guruName || 'rekan guru'}`
-                                    : j.nama
-                                }
-                              >
-                                <span>{code}</span>
-                                {isOccupied && (
-                                  <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
-                                    Sudah Ada
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* 5. Opsi Distribusi Bank Soal (Mencegah Human Error & Memperjelas Niat Guru) */}
+            {/* 4. Model Distribusi: Tentukan Intensi Terlebih Dahulu (Mandiri vs Bersama) */}
             <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <Share2 size={13} className="text-indigo-600 dark:text-indigo-400" />
-                  <span>Apakah naskah ini akan dibagikan ke rekan guru lain?</span>
+                  <span>Model Distribusi Naskah</span>
                 </label>
                 <span
                   className={cn(
                     'text-[10px] font-bold px-2 py-0.5 rounded-full border',
                     isShared
                       ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800'
-                      : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
                   )}
                 >
-                  {isShared ? 'Mode MGMP (Bersama)' : 'Mode Mandiri'}
+                  {isShared ? 'Naskah Bersama (Master MGMP)' : 'Khusus Mandiri'}
                 </span>
               </div>
 
@@ -1333,25 +1169,25 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     setSelectedColleagueIds([]);
                   }}
                   className={cn(
-                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 relative',
+                    'p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 relative',
                     !isShared
-                      ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-500 ring-1 ring-indigo-500 shadow-2xs'
+                      ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/20 shadow-2xs'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
                   )}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                      <User size={13} className={!isShared ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} />
-                      <span>Tidak, Khusus Mandiri</span>
+                      <User size={14} className={!isShared ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'} />
+                      <span>Khusus Mandiri (Kelas Saya)</span>
                     </span>
                     {!isShared && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-600 text-white flex items-center gap-0.5">
-                        <Check size={10} /> Terpilih
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-600 text-white flex items-center gap-0.5">
+                        <Check size={10} /> Aktif
                       </span>
                     )}
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                    Khusus untuk diri sendiri dan rombel kelas binaan Anda. Rekan guru lain tidak menerima naskah ini.
+                    Hanya untuk rombel binaan Anda. Bebas memilih rumpun jurusan sendiri tanpa terpengaruh guru lain.
                   </p>
                 </button>
 
@@ -1362,50 +1198,271 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     setIsShared(true);
                   }}
                   className={cn(
-                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 relative',
+                    'p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 relative',
                     isShared
-                      ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-500 ring-1 ring-indigo-500 shadow-2xs'
+                      ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-500 ring-2 ring-indigo-500/20 shadow-2xs'
                       : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
                   )}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                      <Users size={13} className={isShared ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} />
-                      <span>Ya, Dibagikan (MGMP)</span>
+                      <Users size={14} className={isShared ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} />
+                      <span>Naskah Bersama (Master MGMP)</span>
                     </span>
                     {isShared && (
                       <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-600 text-white flex items-center gap-0.5">
-                        <Check size={10} /> Terpilih
+                        <Check size={10} /> Aktif
                       </span>
                     )}
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                    Naskah bersama se-mapel &amp; tingkat. Rekan paralel yang dipilih otomatis bebas tugas membuat soal.
+                    Naskah bersama se-sekolah. Rekan guru yang dipilih otomatis terhubung &amp; bebas tugas.
                   </p>
                 </button>
               </div>
+            </div>
 
-              {/* Tampilan Kondisional: Colleague Picker jika isShared, Info Box Aman jika Mandiri */}
-              {isShared ? (
-                <div className="pt-2 animate-in fade-in duration-200">
-                  <CbtMgmpColleaguePicker
-                    mapelId={mapelId}
-                    tingkat={tingkat}
-                    jurusan={jurusan}
-                    currentGuruId={guruId}
-                    selectedIds={selectedColleagueIds}
-                    onChangeSelectedIds={setSelectedColleagueIds}
-                    title="Pilih Rekan Guru Paralel Penerima Naskah:"
-                  />
-                </div>
-              ) : (
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-300 animate-in fade-in duration-200">
-                  <ShieldCheck size={16} className="text-emerald-500 shrink-0" />
-                  <span>
-                    <strong>Mode Mandiri Aktif:</strong> Naskah ini aman dan privat hanya untuk rombel kelas Anda. Tidak ada rekan guru lain yang akan terhubung.
-                  </span>
-                </div>
-              )}
+            {/* 5. Sasaran Konsentrasi Keahlian / Jurusan (ADAPTIF MENGIKUTI MODEL DISTRIBUSI) */}
+            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              {(() => {
+                const currentTingkatDuty = tingkat ? tingkatDutyMap.get(tingkat) : undefined;
+                const myTeachingJurusans = currentTingkatDuty?.teachingJurusans || [];
+
+                if (!isShared) {
+                  /* ── TAMPILAN KHUSUS MANDIRI: HANYA JURUSAN BINAAN GURU (MULTI-SELECT / RUMPUN) ── */
+                  return (
+                    <div className="space-y-2 animate-in fade-in duration-200">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <Star size={13} className="text-amber-500 fill-amber-500" />
+                          <span>Pilih Jurusan Rombel Binaan Anda (Bisa Multi-Pilih / Rumpun):</span>
+                        </label>
+                        {myTeachingJurusans.length > 1 && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => selectAllTeachingJurusans(myTeachingJurusans)}
+                              className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                            >
+                              Pilih Semua
+                            </button>
+                            <span className="text-slate-300">|</span>
+                            <button
+                              type="button"
+                              onClick={clearJurusan}
+                              className="text-[10px] font-semibold text-slate-500 hover:underline cursor-pointer"
+                            >
+                              Reset
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {myTeachingJurusans.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                            {myTeachingJurusans.map((code) => {
+                              const isChecked = selectedJurusanList.includes(code.toUpperCase());
+
+                              return (
+                                <button
+                                  key={code}
+                                  type="button"
+                                  onClick={() => toggleJurusan(code)}
+                                  className={cn(
+                                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-1.5',
+                                    isChecked
+                                      ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-950 dark:text-emerald-100 font-bold ring-1 ring-emerald-500 shadow-2xs'
+                                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={cn(
+                                        'w-4 h-4 rounded border flex items-center justify-center text-[10px] font-black',
+                                        isChecked
+                                          ? 'bg-emerald-600 text-white border-emerald-600'
+                                          : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+                                      )}
+                                    >
+                                      {isChecked ? '✓' : ''}
+                                    </div>
+                                    <span className="text-xs">{code}</span>
+                                  </div>
+                                  <span className="text-[9px] px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-semibold">
+                                    Binaan
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Keterangan Sasaran Terpilih */}
+                          <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                            <ShieldCheck size={15} className="text-emerald-600 shrink-0" />
+                            {selectedJurusanList.length > 0 ? (
+                              <span>
+                                Naskah mandiri ini mencakup jurusan:{' '}
+                                <strong className="text-slate-800 dark:text-slate-100">{selectedJurusanList.join(', ')}</strong>.
+                              </span>
+                            ) : (
+                              <span>
+                                Belum memilih spesifik (berlaku untuk <strong>Semua Rombel Binaan Anda</strong>).
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        /* Fallback jika data rombel belum spesifik di jadwal */
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] text-slate-500">
+                            Pilih jurusan rombel yang Anda ampu di tingkat {tingkat || '-'}:
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {rawJurusanList && rawJurusanList.map((j) => {
+                              const code = ((j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string).trim();
+                              const isChecked = selectedJurusanList.includes(code.toUpperCase());
+
+                              return (
+                                <button
+                                  key={j.id}
+                                  type="button"
+                                  onClick={() => toggleJurusan(code)}
+                                  className={cn(
+                                    'py-1.5 px-2.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5',
+                                    isChecked
+                                      ? 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-2xs'
+                                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:border-slate-300'
+                                  )}
+                                >
+                                  <span>{code}</span>
+                                  {isChecked && <span className="text-[9px]">✓</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                /* ── TAMPILAN KHUSUS MGMP BERSAMA (SKALA SEKOLAH) ── */
+                return (
+                  <div className="space-y-2 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Cakupan Jurusan Master MGMP Se-Sekolah:
+                      </label>
+                      <span className="text-[10px] text-slate-500 font-medium">
+                        {jurusan ? `Khusus Jurusan ${jurusan}` : 'Berlaku untuk semua jurusan'}
+                      </span>
+                    </div>
+
+                    {/* Banner Penjelas jika Semua Jurusan Sudah Ada */}
+                    {jurusanOccupancy.isGeneralOccupied && (
+                      <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-2">
+                        <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+                        <span>
+                          Paket Master <strong>Umum (Semua Jurusan)</strong> untuk Tingkat {tingkat || '-'} sudah dibuat oleh{' '}
+                          <strong>{jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}</strong>. Untuk membuat naskah varian paralel lain, pilih jurusan spesifik di bawah.
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      {/* Chip Semua Jurusan (Umum) */}
+                      {(() => {
+                        const isGeneralOcc = jurusanOccupancy.isGeneralOccupied;
+                        const isSelected = !jurusan;
+                        return (
+                          <button
+                            type="button"
+                            disabled={isGeneralOcc}
+                            onClick={() => {
+                              if (isGeneralOcc) return;
+                              clearJurusan();
+                            }}
+                            className={cn(
+                              'py-1.5 px-2.5 rounded-lg border text-xs font-semibold transition-all text-left flex items-center gap-1 cursor-pointer',
+                              isGeneralOcc
+                                ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
+                                : isSelected
+                                ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                            )}
+                            title={
+                              isGeneralOcc
+                                ? `Bank soal Umum sudah dibuat oleh ${jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}`
+                                : 'Berlaku untuk semua rombel se-sekolah'
+                            }
+                          >
+                            <span>Semua Jurusan (Umum)</span>
+                            {isGeneralOcc && (
+                              <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
+                                Sudah Ada
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })()}
+
+                      {/* Seluruh Jurusan di Sekolah (Multi-Select atau Single Select) */}
+                      {rawJurusanList &&
+                        rawJurusanList.map((j) => {
+                          const code = ((j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string).trim();
+                          const isChecked = selectedJurusanList.includes(code.toUpperCase());
+                          const occInfo = jurusanOccupancy.getOccupiedInfo(code);
+                          const isOccupied = Boolean(occInfo);
+
+                          return (
+                            <button
+                              key={j.id}
+                              type="button"
+                              disabled={isOccupied}
+                              onClick={() => toggleJurusan(code)}
+                              className={cn(
+                                'py-1.5 px-2.5 rounded-lg border text-xs font-medium transition-all text-left flex items-center gap-1 cursor-pointer',
+                                isOccupied
+                                  ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
+                                  : isChecked
+                                  ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
+                                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                              )}
+                              title={
+                                isOccupied
+                                  ? `Bank soal jurusan ${code} sudah dibuat oleh ${occInfo?.guruName || 'rekan guru'}`
+                                  : j.nama
+                              }
+                            >
+                              <span>{code}</span>
+                              {isOccupied ? (
+                                <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
+                                  Sudah Ada
+                                </span>
+                              ) : isChecked ? (
+                                <span className="text-[9px]">✓</span>
+                              ) : null}
+                            </button>
+                          );
+                        })}
+                    </div>
+
+                    {/* Colleague Picker untuk Mode MGMP */}
+                    <div className="pt-2">
+                      <CbtMgmpColleaguePicker
+                        mapelId={mapelId}
+                        tingkat={tingkat}
+                        jurusan={jurusan}
+                        currentGuruId={guruId}
+                        selectedIds={selectedColleagueIds}
+                        onChangeSelectedIds={setSelectedColleagueIds}
+                        title="Pilih Rekan Guru Paralel Penerima Naskah:"
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         ) : (
@@ -1448,7 +1505,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   {mapelId && (
                     <button
                       type="button"
-                      onClick={() => triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal)}
+                      onClick={() => triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, jurusan)}
                       className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 hover:underline cursor-pointer"
                       title="Generate otomatis judul standar"
                     >

@@ -439,7 +439,8 @@ export function generateAutoFillMassal(params: {
   const isSemua = !targetTingkat || targetTingkat.toUpperCase() === 'SEMUA';
 
   const cleanJurusan = (targetJurusan || '').trim().toUpperCase();
-  const jurSuffix = cleanJurusan ? `-${cleanJurusan}` : '';
+  const jurCodePart = cleanJurusan ? cleanJurusan.replace(/[,;\s|]+/g, '-').replace(/-+/g, '-') : '';
+  const jurSuffix = jurCodePart ? `-${jurCodePart}` : '';
   const jurTitle = cleanJurusan ? ` (${cleanJurusan})` : '';
 
   const generatedCode = isSemua
