@@ -667,6 +667,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       return;
     }
 
+    if (isShared && jurusanOccupancy.isGeneralOccupied) {
+      toast.error(
+        `Pembuatan master MGMP dikunci karena paket master Umum untuk Tingkat ${tingkat} sudah diterbitkan oleh ${jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}.`
+      );
+      return;
+    }
+
     if (isTargetOutOfSchedule.isInvalid) {
       toast.error(isTargetOutOfSchedule.message);
       return;
@@ -720,6 +727,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
     if (isTargetCoveredByColleague.isLocked) {
       toast.error('Pembuatan bank soal dikunci karena sasaran ini telah di-cover oleh rekan guru MGMP.');
+      return;
+    }
+
+    if (isShared && jurusanOccupancy.isGeneralOccupied) {
+      toast.error(
+        `Pembuatan master MGMP dikunci karena paket master Umum untuk Tingkat ${tingkat} sudah diterbitkan oleh ${jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}.`
+      );
       return;
     }
 
@@ -1489,12 +1503,17 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
                     {/* Banner Penjelas jika Semua Jurusan Sudah Ada */}
                     {jurusanOccupancy.isGeneralOccupied && (
-                      <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-2">
-                        <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
-                        <span>
-                          Paket Master <strong>Umum (Semua Jurusan)</strong> untuk Tingkat {tingkat || '-'} sudah dibuat oleh{' '}
-                          <strong>{jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}</strong>. Untuk membuat naskah varian paralel lain, pilih jurusan spesifik di bawah.
-                        </span>
+                      <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200 flex items-start gap-2.5">
+                        <Lock size={16} className="text-rose-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold text-rose-800 dark:text-rose-200">
+                            Naskah Master Umum (Semua Jurusan) Sudah Diterbitkan
+                          </div>
+                          <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-0.5 leading-relaxed">
+                            Paket Master <strong>Umum (Semua Jurusan)</strong> untuk Tingkat {tingkat || '-'} telah diterbitkan oleh{' '}
+                            <strong>{jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}</strong>. Seluruh jurusan pada tingkat ini telah resmi tercakup dalam naskah master tersebut sehingga pembuatan bank soal baru dikunci untuk mencegah duplikasi ujian.
+                          </p>
+                        </div>
                       </div>
                     )}
 
@@ -1559,7 +1578,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                               )}
                               title={
                                 isOccupied
-                                  ? `Bank soal jurusan ${code} sudah dibuat oleh ${occInfo?.guruName || 'rekan guru'}`
+                                  ? `Bank soal jurusan ${code} sudah di-cover oleh naskah master Umum (${occInfo?.guruName || 'rekan guru'})`
                                   : j.nama
                               }
                             >
@@ -1576,18 +1595,20 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         })}
                     </div>
 
-                    {/* Colleague Picker untuk Mode MGMP */}
-                    <div className="pt-2">
-                      <CbtMgmpColleaguePicker
-                        mapelId={mapelId}
-                        tingkat={tingkat}
-                        jurusan={jurusan}
-                        currentGuruId={guruId}
-                        selectedIds={selectedColleagueIds}
-                        onChangeSelectedIds={setSelectedColleagueIds}
-                        title="Pilih Rekan Guru Paralel Penerima Naskah:"
-                      />
-                    </div>
+                    {/* Colleague Picker untuk Mode MGMP (hanya jika master umum belum diterbitkan) */}
+                    {!jurusanOccupancy.isGeneralOccupied && (
+                      <div className="pt-2">
+                        <CbtMgmpColleaguePicker
+                          mapelId={mapelId}
+                          tingkat={tingkat}
+                          jurusan={jurusan}
+                          currentGuruId={guruId}
+                          selectedIds={selectedColleagueIds}
+                          onChangeSelectedIds={setSelectedColleagueIds}
+                          title="Pilih Rekan Guru Paralel Penerima Naskah:"
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -1799,6 +1820,19 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               >
                 <Lock size={14} className="text-rose-500" />
                 <span>Terkunci: Sudah Di-cover Rekan MGMP</span>
+              </Button>
+            ) : isShared && jurusanOccupancy.isGeneralOccupied ? (
+              <Button
+                key="btn-step1-mgmp-locked"
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={true}
+                className="bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed flex items-center gap-1.5 font-bold"
+                title={`Terkunci: Naskah Master Umum untuk Tingkat ${tingkat} sudah diterbitkan oleh ${jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}`}
+              >
+                <Lock size={14} className="text-rose-500" />
+                <span>Terkunci: Master Umum Tingkat {tingkat} Sudah Ada</span>
               </Button>
             ) : isTargetOutOfSchedule.isInvalid ? (
               <Button

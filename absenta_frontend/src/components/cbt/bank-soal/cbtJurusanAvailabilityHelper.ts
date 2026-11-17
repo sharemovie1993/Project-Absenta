@@ -98,14 +98,15 @@ export function evaluateJurusanOccupancy(params: {
       if (!cleanCode || cleanCode === 'SEMUA') {
         return isGeneralOccupied;
       }
-      return occupiedMap.has(cleanCode);
+      // Jika master naskah umum (semua jurusan) sudah ada, maka seluruh jurusan otomatis ter-cover / occupied
+      return isGeneralOccupied || occupiedMap.has(cleanCode);
     },
     getOccupiedInfo: (jurusanCode: string) => {
       const cleanCode = (jurusanCode || '').trim().toUpperCase();
       if (!cleanCode || cleanCode === 'SEMUA') {
         return generalInfo;
       }
-      return occupiedMap.get(cleanCode);
+      return occupiedMap.get(cleanCode) || (isGeneralOccupied ? generalInfo : undefined);
     },
   };
 }
