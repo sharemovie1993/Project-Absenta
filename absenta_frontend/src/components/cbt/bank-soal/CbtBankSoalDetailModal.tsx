@@ -94,19 +94,6 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
     return Array.from(seen.values());
   }, [bankSoal?.unit_pengajaran_id, bankSoal?.available_units, tenantUnitsRes?.data]);
 
-  // Hanya unit yang valid dan memiliki minimal 1 soal yang relevan di bank soal ini
-  const relevantUnits = useMemo(() => {
-    return availableUnits.filter((unit) => {
-      return soalList.some((s) => s.unit_pengajaran_id === unit.id);
-    });
-  }, [availableUnits, soalList]);
-
-  const unitMap = useMemo(() => {
-    const map = new Map<string, CbtUnitPengajaranSummary>();
-    availableUnits.forEach((u) => map.set(u.id, u));
-    return map;
-  }, [availableUnits]);
-
   // Fetch list of questions for this bank with robust network resilience
   const {
     data: soalList = [],
@@ -123,6 +110,19 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 3000),
   });
+
+  // Hanya unit yang valid dan memiliki minimal 1 soal yang relevan di bank soal ini
+  const relevantUnits = useMemo(() => {
+    return availableUnits.filter((unit) => {
+      return soalList.some((s) => s.unit_pengajaran_id === unit.id);
+    });
+  }, [availableUnits, soalList]);
+
+  const unitMap = useMemo(() => {
+    const map = new Map<string, CbtUnitPengajaranSummary>();
+    availableUnits.forEach((u) => map.set(u.id, u));
+    return map;
+  }, [availableUnits]);
 
   // Jika bank soal masih kosong dan tidak readOnly, langsung buka kartu Soal #1 secara inline
   useEffect(() => {
