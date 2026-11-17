@@ -32,6 +32,11 @@ export interface User {
   siswa_id?: string;
   guru_profile?: { 
     id: string;
+    nama_guru?: string | null;
+    nip?: string | null;
+    nuptk?: string | null;
+    nik?: string | null;
+    no_hp?: string | null;
     wali_kelas_di?: {
       id: string;
       nama_kelas: string;
@@ -40,6 +45,7 @@ export interface User {
     jenis_ptk?: string | null;
     pangkat_golongan?: string | null;
     tmt_guru?: string | null;
+    [key: string]: any;
   } | null;
   capabilities?: string[];
   position_codes?: string[];

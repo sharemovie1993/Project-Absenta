@@ -25,6 +25,7 @@ import { StaffWeeklyScheduleWidget } from '../../widgets/StaffWeeklyScheduleWidg
 import { getRekapBulananGuruMe } from '../../../../api/attendance/rekap.api';
 import { kurikulumApi } from '../../../../api/kurikulum.api';
 import { UniversalEcosystemTopbar } from '@/components/dashboard/roles/common';
+import { normalizeTeacherIdentity } from '../../../../utils/academic/academicIdentityNormalizer';
 
 // ─── Webcam Modal ─────────────────────────────────────────────────────────────
 
@@ -413,8 +414,12 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
     }
   };
 
-  const activeNama = guruProfile?.nama_guru || user?.full_name || user?.name || 'Drs. Budi Santoso, M.Pd';
-  const activeNip = guruProfile?.nip || nipText;
+  const teacherIdentity = useMemo(() => {
+    return normalizeTeacherIdentity(guruProfile || (user as any)?.guru_profile || user);
+  }, [guruProfile, user]);
+
+  const activeNama = teacherIdentity.namaLengkapGelar || teacherIdentity.nama || '';
+  const activeNip = teacherIdentity.nipClean || '-';
 
   const [showIzinModal, setShowIzinModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);

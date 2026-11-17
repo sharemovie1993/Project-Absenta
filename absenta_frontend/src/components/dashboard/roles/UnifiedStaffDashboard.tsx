@@ -67,6 +67,7 @@ import { usePiketIzinKeluarOptions } from '../../../hooks/usePiketIzinKeluarOpti
 import { useNavStore } from '../../../store/navStore';
 import { useMobileSubtabSidebarStore } from './common/subtabSidebarStore';
 import { useGuruMe } from '../../../hooks/useGuruMe';
+import { normalizeTeacherIdentity } from '../../../utils/academic/academicIdentityNormalizer';
 
 // Lazy-Loaded Heavy Modals (Zero Network Leak on Initial Load)
 const JurnalKbmModal = React.lazy(() => import('../../kurikulum/JurnalKbmModal').then(m => ({ default: m.JurnalKbmModal })));
@@ -965,16 +966,12 @@ export const UnifiedStaffDashboard: React.FC = () => {
     jabatan, isTuStaff,
   ]);
 
-  const teacherInitials = useMemo(() => {
-    const name = user?.full_name || user?.name || 'Hendra Wijaya';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return name.slice(0, 2).toUpperCase();
-  }, [user]);
+  const teacherIdentity = useMemo(() => {
+    return normalizeTeacherIdentity(guruProfile || (user as any)?.guru_profile || user);
+  }, [guruProfile, user]);
 
-  const nipText = guruProfile?.nip || (user as any)?.nip || '19850314 201001 1 008';
+  const teacherInitials = teacherIdentity.initials || 'GU';
+  const nipText = teacherIdentity.nipClean;
 
   // Dynamic TU Tab Label & Badge
   const tuTabMeta = useMemo(() => {
@@ -1487,7 +1484,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
           <div className="space-y-1">
             {/* 1. NAMA */}
             <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-xs">
-              {user?.full_name || user?.name || 'Drs. Budi Santoso, M.Pd'}
+              {teacherIdentity.namaLengkapGelar || teacherIdentity.nama || user?.full_name || ''}
             </h1>
 
             {/* 2. NIP */}

@@ -45,8 +45,9 @@ export function useGuruMe(options?: UseGuruMeOptions) {
       return (user as any)?.guru_profile || (user as any)?.guru || null;
     },
     initialData: () => (user as any)?.guru_profile || (user as any)?.guru || null,
+    initialDataUpdatedAt: 0,
     enabled: Boolean(user?.id && isEnabled),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
 
   return {

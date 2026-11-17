@@ -1048,10 +1048,29 @@ export class AuthService {
 
       response.guru_profile = {
         id: guru.id,
-        wali_kelas_di: waliKelasDi,
-        jenis_ptk: guru.jenis_ptk,
+        nama_guru: guru.nama_guru,
+        nip: guru.nip,
+        nuptk: guru.nuptk,
+        nik: guru.nik,
+        no_kk: guru.no_kk,
+        npwp: guru.npwp,
+        nama_ibu_kandung: guru.nama_ibu_kandung,
+        no_hp: guru.no_hp,
+        no_rfid: guru.no_rfid,
+        alamat: guru.alamat,
+        tempat_lahir: guru.tempat_lahir,
+        tanggal_lahir: guru.tanggal_lahir,
+        jenis_kelamin: guru.jenis_kelamin,
+        agama: guru.agama,
+        status_kepegawaian: guru.status_kepegawaian,
+        pendidikan_terakhir: guru.pendidikan_terakhir,
         pangkat_golongan: guru.pangkat_golongan,
+        jabatan: guru.jabatan,
         tmt_guru: guru.tmt_guru,
+        jenis_ptk: guru.jenis_ptk,
+        max_jp: guru.max_jp,
+        foto: guru.foto,
+        wali_kelas_di: waliKelasDi,
         is_pembimbing_pkl: totalPklCount > 0,
         active_pkl_count: activePklCount > 0 ? activePklCount : totalPklCount,
         total_pkl_count: totalPklCount,
@@ -1060,6 +1079,7 @@ export class AuthService {
         is_piket_guru: activePiketCount > 0,
         active_piket_count: activePiketCount,
       };
+      (response as any).nip = guru.nip;
     }
   }
 }
