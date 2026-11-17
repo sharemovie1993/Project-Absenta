@@ -18,6 +18,7 @@ import { useTeacherCbtDutyStatus, type TeacherDutyItem } from './useTeacherCbtDu
 import type { CbtBankSoal } from '@/types/cbt.types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui';
+import { CbtSharedDistributionModal } from './CbtSharedDistributionModal';
 
 interface TeacherCbtDutyCardProps {
   guruId?: string;
@@ -53,6 +54,7 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
   } = useTeacherCbtDutyStatus(guruId);
 
   const [isExpanded, setIsExpanded] = useState(true);
+  const [distributionBank, setDistributionBank] = useState<CbtBankSoal | null>(null);
 
   // Jika tidak sedang loading dan guru tidak punya penugasan mengajar di tingkat aktif
   if (isLoading || hasNoDuties || totalDuties === 0) {
@@ -352,11 +354,11 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                       {/* Bank Soal Mandiri */}
                       <td className="py-2.5 px-3">
                         {item.ownBank ? (
-                          <div className="space-y-0.5">
+                          <div className="space-y-1">
                             <div className="font-medium text-slate-800 dark:text-slate-200 text-[11px] truncate max-w-[200px]" title={item.ownBank.judul}>
                               {item.ownBank.judul}
                             </div>
-                            <div className="flex items-center gap-1 text-[10px]">
+                            <div className="flex items-center gap-1.5 text-[10px] flex-wrap">
                               {ownCount > 0 ? (
                                 <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800">
                                   <CheckCircle2 size={10} />
@@ -367,6 +369,26 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                                   <AlertTriangle size={10} />
                                   <span>0 Soal (Draf)</span>
                                 </span>
+                              )}
+
+                              {/* Tombol Lihat Rekan Penerima jika bank MGMP / Dibagikan */}
+                              {(item.ownBank.is_shared ||
+                                (item.ownBank.Kontributor && item.ownBank.Kontributor.length > 0) ||
+                                item.ownBank.is_kolaborasi_resmi ||
+                                item.ownBank.kolaborasi_badge) && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDistributionBank(item.ownBank!);
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/70 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 transition-colors cursor-pointer"
+                                  title="Lihat siapa saja rekan guru yang menerima bank soal ini (Aman & Read-Only)"
+                                >
+                                  <Users size={10} className="text-indigo-600 dark:text-indigo-400" />
+                                  <span>Lihat Penerima</span>
+                                  <Eye size={9} className="opacity-70" />
+                                </button>
                               )}
                             </div>
                           </div>
@@ -380,11 +402,11 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                       {/* Bank Soal MGMP / Kolaboratif */}
                       <td className="py-2.5 px-3">
                         {item.mgmpBank ? (
-                          <div className="space-y-0.5">
+                          <div className="space-y-1">
                             <div className="font-medium text-indigo-900 dark:text-indigo-200 text-[11px] truncate max-w-[200px]" title={item.mgmpBank.judul}>
                               {item.mgmpBank.judul}
                             </div>
-                            <div className="flex items-center gap-1 text-[10px] flex-wrap">
+                            <div className="flex items-center gap-1.5 text-[10px] flex-wrap">
                               <span className="text-slate-500 dark:text-slate-400">
                                 Oleh: <strong className="text-indigo-700 dark:text-indigo-300">{item.masterAuthorName || item.mgmpBank.Guru?.nama_guru || 'Rekan Guru'}</strong>
                               </span>
@@ -392,6 +414,18 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                                 <Users size={9} />
                                 <span>{mgmpCount} Soal</span>
                               </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDistributionBank(item.mgmpBank!);
+                                }}
+                                className="inline-flex items-center gap-1 text-[9.5px] font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 hover:underline cursor-pointer"
+                                title="Lihat rekan guru yang menerima bank soal ini (Aman & Read-Only)"
+                              >
+                                <Eye size={9} />
+                                <span>Penerima</span>
+                              </button>
                             </div>
                           </div>
                         ) : (
@@ -556,15 +590,44 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
 
                   {/* Mandiri vs MGMP Info */}
                   <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between gap-2">
-                    <div className="text-[10.5px]">
+                    <div className="text-[10.5px] space-y-0.5">
                       {item.ownBank ? (
-                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">
-                          Mandiri: {item.ownBank.jumlah_soal || item.ownBank._count?.Soal || 0} Soal
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                            Mandiri: {item.ownBank.jumlah_soal || item.ownBank._count?.Soal || 0} Soal
+                          </span>
+                          {(item.ownBank.is_shared ||
+                            (item.ownBank.Kontributor && item.ownBank.Kontributor.length > 0) ||
+                            item.ownBank.is_kolaborasi_resmi ||
+                            item.ownBank.kolaborasi_badge) && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDistributionBank(item.ownBank!);
+                              }}
+                              className="text-[9.5px] font-semibold text-indigo-700 dark:text-indigo-300 underline cursor-pointer"
+                            >
+                              Lihat Penerima
+                            </button>
+                          )}
+                        </div>
                       ) : item.mgmpBank ? (
-                        <span className="text-indigo-700 dark:text-indigo-400 font-medium">
-                          MGMP: {item.masterAuthorName || 'Rekan'} ({item.mgmpBank.jumlah_soal || item.mgmpBank._count?.Soal || 0} Soal)
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-indigo-700 dark:text-indigo-400 font-medium">
+                            MGMP: {item.masterAuthorName || 'Rekan'} ({item.mgmpBank.jumlah_soal || item.mgmpBank._count?.Soal || 0} Soal)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDistributionBank(item.mgmpBank!);
+                            }}
+                            className="text-[9.5px] font-semibold text-indigo-600 dark:text-indigo-400 underline cursor-pointer"
+                          >
+                            Lihat Penerima
+                          </button>
+                        </div>
                       ) : (
                         <span className="text-slate-400 italic">Belum ada bank soal</span>
                       )}
@@ -618,6 +681,14 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal Distribusi Rekan MGMP (Read-Only & Bebas Human Error) */}
+      <CbtSharedDistributionModal
+        isOpen={Boolean(distributionBank)}
+        onClose={() => setDistributionBank(null)}
+        bankSoal={distributionBank}
+        currentGuruId={guruId}
+      />
     </div>
   );
 };

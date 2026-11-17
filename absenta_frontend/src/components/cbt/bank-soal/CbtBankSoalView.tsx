@@ -33,6 +33,7 @@ import { CbtBankSoalFormModal } from './CbtBankSoalFormModal';
 import { CbtBankSoalDetailModal } from './CbtBankSoalDetailModal';
 import { TeacherCbtDutyCard } from './TeacherCbtDutyCard';
 import { CbtJadwalFormModal } from '../jadwal/CbtJadwalFormModal';
+import { CbtSharedDistributionModal } from './CbtSharedDistributionModal';
 import { getTingkatRoman, formatDisplayJudulBankSoal } from './cbtAsesmenHelper';
 import { useCbtOperationMode } from '../cbtModeHelper';
 import useConfirm from '@/hooks/useConfirm';
@@ -85,6 +86,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const [defaultJurusanForCreate, setDefaultJurusanForCreate] = useState<string | undefined>(undefined);
   const [isJadwalModalOpen, setIsJadwalModalOpen] = useState(false);
   const [bankSoalForJadwal, setBankSoalForJadwal] = useState<CbtBankSoal | null>(null);
+  const [distributionBank, setDistributionBank] = useState<CbtBankSoal | null>(null);
 
   const handleOpenJadwalModal = (bankSoal: CbtBankSoal) => {
     setBankSoalForJadwal(bankSoal);
@@ -334,20 +336,43 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         render: (_val: unknown, row: CbtBankSoal) => {
           const isFromColleague = Boolean(currentGuruId && row.guru_id !== currentGuruId);
           const isMassalPackage = isRowMassalPackage(row);
+          const isMgmpOrShared =
+            Boolean(row.kolaborasi_badge) ||
+            isMassalPackage ||
+            Boolean(row.is_shared) ||
+            Boolean(row.Kontributor && row.Kontributor.length > 0);
+
           return (
             <div className="space-y-0.5">
               <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                 {row.Guru?.nama_guru || '-'}
               </div>
-              {isFromColleague ? (
-                <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 block">
-                  Penyusun Rekan MGMP
-                </span>
-              ) : (row.kolaborasi_badge || isMassalPackage) ? (
-                <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 block">
-                  Penyusun Utama (Anda)
-                </span>
-              ) : null}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {isFromColleague ? (
+                  <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+                    Penyusun Rekan MGMP
+                  </span>
+                ) : isMgmpOrShared ? (
+                  <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">
+                    Penyusun Utama (Anda)
+                  </span>
+                ) : null}
+
+                {(isFromColleague || isMgmpOrShared) && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDistributionBank(row);
+                    }}
+                    className="inline-flex items-center gap-1 text-[9.5px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 hover:underline cursor-pointer bg-indigo-50/60 dark:bg-indigo-950/40 px-1.5 py-0.2 rounded border border-indigo-200/60 dark:border-indigo-800/60"
+                    title="Lihat rekan guru yang menerima / berbagi naskah ini (Aman & Read-Only)"
+                  >
+                    <Users size={9} />
+                    <span>Lihat Rekan</span>
+                  </button>
+                )}
+              </div>
             </div>
           );
         },
@@ -800,6 +825,14 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           }}
         />
       )}
+
+      {/* Modal Distribusi Rekan MGMP (Read-Only & Bebas Human Error) */}
+      <CbtSharedDistributionModal
+        isOpen={Boolean(distributionBank)}
+        onClose={() => setDistributionBank(null)}
+        bankSoal={distributionBank}
+        currentGuruId={currentGuruId}
+      />
     </div>
   );
 });
