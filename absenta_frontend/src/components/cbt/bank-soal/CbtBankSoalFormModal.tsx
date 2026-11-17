@@ -209,36 +209,6 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       .filter(Boolean);
   }, [jurusan]);
 
-  const toggleJurusan = (code: string) => {
-    const cleanCode = code.trim().toUpperCase();
-    let nextList: string[];
-    if (selectedJurusanList.includes(cleanCode)) {
-      nextList = selectedJurusanList.filter((c) => c !== cleanCode);
-    } else {
-      nextList = [...selectedJurusanList, cleanCode];
-    }
-    const nextJurusan = nextList.join(', ');
-    setJurusan(nextJurusan);
-    if (scope === 'TERPUSAT_MASSAL' && mapelId) {
-      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, nextJurusan);
-    }
-  };
-
-  const selectAllTeachingJurusans = (jurusans: string[]) => {
-    const nextJurusan = jurusans.join(', ');
-    setJurusan(nextJurusan);
-    if (scope === 'TERPUSAT_MASSAL' && mapelId) {
-      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, nextJurusan);
-    }
-  };
-
-  const clearJurusan = () => {
-    setJurusan('');
-    if (scope === 'TERPUSAT_MASSAL' && mapelId) {
-      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, '');
-    }
-  };
-
   useEffect(() => {
     if (defaultJurusan && !bankSoalToEdit) {
       setJurusan(defaultJurusan);
@@ -451,6 +421,49 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setJurusan('');
     }
   }, [jurusan, jurusanOccupancy]);
+
+  const toggleJurusan = (code: string) => {
+    // Cegah interaksi sama sekali jika tingkat/jurusan sedang terkunci anti-duplikasi
+    if (isTargetCoveredByColleague.isLocked) return;
+    if (isShared && jurusanOccupancy.isGeneralOccupied) return;
+
+    const cleanCode = code.trim().toUpperCase();
+    if (jurusanOccupancy.isJurusanOccupied(cleanCode)) return;
+
+    let nextList: string[];
+    if (selectedJurusanList.includes(cleanCode)) {
+      nextList = selectedJurusanList.filter((c) => c !== cleanCode);
+    } else {
+      nextList = [...selectedJurusanList, cleanCode];
+    }
+    const nextJurusan = nextList.join(', ');
+    setJurusan(nextJurusan);
+    if (scope === 'TERPUSAT_MASSAL' && mapelId) {
+      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, nextJurusan);
+    }
+  };
+
+  const selectAllTeachingJurusans = (jurusans: string[]) => {
+    if (isTargetCoveredByColleague.isLocked) return;
+    if (isShared && jurusanOccupancy.isGeneralOccupied) return;
+
+    const validJurusans = jurusans.filter((j) => !jurusanOccupancy.isJurusanOccupied(j));
+    const nextJurusan = validJurusans.join(', ');
+    setJurusan(nextJurusan);
+    if (scope === 'TERPUSAT_MASSAL' && mapelId) {
+      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, nextJurusan);
+    }
+  };
+
+  const clearJurusan = () => {
+    if (isTargetCoveredByColleague.isLocked) return;
+    if (isShared && jurusanOccupancy.isGeneralOccupied) return;
+
+    setJurusan('');
+    if (scope === 'TERPUSAT_MASSAL' && mapelId) {
+      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, '');
+    }
+  };
 
   // Ambil data penugasan mapel guru yang sedang dipilih (hanya relevan di mode Mandiri Guru)
   const { data: teacherAssignedMapels, isLoading: isAssignedMapelsLoading } = useQuery({
@@ -1349,6 +1362,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               {(() => {
                 const currentTingkatDuty = tingkat ? tingkatDutyMap.get(tingkat) : undefined;
                 const myTeachingJurusans = currentTingkatDuty?.teachingJurusans || [];
+                const isLocked = isTargetCoveredByColleague.isLocked;
 
                 if (!isShared) {
                   /* ── TAMPILAN KHUSUS MANDIRI: HANYA JURUSAN BINAAN GURU (MULTI-SELECT / RUMPUN) ── */
@@ -1359,7 +1373,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                           <Star size={13} className="text-amber-500 fill-amber-500" />
                           <span>Pilih Jurusan Rombel Binaan Anda (Bisa Multi-Pilih / Rumpun):</span>
                         </label>
-                        {myTeachingJurusans.length > 1 && (
+                        {!isLocked && myTeachingJurusans.length > 1 && (
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
@@ -1385,24 +1399,39 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                             {myTeachingJurusans.map((code) => {
                               const isChecked = selectedJurusanList.includes(code.toUpperCase());
+                              const occInfo = jurusanOccupancy.getOccupiedInfo(code);
+                              const isOccupied = isLocked || Boolean(occInfo);
 
                               return (
                                 <button
                                   key={code}
                                   type="button"
-                                  onClick={() => toggleJurusan(code)}
+                                  disabled={isOccupied}
+                                  onClick={() => {
+                                    if (isOccupied) return;
+                                    toggleJurusan(code);
+                                  }}
                                   className={cn(
-                                    'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-1.5',
-                                    isChecked
-                                      ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-950 dark:text-emerald-100 font-bold ring-1 ring-emerald-500 shadow-2xs'
-                                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                                    'p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-1.5',
+                                    isOccupied
+                                      ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed select-none'
+                                      : isChecked
+                                      ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-950 dark:text-emerald-100 font-bold ring-1 ring-emerald-500 shadow-2xs cursor-pointer'
+                                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300 cursor-pointer'
                                   )}
+                                  title={
+                                    isOccupied
+                                      ? `Terkunci: Rombel jurusan ${code} sudah di-cover oleh naskah master rekan MGMP (${isTargetCoveredByColleague.authorName || occInfo?.guruName || 'Rekan Guru'})`
+                                      : `Jurusan ${code}`
+                                  }
                                 >
                                   <div className="flex items-center gap-2">
                                     <div
                                       className={cn(
                                         'w-4 h-4 rounded border flex items-center justify-center text-[10px] font-black',
-                                        isChecked
+                                        isOccupied
+                                          ? 'border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-400'
+                                          : isChecked
                                           ? 'bg-emerald-600 text-white border-emerald-600'
                                           : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
                                       )}
@@ -1411,28 +1440,43 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                                     </div>
                                     <span className="text-xs">{code}</span>
                                   </div>
-                                  <span className="text-[9px] px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-semibold">
-                                    Binaan
-                                  </span>
+                                  {isOccupied ? (
+                                    <span className="text-[9px] px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-0.5">
+                                      <Lock size={8} /> Terkunci
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-semibold">
+                                      Binaan
+                                    </span>
+                                  )}
                                 </button>
                               );
                             })}
                           </div>
 
                           {/* Keterangan Sasaran Terpilih */}
-                          <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
-                            <ShieldCheck size={15} className="text-emerald-600 shrink-0" />
-                            {selectedJurusanList.length > 0 ? (
+                          {isLocked ? (
+                            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                              <Lock size={14} className="text-rose-500 shrink-0" />
                               <span>
-                                Naskah mandiri ini mencakup jurusan:{' '}
-                                <strong className="text-slate-800 dark:text-slate-100">{selectedJurusanList.join(', ')}</strong>.
+                                Seluruh rombel binaan Anda pada Tingkat {tingkat} telah di-cover oleh naskah master rekan MGMP ({isTargetCoveredByColleague.authorName || 'Rekan Guru'}). Pemilihan jurusan dinonaktifkan.
                               </span>
-                            ) : (
-                              <span>
-                                Belum memilih spesifik (berlaku untuk <strong>Semua Rombel Binaan Anda</strong>).
-                              </span>
-                            )}
-                          </div>
+                            </div>
+                          ) : (
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                              <ShieldCheck size={15} className="text-emerald-600 shrink-0" />
+                              {selectedJurusanList.length > 0 ? (
+                                <span>
+                                  Naskah mandiri ini mencakup jurusan:{' '}
+                                  <strong className="text-slate-800 dark:text-slate-100">{selectedJurusanList.join(', ')}</strong>.
+                                </span>
+                              ) : (
+                                <span>
+                                  Belum memilih spesifik (berlaku untuk <strong>Semua Rombel Binaan Anda</strong>).
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ) : relevantDutiesForMapel.length > 0 ? (
                         <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200">
