@@ -434,6 +434,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     if (newScope === 'TERPUSAT_MASSAL') {
       setShowAllMapels(true);
       setIsShared(true);
+      setUnitPengajaranId('');
       const recKey = lockedEventKey || smartDetection.recommendedKey;
       const validTingkat = getAllowedTingkatForAsesmen('TERPUSAT_MASSAL', recKey, effectiveTingkatList, jenjang);
       const targetTingkat = (tingkat && validTingkat.includes(tingkat)) ? tingkat : '';
@@ -887,67 +888,98 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 aria-label="Pilih Mata Pelajaran"
               />
 
-              {/* Pilihan Target Mapel Induk (Kolaborasi Resmi) vs Unit Pengajaran Spesifik */}
+              {/* Cakupan Unit Pengajaran */}
               {mapelId && availableUnits.length > 0 && (
-                <div className="mt-2 p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/70 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                      <Layers size={12} className="text-indigo-600 dark:text-indigo-400" />
-                      <span>Cakupan Unit Pengajaran</span>
-                    </span>
-                    <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
-                      {availableUnits.length} Unit Aktif
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setUnitPengajaranId('')}
-                      className={cn(
-                        'p-2 rounded-lg border text-left transition-all cursor-pointer',
-                        !unitPengajaranId
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
-                      )}
-                    >
-                      <div className="text-[11px] font-bold flex items-center justify-between gap-1">
-                        <span>Gabungan Mapel Induk</span>
-                        <span className={cn(
-                          'text-[9px] px-1.5 py-0.2 rounded-full font-bold',
-                          !unitPengajaranId ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
-                        )}>
-                          Kolaborasi
-                        </span>
+                scope === 'TERPUSAT_MASSAL' ? (
+                  /* Di Mode Orkestrator / MGMP Master: Selalu Mapel Induk Kolaborasi (Anti-Bingung) */
+                  <div className="mt-2 p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800 flex items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-indigo-600 text-white shrink-0">
+                        <Layers size={14} />
                       </div>
-                      <p className={cn('text-[10px] mt-0.5', !unitPengajaranId ? 'text-indigo-100' : 'text-slate-500')}>
-                        Semua guru unit &amp; delegasi otomatis mendapat akses kontributor soal.
-                      </p>
-                    </button>
-                    <div className={cn(
-                      'p-2 rounded-lg border transition-all',
-                      unitPengajaranId
-                        ? 'bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-400 dark:border-indigo-700'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
-                    )}>
-                      <label htmlFor="form-unit-pengajaran" className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-1">
-                        Atau Kuis / Ujian Khusus Unit:
-                      </label>
-                      <select
-                        id="form-unit-pengajaran"
-                        value={unitPengajaranId}
-                        onChange={(e) => setUnitPengajaranId(e.target.value)}
-                        className="w-full text-[11px] font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                      >
-                        <option value="">-- Gunakan Mapel Induk (Kolaborasi) --</option>
-                        {availableUnits.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.nama_unit}{u.guru_nama ? ` — ${u.guru_nama}` : ''}
-                          </option>
-                        ))}
-                      </select>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            Cakupan: Gabungan Mapel Induk
+                          </span>
+                          <span className="text-[9.5px] px-1.5 py-0.2 rounded-full font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
+                            {availableUnits.length} Unit Terintegrasi
+                          </span>
+                        </div>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          Ujian bersama menguji kompetensi mapel induk secara terpadu. Seluruh guru pengampu unit otomatis mendapat akses kontributor bank soal.
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  /* Di Mode Mandiri Guru: Guru dapat memilih Mapel Induk atau Khusus Unit Mandiri */
+                  <div className="mt-2 p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/70 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                        <Layers size={12} className="text-indigo-600 dark:text-indigo-400" />
+                        <span>Cakupan Unit Pengajaran</span>
+                      </span>
+                      <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+                        {availableUnits.length} Unit Aktif
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setUnitPengajaranId('')}
+                        className={cn(
+                          'p-2 rounded-lg border text-left transition-all cursor-pointer',
+                          !unitPengajaranId
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
+                        )}
+                      >
+                        <div className="text-[11px] font-bold flex items-center justify-between gap-1">
+                          <span>Gabungan Mapel Induk</span>
+                          <span
+                            className={cn(
+                              'text-[9px] px-1.5 py-0.2 rounded-full font-bold',
+                              !unitPengajaranId
+                                ? 'bg-white/20 text-white'
+                                : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
+                            )}
+                          >
+                            Umum
+                          </span>
+                        </div>
+                        <p className={cn('text-[10px] mt-0.5', !unitPengajaranId ? 'text-indigo-100' : 'text-slate-500')}>
+                          Mencakup seluruh materi kurikulum mapel induk.
+                        </p>
+                      </button>
+                      <div
+                        className={cn(
+                          'p-2 rounded-lg border transition-all',
+                          unitPengajaranId
+                            ? 'bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-400 dark:border-indigo-700'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+                        )}
+                      >
+                        <label htmlFor="form-unit-pengajaran" className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                          Khusus Unit / Modul Guru:
+                        </label>
+                        <select
+                          id="form-unit-pengajaran"
+                          value={unitPengajaranId}
+                          onChange={(e) => setUnitPengajaranId(e.target.value)}
+                          className="w-full text-[11px] font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                        >
+                          <option value="">-- Pilih Unit Pengajaran Tertentu --</option>
+                          {availableUnits.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.nama_unit}{u.guru_nama ? ` — ${u.guru_nama}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )
               )}
             </div>
 
