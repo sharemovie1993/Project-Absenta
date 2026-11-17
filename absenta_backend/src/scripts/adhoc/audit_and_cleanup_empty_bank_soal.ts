@@ -75,10 +75,20 @@ async function main() {
   if (protectedWithQuestions.length === 0) {
     console.log('(Belum ada bank soal yang berisi butir soal)');
   } else {
+    console.log(`-- Bagian A: Memiliki Butir Soal (${protectedWithQuestions.length} Bank Soal) --`);
     protectedWithQuestions.forEach((b, i) => {
       const qCount = Math.max(b.jumlah_soal || 0, b._count.Soal || 0);
       console.log(
         `${i + 1}. [ID: ${b.id.slice(0, 8)}] [${b.kode_bank}] "${b.judul}" | Tingkat: ${b.tingkat} | ${qCount} Butir Soal | Guru: ${b.Guru?.nama_guru || '-'} | Mapel: ${b.Mapel?.nama_mapel || '-'}`
+      );
+    });
+  }
+
+  if (protectedWithSchedules.length > 0) {
+    console.log(`\n-- Bagian B: Masih 0 Soal TETAPI Sudah Memiliki Jadwal Ujian Panitia (${protectedWithSchedules.length} Bank Soal) --`);
+    protectedWithSchedules.forEach((b, i) => {
+      console.log(
+        `${i + 1}. [ID: ${b.id.slice(0, 8)}] [${b.kode_bank}] "${b.judul}" | Tingkat: ${b.tingkat} | 0 Soal | ${b._count.JadwalUjian} Sesi Jadwal | Guru: ${b.Guru?.nama_guru || '-'} | Mapel: ${b.Mapel?.nama_mapel || '-'}`
       );
     });
   }
