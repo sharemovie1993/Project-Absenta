@@ -42,6 +42,7 @@ import {
   getNamaHariIndo,
 } from './cbtOrchestratorHelper';
 import { CbtMultiJurusanModal, JurusanItem } from './CbtMultiJurusanModal';
+import { CbtResetPublishedModal } from './CbtResetPublishedModal';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -297,6 +298,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
 
   const [isSavingTimeConfig, setIsSavingTimeConfig] = useState(false);
   const [isResettingPublished, setIsResettingPublished] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   // Handler Simpan Format Waktu & Sesi ke Server (Database Event Config)
   const handleSaveTimeConfigToServer = async () => {
@@ -350,19 +352,11 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     }
   };
 
-  // Handler Hapus / Reset Seluruh Jadwal Sesi CBT yang Sudah Terbit di Database untuk Event Ini
-  const handleResetPublishedSchedules = async () => {
-    const publishedCount = alreadyPublishedCount || existingSchedules?.length || 0;
-    const confirmed = window.confirm(
-      `Apakah Anda yakin ingin MENGHAPUS SEMUA ${publishedCount} sesi jadwal ujian yang sudah terbit di database untuk event ini?\n\n` +
-        `Fitur ini digunakan jika panitia ingin merombak jadwal besar-besaran dan menerbitkan ulang dari nol dengan bersih.\n\n` +
-        `Catatan: Wadah dan butir Bank Soal milik guru TIDAK akan terhapus.`
-    );
-    if (!confirmed) return;
-
+  // Handler Eksekusi Kosongkan Seluruh Jadwal Sesi CBT yang Sudah Terbit di Database
+  const handleExecuteResetPublished = async () => {
     try {
       setIsResettingPublished(true);
-      toast.loading('Menghapus seluruh sesi jadwal ujian di database...', { id: 'reset-published-scheds' });
+      toast.loading('Mengosongkan seluruh sesi jadwal ujian di database...', { id: 'reset-published-scheds' });
       const res = await cbtApi.bulkDeleteJadwal({
         event_id: activeEvent?.id,
         tahun_pelajaran_id: activeTpId,
@@ -370,14 +364,15 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
         target_tingkat: targetTingkat,
       });
 
-      toast.success(res.message || 'Seluruh sesi jadwal ujian berhasil dibersihkan!', {
+      toast.success(res.message || 'Seluruh sesi jadwal ujian berhasil dikosongkan!', {
         id: 'reset-published-scheds',
         duration: 4000,
       });
+      setIsResetModalOpen(false);
       await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all });
       if (onSuccessGenerate) onSuccessGenerate();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || 'Gagal menghapus jadwal ujian', {
+      toast.error(err.response?.data?.message || err.message || 'Gagal mengosongkan jadwal ujian', {
         id: 'reset-published-scheds',
       });
     } finally {
@@ -1251,12 +1246,12 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                 variant="outline"
                 size="sm"
                 disabled={isResettingPublished}
-                onClick={handleResetPublishedSchedules}
+                onClick={() => setIsResetModalOpen(true)}
                 className="text-xs h-7 px-2 font-bold text-rose-600 border-rose-300 bg-white hover:bg-rose-50 cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
-                title="Hapus seluruh sesi ujian yang sudah terbit di database untuk event ini agar dapat diterbitkan ulang dari nol"
+                title="Pratinjau dampak & kosongkan seluruh sesi ujian yang sudah terbit di database"
               >
                 <Trash2 size={11} className="text-rose-600" />
-                <span>{isResettingPublished ? 'Menghapus...' : `Hapus Sesi Terbit (${alreadyPublishedCount})`}</span>
+                <span>{isResettingPublished ? 'Mengosongkan...' : `Kosongkan Sesi Terbit (${alreadyPublishedCount})`}</span>
               </Button>
             )}
 
@@ -1712,6 +1707,17 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
           onSave={handleSaveMultiJurusan}
         />
       )}
+
+      {/* Modal Dialog Pratinjau Dampak & Konfirmasi Kosongkan Sesi Terbit */}
+      <CbtResetPublishedModal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        onConfirm={handleExecuteResetPublished}
+        isResetting={isResettingPublished}
+        schedules={existingSchedules || []}
+        eventName={eventName || activeEvent?.nama_event}
+        roomMappings={roomMappings}
+      />
     </div>
   );
 };

@@ -548,6 +548,7 @@ export class CbtJadwalService {
       semester_id?: string;
       target_tingkat?: number[];
       force?: boolean;
+      delete_empty_banks?: boolean;
     }
   ) {
     const whereClause: any = { tenant_id: tenantId };
@@ -623,10 +624,9 @@ export class CbtJadwalService {
       },
     });
 
-    // Cek dan bersihkan cangkang draft Bank Soal kosong yang tidak memiliki butir soal (jumlah_soal === 0 & Soal kosong)
-    // dan sudah tidak digunakan oleh jadwal ujian manapun lagi (JadwalUjian kosong).
+    // Bersihkan cangkang draft Bank Soal HANYA JIKA diminta secara eksplisit (default: FALSE untuk melindungi bank soal guru)
     let cleanedEmptyBanksCount = 0;
-    if (candidateBankIds.length > 0) {
+    if (params.delete_empty_banks === true && candidateBankIds.length > 0) {
       const emptyOrphanedBanks = await prisma.cbtBankSoal.findMany({
         where: {
           tenant_id: tenantId,
@@ -660,7 +660,7 @@ export class CbtJadwalService {
     const bankCleanupMsg =
       cleanedEmptyBanksCount > 0
         ? ` serta membersihkan ${cleanedEmptyBanksCount} cangkang draft Bank Soal kosong otomatis.`
-        : '.';
+        : ' (Seluruh wadah Bank Soal guru tetap utuh dan terlindungi).';
 
     return {
       deleted_count: deleteRes.count,
