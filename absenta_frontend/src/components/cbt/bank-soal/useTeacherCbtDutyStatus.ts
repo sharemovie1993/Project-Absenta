@@ -165,6 +165,38 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       return (jurKode || 'UMUM').toUpperCase().trim();
     };
 
+    // Helper filter penugasan non-akademik (Piket, BK, Upacara, Ekskul, dll) yang tidak memerlukan Bank Soal CBT
+    const isNonAcademicDuty = (name: string, jenisKegiatan?: string): boolean => {
+      if (jenisKegiatan && jenisKegiatan.toUpperCase() !== 'KBM') {
+        return true;
+      }
+      const lower = (name || '').toLowerCase().trim();
+      const nonAcademicKeywords = [
+        'piket',
+        'tugas piket',
+        'bimbingan',
+        'konseling',
+        'bp/bk',
+        'bk',
+        'upacara',
+        'apel',
+        'literasi',
+        'istirahat',
+        'sholat',
+        'duha',
+        'dzuhur',
+        'ekskul',
+        'ekstrakurikuler',
+        'kokurikuler',
+        'wali kelas',
+        'p5',
+        'projek penguatan',
+        'keagamaan',
+        'senam',
+      ];
+      return nonAcademicKeywords.some((kw) => lower.includes(kw));
+    };
+
     // Indexing JadwalKBM riil mingguan guru untuk memperkaya kelas yang null di SK
     interface ScheduleClassItem {
       mapelId?: string;
@@ -182,6 +214,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       const mName = j.Mapel?.nama_mapel || '';
       const kName = j.Kelas?.nama_kelas || '';
       if (!mName || !kName) return;
+      if (isNonAcademicDuty(mName, j.jenis_kegiatan)) return;
 
       const tNum = resolveTingkatHelper(j.Kelas?.tingkat, kName);
       const jurKode = resolveJurusanKode(kName);
@@ -229,17 +262,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       if (!mId) return;
 
       const mapelName = gm.Mapel?.nama_mapel || 'Mata Pelajaran';
-      const lowerName = mapelName.toLowerCase();
-
-      // Abaikan BK / Bimbingan Konseling yang tidak memiliki tes tulis CBT
-      if (
-        lowerName.includes('bimbingan') ||
-        lowerName.includes('konseling') ||
-        lowerName.includes('bp/bk') ||
-        lowerName.includes('bk')
-      ) {
-        return;
-      }
+      if (isNonAcademicDuty(mapelName)) return;
 
       const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat;
       const kName = gm.Kelas?.nama_kelas || '';
@@ -309,16 +332,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       const mName = j.Mapel?.nama_mapel;
       const kName = j.Kelas?.nama_kelas;
       if (!mName || !kName) return;
-
-      const lowerName = mName.toLowerCase();
-      if (
-        lowerName.includes('bimbingan') ||
-        lowerName.includes('konseling') ||
-        lowerName.includes('bp/bk') ||
-        lowerName.includes('bk')
-      ) {
-        return;
-      }
+      if (isNonAcademicDuty(mName, j.jenis_kegiatan)) return;
 
       const tNum = resolveTingkatHelper(j.Kelas?.tingkat, kName);
       if (targetTingkat && targetTingkat.length > 0 && !targetTingkat.includes(tNum)) {
