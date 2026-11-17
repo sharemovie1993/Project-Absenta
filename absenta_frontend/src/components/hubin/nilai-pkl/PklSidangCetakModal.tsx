@@ -67,6 +67,15 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
   const printSheetRef = useRef<HTMLDivElement>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
+  // Sanitasi label TP dan Semester (hapus emoji bintang aktif ⭐/★/* agar dokumen resmi bersih)
+  const cleanTpNama = useMemo(() => {
+    return (selectedTpNama || '').replace(/[⭐★*✨]/g, '').trim();
+  }, [selectedTpNama]);
+
+  const cleanSemesterNama = useMemo(() => {
+    return (selectedSemesterNama || '').replace(/[⭐★*✨]/g, '').trim();
+  }, [selectedSemesterNama]);
+
   // Mode Dokumen: 'BERITA_ACARA' (Format Resmi A4 Portrait) | 'REKAP_PENGUJI' | 'REKAP_JURUSAN' | 'DAFTAR_HADIR'
   const [docType, setDocType] = useState<PklDocType>(() => {
     if (initialDocType === 'DAFTAR_HADIR') return 'DAFTAR_HADIR';
@@ -906,7 +915,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                     SIDANG / UJIAN PRAKTIK KERJA LAPANGAN (PKL)
                   </h2>
                   <p className="text-[11px] font-semibold text-slate-700">
-                    Tahun Pelajaran {selectedTpNama || '-'} {selectedSemesterNama ? `• Semester ${selectedSemesterNama}` : ''}
+                    Tahun Pelajaran {cleanTpNama || '-'} {cleanSemesterNama ? `• Semester ${cleanSemesterNama}` : ''}
                   </p>
                   <p className="text-[10px] font-mono text-slate-600 mt-1">
                     Nomor: {beritaAcaraConfig.nomorSurat}
@@ -915,7 +924,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
 
                 {/* KLAUSUL NARASI PEMBUKA */}
                 <p className="text-justify indent-8 my-3 text-[11px] leading-relaxed text-slate-900">
-                  Pada hari ini, <strong>{beritaAcaraConfig.hariTanggal}</strong>, bertempat di <strong>{beritaAcaraConfig.ruangSidang}</strong> {tenantInfo.name || 'SMK'}, telah diselenggarakan Ujian Sidang Pertanggungjawaban Praktik Kerja Lapangan (PKL) Tahun Pelajaran <strong>{selectedTpNama || '-'}</strong> bagi peserta didik Program Keahlian <strong>{displayJurusanTitle}</strong>, dengan rincian pelaksanaan sebagai berikut:
+                  Pada hari ini, <strong>{beritaAcaraConfig.hariTanggal}</strong>, bertempat di <strong>{beritaAcaraConfig.ruangSidang}</strong> {tenantInfo.name || 'SMK'}, telah diselenggarakan Ujian Sidang Pertanggungjawaban Praktik Kerja Lapangan (PKL) Tahun Pelajaran <strong>{cleanTpNama || '-'}</strong> bagi peserta didik Program Keahlian <strong>{displayJurusanTitle}</strong>, dengan rincian pelaksanaan sebagai berikut:
                 </p>
 
                 {/* TABEL RINCIAN INFORMASI PELAKSANAAN */}
@@ -1167,7 +1176,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                   {documentTitle}
                 </h1>
                 <p className="text-xs font-semibold text-slate-700">
-                  Tahun Ajaran {selectedTpNama || '-'} {selectedSemesterNama ? `• Semester ${selectedSemesterNama}` : ''}
+                  Tahun Pelajaran {cleanTpNama || '-'} {cleanSemesterNama ? `• Semester ${cleanSemesterNama}` : ''}
                 </p>
               </div>
 

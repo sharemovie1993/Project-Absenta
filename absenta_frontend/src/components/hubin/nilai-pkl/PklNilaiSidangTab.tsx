@@ -1079,8 +1079,8 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
               ? jurusanNama
               : (displayedScores || []).find((s) => s.nama_jurusan)?.nama_jurusan || undefined
           }
-          selectedTpNama={selectedTp ? (tpOptions || []).find((t) => t.value === selectedTp)?.label : ''}
-          selectedSemesterNama={selectedSemester ? (semesterOptions || []).find((s) => s.value === selectedSemester)?.label : ''}
+          selectedTpNama={selectedTp ? ((tpOptions || []).find((t) => t.value === selectedTp)?.label || '').replace(/[⭐★*✨]/g, '').trim() : ''}
+          selectedSemesterNama={selectedSemester ? ((semesterOptions || []).find((s) => s.value === selectedSemester)?.label || '').replace(/[⭐★*✨]/g, '').trim() : ''}
           activePengujiNama={(guruList || []).find((g) => g.id === activeGuruId)?.nama_guru || ''}
           isKaprog={isKaprog}
         />
