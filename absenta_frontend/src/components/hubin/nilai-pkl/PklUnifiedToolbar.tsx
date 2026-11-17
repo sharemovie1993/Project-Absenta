@@ -101,7 +101,7 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
   hideLocalFilters = false,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const isNilaiTab = activeTab === 'dudi' || activeTab === 'sidang' || activeTab === 'nilai' || activeTab === 'monitoring_sidang';
+  const isNilaiTab = activeTab === 'dudi' || activeTab === 'sidang' || activeTab === 'nilai' || activeTab === 'monitoring_sidang' || activeTab === 'progres_pkl';
 
   const classSelectOptions = useMemo(() => [
     { value: '', label: `-- Semua Kelas (${scoresCount}) --` },
@@ -144,7 +144,7 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
           )}
 
           {/* Toggle Minimize/Maximize Filter */}
-          {isNilaiTab && !hideLocalFilters && activeTab !== 'monitoring_sidang' && (
+          {isNilaiTab && !hideLocalFilters && activeTab !== 'monitoring_sidang' && activeTab !== 'progres_pkl' && (
             <button
               type="button"
               onClick={() => setIsCollapsed((prev) => !prev)}
@@ -158,8 +158,8 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
         </div>
       </div>
 
-      {/* Baris 2: Context TP, Semester, Kelas, Scoping, dan Status Filter (Khusus DUDI & Sidang, Sembunyikan pada Monitoring Sidang) */}
-      {!isCollapsed && !hideLocalFilters && activeTab !== 'monitoring_sidang' && (
+      {/* Baris 2: Context TP, Semester, Kelas, Scoping, dan Status Filter (Khusus DUDI & Sidang, Sembunyikan pada Monitoring) */}
+      {!isCollapsed && !hideLocalFilters && activeTab !== 'monitoring_sidang' && activeTab !== 'progres_pkl' && (
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col xl:flex-row xl:items-center justify-between gap-2.5">
           {/* Kiri: Konteks Akademik & Filter Kelas Terpusat */}
           <div className="flex items-center gap-2 flex-wrap">

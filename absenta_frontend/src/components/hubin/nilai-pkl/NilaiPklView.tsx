@@ -27,6 +27,7 @@ import { PklSpreadsheetSkeleton } from './PklSpreadsheetSkeleton';
 import { cn } from '@/lib/utils';
 
 const PklNilaiIndustriTab = lazy(() => import('./PklNilaiIndustriTab'));
+const PklMonitoringDudiTab = lazy(() => import('./PklMonitoringDudiTab'));
 const PklNilaiSidangTab = lazy(() => import('./PklNilaiSidangTab'));
 const PklMonitoringSidangTab = lazy(() => import('./PklMonitoringSidangTab'));
 const PklSkemaSettingsModal = lazy(() => import('./PklSkemaSettingsModal'));
@@ -40,8 +41,8 @@ export interface UniversalNilaiPklViewProps {
   isPengujiOnly?: boolean;
   tahunPelajaranId?: string;
   semesterId?: string;
-  initialTab?: 'dudi' | 'sidang' | 'monitoring_sidang';
-  activeTabOnly?: 'dudi' | 'sidang' | 'monitoring_sidang';
+  initialTab?: 'dudi' | 'sidang' | 'monitoring_sidang' | 'progres_pkl';
+  activeTabOnly?: 'dudi' | 'sidang' | 'monitoring_sidang' | 'progres_pkl';
   layoutMode?: 'hubin' | 'rapor';
   isModal?: boolean;
   readOnly?: boolean;
@@ -308,7 +309,9 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
           nomor_sertifikat: item.nomor_sertifikat || '',
           deskripsi_tp: item.deskripsi_tp || '',
           status: item.status || 'AKTIF',
-          pembimbing_id: item.Pembimbing?.id || item.pembimbing_id,
+          pembimbing_id: item.Pembimbing?.id || item.pembimbing_id || '',
+          pembimbing_nama: item.Pembimbing?.nama_guru || item.pembimbing_nama || '',
+          pembimbing_nip: item.Pembimbing?.nip || '',
         };
       }));
     }
@@ -730,16 +733,20 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     if (activeTabOnly === 'dudi') {
       return [{ id: 'dudi', label: `🏢 DUDI (${displayedScores.length})` }];
     }
+    if (activeTabOnly === 'progres_pkl') {
+      return [{ id: 'progres_pkl', label: `📊 Progres Input PKL (${displayedScores.length})` }];
+    }
     if (activeTabOnly === 'sidang' || isPengujiOnly) {
       return [{ id: 'sidang', label: `🎓 Sidang PKL (${displayedScores.length})` }];
     }
     if (activeTabOnly === 'monitoring_sidang') {
-      return [{ id: 'monitoring_sidang', label: `📊 Monitoring Sidang (${displayedScores.length})` }];
+      return [{ id: 'monitoring_sidang', label: `📈 Monitoring Sidang (${displayedScores.length})` }];
     }
     return [
       { id: 'dudi', label: `🏢 DUDI (${displayedScores.length})` },
+      ...(isMonitoringAvailable ? [{ id: 'progres_pkl', label: `📊 Progres Input PKL (${displayedScores.length})` }] : []),
       ...(isSidangAvailable ? [{ id: 'sidang', label: `🎓 Sidang (${displayedScores.length})` }] : []),
-      ...(isMonitoringAvailable ? [{ id: 'monitoring_sidang', label: `📊 Monitoring Sidang (${displayedScores.length})` }] : []),
+      ...(isMonitoringAvailable ? [{ id: 'monitoring_sidang', label: `📈 Monitoring Sidang (${displayedScores.length})` }] : []),
     ];
   }, [displayedScores.length, isSidangAvailable, isMonitoringAvailable, isPengujiOnly, activeTabOnly]);
 
@@ -747,7 +754,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     <div className={cn('space-y-4', className)}>
       <SectionCard fullWidth className="flex flex-col w-full min-w-0 space-y-4 border-none shadow-none bg-transparent p-0">
         {/* Banner Khusus Kaprog: Hanya muncul jika bukan modal dan tidak di-hide */}
-        {guidanceScope === 'ALL' && isJurusanScoped && !isModal && !hideScopeBanner && activeTab !== 'monitoring_sidang' && (
+        {guidanceScope === 'ALL' && isJurusanScoped && !isModal && !hideScopeBanner && activeTab !== 'monitoring_sidang' && activeTab !== 'progres_pkl' && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200">
             <div className="flex items-center gap-2.5">
               <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
@@ -772,7 +779,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         )}
 
         {/* Banner Bimbingan Saya untuk Multi-Peran Kaprog */}
-        {guidanceScope === 'MY_GUIDANCE' && isKaprog && !isModal && !hideScopeBanner && activeTab !== 'monitoring_sidang' && (
+        {guidanceScope === 'MY_GUIDANCE' && isKaprog && !isModal && !hideScopeBanner && activeTab !== 'monitoring_sidang' && activeTab !== 'progres_pkl' && (
           <div className="flex items-center gap-2.5 p-3 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 rounded-2xl text-xs text-amber-900 dark:text-amber-200">
             <ShieldCheck size={18} className="text-amber-600 dark:text-amber-400 shrink-0" />
             <div>
@@ -784,7 +791,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
           </div>
         )}
 
-        {isWaliKelas && !isKaprog && !isPrivilegedHubin && !isModal && !hideScopeBanner && activeTab !== 'monitoring_sidang' && (
+        {isWaliKelas && !isKaprog && !isPrivilegedHubin && !isModal && !hideScopeBanner && activeTab !== 'monitoring_sidang' && activeTab !== 'progres_pkl' && (
           <div className="flex items-center gap-2.5 p-3 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/50 rounded-2xl text-xs text-emerald-900 dark:text-emerald-200">
             <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
             <div>
@@ -798,7 +805,7 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
         )}
 
         {/* KPI Strip Monitoring Progres Nilai PKL (Shopee-Grade Hairline Strip) */}
-        {!isPengujiOnly && !hideHeaderStats && activeTab !== 'monitoring_sidang' && (
+        {!isPengujiOnly && !hideHeaderStats && activeTab !== 'monitoring_sidang' && activeTab !== 'progres_pkl' && (
           <HubCard noPadding className="w-full">
             <div className={cn(
               "grid divide-x divide-slate-100 dark:divide-slate-800/80 py-2 sm:py-2.5 text-center",
@@ -1038,6 +1045,29 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
               readOnly={effectiveReadOnly}
               isAdminOverride={adminOverrideMode}
               onToggleAdminOverride={canManageAll ? () => setAdminOverrideMode(prev => !prev) : undefined}
+            />
+          )}
+
+          {activeTab === 'progres_pkl' && (
+            <PklMonitoringDudiTab
+              scores={scores}
+              totalRawScores={scores.length}
+              isLoadingRekap={isLoadingRekap}
+              selectedTp={selectedTp}
+              selectedSemester={selectedSemester}
+              tpOptions={tpOptions}
+              semesterOptions={semesterOptions}
+              isKaprog={isKaprog || isJurusanScoped}
+              canManageAll={canManageAll}
+              isHubin={isHubin || isPrivilegedHubin}
+              jurusanId={effectiveJurusanId}
+              jurusanNama={effectiveJurusanNama && effectiveJurusanNama !== 'Kejuruan' ? effectiveJurusanNama : undefined}
+              activeGuruId={activeGuruId || undefined}
+              isMobile={isMobile}
+              smartClassOptions={smartClassOptions}
+              selectedKelas={selectedKelas}
+              setSelectedKelas={setSelectedKelas}
+              onNavigateCetakRapor={effectiveHideCetakRapor ? undefined : handleNavigateCetakRapor}
             />
           )}
 

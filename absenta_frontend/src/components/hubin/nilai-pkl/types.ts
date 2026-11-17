@@ -66,11 +66,15 @@ export interface ScoreRow {
   deskripsi_tp: string;
   status?: string;
   pembimbing_id?: string;
+  pembimbing_nama?: string;
+  pembimbing_nip?: string;
 }
 
 export interface RawPklItem {
   id?: string;
   siswa_pkl_id?: string;
+  pembimbing_nama?: string;
+  pembimbing_id?: string;
   Siswa?: { 
     id?: string;
     nama_siswa?: string; 
