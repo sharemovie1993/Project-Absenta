@@ -351,11 +351,18 @@ export class JadwalQueryController {
         semester_id: ctx.semesterId,
       },
       include: {
-        Mapel: { select: { nama_mapel: true, kode_mapel: true } },
+        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
         Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
-        Kelas: { select: { id: true, nama_kelas: true } },
+        Kelas: {
+          select: {
+            id: true,
+            nama_kelas: true,
+            tingkat: true,
+            Jurusan: { select: { id: true, kode: true, nama: true, singkatan: true } },
+          },
+        },
       },
       orderBy: [{ jam_mulai: 'asc' }],
     });
@@ -366,11 +373,18 @@ export class JadwalQueryController {
       jadwal = await jadwalKBMDb.jadwalKBM.findMany({
         where: scheduleWhere,
         include: {
-          Mapel: { select: { nama_mapel: true, kode_mapel: true } },
+          Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
           Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
           GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
           UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
-          Kelas: { select: { id: true, nama_kelas: true } },
+          Kelas: {
+            select: {
+              id: true,
+              nama_kelas: true,
+              tingkat: true,
+              Jurusan: { select: { id: true, kode: true, nama: true, singkatan: true } },
+            },
+          },
         },
         orderBy: [{ jam_mulai: 'asc' }],
       });
@@ -382,9 +396,16 @@ export class JadwalQueryController {
       const allClassSchedules = await jadwalKBMDb.jadwalKBM.findMany({
         where: { tenant_id: ctx.tenantId, kelas_id: ctx.kelasId },
         include: {
-          Mapel: { select: { nama_mapel: true, kode_mapel: true } },
+          Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
           Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
-          Kelas: { select: { id: true, nama_kelas: true } },
+          Kelas: {
+            select: {
+              id: true,
+              nama_kelas: true,
+              tingkat: true,
+              Jurusan: { select: { id: true, kode: true, nama: true, singkatan: true } },
+            },
+          },
         },
         orderBy: [{ jam_mulai: 'asc' }],
       });
@@ -751,11 +772,18 @@ export class JadwalQueryController {
         ...(hari ? { hari } : {}),
       },
       include: {
-        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
         Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
-        Kelas: { select: { id: true, nama_kelas: true } },
+        Kelas: {
+          select: {
+            id: true,
+            nama_kelas: true,
+            tingkat: true,
+            Jurusan: { select: { id: true, kode: true, nama: true, singkatan: true } },
+          },
+        },
       },
       orderBy: [
         { hari: 'asc' },
@@ -778,11 +806,18 @@ export class JadwalQueryController {
         semester_id: ctx.semesterId,
       },
       include: {
-        Mapel: { select: { nama_mapel: true, kode_mapel: true } },
+        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
         Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
-        Kelas: { select: { id: true, nama_kelas: true } },
+        Kelas: {
+          select: {
+            id: true,
+            nama_kelas: true,
+            tingkat: true,
+            Jurusan: { select: { id: true, kode: true, nama: true, singkatan: true } },
+          },
+        },
       },
       orderBy: [
         { hari: 'asc' },
@@ -801,9 +836,16 @@ export class JadwalQueryController {
     const jadwal = await jadwalKBMDb.jadwalKBM.findFirst({
       where: { id, tenant_id: tenantId },
       include: {
-        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
         Guru: { select: { id: true, User: { select: { full_name: true } } } },
-        Kelas: { select: { id: true, nama_kelas: true } },
+        Kelas: {
+          select: {
+            id: true,
+            nama_kelas: true,
+            tingkat: true,
+            Jurusan: { select: { id: true, kode: true, nama: true, singkatan: true } },
+          },
+        },
       },
     });
 
@@ -842,11 +884,18 @@ export class JadwalQueryController {
     const jadwal = await jadwalKBMDb.jadwalKBM.findMany({
       where: filters,
       include: {
-        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
         Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
-        Kelas: { select: { id: true, nama_kelas: true } },
+        Kelas: {
+          select: {
+            id: true,
+            nama_kelas: true,
+            tingkat: true,
+            Jurusan: { select: { id: true, kode: true, nama: true, singkatan: true } },
+          },
+        },
       },
       orderBy: [
         { hari: 'asc' },

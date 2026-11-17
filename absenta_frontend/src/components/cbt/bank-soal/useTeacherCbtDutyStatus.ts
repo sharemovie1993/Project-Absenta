@@ -237,6 +237,35 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       scheduleByMapelName.get(nameKey)!.push(item);
     });
 
+    // 0. Registry SSOT Jurusan per rombel/kelas dari sumber database resmi
+    const classJurusanMap = new Map<string, string>();
+    rawAssignedList.forEach((gm) => {
+      const kName = gm.Kelas?.nama_kelas;
+      if (kName) {
+        const jCode = resolveJurusanKode(gm.Jurusan, gm.Kelas);
+        if (jCode && jCode !== 'UMUM') {
+          classJurusanMap.set(kName, jCode);
+        }
+      }
+    });
+    rawJadwalList.forEach((j) => {
+      const kName = j.Kelas?.nama_kelas;
+      if (kName) {
+        const jCode = resolveJurusanKode((j as any)?.Jurusan, j.Kelas);
+        if (jCode && jCode !== 'UMUM') {
+          classJurusanMap.set(kName, jCode);
+        }
+      }
+    });
+
+    const resolveClassJurusan = (kName?: string, jurRef?: any, kelasRef?: any): string => {
+      let code = resolveJurusanKode(jurRef, kelasRef);
+      if (code === 'UMUM' && kName && classJurusanMap.has(kName)) {
+        code = classJurusanMap.get(kName)!;
+      }
+      return code;
+    };
+
     // Kelompokkan penugasan mengajar per Mapel & Tingkat, lalu breakdown per Jurusan
     interface JurusanGroup {
       jurusanKode: string;
@@ -286,7 +315,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
 
       if (kName) {
         // Jika sudah ada nama kelas eksplisit dari GuruMapel
-        const jurKode = resolveJurusanKode(gm.Jurusan, gm.Kelas);
+        const jurKode = resolveClassJurusan(kName, gm.Jurusan, gm.Kelas);
         if (!mtEntry.jurusanMap.has(jurKode)) {
           mtEntry.jurusanMap.set(jurKode, {
             jurusanKode: jurKode,
@@ -295,23 +324,29 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
         }
         mtEntry.jurusanMap.get(jurKode)!.rombelNames.add(kName);
       } else {
-        // Jika kelas_id di GuruMapel kosong, cari dari JadwalKBM yang matching
+        // Jika kelas_id di GuruMapel kosong, hanya lookup jadwal jika belum ada rombel yang terdaftar
+        const totalExistingRombels = Array.from(mtEntry.jurusanMap.values()).reduce(
+          (acc, g) => acc + g.rombelNames.size,
+          0
+        );
+
         const mKey = `${mId}_${tNum}`;
         const nameKey = `${mapelName.trim().toLowerCase()}_${tNum}`;
         const matchingSchedules = scheduleByMapelKey.get(mKey) || scheduleByMapelName.get(nameKey) || [];
 
         if (matchingSchedules.length > 0) {
           matchingSchedules.forEach((sch) => {
-            if (!mtEntry.jurusanMap.has(sch.jurusanKode)) {
-              mtEntry.jurusanMap.set(sch.jurusanKode, {
-                jurusanKode: sch.jurusanKode,
+            const schJurKode = resolveClassJurusan(sch.namaKelas, undefined, undefined) || sch.jurusanKode;
+            if (!mtEntry.jurusanMap.has(schJurKode)) {
+              mtEntry.jurusanMap.set(schJurKode, {
+                jurusanKode: schJurKode,
                 rombelNames: new Set<string>(),
               });
             }
-            mtEntry.jurusanMap.get(sch.jurusanKode)!.rombelNames.add(sch.namaKelas);
+            mtEntry.jurusanMap.get(schJurKode)!.rombelNames.add(sch.namaKelas);
           });
-        } else {
-          // Fallback jika tidak ada di JadwalKBM juga: Jadikan Rombel Umum
+        } else if (totalExistingRombels === 0) {
+          // Fallback HANYA jika tidak ada penugasan kelas lain sama sekali di mapel tingkat ini
           const jurKode = resolveJurusanKode(gm.Jurusan, undefined);
           if (!mtEntry.jurusanMap.has(jurKode)) {
             mtEntry.jurusanMap.set(jurKode, {
@@ -344,7 +379,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
           (e) => e.tingkat === tNum && e.mapelName.trim().toLowerCase() === mName.trim().toLowerCase()
         );
         if (existingByName) {
-          const jurKode = resolveJurusanKode((j as any)?.Jurusan, j.Kelas);
+          const jurKode = resolveClassJurusan(kName, (j as any)?.Jurusan, j.Kelas);
           if (!existingByName.jurusanMap.has(jurKode)) {
             existingByName.jurusanMap.set(jurKode, {
               jurusanKode: jurKode,
@@ -365,7 +400,18 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       }
 
       const mtEntry = mapelTingkatMap.get(mtKey)!;
-      const jurKode = resolveJurusanKode((j as any)?.Jurusan, j.Kelas);
+      const jurKode = resolveClassJurusan(kName, (j as any)?.Jurusan, j.Kelas);
+
+      // Jika jurKode adalah UMUM, cek apakah rombel ini sudah tercakup di grup jurusan spesifik
+      if (jurKode === 'UMUM') {
+        const alreadyInSpecific = Array.from(mtEntry.jurusanMap.entries()).some(
+          ([code, group]) => code !== 'UMUM' && group.rombelNames.has(kName)
+        );
+        if (alreadyInSpecific) {
+          return;
+        }
+      }
+
       if (!mtEntry.jurusanMap.has(jurKode)) {
         mtEntry.jurusanMap.set(jurKode, {
           jurusanKode: jurKode,
@@ -373,6 +419,40 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
         });
       }
       mtEntry.jurusanMap.get(jurKode)!.rombelNames.add(kName);
+    });
+
+    // 2.5. Sanitasi dan Rekonsiliasi Grup Jurusan (Eliminasi Redundansi UMUM vs Spesifik)
+    mapelTingkatMap.forEach((entry) => {
+      const specificRombels = new Set<string>();
+      let hasSpecificGroupWithRombels = false;
+
+      entry.jurusanMap.forEach((group, jCode) => {
+        if (jCode !== 'UMUM') {
+          group.rombelNames.forEach((r) => specificRombels.add(r));
+          if (group.rombelNames.size > 0) hasSpecificGroupWithRombels = true;
+        }
+      });
+
+      if (entry.jurusanMap.has('UMUM')) {
+        const umumGroup = entry.jurusanMap.get('UMUM')!;
+        // Hapus rombel yang sudah tercakup di grup spesifik
+        umumGroup.rombelNames.forEach((r) => {
+          if (specificRombels.has(r)) {
+            umumGroup.rombelNames.delete(r);
+          }
+        });
+
+        // Jika sudah ada grup jurusan spesifik yang valid, hapus placeholder generic "Semua Rombel"
+        if (hasSpecificGroupWithRombels) {
+          const genericPlaceholder = `Semua Rombel Tingkat ${formatTingkatRomawi(entry.tingkat)}`;
+          umumGroup.rombelNames.delete(genericPlaceholder);
+        }
+
+        // Jika grup UMUM kini kosong, hapus grup agar tidak menciptakan duplicate task
+        if (umumGroup.rombelNames.size === 0) {
+          entry.jurusanMap.delete('UMUM');
+        }
+      }
     });
 
     const mapelTingkatList = Array.from(mapelTingkatMap.values());
