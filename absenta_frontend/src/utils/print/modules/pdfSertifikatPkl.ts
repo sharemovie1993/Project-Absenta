@@ -723,17 +723,18 @@ export const renderSertifikatBack = (
   const kotaSekolah = data.sekolah?.kota || 'Purwakarta';
   const tanggalTerbit = data.tanggal_terbit || `${kotaSekolah}, 22 Desember 2025`;
 
-  const picNama = options?.picNama !== undefined ? options.picNama : (mitra.penanggung_jawab_nama || '');
-  const picJabatan = options?.picJabatan || mitra.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan';
+  const picNama = options?.picNama !== undefined ? options.picNama : (mitra.instruktur_nama || mitra.penanggung_jawab_nama || '');
+  const picJabatan = options?.picJabatan || (mitra.instruktur_nama ? 'Instruktur / Pembimbing Lapangan' : (mitra.penanggung_jawab_jabatan || 'Pimpinan Perusahaan'));
+  const headerTtd = mitra.instruktur_nama ? 'Instruktur Lapangan,' : 'Penanggung Jawab Perusahaan / Instansi,';
 
-  // TTD Tunggal: Penanggung Jawab Perusahaan / Instansi (Area TTD lega, tidak terpotong)
+  // TTD Tunggal: Instruktur Lapangan / Penanggung Jawab Perusahaan (Area TTD lega, tidak terpotong)
   const picSigX = 230;
   const linePicY = footerY + (hasSchoolEval ? 34 : 36);
 
   doc.setFontSize(9);
   doc.setFont('Helvetica', 'normal');
   doc.text(tanggalTerbit, picSigX, footerY + 2, { align: 'center' });
-  doc.text('Penanggung Jawab Perusahaan / Instansi', picSigX, footerY + 6.5, { align: 'center' });
+  doc.text(headerTtd, picSigX, footerY + 6.5, { align: 'center' });
 
   if (showDudiName) {
     doc.setFont('Helvetica', 'bold');

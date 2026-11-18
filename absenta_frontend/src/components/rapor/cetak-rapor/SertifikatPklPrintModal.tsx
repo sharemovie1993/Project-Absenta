@@ -235,9 +235,9 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
       mitra: {
         nama: certDetail?.Mitra?.nama || placement?.Mitra?.nama || placement?.mitra_nama || 'DU/DI Mitra',
         alamat: certDetail?.Mitra?.alamat || placement?.alamat_dudi || placement?.Mitra?.alamat || '',
-        penanggung_jawab_nama: certDetail?.Mitra?.pimpinan_nama || placement?.Mitra?.pimpinan_nama || placement?.penanggung_jawab_nama || certDetail?.Mitra?.nama || 'Pimpinan Perusahaan',
+        penanggung_jawab_nama: certDetail?.penanggung_jawab_nama || placement?.penanggung_jawab_nama || certDetail?.Mitra?.pimpinan_nama || placement?.Mitra?.pimpinan_nama || placement?.Mitra?.pic_nama || certDetail?.Mitra?.nama || 'Pimpinan Perusahaan',
         penanggung_jawab_jabatan: placement?.penanggung_jawab_jabatan || certDetail?.Mitra?.pimpinan_jabatan || 'Pimpinan Perusahaan',
-        instruktur_nama: certDetail?.Mitra?.pic_nama || placement?.instruktur_nama || placement?.Mitra?.pic_nama || certDetail?.Mitra?.pimpinan_nama || '-',
+        instruktur_nama: certDetail?.instruktur_nama || placement?.instruktur_nama || certDetail?.Mitra?.pic_nama || placement?.Mitra?.pic_nama || certDetail?.Mitra?.pimpinan_nama || '-',
       },
       pembimbing: {
         nama: certDetail?.pembimbing_nama || certDetail?.Pembimbing?.nama_guru || placement?.Pembimbing?.nama_guru || null,

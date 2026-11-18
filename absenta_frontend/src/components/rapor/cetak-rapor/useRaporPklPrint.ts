@@ -213,10 +213,10 @@ function buildCertPrintData(
     },
     mitra: {
       nama: rawMitra.nama || placement.Mitra?.nama || placement.mitra_nama || 'DUDI MITRA',
-      alamat: certDetail?.alamat_dudi || rawMitra.alamat || placement.Mitra?.alamat || '',
-      penanggung_jawab_nama: certDetail?.penanggung_jawab_nama || rawMitra.pic_nama || placement.penanggung_jawab_nama || placement.Mitra?.pic_nama || '',
+      alamat: certDetail?.alamat_dudi || rawMitra.alamat || placement.alamat_dudi || placement.Mitra?.alamat || '',
+      penanggung_jawab_nama: certDetail?.penanggung_jawab_nama || placement.penanggung_jawab_nama || rawMitra.pimpinan_nama || rawMitra.pic_nama || placement.Mitra?.pic_nama || '',
       penanggung_jawab_jabatan: picJabatanResmi,
-      instruktur_nama: certDetail?.instruktur_nama || placement.instruktur_nama || '',
+      instruktur_nama: certDetail?.instruktur_nama || placement.instruktur_nama || rawMitra.pic_nama || placement.Mitra?.pic_nama || '',
     },
     pembimbing: {
       nama: certDetail?.pembimbing_nama || placement.Pembimbing?.nama_guru || null,

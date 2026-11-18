@@ -175,10 +175,10 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
       },
       mitra: {
         nama: rawMitra.nama || defaultData?.mitra_nama || 'POST MITRA',
-        alamat: pklData?.alamat_dudi || rawMitra.alamat || defaultData?.alamat_dudi || 'Jl. Raya Citeko-Plered-Purwakarta',
-        penanggung_jawab_nama: pklData?.penanggung_jawab_nama || rawMitra.pic_nama || defaultData?.penanggung_jawab_nama || '',
+        alamat: pklData?.alamat_dudi || defaultData?.alamat_dudi || rawMitra.alamat || 'Jl. Raya Citeko-Plered-Purwakarta',
+        penanggung_jawab_nama: pklData?.penanggung_jawab_nama || defaultData?.penanggung_jawab_nama || rawMitra.pimpinan_nama || rawMitra.pic_nama || '',
         penanggung_jawab_jabatan: picJabatanResmi,
-        instruktur_nama: pklData?.instruktur_nama || defaultData?.instruktur_nama || '',
+        instruktur_nama: pklData?.instruktur_nama || defaultData?.instruktur_nama || rawMitra.pic_nama || '',
       },
       pembimbing: {
         nama: pklData?.pembimbing_nama || pklData?.Pembimbing?.nama_guru || null,
@@ -793,21 +793,21 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                   </div>
                 </div>
 
-                {/* Signature block – Penanggung Jawab Perusahaan / Instansi */}
+                {/* Signature block – Instruktur Lapangan / Penanggung Jawab DUDI */}
                 <div className="text-center text-[12px] mr-10 leading-relaxed min-w-[240px]">
                   <div className="font-medium text-slate-800">{certData.tanggal_terbit}</div>
-                  <div>Penanggung Jawab Perusahaan / Instansi</div>
+                  <div>{certData.mitra.instruktur_nama ? 'Instruktur Lapangan,' : 'Penanggung Jawab Perusahaan / Instansi,'}</div>
                   {showDudiName && (
                     <div className="font-semibold text-slate-900 dark:text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[280px] mx-auto text-[11px]">
-                      {certData.mitra.nama},
+                      {certData.mitra.nama}
                     </div>
                   )}
                   <div className="h-16" />
                   <div className="border-b border-slate-950 w-56 mx-auto font-bold min-h-[1.35em]">
-                    {showPicName ? (certData.mitra.penanggung_jawab_nama || '\u00A0') : '\u00A0'}
+                    {showPicName ? ((certData.mitra.instruktur_nama || certData.mitra.penanggung_jawab_nama) || '\u00A0') : '\u00A0'}
                   </div>
                   <div className="text-[10px] mt-0.5 text-slate-700 font-medium">
-                    {certData.mitra.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan'}
+                    {certData.mitra.instruktur_nama ? 'Instruktur / Pembimbing Lapangan' : (certData.mitra.penanggung_jawab_jabatan || 'Pimpinan Perusahaan')}
                   </div>
                 </div>
               </div>
@@ -992,21 +992,21 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                 </div>
               </div>
 
-              {/* Signature block in print portal: Penanggung Jawab Perusahaan / Instansi */}
+              {/* Signature block in print portal: Instruktur Lapangan / Penanggung Jawab DUDI */}
               <div className="text-center text-[9pt] mr-12 min-w-[55mm]">
                 <div>{certData.tanggal_terbit}</div>
-                <div>Penanggung Jawab Perusahaan / Instansi</div>
+                <div>{certData.mitra.instruktur_nama ? 'Instruktur Lapangan,' : 'Penanggung Jawab Perusahaan / Instansi,'}</div>
                 {showDudiName && (
                   <div className="font-semibold whitespace-nowrap overflow-hidden text-ellipsis max-w-[75mm] mx-auto text-[8pt]">
-                    {certData.mitra.nama},
+                    {certData.mitra.nama}
                   </div>
                 )}
                 <div className="h-[15mm]" />
                 <div className="border-b border-black w-48 mx-auto font-bold min-h-[1.35em]">
-                  {showPicName ? (certData.mitra.penanggung_jawab_nama || '\u00A0') : '\u00A0'}
+                  {showPicName ? ((certData.mitra.instruktur_nama || certData.mitra.penanggung_jawab_nama) || '\u00A0') : '\u00A0'}
                 </div>
                 <div className="text-[7.5pt] mt-0.5">
-                  {certData.mitra.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan'}
+                  {certData.mitra.instruktur_nama ? 'Instruktur / Pembimbing Lapangan' : (certData.mitra.penanggung_jawab_jabatan || 'Pimpinan Perusahaan')}
                 </div>
               </div>
             </div>
