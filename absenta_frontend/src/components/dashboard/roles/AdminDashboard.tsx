@@ -36,6 +36,7 @@ import {
   QrCode,
   Sparkles,
   ChevronDown,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -82,6 +83,7 @@ const CetakBerkasPage = lazy(() => import('@/pages/academic/CetakBerkasPage').th
 const TenantSettingsView = lazy(() => import('@/components/tenant/TenantSettingsView').then((m) => ({ default: m.TenantSettingsView })));
 const TenantAttendanceForm = lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
 const PlatformComplianceFollowUpPage = lazy(() => import('@/pages/management/PlatformComplianceFollowUpPage'));
+const WhatsappSettingsView = lazy(() => import('@/components/whatsapp/WhatsappSettingsView').then((m) => ({ default: m.WhatsappSettingsView || m.default })));
 
 export interface AdminDashboardProps {
   user?: {
@@ -125,6 +127,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     'roles',
     'sekolah',
     'aturan_absensi',
+    'wa_gateway',
+    'whatsapp',
     'pengaturan',
   ];
 
@@ -135,8 +139,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<AdminTabId>(() => {
-    if (subtabParam && validTabs.includes(subtabParam)) {
-      return subtabParam;
+    if (subtabParam) {
+      if (subtabParam === 'whatsapp') return 'wa_gateway';
+      if (validTabs.includes(subtabParam)) return subtabParam;
     }
     return 'ringkasan';
   });
@@ -145,9 +150,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
   const [visitedTabs, setVisitedTabs] = useState<Set<AdminTabId>>(() => new Set([activeTab]));
 
   useEffect(() => {
-    if (subtabParam && validTabs.includes(subtabParam)) {
-      setActiveTab((curr) => (curr !== subtabParam ? subtabParam : curr));
-      setVisitedTabs((prev) => (prev.has(subtabParam) ? prev : new Set(prev).add(subtabParam)));
+    if (subtabParam) {
+      const resolved = subtabParam === 'whatsapp' ? 'wa_gateway' : subtabParam;
+      if (validTabs.includes(resolved)) {
+        setActiveTab((curr) => (curr !== resolved ? resolved : curr));
+        setVisitedTabs((prev) => (prev.has(resolved) ? prev : new Set(prev).add(resolved)));
+      }
     } else if (!subtabParam) {
       setActiveTab('ringkasan');
       setVisitedTabs((prev) => (prev.has('ringkasan') ? prev : new Set(prev).add('ringkasan')));
@@ -439,6 +447,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         shortLabel: 'Aturan',
         category: 'sistem',
         icon: Clock,
+      },
+      {
+        id: 'wa_gateway',
+        label: 'WhatsApp Gateway',
+        shortLabel: 'WhatsApp',
+        category: 'sistem',
+        icon: MessageSquare,
       },
       {
         id: 'pengaturan',
@@ -1176,6 +1191,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
                 }
               >
                 <TenantAttendanceForm hideLayout={true} />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB: WHATSAPP GATEWAY */}
+          {(visitedTabs.has('wa_gateway') || visitedTabs.has('whatsapp')) && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'wa_gateway' && activeTab !== 'whatsapp'}
+              className={cn('w-full min-w-0', (activeTab === 'wa_gateway' || activeTab === 'whatsapp') ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Pengaturan WhatsApp Gateway...</span>
+                  </div>
+                }
+              >
+                <WhatsappSettingsView hideLayout={true} />
               </Suspense>
             </div>
           )}

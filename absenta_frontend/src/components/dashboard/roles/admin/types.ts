@@ -22,6 +22,8 @@ export type AdminTabId =
   | 'roles'
   | 'sekolah'
   | 'aturan_absensi'
+  | 'wa_gateway'
+  | 'whatsapp'
   | 'pengaturan';
 
 export type AdminCategory = 'kontrol' | 'master' | 'keamanan' | 'sistem';

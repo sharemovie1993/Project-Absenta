@@ -29,6 +29,7 @@ import {
   PlusCircle,
   ArrowRight,
   Database,
+  MessageSquare,
 } from 'lucide-react';
 import { 
   HubCard, 
@@ -427,6 +428,13 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
         icon: Printer,
         iconColorClass: 'text-orange-600 dark:text-orange-400',
         onClick: () => onNavigateSubtab?.('sekolah'),
+      },
+      {
+        id: 'wa_gateway',
+        label: 'WA Gateway',
+        icon: MessageSquare,
+        iconColorClass: 'text-emerald-600 dark:text-emerald-400',
+        onClick: () => onNavigateSubtab?.('wa_gateway'),
       },
       {
         id: 'pengaturan',
