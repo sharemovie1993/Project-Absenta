@@ -6,6 +6,7 @@ import Button from '../ui/Button';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { toast } from 'react-hot-toast';
+import { isSubscriptionPaketLengkap, MODULE_ALIASES } from '../../utils/subscriptionUtils';
 
 export const PremiumFeatureGateContext = createContext<boolean>(false);
 
@@ -54,28 +55,19 @@ export default function PremiumFeatureGate({
     (subscription as any)?.end_date && new Date((subscription as any).end_date) < new Date()
   );
 
+  const isPaketLengkap = useMemo(() => isSubscriptionPaketLengkap(subscription), [subscription]);
+
   // Cek child subscriptions yang punya modul ini tapi expired
   const subs: any[] =
     (subscription as any)?.subscriptions ??
     (user as any)?.subscriptions ??
     [];
-  const MODULE_ALIASES: Record<string, string[]> = {
-    KOPERASI: ['KOPERASI', 'COOPERATIVE', 'COOP'],
-    COOPERATIVE: ['KOPERASI', 'COOPERATIVE', 'COOP'],
-    COOP: ['KOPERASI', 'COOPERATIVE', 'COOP'],
-    ABSENSI: ['ABSENSI', 'ATTENDANCE', 'ATTENDANCE_OPS'],
-    ATTENDANCE: ['ABSENSI', 'ATTENDANCE', 'ATTENDANCE_OPS'],
-    ATTENDANCE_OPS: ['ABSENSI', 'ATTENDANCE', 'ATTENDANCE_OPS'],
-    HUBIN: ['HUBIN', 'BKK', 'PRAKERIN'],
-    SARPRAS: ['SARPRAS', 'ASSET'],
-    RAPOR: ['RAPOR', 'REPORTING', 'NILAI'],
-    REPORTING: ['RAPOR', 'REPORTING', 'NILAI'],
-  };
 
   const allowedNames = MODULE_ALIASES[targetModule] || [targetModule];
 
   const hasExpiredChildSub = Boolean(
     targetModule &&
+    !isPaketLengkap &&
     subs.some((s: any) => {
       const planFeatures: string[] =
         s?.Plan?.features_json ?? s?.plan?.features_json ?? [];
@@ -92,16 +84,21 @@ export default function PremiumFeatureGate({
   const isModuleAllowed = useMemo(() => {
     if (!targetModule) return true;
     if (isAdmin) return true;
+    if (isPaketLengkap) return true;
     const featuresUpper = Array.isArray(features)
       ? features.map(f => String(f).toUpperCase())
       : [];
-    return featuresUpper.some(f => allowedNames.includes(f));
-  }, [targetModule, isAdmin, features]);
+    return featuresUpper.some(f => 
+      allowedNames.includes(f) ||
+      allowedNames.some(name => f.startsWith(name) || f.includes(name))
+    );
+  }, [targetModule, isAdmin, isPaketLengkap, features, allowedNames]);
 
   // isLocked jika modul tidak ada di paket ATAU status langganan sudah kedaluwarsa/tidak aktif
+  // Catatan: Jika tenant berlangganan PAKET LENGKAP atau role adalah Admin, jangan pernah di-lock secara salah
   const isLocked =
     propIsLocked !== undefined
-      ? propIsLocked
+      ? (isPaketLengkap || isAdmin ? false : propIsLocked)
       : !isModuleAllowed || (isStatusExpired && !isAdmin) || (isPastEndDate && !isAdmin) || hasExpiredChildSub;
 
   // Detect EXPIRED (pernah berlangganan tapi habis / status expired) vs TRIAL (belum pernah)

@@ -3,6 +3,7 @@ const PetugasList = lazy(() => import('../../components/attendance/petugas/Petug
 import { Loader, Card } from '../../components/ui';
 import { ShieldCheck, UserPlus } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import PageLayout from '../../components/common/PageLayout';
@@ -46,8 +47,7 @@ export const PetugasPage: React.FC = React.memo(() => {
   const memoStats = useMemo(() => stats, []);
   const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
   
-  const features = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
+  const isLocked = !isModuleUnlocked(subscription, 'ABSENSI');
 
   return (
     <PageLayout

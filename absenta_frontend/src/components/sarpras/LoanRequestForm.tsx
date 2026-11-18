@@ -8,6 +8,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { SmartStudentPicker, type Student } from '../common/SmartStudentPicker';
 import { useSarprasAsetOptions } from '../../hooks/useSarprasAsetOptions';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 
 interface LoanRequestFormProps {
   onSuccess?: () => void;
@@ -40,7 +41,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = React.memo(({ onSuccess,
   }, [isAdmin, isSarpras, isToolman, isKabeng, can]);
 
   // Gating Logic
-  const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';
+  const isLocked = !isModuleUnlocked(subscription, 'SARPRAS');
 
   // Fetch loanable assets via custom hook
   const { options: assetOptions, isLoading: loadingAssets } = useSarprasAsetOptions({ isLoanable: true });

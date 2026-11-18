@@ -76,19 +76,72 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
     s.status === SubscriptionStatus.ACTIVE || s.status === SubscriptionStatus.TRIAL
   );
 
-  const featureSet = new Set<string>(['CORE']);
+  const featureSet = new Set<string>(['CORE', 'ACADEMIC', 'KURIKULUM']);
   for (const s of subscriptionsForFeatures as any[]) {
     const snap: any = (s as any).plan_snapshot || null;
     const fromSnap: string[] = Array.isArray(snap?.features_json) ? snap.features_json : [];
     const fromPlan: string[] = Array.isArray((s as any).Plan?.features_json) ? ((s as any).Plan.features_json as string[]) : [];
     const merged = fromSnap.length > 0 ? fromSnap : fromPlan;
     for (const f of merged) {
-      featureSet.add(String(f).toUpperCase());
+      const uf = String(f).toUpperCase();
+      featureSet.add(uf);
+      // Auto-extract compound features (misal ABSENSI-MULTI_SESI -> ABSENSI)
+      if (uf.includes('-') || uf.includes('_')) {
+        const parts = uf.split(/[-_]/);
+        if (parts[0]) featureSet.add(parts[0]);
+      }
     }
-    // Also add the service_code as a feature identifier
-    const serviceCode = (s as any).Plan?.service_code || (s as any).plan_snapshot?.service_code;
+    // Also add the service_code & module_id as feature identifiers
+    const serviceCode = (s as any).Plan?.service_code || (s as any).plan_snapshot?.service_code || (s as any).service_code;
     if (serviceCode) {
       featureSet.add(String(serviceCode).toUpperCase());
+    }
+    const mid = (s as any).Plan?.module_id || (s as any).plan_snapshot?.module_id;
+    if (mid) {
+      featureSet.add(String(mid).toUpperCase());
+    }
+
+    // Auto-inject complete ecosystem for PAKET LENGKAP / ALL-IN-ONE
+    const planName = String((s as any).Plan?.name || (s as any).plan_snapshot?.name || '').toUpperCase();
+    const scUpper = String(serviceCode || '').toUpperCase();
+    const midUpper = String(mid || '').toUpperCase();
+    if (
+      scUpper === 'PAKET_LENGKAP' ||
+      midUpper === 'PAKET_LENGKAP' ||
+      planName.includes('PAKET LENGKAP') ||
+      planName.includes('ALL-IN-ONE')
+    ) {
+      const ALL_ECOSYSTEM_FEATURES = [
+        'PAKET_LENGKAP',
+        'ALL-IN-ONE',
+        'ABSENSI',
+        'ATTENDANCE',
+        'ATTENDANCE_OPS',
+        'ABSENSI-MULTI_SESI',
+        'ABSENSI-SIMPLE',
+        'KOPERASI',
+        'COOPERATIVE',
+        'COOP',
+        'SARPRAS',
+        'INVENTORY',
+        'ASSET',
+        'HUBIN',
+        'BKK',
+        'PRAKERIN',
+        'RAPOR',
+        'REPORTING',
+        'NILAI',
+        'CBT',
+        'WHATSAPP',
+        'EASY_TUNNEL',
+        'KESISWAAN',
+        'ACADEMIC',
+        'KURIKULUM',
+        'CORE',
+      ];
+      for (const m of ALL_ECOSYSTEM_FEATURES) {
+        featureSet.add(m);
+      }
     }
   }
   const aggregatedFeatures = Array.from(featureSet);

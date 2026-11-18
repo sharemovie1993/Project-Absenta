@@ -22,6 +22,7 @@ import type { StandardApiResponse } from '@/api/apiUtils';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useAuthStore } from '@/store/authStore';
+import { isModuleUnlocked } from '@/utils/subscriptionUtils';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
@@ -79,14 +80,9 @@ const SarprasDashboard: React.FC = React.memo(() => {
   }, [isTvMode]);
 
   // Gating Logic
-  const features = useMemo(() => {
-    const sub = subscription as SubscriptionFeature;
-    return sub?.features || sub?.Plan?.features_json || sub?.plan?.features_json || [];
-  }, [subscription]);
-
   const isLocked = useMemo(() => {
-    return !Array.isArray(features) || !features.includes('SARPRAS');
-  }, [features]);
+    return !isModuleUnlocked(subscription, 'SARPRAS');
+  }, [subscription]);
 
   // ── Query Hooks ──
   const { data: stats = null, isLoading: loadingStats, dataUpdatedAt } = useQuery<AssetStats | null>({

@@ -35,12 +35,13 @@ const getKondisiColor = (cond: string) => {
 };
 
 import { useAuthStore } from '../../store/authStore';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 
 export const AssetDetailModal: React.FC<AssetDetailModalProps> = React.memo(({ isOpen, onClose, assetId }) => {
   const { subscription } = useAuthStore();
 
   // Gating Logic
-  const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';
+  const isLocked = !isModuleUnlocked(subscription, 'SARPRAS');
   const isEnabled = subscription !== undefined;
 
   // 1. Fetch Asset Detail

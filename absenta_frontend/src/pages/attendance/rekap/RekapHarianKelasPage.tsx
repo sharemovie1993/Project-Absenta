@@ -24,6 +24,7 @@ import { toLocalDate } from '../../../utils/attendance/time';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
 import { downloadFileFromBlob } from '../../../utils/file-download.utils';
+import { isModuleUnlocked } from '../../../utils/subscriptionUtils';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
 import { 
@@ -137,9 +138,7 @@ export function RekapHarianKelasContent({
     plan?: { features_json?: string[] };
   }
 
-  const subRecord = subscription as unknown as SubscriptionRecord | null;
-  const subFeatures = subRecord?.features || subRecord?.Plan?.features_json || subRecord?.plan?.features_json || [];
-  const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
+  const isLocked = !isModuleUnlocked(subscription, 'ABSENSI');
 
   // Dropdowns Query
   const dropdownsQuery = useQuery({
@@ -770,10 +769,7 @@ export function RekapHarianKelasContent({
 
 export default React.memo(function RekapHarianKelasPage() {
   const { subscription } = useAuthStore();
-  const subFeatures = (subscription as unknown as Record<string, unknown>)?.features || 
-                      subscription?.Plan?.features_json || 
-                      subscription?.plan?.features_json || [];
-  const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
+  const isLocked = !isModuleUnlocked(subscription, 'ABSENSI');
 
   const breadcrumbs = useMemo(() => [
     { label: 'Presensi', path: '/attendance' },

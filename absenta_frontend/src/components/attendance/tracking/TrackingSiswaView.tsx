@@ -35,6 +35,7 @@ import { getTrackingHarianSiswa, getRekapBulananSiswa } from '@/api/attendanceGe
 import { siswaApi } from '@/api/academic.api';
 import { toLocalDate, toLocalMonth } from '@/utils/attendance/time';
 import { cn } from '@/lib/utils';
+import { isModuleUnlocked } from '@/utils/subscriptionUtils';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { SharedAttendanceTimeline } from '../SharedAttendanceTimeline';
@@ -181,12 +182,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
   }, [propSiswaId, paramSiswaId]);
 
   const canView = useMemo(() => can('attendance.reports.view'), [can]);
-  const subFeatures =
-    (subscription as unknown as Record<string, unknown>)?.features ||
-    subscription?.Plan?.features_json ||
-    subscription?.plan?.features_json ||
-    [];
-  const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
+  const isLocked = !isModuleUnlocked(subscription, 'ABSENSI');
 
   // Query opsi siswa (didukung filter kelas atau jurusan)
   const siswaOptionsQuery = useQuery({

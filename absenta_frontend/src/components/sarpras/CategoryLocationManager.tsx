@@ -8,6 +8,7 @@ import { Label } from '../ui/Label';
 import { sarprasApi } from '../../api/sarpras.api';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 
 interface CategoryLocationManagerProps {
   type: 'category' | 'location';
@@ -28,7 +29,7 @@ const CategoryLocationManager: React.FC<CategoryLocationManagerProps> = React.me
   const [formData, setFormData] = useState({ nama: '', deskripsi: '' });
 
   // Gating Logic
-  const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';
+  const isLocked = !isModuleUnlocked(subscription, 'SARPRAS');
   const isEnabled = subscription !== undefined;
 
   const isCategory = type === 'category';

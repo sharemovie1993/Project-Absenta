@@ -25,6 +25,7 @@ const monitoringFilterSchema = z.object({
 });
 
 import { useAuthStore } from '../../store/authStore';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard, Table, Button, Input } from '../../components/ui';
@@ -90,11 +91,7 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = React.me
   const [filterClass, setFilterClass] = useState('all');
 
   // Gating Logic
-  const sub = (subscription as unknown) as Record<string, unknown> | null;
-  const features = (sub?.features as string[]) || 
-                   (sub?.Plan as Record<string, unknown>)?.features_json || 
-                   (sub?.plan as Record<string, unknown>)?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('HUBIN');
+  const isLocked = !isModuleUnlocked(subscription, 'HUBIN');
   const isEnabled = subscription !== undefined;
 
   // Queries

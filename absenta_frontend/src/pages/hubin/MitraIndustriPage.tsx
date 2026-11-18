@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -73,9 +74,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
   const [selectedRowKeys, setSelectedRowKeys] = useState<Set<string>>(new Set());
 
   // Gating Logic
-  const sub = subscription as unknown as SubscriptionWithFeatures | null;
-  const features = sub?.features || sub?.Plan?.features_json || sub?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('HUBIN');
+  const isLocked = !isModuleUnlocked(subscription, 'HUBIN');
 
   // Role & Capability Checks
   const { isHubin: isHubinRole, isAdmin, can } = useCapabilities();

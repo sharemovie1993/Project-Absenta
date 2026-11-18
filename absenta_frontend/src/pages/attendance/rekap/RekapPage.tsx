@@ -7,6 +7,7 @@ import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoun
 import { FileText, Calendar, BarChart3, Users, BookOpen } from 'lucide-react';
 import { SectionCard } from '../../../components/ui/SectionCard';
 import { TabSwitcher } from '../../../components/ui/TabSwitcher';
+import { isModuleUnlocked } from '../../../utils/subscriptionUtils';
 
 // Lazy Loaded Subcomponents (Pilar 13)
 const PremiumFeatureGate = lazy(() => import('../../../components/auth/PremiumFeatureGate'));
@@ -23,9 +24,7 @@ export const RekapPage: React.FC<{ initialTab?: RekapTab }> = React.memo(({ init
 
   const { subscription } = useAuthStore();
   const { can } = useCapabilities();
-  const subRecord = subscription as unknown as Record<string, unknown> | null;
-  const subFeatures = (subRecord?.features as string[]) || (subRecord?.Plan as { features_json?: string[] })?.features_json || (subRecord?.plan as { features_json?: string[] })?.features_json || [];
-  const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
+  const isLocked = !isModuleUnlocked(subscription, 'ABSENSI');
 
   const handleTabChange = useCallback((id: string) => {
     setActiveTab(id);

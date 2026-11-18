@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { Button } from '../../components/ui';
 import { useAuthStore } from '../../store/authStore';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -47,12 +48,7 @@ export const TrackingSiswaPage: React.FC<UniversalTrackingSiswaViewProps> = Reac
   const { can } = useCapabilities();
 
   const canView = useMemo(() => can('attendance.reports.view'), [can]);
-  const subFeatures =
-    (subscription as unknown as Record<string, unknown>)?.features ||
-    subscription?.Plan?.features_json ||
-    subscription?.plan?.features_json ||
-    [];
-  const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
+  const isLocked = !isModuleUnlocked(subscription, 'ABSENSI');
 
   return (
     <PremiumFeatureGate

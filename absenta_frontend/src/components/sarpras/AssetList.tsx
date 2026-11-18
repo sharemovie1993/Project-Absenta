@@ -28,6 +28,7 @@ import { AssetPrintLabelModal } from './AssetPrintLabelModal';
 import { SearchableSelect } from '../ui/SearchableSelect';
 
 import { useAuthStore } from '../../store/authStore';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 import { useSarprasKategoriOptions } from '../../hooks/useSarprasKategoriOptions';
 import { useRuanganOptions } from '../../hooks/useRuanganOptions';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -50,7 +51,7 @@ const AssetList: React.FC<AssetListProps> = React.memo(({ onEdit, onView, onAdd,
   const [limit, setLimit] = useState(10);
 
   // Gating Logic
-  const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';
+  const isLocked = !isModuleUnlocked(subscription, 'SARPRAS');
   const isEnabled = subscription !== undefined;
   
   const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, assetId: string | null}>({ isOpen: false, assetId: null });

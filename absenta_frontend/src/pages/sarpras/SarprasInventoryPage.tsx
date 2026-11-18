@@ -12,6 +12,7 @@ import AssetGrid from '../../components/sarpras/AssetList';
 import { sarprasApi } from '../../api/sarpras.api';
 import type { Asset } from '../../api/sarpras.api';
 import { useAuthStore } from '../../store/authStore';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { formatDate } from '../../utils/layoutUtils';
@@ -51,14 +52,9 @@ const SarprasInventoryPage: React.FC<SarprasInventoryPageProps> = React.memo(({ 
   const [isImportOpen, setIsImportOpen] = useState(false);
 
   // Gating Logic
-  const features = useMemo(() => {
-    const sub = subscription as SubscriptionFeature;
-    return sub?.features || sub?.Plan?.features_json || sub?.plan?.features_json || [];
-  }, [subscription]);
-
   const isLocked = useMemo(() => {
-    return !Array.isArray(features) || !features.includes('SARPRAS');
-  }, [features]);
+    return !isModuleUnlocked(subscription, 'SARPRAS');
+  }, [subscription]);
 
   // Stats
   const { data: statsData, isLoading: isLoadingStats } = useQuery({

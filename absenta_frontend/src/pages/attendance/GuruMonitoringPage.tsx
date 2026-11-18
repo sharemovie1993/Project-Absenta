@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 
 import { useAuthStore } from '../../store/authStore';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -87,10 +88,7 @@ export default React.memo(function GuruMonitoringPage() {
     [isAdmin, isKurikulum, isKepalaSekolah, can],
   );
 
-  const subFeatures = (subscription as unknown as Record<string, unknown>)?.features || 
-                      subscription?.Plan?.features_json || 
-                      subscription?.plan?.features_json || [];
-  const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
+  const isLocked = !isModuleUnlocked(subscription, 'ABSENSI');
 
   const sessionsQuery = useQuery({
     queryKey: ['guru-monitoring-sessions', explicitTanggal, tanggal, selectedKelasId, selectedGuruId],

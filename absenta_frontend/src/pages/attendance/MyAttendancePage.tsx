@@ -15,6 +15,7 @@ import { SharedVisualAttendanceCalendar } from '../../components/attendance/Shar
 import { SharedAttendanceTimeline } from '../../components/attendance/SharedAttendanceTimeline';
 
 import { useAuthStore } from '../../store/authStore';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useNavigate } from 'react-router-dom';
 import { kesiswaanApi } from '../../api/kesiswaan.api';
@@ -107,12 +108,7 @@ export const MyAttendancePage: React.FC = React.memo(() => {
   const { isTeacher } = useCapabilities();
   const isGuru = isTeacher || !!(user as { guru_id?: string })?.guru_id;
 
-  const features =
-    (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.features ||
-    (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.Plan?.features_json ||
-    (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.plan?.features_json ||
-    [];
-  const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
+  const isLocked = !isModuleUnlocked(subscription, 'ABSENSI');
 
   // 1. Query Rekap Bulanan
   const { data: attendanceData, isLoading } = useQuery({

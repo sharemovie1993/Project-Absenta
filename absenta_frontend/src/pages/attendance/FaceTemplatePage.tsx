@@ -19,6 +19,7 @@ import { useGerbangModeAndRole } from '../../hooks/attendance/useGerbangModeAndR
 import { Camera, Search, Trash, ScanFace, ShieldCheck, Plus } from 'lucide-react';
 
 import { useAuthStore } from '../../store/authStore';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 
 import useConfirm from '../../hooks/useConfirm';
@@ -78,8 +79,7 @@ export const FaceTemplatePage: React.FC = React.memo(() => {
     return isAdmin || can('attendance.gate.face.verify');
   }, [isAdmin, can]);
 
-  const features = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
+  const isLocked = !isModuleUnlocked(subscription, 'ABSENSI');
 
   useGerbangModeAndRole({ user });
 

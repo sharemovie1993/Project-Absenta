@@ -17,6 +17,7 @@ import { toLocalMonth } from '../../../utils/attendance/time';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
 import { formatDate } from '../../../utils/layoutUtils';
+import { isModuleUnlocked } from '../../../utils/subscriptionUtils';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { BookOpen } from 'lucide-react';
 
@@ -87,9 +88,7 @@ export function RekapBulananMapelContent() {
     [can]
   );
 
-  const subRecord = subscription as unknown as SubscriptionRecord | null;
-  const subFeatures = subRecord?.features ?? subRecord?.Plan?.features_json ?? subRecord?.plan?.features_json ?? [];
-  const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
+  const isLocked = !isModuleUnlocked(subscription, 'ABSENSI');
 
   // Query Profil Guru
   const { data: myGuruData } = useQuery({

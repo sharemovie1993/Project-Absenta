@@ -22,6 +22,7 @@ import { id } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
 import { toLocalDate, formatLocalTimeFromISO } from '../../utils/attendance/time';
 import { formatDate } from '../../utils/layoutUtils';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import PageLayout from '../../components/common/PageLayout';
@@ -85,8 +86,7 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
     return isAdmin || isKurikulum || isKepalaSekolah || isTuHead || isTuStaff;
   }, [isAdmin, isKurikulum, isKepalaSekolah, isTuHead, isTuStaff]);
 
-  const features = user?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
+  const isLocked = !isModuleUnlocked(subscription, 'ABSENSI');
 
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');

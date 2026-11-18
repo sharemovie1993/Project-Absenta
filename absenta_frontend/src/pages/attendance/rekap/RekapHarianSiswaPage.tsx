@@ -12,6 +12,7 @@ import { toLocalDate, getTimezone } from '../../../utils/attendance/time';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import { Search, RefreshCw, User, Clock, FileText, Filter } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
+import { isModuleUnlocked } from '../../../utils/subscriptionUtils';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 const PremiumFeatureGate = lazy(() => import('../../../components/auth/PremiumFeatureGate'));
@@ -52,8 +53,7 @@ export default React.memo(function RekapHarianSiswaPage() {
   const [siswaOptions, setSiswaOptions] = useState<DropdownOption[]>([]);
   const canView = useMemo(() => can('attendance.reports.view'), [can]);
   const isSiswa = !!user?.isStudent;
-  const subFeatures = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
-  const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
+  const isLocked = !isModuleUnlocked(subscription, 'ABSENSI');
 
   // Dropdowns Query
   const dropdownsQuery = useQuery({

@@ -23,6 +23,7 @@ import { SectionCard } from '../../components/ui/SectionCard';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { sarprasApi } from '../../api/sarpras.api';
 import { useAuthStore } from '../../store/authStore';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 import { useNavStore } from '../../store/navStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
@@ -111,14 +112,9 @@ const SarprasLoansPage: React.FC<SarprasLoansPageProps> = React.memo(({ hideLayo
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Gating Logic
-  const features = useMemo(() => {
-    const sub = subscription as SubscriptionFeature;
-    return sub?.features || sub?.Plan?.features_json || sub?.plan?.features_json || [];
-  }, [subscription]);
-
   const isLocked = useMemo(() => {
-    return !Array.isArray(features) || !features.includes('SARPRAS');
-  }, [features]);
+    return !isModuleUnlocked(subscription, 'SARPRAS');
+  }, [subscription]);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['sarpras-loans', page, limit, statusFilter],

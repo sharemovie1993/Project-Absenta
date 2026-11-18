@@ -12,6 +12,7 @@ import { Button, Input, Label, Textarea, SearchableSelect, ModalFooter, Loader, 
 import { sarprasApi } from '../../api/sarpras.api';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
+import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 import { useSarprasKategoriOptions } from '../../hooks/useSarprasKategoriOptions';
 import { useRuanganOptions } from '../../hooks/useRuanganOptions';
 
@@ -43,7 +44,7 @@ const AssetForm: React.FC<AssetFormProps> = React.memo(({ assetId, onSuccess, on
   const queryClient = useQueryClient();
 
   // Gating Logic
-  const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';
+  const isLocked = !isModuleUnlocked(subscription, 'SARPRAS');
   const isEnabled = subscription !== undefined;
 
   const [formData, setFormData] = useState({
