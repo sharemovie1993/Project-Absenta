@@ -63,9 +63,30 @@
   - **User**: `asep`
   - **Password**: `1`
   - **SSH Key**: `nginxonly.pem`
-- **Quick Deploy Script**:
-  - Push commit ke GitHub `origin/main`
-  - Pull dan build di server lokal:
-    ```bash
-    ssh -i nginxonly.pem asep@10.10.10.116 "cd /var/www/project-absenta && git pull origin main && cd absenta_backend && npm run build && cd ../absenta_frontend && npm run build && pm2 reload all"
-    ```
+- **Direktori Server**:
+  - **Folder Produksi Aktif**: `/var/www/project-absenta`
+  - **Folder Sandbox Staging Terisolasi**: `/var/www/project-absenta-staging`
+
+> [!IMPORTANT]
+> **ATURAN MUTLAK BUILD: DILARANG BUILD DI KOMPUTER LOKAL!**
+> Komputer pengembang lokal memiliki keterbatasan RAM dan CPU yang hampir penuh. DILARANG menjalankan `npm run build` lokal. Seluruh pengujian kompilasi Vite dan build dialihkan langsung ke server VPS (`10.10.10.116`) yang memiliki 24 GB RAM dan 100+ GB SSD.
+
+### Prosedur Deploy Aman Terisolasi (Zero-Downtime Safe Deploy):
+Selalu gunakan alur staging terisolasi agar jika terjadi kesalahan kompilasi/TypeScript/syntax error, server produksi TIDAK PERNAH terdampak:
+
+1. **Commit & Push dari Komputer Lokal**:
+   ```bash
+   git add .
+   git commit -m "feat/fix: deskripsi perubahan"
+   git push origin main
+   ```
+2. **Eksekusi Safe Deploy di VPS (1-Perintah Aman)**:
+   ```bash
+   ssh -i "D:\BarayaProject\deployer\nginxonly.pem" asep@10.10.10.116 "/var/www/deploy-safe.sh"
+   ```
+
+### Alur Kerja Otomatis `deploy-safe.sh`:
+1. **Pull & Reset di Sandbox Staging**: Kode terbaru ditarik ke `/var/www/project-absenta-staging`.
+2. **Testing Build di Staging**: Kompilasi dijalankan di direktori staging. Jika ada error, skrip **langsung STOP** dan folder produksi sama sekali TIDAK TERSENTUH (Zero Risk).
+3. **Atomic Production Promotion**: Jika build staging sukses 100%, artifak hasil build disinkronkan ke `/var/www/project-absenta/absenta_frontend/dist`.
+4. **PM2 Instant Reload**: Reload service `pm2 reload absenta-web:5175` tanpa downtime.
