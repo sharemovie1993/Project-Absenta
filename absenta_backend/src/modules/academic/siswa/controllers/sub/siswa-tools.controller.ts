@@ -9,6 +9,7 @@ import { kelasService } from '../../../kelas/services/kelas.service';
 import { getPaginationParams } from '@/utils/pagination';
 import { RoleName } from '@/constants/enums';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
+import { DapodikService } from '@/modules/dapodik/services/dapodik.service';
 
 const siswaService = new SiswaService();
 
@@ -287,12 +288,73 @@ async normalizeWaPhones(request: any, reply: any) {
         }
       }
 
+      // Muat data Snapshot Staging Dapodik untuk pembanding data referensi
+      let dapodikRows: any[] = [];
+      try {
+        const stagingSnapshot = await DapodikService.loadStagingSnapshot(String(tenantId));
+        if (stagingSnapshot && Array.isArray(stagingSnapshot.rows)) {
+          dapodikRows = stagingSnapshot.rows;
+        }
+      } catch (err: any) {
+        console.warn('[siswaToolsController] Gagal memuat snapshot staging Dapodik:', err?.message || err);
+      }
+
+      // Bangun indeks referensi Dapodik (By NIK dan By Nama Siswa)
+      const norm = (str?: string | null) => (str || '').replace(/\s+/g, ' ').trim().toUpperCase();
+      const dapodikByName = new Map<string, any>();
+      const dapodikByNik = new Map<string, any>();
+
+      for (const dRow of dapodikRows) {
+        const dNama = norm(dRow.nama || dRow.nama_siswa);
+        const dNik = (dRow.nik || '').trim().toLowerCase();
+        if (dNama && !dapodikByName.has(dNama)) {
+          dapodikByName.set(dNama, dRow);
+        }
+        if (dNik && !dapodikByNik.has(dNik)) {
+          dapodikByNik.set(dNik, dRow);
+        }
+      }
+
+      const mapStudentWithDapodik = (s: any) => {
+        const sNama = norm(s.nama_siswa);
+        const sNik = (s.nik || '').trim().toLowerCase();
+
+        // Cari padanan di Dapodik: prioritaskan NIK, lalu Nama Siswa
+        const dMatch = (sNik ? dapodikByNik.get(sNik) : undefined) || dapodikByName.get(sNama);
+
+        if (dMatch) {
+          const dNipd = (dMatch.registrasi_peserta_didik?.nipd || dMatch.nipd || '').trim();
+          const dRombel = (dMatch.nama_rombel || dMatch.rombongan_belajar?.nama || dMatch.rombel || '').trim();
+          return {
+            ...s,
+            dapodik: {
+              found: true,
+              nama: dMatch.nama || dMatch.nama_siswa,
+              nisn: dMatch.nisn ? String(dMatch.nisn).trim() : null,
+              nis: dNipd || null,
+              nik: dMatch.nik ? String(dMatch.nik).trim() : null,
+              rombel: dRombel || null,
+              jenis_kelamin: dMatch.jenis_kelamin || null,
+              tanggal_lahir: dMatch.tanggal_lahir ? String(dMatch.tanggal_lahir).split('T')[0] : null,
+              tempat_lahir: dMatch.tempat_lahir || null,
+            }
+          };
+        }
+
+        return {
+          ...s,
+          dapodik: {
+            found: false
+          }
+        };
+      };
+
       const duplicateNis = Array.from(nisGroups.entries())
         .filter(([_, list]) => list.length > 1)
         .map(([identifier, list]) => ({
           identifier,
           count: list.length,
-          students: list
+          students: list.map(mapStudentWithDapodik)
         }));
 
       const duplicateNisn = Array.from(nisnGroups.entries())
@@ -300,7 +362,7 @@ async normalizeWaPhones(request: any, reply: any) {
         .map(([identifier, list]) => ({
           identifier,
           count: list.length,
-          students: list
+          students: list.map(mapStudentWithDapodik)
         }));
 
       const totalDuplicateNisStudents = duplicateNis.reduce((sum, g) => sum + g.count, 0);
@@ -315,6 +377,8 @@ async normalizeWaPhones(request: any, reply: any) {
             totalDuplicateNisStudents,
             totalDuplicateNisnGroups: duplicateNisn.length,
             totalDuplicateNisnStudents,
+            hasDapodikSnapshot: dapodikRows.length > 0,
+            totalDapodikStudents: dapodikRows.length,
           },
           duplicateNis,
           duplicateNisn,

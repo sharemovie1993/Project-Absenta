@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Copy, CheckCircle2, AlertTriangle, RefreshCw, Search, 
-  Edit3, Save, X, ExternalLink, ShieldAlert, Sparkles, Filter
+  Edit3, Save, X, ExternalLink, ShieldAlert, Sparkles, Filter, Database
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Modal, Button, Input, Badge, Loader } from '@/components/ui';
@@ -123,16 +123,32 @@ export const SiswaDuplicateAuditModal: React.FC<SiswaDuplicateAuditModalProps> =
       size="4xl"
     >
       <div className="space-y-4">
-        {/* Banner Penjelasan Arsitektur Mentah */}
-        <div className="flex items-start gap-3 p-3.5 bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/20 rounded-2xl text-amber-900 dark:text-amber-200">
-          <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-          <div className="text-xs space-y-1">
-            <p className="font-bold">
-              Deteksi Duplikasi Data Mentah (Aktif, Calon, &amp; Riwayat)
-            </p>
-            <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
-              Database mengizinkan data mentah diimpor tanpa memblokir unik, agar Anda dapat mengoreksi nomor NIS atau NISN yang tertukar secara fleksibel di sini sebelum sinkronisasi.
-            </p>
+        {/* Banner Penjelasan & Status Dapodik */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/20 rounded-2xl text-amber-900 dark:text-amber-200">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <p className="font-bold">
+                Deteksi Duplikasi Data Mentah &amp; Pembanding Referensi Dapodik
+              </p>
+              <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                Setiap siswa yang terindikasi ganda dilengkapi data pembanding langsung dari snapshot Dapodik. Anda dapat menyalin data Dapodik dengan 1-klik untuk mengoreksi nomor yang tertukar.
+              </p>
+            </div>
+          </div>
+
+          <div className="shrink-0 self-end sm:self-center">
+            {summary?.hasDapodikSnapshot ? (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">
+                <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Referensi Dapodik Aktif ({summary.totalDapodikStudents} siswa)</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-[11px] font-semibold">
+                <Database className="w-3.5 h-3.5 text-slate-400" />
+                <span>Snapshot Dapodik Belum Ditarik</span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -339,10 +355,10 @@ export const SiswaDuplicateAuditModal: React.FC<SiswaDuplicateAuditModalProps> =
                       return (
                         <div
                           key={student.id}
-                          className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                          className="p-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
                         >
-                          {/* Info Siswa */}
-                          <div className="flex items-start gap-2.5 min-w-[220px]">
+                          {/* 1. Info Siswa di Absenta */}
+                          <div className="flex items-start gap-2.5 min-w-[210px] shrink-0">
                             <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                               {student.nama_siswa.substring(0, 2).toUpperCase()}
                             </div>
@@ -365,42 +381,107 @@ export const SiswaDuplicateAuditModal: React.FC<SiswaDuplicateAuditModalProps> =
                             </div>
                           </div>
 
-                          {/* Quick Inline Editor untuk NIS & NISN */}
-                          <div className="flex-1 flex flex-wrap items-center gap-2">
+                          {/* 2. Kolom Referensi Pembanding Dapodik */}
+                          <div className="flex-1 min-w-[280px]">
+                            <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/80 dark:border-slate-800 text-xs space-y-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                                  <Database className="w-3 h-3 text-indigo-500" />
+                                  Data Resmi di Dapodik
+                                </span>
+
+                                {student.dapodik?.found && (student.dapodik.nisn || student.dapodik.nis) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditValues((prev) => ({
+                                        ...prev,
+                                        [student.id]: {
+                                          nis: student.dapodik?.nis || (prev[student.id]?.nis ?? student.nis ?? ''),
+                                          nisn: student.dapodik?.nisn || (prev[student.id]?.nisn ?? student.nisn ?? ''),
+                                        },
+                                      }));
+                                      toast.success(`Nomor resmi Dapodik disalin ke input ${student.nama_siswa}. Klik Simpan untuk memperbarui.`);
+                                    }}
+                                    className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-md transition-colors"
+                                    title="Klik untuk menyalin nomor resmi Dapodik ke form input"
+                                  >
+                                    <Sparkles className="w-3 h-3 text-indigo-500" />
+                                    <span>Terapkan Dapodik</span>
+                                  </button>
+                                )}
+                              </div>
+
+                              {student.dapodik?.found ? (
+                                <div className="flex items-center gap-3 flex-wrap text-[11px] pt-0.5">
+                                  <div className="flex items-center gap-1 font-mono">
+                                    <span className="text-slate-400 text-[10px]">NISN:</span>
+                                    <span className={`font-bold ${
+                                      student.dapodik.nisn === student.nisn 
+                                        ? 'text-emerald-600 dark:text-emerald-400' 
+                                        : 'text-rose-600 dark:text-rose-400'
+                                    }`}>
+                                      {student.dapodik.nisn || '(Kosong)'}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1 font-mono">
+                                    <span className="text-slate-400 text-[10px]">NIS:</span>
+                                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                                      {student.dapodik.nis || '-'}
+                                    </span>
+                                  </div>
+
+                                  {student.dapodik.rombel && (
+                                    <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-indigo-100/70 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-semibold">
+                                      {student.dapodik.rombel}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-[10px] text-slate-400 italic pt-0.5">
+                                  Siswa belum ditemukan di snapshot Dapodik (Calon / Belum Masuk Rombel).
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 3. Quick Inline Editor untuk NIS & NISN */}
+                          <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1.5 text-xs">
-                              <span className="text-[10px] text-slate-400 font-semibold w-9">NISN:</span>
+                              <span className="text-[10px] text-slate-400 font-semibold">NISN:</span>
                               <Input
                                 value={currentNisn}
                                 onChange={(e) => handleInputChange(student.id, 'nisn', e.target.value, student)}
-                                placeholder="NISN (10 Digit)"
-                                className={`h-7 w-32 text-xs font-mono rounded-lg ${
-                                  activeTab === 'nisn' ? 'border-rose-300 dark:border-rose-800 bg-rose-50/30' : ''
+                                placeholder="NISN"
+                                className={`h-7 w-28 text-xs font-mono rounded-lg ${
+                                  activeTab === 'nisn' ? 'border-rose-300 dark:border-rose-800 bg-rose-50/20' : ''
                                 }`}
                               />
                             </div>
 
                             <div className="flex items-center gap-1.5 text-xs">
-                              <span className="text-[10px] text-slate-400 font-semibold w-7">NIS:</span>
+                              <span className="text-[10px] text-slate-400 font-semibold">NIS:</span>
                               <Input
                                 value={currentNis}
                                 onChange={(e) => handleInputChange(student.id, 'nis', e.target.value, student)}
-                                placeholder="NIS Sekolah"
-                                className={`h-7 w-32 text-xs font-mono rounded-lg ${
-                                  activeTab === 'nis' ? 'border-amber-300 dark:border-amber-800 bg-amber-50/30' : ''
+                                placeholder="NIS"
+                                className={`h-7 w-24 text-xs font-mono rounded-lg ${
+                                  activeTab === 'nis' ? 'border-amber-300 dark:border-amber-800 bg-amber-50/20' : ''
                                 }`}
                               />
                             </div>
                           </div>
 
-                          {/* Action Buttons */}
-                          <div className="flex items-center gap-1.5 shrink-0 self-end md:self-center">
-                            {hasChanged && (
+                          {/* 4. Action Buttons */}
+                          <div className="flex items-center gap-1.5 shrink-0 self-end lg:self-center">
+                            {hasChanged ? (
                               <Button
                                 size="xs"
                                 variant="primary"
                                 onClick={() => handleSaveCorrection(student)}
                                 disabled={isSaving}
-                                className="h-7 px-2.5 text-[11px] font-bold gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+                                className="h-7 px-2.5 text-[11px] font-bold gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
                                 title="Simpan koreksi nomor siswa"
                               >
                                 {isSaving ? (
@@ -410,7 +491,7 @@ export const SiswaDuplicateAuditModal: React.FC<SiswaDuplicateAuditModalProps> =
                                 )}
                                 <span>Simpan</span>
                               </Button>
-                            )}
+                            ) : null}
 
                             {onOpenEditSiswa && (
                               <Button

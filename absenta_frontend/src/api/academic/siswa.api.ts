@@ -333,6 +333,18 @@ export const bulkResetSiswaPassword = async (payload: BulkResetSiswaPasswordPayl
   return requestWithFallback('post', '/academic/siswa/bulk-reset-password', { data: payload, timeout: 300000 });
 };
 
+export interface DuplicateDapodikRef {
+  found: boolean;
+  nama?: string;
+  nisn?: string | null;
+  nis?: string | null;
+  nik?: string | null;
+  rombel?: string | null;
+  jenis_kelamin?: string | null;
+  tanggal_lahir?: string | null;
+  tempat_lahir?: string | null;
+}
+
 export interface DuplicateStudentItem {
   id: string;
   nama_siswa: string;
@@ -342,6 +354,7 @@ export interface DuplicateStudentItem {
   status: string;
   kelas_id?: string | null;
   Kelas?: { id: string; nama_kelas: string } | null;
+  dapodik?: DuplicateDapodikRef;
 }
 
 export interface DuplicateGroupItem {
@@ -357,6 +370,8 @@ export interface DuplicateAuditResponse {
     totalDuplicateNisStudents: number;
     totalDuplicateNisnGroups: number;
     totalDuplicateNisnStudents: number;
+    hasDapodikSnapshot?: boolean;
+    totalDapodikStudents?: number;
   };
   duplicateNis: DuplicateGroupItem[];
   duplicateNisn: DuplicateGroupItem[];
