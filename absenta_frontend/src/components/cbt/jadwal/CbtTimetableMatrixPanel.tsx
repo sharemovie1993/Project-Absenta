@@ -1618,6 +1618,9 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                         const isAllPlotted =
                           !selectedBankId && availableOptions.length === 0 && allOptionsForTingkat.length > 0;
 
+                        const readyOptions = availableOptions.filter((opt) => (opt.soalCount || 0) > 0);
+                        const emptyOptions = availableOptions.filter((opt) => (opt.soalCount || 0) === 0);
+
                         return (
                           <td key={tingkat} className={cn('p-2 align-middle transition-colors', theme.cellBg)}>
                             <select
@@ -1625,14 +1628,16 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                               onChange={(e) =>
                                 handleSelectBankSoal(day.day_index, sess.session_index, tingkat, e.target.value)
                               }
-                              aria-label={`Bank Soal ${day.nama_hari} Sesi ${sess.session_index} Tingkat ${tingkat}`}
+                              aria-label={`Mata Pelajaran ${day.nama_hari} Sesi ${sess.session_index} Tingkat ${tingkat}`}
                               disabled={isAllPlotted}
                               className={cn(
                                 'w-full h-8 px-2.5 text-xs rounded-md border font-medium transition-all cursor-pointer',
                                 selectedBankId
                                   ? isZeroQuestions
                                     ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-950 dark:text-amber-200 border-amber-400 dark:border-amber-600 font-semibold shadow-2xs'
-                                    : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-indigo-400 dark:border-indigo-500 font-semibold shadow-2xs'
+                                    : publishedCount > 0
+                                    ? 'bg-emerald-50/80 dark:bg-emerald-950/50 text-emerald-950 dark:text-emerald-100 border-emerald-500 dark:border-emerald-600 font-bold shadow-2xs'
+                                    : 'bg-emerald-50/40 dark:bg-slate-900 text-emerald-950 dark:text-emerald-100 border-emerald-400 dark:border-emerald-500 font-semibold shadow-2xs'
                                   : isAllPlotted
                                   ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed'
                                   : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:border-slate-400'
@@ -1646,32 +1651,45 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                               <option value="__MULTI_JURUSAN__" className="font-bold text-purple-700 bg-purple-50 dark:bg-purple-950 dark:text-purple-300">
                                 ⚡ [Multi-Jurusan] Paket {tingkat === 10 ? 'DDPK' : 'MPP / Produktif'} per Jurusan...
                               </option>
-                              {availableOptions.map((opt) => (
-                                <option key={opt.id} value={opt.id}>
-                                  {opt.label}
-                                </option>
-                              ))}
+                              {readyOptions.length > 0 && (
+                                <optgroup label="✅ MAPEL SIAP UJIAN (SOAL TERSEDIA)" className="font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50/30 dark:bg-slate-900">
+                                  {readyOptions.map((opt) => (
+                                    <option key={opt.id} value={opt.id} className="font-semibold text-emerald-950 dark:text-emerald-200">
+                                      🟢 {opt.label}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              )}
+                              {emptyOptions.length > 0 && (
+                                <optgroup label="⚠️ BELUM DISETOR GURU (0 SOAL)" className="font-bold text-amber-700 dark:text-amber-400 bg-amber-50/30 dark:bg-slate-900">
+                                  {emptyOptions.map((opt) => (
+                                    <option key={opt.id} value={opt.id} className="font-medium text-amber-700 dark:text-amber-300 italic">
+                                      ⏳ {opt.label}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              )}
                             </select>
 
                             {selectedBankId && (
                               <div className="mt-1 flex items-center justify-between text-[10px] px-0.5">
                                 {isZeroQuestions ? (
                                   <span
-                                    className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1"
+                                    className="text-amber-700 dark:text-amber-300 font-bold flex items-center gap-1 bg-amber-50 dark:bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800 shadow-2xs"
                                     title="Mata pelajaran ini belum memiliki butir soal dari guru pengampu (menunggu guru membuat bank soal)"
                                   >
                                     ⚠️ Menunggu Setoran Guru (0 Soal)
                                   </span>
                                 ) : publishedCount > 0 ? (
                                   <>
-                                    <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
-                                      <CheckCircle2 size={11} /> Terbit ({publishedCount} Ruang)
+                                    <span className="text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+                                      <CheckCircle2 size={11} className="text-emerald-600 dark:text-emerald-400" /> Terbit ({publishedCount} Ruang)
                                     </span>
                                     <span className="text-emerald-600 dark:text-emerald-400 text-[9px] font-semibold">Idempoten ✓</span>
                                   </>
                                 ) : (
-                                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">
-                                    Siap Terbit ({selectedOpt?.soalCount || 0} Soal)
+                                  <span className="text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1 bg-emerald-50/70 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+                                    <CheckCircle2 size={11} className="text-emerald-600 dark:text-emerald-400" /> Siap Terbit ({selectedOpt?.soalCount || 0} Soal)
                                   </span>
                                 )}
                               </div>
