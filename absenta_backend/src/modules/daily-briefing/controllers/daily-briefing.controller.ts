@@ -56,12 +56,15 @@ export class DailyBriefingController {
       });
     }
 
+    const originHint = (request.headers?.origin || request.headers?.referer) as string | undefined;
+
     try {
       const result = await dailyBriefingService.sendBriefingViaWhatsapp(
         tenantId,
         body.role || 'KEPALA_SEKOLAH',
         body.tanggal,
-        body.targetPhoneOverride
+        body.targetPhoneOverride,
+        originHint
       );
 
       return reply.status(result.success ? 200 : 400).send(result);

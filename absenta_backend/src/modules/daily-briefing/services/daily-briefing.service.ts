@@ -201,13 +201,74 @@ export class DailyBriefingService {
   }
 
   /**
+   * Mendapatkan Base URL frontend spesifik milik tenant (misal: https://smkn1pld.absenta.id atau custom domain)
+   */
+  public async resolveTenantFrontendBaseUrl(tenantId: string, originHint?: string): Promise<string> {
+    // 1. Jika originHint valid dari request aktif dan bukan domain generic auth/api
+    if (originHint && typeof originHint === 'string' && /^https?:\/\//i.test(originHint.trim())) {
+      try {
+        const urlObj = new URL(originHint.trim());
+        const host = urlObj.hostname.toLowerCase();
+        if (!host.startsWith('api.') && !host.startsWith('admin.') && host !== 'absenta.id') {
+          return `${urlObj.protocol}//${urlObj.host}`;
+        }
+      } catch {}
+    }
+
+    try {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          subdomain: true,
+          custom_domain: true,
+        },
+      });
+
+      // 2. Jika ada custom domain khusus (misal: absensi.smkn1plered.sch.id)
+      if (tenant?.custom_domain) {
+        const cd = tenant.custom_domain.trim().replace(/\/+$/, '');
+        if (/^https?:\/\//i.test(cd)) return cd;
+        const scheme = (process.env.PUBLIC_APP_SCHEME || 'https').trim();
+        return `${scheme}://${cd}`;
+      }
+
+      // 3. Jika ada subdomain tenant (misal: smkn1pld -> https://smkn1pld.absenta.id)
+      if (tenant?.subdomain) {
+        const sub = tenant.subdomain.trim().toLowerCase();
+        const baseDomain = (
+          process.env.MAIN_DOMAIN ||
+          process.env.PUBLIC_DOMAIN_BASE ||
+          process.env.TENANT_BASE_DOMAIN ||
+          'absenta.id'
+        ).trim().toLowerCase();
+
+        const scheme = (process.env.PUBLIC_APP_SCHEME || 'https').trim();
+
+        // Jika subdomain sudah mengandung baseDomain
+        if (sub.endsWith(`.${baseDomain}`) || sub === baseDomain) {
+          return `${scheme}://${sub}`;
+        }
+
+        return `${scheme}://${sub}.${baseDomain}`;
+      }
+    } catch (err: any) {
+      console.warn('[dailyBriefingService] Failed to resolve tenant domain:', err.message);
+    }
+
+    // 4. Fallback ke konfigurasi global
+    const hostUrl = process.env.PUBLIC_APP_URL || process.env.APP_URL || process.env.FRONTEND_URL || 'https://absenta.id';
+    return hostUrl.replace(/\/+$/, '');
+  }
+
+  /**
    * Menghasilkan token, pesan WA, dan mengirimkan ke penerima
    */
   public async sendBriefingViaWhatsapp(
     tenantId: string,
     role: BriefingRole = 'KEPALA_SEKOLAH',
     tanggal?: string,
-    targetPhoneOverride?: string
+    targetPhoneOverride?: string,
+    originHint?: string
   ): Promise<{ success: boolean; message: string; recipient?: string; tokenUrl?: string }> {
     // 1. Dapatkan config WA gateway tenant
     const waConfig = await this.whatsappService.getConfig(tenantId);
@@ -249,8 +310,7 @@ export class DailyBriefingService {
       tanggal: data.tanggalIso,
     });
 
-    const hostUrl = process.env.PUBLIC_APP_URL || process.env.APP_URL || process.env.FRONTEND_URL || 'https://absenta.id';
-    const cleanHost = hostUrl.replace(/\/+$/, '');
+    const cleanHost = await this.resolveTenantFrontendBaseUrl(tenantId, originHint);
     const tokenUrl = `${cleanHost}/reports/daily-briefing?token=${token}`;
 
     // 5. Format pesan WhatsApp
