@@ -20,6 +20,7 @@ import {
 import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 import { Badge, Button } from '@/components/ui';
 import type { UnifiedActionItem, ActionHubSummary } from '@/api/dashboard.api';
+import { useMobileSubtabSidebarStore } from '@/components/dashboard/roles/common/subtabSidebarStore';
 
 interface TeacherActionHubWidgetProps {
   actions: UnifiedActionItem[];
@@ -157,28 +158,22 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
   ], [summary, actions.length, filter]);
 
   const handleActionClick = (item: UnifiedActionItem) => {
+    try {
+      useMobileSubtabSidebarStore.getState().close();
+    } catch {
+      // ignore
+    }
+
     if (item.action.type === 'MODAL' && item.action.target === 'JURNAL_KBM_MODAL') {
       if (onOpenJournal) {
         onOpenJournal(item.action.payload || { id: item.sourceModule.entityId });
       } else {
-        navigate('/kurikulum/jurnal');
+        navigate('/dashboard?tab=ringkasan&subtab=jadwal');
       }
       return;
     }
 
     if (item.action.type === 'NAVIGATE') {
-      if ((item.action.target.includes('tab=piket') || item.action.target.includes('/kesiswaan/piket')) && onNavigateTab) {
-        onNavigateTab('kelola');
-        return;
-      }
-      if (item.action.target.includes('tab=pembimbing_pkl') && onNavigateTab) {
-        onNavigateTab('pembimbing_pkl');
-        return;
-      }
-      if (item.action.target.includes('/rapor/penilaian')) {
-        navigate('/rapor/input-nilai');
-        return;
-      }
       navigate(item.action.target);
     }
   };

@@ -318,7 +318,7 @@ export class DashboardActionHubService {
             action: {
               label: 'Buka Piket ➔',
               type: 'NAVIGATE',
-              target: '/kesiswaan/piket'
+              target: '/dashboard?tab=kelola&subtab=GURU_KBM'
             },
             sourceModule: {
               table: 'JadwalPiketGuru',
@@ -339,7 +339,7 @@ export class DashboardActionHubService {
             action: {
               label: 'Buka Piket ➔',
               type: 'NAVIGATE',
-              target: '/kesiswaan/piket'
+              target: '/dashboard?tab=kelola&subtab=GURU_KBM'
             },
             sourceModule: {
               table: 'JadwalPiketGuru',
@@ -398,7 +398,7 @@ export class DashboardActionHubService {
         action: {
           label: 'Detail Upacara ➔',
           type: 'NAVIGATE',
-          target: '/kesiswaan/program-ketarunaan?tab=upacara'
+          target: '/dashboard?tab=kelola'
         },
         sourceModule: {
           table: 'JadwalPembinaUpacara',
@@ -470,7 +470,7 @@ export class DashboardActionHubService {
           action: {
             label: 'Input Nilai ➔',
             type: 'NAVIGATE',
-            target: '/hubin/nilai-pkl?tab=dudi',
+            target: '/dashboard?tab=pembimbing_pkl&subtab=penilaian',
           },
           sourceModule: {
             table: 'SiswaPkl',
@@ -522,7 +522,7 @@ export class DashboardActionHubService {
           action: {
             label: 'Nilai Sidang ➔',
             type: 'NAVIGATE',
-            target: '/hubin/nilai-pkl?tab=sidang',
+            target: '/dashboard?tab=ringkasan&subtab=sidang_guru',
           },
           sourceModule: {
             table: 'SiswaPkl',
@@ -574,7 +574,7 @@ export class DashboardActionHubService {
           action: {
             label: 'Input Nilai ➔',
             type: 'NAVIGATE',
-            target: '/rapor/input-nilai'
+            target: '/dashboard?tab=ringkasan&subtab=nilai'
           },
           sourceModule: {
             table: 'NilaiSiswa',
@@ -678,7 +678,7 @@ export class DashboardActionHubService {
           action: {
             label: 'Perbaiki Dokumen ➔',
             type: 'NAVIGATE',
-            target: '/kurikulum/perangkat'
+            target: '/dashboard?tab=ringkasan&subtab=perangkat'
           },
           sourceModule: {
             table: 'PerangkatAjar',
@@ -763,7 +763,7 @@ export class DashboardActionHubService {
               action: {
                 label: 'Unggah Perangkat ➔',
                 type: 'NAVIGATE',
-                target: '/kurikulum/perangkat'
+                target: '/dashboard?tab=ringkasan&subtab=perangkat'
               },
               sourceModule: {
                 table: 'PerangkatAjar',
@@ -1008,7 +1008,7 @@ export class DashboardActionHubService {
         action: {
           label: 'Buat Bank Soal ➔',
           type: 'NAVIGATE',
-          target: '/cbt/bank-soal'
+          target: '/dashboard?tab=ringkasan&subtab=cbt'
         },
         sourceModule: {
           table: 'CbtBankSoal',
