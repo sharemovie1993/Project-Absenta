@@ -668,8 +668,8 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
 
   // ── 5. Query Jadwal Ujian Aktif (Fase 3 Hari & Sesi) ──
   const { data: jadwalRes } = useQuery({
-    queryKey: cbtQueryKeys.jadwal({ limit: 150 }),
-    queryFn: () => cbtApi.getJadwalList({ limit: 150 }),
+    queryKey: cbtQueryKeys.jadwal({ limit: 1000, sort_direction: 'asc' }),
+    queryFn: () => cbtApi.getJadwalList({ limit: 1000, sort_direction: 'asc' }),
     enabled: isOpen,
     staleTime: 60 * 1000,
   });

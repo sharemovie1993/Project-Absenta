@@ -370,8 +370,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
 
   // ── 3. Fetch Jadwal Ujian Aktif ──
   const { data: jadwalRes, isLoading: isLoadingJadwal, refetch: refetchJadwal } = useQuery({
-    queryKey: cbtQueryKeys.jadwal({ limit: 150 }),
-    queryFn: () => cbtApi.getJadwalList({ limit: 150 }),
+    queryKey: cbtQueryKeys.jadwal({ limit: 1000, sort_direction: 'asc' }),
+    queryFn: () => cbtApi.getJadwalList({ limit: 1000, sort_direction: 'asc' }),
     staleTime: 3 * 60 * 1000,
     refetchOnWindowFocus: false,
   });

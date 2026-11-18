@@ -24,7 +24,7 @@ export class CbtJadwalService {
    */
   static async list(tenantId: string, query: any) {
     const page = Math.max(1, Number(query.page || 1));
-    const limit = Math.min(500, Math.max(1, Number(query.limit || 10)));
+    const limit = Math.min(2000, Math.max(1, Number(query.limit || 10)));
     const skip = (page - 1) * limit;
 
     const andConditions: Prisma.CbtJadwalUjianWhereInput[] = [
@@ -124,7 +124,7 @@ export class CbtJadwalService {
         where,
         skip,
         take: limit,
-        orderBy: { tanggal_mulai: 'desc' },
+        orderBy: { tanggal_mulai: query.sort_direction === 'asc' ? 'asc' : 'desc' },
         include: {
           BankSoal: {
             select: {

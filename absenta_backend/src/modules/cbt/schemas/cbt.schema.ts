@@ -215,11 +215,12 @@ export const updateJadwalUjianSchema = jadwalUjianBaseSchema
 
 export const queryJadwalUjianSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(500).default(10),
+  limit: z.coerce.number().int().min(1).max(2000).default(10),
   search: z.string().optional(),
   status: z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED']).optional(),
   bank_soal_id: z.string().optional(),
   guru_id: z.string().optional(),
+  sort_direction: z.enum(['asc', 'desc']).optional(),
 });
 
 // Siswa Engine Schemas

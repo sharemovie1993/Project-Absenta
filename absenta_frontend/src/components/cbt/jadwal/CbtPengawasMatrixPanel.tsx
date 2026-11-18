@@ -491,20 +491,6 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
   ]);
 
   // ── 7. DATA STRUKTUR MATRIKS RUANG × SESI ──
-  // Hari aktif untuk mode Matriks (default ke hari pertama jika 'ALL')
-  const currentMatrixDayKey = useMemo(() => {
-    if (selectedDayKey !== 'ALL') return selectedDayKey;
-    return availableDays[0]?.key || '';
-  }, [selectedDayKey, availableDays]);
-
-  // Sesi ujian pada hari aktif (untuk mode Matriks)
-  const activeDaySchedules = useMemo(() => {
-    return effectiveJadwalList.filter((j) => {
-      const dKey = j.tanggal_mulai ? j.tanggal_mulai.split('T')[0] : '';
-      return !currentMatrixDayKey || dKey === currentMatrixDayKey;
-    });
-  }, [effectiveJadwalList, currentMatrixDayKey]);
-
   // Helper untuk mendapatkan key slot sesi (nama_sesi_waktu jika ada, atau jam mulai)
   const getScheduleSlotKey = useCallback((j: CbtJadwalUjian) => {
     const sName = j.setting_keamanan?.nama_sesi_waktu?.trim();
@@ -512,8 +498,9 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
     return formatLocalTimeFromISO(j.tanggal_mulai);
   }, []);
 
-  // Kolom-kolom sesi ujian unik untuk hari aktif (diurutkan kronologis)
-  const activeDaySessions = useMemo(() => {
+  // ── 7. DATA STRUKTUR MATRIKS RUANG × SESI MULTI-HARI ──
+  // Ekstraksi kolom sesi untuk satu set jadwal
+  const extractDaySessions = useCallback((schedules: CbtJadwalUjian[]) => {
     const slotMap = new Map<
       string,
       {
@@ -525,7 +512,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       }
     >();
 
-    activeDaySchedules.forEach((j) => {
+    schedules.forEach((j) => {
       const jamM = formatLocalTimeFromISO(j.tanggal_mulai);
       const jamS = formatLocalTimeFromISO(j.tanggal_selesai);
       const sName = j.setting_keamanan?.nama_sesi_waktu?.trim() || '';
@@ -555,127 +542,175 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       displayTitle: item.namaSesi.startsWith('Sesi') ? item.namaSesi : `Sesi ${idx + 1}`,
       sessionIndex: idx + 1,
     }));
-  }, [activeDaySchedules]);
+  }, []);
 
-  // Baris-baris Matriks Ruang (Ruang × Sesi)
-  const roomMatrixRows = useMemo(() => {
-    const roomsMap = new Map<
-      string,
-      {
-        roomCode: string;
-        rombel: string;
-        tingkat: number;
-        sessions: Record<string, CbtJadwalUjian>;
-      }
-    >();
+  // Ekstraksi baris-baris ruang untuk satu set jadwal
+  const extractRoomRows = useCallback(
+    (schedules: CbtJadwalUjian[]) => {
+      const roomsMap = new Map<
+        string,
+        {
+          roomCode: string;
+          rombel: string;
+          tingkat: number;
+          sessions: Record<string, CbtJadwalUjian>;
+        }
+      >();
 
-    activeDaySchedules.forEach((j) => {
-      const draft = plottingDrafts[j.id];
-      const info = parseRoomAndClass(j, draft?.ruang_ujian);
+      schedules.forEach((j) => {
+        const draft = plottingDrafts[j.id];
+        const info = parseRoomAndClass(j, draft?.ruang_ujian);
 
-      // Filter Tingkat
-      if (tingkatFilter !== 'ALL' && info.tingkat !== tingkatFilter) {
-        return;
-      }
+        // Filter Tingkat
+        if (tingkatFilter !== 'ALL' && info.tingkat !== tingkatFilter) {
+          return;
+        }
 
-      if (!roomsMap.has(info.roomCode)) {
-        roomsMap.set(info.roomCode, {
-          roomCode: info.roomCode,
-          rombel: info.rombel,
-          tingkat: info.tingkat,
-          sessions: {},
-        });
-      }
+        if (!roomsMap.has(info.roomCode)) {
+          roomsMap.set(info.roomCode, {
+            roomCode: info.roomCode,
+            rombel: info.rombel,
+            tingkat: info.tingkat,
+            sessions: {},
+          });
+        }
 
-      const roomItem = roomsMap.get(info.roomCode)!;
-      const slotKey = getScheduleSlotKey(j);
-      roomItem.sessions[slotKey] = j;
+        const roomItem = roomsMap.get(info.roomCode)!;
+        const slotKey = getScheduleSlotKey(j);
+        roomItem.sessions[slotKey] = j;
 
-      if (roomItem.rombel === '-' && info.rombel !== '-') {
-        roomItem.rombel = info.rombel;
-        roomItem.tingkat = info.tingkat;
-      }
-    });
-
-    let list = Array.from(roomsMap.values());
-
-    // Filter Status Ploting
-    if (statusFilter === 'UNPLOTTED') {
-      list = list.filter((r) => {
-        const jList = Object.values(r.sessions);
-        return jList.some((j) => {
-          const d = plottingDrafts[j.id];
-          return !(d?.pengawas_1_id || j.setting_keamanan?.pengawas_1_id);
-        });
+        if (roomItem.rombel === '-' && info.rombel !== '-') {
+          roomItem.rombel = info.rombel;
+          roomItem.tingkat = info.tingkat;
+        }
       });
-    } else if (statusFilter === 'PLOTTED') {
-      list = list.filter((r) => {
-        const jList = Object.values(r.sessions);
-        return (
-          jList.length > 0 &&
-          jList.every((j) => {
+
+      let list = Array.from(roomsMap.values());
+
+      // Filter Status Ploting
+      if (statusFilter === 'UNPLOTTED') {
+        list = list.filter((r) => {
+          const jList = Object.values(r.sessions);
+          return jList.some((j) => {
             const d = plottingDrafts[j.id];
-            return !!(d?.pengawas_1_id || j.setting_keamanan?.pengawas_1_id);
-          })
-        );
-      });
-    } else if (statusFilter === 'CONFLICT') {
-      list = list.filter((r) => {
-        const jList = Object.values(r.sessions);
-        return jList.some((j) => conflictJadwalIds.has(j.id));
-      });
-    }
-
-    // Filter Search Box
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter((r) => {
-        const matchRoom = r.roomCode.toLowerCase().includes(q);
-        const matchRombel = r.rombel.toLowerCase().includes(q);
-        if (matchRoom || matchRombel) return true;
-
-        return Object.values(r.sessions).some((j) => {
-          const d = plottingDrafts[j.id];
-          const mapel = (j.BankSoal?.Mapel?.nama_mapel || j.BankSoal?.judul || '').toLowerCase();
-          const p1Name = (j.setting_keamanan?.pengawas_1_nama || '').toLowerCase();
-          const draftP1Name = d?.pengawas_1_id
-            ? (guruMap.get(d?.pengawas_1_id)?.nama_guru || '').toLowerCase()
-            : '';
-          const prName = (j.setting_keamanan?.proktor_nama || '').toLowerCase();
-          const draftPrName = d?.proktor_id
-            ? (guruMap.get(d?.proktor_id)?.nama_guru || '').toLowerCase()
-            : '';
+            return !(d?.pengawas_1_id || j.setting_keamanan?.pengawas_1_id);
+          });
+        });
+      } else if (statusFilter === 'PLOTTED') {
+        list = list.filter((r) => {
+          const jList = Object.values(r.sessions);
           return (
-            mapel.includes(q) ||
-            p1Name.includes(q) ||
-            draftP1Name.includes(q) ||
-            prName.includes(q) ||
-            draftPrName.includes(q) ||
-            j.nama_sesi.toLowerCase().includes(q)
+            jList.length > 0 &&
+            jList.every((j) => {
+              const d = plottingDrafts[j.id];
+              return !!(d?.pengawas_1_id || j.setting_keamanan?.pengawas_1_id);
+            })
           );
         });
-      });
-    }
+      } else if (statusFilter === 'CONFLICT') {
+        list = list.filter((r) => {
+          const jList = Object.values(r.sessions);
+          return jList.some((j) => conflictJadwalIds.has(j.id));
+        });
+      }
 
-    // Urutkan alami kode ruang (R.01 s/d R.36)
-    return list.sort((a, b) => compareRoomCodes(a.roomCode, b.roomCode));
+      // Filter Search Box
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        list = list.filter((r) => {
+          const matchRoom = r.roomCode.toLowerCase().includes(q);
+          const matchRombel = r.rombel.toLowerCase().includes(q);
+          if (matchRoom || matchRombel) return true;
+
+          return Object.values(r.sessions).some((j) => {
+            const d = plottingDrafts[j.id];
+            const mapel = (j.BankSoal?.Mapel?.nama_mapel || j.BankSoal?.judul || '').toLowerCase();
+            const p1Name = (j.setting_keamanan?.pengawas_1_nama || '').toLowerCase();
+            const draftP1Name = d?.pengawas_1_id
+              ? (guruMap.get(d?.pengawas_1_id)?.nama_guru || '').toLowerCase()
+              : '';
+            const prName = (j.setting_keamanan?.proktor_nama || '').toLowerCase();
+            const draftPrName = d?.proktor_id
+              ? (guruMap.get(d?.proktor_id)?.nama_guru || '').toLowerCase()
+              : '';
+            return (
+              mapel.includes(q) ||
+              p1Name.includes(q) ||
+              draftP1Name.includes(q) ||
+              prName.includes(q) ||
+              draftPrName.includes(q) ||
+              j.nama_sesi.toLowerCase().includes(q)
+            );
+          });
+        });
+      }
+
+      // Urutkan alami kode ruang (R.01 s/d R.36)
+      return list.sort((a, b) => compareRoomCodes(a.roomCode, b.roomCode));
+    },
+    [
+      plottingDrafts,
+      tingkatFilter,
+      statusFilter,
+      conflictJadwalIds,
+      searchQuery,
+      parseRoomAndClass,
+      getScheduleSlotKey,
+      guruMap,
+      compareRoomCodes,
+    ]
+  );
+
+  // Struktur Matriks untuk Setiap Hari yang Ditampilkan (Mendukung Semua Hari maupun Per-Hari)
+  const matrixDaysData = useMemo(() => {
+    const targetDays =
+      selectedDayKey === 'ALL'
+        ? availableDays
+        : availableDays.filter((d) => d.key === selectedDayKey);
+
+    return targetDays.map((d) => {
+      const daySchedules = effectiveJadwalList.filter((j) => {
+        const dKey = j.tanggal_mulai ? j.tanggal_mulai.split('T')[0] : '';
+        return dKey === d.key;
+      });
+
+      const daySessions = extractDaySessions(daySchedules);
+      const dayRoomRows = extractRoomRows(daySchedules);
+
+      return {
+        dayKey: d.key,
+        dayLabel: d.label,
+        schedules: daySchedules,
+        sessions: daySessions,
+        roomRows: dayRoomRows,
+      };
+    });
   }, [
-    activeDaySchedules,
-    plottingDrafts,
-    tingkatFilter,
-    statusFilter,
-    conflictJadwalIds,
-    searchQuery,
-    parseRoomAndClass,
-    getScheduleSlotKey,
-    guruMap,
+    selectedDayKey,
+    availableDays,
+    effectiveJadwalList,
+    extractDaySessions,
+    extractRoomRows,
   ]);
+
+  // Fallback kompatibilitas untuk single day / active day pertama
+  const activeDaySessions = useMemo(() => {
+    return matrixDaysData[0]?.sessions || [];
+  }, [matrixDaysData]);
+
+  const roomMatrixRows = useMemo(() => {
+    return matrixDaysData[0]?.roomRows || [];
+  }, [matrixDaysData]);
 
   // ── 8. OPERASI CEPAT SALIN PENGAWAS SEHARIAN ──
   // Salin Pengawas Seharian untuk 1 Ruangan (Sesi 1 -> Sesi 2, 3...)
   const handleCopyRoomFullDay = useCallback(
-    (roomRow: { roomCode: string; sessions: Record<string, CbtJadwalUjian> }) => {
-      if (activeDaySessions.length <= 1) {
+    (
+      roomRow: { roomCode: string; sessions: Record<string, CbtJadwalUjian> },
+      daySessionsParam?: Array<any>
+    ) => {
+      const targetDaySessions = daySessionsParam || activeDaySessions;
+      if (!targetDaySessions || targetDaySessions.length <= 1) {
         toast('Hanya terdapat 1 sesi ujian di hari ini.', { icon: 'ℹ️' });
         return;
       }
@@ -684,7 +719,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       let sourceSession: CbtJadwalUjian | null = null;
       let sourceDraft: PlottingDraftRow | null = null;
 
-      for (const slot of activeDaySessions) {
+      for (const slot of targetDaySessions) {
         const j = roomRow.sessions[slot.slotKey];
         if (j) {
           const d = plottingDrafts[j.id] || {
@@ -710,7 +745,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       const nextDrafts = { ...plottingDrafts };
       let updatedCount = 0;
 
-      activeDaySessions.forEach((slot) => {
+      targetDaySessions.forEach((slot) => {
         const target = roomRow.sessions[slot.slotKey];
         if (!target || target.id === sourceSession!.id) return;
 
@@ -783,78 +818,84 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
   );
 
   // Salin Sesi 1 ke Seluruh Sesi Seharian untuk SEMUA Ruangan
-  const handleCopyAllRoomsFullDay = useCallback(() => {
-    if (activeDaySessions.length <= 1) {
-      toast('Hari ini hanya terdapat 1 sesi ujian, tidak perlu disalin ke sesi lain.', { icon: 'ℹ️' });
-      return;
-    }
+  const handleCopyAllRoomsFullDay = useCallback(
+    (daySessionsParam?: Array<any>, roomRowsParam?: Array<any>) => {
+      const targetSessions = daySessionsParam || activeDaySessions;
+      const targetRooms = roomRowsParam || roomMatrixRows;
 
-    const firstSlot = activeDaySessions[0];
-    if (!firstSlot) return;
+      if (!targetSessions || targetSessions.length <= 1) {
+        toast('Hari ini hanya terdapat 1 sesi ujian, tidak perlu disalin ke sesi lain.', { icon: 'ℹ️' });
+        return;
+      }
 
-    let copiedSessionsCount = 0;
-    let affectedRoomsCount = 0;
-    const nextDrafts = { ...plottingDrafts };
+      const firstSlot = targetSessions[0];
+      if (!firstSlot) return;
 
-    roomMatrixRows.forEach((r) => {
-      const session1 = r.sessions[firstSlot.slotKey];
-      if (!session1) return;
+      let copiedSessionsCount = 0;
+      let affectedRoomsCount = 0;
+      const nextDrafts = { ...plottingDrafts };
 
-      const d1 = nextDrafts[session1.id] || {
-        jadwal_id: session1.id,
-        ruang_ujian: r.roomCode,
-        pengawas_1_id: session1.setting_keamanan?.pengawas_1_id || '',
-        proktor_id: session1.setting_keamanan?.proktor_id || session1.setting_keamanan?.pengawas_2_id || '',
-        dirty: false,
-      };
+      targetRooms.forEach((r) => {
+        const session1 = r.sessions[firstSlot.slotKey];
+        if (!session1) return;
 
-      const p1 = d1.pengawas_1_id;
-      const pr = d1.proktor_id;
-
-      if (!p1 && !pr) return; // Belum diisi Sesi 1 nya
-
-      let roomChanged = false;
-      for (let i = 1; i < activeDaySessions.length; i++) {
-        const slot = activeDaySessions[i];
-        const otherSession = r.sessions[slot.slotKey];
-        if (!otherSession) continue;
-
-        const curr = nextDrafts[otherSession.id] || {
-          jadwal_id: otherSession.id,
+        const d1 = nextDrafts[session1.id] || {
+          jadwal_id: session1.id,
           ruang_ujian: r.roomCode,
-          pengawas_1_id: otherSession.setting_keamanan?.pengawas_1_id || '',
-          proktor_id: otherSession.setting_keamanan?.proktor_id || otherSession.setting_keamanan?.pengawas_2_id || '',
+          pengawas_1_id: session1.setting_keamanan?.pengawas_1_id || '',
+          proktor_id: session1.setting_keamanan?.proktor_id || session1.setting_keamanan?.pengawas_2_id || '',
           dirty: false,
         };
 
-        if (curr.pengawas_1_id !== p1 || curr.proktor_id !== pr) {
-          nextDrafts[otherSession.id] = {
-            ...curr,
-            pengawas_1_id: p1,
-            proktor_id: pr,
-            dirty: true,
+        const p1 = d1.pengawas_1_id;
+        const pr = d1.proktor_id;
+
+        if (!p1 && !pr) return; // Belum diisi Sesi 1 nya
+
+        let roomChanged = false;
+        for (let i = 1; i < targetSessions.length; i++) {
+          const slot = targetSessions[i];
+          const otherSession = r.sessions[slot.slotKey];
+          if (!otherSession) continue;
+
+          const curr = nextDrafts[otherSession.id] || {
+            jadwal_id: otherSession.id,
+            ruang_ujian: r.roomCode,
+            pengawas_1_id: otherSession.setting_keamanan?.pengawas_1_id || '',
+            proktor_id: otherSession.setting_keamanan?.proktor_id || otherSession.setting_keamanan?.pengawas_2_id || '',
+            dirty: false,
           };
-          copiedSessionsCount++;
-          roomChanged = true;
+
+          if (curr.pengawas_1_id !== p1 || curr.proktor_id !== pr) {
+            nextDrafts[otherSession.id] = {
+              ...curr,
+              pengawas_1_id: p1,
+              proktor_id: pr,
+              dirty: true,
+            };
+            copiedSessionsCount++;
+            roomChanged = true;
+          }
         }
+
+        if (roomChanged) {
+          affectedRoomsCount++;
+        }
+      });
+
+      if (copiedSessionsCount === 0) {
+        toast.error('Belum ada ruangan yang memiliki Pengawas di Sesi 1 untuk disalin.');
+        return;
       }
 
-      if (roomChanged) {
-        affectedRoomsCount++;
-      }
-    });
-
-    if (copiedSessionsCount === 0) {
-      toast.error('Belum ada ruangan yang memiliki Pengawas di Sesi 1 untuk disalin.');
-      return;
-    }
-
-    setPlottingDrafts(nextDrafts);
-    toast.success(
-      `⚡ Berhasil menyalin Pengawas Sesi 1 ke ${copiedSessionsCount} sesi pada ${affectedRoomsCount} ruangan! Klik "Simpan" untuk menerapkan.`,
-      { duration: 5000 }
-    );
-  }, [activeDaySessions, roomMatrixRows, plottingDrafts]);
+      setPlottingDrafts(nextDrafts);
+      toast.success(
+        `⚡ Berhasil menyalin Pengawas Sesi 1 ke ${copiedSessionsCount} sesi pada ${affectedRoomsCount} ruangan! Klik "Simpan" untuk menerapkan.`,
+        { duration: 5000 }
+      );
+    },
+    [activeDaySessions, roomMatrixRows, plottingDrafts]
+  );
 
   // Buka Dialog Konfigurasi Ploting Otomatis Berbasis SOP Sekolah
   const handleOpenAutoPlotModal = () => {
@@ -1052,26 +1093,25 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
 
             {/* Hari filter jika > 1 hari atau jika mode matriks */}
             {availableDays.length > 0 && (
-              <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
-                {viewMode === 'LIST' && availableDays.length > 1 && (
+              <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0 flex-wrap">
+                {availableDays.length > 1 && (
                   <button
                     type="button"
                     onClick={() => setSelectedDayKey('ALL')}
                     className={cn(
-                      'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
+                      'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1',
                       selectedDayKey === 'ALL'
                         ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
                         : 'text-slate-500 hover:text-slate-900'
                     )}
+                    title="Tampilkan seluruh hari pelaksanaan ujian sekaligus"
                   >
-                    Semua Hari
+                    <LayoutGrid size={11} className={selectedDayKey === 'ALL' ? 'text-indigo-600' : 'text-slate-400'} />
+                    <span>Semua Hari ({availableDays.length})</span>
                   </button>
                 )}
                 {availableDays.map((d) => {
-                  const isSelected =
-                    viewMode === 'MATRIX'
-                      ? currentMatrixDayKey === d.key
-                      : selectedDayKey === d.key;
+                  const isSelected = selectedDayKey === d.key;
                   return (
                     <button
                       key={d.key}
@@ -1315,8 +1355,8 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
             <p className="text-xs font-medium">Memuat data jadwal &amp; plotting pengawas...</p>
           </div>
         ) : viewMode === 'MATRIX' ? (
-          /* ── TAMPILAN MATRIKS RUANG × SESI (34 BARIS) ── */
-          roomMatrixRows.length === 0 ? (
+          /* ── TAMPILAN MATRIKS RUANG × SESI (MENDUKUNG SEMUA HARI MAUPUN PER-HARI) ── */
+          matrixDaysData.length === 0 || matrixDaysData.every((d) => d.roomRows.length === 0) ? (
             <div className="p-12 text-center space-y-2">
               <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
                 <Filter size={20} />
@@ -1329,204 +1369,246 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse border border-slate-300 dark:border-slate-700 text-xs">
-                <thead>
-                  <tr className="bg-slate-100 dark:bg-slate-800/95 border-b border-slate-300 dark:border-slate-700 text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-                    <th className="py-2 px-2.5 text-center w-10 border-r border-slate-200 dark:border-slate-700">No</th>
-                    <th className="py-2 px-3 min-w-[130px] border-r border-slate-200 dark:border-slate-700">Ruang &amp; Rombel</th>
-                    {activeDaySessions.map((slot) => (
-                      <th key={slot.slotKey} className="py-2 px-3 min-w-[260px] border-r border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="font-black text-slate-800 dark:text-slate-100">
-                            {slot.displayTitle}
-                          </span>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-semibold">
-                            {slot.jamMulai}–{slot.jamSelesai} {tzLabel}
-                          </span>
+            <div className="divide-y divide-slate-200 dark:divide-slate-800">
+              {matrixDaysData.map((dayData) => {
+                if (dayData.roomRows.length === 0) return null;
+                return (
+                  <div key={dayData.dayKey} className="overflow-hidden">
+                    {/* Header Hari: Menunjukkan Nama Hari, Tanggal, dan Jumlah Sesi */}
+                    <div className="flex items-center justify-between px-3.5 py-2.5 bg-gradient-to-r from-slate-100 via-indigo-50/40 to-slate-50 dark:from-slate-800 dark:via-indigo-950/30 dark:to-slate-800/80 border-b border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                          <Calendar size={14} />
                         </div>
-                      </th>
-                    ))}
-                    <th className="py-2 px-2 text-center w-28 shrink-0">Aksi Cepat</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-700/80 font-medium">
-                  {roomMatrixRows.map((r, idx) => {
-                    const tkMeta = TINGKAT_STYLES[r.tingkat] || TINGKAT_STYLES[10];
-                    const sessionsInRoom = Object.values(r.sessions);
-                    const hasConflict = sessionsInRoom.some((j) => conflictJadwalIds.has(j.id));
-                    const hasDirty = sessionsInRoom.some((j) => plottingDrafts[j.id]?.dirty);
-                    const isEven = idx % 2 === 1;
-
-                    // Pewarnaan se-row penuh dari kelas hingga sesi 1-3 (Style Excel Grid)
-                    let rowBgClass = '';
-                    let borderLeftClass = '';
-
-                    if (hasConflict) {
-                      rowBgClass = 'bg-rose-100/70 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60';
-                      borderLeftClass = 'border-l-4 border-l-rose-600';
-                    } else if (hasDirty) {
-                      rowBgClass = 'bg-indigo-100/60 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50';
-                      borderLeftClass = 'border-l-4 border-l-indigo-600';
-                    } else if (r.tingkat === 10) {
-                      // Tingkat X: Nuansa Sky Blue Excel penuh se-row
-                      rowBgClass = isEven
-                        ? 'bg-sky-100/60 dark:bg-sky-950/50 hover:bg-sky-100/90 dark:hover:bg-sky-900/60'
-                        : 'bg-sky-50/50 dark:bg-sky-950/25 hover:bg-sky-100/70 dark:hover:bg-sky-900/40';
-                      borderLeftClass = 'border-l-4 border-l-sky-500';
-                    } else if (r.tingkat === 11) {
-                      // Tingkat XI: Nuansa Emerald Green Excel penuh se-row
-                      rowBgClass = isEven
-                        ? 'bg-emerald-100/60 dark:bg-emerald-950/50 hover:bg-emerald-100/90 dark:hover:bg-emerald-900/60'
-                        : 'bg-emerald-50/50 dark:bg-emerald-950/25 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40';
-                      borderLeftClass = 'border-l-4 border-l-emerald-500';
-                    } else if (r.tingkat === 12) {
-                      // Tingkat XII: Nuansa Amber Gold Excel penuh se-row
-                      rowBgClass = isEven
-                        ? 'bg-amber-100/60 dark:bg-amber-950/50 hover:bg-amber-100/90 dark:hover:bg-amber-900/60'
-                        : 'bg-amber-50/50 dark:bg-amber-950/25 hover:bg-amber-100/70 dark:hover:bg-amber-900/40';
-                      borderLeftClass = 'border-l-4 border-l-amber-500';
-                    } else {
-                      // Tingkat XIII / Lainnya: Nuansa Purple Excel penuh se-row
-                      rowBgClass = isEven
-                        ? 'bg-purple-100/60 dark:bg-purple-950/50 hover:bg-purple-100/90 dark:hover:bg-purple-900/60'
-                        : 'bg-purple-50/50 dark:bg-purple-950/25 hover:bg-purple-100/70 dark:hover:bg-purple-900/40';
-                      borderLeftClass = 'border-l-4 border-l-purple-500';
-                    }
-
-                    return (
-                      <tr
-                        key={r.roomCode}
-                        className={cn('transition-colors border-b border-slate-200 dark:border-slate-700/80', rowBgClass)}
-                      >
-                        {/* No */}
-                        <td className={cn(
-                          'py-1.5 px-2 text-center font-mono text-xs font-black align-middle border-r border-slate-200 dark:border-slate-700/80',
-                          borderLeftClass
-                        )}>
-                          <span className="text-slate-600 dark:text-slate-300">
-                            {idx + 1}
-                          </span>
-                        </td>
-
-                        {/* Ruang & Rombel (Excel Style Ringkas) */}
-                        <td className="py-2 px-2.5 align-middle border-r border-slate-200 dark:border-slate-700/80 min-w-[130px]">
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenRoomDenah(r.roomCode, `Ploting Ruang: ${r.roomCode}`)}
-                              className="px-2 py-0.5 rounded-md border font-mono font-black text-xs inline-flex items-center gap-1 shadow-2xs hover:scale-105 transition-all cursor-pointer bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700"
-                              title="Klik untuk melihat posisi ruang di Denah Kampus"
-                            >
-                              <DoorOpen size={11} className={tkMeta.accent} />
-                              <span>{r.roomCode}</span>
-                            </button>
-                            <span className="font-black text-xs text-slate-900 dark:text-white truncate" title={r.rombel}>
-                              {r.rombel}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white">
+                              {dayData.dayLabel}
+                            </h3>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                              {dayData.schedules.length} Sesi Terjadwal
                             </span>
                           </div>
-                        </td>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                            {dayData.roomRows.length} Ruangan • {dayData.sessions.length} Sesi Ujian ({dayData.sessions.map((s) => s.displayTitle).join(', ')})
+                          </p>
+                        </div>
+                      </div>
 
-                        {/* Dynamic Session Columns (Fokus Murni ke Fungsi: Nama Mapel + Dropdown Pengawas) */}
-                        {activeDaySessions.map((slot) => {
-                          const j = r.sessions[slot.slotKey];
-                          if (!j) {
+                      {dayData.sessions.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCopyAllRoomsFullDay(dayData.sessions, dayData.roomRows)}
+                          className="text-[11px] h-7 font-bold border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50 shadow-2xs cursor-pointer flex items-center gap-1"
+                          title={`Salin pengawas dari Sesi 1 ke seluruh sesi berikutnya di semua ruangan khusus hari ${dayData.dayLabel.split(',')[0]}`}
+                        >
+                          <Zap size={11} className="text-amber-500 fill-amber-500" />
+                          <span>Salin Sesi 1 ({dayData.dayLabel.split(',')[0]})</span>
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Table Matriks Hari Ini */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse border-b border-slate-300 dark:border-slate-700 text-xs">
+                        <thead>
+                          <tr className="bg-slate-100/90 dark:bg-slate-800/95 border-b border-slate-300 dark:border-slate-700 text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                            <th className="py-2 px-2.5 text-center w-10 border-r border-slate-200 dark:border-slate-700">No</th>
+                            <th className="py-2 px-3 min-w-[130px] border-r border-slate-200 dark:border-slate-700">Ruang &amp; Rombel</th>
+                            {dayData.sessions.map((slot) => (
+                              <th key={slot.slotKey} className="py-2 px-3 min-w-[260px] border-r border-slate-200 dark:border-slate-700">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-black text-slate-800 dark:text-slate-100">
+                                    {slot.displayTitle}
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-semibold">
+                                    {slot.jamMulai}–{slot.jamSelesai} {tzLabel}
+                                  </span>
+                                </div>
+                              </th>
+                            ))}
+                            <th className="py-2 px-2 text-center w-28 shrink-0">Aksi Cepat</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-700/80 font-medium">
+                          {dayData.roomRows.map((r, idx) => {
+                            const tkMeta = TINGKAT_STYLES[r.tingkat] || TINGKAT_STYLES[10];
+                            const sessionsInRoom = Object.values(r.sessions);
+                            const hasConflict = sessionsInRoom.some((j) => conflictJadwalIds.has(j.id));
+                            const hasDirty = sessionsInRoom.some((j) => plottingDrafts[j.id]?.dirty);
+                            const isEven = idx % 2 === 1;
+
+                            // Pewarnaan se-row penuh dari kelas hingga sesi 1-3 (Style Excel Grid)
+                            let rowBgClass = '';
+                            let borderLeftClass = '';
+
+                            if (hasConflict) {
+                              rowBgClass = 'bg-rose-100/70 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60';
+                              borderLeftClass = 'border-l-4 border-l-rose-600';
+                            } else if (hasDirty) {
+                              rowBgClass = 'bg-indigo-100/60 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50';
+                              borderLeftClass = 'border-l-4 border-l-indigo-600';
+                            } else if (r.tingkat === 10) {
+                              rowBgClass = isEven
+                                ? 'bg-sky-100/60 dark:bg-sky-950/50 hover:bg-sky-100/90 dark:hover:bg-sky-900/60'
+                                : 'bg-sky-50/50 dark:bg-sky-950/25 hover:bg-sky-100/70 dark:hover:bg-sky-900/40';
+                              borderLeftClass = 'border-l-4 border-l-sky-500';
+                            } else if (r.tingkat === 11) {
+                              rowBgClass = isEven
+                                ? 'bg-emerald-100/60 dark:bg-emerald-950/50 hover:bg-emerald-100/90 dark:hover:bg-emerald-900/60'
+                                : 'bg-emerald-50/50 dark:bg-emerald-950/25 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40';
+                              borderLeftClass = 'border-l-4 border-l-emerald-500';
+                            } else if (r.tingkat === 12) {
+                              rowBgClass = isEven
+                                ? 'bg-amber-100/60 dark:bg-amber-950/50 hover:bg-amber-100/90 dark:hover:bg-amber-900/60'
+                                : 'bg-amber-50/50 dark:bg-amber-950/25 hover:bg-amber-100/70 dark:hover:bg-amber-900/40';
+                              borderLeftClass = 'border-l-4 border-l-amber-500';
+                            } else {
+                              rowBgClass = isEven
+                                ? 'bg-purple-100/60 dark:bg-purple-950/50 hover:bg-purple-100/90 dark:hover:bg-purple-900/60'
+                                : 'bg-purple-50/50 dark:bg-purple-950/25 hover:bg-purple-100/70 dark:hover:bg-purple-900/40';
+                              borderLeftClass = 'border-l-4 border-l-purple-500';
+                            }
+
                             return (
-                              <td key={slot.slotKey} className="py-2 px-2.5 align-middle border-r border-slate-200 dark:border-slate-700/80 text-center">
-                                <span className="text-[10px] text-slate-400 italic">— Tidak Ada Ujian —</span>
-                              </td>
-                            );
-                          }
+                              <tr
+                                key={r.roomCode}
+                                className={cn('transition-colors border-b border-slate-200 dark:border-slate-700/80', rowBgClass)}
+                              >
+                                {/* No */}
+                                <td className={cn(
+                                  'py-1.5 px-2 text-center font-mono text-xs font-black align-middle border-r border-slate-200 dark:border-slate-700/80',
+                                  borderLeftClass
+                                )}>
+                                  <span className="text-slate-600 dark:text-slate-300">
+                                    {idx + 1}
+                                  </span>
+                                </td>
 
-                          const draft = plottingDrafts[j.id] || {
-                            jadwal_id: j.id,
-                            ruang_ujian: r.roomCode,
-                            pengawas_1_id: j.setting_keamanan?.pengawas_1_id || '',
-                            proktor_id: j.setting_keamanan?.proktor_id || j.setting_keamanan?.pengawas_2_id || '',
-                            dirty: false,
-                          };
-
-                          const isConflict = conflictJadwalIds.has(j.id);
-                          const mapelName =
-                            j.BankSoal?.Mapel?.nama_mapel ||
-                            j.BankSoal?.MataPelajaran?.nama_mapel ||
-                            j.BankSoal?.judul ||
-                            'Mapel Umum';
-
-                          return (
-                            <td key={slot.slotKey} className="py-2 px-2.5 align-middle border-r border-slate-200 dark:border-slate-700/80 min-w-[240px]">
-                              <div className="space-y-1.5">
-                                {/* Nama Mapel Bersih & Jelas */}
-                                <div className="text-[11px] font-bold text-slate-900 dark:text-white truncate leading-tight" title={mapelName}>
-                                  {mapelName}
-                                </div>
-
-                                {/* Pengawas 1 Dropdown */}
-                                <div>
-                                  <SearchableSelect
-                                    options={pengawasSelectOptions}
-                                    value={draft.pengawas_1_id}
-                                    onChange={(val) => handleUpdatePlotRow(j.id, 'pengawas_1_id', val)}
-                                    placeholder="Pilih Pengawas 1..."
-                                    aria-label={`Pengawas 1 ${j.nama_sesi}`}
-                                    clearable={true}
-                                    triggerClassName="bg-white/95 dark:bg-slate-900/95 text-xs py-1 h-8 rounded-lg border-slate-300 dark:border-slate-700 shadow-2xs font-medium"
-                                  />
-                                  {isConflict && (
-                                    <p className="text-[9px] font-black text-rose-600 mt-0.5 flex items-center gap-0.5">
-                                      <AlertTriangle size={10} className="shrink-0" />
-                                      <span className="truncate">Bentrok jam di ruang lain!</span>
-                                    </p>
-                                  )}
-                                </div>
-
-                                {/* Proktor / Pengawas 2 (Hanya jika diaktifkan) */}
-                                {showProctor && (
-                                  <div>
-                                    <SearchableSelect
-                                      options={pengawasSelectOptions}
-                                      value={draft.proktor_id}
-                                      onChange={(val) => handleUpdatePlotRow(j.id, 'proktor_id', val)}
-                                      placeholder="Opsional (Proktor/P2)..."
-                                      aria-label={`Proktor ${j.nama_sesi}`}
-                                      clearable={true}
-                                      triggerClassName="bg-white/95 dark:bg-slate-900/95 text-xs py-1 h-8 rounded-lg border-slate-300 dark:border-slate-700 shadow-2xs font-medium"
-                                    />
+                                {/* Ruang & Rombel (Excel Style Ringkas) */}
+                                <td className="py-2 px-2.5 align-middle border-r border-slate-200 dark:border-slate-700/80 min-w-[130px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenRoomDenah(r.roomCode, `Ploting Ruang: ${r.roomCode}`)}
+                                      className="px-2 py-0.5 rounded-md border font-mono font-black text-xs inline-flex items-center gap-1 shadow-2xs hover:scale-105 transition-all cursor-pointer bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700"
+                                      title="Klik untuk melihat posisi ruang di Denah Kampus"
+                                    >
+                                      <DoorOpen size={11} className={tkMeta.accent} />
+                                      <span>{r.roomCode}</span>
+                                    </button>
+                                    <span className="font-black text-xs text-slate-900 dark:text-white truncate" title={r.rombel}>
+                                      {r.rombel}
+                                    </span>
                                   </div>
-                                )}
-                              </div>
-                            </td>
-                          );
-                        })}
+                                </td>
 
-                        {/* Aksi Cepat Ruang (Excel Compact) */}
-                        <td className="py-1.5 px-2 text-center align-middle border-b border-slate-200 dark:border-slate-700/80 w-28 shrink-0">
-                          <div className="flex flex-col items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleCopyRoomFullDay(r)}
-                              className="w-full px-2 py-1 rounded-md text-[10px] font-black bg-amber-500 hover:bg-amber-600 text-white shadow-2xs flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
-                              title={`Salin pengawas Sesi 1 ke seluruh sesi berikutnya di ${r.roomCode}`}
-                            >
-                              <Zap size={11} className="fill-white" />
-                              <span>Salin Seharian</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleClearRoomFullDay(r)}
-                              className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 hover:text-rose-600 transition-colors flex items-center gap-0.5 cursor-pointer"
-                              title={`Kosongkan pengawas untuk seluruh sesi di ${r.roomCode}`}
-                            >
-                              <RotateCcw size={9} />
-                              <span>Kosongkan</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                                {/* Dynamic Session Columns */}
+                                {dayData.sessions.map((slot) => {
+                                  const j = r.sessions[slot.slotKey];
+                                  if (!j) {
+                                    return (
+                                      <td key={slot.slotKey} className="py-2 px-2.5 align-middle border-r border-slate-200 dark:border-slate-700/80 text-center">
+                                        <span className="text-[10px] text-slate-400 italic">— Tidak Ada Ujian —</span>
+                                      </td>
+                                    );
+                                  }
+
+                                  const draft = plottingDrafts[j.id] || {
+                                    jadwal_id: j.id,
+                                    ruang_ujian: r.roomCode,
+                                    pengawas_1_id: j.setting_keamanan?.pengawas_1_id || '',
+                                    proktor_id: j.setting_keamanan?.proktor_id || j.setting_keamanan?.pengawas_2_id || '',
+                                    dirty: false,
+                                  };
+
+                                  const isConflict = conflictJadwalIds.has(j.id);
+                                  const mapelName =
+                                    j.BankSoal?.Mapel?.nama_mapel ||
+                                    j.BankSoal?.MataPelajaran?.nama_mapel ||
+                                    j.BankSoal?.judul ||
+                                    'Mapel Umum';
+
+                                  return (
+                                    <td key={slot.slotKey} className="py-2 px-2.5 align-middle border-r border-slate-200 dark:border-slate-700/80 min-w-[240px]">
+                                      <div className="space-y-1.5">
+                                        {/* Nama Mapel Bersih & Jelas */}
+                                        <div className="text-[11px] font-bold text-slate-900 dark:text-white truncate leading-tight" title={mapelName}>
+                                          {mapelName}
+                                        </div>
+
+                                        {/* Pengawas 1 Dropdown */}
+                                        <div>
+                                          <SearchableSelect
+                                            options={pengawasSelectOptions}
+                                            value={draft.pengawas_1_id}
+                                            onChange={(val) => handleUpdatePlotRow(j.id, 'pengawas_1_id', val)}
+                                            placeholder="Pilih Pengawas 1..."
+                                            aria-label={`Pengawas 1 ${j.nama_sesi}`}
+                                            clearable={true}
+                                            triggerClassName="bg-white/95 dark:bg-slate-900/95 text-xs py-1 h-8 rounded-lg border-slate-300 dark:border-slate-700 shadow-2xs font-medium"
+                                          />
+                                          {isConflict && (
+                                            <p className="text-[9px] font-black text-rose-600 mt-0.5 flex items-center gap-0.5">
+                                              <AlertTriangle size={10} className="shrink-0" />
+                                              <span className="truncate">Bentrok jam di ruang lain!</span>
+                                            </p>
+                                          )}
+                                        </div>
+
+                                        {/* Proktor / Pengawas 2 (Hanya jika diaktifkan) */}
+                                        {showProctor && (
+                                          <div>
+                                            <SearchableSelect
+                                              options={pengawasSelectOptions}
+                                              value={draft.proktor_id}
+                                              onChange={(val) => handleUpdatePlotRow(j.id, 'proktor_id', val)}
+                                              placeholder="Opsional (Proktor/P2)..."
+                                              aria-label={`Proktor ${j.nama_sesi}`}
+                                              clearable={true}
+                                              triggerClassName="bg-white/95 dark:bg-slate-900/95 text-xs py-1 h-8 rounded-lg border-slate-300 dark:border-slate-700 shadow-2xs font-medium"
+                                            />
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                  );
+                                })}
+
+                                {/* Aksi Cepat Ruang (Excel Compact) */}
+                                <td className="py-1.5 px-2 text-center align-middle border-b border-slate-200 dark:border-slate-700/80 w-28 shrink-0">
+                                  <div className="flex flex-col items-center justify-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyRoomFullDay(r, dayData.sessions)}
+                                      className="w-full px-2 py-1 rounded-md text-[10px] font-black bg-amber-500 hover:bg-amber-600 text-white shadow-2xs flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
+                                      title={`Salin pengawas Sesi 1 ke seluruh sesi berikutnya di ${r.roomCode}`}
+                                    >
+                                      <Zap size={11} className="fill-white" />
+                                      <span>Salin Seharian</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleClearRoomFullDay(r)}
+                                      className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 hover:text-rose-600 transition-colors flex items-center gap-0.5 cursor-pointer"
+                                      title={`Kosongkan pengawas untuk seluruh sesi di ${r.roomCode}`}
+                                    >
+                                      <RotateCcw size={9} />
+                                      <span>Kosongkan</span>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )
         ) : (
