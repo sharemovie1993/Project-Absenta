@@ -147,3 +147,30 @@ export function filterTeacherClasses(
   if (teacherTaughtClassIds.length === 0) return [];
   return classesInTingkat.filter((k) => teacherTaughtClassIds.includes(k.id));
 }
+
+/**
+ * Mengecek apakah suatu mata pelajaran merupakan mapel kejuruan spesifik (DDPK, KK, MPP, Konsentrasi, dsb.)
+ * yang dijadwalkan secara serentak per jurusan via slot Multi-Jurusan, bukan slot reguler serentak.
+ */
+export function isVocationalSubject(namaMapel?: string, kelompokMapel?: string): boolean {
+  if (!namaMapel) return false;
+  const upper = namaMapel.trim().toUpperCase();
+  if (
+    upper.startsWith('DDPK') ||
+    upper.startsWith('KK ') ||
+    upper.startsWith('MPP ') ||
+    upper.includes('DASAR-DASAR PROGRAM') ||
+    upper.includes('KONSENTRASI KEAHLIAN') ||
+    upper.includes('MATA PELAJARAN PILIHAN')
+  ) {
+    return true;
+  }
+  if (kelompokMapel) {
+    const kUpper = kelompokMapel.toUpperCase();
+    if (kUpper === 'B' || kUpper === 'C' || kUpper.includes('KEJURUAN') || kUpper.includes('PRODUKTIF')) {
+      return true;
+    }
+  }
+  return false;
+}
+

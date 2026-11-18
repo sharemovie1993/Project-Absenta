@@ -20,7 +20,7 @@ import type { CbtBankSoal, CbtJadwalUjian, CbtEventItem } from '@/types/cbt.type
 import { useJenjang } from '@/hooks/useJenjang';
 import { useAuthStore } from '@/store/authStore';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
-import { resolveBankTingkatNumber } from './cbtJadwalHelper';
+import { resolveBankTingkatNumber, isVocationalSubject } from './cbtJadwalHelper';
 import {
   ExamDayConfig,
   ExamSessionSlot,
@@ -629,6 +629,40 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
 
     return map;
   }, [bankList, rawGuruMapel]);
+
+  // Unified Main Subject Options (Luar Modal):
+  // Menjaga tabel slot utama tetap bersih & ringkas dengan hanya menampilkan Mapel Umum Serentak
+  // (Pecahan mapel kejuruan seperti DDPK, KK, MPP per jurusan dan cangkang draft 0 soal disembunyikan
+  // dari slot utama karena alur penjadwalan kejuruan serentak SMK menggunakan slot Multi-Jurusan)
+  const mainSubjectOptionsByTingkat = useMemo(() => {
+    const map = new Map<
+      number,
+      Array<{
+        id: string;
+        mapelId: string;
+        tingkat: number;
+        guruId?: string;
+        namaMapel: string;
+        namaGuru?: string;
+        soalCount: number;
+        isAutoDraft: boolean;
+        label: string;
+        jurusan?: string | null;
+      }>
+    >();
+
+    [10, 11, 12].forEach((t) => {
+      const all = subjectOptionsByTingkat.get(t) || [];
+      const cleanList = all.filter((opt) => {
+        if (opt.isAutoDraft) return false;
+        if (isVocationalSubject(opt.namaMapel, (opt as any).kelompokMapel)) return false;
+        return true;
+      });
+      map.set(t, cleanList);
+    });
+
+    return map;
+  }, [subjectOptionsByTingkat]);
 
   // Map bank_soal_id ke daftar sesi ujian yang sudah ada di database (untuk Idempotensi & On-Demand)
   const publishedSessionsByBankId = useMemo(() => {
@@ -1248,7 +1282,11 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                       const slottedCount = Object.keys(matrix).filter(
                         (k) => k.endsWith(`_${tingkat}`) && Boolean(matrix[k])
                       ).length;
-                      const totalSubjects = subjectOptionsByTingkat.get(tingkat)?.length || 0;
+                      const mainOptions = mainSubjectOptionsByTingkat.get(tingkat) || [];
+                      const hasVocationalInTingkat = (subjectOptionsByTingkat.get(tingkat) || []).some(
+                        (o) => isVocationalSubject(o.namaMapel, (o as any).kelompokMapel) || o.isAutoDraft
+                      );
+                      const totalSubjects = mainOptions.length + (hasVocationalInTingkat ? 1 : 0);
                       const theme = getTingkatTheme(tingkat);
 
                       return (
@@ -1328,7 +1366,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                       {activeTingkatList.map((tingkat) => {
                         const matrixKey = `${day.day_index}_${sess.session_index}_${tingkat}`;
                         const selectedBankId = matrix[matrixKey] || '';
-                        const allOptionsForTingkat = subjectOptionsByTingkat.get(tingkat) || [];
+                        const allOptionsForTingkat = mainSubjectOptionsByTingkat.get(tingkat) || [];
                         const jurusansForTingkat = jurusansByTingkat.get(tingkat) || [];
                         const theme = getTingkatTheme(tingkat);
 
@@ -1383,7 +1421,18 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                           return true;
                         });
 
-                        const selectedOpt = allOptionsForTingkat.find((o) => o.id === selectedBankId);
+                        // Jika slot sudah terisi bank soal tertentu dari opsi lengkap (misal bank soal kejuruan spesifik),
+                        // pastikan opsi tersebut tetap ada di dropdown agar value dan labelnya tidak hilang
+                        if (selectedBankId && !availableOptions.some((o) => o.id === selectedBankId)) {
+                          const currentSelectedOpt = subjectOptionsByTingkat.get(tingkat)?.find((o) => o.id === selectedBankId);
+                          if (currentSelectedOpt) {
+                            availableOptions.unshift(currentSelectedOpt);
+                          }
+                        }
+
+                        const selectedOpt =
+                          allOptionsForTingkat.find((o) => o.id === selectedBankId) ||
+                          subjectOptionsByTingkat.get(tingkat)?.find((o) => o.id === selectedBankId);
                         const isZeroQuestions = Boolean(selectedOpt && selectedOpt.soalCount === 0);
 
                         const isAllPlotted =
