@@ -108,8 +108,8 @@ export const TeacherDailyStatusStrip: React.FC<TeacherDailyStatusStripProps> = R
             <span className="truncate">
               {userRank ? `#${userRank}` : 'Klasemen'}
               {userPoints !== undefined && userPoints !== null && (
-                <span className="font-semibold text-slate-500 dark:text-slate-400 ml-1 hidden xs:inline">
-                  • {userPoints} Pts
+                <span className="font-semibold text-slate-500 dark:text-slate-400 ml-1">
+                  ({userPoints} Pts)
                 </span>
               )}
             </span>

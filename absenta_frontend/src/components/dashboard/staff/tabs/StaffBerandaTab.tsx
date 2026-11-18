@@ -845,16 +845,6 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                   onNavigateToCbt={() => handleSubTabChange('cbt')}
                 />
 
-                {/* Klasemen & Poin Kinerja Guru (Motivasi Diri Pendidik) */}
-                <TeacherLeaderboardWidget
-                  leaderboard={leaderboardList}
-                  isLoading={loadingLeaderboard}
-                  currentUserId={user?.id}
-                  currentGuruId={guruId}
-                  currentUserName={guruNama || user?.full_name || (user as any)?.name}
-                  onOpenLeaderboard={() => setIsLeaderboardModalOpen(true)}
-                />
-
                 {/* Pintasan Aksi Operasional Guru (Shopee-Grade Quick Action Slider) */}
                 <HubCard bodyClassName="py-2.5 sm:py-3 px-2 sm:px-3">
                   <HubActionGrid items={teacherQuickActions} variant="slider" />
@@ -874,6 +864,16 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                   <StaffWeeklyScheduleWidget
                     guruId={guruId}
                     guruNama={guruNama}
+                  />
+
+                  {/* Klasemen & Poin Kinerja Guru (Ditempatkan di Area Analisis Kinerja Bawah) */}
+                  <TeacherLeaderboardWidget
+                    leaderboard={leaderboardList}
+                    isLoading={loadingLeaderboard}
+                    currentUserId={user?.id}
+                    currentGuruId={guruId}
+                    currentUserName={guruNama || user?.full_name || (user as any)?.name}
+                    onOpenLeaderboard={() => setIsLeaderboardModalOpen(true)}
                   />
 
                   <BebanMengajarWidget
