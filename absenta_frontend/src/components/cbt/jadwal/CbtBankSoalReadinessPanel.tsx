@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   AlertCircle,
   LayoutGrid,
+  Check,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
@@ -74,6 +75,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [nudgeTick, setNudgeTick] = useState<number>(Date.now());
+  const [copied, setCopied] = useState(false);
 
   // ── 0. Sinkronisasi Riwayat Colek WhatsApp Multi-Device (Server DB) ──
   const { data: serverNudgeHistory } = useQuery({
@@ -477,20 +479,110 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
       toast.success('Semua guru sudah menyerahkan bank soal');
       return;
     }
+
+    // Resolusi domain tenant dinamis
+    const getTenantLoginUrl = (): string => {
+      if (typeof window !== 'undefined') {
+        if (
+          window.location.hostname &&
+          window.location.hostname !== 'localhost' &&
+          window.location.hostname !== '127.0.0.1'
+        ) {
+          return window.location.origin;
+        }
+      }
+      const storedDomain = typeof window !== 'undefined' ? localStorage.getItem('tenant_domain') : null;
+      if (storedDomain) {
+        return storedDomain.startsWith('http') ? storedDomain : `https://${storedDomain}`;
+      }
+      return 'https://smkn1pld.absenta.id';
+    };
+
+    const tenantUrl = getTenantLoginUrl();
+
+    // Format penyingkatan mapel baku & standar kurikulum
+    const formatMapelAbbr = (namaMapel: string, kodeMapel?: string): string => {
+      let clean = (namaMapel || '').trim();
+      clean = clean.replace(/\((?!PJOK|IPAS|PKK|BK|PAI|PPKN)[^)]*\)/gi, '').trim();
+      let upper = clean.toUpperCase();
+
+      if (upper.includes('INGGRIS')) return 'B. INGG';
+      if (upper.includes('INDONESIA')) return 'B. INDO';
+      if (upper.includes('SUNDA')) return 'B. SUNDA';
+      if (upper.includes('JEPANG')) return 'B. JEPANG';
+      if (upper.includes('ARAB')) return 'B. ARAB';
+      if (upper.includes('MANDARIN')) return 'B. MANDARIN';
+      if (upper.includes('JERMAN')) return 'B. JERMAN';
+      if (upper.includes('PRANCIS')) return 'B. PRANCIS';
+      if (upper.includes('AGAMA') || upper.startsWith('PAI')) return 'PAI';
+      if (upper.includes('PANCASILA') || upper.includes('PPKN')) return 'PPKN';
+      if (upper.includes('PJOK') || upper.includes('JASMANI')) return 'PJOK';
+      if (upper.includes('IPAS') || upper.includes('ALAM DAN SOSIAL')) return 'IPAS';
+      if (upper.includes('PKK') || upper.includes('KREATIF DAN KEWIRAUSAHAAN')) return 'PKK';
+      if (upper.includes('INFORMATIKA')) return 'INFORMATIKA';
+      if (upper.includes('MATEMATIKA')) return 'MATEMATIKA';
+      if (upper.includes('SEJARAH')) return 'SEJARAH';
+      if (upper.includes('SENI BUDAYA')) return 'SENI BUDAYA';
+      if (upper.includes('BIMBINGAN KONSELING') || upper.includes('BK')) return 'BK';
+
+      if (upper.includes('DASAR-DASAR PROGRAM KEAHLIAN') || upper.includes('DASAR PROGRAM KEAHLIAN')) {
+        upper = upper.replace(/DASAR-?DASAR PROGRAM KEAHLIAN|DASAR PROGRAM KEAHLIAN/gi, 'DDPK').trim();
+      }
+      if (upper.includes('KONSENTRASI KEAHLIAN')) {
+        upper = upper.replace(/KONSENTRASI KEAHLIAN/gi, 'KK').trim();
+      }
+      if (upper.includes('MATA PELAJARAN PILIHAN')) {
+        upper = upper.replace(/MATA PELAJARAN PILIHAN/gi, 'MPP').trim();
+      }
+
+      return upper;
+    };
+
+    const cleanTeacherName = (name: string): string => {
+      return (name || '')
+        .replace(/,\s*(S[.,][A-Za-z.,]+|M[.,][A-Za-z.,]+|Gr\.?|Dr\.?|Drs\.?|Dra\.?).*$/gi, '')
+        .trim()
+        .toUpperCase();
+    };
+
+    const formatTingkat = (tingkat: any): string => {
+      const num = Number(tingkat);
+      if (num === 11) return 'XI';
+      if (num === 12) return 'XII';
+      if (num === 10) return 'X';
+      if (String(tingkat).toUpperCase() === 'XI') return 'XI';
+      if (String(tingkat).toUpperCase() === 'XII') return 'XII';
+      return 'X';
+    };
+
+    // Deduplikasi baris per guru - mapel - tingkat
+    const teacherMapelList = Array.from(
+      new Set(
+        guruBelumList.map((t) => {
+          const teacherName = cleanTeacherName(t.nama_guru);
+          const mapelName = formatMapelAbbr(t.nama_mapel, (t as any).kode_mapel);
+          const romanTingkat = formatTingkat(t.tingkat);
+          return `${teacherName} - ${mapelName} - ${romanTingkat}`;
+        })
+      )
+    );
+
     const lines = [
-      '📢 *PENGINGAT KESIAPAN BANK SOAL CBT SEKOLAH*',
-      `Daftar guru yang belum menyelesaikan bank soal (${guruBelumList.length} penugasan):`,
+      'Yang Belum Buat Bank Soal :',
+      ...teacherMapelList,
       '',
-      ...guruBelumList.map((t, idx) => {
-        const phone = t.no_hp || guruPhoneMap.get(t.guru_id) || '';
-        const phoneStr = phone ? ` (${phone})` : '';
-        return `${idx + 1}. *${t.nama_guru}*${phoneStr} - ${t.nama_mapel} (Tingkat ${formatTingkatRomawi(t.tingkat)})`;
-      }),
+      'bpk ibu bisa cek kewajiban di halaman tugas atau halaman cbt nanti terlihat mana yang sudah dan mana yang belum',
       '',
-      'Mohon untuk segera menginput bank soal atau menghubungi rekan MGMP. Terima kasih.',
+      `login ke ${tenantUrl}`,
+      'Username : NIP',
+      'Pass : sudah di beri tahu',
     ];
-    navigator.clipboard.writeText(lines.join('\n'));
-    toast.success('Daftar guru yang belum berhasil disalin ke clipboard!');
+
+    const messageText = lines.join('\n');
+    navigator.clipboard.writeText(messageText);
+    setCopied(true);
+    toast.success('Daftar guru yang belum berhasil disalin untuk WhatsApp!');
+    setTimeout(() => setCopied(false), 3000);
   };
 
   const handleCreateForTarget = (target: AuditedTargetItem) => {
@@ -667,11 +759,16 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
                   variant="outline"
                   size="sm"
                   onClick={handleCopyUncreatedTeachers}
-                  className="text-xs h-7 px-2 font-bold border-rose-300 text-rose-700 bg-white hover:bg-rose-50 cursor-pointer shadow-2xs"
+                  className={cn(
+                    'text-xs h-7 px-2.5 font-bold cursor-pointer shadow-2xs flex items-center gap-1 transition-all',
+                    copied
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                      : 'border-emerald-400 text-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                  )}
                   title="Salin daftar guru yang belum ke WhatsApp"
                 >
-                  <Copy size={11} className="mr-1" />
-                  <span>Salin WA</span>
+                  {copied ? <Check size={12} className="text-emerald-600" /> : <Copy size={11} className="mr-0.5" />}
+                  <span>{copied ? 'Tersalin!' : 'Salin WA'}</span>
                 </Button>
               )}
 
@@ -694,19 +791,48 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
 
       {/* ── 4. Konten Tabel Ramping Bebas Noise ── */}
       {activeTab === 'BELUM' && (
-        <CbtReadinessTeacherTable
-          items={guruBelumList}
-          mode="BELUM"
-          onNudgeWhatsApp={handleNudgeWhatsApp}
-          onPeriksaButir={(bank) => {
-            setSelectedBankForDetail(bank);
-            setIsDetailModalOpen(true);
-          }}
-          onEditBank={(bank) => {
-            setSelectedBankToEdit(bank);
-            setIsFormModalOpen(true);
-          }}
-        />
+        <div className="space-y-2 w-full">
+          {guruBelumList.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 sm:px-3 sm:py-2 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 shadow-2xs text-xs">
+              <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                <AlertCircle size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>
+                  Terdapat <strong>{guruBelumList.length}</strong> guru/mapel belum menyelesaikan bank soal. Salin daftar untuk pengumuman grup WA.
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCopyUncreatedTeachers}
+                className={cn(
+                  'shrink-0 h-6 sm:h-7 px-2.5 text-xs font-bold cursor-pointer shadow-2xs flex items-center gap-1.5 transition-all',
+                  copied
+                    ? 'border-emerald-500 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+                    : 'border-emerald-500 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700'
+                )}
+                title="Salin format WhatsApp ke clipboard"
+              >
+                {copied ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                <span>{copied ? 'Berhasil Disalin!' : 'Salin ke WA Group'}</span>
+              </Button>
+            </div>
+          )}
+
+          <CbtReadinessTeacherTable
+            items={guruBelumList}
+            mode="BELUM"
+            onNudgeWhatsApp={handleNudgeWhatsApp}
+            onPeriksaButir={(bank) => {
+              setSelectedBankForDetail(bank);
+              setIsDetailModalOpen(true);
+            }}
+            onEditBank={(bank) => {
+              setSelectedBankToEdit(bank);
+              setIsFormModalOpen(true);
+            }}
+          />
+        </div>
       )}
 
       {activeTab === 'SUDAH' && (
