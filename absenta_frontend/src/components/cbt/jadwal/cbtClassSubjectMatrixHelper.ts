@@ -70,12 +70,13 @@ export function buildClassSubjectMatrix(params: {
   const { rawGuruMapel, bankList, tingkat } = params;
 
   // 1. Kumpulkan seluruh kelas yang sah pada tingkat ini dari rawGuruMapel
-  const classMap = new Map<string, { id: string; name: string; tingkat: number; jurusanKode?: string }>();
+  const classMap = new Map<string, { id: string; name: string; tingkat: number; jurusanKode?: string; jurusanId?: string }>();
   // 2. Kumpulkan seluruh mapel kurikulum yang diajarkan pada tingkat ini
   const subjectMap = new Map<string, { id: string; name: string; kode?: string }>();
   // 3. Catat penugasan resmi: Set of `${mapelId}_${kelasId}` dan info gurunya
   const assignmentMap = new Map<string, { guruId: string; guruName: string }>();
 
+  // Pass 1: Kumpulkan seluruh rombel kelas dan mapel yang memiliki kelas_id eksplisit
   rawGuruMapel.forEach((gm) => {
     const kId = gm.kelas_id;
     const mId = gm.mapel_id;
@@ -121,7 +122,13 @@ export function buildClassSubjectMatrix(params: {
     }
 
     if (!classMap.has(kId)) {
-      classMap.set(kId, { id: kId, name: kName, tingkat: tNum, jurusanKode: jurKode });
+      classMap.set(kId, {
+        id: kId,
+        name: kName,
+        tingkat: tNum,
+        jurusanKode: jurKode,
+        jurusanId: gm.Kelas?.jurusan_id || undefined,
+      });
     }
 
     if (!subjectMap.has(mId)) {
@@ -133,6 +140,138 @@ export function buildClassSubjectMatrix(params: {
       assignmentMap.set(cellKey, {
         guruId: gm.guru_id,
         guruName: gm.Guru?.nama_guru || 'Guru Pengampu',
+      });
+    }
+  });
+
+  // Pass 2: Evaluasi penugasan tanpa kelas_id (Ploting berbasis Jurusan atau Ploting Terpusat)
+  // Menjamin seluruh mapel kejuruan seperti DDPK Fase E (Tingkat 10) atau Konsentrasi Keahlian (Tingkat 11/12)
+  // yang di-assign berbasis jurusan tetap tampil lengkap di matriks kelas panitia.
+  rawGuruMapel.forEach((gm) => {
+    const kId = gm.kelas_id;
+    const mId = gm.mapel_id;
+    if (kId || !mId) return; // Hanya proses penugasan yang kelas_id === null / undefined
+
+    const mapelName = gm.Mapel?.nama_mapel || 'Mata Pelajaran';
+    const lowerName = mapelName.toLowerCase();
+    if (
+      lowerName.includes('bimbingan') ||
+      lowerName.includes('konseling') ||
+      lowerName.includes('bp/bk') ||
+      lowerName.includes('bk')
+    ) {
+      return;
+    }
+
+    // Evaluasi tingkat sasaran penugasan
+    const rawTingkat = gm.Mapel?.tingkat;
+    let tNum = Number(rawTingkat);
+    if (!tNum && typeof rawTingkat === 'string') {
+      const match = (rawTingkat as string).match(/\b(X|XI|XII|10|11|12)\b/i);
+      if (match) {
+        const roman = match[1].toUpperCase();
+        tNum = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
+      }
+    }
+
+    if (!tNum) {
+      const upper = mapelName.toUpperCase();
+      if (upper.includes('DDPK') || upper.includes('DASAR') || upper.includes('FASE E')) {
+        tNum = 10;
+      } else if (
+        upper.includes('KONSENTRASI') ||
+        upper.includes('FASE F') ||
+        upper.startsWith('KK ') ||
+        upper.startsWith('MPP ')
+      ) {
+        tNum = tingkat >= 11 ? tingkat : 11;
+      } else {
+        tNum = tingkat;
+      }
+    }
+
+    if (tNum !== tingkat) return;
+
+    const gmJurusanId = gm.jurusan_id;
+    const gmJurusanKode = (gm.Jurusan?.kode || gm.Jurusan?.singkatan || '').toUpperCase().trim();
+    const upperMapel = mapelName.toUpperCase();
+
+    // Cocokkan ke rombel-rombel tingkat ini yang berada di bawah jurusan tersebut
+    const matchedClasses = Array.from(classMap.values()).filter((cls) => {
+      if (gmJurusanId && cls.jurusanId && gmJurusanId === cls.jurusanId) return true;
+      const clsJur = (cls.jurusanKode || '').toUpperCase().trim();
+      const clsNameUpper = cls.name.toUpperCase();
+
+      if (gmJurusanKode && clsJur) {
+        if (gmJurusanKode === clsJur) return true;
+        // Alias rumpun kejuruan SMK:
+        // TKJ <=> TKT, TJKT
+        if (
+          (gmJurusanKode === 'TKJ' || gmJurusanKode === 'TKT' || gmJurusanKode === 'TJKT') &&
+          (clsJur === 'TKJ' || clsJur === 'TKT' || clsJur === 'TJKT')
+        ) {
+          return true;
+        }
+        // TM <=> TP
+        if (
+          (gmJurusanKode === 'TM' || gmJurusanKode === 'TP') &&
+          (clsJur === 'TM' || clsJur === 'TP')
+        ) {
+          return true;
+        }
+      }
+
+      if (clsJur && upperMapel.includes(clsJur)) return true;
+      if (gmJurusanKode && new RegExp(`\\b${gmJurusanKode}\\b`, 'i').test(clsNameUpper)) return true;
+
+      // Pemetaan rumpun kelas SMKN 1 PLERED & SMK Kejuruan:
+      // X TO 1 & 2 adalah TKR, X TO 3 & 4 adalah TSM
+      if (
+        (clsNameUpper.includes('TO 1') || clsNameUpper.includes('TO 2')) &&
+        (upperMapel.includes('TKR') || gmJurusanKode === 'TKR')
+      ) {
+        return true;
+      }
+      if (
+        (clsNameUpper.includes('TO 3') || clsNameUpper.includes('TO 4')) &&
+        (upperMapel.includes('TSM') || gmJurusanKode === 'TSM')
+      ) {
+        return true;
+      }
+
+      // X TE 1, 2, 3 adalah TOI; X TE 4, 5 adalah TAV
+      if (
+        (clsNameUpper.includes('TE 1') || clsNameUpper.includes('TE 2') || clsNameUpper.includes('TE 3')) &&
+        (upperMapel.includes('TOI') || gmJurusanKode === 'TOI')
+      ) {
+        return true;
+      }
+      if (
+        (clsNameUpper.includes('TE 4') || clsNameUpper.includes('TE 5')) &&
+        (upperMapel.includes('TAV') || gmJurusanKode === 'TAV')
+      ) {
+        return true;
+      }
+
+      // Jika plotting umum tanpa batasan jurusan sama sekali
+      if (!gmJurusanId && !gmJurusanKode) return true;
+
+      return false;
+    });
+
+    if (matchedClasses.length > 0) {
+      if (!subjectMap.has(mId)) {
+        subjectMap.set(mId, { id: mId, name: mapelName, kode: gm.Mapel?.kode_mapel });
+      }
+
+      matchedClasses.forEach((cls) => {
+        const cellKey = `${mId}_${cls.id}`;
+        if (!assignmentMap.has(cellKey)) {
+          assignmentMap.set(cellKey, {
+            guruId: gm.guru_id,
+            guruName: gm.Guru?.nama_guru || 'Guru Pengampu',
+          });
+        }
       });
     }
   });

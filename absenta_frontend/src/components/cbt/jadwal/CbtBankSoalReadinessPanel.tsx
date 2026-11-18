@@ -199,7 +199,19 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           }
         }
         if (!tNum) {
-          tNum = rawTingkat === 'XI' ? 11 : rawTingkat === 'XII' ? 12 : 10;
+          const upper = mapelName.toUpperCase();
+          if (upper.includes('DDPK') || upper.includes('DASAR') || upper.includes('FASE E')) {
+            tNum = 10;
+          } else if (
+            upper.includes('KONSENTRASI') ||
+            upper.includes('FASE F') ||
+            upper.startsWith('KK ') ||
+            upper.startsWith('MPP ')
+          ) {
+            tNum = (targetTingkat && targetTingkat.some((t) => t >= 11)) ? targetTingkat.find((t) => t >= 11)! : 11;
+          } else {
+            tNum = rawTingkat === 'XI' ? 11 : rawTingkat === 'XII' ? 12 : 10;
+          }
         }
 
         // Jika event ujian memiliki sasaran tingkat spesifik, lewati penugasan di luar tingkat sasaran!
