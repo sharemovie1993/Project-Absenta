@@ -540,19 +540,19 @@ export const NilaiPklView: React.FC<UniversalNilaiPklViewProps> = React.memo(({
     });
   }, [effectiveSettings, effectiveReadOnly]);
 
-  const handleApplyToSameMitra = useCallback((mitraNama: string, instruktur: string, pic?: string) => {
-    if (effectiveReadOnly || !mitraNama || !instruktur) return;
+  const handleApplyToSameMitra = useCallback((mitraNama: string, instruktur?: string, pic?: string) => {
+    if (effectiveReadOnly || !mitraNama || (!instruktur && !pic)) return;
     setScores(prev => prev?.map(s => {
       if (s.mitra_nama === mitraNama) {
         return {
           ...s,
-          instruktur_nama: instruktur,
-          ...(pic ? { penanggung_jawab_nama: pic } : {})
+          ...(instruktur !== undefined ? { instruktur_nama: instruktur } : {}),
+          ...(pic !== undefined ? { penanggung_jawab_nama: pic } : {})
         };
       }
       return s;
     }) || []);
-    toast.success(`Data instruktur diterapkan ke seluruh siswa di ${mitraNama}`);
+    toast.success(`Data pemilik & instruktur diterapkan ke seluruh siswa di ${mitraNama}`);
   }, [effectiveReadOnly]);
 
   const handleSyncFromDailyAttendance = useCallback(() => {

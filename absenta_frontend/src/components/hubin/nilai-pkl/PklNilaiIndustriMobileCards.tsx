@@ -266,8 +266,14 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
                         </span>
                       )}
 
+                      {score.penanggung_jawab_nama && (
+                        <span className="text-[10px] text-slate-400 truncate max-w-[130px]" title={`Pemilik DUDI: ${score.penanggung_jawab_nama}`}>
+                          🏢 {score.penanggung_jawab_nama}
+                        </span>
+                      )}
+
                       {score.instruktur_nama && (
-                        <span className="text-[10px] text-slate-400 truncate max-w-[130px]">
+                        <span className="text-[10px] text-slate-400 truncate max-w-[130px]" title={`Instruktur: ${score.instruktur_nama}`}>
                           👤 {score.instruktur_nama}
                         </span>
                       )}
@@ -310,16 +316,16 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
               {/* Card Detail Form (Expanded View) */}
               {isExpanded && (
                 <div className="p-3.5 pt-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-850/40 space-y-3.5 animate-in fade-in duration-150">
-                  {/* Bagian 1: Instruktur & Jabatan */}
+                  {/* Bagian 1: Pemilik Perusahaan & Instruktur Lapangan */}
                   <div className="space-y-1.5 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
                     <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-200">
-                      <span>Pembimbing / Instruktur DUDI</span>
-                      {score.mitra_nama && score.instruktur_nama && (
+                      <span>Pimpinan Perusahaan & Instruktur Lapangan</span>
+                      {score.mitra_nama && (score.instruktur_nama || score.penanggung_jawab_nama) && (
                         <button
                           type="button"
                           onClick={() => handleApplyToSameMitra(score.mitra_nama, score.instruktur_nama, score.penanggung_jawab_nama)}
                           className="flex items-center gap-1 text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
-                          title="Salin data instruktur ke semua siswa mitra ini"
+                          title="Salin data pemilik & instruktur ke semua siswa mitra ini"
                         >
                           <Copy size={11} />
                           <span>Salin se-Mitra</span>
@@ -328,22 +334,22 @@ export const PklNilaiIndustriMobileCards: React.FC<PklNilaiIndustriMobileCardsPr
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Nama Instruktur</label>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Pemilik / Pimpinan DUDI</label>
+                        <input
+                          type="text"
+                          placeholder="Nama Pemilik DUDI..."
+                          value={score.penanggung_jawab_nama || ''}
+                          onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penanggung_jawab_nama', e.target.value)}
+                          className="w-full h-8 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Instruktur Lapangan</label>
                         <input
                           type="text"
                           placeholder="Nama Instruktur..."
                           value={score.instruktur_nama || ''}
                           onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'instruktur_nama', e.target.value)}
-                          className="w-full h-8 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Jabatan / Posisi</label>
-                        <input
-                          type="text"
-                          placeholder="Jabatan..."
-                          value={score.penanggung_jawab_nama || ''}
-                          onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penanggung_jawab_nama', e.target.value)}
                           className="w-full h-8 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>

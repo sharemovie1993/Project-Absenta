@@ -128,7 +128,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     {
       key: 'identitas',
       title: 'Identitas Siswa & Mitra',
-      colSpan: 3,
+      colSpan: 4,
       className: 'bg-slate-100/90 dark:bg-slate-800/90',
     },
     {
@@ -233,53 +233,73 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
       },
     },
     {
-      key: 'instruktur_pic',
-      header: 'Instruktur',
-      width: 110,
+      key: 'penanggung_jawab_nama',
+      header: 'Pemilik / Pimpinan DUDI',
+      width: 140,
       renderCell: (score, index) => {
         const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
         return (
-          <div className="space-y-0.5 py-0.5 max-w-[105px]">
+          <div className="flex items-center gap-1 py-0.5 max-w-[135px]">
+            <input
+              id={`score-pemilik-${globalIndex}`}
+              aria-label={`Nama pemilik / pimpinan DUDI ${score.nama_siswa}`}
+              type="text"
+              placeholder={readOnly ? '-' : 'Nama Pemilik DUDI...'}
+              value={score.penanggung_jawab_nama || ''}
+              readOnly={readOnly}
+              disabled={readOnly}
+              onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penanggung_jawab_nama', e.target.value)}
+              className={cn(
+                "w-full text-[10px] h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                readOnly && "border-transparent bg-transparent cursor-default px-0 text-slate-700 dark:text-slate-300 font-semibold"
+              )}
+            />
+            {!readOnly && score.mitra_nama && score.penanggung_jawab_nama && (
+              <button
+                type="button"
+                onClick={() => handleApplyToSameMitra(score.mitra_nama, score.instruktur_nama, score.penanggung_jawab_nama)}
+                className="shrink-0 p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors"
+                title={`Salin nama pemilik "${score.penanggung_jawab_nama}" ke semua siswa di ${score.mitra_nama}`}
+              >
+                <Copy size={11} />
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'instruktur_nama',
+      header: 'Instruktur Lapangan',
+      width: 140,
+      renderCell: (score, index) => {
+        const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
+        return (
+          <div className="flex items-center gap-1 py-0.5 max-w-[135px]">
             <input
               id={`score-instruktur-${globalIndex}`}
-              aria-label={`Nama instruktur ${score.nama_siswa}`}
+              aria-label={`Nama instruktur lapangan ${score.nama_siswa}`}
               type="text"
-              placeholder={readOnly ? '-' : 'Instruktur...'}
+              placeholder={readOnly ? '-' : 'Nama Instruktur...'}
               value={score.instruktur_nama || ''}
               readOnly={readOnly}
               disabled={readOnly}
               onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'instruktur_nama', e.target.value)}
               className={cn(
-                "w-full text-[10px] h-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500",
+                "w-full text-[10px] h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500",
                 readOnly && "border-transparent bg-transparent cursor-default px-0 text-slate-700 dark:text-slate-300 font-semibold"
               )}
             />
-            <div className="flex items-center gap-0.5">
-              <input
-                id={`score-pic-${globalIndex}`}
-                aria-label={`Jabatan atau penanggung jawab DUDI ${score.nama_siswa}`}
-                type="text"
-                placeholder={readOnly ? '' : 'Jabatan...'}
-                value={score.penanggung_jawab_nama || ''}
-                readOnly={readOnly}
-                disabled={readOnly}
-                onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penanggung_jawab_nama', e.target.value)}
-                className={cn(
-                  "w-full text-[9px] h-4.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-1 text-slate-600 dark:text-slate-400 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500",
-                  readOnly && "border-transparent bg-transparent cursor-default px-0 text-slate-400 text-[8px]"
-                )}
-              />
-              {!readOnly && score.mitra_nama && score.instruktur_nama && (
-                <button
-                  type="button"
-                  onClick={() => handleApplyToSameMitra(score.mitra_nama, score.instruktur_nama, score.penanggung_jawab_nama)}
-                  className="shrink-0 p-0.5 text-slate-400 hover:text-indigo-600 rounded transition-colors"
-                  title={`Salin instruktur & jabatan ke semua siswa ${score.mitra_nama}`}
-                >
-                  <Copy size={10} />
-                </button>
-              )}
-            </div>
+            {!readOnly && score.mitra_nama && score.instruktur_nama && (
+              <button
+                type="button"
+                onClick={() => handleApplyToSameMitra(score.mitra_nama, score.instruktur_nama, score.penanggung_jawab_nama)}
+                className="shrink-0 p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors"
+                title={`Salin nama instruktur "${score.instruktur_nama}" ke semua siswa di ${score.mitra_nama}`}
+              >
+                <Copy size={11} />
+              </button>
+            )}
           </div>
         );
       },
