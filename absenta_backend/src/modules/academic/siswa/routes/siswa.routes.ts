@@ -70,6 +70,17 @@ export default async function siswaRoutes(fastify: any) {
     return siswaController.bulkResetPassword(request, reply);
   });
 
+  // POST /siswa/bulk-reset-password/count - Preview student count for bulk reset
+  fastify.post('/bulk-reset-password/count', {
+    preHandler: [
+        requireCapability('academic.students.manage'),
+        organizationalScopeMiddleware,
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.countBulkResetTarget(request, reply);
+  });
+
   // GET /siswa/:id/history - Get siswa academic history
   fastify.get('/:id/history', {
     preHandler: [

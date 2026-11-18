@@ -1,9 +1,21 @@
-import React, { useState } from 'react';
-import { KeyRound, ShieldAlert, CheckCircle2, Loader2, Sparkles, School, Users, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  KeyRound, 
+  ShieldAlert, 
+  CheckCircle2, 
+  Loader2, 
+  Sparkles, 
+  School, 
+  Users, 
+  Check, 
+  RefreshCw,
+  Layers,
+  GraduationCap
+} from 'lucide-react';
 import { Modal, ModalFooter, Button, Label, Input } from '../../ui';
 import { SearchableSelect } from '../../ui/SearchableSelect';
-import { DropdownOption } from '../../../api/dropdown.api';
-import { bulkResetSiswaPassword } from '../../../api/academic/siswa.api';
+import { DropdownOption, getJurusanForDropdown } from '../../../api/dropdown.api';
+import { bulkResetSiswaPassword, countBulkResetSiswaTarget } from '../../../api/academic/siswa.api';
 import toast from 'react-hot-toast';
 
 interface SiswaBulkPasswordModalProps {
@@ -15,6 +27,13 @@ interface SiswaBulkPasswordModalProps {
   selectedKelasId?: string;
 }
 
+const TINGKAT_OPTIONS: DropdownOption[] = [
+  { label: 'Tingkat X (Kelas 10)', value: '10' },
+  { label: 'Tingkat XI (Kelas 11)', value: '11' },
+  { label: 'Tingkat XII (Kelas 12)', value: '12' },
+  { label: 'Tingkat XIII (Kelas 13 - 4 Tahun)', value: '13' },
+];
+
 export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
   isOpen,
   onClose,
@@ -25,10 +44,22 @@ export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
 }) => {
   const [mode, setMode] = useState<'NISN' | 'NIS' | 'CUSTOM'>('NISN');
   const [customPassword, setCustomPassword] = useState('');
-  const [targetScope, setTargetScope] = useState<'ALL' | 'KELAS' | 'SELECTED'>(
+  
+  // Status filter: defaults strictly to 'AKTIF' for data safety
+  const [statusFilter, setStatusFilter] = useState<'AKTIF' | 'ALL'>('AKTIF');
+
+  // Target Scope Selection
+  const [targetScope, setTargetScope] = useState<'ALL' | 'TINGKAT' | 'JURUSAN' | 'KELAS' | 'SELECTED'>(
     selectedSiswaIds.length > 0 ? 'SELECTED' : (selectedKelasId ? 'KELAS' : 'ALL')
   );
+  const [tingkat, setTingkat] = useState<string>('10');
+  const [jurusanId, setJurusanId] = useState<string>('');
+  const [jurusanOptions, setJurusanOptions] = useState<DropdownOption[]>([]);
   const [kelasId, setKelasId] = useState(selectedKelasId);
+
+  // Target count preview
+  const [targetCount, setTargetCount] = useState<number | null>(null);
+  const [isLoadingCount, setIsLoadingCount] = useState(false);
   
   // Progress & Execution States
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,10 +73,66 @@ export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
     message: string;
   } | null>(null);
 
+  // Fetch Jurusan Options for Filter
+  useEffect(() => {
+    if (isOpen) {
+      getJurusanForDropdown()
+        .then((data) => setJurusanOptions(data || []))
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
+  // Live Count Preview whenever filters change
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (targetScope === 'SELECTED') {
+      setTargetCount(selectedSiswaIds.length);
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoadingCount(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await countBulkResetSiswaTarget({
+          targetScope,
+          status: statusFilter,
+          tingkat: targetScope === 'TINGKAT' ? tingkat : undefined,
+          jurusan_id: targetScope === 'JURUSAN' ? jurusanId : undefined,
+          kelas_id: targetScope === 'KELAS' ? kelasId : undefined,
+        });
+        if (isMounted && res.success) {
+          setTargetCount(res.count);
+        }
+      } catch (err) {
+        console.error('Failed to preview bulk reset target:', err);
+      } finally {
+        if (isMounted) setIsLoadingCount(false);
+      }
+    }, 200);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [isOpen, targetScope, statusFilter, tingkat, jurusanId, kelasId, selectedSiswaIds.length]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mode === 'CUSTOM' && (!customPassword || customPassword.length < 6)) {
       toast.error('Kata sandi kustom minimal 6 karakter.');
+      return;
+    }
+
+    if (targetScope === 'TINGKAT' && !tingkat) {
+      toast.error('Silakan pilih tingkat target terlebih dahulu.');
+      return;
+    }
+
+    if (targetScope === 'JURUSAN' && !jurusanId) {
+      toast.error('Silakan pilih kejuruan target terlebih dahulu.');
       return;
     }
 
@@ -59,10 +146,15 @@ export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
       return;
     }
 
+    if (targetCount === 0) {
+      toast.error('Tidak ada siswa yang sesuai dengan filter target.');
+      return;
+    }
+
     setIsSubmitting(true);
     setSummaryResult(null);
     setProgressPercent(10);
-    setProgressStatusText('Menyiapkan data target siswa & enkripsi password NISN...');
+    setProgressStatusText(`Menyiapkan data target ${targetCount ? targetCount + ' ' : ''}siswa & enkripsi password...`);
 
     // Smooth Progress Simulation while Backend Executes
     const timer1 = setTimeout(() => {
@@ -77,7 +169,7 @@ export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
 
     const timer3 = setTimeout(() => {
       setProgressPercent(88);
-      setProgressStatusText('Menyimpan relasi User & memperbarui data siswa...');
+      setProgressStatusText(`Menyimpan relasi User & transaksi data ${targetCount ? targetCount + ' ' : ''}siswa di server...`);
     }, 2000);
 
     try {
@@ -85,6 +177,9 @@ export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
         mode,
         customPassword: mode === 'CUSTOM' ? customPassword : undefined,
         targetScope,
+        status: statusFilter,
+        tingkat: targetScope === 'TINGKAT' ? tingkat : undefined,
+        jurusan_id: targetScope === 'JURUSAN' ? jurusanId : undefined,
         kelas_id: targetScope === 'KELAS' ? kelasId : undefined,
         siswa_ids: targetScope === 'SELECTED' ? selectedSiswaIds : undefined,
       });
@@ -141,7 +236,7 @@ export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
               Reset / Generate Password Massal Siswa
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
-              Set password akun siswa dari NISN atau password kustom
+              Set password akun siswa dari NISN, NIS, atau kata sandi kustom
             </p>
           </div>
         </div>
@@ -298,12 +393,62 @@ export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
             </div>
           )}
 
+          {/* Filter Status Siswa (Aktif vs Semua) */}
+          <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Filter Status Siswa <span className="text-rose-500">*</span>
+              </Label>
+              <span className="text-[10px] text-slate-400">Penyaring basis data</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => setStatusFilter('AKTIF')}
+                className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                  statusFilter === 'AKTIF'
+                    ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 ring-2 ring-emerald-500/20'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold flex items-center gap-1.5">
+                    Hanya Siswa Aktif
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-500 text-white font-extrabold uppercase">Aman</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">Kecualikan Alumni & Pindah</span>
+                </div>
+                {statusFilter === 'AKTIF' && <Check size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />}
+              </button>
+
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => setStatusFilter('ALL')}
+                className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                  statusFilter === 'ALL'
+                    ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 ring-2 ring-amber-500/20'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-amber-800 dark:text-amber-300">Semua Status</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">Termasuk Alumni, Pindah, DO</span>
+                </div>
+                {statusFilter === 'ALL' && <Check size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />}
+              </button>
+            </div>
+          </div>
+
           {/* Target Scope Selection */}
-          <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
             <Label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              Target Siswa <span className="text-rose-500">*</span>
+              Cakupan Target <span className="text-rose-500">*</span>
             </Label>
+            
             <div className="space-y-2">
+              {/* Siswa Terpilih (jika ada checklist) */}
               {selectedSiswaIds.length > 0 && (
                 <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800/60 bg-blue-50/40 dark:bg-blue-950/20 cursor-pointer">
                   <input
@@ -321,6 +466,7 @@ export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
                 </label>
               )}
 
+              {/* Semua Siswa */}
               <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
                 <input
                   type="radio"
@@ -330,9 +476,75 @@ export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
                   onChange={() => setTargetScope('ALL')}
                   className="text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Semua Siswa di Sekolah</span>
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <Users size={15} className="text-slate-400" />
+                  <span>
+                    {statusFilter === 'AKTIF' ? 'Semua Siswa Aktif di Sekolah' : 'Semua Data Siswa di Sekolah'}
+                  </span>
+                </div>
               </label>
 
+              {/* Per Tingkat */}
+              <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+                <input
+                  type="radio"
+                  name="targetScope"
+                  disabled={isSubmitting}
+                  checked={targetScope === 'TINGKAT'}
+                  onChange={() => setTargetScope('TINGKAT')}
+                  className="text-blue-600 focus:ring-blue-500"
+                />
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <GraduationCap size={15} className="text-slate-400" />
+                  <span>Per Tingkat (Kelas X, XI, atau XII)</span>
+                </div>
+              </label>
+
+              {targetScope === 'TINGKAT' && (
+                <div className="pl-6 pt-0.5 animate-in fade-in duration-200">
+                  <SearchableSelect
+                    id="tingkatSelect"
+                    value={tingkat}
+                    disabled={isSubmitting}
+                    onValueChange={(val) => setTingkat(val)}
+                    options={TINGKAT_OPTIONS}
+                    placeholder="Pilih Tingkat..."
+                    triggerClassName="h-9 text-xs rounded-xl"
+                  />
+                </div>
+              )}
+
+              {/* Per Kejuruan / Jurusan */}
+              <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+                <input
+                  type="radio"
+                  name="targetScope"
+                  disabled={isSubmitting}
+                  checked={targetScope === 'JURUSAN'}
+                  onChange={() => setTargetScope('JURUSAN')}
+                  className="text-blue-600 focus:ring-blue-500"
+                />
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <Layers size={15} className="text-slate-400" />
+                  <span>Per Konsentrasi / Jurusan Keahlian</span>
+                </div>
+              </label>
+
+              {targetScope === 'JURUSAN' && (
+                <div className="pl-6 pt-0.5 animate-in fade-in duration-200">
+                  <SearchableSelect
+                    id="jurusanSelect"
+                    value={jurusanId}
+                    disabled={isSubmitting}
+                    onValueChange={(val) => setJurusanId(val)}
+                    options={jurusanOptions}
+                    placeholder="Pilih Jurusan / Keahlian..."
+                    triggerClassName="h-9 text-xs rounded-xl"
+                  />
+                </div>
+              )}
+
+              {/* Per Rombel / Kelas */}
               <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
                 <input
                   type="radio"
@@ -344,12 +556,12 @@ export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
                 />
                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
                   <School size={15} className="text-slate-400" />
-                  <span>Spesifik Per Kelas</span>
+                  <span>Spesifik Per Kelas / Rombel</span>
                 </div>
               </label>
 
               {targetScope === 'KELAS' && (
-                <div className="pl-6 pt-1">
+                <div className="pl-6 pt-0.5 animate-in fade-in duration-200">
                   <SearchableSelect
                     id="kelasId"
                     value={kelasId}
@@ -360,6 +572,27 @@ export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
                     triggerClassName="h-9 text-xs rounded-xl"
                   />
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Live Preview Target Banner */}
+          <div className="p-3 rounded-xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users size={16} className="text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-bold text-blue-900 dark:text-blue-200">
+                Estimasi Target Eksekusi:
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 font-black text-xs text-blue-700 dark:text-blue-300">
+              {isLoadingCount ? (
+                <span className="flex items-center gap-1 text-blue-500">
+                  <Loader2 size={13} className="animate-spin" /> Menghitung...
+                </span>
+              ) : (
+                <span className="px-2.5 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/70 border border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-100 font-extrabold text-xs">
+                  {targetCount !== null ? `${targetCount.toLocaleString('id-ID')} Siswa` : '-'}
+                </span>
               )}
             </div>
           </div>
@@ -387,7 +620,7 @@ export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoadingCount || targetCount === 0}
               className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20"
             >
               {isSubmitting ? (
@@ -398,7 +631,7 @@ export const SiswaBulkPasswordModal: React.FC<SiswaBulkPasswordModalProps> = ({
               ) : (
                 <>
                   <CheckCircle2 size={14} className="mr-2" />
-                  Eksekusi Reset Password
+                  Eksekusi Reset {targetCount !== null ? `(${targetCount.toLocaleString('id-ID')} Siswa)` : ''}
                 </>
               )}
             </Button>

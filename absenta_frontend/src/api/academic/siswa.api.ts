@@ -316,7 +316,10 @@ export const normalizeSiswaWaPhones = async (): Promise<{
 export interface BulkResetSiswaPasswordPayload {
   mode: 'NISN' | 'NIS' | 'CUSTOM';
   customPassword?: string;
-  targetScope: 'ALL' | 'KELAS' | 'SELECTED';
+  targetScope: 'ALL' | 'TINGKAT' | 'JURUSAN' | 'KELAS' | 'SELECTED';
+  status?: string;
+  tingkat?: string | number;
+  jurusan_id?: string;
   kelas_id?: string;
   siswa_ids?: string[];
 }
@@ -331,6 +334,13 @@ export const bulkResetSiswaPassword = async (payload: BulkResetSiswaPasswordPayl
   errors?: any[];
 }> => {
   return requestWithFallback('post', '/academic/siswa/bulk-reset-password', { data: payload, timeout: 300000 });
+};
+
+export const countBulkResetSiswaTarget = async (payload: Partial<BulkResetSiswaPasswordPayload>): Promise<{
+  success: boolean;
+  count: number;
+}> => {
+  return requestWithFallback('post', '/academic/siswa/bulk-reset-password/count', { data: payload });
 };
 
 export interface DuplicateDapodikRef {

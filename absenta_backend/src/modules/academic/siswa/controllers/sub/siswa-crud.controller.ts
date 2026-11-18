@@ -34,6 +34,23 @@ export const siswaCrudController = {
       });
     }
   },
+
+  async countBulkResetTarget(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const payload = request.body || {};
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: tenant_id not found' });
+      }
+      const result = await siswaService.countBulkResetTarget(tenantId, payload);
+      return reply.send(result);
+    } catch (error: any) {
+      return reply.status(400).send({
+        success: false,
+        message: error?.message || 'Gagal menghitung target siswa.',
+      });
+    }
+  },
 async getAllSiswa(request: any, reply: any) {
     try {
       const scope = (request as any).organizationalScope;

@@ -5,9 +5,61 @@ import { activityLogService } from '@/modules/activity/services/activity-log.ser
 export interface BulkResetSiswaPasswordPayload {
   mode: 'NISN' | 'NIS' | 'CUSTOM';
   customPassword?: string;
-  targetScope: 'ALL' | 'KELAS' | 'SELECTED';
+  targetScope: 'ALL' | 'TINGKAT' | 'JURUSAN' | 'KELAS' | 'SELECTED';
+  status?: string; // 'AKTIF' (default) | 'ALL' | 'LULUS' | 'PINDAH' | 'KELUAR'
+  tingkat?: string | number;
+  jurusan_id?: string;
   kelas_id?: string;
   siswa_ids?: string[];
+}
+
+export function buildBulkResetWhereClause(tenantId: string, payload: BulkResetSiswaPasswordPayload): any {
+  const { targetScope, kelas_id, siswa_ids, tingkat, jurusan_id, status } = payload;
+  const where: any = { tenant_id: tenantId };
+
+  // Status Filter: Defaults strictly to 'AKTIF' for safety
+  const filterStatus = (status || 'AKTIF').toUpperCase();
+  if (filterStatus !== 'ALL') {
+    where.status = filterStatus;
+  }
+
+  // Parse tingkat helper (e.g. 'X' or '10' -> 10)
+  const parseTingkat = (val?: string | number): number | undefined => {
+    if (val === undefined || val === null || val === '') return undefined;
+    const str = String(val).trim().toUpperCase();
+    if (str === 'X' || str === '10') return 10;
+    if (str === 'XI' || str === '11') return 11;
+    if (str === 'XII' || str === '12') return 12;
+    if (str === 'XIII' || str === '13') return 13;
+    const n = parseInt(str, 10);
+    return isNaN(n) ? undefined : n;
+  };
+
+  const parsedTingkat = parseTingkat(tingkat);
+
+  if (targetScope === 'KELAS' && kelas_id) {
+    where.kelas_id = kelas_id;
+  } else if (targetScope === 'TINGKAT' && parsedTingkat !== undefined) {
+    where.Kelas = { tingkat: parsedTingkat };
+  } else if (targetScope === 'JURUSAN' && jurusan_id) {
+    where.OR = [
+      { jurusan_id },
+      { Kelas: { jurusan_id } }
+    ];
+  } else if (targetScope === 'SELECTED' && Array.isArray(siswa_ids) && siswa_ids.length > 0) {
+    where.id = { in: siswa_ids };
+  }
+
+  return where;
+}
+
+export async function countBulkResetSiswaTargetCommand(
+  ctx: { tenantId: string },
+  payload: BulkResetSiswaPasswordPayload
+) {
+  const where = buildBulkResetWhereClause(ctx.tenantId, payload);
+  const count = await prisma.siswa.count({ where });
+  return { success: true, count };
 }
 
 export async function bulkResetSiswaPasswordCommand(
@@ -22,12 +74,7 @@ export async function bulkResetSiswaPasswordCommand(
   }
 
   // 1. Determine student filter
-  const where: any = { tenant_id: tenantId };
-  if (targetScope === 'KELAS' && kelas_id) {
-    where.kelas_id = kelas_id;
-  } else if (targetScope === 'SELECTED' && Array.isArray(siswa_ids) && siswa_ids.length > 0) {
-    where.id = { in: siswa_ids };
-  }
+  const where = buildBulkResetWhereClause(tenantId, payload);
 
   const students = await prisma.siswa.findMany({
     where,
