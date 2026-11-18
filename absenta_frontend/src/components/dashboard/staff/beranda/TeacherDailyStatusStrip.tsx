@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Zap, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Clock, Zap, CheckCircle2, ShieldCheck, AlertCircle, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TimelineItem } from '../tabs/StaffKbmAbsenTab';
 
@@ -12,6 +12,9 @@ interface TeacherDailyStatusStripProps {
   totalMinutes?: number;
   guruTapTime?: string | null;
   isGuruHadir?: boolean;
+  userRank?: number | null;
+  userPoints?: number | null;
+  onOpenLeaderboard?: () => void;
   className?: string;
 }
 
@@ -24,6 +27,9 @@ export const TeacherDailyStatusStrip: React.FC<TeacherDailyStatusStripProps> = R
   totalMinutes = 0,
   guruTapTime,
   isGuruHadir = true,
+  userRank,
+  userPoints,
+  onOpenLeaderboard,
   className,
 }) => {
   return (
@@ -87,6 +93,29 @@ export const TeacherDailyStatusStrip: React.FC<TeacherDailyStatusStripProps> = R
           </span>
         )}
       </div>
+
+      {/* 4. Klasemen Kinerja Guru (Gamification Micro-Pill) */}
+      {onOpenLeaderboard && (
+        <>
+          <div className="w-px h-3.5 bg-slate-100 dark:bg-slate-800 shrink-0" />
+          <button
+            type="button"
+            onClick={onOpenLeaderboard}
+            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 font-bold transition-all shrink-0 active:scale-95 text-[11px] sm:text-xs cursor-pointer group"
+            title="Klik untuk melihat Klasemen Kedisiplinan Guru"
+          >
+            <Trophy size={13} className="text-amber-500 group-hover:scale-110 transition-transform shrink-0" />
+            <span className="truncate">
+              {userRank ? `#${userRank}` : 'Klasemen'}
+              {userPoints !== undefined && userPoints !== null && (
+                <span className="font-semibold text-slate-500 dark:text-slate-400 ml-1 hidden xs:inline">
+                  • {userPoints} Pts
+                </span>
+              )}
+            </span>
+          </button>
+        </>
+      )}
     </div>
   );
 });

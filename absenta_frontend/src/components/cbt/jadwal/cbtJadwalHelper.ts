@@ -59,10 +59,30 @@ export function getEndTimePreview(tanggalSelesai: string, tzLabel: string): stri
 
 /**
  * Mengonversi tingkat bank soal (Romawi maupun angka) ke nomor integer (1-13)
+ * Dilengkapi fallback cerdas berbasis Mapel tingkat, judul asesmen, dan rumpun kejuruan (DDPK/MPP/KK)
  */
 export function resolveBankTingkatNumber(selectedBankSoal?: CbtBankSoal | null): number | undefined {
-  if (!selectedBankSoal?.tingkat) return undefined;
-  return parseTingkatToNumber(selectedBankSoal.tingkat);
+  if (!selectedBankSoal) return undefined;
+  if (selectedBankSoal.tingkat && selectedBankSoal.tingkat !== 'SEMUA') {
+    const num = parseTingkatToNumber(selectedBankSoal.tingkat);
+    if (num !== undefined) return num;
+  }
+  // Fallback 1: Mapel tingkat
+  if (selectedBankSoal.Mapel?.tingkat) {
+    const num = Number(selectedBankSoal.Mapel.tingkat);
+    if (!isNaN(num) && num > 0) return num;
+  }
+  // Fallback 2: Regex dari judul bank soal (misal "Tingkat 10", "Tingkat XI", "Kelas X")
+  const title = selectedBankSoal.judul || '';
+  const match = title.match(/\b(?:Tingkat|Kelas)\s+(X|XI|XII|10|11|12)\b/i);
+  if (match) {
+    return parseTingkatToNumber(match[1]);
+  }
+  // Fallback 3: DDPK -> 10, KK / MPP -> 11
+  const upper = (selectedBankSoal.Mapel?.nama_mapel || title).toUpperCase();
+  if (upper.includes('DDPK') || upper.includes('DASAR')) return 10;
+  if (upper.includes('MPP') || upper.includes('KONSENTRASI') || upper.startsWith('KK ')) return 11;
+  return undefined;
 }
 
 /**

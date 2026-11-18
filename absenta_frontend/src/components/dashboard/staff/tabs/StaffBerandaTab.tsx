@@ -18,6 +18,7 @@ import {
   BarChart2,
   CheckSquare,
   Award,
+  Trophy,
   Eye,
   MapPin,
   Lock,
@@ -37,10 +38,12 @@ import { useQuery } from '@tanstack/react-query';
 import { piketApi } from '../../../../api/piket.api';
 import { kurikulumApi } from '../../../../api/kurikulum.api';
 import { getRekapBulananGuruMe } from '../../../../api/attendance/rekap.api';
+import { getLeaderboardGuru } from '@/api/attendanceGerbang.api';
 import { getMyActionHub } from '../../../../api/dashboard.api';
 import type { TimelineItem } from './StaffKbmAbsenTab';
 import { StaffWeeklyScheduleWidget } from '../../widgets/StaffWeeklyScheduleWidget';
 import { BebanMengajarWidget } from '../widgets/BebanMengajarWidget';
+import { TeacherLeaderboardWidget } from '../widgets/TeacherLeaderboardWidget';
 import { useTenant } from '../../../../hooks/useTenant';
 import { toLocalDate, formatLocalTimeFromISO } from '../../../../utils/attendance/time';
 import { useMyPengawasCbt } from '@/hooks/useMyPengawasCbt';
@@ -64,6 +67,9 @@ import { cbtApi } from '@/api/cbt.api';
 import { sosialisasiApi, sosialisasiQueryKeys } from '@/api/academic/sosialisasi.api';
 
 // Code-Split Sub-Tabs & Heavy Modals (Zero Network Leak on Initial Load)
+const TeacherAttendanceLeaderboardModal = lazy(() =>
+  import('@/components/attendance/my_attendance/TeacherAttendanceLeaderboardModal').then((m) => ({ default: m.TeacherAttendanceLeaderboardModal }))
+);
 const TeacherSosialisasiScanModal = lazy(() =>
   import('../modals/TeacherSosialisasiScanModal').then((m) => ({ default: m.TeacherSosialisasiScanModal }))
 );
@@ -147,6 +153,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
   const { tenantId } = useTenant();
   const [showIzinModal, setShowIzinModal] = useState(false);
   const [isScanSosialisasiOpen, setIsScanSosialisasiOpen] = useState(false);
+  const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
   const [teacherCbtMode, setTeacherCbtMode] = useState<'bank' | 'sesi'>('bank');
   const { isOrkestrasi, eventName } = useCbtOperationMode();
 
@@ -190,6 +197,27 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     SAKIT: 0,
     JAM_MASUK: null,
   };
+
+  // Klasemen Kedisiplinan & Poin Kinerja Guru Bulan Ini (Gamifikasi Motivasi Diri)
+  const { data: leaderboardRes, isLoading: loadingLeaderboard } = useQuery({
+    queryKey: ['teacher-discipline-leaderboard-beranda', 'PENDIDIK', 'this_month'],
+    queryFn: () => getLeaderboardGuru(50, 'PENDIDIK', { timeframe: 'this_month' }).catch(() => ({ success: true, message: '', data: [] })),
+    staleTime: 60 * 1000,
+  });
+
+  const leaderboardList = leaderboardRes?.data || [];
+
+  const myLeaderboardRank = useMemo(() => {
+    if (!leaderboardList.length) return null;
+    const effectiveId = guruId || user?.id;
+    const effectiveName = (guruNama || user?.full_name || (user as any)?.name || '').trim().toLowerCase();
+    const idx = leaderboardList.findIndex((item) => {
+      if (effectiveId && item.id === effectiveId) return true;
+      if (effectiveName && item.nama?.trim().toLowerCase() === effectiveName) return true;
+      return false;
+    });
+    return idx !== -1 ? { rank: idx + 1, points: leaderboardList[idx].points, data: leaderboardList[idx] } : null;
+  }, [leaderboardList, guruId, user, guruNama]);
 
   // Query Beban Mengajar Guru (KBM JP & Ekuivalensi)
   const { data: bebanGuruRes, isLoading: loadingBeban } = useQuery({
@@ -535,6 +563,14 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
         onClick: () => setIsScanSosialisasiOpen(true),
       }
     ] : []),
+    {
+      id: 'leaderboard',
+      label: 'Klasemen Guru',
+      icon: Trophy,
+      iconColorClass: 'text-amber-500 dark:text-amber-400',
+      badge: myLeaderboardRank?.rank ? `#${myLeaderboardRank.rank}` : undefined,
+      onClick: () => setIsLeaderboardModalOpen(true),
+    },
   ], [
     unfilledJournalsCount,
     timelineItems,
@@ -550,6 +586,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     isSosialisasiActive,
     isMyAttendanceDone,
     handleSubTabChange,
+    myLeaderboardRank,
   ]);
 
   // ── Navigasi Subtab Standar Universal Mobile Subtab Sidebar (Shopee-Grade Drawer) ──
@@ -783,6 +820,9 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                   totalMinutes={totalMinutes}
                   guruTapTime={(rekapStats as any)?.JAM_MASUK || null}
                   isGuruHadir={Boolean(rekapStats.HADIR > 0 || (rekapStats as any)?.JAM_MASUK)}
+                  userRank={myLeaderboardRank?.rank}
+                  userPoints={myLeaderboardRank?.points}
+                  onOpenLeaderboard={() => setIsLeaderboardModalOpen(true)}
                 />
 
                 {/* Operational Micro-Grid */}
@@ -803,6 +843,16 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
                   guruId={effectiveGuruId}
                   variant="compact"
                   onNavigateToCbt={() => handleSubTabChange('cbt')}
+                />
+
+                {/* Klasemen & Poin Kinerja Guru (Motivasi Diri Pendidik) */}
+                <TeacherLeaderboardWidget
+                  leaderboard={leaderboardList}
+                  isLoading={loadingLeaderboard}
+                  currentUserId={user?.id}
+                  currentGuruId={guruId}
+                  currentUserName={guruNama || user?.full_name || (user as any)?.name}
+                  onOpenLeaderboard={() => setIsLeaderboardModalOpen(true)}
                 />
 
                 {/* Pintasan Aksi Operasional Guru (Shopee-Grade Quick Action Slider) */}
@@ -1132,6 +1182,19 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
             isAlreadyAttended={isMyAttendanceDone}
             waktuHadir={myAttendanceItem?.waktu_hadir}
             onSuccess={() => refetchSosialisasi()}
+          />
+        </Suspense>
+      )}
+
+      {/* Modal Klasemen Kedisiplinan & Kinerja Guru Lengkap */}
+      {isLeaderboardModalOpen && (
+        <Suspense fallback={null}>
+          <TeacherAttendanceLeaderboardModal
+            isOpen={isLeaderboardModalOpen}
+            onClose={() => setIsLeaderboardModalOpen(false)}
+            teacherLeaderboard={leaderboardList}
+            currentUserId={user?.id || guruId}
+            currentUserName={guruNama || displayName}
           />
         </Suspense>
       )}

@@ -499,6 +499,123 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       });
     });
 
+    // 2. Harmonisasikan dengan Kurikulum Resmi Sekolah (rawGuruMapel)
+    // Mengadopsi mesin yang sama persis dengan Matriks Kelas Kesiapan Soal:
+    // Seluruh mata pelajaran kurikulum (DDPK Fase E Kelas 10, KK/MPP Kelas 11 & 12)
+    // yang diajarkan pada tingkat tersebut otomatis didaftarkan ke pilihan helper
+    if (rawGuruMapel && Array.isArray(rawGuruMapel)) {
+      rawGuruMapel.forEach((gm: any) => {
+        const mId = gm.mapel_id;
+        if (!mId) return;
+
+        const mapelName = gm.Mapel?.nama_mapel || 'Mata Pelajaran';
+        const lowerName = mapelName.toLowerCase();
+        // Abaikan BK / BP
+        if (
+          lowerName.includes('bimbingan') ||
+          lowerName.includes('konseling') ||
+          lowerName.includes('bp/bk') ||
+          lowerName.includes('bk')
+        ) {
+          return;
+        }
+
+        // Deteksi tingkat (persis seperti cbtClassSubjectMatrixHelper.ts)
+        const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat;
+        let tNum = Number(rawTingkat);
+        if (!tNum && gm.Kelas?.nama_kelas) {
+          const match = gm.Kelas.nama_kelas.match(/\b(X|XI|XII|10|11|12)\b/i);
+          if (match) {
+            const roman = match[1].toUpperCase();
+            tNum = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
+          }
+        }
+
+        const targetTingkats: number[] = [];
+        if (tNum && tempMap.has(tNum)) {
+          targetTingkats.push(tNum);
+        } else {
+          const upper = mapelName.toUpperCase();
+          if (upper.includes('DDPK') || upper.includes('DASAR') || upper.includes('FASE E')) {
+            targetTingkats.push(10);
+          } else if (
+            upper.includes('KONSENTRASI') ||
+            upper.includes('FASE F') ||
+            upper.startsWith('KK ') ||
+            upper.startsWith('MPP ')
+          ) {
+            targetTingkats.push(11, 12);
+          } else {
+            const fallback = rawTingkat === 'XI' ? 11 : rawTingkat === 'XII' ? 12 : 10;
+            if (tempMap.has(fallback)) targetTingkats.push(fallback);
+          }
+        }
+
+        // Deteksi Jurusan (persis seperti cbtClassSubjectMatrixHelper.ts)
+        let jurKode =
+          (gm.Jurusan as any)?.kode ||
+          (gm.Jurusan as any)?.singkatan ||
+          (gm.Kelas as any)?.Jurusan?.kode;
+        const kName = gm.Kelas?.nama_kelas || '';
+        if (!jurKode && kName) {
+          const match = kName.match(/\b(AKL|AK|TKJ|TKR|TSM|TP|TM|KUL|PHT|HTL|TOI|TAV|TE|TO)\b/i);
+          if (match) {
+            jurKode = match[1].toUpperCase();
+          }
+        }
+        if (!jurKode) {
+          const upper = mapelName.toUpperCase();
+          if (upper.includes('AKL') || upper.includes('AKUNTANSI') || /\bAK\b/.test(upper)) jurKode = 'AKL';
+          else if (upper.includes('KUL') || upper.includes('BOGA') || upper.includes('KULINER')) jurKode = 'KUL';
+          else if (upper.includes('PHT') || upper.includes('HOTEL') || /\bHTL\b/.test(upper) || upper.includes('PERHOTELAN')) jurKode = 'PHT';
+          else if (upper.includes('TAV') || upper.includes('AUDIO VIDEO')) jurKode = 'TAV';
+          else if (upper.includes('TOI') || upper.includes('OTOMASI')) jurKode = 'TOI';
+          else if (upper.includes('TKJ') || upper.includes('TJKT') || upper.includes('JARINGAN')) jurKode = 'TKJ';
+          else if (upper.includes('TKR') || upper.includes('KENDARAAN') || upper.includes('OTOMOTIF')) jurKode = 'TKR';
+          else if (upper.includes('TSM') || upper.includes('SEPEDA MOTOR') || /\bMOTOR\b/.test(upper)) jurKode = 'TSM';
+          else if (upper.includes('TM') || upper.includes('TP') || upper.includes('PEMESINAN') || /\bMESIN\b/.test(upper)) jurKode = 'TP';
+        }
+
+        targetTingkats.forEach((tingkatNum) => {
+          if (!tempMap.has(tingkatNum)) return;
+          const existingEntries = Array.from(tempMap.get(tingkatNum)!.values());
+
+          // Cek apakah mapel dengan jurusan terkait sudah ada Bank Soal riil
+          const hasExistingBank = existingEntries.some((entry) => {
+            if (entry.mapelId !== mId) return false;
+            if (jurKode && entry.jurusan) {
+              const entryJurUpper = entry.jurusan.toUpperCase();
+              return entryJurUpper.includes(jurKode.toUpperCase()) || jurKode.toUpperCase().includes(entryJurUpper);
+            }
+            return !entry.isAutoDraft;
+          });
+
+          // Jika belum ada Bank Soal di database, daftarkan cangkang kurikulum resmi (0 Soal)
+          if (!hasExistingBank) {
+            const draftKey = `draft_${mId}_${jurKode || 'all'}`;
+            if (!tempMap.get(tingkatNum)!.has(draftKey)) {
+              const jurTag = jurKode ? ` [${jurKode}]` : '';
+              tempMap.get(tingkatNum)!.set(draftKey, {
+                id: draftKey,
+                mapelId: mId,
+                tingkat: tingkatNum,
+                guruId: gm.guru_id,
+                namaMapel: mapelName,
+                namaGuru: gm.Guru?.nama_guru,
+                soalCount: 0,
+                isAutoDraft: true,
+                jurusan: jurKode || null,
+                judul: mapelName,
+                kodeMapel: gm.Mapel?.kode_mapel,
+                kelompokMapel: (gm.Mapel as any)?.kelompok_mapel,
+                label: `${mapelName}${jurTag} (0 Soal - Belum Dibuat Guru)`,
+              });
+            }
+          }
+        });
+      });
+    }
+
     // Convert tempMap ke array dan urutkan: Mapel siap soal di atas, lalu abjad ASC
     tempMap.forEach((entryMap, tNum) => {
       const items = Array.from(entryMap.values());
