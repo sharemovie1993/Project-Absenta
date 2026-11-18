@@ -355,6 +355,51 @@ export class WhatsappController {
   }
 
   /**
+   * POST /whatsapp/send-message
+   * Mengirim pesan teks universal via WA Gateway ke nomor personal atau Grup (@g.us).
+   */
+  async sendMessage(request: any, reply: any) {
+    const tenantId = request.dataScope?.tenantId ?? request.user?.tenant_id ?? request.user?.tenantId;
+    const userId = request.user?.id ?? request.user?.userId ?? request.user?.user_id;
+    if (!tenantId) {
+      return reply.status(400).send({ success: false, message: 'Tenant konteks tidak ditemukan.' });
+    }
+
+    const { to, message, senderMode } = (request.body || {}) as {
+      to?: string;
+      message?: string;
+      senderMode?: 'AUTO' | 'GATEWAY' | 'PLATFORM' | 'USER';
+    };
+
+    if (!to || !String(to).trim()) {
+      return reply.status(400).send({ success: false, message: 'Nomor WA atau Grup tujuan wajib dipilih.' });
+    }
+    if (!message || !String(message).trim()) {
+      return reply.status(400).send({ success: false, message: 'Pesan WhatsApp tidak boleh kosong.' });
+    }
+
+    try {
+      const result = await whatsappService.sendTextMessage(
+        tenantId,
+        String(to).trim(),
+        String(message).trim(),
+        { senderMode, userId: userId ? String(userId) : undefined },
+      );
+      return reply.send({
+        success: true,
+        message: 'Pesan berhasil dikirim melalui WhatsApp Gateway.',
+        data: result,
+      });
+    } catch (error: any) {
+      console.error(`[WA-Controller] sendMessage ERROR for ${tenantId}:`, error.message);
+      return reply.status(400).send({
+        success: false,
+        message: error.message || 'Gagal mengirim pesan ke WhatsApp Gateway.',
+      });
+    }
+  }
+
+  /**
    * GET /whatsapp/document-recipients
    * Direktori nomor WA dari biodata Guru, Siswa, dan Orang Tua/Wali untuk modal Kirim Dokumen.
    */

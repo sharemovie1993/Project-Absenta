@@ -24,7 +24,7 @@ import { CbtBankSoalDetailModal } from '../bank-soal/CbtBankSoalDetailModal';
 import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
 import { useAuthStore } from '@/store/authStore';
-import { Button } from '@/components/ui';
+import { Button, UniversalSendWaModal } from '@/components/ui';
 import {
   AuditedTargetItem,
   MapelPaketTeoriItem,
@@ -113,6 +113,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
   const [defaultMapelForCreate, setDefaultMapelForCreate] = useState<string | undefined>(undefined);
   const [defaultGuruForCreate, setDefaultGuruForCreate] = useState<string | undefined>(undefined);
   const [defaultTingkatForCreate, setDefaultTingkatForCreate] = useState<'X' | 'XI' | 'XII' | undefined>(undefined);
+  const [isWaGroupModalOpen, setIsWaGroupModalOpen] = useState(false);
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedBankForDetail, setSelectedBankForDetail] = useState<CbtBankSoal | null>(null);
@@ -593,32 +594,13 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
     setTimeout(() => setCopied(false), 3000);
   };
 
-  // Colek sekaligus dalam 1 Group WhatsApp
+  // Colek dalam 1 Group: Buka modal universal pengiriman via WA Gateway
   const handleNudgeGroupWhatsApp = () => {
     if (guruBelumList.length === 0) {
       toast.success('Semua guru sudah menyerahkan bank soal.');
       return;
     }
-    const messageText = buildGroupBroadcastMessage();
-    if (!messageText) return;
-
-    // Salin ke clipboard sebagai cadangan
-    try {
-      navigator.clipboard.writeText(messageText);
-    } catch {}
-
-    // Tandai semua guru yang belum sebagai "dicolek" (persisten & real-time di UI)
-    const senderName = user?.full_name || (user as any)?.nama || 'Panitia CBT';
-    guruBelumList.forEach((t) => {
-      recordNudge(t.id, senderName, tenantId);
-    });
-    setNudgeTick(Date.now());
-
-    // Buka WhatsApp untuk memilih grup sekolah / guru
-    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
-    window.open(waUrl, '_blank');
-
-    toast.success(`Membuka WhatsApp untuk Colek Group! ${guruBelumList.length} penugasan guru telah ditandai dicolek.`);
+    setIsWaGroupModalOpen(true);
   };
 
   const handleCreateForTarget = (target: AuditedTargetItem) => {
@@ -982,6 +964,26 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             queryClient.invalidateQueries({ queryKey: ['cbt-bank-soal'] });
             queryClient.invalidateQueries({ queryKey: ['cbt-bank-soal-readiness'] });
             if (onRefreshBankList) onRefreshBankList();
+          }}
+        />
+      )}
+
+      {/* ── Modal Universal Kirim Pesan WA Gateway ── */}
+      {isWaGroupModalOpen && (
+        <UniversalSendWaModal
+          isOpen={isWaGroupModalOpen}
+          onClose={() => setIsWaGroupModalOpen(false)}
+          title="Colek Persiapan Soal via WA Gateway"
+          subtitle="Pilih grup sekolah atau nomor guru untuk mengirim pengingat pembuatan bank soal secara otomatis"
+          defaultMessage={buildGroupBroadcastMessage()}
+          defaultRecipientType="GROUP"
+          onSuccess={(details) => {
+            const senderName = user?.full_name || (user as any)?.nama || 'Panitia CBT';
+            guruBelumList.forEach((t) => {
+              recordNudge(t.id, senderName, tenantId);
+            });
+            setNudgeTick(Date.now());
+            toast.success(`Colek berhasil dikirim ke ${details.targetLabel}! ${guruBelumList.length} guru telah ditandai dicolek.`);
           }}
         />
       )}

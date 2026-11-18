@@ -277,3 +277,20 @@ export const sendWaDocument = async (payload: SendWaDocumentPayload) => {
   };
 };
 
+export interface SendWaMessagePayload {
+  to: string; // phone number (08xxx / 628xxx) or Group JID (@g.us)
+  message: string;
+  senderMode?: 'AUTO' | 'GATEWAY' | 'PLATFORM' | 'USER';
+}
+
+export const sendWaMessage = async (payload: SendWaMessagePayload) => {
+  const response = await axiosInstance.post('/whatsapp/send-message', payload, {
+    timeout: 30000,
+  });
+  return response.data as {
+    success: boolean;
+    message: string;
+    data?: any;
+  };
+};
+

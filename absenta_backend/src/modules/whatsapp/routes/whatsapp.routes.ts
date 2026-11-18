@@ -158,5 +158,11 @@ export async function whatsappRoutes(fastify: any) {
     preHandler: [requireStaffDocumentSender, determineDataScope()],
     handler: whatsappController.sendDocument.bind(whatsappController),
   });
+
+  // POST /whatsapp/send-message - Kirim pesan teks universal via WA Gateway ke nomor personal atau Grup (@g.us)
+  fastify.post('/send-message', {
+    preHandler: [requireStaffDocumentSender, determineDataScope()],
+    handler: whatsappController.sendMessage.bind(whatsappController),
+  });
 }
 

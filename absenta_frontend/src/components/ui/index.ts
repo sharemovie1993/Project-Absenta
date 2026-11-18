@@ -105,5 +105,12 @@ export {
   type WaCustomPdfGenerator,
 } from './SendDocumentWaModal';
 
+export {
+  UniversalSendWaModal,
+  type UniversalSendWaModalProps,
+  type SelectedWaTarget,
+  type WaRecipientTab,
+} from './UniversalSendWaModal';
+
 export * from './hub';
 

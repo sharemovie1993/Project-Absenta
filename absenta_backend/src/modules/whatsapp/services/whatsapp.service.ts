@@ -55,7 +55,7 @@ export class WhatsappService {
   }
 
   async sendMessage(config: any, to: string, message: string) {
-    const normalizedTo = normalizeToWaNumber(to);
+    const normalizedTo = to.includes('@') ? to : normalizeToWaNumber(to);
     const providerName = String(config?.provider_name || 'LOCAL').trim().toUpperCase();
 
     if (providerName === 'LOCAL' || !config?.provider_name) {
@@ -248,6 +248,41 @@ export class WhatsappService {
     throw new Error(
       'WA Gateway Sekolah maupun Platform belum terhubung. Anda dapat beralih ke tab "WA Saya (Scan QR)" atau "WhatsApp Web / HP".'
     );
+  }
+
+  /**
+   * Mengirim pesan teks universal via WA Gateway ke nomor personal atau Grup (@g.us).
+   */
+  async sendTextMessage(
+    tenantId: string,
+    toOrJid: string,
+    message: string,
+    options: { senderMode?: 'AUTO' | 'GATEWAY' | 'PLATFORM' | 'USER'; userId?: string | null } = {},
+  ) {
+    const trimmedTarget = String(toOrJid || '').trim();
+    if (!trimmedTarget) {
+      throw new Error('Nomor WA atau Grup tujuan wajib diisi.');
+    }
+    const target = trimmedTarget.includes('@')
+      ? trimmedTarget
+      : normalizeToWaNumber(trimmedTarget);
+
+    if (!trimmedTarget.includes('@') && target.length < 10) {
+      throw new Error('Nomor WhatsApp tujuan tidak valid. Gunakan format 08xxx atau 628xxx.');
+    }
+
+    const { waGatewayService } = await import('../../../services/wa-gateway.service');
+    const senderMode = String(options.senderMode || 'AUTO').trim().toUpperCase();
+
+    if (senderMode === 'USER' && options.userId) {
+      const userSessionStatus = await waGatewayService.getStatus(`usr_${options.userId}`);
+      if (userSessionStatus?.connected) {
+        return waGatewayService.sendMessage(`usr_${options.userId}`, target, message);
+      }
+    }
+
+    // Default: Gunakan WA Gateway Sekolah
+    return waGatewayService.sendMessage(tenantId, target, message);
   }
 
   /**
