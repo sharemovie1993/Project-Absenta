@@ -1,4 +1,4 @@
-import { api } from '../api';
+import api from '../../lib/axiosInstance';
 
 export interface BackfillPreviewSummary {
   totalSiswa: number;
