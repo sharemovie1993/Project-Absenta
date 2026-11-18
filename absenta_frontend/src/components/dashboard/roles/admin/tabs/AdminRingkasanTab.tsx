@@ -423,6 +423,13 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
         onClick: () => onNavigateSubtab?.('audit'),
       },
       {
+        id: 'kepatuhan',
+        label: 'Kepatuhan Sistem',
+        icon: ShieldCheck,
+        iconColorClass: 'text-indigo-600 dark:text-indigo-400',
+        onClick: () => onNavigateSubtab?.('kepatuhan'),
+      },
+      {
         id: 'sekolah',
         label: 'Kop Surat',
         icon: Printer,

@@ -82,7 +82,7 @@ const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const CetakBerkasPage = lazy(() => import('@/pages/academic/CetakBerkasPage').then((m) => ({ default: m.CetakBerkasPage })));
 const TenantSettingsView = lazy(() => import('@/components/tenant/TenantSettingsView').then((m) => ({ default: m.TenantSettingsView })));
 const TenantAttendanceForm = lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
-const PlatformComplianceFollowUpPage = lazy(() => import('@/pages/management/PlatformComplianceFollowUpPage'));
+const PlatformComplianceView = lazy(() => import('@/components/management/compliance/PlatformComplianceView').then((m) => ({ default: m.PlatformComplianceView || m.default })));
 const WhatsappSettingsView = lazy(() => import('@/components/whatsapp/WhatsappSettingsView').then((m) => ({ default: m.WhatsappSettingsView || m.default })));
 
 export interface AdminDashboardProps {
@@ -109,6 +109,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
     'ringkasan',
     'audit',
     'kepatuhan',
+    'kepatuhan_sistem',
     'tahun_pelajaran',
     'semester',
     'jurusan',
@@ -141,6 +142,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
   const [activeTab, setActiveTab] = useState<AdminTabId>(() => {
     if (subtabParam) {
       if (subtabParam === 'whatsapp') return 'wa_gateway';
+      if (subtabParam === 'kepatuhan_sistem') return 'kepatuhan';
       if (validTabs.includes(subtabParam)) return subtabParam;
     }
     return 'ringkasan';
@@ -151,7 +153,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
 
   useEffect(() => {
     if (subtabParam) {
-      const resolved = subtabParam === 'whatsapp' ? 'wa_gateway' : subtabParam;
+      let resolved = subtabParam;
+      if (subtabParam === 'whatsapp') resolved = 'wa_gateway';
+      if (subtabParam === 'kepatuhan_sistem') resolved = 'kepatuhan';
       if (validTabs.includes(resolved)) {
         setActiveTab((curr) => (curr !== resolved ? resolved : curr));
         setVisitedTabs((prev) => (prev.has(resolved) ? prev : new Set(prev).add(resolved)));
@@ -311,10 +315,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
       },
       {
         id: 'kepatuhan',
-        label: 'Kepatuhan & Sosialisasi',
-        shortLabel: 'Sosialisasi',
+        label: 'Kepatuhan Sistem',
+        shortLabel: 'Kepatuhan',
         category: 'kontrol',
-        icon: QrCode,
+        icon: ShieldCheck,
       },
 
       // ⚙️ KATEGORI 2: DATA MASTER AKADEMIK (PERSIS MODUL AKADEMIK)
@@ -814,23 +818,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
             </div>
           )}
 
-          {/* TAB 3: KEPATUHAN & RAPAT SOSIALISASI PLATFORM */}
-          {visitedTabs.has('kepatuhan') && (
+          {/* TAB 3: KEPATUHAN SISTEM & EVALUASI ADOPSI */}
+          {(visitedTabs.has('kepatuhan') || visitedTabs.has('kepatuhan_sistem')) && (
             <div
               key="tab-kepatuhan"
               role="tabpanel"
-              aria-hidden={activeTab !== 'kepatuhan'}
-              className={cn('w-full min-w-0', activeTab === 'kepatuhan' ? 'block' : 'hidden')}
+              aria-hidden={activeTab !== 'kepatuhan' && activeTab !== 'kepatuhan_sistem'}
+              className={cn('w-full min-w-0', (activeTab === 'kepatuhan' || activeTab === 'kepatuhan_sistem') ? 'block' : 'hidden')}
             >
               <Suspense
                 fallback={
                   <div className="py-20 flex flex-col items-center justify-center gap-3">
                     <Loader size="md" />
-                    <span className="text-xs text-slate-500 font-medium">Memuat Kepatuhan & Rapat Sosialisasi...</span>
+                    <span className="text-xs text-slate-500 font-medium">Memuat Pusat Evaluasi Kepatuhan Sistem...</span>
                   </div>
                 }
               >
-                <PlatformComplianceFollowUpPage hideLayout={true} initialTab="SOSIALISASI" />
+                <PlatformComplianceView hideLayout={true} initialTab="GURU" />
               </Suspense>
             </div>
           )}

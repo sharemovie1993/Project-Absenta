@@ -4,6 +4,7 @@ export type AdminTabId =
   | 'ringkasan'
   | 'audit'
   | 'kepatuhan'
+  | 'kepatuhan_sistem'
   | 'tahun_pelajaran'
   | 'semester'
   | 'jurusan'
