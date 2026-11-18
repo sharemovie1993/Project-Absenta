@@ -31,6 +31,78 @@ interface DayGroup {
   rooms: RoomGroup[];
 }
 
+interface DayTheme {
+  borderLeft: string;
+  headerExpanded: string;
+  iconBg: string;
+  iconColor: string;
+  badge: string;
+}
+
+const DAY_THEMES: Record<string, DayTheme> = {
+  senin: {
+    borderLeft: 'border-l-[5px] border-l-blue-500 dark:border-l-blue-400',
+    headerExpanded: 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-200/80 dark:border-blue-800/60',
+    iconBg: 'bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400',
+    iconColor: 'text-blue-600 dark:text-blue-400',
+    badge: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+  },
+  selasa: {
+    borderLeft: 'border-l-[5px] border-l-emerald-500 dark:border-l-emerald-400',
+    headerExpanded: 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-800/60',
+    iconBg: 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+    badge: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+  },
+  rabu: {
+    borderLeft: 'border-l-[5px] border-l-amber-500 dark:border-l-amber-400',
+    headerExpanded: 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-800/60',
+    iconBg: 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+    badge: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+  },
+  kamis: {
+    borderLeft: 'border-l-[5px] border-l-purple-500 dark:border-l-purple-400',
+    headerExpanded: 'bg-purple-50/70 dark:bg-purple-950/30 border-purple-200/80 dark:border-purple-800/60',
+    iconBg: 'bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400',
+    iconColor: 'text-purple-600 dark:text-purple-400',
+    badge: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+  },
+  jumat: {
+    borderLeft: 'border-l-[5px] border-l-teal-500 dark:border-l-teal-400',
+    headerExpanded: 'bg-teal-50/70 dark:bg-teal-950/30 border-teal-200/80 dark:border-teal-800/60',
+    iconBg: 'bg-teal-500/10 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400',
+    iconColor: 'text-teal-600 dark:text-teal-400',
+    badge: 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800',
+  },
+  sabtu: {
+    borderLeft: 'border-l-[5px] border-l-rose-500 dark:border-l-rose-400',
+    headerExpanded: 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-800/60',
+    iconBg: 'bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400',
+    iconColor: 'text-rose-600 dark:text-rose-400',
+    badge: 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+  },
+  minggu: {
+    borderLeft: 'border-l-[5px] border-l-orange-500 dark:border-l-orange-400',
+    headerExpanded: 'bg-orange-50/70 dark:bg-orange-950/30 border-orange-200/80 dark:border-orange-800/60',
+    iconBg: 'bg-orange-500/10 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400',
+    iconColor: 'text-orange-600 dark:text-orange-400',
+    badge: 'bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800',
+  },
+};
+
+const getDayTheme = (dayName: string): DayTheme => {
+  const clean = (dayName || '').toLowerCase().replace(/[^a-z]/g, '');
+  if (clean.includes('senin')) return DAY_THEMES.senin;
+  if (clean.includes('selasa')) return DAY_THEMES.selasa;
+  if (clean.includes('rabu')) return DAY_THEMES.rabu;
+  if (clean.includes('kamis')) return DAY_THEMES.kamis;
+  if (clean.includes('jumat')) return DAY_THEMES.jumat;
+  if (clean.includes('sabtu')) return DAY_THEMES.sabtu;
+  if (clean.includes('minggu')) return DAY_THEMES.minggu;
+  return DAY_THEMES.senin;
+};
+
 interface CbtPengawasTeacherViewProps {
   guruId?: string;
   guruNama?: string;
@@ -279,11 +351,15 @@ export const CbtPengawasTeacherView: React.FC<CbtPengawasTeacherViewProps> = ({
         <div className="space-y-3.5">
           {groupedDays.map((day) => {
             const isDayExpanded = expandedDays[day.dateKey] !== false;
+            const theme = getDayTheme(day.dayName);
 
             return (
               <div
                 key={day.dateKey}
-                className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs transition-all"
+                className={cn(
+                  "rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs transition-all",
+                  theme.borderLeft
+                )}
               >
                 {/* ── LEVEL 1: HARI (ACCORDION TOGGLE) ── */}
                 <div
@@ -293,15 +369,17 @@ export const CbtPengawasTeacherView: React.FC<CbtPengawasTeacherViewProps> = ({
                     day.isToday
                       ? 'bg-amber-500/10 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/80 hover:bg-amber-500/15'
                       : isDayExpanded
-                      ? 'bg-slate-50/80 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100/70'
+                      ? theme.headerExpanded
                       : 'bg-white dark:bg-slate-900 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/30'
                   )}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <Calendar
-                      size={17}
-                      className={day.isToday ? 'text-amber-600' : 'text-indigo-600 dark:text-indigo-400'}
-                    />
+                    <div className={cn("p-1.5 rounded-lg shrink-0", day.isToday ? 'bg-amber-500/15 text-amber-600' : theme.iconBg)}>
+                      <Calendar
+                        size={16}
+                        className={day.isToday ? 'text-amber-600' : theme.iconColor}
+                      />
+                    </div>
                     <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 tracking-tight truncate">
                       {day.dateFormatted}
                     </h4>
@@ -313,7 +391,7 @@ export const CbtPengawasTeacherView: React.FC<CbtPengawasTeacherViewProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    <span className={cn("px-2.5 py-0.5 rounded-lg text-xs font-bold border", theme.badge)}>
                       {day.totalSessions} Sesi
                     </span>
                     <div className="text-slate-400">
