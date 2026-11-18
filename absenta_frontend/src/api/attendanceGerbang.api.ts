@@ -688,22 +688,57 @@ export async function getTrackingHarianGuruMe(
   });
 }
 
-export async function getLeaderboardGuru(limit: number = 50, jenisPtk: string = 'PENDIDIK'): Promise<{
+export interface LeaderboardGuruOptions {
+  timeframe?: 'today' | 'this_week' | 'this_month' | 'semester' | 'all';
+  startDate?: string;
+  endDate?: string;
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
+}
+
+export interface LeaderboardGuruItem {
+  id: string;
+  nama: string;
+  nip?: string;
+  foto?: string | null;
+  jenis_ptk?: string;
+  points: number;
+  score: number;
+  kbm_count: number;
+  kbm_total: number;
+  kbm_tepat: number;
+  kbm_telat: number;
+  kbm_izin: number;
+  kbm_alpa: number;
+  kbm_rate: number;
+  jurnal_count: number;
+  jurnal_rate: number;
+  gerbang_count: number;
+  gerbang_total: number;
+  gerbang_rate: number;
+  hadir_count: number;
+  status_keaktifan: 'AKTIF' | 'BELUM_HADIR' | 'BELUM_ADA_SESI';
+}
+
+export async function getLeaderboardGuru(
+  limit: number = 50,
+  jenisPtk: string = 'PENDIDIK',
+  options?: LeaderboardGuruOptions
+): Promise<{
   success: boolean;
   message: string;
-  data: Array<{
-    id: string;
-    nama: string;
-    nip?: string;
-    jenis_ptk?: string;
-    gerbang_count?: number;
-    kbm_count?: number;
-    hadir_count: number;
-    points: number;
-  }>;
+  data: LeaderboardGuruItem[];
 }> {
   return requestWithFallback('get', `/attendance/rekap/guru/leaderboard`, {
-    params: { limit, jenis_ptk: jenisPtk },
+    params: {
+      limit,
+      jenis_ptk: jenisPtk,
+      timeframe: options?.timeframe || 'this_month',
+      startDate: options?.startDate,
+      endDate: options?.endDate,
+      tahun_pelajaran_id: options?.tahun_pelajaran_id,
+      semester_id: options?.semester_id,
+    },
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 }

@@ -428,7 +428,13 @@ export const TeacherAttendanceView: React.FC<TeacherAttendanceViewProps> = React
                             {t.nama} {isMe && <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400">(Saya)</span>}
                           </p>
                           <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate">
-                            🚪 Gerbang: {t.gerbang_count || 0}x • 📖 KBM: {t.kbm_count || 0}x
+                            {t.kbm_total && t.kbm_total > 0
+                              ? `📖 KBM: ${t.kbm_count}/${t.kbm_total} (${t.kbm_rate || 0}%)`
+                              : t.status_keaktifan === 'BELUM_ADA_SESI'
+                              ? 'Belum ada sesi KBM'
+                              : `📖 KBM: ${t.kbm_count || 0}x`}
+                            {t.jurnal_count && t.jurnal_count > 0 ? ` • 📝 Jurnal: ${t.jurnal_count}` : ''}
+                            {t.gerbang_count && t.gerbang_count > 0 ? ` • 🚪 Gerbang: ${t.gerbang_count}x` : ''}
                           </p>
                         </div>
                       </div>

@@ -602,11 +602,12 @@ export async function getLeaderboard(request: any, reply: any) {
 export async function getLeaderboardGuru(request: any, reply: any) {
   try {
     const tenantId = request.tenant?.id || request.tenantId;
-    const { limit, jenis_ptk } = request.query;
+    const { limit, jenis_ptk, timeframe, startDate, endDate, tahun_pelajaran_id, semester_id } = request.query || {};
     const data = await rekapService.getLeaderboardGuru(
       tenantId,
       limit ? parseInt(limit) : 50,
-      jenis_ptk || 'PENDIDIK'
+      jenis_ptk || 'PENDIDIK',
+      { timeframe, startDate, endDate, tahun_pelajaran_id, semester_id }
     );
     return reply.status(200).send({
       success: true,

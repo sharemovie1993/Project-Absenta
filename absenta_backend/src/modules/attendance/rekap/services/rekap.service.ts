@@ -80,8 +80,8 @@ export class RekapService {
     return statistikRekapService.getLeaderboard(tenantId, limit);
   }
 
-  async getLeaderboardGuru(tenantId: string, limit: number = 50, jenisPtk: string = 'PENDIDIK') {
-    return statistikRekapService.getLeaderboardGuru(tenantId, limit, jenisPtk);
+  async getLeaderboardGuru(tenantId: string, limit: number = 50, jenisPtk: string = 'PENDIDIK', options?: any) {
+    return statistikRekapService.getLeaderboardGuru(tenantId, limit, jenisPtk, options);
   }
 
   async logActivity(userId: string, tenantId: string, action: string, entityId?: string) {

@@ -623,10 +623,22 @@ export class GuruRekapCalculator {
   }
 
   /**
-   * Get Attendance Leaderboard
-   * Ranks students based on attendance points
+   * Get Attendance Leaderboard (Klasemen Kedisiplinan & Kinerja PTK)
+   * Standar Industri: Evaluasi berbasis realisasi sesi KBM jatuh tempo, pengisian jurnal mengajar,
+   * dan presensi gerbang dengan pembobotan adaptif dan penghitungan poin kinerja akumulatif.
    */
-  async getLeaderboardGuru(tenantId: string, limit: number = 50, jenisPtk: string = 'PENDIDIK') {
+  async getLeaderboardGuru(
+    tenantId: string,
+    limit: number = 50,
+    jenisPtk: string = 'PENDIDIK',
+    options?: {
+      timeframe?: string;
+      startDate?: string;
+      endDate?: string;
+      tahun_pelajaran_id?: string;
+      semester_id?: string;
+    }
+  ) {
     const isTu = jenisPtk.toUpperCase() === 'TENAGA_KEPENDIDIKAN' || jenisPtk.toUpperCase() === 'TU';
     const ptkFilter = isTu
       ? { jenis_ptk: { in: ['TENAGA_KEPENDIDIKAN', 'TU'] } }
@@ -647,96 +659,234 @@ export class GuruRekapCalculator {
         id: true,
         nama_guru: true,
         nip: true,
+        foto: true,
         jenis_ptk: true,
       }
     });
 
     const teacherIds = teachers.map(t => t.id);
+    if (teacherIds.length === 0) return [];
 
-    // 1. Total & Tepat Waktu Datang Gerbang per Guru
-    const gerbangTotalCounts = await prisma.absenGerbangGuru.groupBy({
-      by: ['guru_id'],
+    // 1. Resolve Timeframe Range
+    const now = new Date();
+    const timeframe = (options?.timeframe || 'this_month').toLowerCase();
+    let dateFilter: any = {};
+
+    if (options?.startDate && options?.endDate) {
+      dateFilter = {
+        gte: new Date(options.startDate),
+        lte: new Date(options.endDate)
+      };
+    } else if (timeframe === 'today') {
+      const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const endToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      dateFilter = { gte: startToday, lte: endToday };
+    } else if (timeframe === 'this_week') {
+      const dayOfWeek = (now.getDay() + 6) % 7; // Monday = 0
+      const startWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek, 0, 0, 0);
+      dateFilter = { gte: startWeek, lte: now };
+    } else if (timeframe === 'this_month') {
+      const startMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+      dateFilter = { gte: startMonth, lte: now };
+    } else {
+      // 'all' / 'semester'
+      dateFilter = { lte: now };
+    }
+
+    // Optional Academic Filter
+    const academicFilter: any = {};
+    if (options?.tahun_pelajaran_id) academicFilter.tahun_pelajaran_id = options.tahun_pelajaran_id;
+    if (options?.semester_id) academicFilter.semester_id = options.semester_id;
+
+    // 2. Cek Aktivitas Presensi Gerbang Guru di Tenant
+    const totalTenantGerbang = await prisma.absenGerbangGuru.count({
       where: {
         tenant_id: tenantId,
-        guru_id: { in: teacherIds }
-      },
-      _count: { id: true }
+        waktu_tap: dateFilter
+      }
     });
+    const hasGateData = totalTenantGerbang > 0;
 
-    const gerbangTepatCounts = await prisma.absenGerbangGuru.groupBy({
-      by: ['guru_id'],
-      where: {
-        tenant_id: tenantId,
-        guru_id: { in: teacherIds },
-        is_terlambat: false,
-        status: 'HADIR'
-      },
-      _count: { id: true }
-    });
-
-    // 2. Total & Tepat Waktu Sesi KBM per Guru
-    const kbmTotalCounts = await prisma.sesiAbsensi.groupBy({
-      by: ['guru_id'],
-      where: {
-        tenant_id: tenantId,
-        guru_id: { in: teacherIds }
-      },
-      _count: { id: true }
-    });
-
-    const kbmTepatCounts = await prisma.absenGuru.groupBy({
-      by: ['guru_id'],
-      where: {
-        tenant_id: tenantId,
-        guru_id: { in: teacherIds },
-        is_terlambat: false,
-        status: { in: ['HADIR', 'TEPAT_WAKTU', 'Hadir / Mengajar'] }
-      },
-      _count: { id: true }
-    });
-
+    // Data Gerbang per Guru
     const gerbangTotalMap = new Map<string, number>();
-    gerbangTotalCounts.forEach(g => gerbangTotalMap.set(g.guru_id, g._count.id));
-
     const gerbangTepatMap = new Map<string, number>();
-    gerbangTepatCounts.forEach(g => gerbangTepatMap.set(g.guru_id, g._count.id));
 
-    const kbmTotalMap = new Map<string, number>();
-    kbmTotalCounts.forEach(k => { if (k.guru_id) kbmTotalMap.set(k.guru_id, k._count.id); });
+    if (hasGateData) {
+      const gerbangTotalCounts = await prisma.absenGerbangGuru.groupBy({
+        by: ['guru_id'],
+        where: {
+          tenant_id: tenantId,
+          guru_id: { in: teacherIds },
+          waktu_tap: dateFilter
+        },
+        _count: { id: true }
+      });
+      gerbangTotalCounts.forEach(g => { if (g.guru_id) gerbangTotalMap.set(g.guru_id, g._count.id); });
 
-    const kbmTepatMap = new Map<string, number>();
-    kbmTepatCounts.forEach(k => kbmTepatMap.set(k.guru_id, k._count.id));
+      const gerbangTepatCounts = await prisma.absenGerbangGuru.groupBy({
+        by: ['guru_id'],
+        where: {
+          tenant_id: tenantId,
+          guru_id: { in: teacherIds },
+          waktu_tap: dateFilter,
+          is_terlambat: false,
+          status: 'HADIR'
+        },
+        _count: { id: true }
+      });
+      gerbangTepatCounts.forEach(g => { if (g.guru_id) gerbangTepatMap.set(g.guru_id, g._count.id); });
+    }
 
+    // 3. Sesi KBM Jatuh Tempo (Hanya yang sudah dimulai/selesai atau jadwalnya <= now)
+    const sesiList = await prisma.sesiAbsensi.findMany({
+      where: {
+        tenant_id: tenantId,
+        guru_id: { in: teacherIds },
+        tanggal: dateFilter,
+        status: { not: 'BATAL' },
+        ...academicFilter
+      },
+      select: {
+        id: true,
+        guru_id: true,
+        status: true,
+        tanggal: true,
+        waktu_mulai: true,
+        waktu_selesai: true,
+        ProgresMateri: { select: { id: true } }
+      }
+    });
+
+    const dueSesi = sesiList.filter(s => {
+      if (s.status === 'SELESAI' || s.status === 'BERLANGSUNG' || s.status === 'IZIN') return true;
+      const sesiStart = s.waktu_mulai ? new Date(s.waktu_mulai) : new Date(s.tanggal);
+      return sesiStart <= now;
+    });
+
+    const dueByTeacher = new Map<string, number>();
+    const jurnalByTeacher = new Map<string, number>();
+
+    dueSesi.forEach(s => {
+      if (!s.guru_id) return;
+      dueByTeacher.set(s.guru_id, (dueByTeacher.get(s.guru_id) || 0) + 1);
+      if (s.ProgresMateri) {
+        jurnalByTeacher.set(s.guru_id, (jurnalByTeacher.get(s.guru_id) || 0) + 1);
+      }
+    });
+
+    // 4. Data Presensi AbsenGuru pada Sesi Jatuh Tempo
+    const dueSesiIds = dueSesi.map(s => s.id);
+    const hadirTepatMap = new Map<string, number>();
+    const terlambatMap = new Map<string, number>();
+    const izinMap = new Map<string, number>();
+    const alpaMap = new Map<string, number>();
+
+    if (dueSesiIds.length > 0) {
+      const absenGuruList = await prisma.absenGuru.findMany({
+        where: {
+          tenant_id: tenantId,
+          sesi_id: { in: dueSesiIds },
+          guru_id: { in: teacherIds }
+        },
+        select: {
+          guru_id: true,
+          status: true,
+          is_terlambat: true
+        }
+      });
+
+      absenGuruList.forEach(a => {
+        const gid = a.guru_id;
+        if (['HADIR', 'TEPAT_WAKTU', 'Hadir / Mengajar'].includes(a.status)) {
+          if (a.is_terlambat) {
+            terlambatMap.set(gid, (terlambatMap.get(gid) || 0) + 1);
+          } else {
+            hadirTepatMap.set(gid, (hadirTepatMap.get(gid) || 0) + 1);
+          }
+        } else if (['IZIN', 'SAKIT', 'DISPENSASI', 'TUGAS_LUAR'].includes(a.status)) {
+          izinMap.set(gid, (izinMap.get(gid) || 0) + 1);
+        } else if (['ALPA', 'Belum Hadir'].includes(a.status)) {
+          alpaMap.set(gid, (alpaMap.get(gid) || 0) + 1);
+        }
+      });
+    }
+
+    // 5. Kalkulasi Poin Kinerja dan Skor Persentase Tiap Guru
     const leaderboard = teachers.map(t => {
       const gTotal = gerbangTotalMap.get(t.id) || 0;
       const gTepat = gerbangTepatMap.get(t.id) || 0;
-      const gerbangRate = gTotal > 0 ? Math.round((gTepat / gTotal) * 100) : 100;
+      const gerbangRate = gTotal > 0 ? Math.round((gTepat / gTotal) * 100) : 0;
 
-      const kTotal = kbmTotalMap.get(t.id) || 0;
-      const kTepat = kbmTepatMap.get(t.id) || 0;
-      const kbmRate = kTotal > 0 ? Math.round((kTepat / kTotal) * 100) : 100;
+      const kTotal = dueByTeacher.get(t.id) || 0;
+      const kTepat = hadirTepatMap.get(t.id) || 0;
+      const kTelat = terlambatMap.get(t.id) || 0;
+      const kIzin = izinMap.get(t.id) || 0;
+      const kAlpa = alpaMap.get(t.id) || 0;
+      const kJurnal = jurnalByTeacher.get(t.id) || 0;
+      const kHadir = kTepat + kTelat;
 
-      // Fair Punctuality Score (0 - 100%)
-      const score = Math.round((gerbangRate + kbmRate) / 2);
+      const hasActivity = kHadir > 0 || kIzin > 0 || kJurnal > 0 || gTotal > 0;
+      const statusKeaktifan = hasActivity ? 'AKTIF' : kTotal > 0 ? 'BELUM_HADIR' : 'BELUM_ADA_SESI';
+
+      // Poin Akumulasi Kinerja Standar Absenta:
+      // Hadir Tepat (+10 Pts), Hadir Telat (+5 Pts), Izin (+3 Pts), Jurnal Terisi (+5 Pts), Gerbang Tepat (+5 Pts)
+      const points = (kTepat * 10) + (kTelat * 5) + (kIzin * 3) + (kJurnal * 5) + (gTepat * 5);
+
+      let kbmPresenceRate = 0;
+      let jurnalRate = 0;
+      let score = 0;
+
+      if (kTotal > 0 && hasActivity) {
+        kbmPresenceRate = Math.min(100, Math.round(((kTepat + 0.7 * kTelat + 0.8 * kIzin) / kTotal) * 100));
+        jurnalRate = Math.min(100, Math.round((kJurnal / kTotal) * 100));
+
+        if (hasGateData && gTotal > 0) {
+          score = Math.round(0.50 * kbmPresenceRate + 0.30 * jurnalRate + 0.20 * gerbangRate);
+        } else {
+          score = Math.round(0.70 * kbmPresenceRate + 0.30 * jurnalRate);
+        }
+      } else if (hasGateData && gTotal > 0) {
+        score = gerbangRate;
+      }
 
       return {
         id: t.id,
         nama: t.nama_guru,
         nip: t.nip || '-',
+        foto: t.foto || null,
         jenis_ptk: t.jenis_ptk || 'PENDIDIK',
+        kbm_count: kHadir,
+        kbm_total: kTotal,
+        kbm_tepat: kTepat,
+        kbm_telat: kTelat,
+        kbm_izin: kIzin,
+        kbm_alpa: kAlpa,
+        kbm_rate: kbmPresenceRate,
+        jurnal_count: kJurnal,
+        jurnal_rate: jurnalRate,
         gerbang_count: gTepat,
         gerbang_total: gTotal,
         gerbang_rate: gerbangRate,
-        kbm_count: kTepat,
-        kbm_total: kTotal,
-        kbm_rate: kbmRate,
-        hadir_count: gTepat + kTepat,
-        points: score, // Skor Persentase Ketepatan Waktu Adil (0-100%)
-        score: score
+        hadir_count: kHadir + gTepat,
+        points, // Poin Akumulasi Kinerja Nyata
+        score,  // Skor Komposit Kepatuhan (0-100%)
+        status_keaktifan: statusKeaktifan
       };
     }).sort((a, b) => {
+      // Prioritas 1: Guru dengan aktivitas nyata selalu di atas guru yang belum ada sesi sama sekali
+      if (a.status_keaktifan === 'AKTIF' && b.status_keaktifan !== 'AKTIF') return -1;
+      if (a.status_keaktifan !== 'AKTIF' && b.status_keaktifan === 'AKTIF') return 1;
+
+      // Prioritas 2: Poin Akumulasi Kinerja tertinggi
+      if (b.points !== a.points) return b.points - a.points;
+
+      // Prioritas 3: Skor Komposit Persentase
       if (b.score !== a.score) return b.score - a.score;
-      if (b.kbm_rate !== a.kbm_rate) return b.kbm_rate - a.kbm_rate;
+
+      // Prioritas 4: Jumlah sesi hadir tepat waktu
+      if (b.kbm_tepat !== a.kbm_tepat) return b.kbm_tepat - a.kbm_tepat;
+
+      // Prioritas 5: Alfabetis nama
       return a.nama.localeCompare(b.nama);
     }).slice(0, limit);
 

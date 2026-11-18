@@ -8,11 +8,23 @@ export interface TeacherLeaderboardItem {
   id: string;
   nama: string;
   nip?: string;
+  foto?: string | null;
   jenis_ptk?: string;
-  gerbang_count?: number;
-  kbm_count?: number;
-  hadir_count: number;
   points: number;
+  score?: number;
+  kbm_count?: number;
+  kbm_total?: number;
+  kbm_tepat?: number;
+  kbm_telat?: number;
+  kbm_izin?: number;
+  kbm_rate?: number;
+  jurnal_count?: number;
+  jurnal_rate?: number;
+  gerbang_count?: number;
+  gerbang_total?: number;
+  gerbang_rate?: number;
+  hadir_count: number;
+  status_keaktifan?: 'AKTIF' | 'BELUM_HADIR' | 'BELUM_ADA_SESI';
 }
 
 interface TeacherAttendanceLeaderboardModalProps {
@@ -33,15 +45,16 @@ export const TeacherAttendanceLeaderboardModal: React.FC<TeacherAttendanceLeader
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPtk, setSelectedPtk] = useState<'PENDIDIK' | 'TENAGA_KEPENDIDIKAN'>('PENDIDIK');
+  const [timeframe, setTimeframe] = useState<'this_month' | 'today' | 'semester'>('this_month');
 
   const { data: leaderboardRes, isLoading } = useQuery({
-    queryKey: ['teacher-discipline-leaderboard-modal', selectedPtk],
-    queryFn: () => getLeaderboardGuru(50, selectedPtk),
+    queryKey: ['teacher-discipline-leaderboard-modal', selectedPtk, timeframe],
+    queryFn: () => getLeaderboardGuru(100, selectedPtk, { timeframe }),
     enabled: isOpen,
-    staleTime: 5 * 60 * 1000
+    staleTime: 60 * 1000
   });
 
-  const activeLeaderboard = leaderboardRes?.data || (selectedPtk === 'PENDIDIK' ? initialData : []);
+  const activeLeaderboard = leaderboardRes?.data || (selectedPtk === 'PENDIDIK' && timeframe === 'this_month' ? initialData : []);
 
   const filteredLeaderboard = useMemo(() => {
     if (!searchQuery.trim()) return activeLeaderboard;
@@ -112,7 +125,41 @@ export const TeacherAttendanceLeaderboardModal: React.FC<TeacherAttendanceLeader
 
 
         {/* SEARCH & FILTERS */}
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center gap-3">
+          {/* Timeframe Pills */}
+          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl shrink-0 self-start sm:self-auto">
+            <button
+              onClick={() => setTimeframe('this_month')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                timeframe === 'this_month'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              Bulan Ini
+            </button>
+            <button
+              onClick={() => setTimeframe('today')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                timeframe === 'today'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              Hari Ini
+            </button>
+            <button
+              onClick={() => setTimeframe('semester')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                timeframe === 'semester'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              Semester
+            </button>
+          </div>
+
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
@@ -123,7 +170,7 @@ export const TeacherAttendanceLeaderboardModal: React.FC<TeacherAttendanceLeader
               className="w-full pl-10 pr-4 py-2 text-xs rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
             />
           </div>
-          <Badge className="bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-black text-xs px-3 py-1.5 border-none shrink-0">
+          <Badge className="bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-black text-xs px-3 py-1.5 border-none shrink-0 self-start sm:self-auto">
             {filteredLeaderboard.length} {selectedPtk === 'PENDIDIK' ? 'Pendidik' : 'Staf TU'}
           </Badge>
         </div>
@@ -182,14 +229,25 @@ export const TeacherAttendanceLeaderboardModal: React.FC<TeacherAttendanceLeader
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                      <div className="flex items-center gap-3 text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-0.5 flex-wrap">
                         {t.nip && t.nip !== '-' && <span>NIP: {t.nip}</span>}
-                        <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                          <LogIn size={11} className="text-indigo-500" /> {t.gerbang_count || 0}x Gerbang
-                        </span>
-                        <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                          <BookOpen size={11} className="text-emerald-500" /> {t.kbm_count || 0}x KBM
-                        </span>
+                        {t.kbm_total !== undefined && t.kbm_total > 0 ? (
+                          <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-semibold">
+                            <BookOpen size={11} className="text-emerald-500" /> KBM: {t.kbm_count}/{t.kbm_total} ({t.kbm_rate || 0}%)
+                          </span>
+                        ) : t.status_keaktifan === 'BELUM_ADA_SESI' ? (
+                          <span className="text-slate-400 italic">Belum Ada Sesi KBM</span>
+                        ) : null}
+                        {t.jurnal_count !== undefined && t.jurnal_count > 0 && (
+                          <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-semibold">
+                            📝 {t.jurnal_count} Jurnal
+                          </span>
+                        )}
+                        {t.gerbang_count !== undefined && t.gerbang_count > 0 && (
+                          <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                            <LogIn size={11} className="text-indigo-500" /> {t.gerbang_count}x Gerbang
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -199,8 +257,8 @@ export const TeacherAttendanceLeaderboardModal: React.FC<TeacherAttendanceLeader
                     <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 block">
                       {t.points} Pts
                     </span>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase block">
-                      {t.hadir_count} Hari Hadir
+                    <span className="text-[9px] font-bold text-slate-400 block">
+                      {t.score !== undefined && t.score > 0 ? `${t.score}% Indeks Disiplin` : t.status_keaktifan === 'BELUM_ADA_SESI' ? 'Belum Ada Sesi' : `${t.hadir_count}x Hadir`}
                     </span>
                   </div>
                 </div>

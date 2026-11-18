@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/hub';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 import { CompactSectionCard } from '@/components/dashboard/shared/CompactSectionCard';
 import { MonitoringKbmWidget } from '@/components/dashboard/shared/MonitoringKbmWidget';
 import type { KepsekTabId } from '../types';
@@ -334,21 +335,34 @@ export const KepsekRingkasanTab: React.FC<KepsekRingkasanTabProps> = React.memo(
                       <span className="text-sm font-black">{rankMedal}</span>
                       <Badge
                         variant="outline"
-                        className="text-[9px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40"
+                        className={cn(
+                          "text-[9px] font-black uppercase",
+                          teacher.points > 0
+                            ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border-amber-200/60 dark:border-amber-900/40"
+                            : "text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                        )}
                       >
-                        {teacher.points || 0} Poin
+                        {teacher.points > 0 ? `${teacher.points} Pts` : teacher.status_keaktifan === 'BELUM_ADA_SESI' ? 'Belum Ada Sesi' : '0 Pts'}
                       </Badge>
                     </div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1 truncate">
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1 truncate" title={teacher.nama}>
                       {teacher.nama}
                     </h4>
                     <p className="text-[10px] text-slate-400 mt-0.5 truncate font-medium">
-                      {teacher.nip ? `NIP: ${teacher.nip}` : 'Pendidik'}
+                      {teacher.nip && teacher.nip !== '-' ? `NIP: ${teacher.nip}` : 'Pendidik'}
                     </p>
                   </div>
                   <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-slate-700/40 flex items-center justify-between text-[10px] font-medium text-slate-500">
-                    <span>Sesi: {teacher.kbm_count || 0} KBM</span>
-                    <span>Hadir: {teacher.hadir_count || 0}</span>
+                    <span>
+                      {teacher.kbm_total > 0
+                        ? `Hadir: ${teacher.kbm_count}/${teacher.kbm_total} (${teacher.kbm_rate || 0}%)`
+                        : teacher.hadir_count > 0
+                        ? `Hadir: ${teacher.hadir_count}x`
+                        : 'Belum Ada Sesi'}
+                    </span>
+                    <span className="font-semibold text-slate-600 dark:text-slate-400">
+                      {teacher.jurnal_count > 0 ? `Jurnal: ${teacher.jurnal_count}` : teacher.score > 0 ? `${teacher.score}% Indeks` : '-'}
+                    </span>
                   </div>
                 </div>
               );

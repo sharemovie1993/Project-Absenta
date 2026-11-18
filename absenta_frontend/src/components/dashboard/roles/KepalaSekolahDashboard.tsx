@@ -193,7 +193,7 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
 
   const { data: teacherLeaderboardRes } = useQuery({
     queryKey: ['kepsek-teacher-leaderboard'],
-    queryFn: () => getLeaderboardGuru(5, 'PENDIDIK'),
+    queryFn: () => getLeaderboardGuru(50, 'PENDIDIK', { timeframe: 'this_month' }),
     staleTime: 60_000,
   });
 
