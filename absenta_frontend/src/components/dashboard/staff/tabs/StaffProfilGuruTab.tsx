@@ -629,40 +629,11 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                 </button>
               </div>
               {/* Status pill */}
-              <span className="inline-block px-3 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                Guru Aktif
-              </span>
-              {/* Jabatan badges from SSOT normalizer / organizational position */}
-              {teacherIdentity.tugasTambahanList.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5 justify-center pt-0.5">
-                  {teacherIdentity.tugasTambahanList.map((j) => (
-                    <JabatanBadge key={j.code}
-                      nama={j.nama}
-                      color={getJabatanColor(j.kode || j.code)}
-                      icon={getJabatanIcon(j.kode || j.code)}
-                    />
-                  ))}
-                </div>
-              ) : isJabatanLoading ? (
-                <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400">
-                  <Loader2 size={11} className="animate-spin" /><span>Memuat jabatan...</span>
-                </div>
-              ) : jabatanList.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5 justify-center pt-0.5">
-                  {jabatanList.map((j) => (
-                    <JabatanBadge key={j.id}
-                      nama={j.kelas ? `${j.nama} — ${j.kelas}` : j.nama}
-                      color={getJabatanColor(j.kode)}
-                      icon={getJabatanIcon(j.kode)}
-                    />
-                  ))}
-                </div>
-              ) : waliKelasNama ? (
-                <JabatanBadge nama={`Wali Kelas ${waliKelasNama}`} icon={<Users size={11} />}
-                  color="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" />
-              ) : (
-                <JabatanBadge nama="Guru Mata Pelajaran" icon={<Briefcase size={11} />} />
-              )}
+              <div>
+                <span className="inline-block px-3 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                  Guru Aktif
+                </span>
+              </div>
             </div>
 
             {/* Quick Detail Key-Value List */}
@@ -1031,8 +1002,18 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{editNpwp || '-'}</span>
             </div>
             <div className="col-span-2">
-              <span className="text-[10px] font-semibold text-slate-400 block mb-1">Jabatan Struktural</span>
-              {isJabatanLoading ? (
+              <span className="text-[10px] font-semibold text-slate-400 block mb-1">Jabatan Struktural / Tugas Tambahan</span>
+              {teacherIdentity.tugasTambahanList.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {teacherIdentity.tugasTambahanList.map((j) => (
+                    <JabatanBadge key={j.code}
+                      nama={j.nama}
+                      color={getJabatanColor(j.kode || j.code)}
+                      icon={getJabatanIcon(j.kode || j.code)}
+                    />
+                  ))}
+                </div>
+              ) : isJabatanLoading ? (
                 <div className="flex items-center gap-1 text-[10px] text-slate-400">
                   <Loader2 size={11} className="animate-spin" /><span>Memuat jabatan...</span>
                 </div>
