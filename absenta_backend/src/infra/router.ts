@@ -155,6 +155,12 @@ export async function registerRoutes(fastify: any, prisma: any) {
           return KalenderAkademikController.exportICal(request, reply);
         });
 
+        // Universal Daily Briefing Tokenized Public Route (Tanpa Login, Token-Guarded)
+        fastify.get('/reports/daily-briefing', async (request: any, reply: any) => {
+          const { dailyBriefingController } = await import('../modules/daily-briefing/controllers/daily-briefing.controller');
+          return dailyBriefingController.getBriefingByToken(request, reply);
+        });
+
         // Reverse-proxy route for viewing/printing invoice document directly from Central License Server without re-rendering
         fastify.get('/invoice/:invoiceId/print', {
           config: { skipAuth: true, public: true }
