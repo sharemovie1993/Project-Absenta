@@ -8,7 +8,7 @@
  * 3. Quick-Access Modal Dialog (isModal=true)
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   GraduationCap,
@@ -28,6 +28,12 @@ import {
   FileText,
   HeartHandshake,
   CheckCircle2,
+  Copy,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  Share2,
+  Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -38,6 +44,7 @@ import {
 } from '@/api/dailyBriefing.api';
 import { Loader } from '@/components/ui/Loader';
 import { Button } from '@/components/ui';
+import { toast } from 'sonner';
 
 export interface UniversalDailyBriefingViewProps {
   token?: string;
@@ -73,11 +80,14 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
 
   // State Accordion untuk tiap seksi divisi (default terbuka semua untuk kemudahan Kepsek)
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    early_warning: true,
     kesiswaan: true,
     kurikulum: true,
     bpbk: true,
     hubin_pkl: true,
   });
+
+  const [copied, setCopied] = useState(false);
 
   const toggleSection = (id: string) => {
     setOpenSections((prev) => ({
@@ -88,6 +98,40 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
 
   const handlePrint = () => {
     window.print();
+  };
+
+  // Salin Ringkasan Eksekutif ke Clipboard
+  const handleCopySummary = async () => {
+    if (!briefing) return;
+    try {
+      const lines: string[] = [];
+      lines.push(`*LAPORAN EKSEKUTIF HARIAN - ${briefing.sekolahNama.toUpperCase()}*`);
+      lines.push(`📅 ${briefing.tanggalStr}`);
+      if (briefing.statusBadge) {
+        lines.push(`🚦 Status Operasional: *${briefing.statusBadge.label}* (Indeks: ${briefing.statusBadge.score}%)`);
+      }
+      lines.push(``);
+      lines.push(`📊 *RINGKASAN UTAMA:*`);
+      for (const m of briefing.metrics) {
+        lines.push(`• ${m.label}: *${m.value}* ${m.sub ? `(${m.sub})` : ''}`);
+      }
+      if (briefing.highlights && briefing.highlights.length > 0) {
+        lines.push(``);
+        lines.push(`⚡ *POIN-POIN KRITIS HARI INI:*`);
+        for (const h of briefing.highlights) {
+          lines.push(`• ${h}`);
+        }
+      }
+      lines.push(``);
+      lines.push(`_Digenerate via Absenta System - ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB_`);
+
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setCopied(true);
+      toast.success('Ringkasan eksekutif berhasil disalin ke clipboard!');
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      toast.error('Gagal menyalin ringkasan ke clipboard');
+    }
   };
 
   if (isLoading) {
@@ -140,6 +184,14 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
     }
   };
 
+  const statusBadgeConfig = briefing.statusBadge
+    ? {
+        success: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+        warning: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+        danger: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+      }[briefing.statusBadge.variant]
+    : null;
+
   return (
     <div
       className={cn(
@@ -163,12 +215,23 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                 <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 print:border-black print:text-black">
                   Laporan Resmi Terverifikasi
                 </span>
+                {briefing.statusBadge && (
+                  <span
+                    className={cn(
+                      'text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 print:border-black print:text-black',
+                      statusBadgeConfig
+                    )}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                    {briefing.statusBadge.label} ({briefing.statusBadge.score}%)
+                  </span>
+                )}
                 <span className="text-[10px] text-indigo-200/80 flex items-center gap-1 print:text-black">
                   <Calendar className="w-3 h-3" />
                   {briefing.tanggalStr}
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-1 print:text-black">
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-1.5 print:text-black">
                 {briefing.title}
               </h1>
               <p className="text-xs text-indigo-200/90 font-medium print:text-black">
@@ -178,7 +241,18 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
           </div>
 
           {/* Action Toolbar */}
-          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 print:hidden">
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 print:hidden flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopySummary}
+              className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md rounded-xl text-xs h-9 px-3"
+              title="Salin ringkasan ke format teks WhatsApp"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+              {copied ? 'Tersalin' : 'Salin Ringkasan'}
+            </Button>
+
             <Button
               variant="outline"
               size="sm"
@@ -219,11 +293,31 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
       {/* ── 2. 30-SECOND EXECUTIVE SNAPSHOT (HIGHLIGHTS) ── */}
       {briefing.highlights && briefing.highlights.length > 0 && (
         <div className="rounded-2xl p-4 sm:p-5 bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/30 shadow-xs print:border-black print:bg-none">
-          <div className="flex items-center gap-2 mb-2.5">
-            <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-amber-900 dark:text-amber-300">
-              Ringkasan Kondisi Sekolah Hari Ini (30-Second Snapshot)
-            </h3>
+          <div className="flex items-center justify-between gap-2 mb-2.5">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-amber-900 dark:text-amber-300">
+                Ringkasan Kondisi Sekolah Hari Ini (30-Second Snapshot)
+              </h3>
+            </div>
+            {briefing.trend?.kehadiranDeltaPct !== null && (
+              <span
+                className={cn(
+                  'text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0',
+                  (briefing.trend?.kehadiranDeltaPct || 0) >= 0
+                    ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                    : 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
+                )}
+              >
+                {(briefing.trend?.kehadiranDeltaPct || 0) >= 0 ? (
+                  <TrendingUp className="w-3 h-3" />
+                ) : (
+                  <TrendingDown className="w-3 h-3" />
+                )}
+                {(briefing.trend?.kehadiranDeltaPct || 0) >= 0 ? '+' : ''}
+                {briefing.trend?.kehadiranDeltaPct}% vs kemarin
+              </span>
+            )}
           </div>
           <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
             {briefing.highlights.map((h, idx) => (
@@ -283,29 +377,54 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
       <div className="space-y-4">
         {briefing.sections.map((sec: BriefingSection) => {
           const isOpen = openSections[sec.id] ?? true;
+          const isEarlyWarning = sec.id === 'early_warning';
 
           return (
             <div
               key={sec.id}
-              className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden print:border-black print:shadow-none"
+              className={cn(
+                'rounded-2xl bg-white dark:bg-slate-900 border shadow-sm overflow-hidden print:border-black print:shadow-none transition-all',
+                isEarlyWarning
+                  ? 'border-rose-300 dark:border-rose-900/60 shadow-rose-500/5'
+                  : 'border-slate-200 dark:border-slate-800'
+              )}
             >
               {/* Section Header Accordion Trigger */}
               <button
                 type="button"
                 onClick={() => toggleSection(sec.id)}
-                className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors select-none print:cursor-default"
+                className={cn(
+                  'w-full flex items-center justify-between p-4 sm:p-5 text-left transition-colors select-none print:cursor-default',
+                  isEarlyWarning
+                    ? 'bg-rose-50/50 hover:bg-rose-50 dark:bg-rose-950/20 dark:hover:bg-rose-950/30'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                )}
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shrink-0">
-                    <FileText className="w-5 h-5" />
+                  <div
+                    className={cn(
+                      'p-2 rounded-xl shrink-0',
+                      isEarlyWarning
+                        ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                        : 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400'
+                    )}
+                  >
+                    {isEarlyWarning ? <AlertTriangle className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
                         {sec.title}
                       </h4>
                       {sec.badge && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50">
+                        <span
+                          className={cn(
+                            'text-[10px] font-bold px-2 py-0.5 rounded-full border',
+                            isEarlyWarning
+                              ? 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800'
+                              : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200/50'
+                          )}
+                        >
                           {sec.badge}
                         </span>
                       )}
@@ -343,32 +462,37 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                     </div>
                   )}
 
-                  {/* List Items (Catatan Kasus / Rombel Perhatian) */}
+                  {/* List Items (Catatan Kasus / Siswa Perhatian / Rombel Prestasi) */}
                   {sec.items && sec.items.length > 0 && (
                     <div className="space-y-2 pt-2">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Butir Catatan / Kasus Perhatian:
+                        Rincian Butir &amp; Tindak Lanjut:
                       </span>
-                      <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 overflow-hidden">
                         {sec.items.map((item, itmIdx) => (
                           <div
                             key={itmIdx}
-                            className="p-3 flex items-center justify-between gap-3 text-xs"
+                            className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs hover:bg-slate-100/50 dark:hover:bg-slate-800/40 transition-colors"
                           >
-                            <div>
+                            <div className="space-y-1 min-w-0">
                               <p className="font-bold text-slate-800 dark:text-slate-200">
                                 {item.title}
                               </p>
                               {item.subtitle && (
-                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
                                   {item.subtitle}
+                                </p>
+                              )}
+                              {item.note && (
+                                <p className="text-[10px] text-slate-600 dark:text-slate-400 italic bg-white/60 dark:bg-slate-900/40 px-2 py-0.5 rounded-md border border-slate-200/50 dark:border-slate-800/50">
+                                  💡 {item.note}
                                 </p>
                               )}
                             </div>
                             {item.badge && (
                               <span
                                 className={cn(
-                                  'text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0',
+                                  'text-[10px] font-bold px-2.5 py-0.5 rounded-full shrink-0 self-start sm:self-center',
                                   item.badgeColor || 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                                 )}
                               >

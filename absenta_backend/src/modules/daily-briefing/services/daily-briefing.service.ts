@@ -171,6 +171,14 @@ export class DailyBriefingService {
     lines.push(``);
     lines.push(`Yth. *${data.targetName}*,`);
     lines.push(`Berikut ringkasan operasional harian sekolah hari ini:`);
+    if (data.statusBadge) {
+      const icon = data.statusBadge.variant === 'success' ? '🟢' : (data.statusBadge.variant === 'warning' ? '🟡' : '🔴');
+      lines.push(`${icon} Status Operasional: *${data.statusBadge.label}* (Indeks: ${data.statusBadge.score}%)`);
+    }
+    if (data.trend?.kehadiranDeltaPct !== null && data.trend?.kehadiranDeltaPct !== undefined) {
+      const sign = data.trend.kehadiranDeltaPct >= 0 ? '+' : '';
+      lines.push(`📈 Tren Siswa: *${sign}${data.trend.kehadiranDeltaPct}%* dibanding hari kemarin`);
+    }
     lines.push(``);
 
     // Ringkasan Metrics Utama
