@@ -18,6 +18,7 @@ export interface UnifiedActionItem {
     total: number;
     percent: number;
     label: string;
+    variant?: 'rose' | 'amber' | 'indigo' | 'emerald';
   };
   action: {
     label: string;
@@ -455,7 +456,7 @@ export class DashboardActionHubService {
         items.push({
           id: `pkl_nilai_pembimbing_${guruId}`,
           division: 'HUBIN',
-          urgency: unassessedBimbingan > 0 ? 'UPCOMING' : 'INFO',
+          urgency: unassessedBimbingan > 0 ? 'CRITICAL' : 'INFO',
           title: 'Penginputan Nilai PKL',
           subtitle: unassessedBimbingan > 0
             ? `${totalBimbingan} Siswa bimbingan PKL (${unassessedBimbingan} belum dinilai)`
@@ -466,6 +467,7 @@ export class DashboardActionHubService {
             total: totalBimbingan,
             percent: Math.round((assessedBimbingan / totalBimbingan) * 100),
             label: `${assessedBimbingan}/${totalBimbingan} Dinilai`,
+            variant: 'rose',
           },
           action: {
             label: 'Input Nilai ➔',
@@ -507,7 +509,7 @@ export class DashboardActionHubService {
         items.push({
           id: `pkl_nilai_sidang_${guruId}`,
           division: 'HUBIN',
-          urgency: unassessedSidang > 0 ? 'UPCOMING' : 'INFO',
+          urgency: unassessedSidang > 0 ? 'CRITICAL' : 'INFO',
           title: 'Penginputan Nilai Sidang PKL',
           subtitle: unassessedSidang > 0
             ? `${totalSidang} Siswa uji sidang PKL (${unassessedSidang} belum dinilai sidang)`
@@ -518,6 +520,7 @@ export class DashboardActionHubService {
             total: totalSidang,
             percent: Math.round((assessedSidang / totalSidang) * 100),
             label: `${assessedSidang}/${totalSidang} Teruji`,
+            variant: 'rose',
           },
           action: {
             label: 'Nilai Sidang ➔',
@@ -995,7 +998,7 @@ export class DashboardActionHubService {
       return [{
         id: `cbt_bank_soal_${guruId}`,
         division: 'CBT',
-        urgency: coveredDuties === 0 ? 'TODAY' : 'UPCOMING',
+        urgency: 'CRITICAL',
         title: 'Pembuatan Bank Soal CBT',
         subtitle: `Belum dibuat: ${uncompletedList.slice(0, 2).join(', ')}${uncompletedList.length > 2 ? ' +' + (uncompletedList.length - 2) + ' lainnya' : ''} • ${eventLabel}`,
         badgeText: `${coveredDuties}/${totalDuties} Siap`,
@@ -1003,7 +1006,8 @@ export class DashboardActionHubService {
           current: coveredDuties,
           total: totalDuties,
           percent,
-          label: `${coveredDuties}/${totalDuties} Siap (${percent}%)`
+          label: `${coveredDuties}/${totalDuties} Siap (${percent}%)`,
+          variant: 'rose',
         },
         action: {
           label: 'Buat Bank Soal ➔',

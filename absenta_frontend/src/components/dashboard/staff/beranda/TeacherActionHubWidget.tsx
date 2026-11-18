@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 import { Badge, Button } from '@/components/ui';
+import { cn } from '@/lib/utils';
 import type { UnifiedActionItem, ActionHubSummary } from '@/api/dashboard.api';
 import { useMobileSubtabSidebarStore } from '@/components/dashboard/roles/common/subtabSidebarStore';
 
@@ -295,27 +296,31 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
             const IconComp = DIVISION_ICON[item.division] || AlertCircle;
             const isCritical = item.urgency === 'CRITICAL';
             const isToday = item.urgency === 'TODAY';
+            const isEventTask = item.division === 'CBT' || item.id.startsWith('pkl_nilai_') || item.progress?.variant === 'rose';
+            const isUrgentOrEvent = isCritical || isEventTask;
 
             return (
               <div
                 key={item.id}
-                className={`p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-colors ${
-                  isCritical 
-                    ? 'bg-rose-50/25 dark:bg-rose-950/10' 
-                    : isToday 
-                    ? 'bg-amber-50/20 dark:bg-amber-950/10' 
+                className={cn(
+                  'p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-colors',
+                  isUrgentOrEvent
+                    ? 'bg-rose-50/30 dark:bg-rose-950/20 border-l-4 border-l-rose-500'
+                    : isToday
+                    ? 'bg-amber-50/20 dark:bg-amber-950/10 border-l-4 border-l-amber-500'
                     : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40'
-                }`}
+                )}
               >
                 <div className="flex items-start gap-3 min-w-0 flex-1">
                   {/* Squircle Icon 36px Ramping */}
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
-                    isCritical 
-                      ? 'bg-rose-100/80 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                      : isToday 
+                  <div className={cn(
+                    'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5',
+                    isUrgentOrEvent
+                      ? 'bg-rose-100/90 text-rose-600 dark:bg-rose-950/80 dark:text-rose-400 shadow-2xs'
+                      : isToday
                       ? 'bg-amber-100/80 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
                       : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400'
-                  }`}>
+                  )}>
                     <IconComp size={17} />
                   </div>
 
@@ -325,13 +330,20 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
                       <h4 className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-slate-100 leading-snug break-words">
                         {item.title}
                       </h4>
-                      <span className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-md ${
-                        isCritical
-                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                      {isEventTask && (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/80 px-1.5 py-0.5 rounded border border-rose-200/80 dark:border-rose-800/70 shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                          Event
+                        </span>
+                      )}
+                      <span className={cn(
+                        'text-[9.5px] font-semibold px-2 py-0.5 rounded-md',
+                        isUrgentOrEvent
+                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200/80 dark:border-rose-900/60'
                           : isToday
                           ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
                           : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                      }`}>
+                      )}>
                         {item.badgeText}
                       </span>
                     </div>
@@ -342,14 +354,29 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
 
                     {/* Micro Progress Bar jika ada */}
                     {item.progress && (
-                      <div className="pt-1 flex items-center gap-2 max-w-[220px]">
-                        <div className="h-1.5 flex-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div className="pt-1 flex items-center gap-2 max-w-[240px]">
+                        <div className={cn(
+                          'h-1.5 flex-1 rounded-full overflow-hidden',
+                          isUrgentOrEvent
+                            ? 'bg-rose-200/80 dark:bg-rose-950/70'
+                            : 'bg-slate-200 dark:bg-slate-700'
+                        )}>
                           <div 
-                            className="h-full bg-indigo-600 rounded-full transition-all"
+                            className={cn(
+                              'h-full rounded-full transition-all',
+                              isUrgentOrEvent
+                                ? 'bg-gradient-to-r from-rose-500 via-rose-600 to-red-600 shadow-xs'
+                                : 'bg-indigo-600'
+                            )}
                             style={{ width: `${item.progress.percent}%` }}
                           />
                         </div>
-                        <span className="text-[9.5px] font-mono text-slate-400">
+                        <span className={cn(
+                          'text-[9.5px] font-mono',
+                          isUrgentOrEvent
+                            ? 'text-rose-600 dark:text-rose-400 font-bold'
+                            : 'text-slate-400'
+                        )}>
                           {item.progress.label}
                         </span>
                       </div>
@@ -361,11 +388,14 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
                 <div className="flex justify-end sm:justify-start shrink-0 pl-12 sm:pl-0 pt-0.5 sm:pt-0">
                   <Button
                     size="sm"
-                    variant={isCritical ? 'destructive' : 'outline'}
+                    variant={isUrgentOrEvent ? 'destructive' : 'outline'}
                     onClick={() => handleActionClick(item)}
-                    className={`h-7 px-3.5 rounded-full text-[11px] font-bold shadow-none cursor-pointer whitespace-nowrap ${
-                      !isCritical ? 'border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50' : ''
-                    }`}
+                    className={cn(
+                      'h-7 px-3.5 rounded-full text-[11px] font-bold shadow-none cursor-pointer whitespace-nowrap',
+                      isUrgentOrEvent
+                        ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs'
+                        : 'border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50'
+                    )}
                   >
                     <span>{item.action.label}</span>
                   </Button>

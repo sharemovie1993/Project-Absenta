@@ -206,6 +206,7 @@ export interface UnifiedActionItem {
     total: number;
     percent: number;
     label: string;
+    variant?: 'rose' | 'amber' | 'indigo' | 'emerald';
   };
   action: {
     label: string;
