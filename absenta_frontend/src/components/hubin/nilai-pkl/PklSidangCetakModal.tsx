@@ -47,6 +47,125 @@ export interface PklSidangCetakModalProps {
 
 export type PklDocType = 'BERITA_ACARA' | 'REKAP_PENGUJI' | 'REKAP_JURUSAN' | 'DAFTAR_HADIR';
 
+interface PaginatedSheet<T> {
+  pageNumber: number;
+  totalPages: number;
+  pageItems: T[];
+  isFirstPage: boolean;
+  isLastPage: boolean;
+  startIndex: number;
+}
+
+function getPaginatedSheets<T>(
+  items: T[],
+  isPortrait: boolean,
+  isDaftarHadir: boolean
+): PaginatedSheet<T>[] {
+  const total = items.length;
+  if (total === 0) {
+    return [
+      {
+        pageNumber: 1,
+        totalPages: 1,
+        pageItems: [],
+        isFirstPage: true,
+        isLastPage: true,
+        startIndex: 0,
+      },
+    ];
+  }
+
+  // Batas baris untuk dokumen 1 halaman tunggal (Kop + Tabel + Tanda Tangan)
+  const singlePageMax = isPortrait ? (isDaftarHadir ? 12 : 15) : (isDaftarHadir ? 7 : 9);
+
+  if (total <= singlePageMax) {
+    return [
+      {
+        pageNumber: 1,
+        totalPages: 1,
+        pageItems: items,
+        isFirstPage: true,
+        isLastPage: true,
+        startIndex: 0,
+      },
+    ];
+  }
+
+  // Kapasitas dokumen multi-halaman
+  const p1Max = isPortrait ? (isDaftarHadir ? 16 : 20) : (isDaftarHadir ? 9 : 12);
+  const midMax = isPortrait ? (isDaftarHadir ? 22 : 26) : (isDaftarHadir ? 12 : 16);
+  const lastMax = isPortrait ? (isDaftarHadir ? 12 : 15) : (isDaftarHadir ? 6 : 8);
+
+  // Jika cukup dalam 2 halaman
+  if (total <= p1Max + lastMax) {
+    const p1Count = Math.min(p1Max, Math.ceil(total / 2));
+    return [
+      {
+        pageNumber: 1,
+        totalPages: 2,
+        pageItems: items.slice(0, p1Count),
+        isFirstPage: true,
+        isLastPage: false,
+        startIndex: 0,
+      },
+      {
+        pageNumber: 2,
+        totalPages: 2,
+        pageItems: items.slice(p1Count),
+        isFirstPage: false,
+        isLastPage: true,
+        startIndex: p1Count,
+      },
+    ];
+  }
+
+  // Jika 3 halaman atau lebih
+  const pages: { pageItems: T[]; startIndex: number }[] = [];
+  let offset = 0;
+
+  pages.push({
+    pageItems: items.slice(0, p1Max),
+    startIndex: 0,
+  });
+  offset = p1Max;
+
+  while (items.length - offset > lastMax) {
+    const remaining = items.length - offset;
+    if (remaining <= midMax + lastMax) {
+      const takeMid = Math.min(midMax, Math.ceil(remaining / 2));
+      pages.push({
+        pageItems: items.slice(offset, offset + takeMid),
+        startIndex: offset,
+      });
+      offset += takeMid;
+      break;
+    } else {
+      pages.push({
+        pageItems: items.slice(offset, offset + midMax),
+        startIndex: offset,
+      });
+      offset += midMax;
+    }
+  }
+
+  if (offset < items.length) {
+    pages.push({
+      pageItems: items.slice(offset),
+      startIndex: offset,
+    });
+  }
+
+  const totalPages = pages.length;
+  return pages.map((p, idx) => ({
+    pageNumber: idx + 1,
+    totalPages,
+    pageItems: p.pageItems,
+    isFirstPage: idx === 0,
+    isLastPage: idx === totalPages - 1,
+    startIndex: p.startIndex,
+  }));
+}
+
 export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
   isOpen,
   onClose,
@@ -84,6 +203,9 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
     return 'BERITA_ACARA';
   });
 
+  // Orientasi halaman dokumen: default selalu 'portrait' (vertical) untuk seluruh dokumen resmi (Daftar Hadir, Rekapitulasi, Berita Acara)
+  const [pageOrientation, setPageOrientation] = useState<'portrait' | 'landscape'>('portrait');
+
   // Sinkronisasi jika initialDocType berubah dari luar
   useEffect(() => {
     if (initialDocType) {
@@ -92,6 +214,8 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
       else if (initialDocType === 'PENGUJI' || initialDocType === 'REKAP_PENGUJI') setDocType('REKAP_PENGUJI');
       else setDocType('BERITA_ACARA');
     }
+    // Selalu pastikan orientasi default adalah portrait (vertical)
+    setPageOrientation('portrait');
   }, [initialDocType]);
 
   // =========================================================================
@@ -722,6 +846,22 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
       : `Rekap_Hasil_Sidang_PKL_${cleanJurusan}`;
   }, [docType, displayJurusanTitle, selectedPengujiFilter]);
 
+  // Pagination & Chunking untuk Lembar Lampiran Berita Acara (Multi-Halaman A4 Portrait)
+  const lampiranSheets = useMemo(() => {
+    if (!beritaAcaraConfig.includeLampiran) return [];
+    return getPaginatedSheets(filteredScores, true, false);
+  }, [filteredScores, beritaAcaraConfig.includeLampiran]);
+
+  // Pagination & Chunking untuk Daftar Hadir, Rekap Penguji, & Rekap Jurusan
+  // Menjamin seluruh peserta terdistribusi rapi ke lembar A4 tanpa terpotong
+  const paginatedDocSheets = useMemo(() => {
+    return getPaginatedSheets(
+      filteredScores,
+      pageOrientation === 'portrait',
+      docType === 'DAFTAR_HADIR'
+    );
+  }, [filteredScores, pageOrientation, docType]);
+
   const handleDownloadPdf = async () => {
     if (!printSheetRef.current) {
       toast.error('Lembar dokumen tidak ditemukan.');
@@ -734,7 +874,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
       await new Promise((resolve) => setTimeout(resolve, 150));
 
       const res = await capturePrintSheetsToPdfBlob(printSheetRef.current, {
-        orientation: docType === 'BERITA_ACARA' ? 'portrait' : 'landscape',
+        orientation: pageOrientation,
         fileName: pdfFileName,
         scale: 2.5,
       });
@@ -756,8 +896,6 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
     }
   };
 
-  const isPortraitDoc = docType === 'BERITA_ACARA';
-
   const documentTitle = docType === 'BERITA_ACARA'
     ? 'BERITA ACARA PELAKSANAAN SIDANG / UJIAN PRAKTIK KERJA LAPANGAN (PKL)'
     : docType === 'DAFTAR_HADIR'
@@ -771,8 +909,18 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
       <UniversalDocumentModal
         isOpen={isOpen}
         onClose={onClose}
-        title={docType === 'BERITA_ACARA' ? 'Pratinjau Berita Acara Sidang PKL' : 'Cetak Berkas Hasil Sidang PKL'}
-        defaultVariant={isPortraitDoc ? 'portrait' : 'landscape'}
+        title={
+          docType === 'BERITA_ACARA'
+            ? 'Pratinjau Berita Acara Sidang PKL'
+            : docType === 'DAFTAR_HADIR'
+            ? 'Pratinjau Lembar Daftar Hadir Peserta Sidang PKL'
+            : docType === 'REKAP_PENGUJI'
+            ? 'Pratinjau Rekapitulasi Nilai Sidang (Penguji)'
+            : 'Pratinjau Rekapitulasi Nilai Sidang (Jurusan)'
+        }
+        orientation={pageOrientation}
+        allowOrientationToggle={true}
+        onOrientationChange={(newOrient) => setPageOrientation(newOrient)}
         allowLogoToggles={true}
         onDownloadPdf={handleDownloadPdf}
         downloadPdfText={isGeneratingPdf ? 'Memproses...' : 'Unduh PDF'}
@@ -782,7 +930,10 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
               <button
                 type="button"
-                onClick={() => setDocType('BERITA_ACARA')}
+                onClick={() => {
+                  setDocType('BERITA_ACARA');
+                  setPageOrientation('portrait');
+                }}
                 className={cn(
                   'px-2.5 py-1 rounded-md font-bold transition-all flex items-center gap-1.5 cursor-pointer',
                   docType === 'BERITA_ACARA'
@@ -796,7 +947,10 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setDocType('REKAP_PENGUJI')}
+                onClick={() => {
+                  setDocType('REKAP_PENGUJI');
+                  setPageOrientation('portrait');
+                }}
                 className={cn(
                   'px-2.5 py-1 rounded-md font-bold transition-all flex items-center gap-1.5 cursor-pointer',
                   docType === 'REKAP_PENGUJI'
@@ -810,7 +964,10 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setDocType('REKAP_JURUSAN')}
+                onClick={() => {
+                  setDocType('REKAP_JURUSAN');
+                  setPageOrientation('portrait');
+                }}
                 className={cn(
                   'px-2.5 py-1 rounded-md font-bold transition-all flex items-center gap-1.5 cursor-pointer',
                   docType === 'REKAP_JURUSAN'
@@ -824,7 +981,10 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setDocType('DAFTAR_HADIR')}
+                onClick={() => {
+                  setDocType('DAFTAR_HADIR');
+                  setPageOrientation('portrait');
+                }}
                 className={cn(
                   'px-2.5 py-1 rounded-md font-bold transition-all flex items-center gap-1.5 cursor-pointer',
                   docType === 'DAFTAR_HADIR'
@@ -931,7 +1091,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
               <PrintDocumentSheet
                 orientation="portrait"
                 pageNumber={1}
-                totalPages={beritaAcaraConfig.includeLampiran ? 2 : 1}
+                totalPages={beritaAcaraConfig.includeLampiran ? (1 + Math.max(1, lampiranSheets.length)) : 1}
                 footerText={`Berita Acara Pelaksanaan Sidang PKL — ${displayJurusanTitle}`}
                 className="p-8 text-black bg-white"
               >
@@ -1102,64 +1262,358 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                 </div>
               </PrintDocumentSheet>
 
-              {/* LEMBAR 2: LAMPIRAN DAFTAR PESERTA & NILAI SIDANG (JIKA DIAKTIFKAN) */}
+              {/* LEMBAR 2..N: LAMPIRAN DAFTAR PESERTA & NILAI SIDANG (JIKA DIAKTIFKAN) */}
               {beritaAcaraConfig.includeLampiran && (
-                <PrintDocumentSheet
-                  orientation="portrait"
-                  pageNumber={2}
-                  totalPages={2}
-                  footerText={`Lampiran Berita Acara Sidang PKL — ${displayJurusanTitle}`}
-                  className="p-8 text-black bg-white"
-                >
-                  <div className="text-center mb-3 space-y-0.5">
-                    <h3 className="text-xs font-bold uppercase tracking-wider underline">
-                      LAMPIRAN BERITA ACARA SIDANG PKL
-                    </h3>
-                    <p className="text-[11px] font-bold text-slate-800">
-                      DAFTAR PESERTA & HASIL EVALUASI NILAI SIDANG
-                    </p>
-                    <p className="text-[10px] text-slate-600 font-mono">
-                      Program Keahlian: {displayJurusanTitle} &bull; Penguji: {selectedPengujiFilter !== 'ALL' ? selectedPengujiFilter : 'Semua Guru Penguji'}
+                lampiranSheets.map((lampSheet) => (
+                  <PrintDocumentSheet
+                    key={`lampiran-${lampSheet.pageNumber}`}
+                    orientation="portrait"
+                    pageNumber={1 + lampSheet.pageNumber}
+                    totalPages={1 + lampiranSheets.length}
+                    footerText={`Lampiran Berita Acara Sidang PKL — ${displayJurusanTitle}`}
+                    className="p-8 text-black bg-white"
+                  >
+                    <div className="text-center mb-3 space-y-0.5">
+                      <h3 className="text-xs font-bold uppercase tracking-wider underline">
+                        LAMPIRAN BERITA ACARA SIDANG PKL {lampSheet.totalPages > 1 ? `(BAGIAN ${lampSheet.pageNumber})` : ''}
+                      </h3>
+                      <p className="text-[11px] font-bold text-slate-800">
+                        DAFTAR PESERTA & HASIL EVALUASI NILAI SIDANG
+                      </p>
+                      <p className="text-[10px] text-slate-600 font-mono">
+                        Program Keahlian: {displayJurusanTitle} &bull; Penguji: {selectedPengujiFilter !== 'ALL' ? selectedPengujiFilter : 'Semua Guru Penguji'}
+                      </p>
+                    </div>
+
+                    {/* Tabel Daftar Peserta & Nilai Ringkas */}
+                    <table className="w-full text-[9.5px] border-collapse border border-black mb-4">
+                      <thead>
+                        <tr className="bg-slate-100 text-center font-bold">
+                          <th className="border border-black px-1 py-1.5 w-6">No</th>
+                          <th className="border border-black px-1.5 py-1.5 w-20">NIS / NISN</th>
+                          <th className="border border-black px-2 py-1.5 text-left">Nama Lengkap Siswa</th>
+                          <th className="border border-black px-1 py-1.5 w-14">Kelas</th>
+                          <th className="border border-black px-2 py-1.5 text-left">Tempat PKL (DUDI)</th>
+                          <th className="border border-black px-1 py-1.5 w-12 bg-indigo-50/80">Nilai</th>
+                          <th className="border border-black px-1 py-1.5 w-14">Status</th>
+                          <th className="border border-black px-2 py-1.5 text-left min-w-[100px]">Catatan Penguji</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lampSheet.pageItems.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="border border-black p-4 text-center italic text-slate-500">
+                              Tidak ada data peserta sidang.
+                            </td>
+                          </tr>
+                        ) : (
+                          lampSheet.pageItems.map((row, idx) => {
+                            const rowNum = lampSheet.startIndex + idx + 1;
+                            const hasScore = row.nilai_sidang !== null && row.nilai_sidang !== undefined && row.nilai_sidang !== '';
+                            const isLulus = hasScore && Number(row.nilai_sidang) >= 70;
+                            return (
+                              <tr key={row.siswa_pkl_id || rowNum} className="h-6">
+                                <td className="border border-black px-1 py-0.5 text-center font-mono">{rowNum}</td>
+                                <td className="border border-black px-1.5 py-0.5 font-mono text-center">{row.nis || '-'}</td>
+                                <td className="border border-black px-2 py-0.5 font-semibold truncate max-w-[150px]">{row.nama_siswa}</td>
+                                <td className="border border-black px-1 py-0.5 text-center">{row.nama_kelas || '-'}</td>
+                                <td className="border border-black px-2 py-0.5 text-slate-800 truncate max-w-[140px]">{row.mitra_nama || '-'}</td>
+                                <td className="border border-black px-1 py-0.5 text-center font-mono font-bold bg-indigo-50/40">
+                                  {row.nilai_sidang ?? '-'}
+                                </td>
+                                <td className="border border-black px-1 py-0.5 text-center font-bold text-[8.5px]">
+                                  {!hasScore ? (
+                                    <span className="text-slate-400">Belum</span>
+                                  ) : isLulus ? (
+                                    <span className="text-emerald-700">LULUS</span>
+                                  ) : (
+                                    <span className="text-amber-700">REVISI</span>
+                                  )}
+                                </td>
+                                <td className="border border-black px-2 py-0.5 text-[8.5px] italic text-slate-700 truncate max-w-[140px]">
+                                  {row.catatan_sidang || '-'}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+
+                    {/* Pengesahan Penguji di Kanan Bawah Lampiran */}
+                    {lampSheet.isLastPage && (
+                      <div className="flex justify-end pt-2 break-inside-avoid">
+                        <div className="w-[75mm] text-right text-[10.5px]">
+                          <div>
+                            <p className="text-slate-700">{titimangsaCity}, {currentDateFormatted}</p>
+                            <p className="font-bold uppercase tracking-tight">Guru Penguji Sidang PKL</p>
+                          </div>
+                          {renderSignatureBox('PENGUJI', 'Guru Penguji Sidang PKL', 'right', 20)}
+                          <div>
+                            <p className="font-bold underline uppercase text-slate-900">{customSigners.penguji.nama}</p>
+                            <p className="text-[10px] text-slate-600 font-mono">NIP. {customSigners.penguji.nip || '-'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </PrintDocumentSheet>
+                ))
+              )}
+            </>
+          ) : (
+            /* ========================================================================= */
+            /* DOKUMEN 2: DAFTAR HADIR & REKAPITULASI (DEFAULT A4 PORTRAIT / VERTICAL)   */
+            /* Mendukung Multi-Halaman Otomatis (All Students Captured into PDF)         */
+            /* ========================================================================= */
+            paginatedDocSheets.map((sheet) => (
+              <PrintDocumentSheet
+                key={`doc-sheet-${sheet.pageNumber}`}
+                orientation={pageOrientation}
+                pageNumber={sheet.pageNumber}
+                totalPages={sheet.totalPages}
+                footerText={`${documentTitle} — ${displayJurusanTitle}`}
+                className={cn(
+                  'text-black bg-white',
+                  pageOrientation === 'portrait' ? 'p-8 sm:p-10' : 'p-6 sm:p-8'
+                )}
+              >
+                {/* 1. KOP RESMI SEKOLAH ATAU SUBHEADER LANJUTAN */}
+                {sheet.isFirstPage ? (
+                  <PrintHeader
+                    variant={pageOrientation}
+                    tenantInfo={tenantInfo}
+                    showLogoDaerah={true}
+                    showLogoSekolah={true}
+                    showDivider={true}
+                    className="mb-3"
+                  />
+                ) : (
+                  <div className="border-b border-black/20 pb-2 mb-3 flex items-center justify-between text-[10px]">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold uppercase tracking-tight text-slate-900">
+                        {documentTitle} (Lanjutan)
+                      </span>
+                      <span className="text-slate-500">• {displayJurusanTitle}</span>
+                      {(docType === 'REKAP_PENGUJI' || docType === 'DAFTAR_HADIR') && selectedPengujiFilter !== 'ALL' && (
+                        <span className="text-slate-500">• Penguji: {selectedPengujiFilter}</span>
+                      )}
+                    </div>
+                    <div className="text-slate-600 font-mono text-[9.5px]">
+                      Halaman {sheet.pageNumber} dari {sheet.totalPages}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. JUDUL DOKUMEN & SUB-METADATA (HANYA HALAMAN PERTAMA) */}
+                {sheet.isFirstPage && (
+                  <div className="text-center my-2 space-y-0.5">
+                    <h1 className="text-xs sm:text-sm font-bold tracking-wide uppercase underline">
+                      {documentTitle}
+                    </h1>
+                    <p className="text-[11px] font-semibold text-slate-700">
+                      Tahun Pelajaran {cleanTpNama || '-'} {cleanSemesterNama ? `• Semester ${cleanSemesterNama}` : ''}
                     </p>
                   </div>
+                )}
 
-                  {/* Tabel Daftar Peserta & Nilai Ringkas */}
-                  <table className="w-full text-[9.5px] border-collapse border border-black mb-4">
+                {/* 3. METADATA INFO TABLE (HANYA HALAMAN PERTAMA) */}
+                {sheet.isFirstPage && (
+                  <div className="grid grid-cols-2 gap-3 text-[10.5px] mb-2.5 border-b border-black/20 pb-2">
+                    <div className="space-y-0.5">
+                      <div className="flex">
+                        <span className="w-32 font-semibold">Program Keahlian</span>
+                        <span className="w-3">:</span>
+                        <span className="font-bold uppercase tracking-tight text-slate-900">
+                          {displayJurusanTitle}
+                        </span>
+                      </div>
+                      {(docType === 'REKAP_PENGUJI' || docType === 'DAFTAR_HADIR') && (
+                        <div className="flex">
+                          <span className="w-32 font-semibold">Guru Penguji</span>
+                          <span className="w-3">:</span>
+                          <span className="font-bold">
+                            {selectedPengujiFilter !== 'ALL' ? selectedPengujiFilter : 'Semua Guru Penguji'}
+                          </span>
+                        </div>
+                      )}
+                      {selectedKelasFilter !== 'ALL' && (
+                        <div className="flex">
+                          <span className="w-32 font-semibold">Rombel / Kelas</span>
+                          <span className="w-3">:</span>
+                          <span>{selectedKelasFilter}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-0.5 text-right">
+                      <div className="flex justify-end gap-1">
+                        <span className="font-semibold">Jumlah Peserta Terdata:</span>
+                        <span className="font-bold font-mono">{stats.total} Siswa</span>
+                      </div>
+                      {docType === 'DAFTAR_HADIR' ? (
+                        <div className="flex justify-end gap-3 text-[9.5px]">
+                          <span className="text-emerald-700 font-bold">Sudah TTD Digital: {stats.sudahTtd}</span>
+                          <span className="text-slate-500 font-medium">Belum TTD: {stats.belumTtd}</span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-end gap-2 text-[9.5px]">
+                          <span className="text-emerald-700 font-bold">Lulus: {stats.lulus}</span>
+                          <span className="text-amber-700 font-bold">Revisi: {stats.revisi}</span>
+                          <span className="text-slate-500 font-medium">Belum: {stats.belum}</span>
+                          <span className="text-indigo-700 font-bold font-mono">Rata-rata: {stats.avg}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. TABEL DATA (DAFTAR HADIR ATAU REKAP NILAI) */}
+                {docType === 'DAFTAR_HADIR' ? (
+                  <table className="w-full text-[9.5px] border-collapse border border-black mb-3">
                     <thead>
                       <tr className="bg-slate-100 text-center font-bold">
-                        <th className="border border-black px-1 py-1.5 w-6">No</th>
-                        <th className="border border-black px-1.5 py-1.5 w-20">NIS / NISN</th>
-                        <th className="border border-black px-2 py-1.5 text-left">Nama Lengkap Siswa</th>
-                        <th className="border border-black px-1 py-1.5 w-14">Kelas</th>
-                        <th className="border border-black px-2 py-1.5 text-left">Tempat PKL (DUDI)</th>
-                        <th className="border border-black px-1 py-1.5 w-12 bg-indigo-50/80">Nilai</th>
-                        <th className="border border-black px-1 py-1.5 w-14">Status</th>
-                        <th className="border border-black px-2 py-1.5 text-left min-w-[100px]">Catatan Penguji</th>
+                        <th className="border border-black px-1 py-1.5 w-7 shrink-0">No</th>
+                        <th className="border border-black px-1.5 py-1.5 w-20 shrink-0">NIS / NISN</th>
+                        <th className="border border-black px-2 py-1.5 text-left min-w-[120px]">Nama Lengkap Siswa</th>
+                        <th className="border border-black px-1 py-1.5 w-14 shrink-0">Kelas</th>
+                        <th className="border border-black px-1.5 py-1.5 text-left max-w-[110px] truncate">Tempat PKL (DUDI)</th>
+                        {selectedPengujiFilter === 'ALL' && (
+                          <th className="border border-black px-1.5 py-1.5 text-left max-w-[100px] truncate">Guru Penguji</th>
+                        )}
+                        <th className={cn("border border-black px-2 py-1.5 text-center", pageOrientation === 'portrait' ? "w-36" : "w-52")}>
+                          Tanda Tangan Kehadiran
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredScores.length === 0 ? (
+                      {sheet.pageItems.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="border border-black p-4 text-center italic text-slate-500">
-                            Tidak ada data peserta sidang.
+                          <td colSpan={selectedPengujiFilter === 'ALL' ? 7 : 6} className="border border-black p-4 text-center italic text-slate-500">
+                            Tidak ada data peserta sidang yang memenuhi kriteria filter.
                           </td>
                         </tr>
                       ) : (
-                        filteredScores.map((row, idx) => {
-                          const hasScore = row.nilai_sidang !== null && row.nilai_sidang !== undefined && row.nilai_sidang !== '';
-                          const isLulus = hasScore && Number(row.nilai_sidang) >= 70;
+                        sheet.pageItems.map((row, idx) => {
+                          const rowNum = sheet.startIndex + idx + 1;
+                          const isOdd = rowNum % 2 !== 0;
+
                           return (
-                            <tr key={row.siswa_pkl_id || idx} className="h-6">
-                              <td className="border border-black px-1 py-0.5 text-center font-mono">{idx + 1}</td>
-                              <td className="border border-black px-1.5 py-0.5 font-mono text-center">{row.nis || '-'}</td>
-                              <td className="border border-black px-2 py-0.5 font-semibold truncate max-w-[150px]">{row.nama_siswa}</td>
-                              <td className="border border-black px-1 py-0.5 text-center">{row.nama_kelas || '-'}</td>
-                              <td className="border border-black px-2 py-0.5 text-slate-800 truncate max-w-[140px]">{row.mitra_nama || '-'}</td>
-                              <td className="border border-black px-1 py-0.5 text-center font-mono font-bold bg-indigo-50/40">
+                            <tr key={row.siswa_pkl_id || rowNum} className="h-9 hover:bg-slate-50/50">
+                              <td className="border border-black px-1 py-0.5 text-center font-mono align-middle">{rowNum}</td>
+                              <td className="border border-black px-1 py-0.5 font-mono text-center align-middle text-[9px]">{row.nis || '-'}</td>
+                              <td className="border border-black px-2 py-0.5 font-semibold align-middle truncate max-w-[150px]">{row.nama_siswa}</td>
+                              <td className="border border-black px-1 py-0.5 text-center align-middle text-[9px]">{row.nama_kelas || '-'}</td>
+                              <td className="border border-black px-1.5 py-0.5 text-slate-800 align-middle truncate max-w-[110px] text-[9px]">
+                                {row.mitra_nama || '-'}
+                              </td>
+                              {selectedPengujiFilter === 'ALL' && (
+                                <td className="border border-black px-1.5 py-0.5 text-slate-800 align-middle truncate max-w-[100px] text-[9px]">
+                                  {row.penguji_nama || '-'}
+                                </td>
+                              )}
+                              <td className="border border-black px-1.5 py-0.5 align-middle">
+                                <div className="flex items-center h-full">
+                                  <div className={cn("w-full flex items-center", isOdd ? "justify-start pl-0.5" : "justify-end pr-0.5")}>
+                                    <div className="flex items-center gap-1 min-w-[95px]">
+                                      <span className="font-mono font-bold text-[9px] text-slate-700">{rowNum}.</span>
+                                      {row.ttd_siswa ? (
+                                        <div className="flex flex-col items-start leading-none">
+                                          <img
+                                            src={resolveProfilePhotoUrl(row.ttd_siswa)}
+                                            alt={`TTD ${row.nama_siswa}`}
+                                            className="h-6 max-w-[75px] object-contain filter contrast-125"
+                                          />
+                                          {row.waktu_ttd_siswa && (
+                                            <span className="text-[6.5px] text-slate-400 font-mono scale-90 -mt-0.5">
+                                              {new Date(row.waktu_ttd_siswa).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                            </span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <span className="text-slate-400 font-mono tracking-wider text-[10px] select-none">
+                                          ....................
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                ) : docType === 'REKAP_PENGUJI' ? (
+                  <table className="w-full text-[9px] border-collapse border border-black mb-3">
+                    <thead>
+                      <tr className="bg-slate-100 text-center font-bold">
+                        <th rowSpan={2} className="border border-black px-1 py-1 w-6">No</th>
+                        <th rowSpan={2} className="border border-black px-1.5 py-1 w-18">NIS / NISN</th>
+                        <th rowSpan={2} className="border border-black px-2 py-1 text-left min-w-[110px]">Nama Lengkap Siswa</th>
+                        <th rowSpan={2} className="border border-black px-1 py-1 w-12">Kelas</th>
+                        <th colSpan={4} className="border border-black px-1 py-0.5">
+                          Komponen Penilaian Aspek Sidang PKL
+                        </th>
+                        <th rowSpan={2} className="border border-black px-1 py-1 w-10 bg-indigo-50/80">
+                          Nilai
+                        </th>
+                        <th rowSpan={2} className="border border-black px-1 py-1 w-12">Status</th>
+                        <th rowSpan={2} className="border border-black px-1.5 py-1 text-left min-w-[80px]">
+                          Catatan Penguji / Revisi
+                        </th>
+                      </tr>
+                      <tr className="bg-slate-50 text-center font-semibold text-[8px]">
+                        <th className="border border-black px-0.5 py-0.5 w-10" title="Penguasaan Materi & Problem Solving">
+                          Materi<br/>(40%)
+                        </th>
+                        <th className="border border-black px-0.5 py-0.5 w-10" title="Penyampaian & Komunikasi Lisan">
+                          Komunikasi<br/>(25%)
+                        </th>
+                        <th className="border border-black px-0.5 py-0.5 w-10" title="Kualitas Laporan & Media Paparan">
+                          Portofolio<br/>(20%)
+                        </th>
+                        <th className="border border-black px-0.5 py-0.5 w-10" title="Etika, Sikap & Karakter Kerja">
+                          Sikap<br/>(15%)
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sheet.pageItems.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} className="border border-black p-4 text-center italic text-slate-500">
+                            Tidak ada data sidang siswa yang memenuhi kriteria filter.
+                          </td>
+                        </tr>
+                      ) : (
+                        sheet.pageItems.map((row, idx) => {
+                          const rowNum = sheet.startIndex + idx + 1;
+                          const hasExamined = row.nilai_sidang !== null && row.nilai_sidang !== undefined && row.nilai_sidang !== '';
+                          const isLulus = hasExamined && Number(row.nilai_sidang) >= 70;
+
+                          return (
+                            <tr key={row.siswa_pkl_id || rowNum} className="h-7 hover:bg-slate-50/50">
+                              <td className="border border-black px-1 py-0.5 text-center font-mono">{rowNum}</td>
+                              <td className="border border-black px-1 py-0.5 font-mono text-center text-[8.5px]">{row.nis || '-'}</td>
+                              <td className="border border-black px-2 py-0.5 font-semibold truncate max-w-[140px]">{row.nama_siswa}</td>
+                              <td className="border border-black px-1 py-0.5 text-center text-[8.5px]">{row.nama_kelas || '-'}</td>
+                              <td className="border border-black px-0.5 py-0.5 text-center font-mono text-[8.5px]">
+                                {row.sidang_materi ?? '-'}
+                              </td>
+                              <td className="border border-black px-0.5 py-0.5 text-center font-mono text-[8.5px]">
+                                {row.sidang_komunikasi ?? '-'}
+                              </td>
+                              <td className="border border-black px-0.5 py-0.5 text-center font-mono text-[8.5px]">
+                                {row.sidang_portofolio ?? '-'}
+                              </td>
+                              <td className="border border-black px-0.5 py-0.5 text-center font-mono text-[8.5px]">
+                                {row.sidang_sikap ?? '-'}
+                              </td>
+                              <td className="border border-black px-1 py-0.5 text-center font-mono font-bold bg-indigo-50/40 text-[9px]">
                                 {row.nilai_sidang ?? '-'}
                               </td>
-                              <td className="border border-black px-1 py-0.5 text-center font-bold text-[8.5px]">
-                                {!hasScore ? (
+                              <td className="border border-black px-0.5 py-0.5 text-center font-bold text-[8px]">
+                                {!hasExamined ? (
                                   <span className="text-slate-400">Belum</span>
                                 ) : isLulus ? (
                                   <span className="text-emerald-700">LULUS</span>
@@ -1167,7 +1621,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                                   <span className="text-amber-700">REVISI</span>
                                 )}
                               </td>
-                              <td className="border border-black px-2 py-0.5 text-[8.5px] italic text-slate-700 truncate max-w-[140px]">
+                              <td className="border border-black px-1.5 py-0.5 text-[8px] italic text-slate-700 truncate max-w-[120px]">
                                 {row.catatan_sidang || '-'}
                               </td>
                             </tr>
@@ -1176,407 +1630,245 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                       )}
                     </tbody>
                   </table>
-
-                  {/* Pengesahan Penguji di Kanan Bawah Lampiran */}
-                  <div className="flex justify-end pt-2 break-inside-avoid">
-                    <div className="w-[75mm] text-right text-[10.5px]">
-                      <div>
-                        <p className="text-slate-700">{titimangsaCity}, {currentDateFormatted}</p>
-                        <p className="font-bold uppercase tracking-tight">Guru Penguji Sidang PKL</p>
-                      </div>
-                      {renderSignatureBox('PENGUJI', 'Guru Penguji Sidang PKL', 'right', 20)}
-                      <div>
-                        <p className="font-bold underline uppercase text-slate-900">{customSigners.penguji.nama}</p>
-                        <p className="text-[10px] text-slate-600 font-mono">NIP. {customSigners.penguji.nip || '-'}</p>
-                      </div>
-                    </div>
-                  </div>
-                </PrintDocumentSheet>
-              )}
-            </>
-          ) : (
-            /* ========================================================================= */
-            /* DOKUMEN 2: FORMAT LANDSCAPE (REKAP NILAI 4 ASPEK & DAFTAR HADIR)           */
-            /* ========================================================================= */
-            <PrintDocumentSheet orientation="landscape" className="p-8 text-black bg-white">
-              {/* KOP RESMI SEKOLAH */}
-              <PrintHeader
-                variant="landscape"
-                tenantInfo={tenantInfo}
-                showLogoDaerah={true}
-                showLogoSekolah={true}
-                showDivider={true}
-                className="mb-3"
-              />
-
-              {/* JUDUL DOKUMEN & SUB-METADATA */}
-              <div className="text-center my-3 space-y-1">
-                <h1 className="text-sm font-bold tracking-wide uppercase underline">
-                  {documentTitle}
-                </h1>
-                <p className="text-xs font-semibold text-slate-700">
-                  Tahun Pelajaran {cleanTpNama || '-'} {cleanSemesterNama ? `• Semester ${cleanSemesterNama}` : ''}
-                </p>
-              </div>
-
-              {/* METADATA INFO TABLE */}
-              <div className="grid grid-cols-2 gap-4 text-[11px] mb-3 border-b border-black/20 pb-2">
-                <div className="space-y-1">
-                  <div className="flex">
-                    <span className="w-36 font-semibold">Program Keahlian</span>
-                    <span className="w-3">:</span>
-                    <span className="font-bold uppercase tracking-tight text-slate-900">
-                      {displayJurusanTitle}
-                    </span>
-                  </div>
-                  {(docType === 'REKAP_PENGUJI' || docType === 'DAFTAR_HADIR') && (
-                    <div className="flex">
-                      <span className="w-36 font-semibold">Guru Penguji</span>
-                      <span className="w-3">:</span>
-                      <span className="font-bold">
-                        {selectedPengujiFilter !== 'ALL' ? selectedPengujiFilter : 'Semua Guru Penguji'}
-                      </span>
-                    </div>
-                  )}
-                  {selectedKelasFilter !== 'ALL' && (
-                    <div className="flex">
-                      <span className="w-36 font-semibold">Rombel / Kelas</span>
-                      <span className="w-3">:</span>
-                      <span>{selectedKelasFilter}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-1 text-right">
-                  <div className="flex justify-end gap-1">
-                    <span className="font-semibold">Jumlah Peserta Terdata:</span>
-                    <span className="font-bold font-mono">{stats.total} Siswa</span>
-                  </div>
-                  {docType === 'DAFTAR_HADIR' ? (
-                    <div className="flex justify-end gap-3 text-[10px]">
-                      <span className="text-emerald-700 font-bold">Sudah TTD Digital: {stats.sudahTtd}</span>
-                      <span className="text-slate-500 font-medium">Belum TTD: {stats.belumTtd}</span>
-                    </div>
-                  ) : (
-                    <div className="flex justify-end gap-3 text-[10px]">
-                      <span className="text-emerald-700 font-bold">Lulus: {stats.lulus}</span>
-                      <span className="text-amber-700 font-bold">Revisi: {stats.revisi}</span>
-                      <span className="text-slate-500 font-medium">Belum Diuji: {stats.belum}</span>
-                      <span className="text-indigo-700 font-bold font-mono">Rata-rata: {stats.avg}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* TABEL DATA: PRESENSI ATAU NILAI 4 ASPEK */}
-              {docType === 'DAFTAR_HADIR' ? (
-                <table className="w-full text-[10px] border-collapse border border-black mb-4">
-                  <thead>
-                    <tr className="bg-slate-100 text-center font-bold">
-                      <th className="border border-black px-1.5 py-2 w-8">No</th>
-                      <th className="border border-black px-2 py-2 w-24">NIS / NISN</th>
-                      <th className="border border-black px-2 py-2 text-left min-w-[150px]">Nama Lengkap Siswa</th>
-                      <th className="border border-black px-1.5 py-2 w-16">Kelas</th>
-                      <th className="border border-black px-2 py-2 text-left min-w-[140px]">Tempat PKL (DUDI)</th>
-                      <th className="border border-black px-2 py-2 text-left w-36">Guru Penguji</th>
-                      <th className="border border-black px-2 py-2 text-center w-56">Tanda Tangan Kehadiran</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredScores.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="border border-black p-4 text-center italic text-slate-500">
-                          Tidak ada data peserta sidang yang memenuhi kriteria filter.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredScores.map((row, idx) => {
-                        const rowNum = idx + 1;
-                        const isOdd = rowNum % 2 !== 0;
-
-                        return (
-                          <tr key={row.siswa_pkl_id || idx} className="h-10 hover:bg-slate-50/50">
-                            <td className="border border-black px-1 py-1 text-center font-mono align-middle">{rowNum}</td>
-                            <td className="border border-black px-1.5 py-1 font-mono text-center align-middle">{row.nis || '-'}</td>
-                            <td className="border border-black px-2 py-1 font-semibold align-middle">{row.nama_siswa}</td>
-                            <td className="border border-black px-1.5 py-1 text-center align-middle">{row.nama_kelas || '-'}</td>
-                            <td className="border border-black px-2 py-1 text-slate-800 align-middle truncate max-w-[150px]">
-                              {row.mitra_nama || '-'}
-                            </td>
-                            <td className="border border-black px-2 py-1 text-slate-800 align-middle truncate max-w-[140px]">
-                              {row.penguji_nama || '-'}
-                            </td>
-                            <td className="border border-black px-2 py-1 align-middle">
-                              <div className="flex items-center h-full">
-                                <div className={cn("w-full flex items-center", isOdd ? "justify-start pl-1" : "justify-end pr-1")}>
-                                  <div className="flex items-center gap-1.5 min-w-[110px]">
-                                    <span className="font-mono font-bold text-[10px] text-slate-700">{rowNum}.</span>
-                                    {row.ttd_siswa ? (
-                                      <div className="flex flex-col items-start leading-none">
-                                        <img
-                                          src={resolveProfilePhotoUrl(row.ttd_siswa)}
-                                          alt={`TTD ${row.nama_siswa}`}
-                                          className="h-8 max-w-[90px] object-contain filter contrast-125"
-                                        />
-                                        {row.waktu_ttd_siswa && (
-                                          <span className="text-[7px] text-slate-400 font-mono scale-90 -mt-0.5">
-                                            {new Date(row.waktu_ttd_siswa).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                                          </span>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <span className="text-slate-400 font-mono tracking-wider text-[11px] select-none">
-                                        ..............................
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              ) : (
-                <table className="w-full text-[10px] border-collapse border border-black mb-4">
-                  <thead>
-                    <tr className="bg-slate-100 text-center font-bold">
-                      <th rowSpan={2} className="border border-black px-1.5 py-1.5 w-7">No</th>
-                      <th rowSpan={2} className="border border-black px-2 py-1.5 w-20">NIS / NISN</th>
-                      <th rowSpan={2} className="border border-black px-2 py-1.5 text-left min-w-[130px]">Nama Lengkap Siswa</th>
-                      <th rowSpan={2} className="border border-black px-1.5 py-1.5 w-16">Kelas</th>
-                      {docType === 'REKAP_JURUSAN' && (
-                        <th rowSpan={2} className="border border-black px-2 py-1.5 text-left w-28">Guru Penguji</th>
-                      )}
-                      <th colSpan={4} className="border border-black px-1 py-1">
-                        Komponen Penilaian Aspek Sidang PKL
-                      </th>
-                      <th rowSpan={2} className="border border-black px-1.5 py-1.5 w-12 bg-indigo-50/80">
-                        Nilai Sidang
-                      </th>
-                      <th rowSpan={2} className="border border-black px-1.5 py-1.5 w-14">Status</th>
-                      <th rowSpan={2} className="border border-black px-2 py-1.5 text-left min-w-[110px]">
-                        Catatan Penguji / Revisi
-                      </th>
-                    </tr>
-                    <tr className="bg-slate-50 text-center font-semibold text-[9px]">
-                      <th className="border border-black px-1 py-1 w-12" title="Penguasaan Materi & Problem Solving">
-                        Materi<br/>(40%)
-                      </th>
-                      <th className="border border-black px-1 py-1 w-12" title="Penyampaian & Komunikasi Lisan">
-                        Komunikasi<br/>(25%)
-                      </th>
-                      <th className="border border-black px-1 py-1 w-12" title="Kualitas Laporan & Media Paparan">
-                        Portofolio<br/>(20%)
-                      </th>
-                      <th className="border border-black px-1 py-1 w-12" title="Etika, Sikap & Karakter Kerja">
-                        Sikap<br/>(15%)
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredScores.length === 0 ? (
-                      <tr>
-                        <td colSpan={docType === 'REKAP_JURUSAN' ? 11 : 10} className="border border-black p-4 text-center italic text-slate-500">
-                          Tidak ada data sidang siswa yang memenuhi kriteria filter.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredScores.map((row, idx) => {
-                        const hasExamined = row.nilai_sidang !== null && row.nilai_sidang !== undefined && row.nilai_sidang !== '';
-                        const isLulus = hasExamined && Number(row.nilai_sidang) >= 70;
-
-                        return (
-                          <tr key={row.siswa_pkl_id || idx} className="hover:bg-slate-50/50">
-                            <td className="border border-black px-1 py-1 text-center font-mono">{idx + 1}</td>
-                            <td className="border border-black px-1.5 py-1 font-mono text-center">{row.nis || '-'}</td>
-                            <td className="border border-black px-2 py-1 font-semibold">{row.nama_siswa}</td>
-                            <td className="border border-black px-1.5 py-1 text-center">{row.nama_kelas || '-'}</td>
-                            {docType === 'REKAP_JURUSAN' && (
-                              <td className="border border-black px-2 py-1 truncate max-w-[110px]">{row.penguji_nama || '-'}</td>
-                            )}
-                            <td className="border border-black px-1 py-1 text-center font-mono">
-                              {row.sidang_materi ?? '-'}
-                            </td>
-                            <td className="border border-black px-1 py-1 text-center font-mono">
-                              {row.sidang_komunikasi ?? '-'}
-                            </td>
-                            <td className="border border-black px-1 py-1 text-center font-mono">
-                              {row.sidang_portofolio ?? '-'}
-                            </td>
-                            <td className="border border-black px-1 py-1 text-center font-mono">
-                              {row.sidang_sikap ?? '-'}
-                            </td>
-                            <td className="border border-black px-1 py-1 text-center font-mono font-bold bg-indigo-50/40">
-                              {row.nilai_sidang ?? '-'}
-                            </td>
-                            <td className="border border-black px-1 py-1 text-center font-bold text-[9px]">
-                              {!hasExamined ? (
-                                <span className="text-slate-400">Belum</span>
-                              ) : isLulus ? (
-                                <span className="text-emerald-700">LULUS</span>
-                              ) : (
-                                <span className="text-amber-700">REVISI</span>
-                              )}
-                            </td>
-                            <td className="border border-black px-2 py-1 text-[9px] italic text-slate-700">
-                              {row.catatan_sidang || '-'}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              )}
-
-              {/* CATATAN & KETERANGAN DOKUMEN */}
-              {docType === 'DAFTAR_HADIR' ? (
-                <div className="text-[9px] text-slate-600 mb-6 space-y-0.5">
-                  <p className="font-semibold">* Dokumen ini merupakan bukti presensi resmi pelaksanaan Ujian Sidang Praktik Kerja Lapangan (PKL).</p>
-                  <p>* Kehadiran dan tanda tangan digital terverifikasi secara elektronik melalui modul digitalisasi Absenta Hubin.</p>
-                </div>
-              ) : (
-                <div className="text-[9px] text-slate-600 mb-6 space-y-0.5">
-                  <p className="font-semibold">* Kriteria Ketuntasan Minimal (KKM) Sidang PKL: 70,00.</p>
-                  <p>* Siswa dengan status REVISI wajib menyelesaikan perbaikan laporan/portofolio paling lambat 7 hari kerja setelah tanggal ujian sidang.</p>
-                </div>
-              )}
-
-              {/* TANDA TANGAN RESMI 2-TIER */}
-              <div className="space-y-6 pt-3 break-inside-avoid">
-                {docType === 'REKAP_PENGUJI' || docType === 'DAFTAR_HADIR' ? (
-                  <>
-                    <div className="flex items-start justify-between w-full text-[11px]">
-                      <div className="w-[85mm] text-left">
-                        <div>
-                          <p className="font-semibold text-slate-700">Mengetahui,</p>
-                          <p className="font-bold uppercase tracking-tight">
-                            Ketua Program Keahlian
-                          </p>
-                          <p className="text-[10px] text-slate-600 font-medium">
-                            {displayJurusanTitle}
-                          </p>
-                        </div>
-                        {renderSignatureBox('KAPROG', 'Ketua Program Keahlian', 'left', 22)}
-                        <div>
-                          <p className="font-bold underline uppercase text-slate-900">
-                            {customSigners.kaprog.nama}
-                          </p>
-                          <p className="text-[10px] text-slate-600 font-mono">
-                            NIP. {customSigners.kaprog.nip || '-'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="w-[85mm] text-right">
-                        <div>
-                          <p className="text-slate-700">
-                            {titimangsaCity}, {currentDateFormatted}
-                          </p>
-                          <p className="font-bold uppercase tracking-tight">
-                            Guru Penguji Sidang PKL
-                          </p>
-                        </div>
-                        {renderSignatureBox('PENGUJI', 'Guru Penguji Sidang PKL', 'right', 22)}
-                        <div>
-                          <p className="font-bold underline uppercase text-slate-900">
-                            {customSigners.penguji.nama}
-                          </p>
-                          <p className="text-[10px] text-slate-600 font-mono">
-                            NIP. {customSigners.penguji.nip || '-'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-center justify-center text-center w-full pt-1">
-                      <div className="w-[95mm]">
-                        <div>
-                          <p className="font-semibold text-slate-700">Mengetahui,</p>
-                          <p className="font-bold uppercase tracking-tight">
-                            Kepala Sekolah
-                          </p>
-                        </div>
-                        {renderSignatureBox('KEPSEK', 'Kepala Sekolah', 'center', 22)}
-                        <div>
-                          <p className="font-bold underline uppercase text-slate-900">
-                            {customSigners.kepsek.nama}
-                          </p>
-                          <p className="text-[10px] text-slate-600 font-mono">
-                            NIP. {customSigners.kepsek.nip || '-'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </>
                 ) : (
+                  <table className="w-full text-[9px] border-collapse border border-black mb-3">
+                    <thead>
+                      <tr className="bg-slate-100 text-center font-bold">
+                        <th rowSpan={2} className="border border-black px-1 py-1 w-6">No</th>
+                        <th rowSpan={2} className="border border-black px-1.5 py-1 w-18">NIS / NISN</th>
+                        <th rowSpan={2} className="border border-black px-2 py-1 text-left min-w-[100px]">Nama Lengkap Siswa</th>
+                        <th rowSpan={2} className="border border-black px-1 py-1 w-12">Kelas</th>
+                        <th rowSpan={2} className="border border-black px-1.5 py-1 text-left max-w-[90px] truncate">Guru Penguji</th>
+                        <th colSpan={4} className="border border-black px-1 py-0.5">
+                          Komponen Aspek
+                        </th>
+                        <th rowSpan={2} className="border border-black px-1 py-1 w-10 bg-indigo-50/80">
+                          Nilai
+                        </th>
+                        <th rowSpan={2} className="border border-black px-1 py-1 w-12">Status</th>
+                        <th rowSpan={2} className="border border-black px-1.5 py-1 text-left min-w-[70px]">
+                          Catatan
+                        </th>
+                      </tr>
+                      <tr className="bg-slate-50 text-center font-semibold text-[8px]">
+                        <th className="border border-black px-0.5 py-0.5 w-9" title="Penguasaan Materi (40%)">
+                          Mat
+                        </th>
+                        <th className="border border-black px-0.5 py-0.5 w-9" title="Penyampaian & Komunikasi (25%)">
+                          Kom
+                        </th>
+                        <th className="border border-black px-0.5 py-0.5 w-9" title="Portofolio (20%)">
+                          Port
+                        </th>
+                        <th className="border border-black px-0.5 py-0.5 w-9" title="Sikap & Karakter (15%)">
+                          Sik
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sheet.pageItems.length === 0 ? (
+                        <tr>
+                          <td colSpan={11} className="border border-black p-4 text-center italic text-slate-500">
+                            Tidak ada data sidang siswa yang memenuhi kriteria filter.
+                          </td>
+                        </tr>
+                      ) : (
+                        sheet.pageItems.map((row, idx) => {
+                          const rowNum = sheet.startIndex + idx + 1;
+                          const hasExamined = row.nilai_sidang !== null && row.nilai_sidang !== undefined && row.nilai_sidang !== '';
+                          const isLulus = hasExamined && Number(row.nilai_sidang) >= 70;
+
+                          return (
+                            <tr key={row.siswa_pkl_id || rowNum} className="h-7 hover:bg-slate-50/50">
+                              <td className="border border-black px-1 py-0.5 text-center font-mono">{rowNum}</td>
+                              <td className="border border-black px-1 py-0.5 font-mono text-center text-[8.5px]">{row.nis || '-'}</td>
+                              <td className="border border-black px-2 py-0.5 font-semibold truncate max-w-[120px]">{row.nama_siswa}</td>
+                              <td className="border border-black px-1 py-0.5 text-center text-[8.5px]">{row.nama_kelas || '-'}</td>
+                              <td className="border border-black px-1.5 py-0.5 truncate max-w-[90px] text-[8.5px]">{row.penguji_nama || '-'}</td>
+                              <td className="border border-black px-0.5 py-0.5 text-center font-mono text-[8.5px]">
+                                {row.sidang_materi ?? '-'}
+                              </td>
+                              <td className="border border-black px-0.5 py-0.5 text-center font-mono text-[8.5px]">
+                                {row.sidang_komunikasi ?? '-'}
+                              </td>
+                              <td className="border border-black px-0.5 py-0.5 text-center font-mono text-[8.5px]">
+                                {row.sidang_portofolio ?? '-'}
+                              </td>
+                              <td className="border border-black px-0.5 py-0.5 text-center font-mono text-[8.5px]">
+                                {row.sidang_sikap ?? '-'}
+                              </td>
+                              <td className="border border-black px-1 py-0.5 text-center font-mono font-bold bg-indigo-50/40 text-[9px]">
+                                {row.nilai_sidang ?? '-'}
+                              </td>
+                              <td className="border border-black px-0.5 py-0.5 text-center font-bold text-[8px]">
+                                {!hasExamined ? (
+                                  <span className="text-slate-400">Belum</span>
+                                ) : isLulus ? (
+                                  <span className="text-emerald-700">LULUS</span>
+                                ) : (
+                                  <span className="text-amber-700">REVISI</span>
+                                )}
+                              </td>
+                              <td className="border border-black px-1.5 py-0.5 text-[8px] italic text-slate-700 truncate max-w-[100px]">
+                                {row.catatan_sidang || '-'}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                )}
+
+                {/* 5. CATATAN & TANDA TANGAN RESMI (HANYA HALAMAN TERAKHIR) */}
+                {sheet.isLastPage && (
                   <>
-                    <div className="flex items-start justify-between w-full text-[11px]">
-                      <div className="w-[85mm] text-left space-y-12">
-                        <div>
-                          <p className="font-semibold text-slate-700">Mengetahui,</p>
-                          <p className="font-bold uppercase tracking-tight">
-                            Wakil Kepala Sekolah Bidang Hubungan Industri
-                          </p>
-                        </div>
-                        <div>
-                          <p className="font-bold underline uppercase text-slate-900">
-                            {customSigners.wakaHubin.nama}
-                          </p>
-                          <p className="text-[10px] text-slate-600 font-mono">
-                            NIP. {customSigners.wakaHubin.nip || '-'}
-                          </p>
-                        </div>
+                    {docType === 'DAFTAR_HADIR' ? (
+                      <div className="text-[9px] text-slate-600 mb-4 space-y-0.5">
+                        <p className="font-semibold">* Dokumen ini merupakan bukti presensi resmi pelaksanaan Ujian Sidang Praktik Kerja Lapangan (PKL).</p>
+                        <p>* Kehadiran dan tanda tangan digital terverifikasi secara elektronik melalui modul digitalisasi Absenta Hubin.</p>
                       </div>
+                    ) : (
+                      <div className="text-[9px] text-slate-600 mb-4 space-y-0.5">
+                        <p className="font-semibold">* Kriteria Ketuntasan Minimal (KKM) Sidang PKL: 70,00.</p>
+                        <p>* Siswa dengan status REVISI wajib menyelesaikan perbaikan laporan/portofolio paling lambat 7 hari kerja setelah tanggal ujian sidang.</p>
+                      </div>
+                    )}
 
-                      <div className="w-[85mm] text-right space-y-12">
-                        <div>
-                          <p className="text-slate-700">
-                            {titimangsaCity}, {currentDateFormatted}
-                          </p>
-                          <p className="font-bold uppercase tracking-tight">
-                            Ketua Program Keahlian
-                          </p>
-                          <p className="text-[10px] text-slate-600 font-medium">
-                            {displayJurusanTitle}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="font-bold underline uppercase text-slate-900">
-                            {customSigners.kaprog.nama}
-                          </p>
-                          <p className="text-[10px] text-slate-600 font-mono">
-                            NIP. {customSigners.kaprog.nip || '-'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                    <div className="space-y-4 pt-2 break-inside-avoid">
+                      {docType === 'REKAP_PENGUJI' || docType === 'DAFTAR_HADIR' ? (
+                        <>
+                          <div className="flex items-start justify-between w-full text-[10.5px]">
+                            <div className={cn("text-left", pageOrientation === 'portrait' ? "w-[75mm]" : "w-[85mm]")}>
+                              <div>
+                                <p className="font-semibold text-slate-700">Mengetahui,</p>
+                                <p className="font-bold uppercase tracking-tight">
+                                  Ketua Program Keahlian
+                                </p>
+                                <p className="text-[9.5px] text-slate-600 font-medium">
+                                  {displayJurusanTitle}
+                                </p>
+                              </div>
+                              {renderSignatureBox('KAPROG', 'Ketua Program Keahlian', 'left', pageOrientation === 'portrait' ? 18 : 22)}
+                              <div>
+                                <p className="font-bold underline uppercase text-slate-900">
+                                  {customSigners.kaprog.nama}
+                                </p>
+                                <p className="text-[9.5px] text-slate-600 font-mono">
+                                  NIP. {customSigners.kaprog.nip || '-'}
+                                </p>
+                              </div>
+                            </div>
 
-                    <div className="flex flex-col items-center justify-center text-center w-full pt-1">
-                      <div className="w-[95mm] space-y-12">
-                        <div>
-                          <p className="font-semibold text-slate-700">Mengetahui / Menyetujui,</p>
-                          <p className="font-bold uppercase tracking-tight">
-                            Kepala Sekolah
-                          </p>
-                        </div>
-                        <div>
-                          <p className="font-bold underline uppercase text-slate-900">
-                            {customSigners.kepsek.nama}
-                          </p>
-                          <p className="text-[10px] text-slate-600 font-mono">
-                            NIP. {customSigners.kepsek.nip || '-'}
-                          </p>
-                        </div>
-                      </div>
+                            <div className={cn("text-right", pageOrientation === 'portrait' ? "w-[75mm]" : "w-[85mm]")}>
+                              <div>
+                                <p className="text-slate-700">
+                                  {titimangsaCity}, {currentDateFormatted}
+                                </p>
+                                <p className="font-bold uppercase tracking-tight">
+                                  Guru Penguji Sidang PKL
+                                </p>
+                              </div>
+                              {renderSignatureBox('PENGUJI', 'Guru Penguji Sidang PKL', 'right', pageOrientation === 'portrait' ? 18 : 22)}
+                              <div>
+                                <p className="font-bold underline uppercase text-slate-900">
+                                  {customSigners.penguji.nama}
+                                </p>
+                                <p className="text-[9.5px] text-slate-600 font-mono">
+                                  NIP. {customSigners.penguji.nip || '-'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-center justify-center text-center w-full pt-1">
+                            <div className={cn(pageOrientation === 'portrait' ? "w-[85mm]" : "w-[95mm]")}>
+                              <div>
+                                <p className="font-semibold text-slate-700">Mengetahui,</p>
+                                <p className="font-bold uppercase tracking-tight">
+                                  Kepala Sekolah
+                                </p>
+                              </div>
+                              {renderSignatureBox('KEPSEK', 'Kepala Sekolah', 'center', pageOrientation === 'portrait' ? 18 : 22)}
+                              <div>
+                                <p className="font-bold underline uppercase text-slate-900">
+                                  {customSigners.kepsek.nama}
+                                </p>
+                                <p className="text-[9.5px] text-slate-600 font-mono">
+                                  NIP. {customSigners.kepsek.nip || '-'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-start justify-between w-full text-[10.5px]">
+                            <div className={cn("text-left space-y-10", pageOrientation === 'portrait' ? "w-[75mm]" : "w-[85mm]")}>
+                              <div>
+                                <p className="font-semibold text-slate-700">Mengetahui,</p>
+                                <p className="font-bold uppercase tracking-tight">
+                                  Wakil Kepala Sekolah Bidang Hubungan Industri
+                                </p>
+                              </div>
+                              <div>
+                                <p className="font-bold underline uppercase text-slate-900">
+                                  {customSigners.wakaHubin.nama}
+                                </p>
+                                <p className="text-[9.5px] text-slate-600 font-mono">
+                                  NIP. {customSigners.wakaHubin.nip || '-'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className={cn("text-right space-y-10", pageOrientation === 'portrait' ? "w-[75mm]" : "w-[85mm]")}>
+                              <div>
+                                <p className="text-slate-700">
+                                  {titimangsaCity}, {currentDateFormatted}
+                                </p>
+                                <p className="font-bold uppercase tracking-tight">
+                                  Ketua Program Keahlian
+                                </p>
+                                <p className="text-[9.5px] text-slate-600 font-medium">
+                                  {displayJurusanTitle}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="font-bold underline uppercase text-slate-900">
+                                  {customSigners.kaprog.nama}
+                                </p>
+                                <p className="text-[9.5px] text-slate-600 font-mono">
+                                  NIP. {customSigners.kaprog.nip || '-'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-center justify-center text-center w-full pt-1">
+                            <div className={cn("space-y-10", pageOrientation === 'portrait' ? "w-[85mm]" : "w-[95mm]")}>
+                              <div>
+                                <p className="font-semibold text-slate-700">Mengetahui / Menyetujui,</p>
+                                <p className="font-bold uppercase tracking-tight">
+                                  Kepala Sekolah
+                                </p>
+                              </div>
+                              <div>
+                                <p className="font-bold underline uppercase text-slate-900">
+                                  {customSigners.kepsek.nama}
+                                </p>
+                                <p className="text-[9.5px] text-slate-600 font-mono">
+                                  NIP. {customSigners.kepsek.nip || '-'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </>
                 )}
-              </div>
-            </PrintDocumentSheet>
+              </PrintDocumentSheet>
+            ))
           )}
         </div>
       </UniversalDocumentModal>
