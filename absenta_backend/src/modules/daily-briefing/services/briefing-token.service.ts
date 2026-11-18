@@ -12,10 +12,8 @@ import jwt from 'jsonwebtoken';
 import { BriefingTokenPayload, BriefingRole } from '../types/briefing.types';
 
 export class BriefingTokenService {
-  private secret: string;
-
-  constructor() {
-    this.secret = process.env.JWT_SECRET || 'absenta_daily_briefing_secret_fallback_key';
+  private get secret(): string {
+    return process.env.JWT_SECRET || 'absenta_daily_briefing_secret_fallback_key';
   }
 
   /**
@@ -72,7 +70,7 @@ export class BriefingTokenService {
       if (err.name === 'TokenExpiredError') {
         throw new Error('Tautan laporan telah kedaluwarsa. Silakan minta tautan baru.');
       }
-      throw new Error('Tautan laporan tidak sah atau telah diubah.');
+      throw new Error(err.message || 'Tautan laporan tidak sah atau telah diubah.');
     }
   }
 }
