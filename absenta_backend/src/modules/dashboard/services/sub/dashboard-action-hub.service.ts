@@ -82,7 +82,8 @@ export class DashboardActionHubService {
       this.detectRaporTasks(tenantId, userId, guruId),
       this.detectSarprasLoanTasks(tenantId, userId, startOfDay),
       guruId ? this.detectPerangkatAjarTasks(tenantId, guruId) : Promise.resolve([]),
-      guruId ? this.detectCbtBankSoalTasks(tenantId, guruId) : Promise.resolve([])
+      guruId ? this.detectCbtBankSoalTasks(tenantId, guruId) : Promise.resolve([]),
+      guruId ? this.detectCbtPengawasTasks(tenantId, guruId) : Promise.resolve([])
     ]);
 
     // 3. Konsolidasi seluruh item yang sukses diambil
@@ -1018,6 +1019,140 @@ export class DashboardActionHubService {
           table: 'CbtBankSoal',
           entityId: guruId
         }
+      }];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /**
+   * 9. Deteksi Tugas Pengawasan Ujian CBT (Pra-Ujian & Sesi Berlangsung)
+   */
+  private async detectCbtPengawasTasks(tenantId: string, guruId: string): Promise<UnifiedActionItem[]> {
+    try {
+      const mySchedules = await prisma.cbtJadwalUjian.findMany({
+        where: {
+          tenant_id: tenantId,
+          status: { notIn: ['COMPLETED', 'ARCHIVED'] },
+          OR: [
+            { setting_keamanan: { path: ['pengawas_1_id'], equals: guruId } },
+            { setting_keamanan: { path: ['pengawas_2_id'], equals: guruId } },
+            { setting_keamanan: { path: ['proktor_id'], equals: guruId } },
+          ],
+        },
+        select: {
+          id: true,
+          nama_sesi: true,
+          tanggal_mulai: true,
+          tanggal_selesai: true,
+          status: true,
+          setting_keamanan: true,
+          durasi_menit: true,
+          BankSoal: {
+            select: {
+              judul: true,
+              Mapel: { select: { nama_mapel: true } },
+            },
+          },
+        },
+        orderBy: { tanggal_mulai: 'asc' },
+      });
+
+      if (!mySchedules || mySchedules.length === 0) return [];
+
+      const now = new Date();
+      const todayStr = now.toISOString().slice(0, 10);
+
+      // Cari sesi live aktif
+      const liveSessions = mySchedules.filter((j) => {
+        if (j.status === 'ACTIVE') return true;
+        const start = new Date(j.tanggal_mulai);
+        const end = new Date(j.tanggal_selesai);
+        return start <= now && now <= end;
+      });
+
+      // Cari sesi hari ini
+      const todaySessions = mySchedules.filter((j) => {
+        return (j.tanggal_mulai?.toISOString?.() || '').slice(0, 10) === todayStr;
+      });
+
+      if (liveSessions.length > 0) {
+        const live = liveSessions[0];
+        const cfg = (live.setting_keamanan as any) || {};
+        const room = cfg.ruang_ujian || cfg.ruang_ujian_nama || 'Ruang Ujian';
+        const mapel = live.BankSoal?.Mapel?.nama_mapel || live.BankSoal?.judul || 'Ujian CBT';
+
+        return [{
+          id: `cbt_pengawas_live_${guruId}`,
+          division: 'CBT',
+          urgency: 'CRITICAL',
+          title: 'Sesi Pengawasan CBT Sedang Berlangsung',
+          subtitle: `Segera buka meja monitoring: ${room} • ${mapel} (${live.durasi_menit} Menit)`,
+          badgeText: 'LIVE BERLANGSUNG',
+          progress: {
+            current: 0,
+            total: 1,
+            variant: 'rose',
+          },
+          action: {
+            label: 'Masuk Meja Pengawas ➔',
+            type: 'NAVIGATE',
+            target: '/dashboard?tab=ringkasan&subtab=pengawas_cbt',
+          },
+          sourceModule: {
+            table: 'CbtJadwalUjian',
+            entityId: live.id,
+          },
+        }];
+      }
+
+      if (todaySessions.length > 0) {
+        const first = todaySessions[0];
+        const cfg = (first.setting_keamanan as any) || {};
+        const room = cfg.ruang_ujian || cfg.ruang_ujian_nama || 'Ruang Ujian';
+        const mapel = first.BankSoal?.Mapel?.nama_mapel || first.BankSoal?.judul || 'Ujian CBT';
+
+        return [{
+          id: `cbt_pengawas_today_${guruId}`,
+          division: 'CBT',
+          urgency: 'TODAY',
+          title: 'Jadwal Pengawasan CBT Hari Ini',
+          subtitle: `${todaySessions.length} Sesi Terjadwal • Mulai di ${room} (${mapel})`,
+          badgeText: `${todaySessions.length} Sesi Hari Ini`,
+          progress: {
+            current: 0,
+            total: todaySessions.length,
+            variant: 'amber',
+          },
+          action: {
+            label: 'Buka Jadwal & Meja Pengawas ➔',
+            type: 'NAVIGATE',
+            target: '/dashboard?tab=ringkasan&subtab=pengawas_cbt',
+          },
+          sourceModule: {
+            table: 'CbtJadwalUjian',
+            entityId: first.id,
+          },
+        }];
+      }
+
+      // Fase Pra-Ujian (Upcoming / Mendatang)
+      return [{
+        id: `cbt_pengawas_upcoming_${guruId}`,
+        division: 'CBT',
+        urgency: 'UPCOMING',
+        title: 'Jadwal Pengawasan Ujian CBT',
+        subtitle: `Terplotting di ${mySchedules.length} Sesi Pengawasan Ruang Ujian (Fase Pra-Ujian)`,
+        badgeText: `${mySchedules.length} Sesi Terdaftar`,
+        action: {
+          label: 'Lihat Jadwal Pengawasan ➔',
+          type: 'NAVIGATE',
+          target: '/dashboard?tab=ringkasan&subtab=pengawas_cbt',
+        },
+        sourceModule: {
+          table: 'CbtJadwalUjian',
+          entityId: guruId,
+        },
       }];
     } catch (e) {
       return [];

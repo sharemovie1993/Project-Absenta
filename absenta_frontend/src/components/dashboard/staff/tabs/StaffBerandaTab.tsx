@@ -102,8 +102,8 @@ const CbtBankSoalView = lazy(() =>
 const CbtJadwalView = lazy(() =>
   import('@/components/cbt/jadwal/CbtJadwalView').then((m) => ({ default: m.CbtJadwalView }))
 );
-const CbtProctorMonitoringView = lazy(() =>
-  import('@/components/cbt/sesi/CbtProctorMonitoringView').then((m) => ({ default: m.CbtProctorMonitoringView }))
+const CbtPengawasTeacherView = lazy(() =>
+  import('@/components/cbt/sesi/CbtPengawasTeacherView').then((m) => ({ default: m.CbtPengawasTeacherView }))
 );
 
 // Lazy load GateInputModule untuk satpam
@@ -307,7 +307,13 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
   const isMyAttendanceDone = Boolean(myAttendanceItem?.is_hadir);
 
   // ── Query Adaptif: Guru Sebagai Pengawas Ruang / Proktor Ujian CBT (SSOT useMyPengawasCbt) ──
-  const { isPengawasCbt, pengawasCbtActiveCount, myPengawasCbtData } = useMyPengawasCbt();
+  const {
+    isPengawasCbt,
+    pengawasCbtActiveCount,
+    myPengawasCbtData,
+    isLoading: isPengawasCbtLoading,
+    refetch: refetchPengawasCbt,
+  } = useMyPengawasCbt();
 
   const validSubTabs: TeacherSubTabId[] = useMemo(() => [
     'agenda',
@@ -1071,24 +1077,25 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
               </Suspense>
             )}
 
-            {/* SUB-TAB 6A: MEJA PENGAWAS & PROKTOR UJIAN CBT (FOKUS FUNGSI - ZERO NOISE) */}
+            {/* SUB-TAB 6A: MEJA PENGAWAS & PROKTOR UJIAN CBT (ADAPTIF: PRA-UJIAN & MEJA MONITORING) */}
             {activeSubTab === 'pengawas_cbt' && (
-              <div className="space-y-4 pb-20 sm:pb-8">
-                <Suspense
-                  fallback={
-                    <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
-                      <Loader className="animate-spin text-emerald-600" size={32} />
-                      <p className="text-xs text-slate-500 font-semibold">Memuat Layar Pengawas CBT...</p>
-                    </div>
-                  }
-                >
-                  <CbtProctorMonitoringView
-                    initialJadwalId={selectedPengawasJadwalId || myPengawasCbtData?.[0]?.id}
-                    guruId={effectiveGuruId}
-                    myPengawasData={myPengawasCbtData}
-                  />
-                </Suspense>
-              </div>
+              <Suspense
+                fallback={
+                  <div className="p-12 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
+                    <Loader className="animate-spin text-emerald-600" size={32} />
+                    <p className="text-xs text-slate-500 font-semibold">Memuat Layar Pengawas CBT...</p>
+                  </div>
+                }
+              >
+                <CbtPengawasTeacherView
+                  guruId={effectiveGuruId}
+                  guruNama={guruNama}
+                  initialJadwalId={selectedPengawasJadwalId}
+                  myPengawasData={myPengawasCbtData}
+                  isLoading={isPengawasCbtLoading}
+                  onRefresh={refetchPengawasCbt}
+                />
+              </Suspense>
             )}
 
             {/* SUB-TAB 6B: MEJA PENGUJI SIDANG PKL (ADAPTIF - HANYA MUNCUL JIKA TERPLOTING) */}

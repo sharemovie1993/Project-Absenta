@@ -106,6 +106,30 @@ export class CbtJadwalService {
         OR: orConditions,
       });
     }
+    if (query.pengawas_guru_id) {
+      andConditions.push({
+        OR: [
+          {
+            setting_keamanan: {
+              path: ['pengawas_1_id'],
+              equals: query.pengawas_guru_id,
+            },
+          },
+          {
+            setting_keamanan: {
+              path: ['pengawas_2_id'],
+              equals: query.pengawas_guru_id,
+            },
+          },
+          {
+            setting_keamanan: {
+              path: ['proktor_id'],
+              equals: query.pengawas_guru_id,
+            },
+          },
+        ],
+      });
+    }
     if (query.search) {
       andConditions.push({
         OR: [

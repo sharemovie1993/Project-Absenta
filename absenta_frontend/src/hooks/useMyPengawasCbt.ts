@@ -16,8 +16,20 @@ export function useMyPengawasCbt() {
     queryKey: ['my-pengawas-cbt-schedules', effectiveGuruId],
     queryFn: async () => {
       if (!effectiveGuruId) return [];
-      const res = await cbtApi.getJadwalList({ limit: 50, guru_id: effectiveGuruId }).catch(() => null);
-      const list = res?.items || [];
+      // Prioritaskan pengawas_guru_id langsung di query backend
+      const res = await cbtApi
+        .getJadwalList({ limit: 500, pengawas_guru_id: effectiveGuruId })
+        .catch(() => null);
+      let list = res?.items || [];
+
+      // Fallback jika backend versi lama belum memfilter pengawas_guru_id
+      if (list.length === 0) {
+        const fallbackRes = await cbtApi
+          .getJadwalList({ limit: 500, guru_id: effectiveGuruId })
+          .catch(() => null);
+        list = fallbackRes?.items || [];
+      }
+
       return list.filter((item) => {
         const cfg = item.setting_keamanan;
         return Boolean(

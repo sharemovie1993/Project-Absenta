@@ -220,6 +220,7 @@ export const queryJadwalUjianSchema = z.object({
   status: z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED']).optional(),
   bank_soal_id: z.string().optional(),
   guru_id: z.string().optional(),
+  pengawas_guru_id: z.string().optional(),
   sort_direction: z.enum(['asc', 'desc']).optional(),
 });
 
