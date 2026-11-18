@@ -52,4 +52,7 @@ import './upacaraScheduleDispatcher.job';
 // ── Hubin & PKL Lifecycle ─────────────────────────────────────────────────────
 import './pklStatusScheduler.job';
 
+// ── Daily Executive Briefing (19:00 WIB Dispatcher) ───────────────────────────
+import './dailyExecutiveBriefing.job';
+
 

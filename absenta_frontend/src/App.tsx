@@ -127,6 +127,7 @@ const RoleManagementPage = lazy(() => import('./pages/management/RoleManagementP
 const MenuAuditPage = lazy(() => import('./pages/management/MenuAuditPage'));
 const WebSekolahCmsPage = lazy(() => import('./pages/management/WebSekolahCmsPage'));
 const PlatformComplianceFollowUpPage = lazy(() => import('./pages/management/PlatformComplianceFollowUpPage'));
+const DailyBriefingPage = lazy(() => import('./pages/reporting/DailyBriefingPage'));
 const TripayHealthPage = lazy(() => import('./pages/billing/TripayHealthPage'));
 const TripaySimulatorPage = lazy(() => import('./pages/billing/TripaySimulatorPage'));
 // Removed GerbangRecordsPage import
@@ -1866,6 +1867,16 @@ function App() {
                 <Route path="/verify-siplah" element={<SIPLaHAuditVerifyPage />} />
                 <Route path="/verify-siplah/:hash" element={<SIPLaHAuditVerifyPage />} />
                 <Route path="/audit/siplah" element={<Navigate to="/verify-siplah" replace />} />
+                <Route path="/reports/daily-briefing" element={
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                      <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                    </div>
+                  }>
+                    <DailyBriefingPage />
+                  </Suspense>
+                } />
+                <Route path="/reports/daily-executive" element={<Navigate to="/reports/daily-briefing" replace />} />
 
                 {/* Catch-all route -> 404 */}
                 <Route path="*" element={<Navigate to="/404" replace />} />

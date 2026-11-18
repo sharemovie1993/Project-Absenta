@@ -1,0 +1,77 @@
+/**
+ * briefing.types.ts
+ * Tipe data universal untuk Daily Briefing & Tokenized Report Engine.
+ *
+ * Mendukung arsitektur multi-role yang fleksibel:
+ * - KEPALA_SEKOLAH (Eksekutif makro lintas divisi)
+ * - WALIKELAS (Data spesifik kelas binaan)
+ * - KAPROG (Data spesifik jurusan/konsentrasi)
+ * - KURIKULUM (KBM, guru, inval, perangkat)
+ * - KESISWAAN (Kedisiplinan, gerbang, pelanggaran)
+ * - GURU (Jadwal mengajar, rekap presensi kelasnya)
+ */
+
+export type BriefingRole =
+  | 'KEPALA_SEKOLAH'
+  | 'WALIKELAS'
+  | 'KAPROG'
+  | 'KURIKULUM'
+  | 'KESISWAAN'
+  | 'GURU';
+
+export interface BriefingTokenPayload {
+  tenantId: string;
+  role: BriefingRole;
+  targetUserId?: string;
+  targetEntityId?: string; // misalnya kelasId atau jurusanId
+  tanggal: string;         // YYYY-MM-DD
+  scope: 'DAILY_BRIEFING';
+  exp?: number;
+  iat?: number;
+}
+
+export interface BriefingMetricItem {
+  id: string;
+  label: string;
+  value: string | number;
+  sub?: string;
+  status?: 'success' | 'warning' | 'danger' | 'info';
+  icon?: string;
+}
+
+export interface BriefingSectionItem {
+  title: string;
+  subtitle?: string;
+  status?: string;
+  badge?: string;
+  badgeColor?: string;
+  note?: string;
+  tags?: string[];
+}
+
+export interface BriefingSection {
+  id: string;
+  title: string;
+  category: string;
+  icon?: string;
+  badge?: string;
+  summary: string;
+  stats?: Array<{ label: string; value: string | number }>;
+  items?: BriefingSectionItem[];
+}
+
+export interface UniversalBriefingData {
+  title: string;
+  role: BriefingRole;
+  roleLabel: string;
+  tenantId: string;
+  sekolahNama: string;
+  targetName: string;
+  tanggalStr: string;   // format: "Rabu, 18 November 2026"
+  tanggalIso: string;   // format: "2026-11-18"
+  generatedAt: string;
+  expiresAt: string;
+  metrics: BriefingMetricItem[];
+  highlights: string[];
+  sections: BriefingSection[];
+}

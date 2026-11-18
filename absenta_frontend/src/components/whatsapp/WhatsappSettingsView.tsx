@@ -34,6 +34,7 @@ import {
   ArrowRight,
   Users,
   MessageSquare,
+  Building2,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -69,6 +70,7 @@ const WhatsappConnectionForm = lazy(() => import('./WhatsappConnectionForm'));
 const WhatsappTemplateForm = lazy(() => import('./WhatsappTemplateForm'));
 const WhatsappTrialForm = lazy(() => import('./WhatsappTrialForm'));
 const WhatsappGroupsTab = lazy(() => import('./WhatsappGroupsTab'));
+const DailyExecutiveBriefingModal = lazy(() => import('@/components/reporting/daily-briefing/DailyExecutiveBriefingModal'));
 
 export interface UniversalWhatsappSettingsViewProps {
   // Display Modifiers
@@ -105,6 +107,7 @@ export const WhatsappSettingsView: React.FC<UniversalWhatsappSettingsViewProps> 
   const [connectedNumber, setConnectedNumber] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [dbProviderName, setDbProviderName] = useState<string | null>(null);
+  const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false);
 
   // Partial update helper
   const handleConfigPatch = useCallback((patch: Partial<WhatsappConfig>) => {
@@ -352,7 +355,7 @@ export const WhatsappSettingsView: React.FC<UniversalWhatsappSettingsViewProps> 
             </Alert>
 
             {/* Quick Access Banners */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* 1. Riwayat Chat */}
               <div
                 role="button"
@@ -369,7 +372,7 @@ export const WhatsappSettingsView: React.FC<UniversalWhatsappSettingsViewProps> 
                     <History className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
                   </div>
                   <div>
-                    <p className="font-bold text-sm text-slate-900 dark:text-white">Riwayat Percakapan WA</p>
+                    <p className="font-bold text-sm text-slate-900 dark:text-white">Riwayat Chat WA</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Monitor percakapan chatbot real-time
                     </p>
@@ -397,14 +400,42 @@ export const WhatsappSettingsView: React.FC<UniversalWhatsappSettingsViewProps> 
                     <Users className="w-5 h-5 text-amber-500 dark:text-amber-400" />
                   </div>
                   <div>
-                    <p className="font-bold text-sm text-slate-900 dark:text-white">Monitoring &amp; Sapa WA</p>
+                    <p className="font-bold text-sm text-slate-900 dark:text-white">Monitoring &amp; Sapa</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Cek status &amp; kirim sapaan onboarding Guru/Siswa/Ortu
+                      Cek status &amp; sapaan Guru/Siswa/Ortu
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 group-hover:gap-3 transition-all">
                   <span className="text-xs font-semibold hidden sm:block font-bold">Buka</span>
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* 3. Laporan Eksekutif Kepsek (19:00 WIB) */}
+              <div
+                role="button"
+                tabIndex={0}
+                id="wa-briefing-shortcut"
+                className="flex items-center justify-between gap-4 p-5 rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 to-purple-500/5 cursor-pointer hover:from-indigo-500/15 hover:to-purple-500/10 transition-all group shadow-sm"
+                onClick={() => setIsBriefingModalOpen(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') setIsBriefingModalOpen(true);
+                }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-11 h-11 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-slate-900 dark:text-white">Laporan Harian Kepsek</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Ringkasan lintas divisi jam 19:00
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 group-hover:gap-3 transition-all">
+                  <span className="text-xs font-semibold hidden sm:block font-bold">Uji</span>
                   <ArrowRight className="w-4 h-4" />
                 </div>
               </div>
@@ -505,6 +536,15 @@ export const WhatsappSettingsView: React.FC<UniversalWhatsappSettingsViewProps> 
                   Simpan Konfigurasi WhatsApp
                 </Button>
               </div>
+            )}
+            {/* Modal Laporan Eksekutif Kepsek */}
+            {isBriefingModalOpen && (
+              <Suspense fallback={null}>
+                <DailyExecutiveBriefingModal
+                  isOpen={isBriefingModalOpen}
+                  onClose={() => setIsBriefingModalOpen(false)}
+                />
+              </Suspense>
             )}
           </div>
         </SectionCard>

@@ -1,0 +1,275 @@
+/**
+ * daily-briefing.service.ts
+ * Layanan orkestrator Universal Daily Briefing & Tokenized Report Engine.
+ *
+ * Menerapkan Strategy Pattern:
+ * - Mengelola registrasi collector per peran (Kepala Sekolah, Walas, Kaprog, dll)
+ * - Menangani verifikasi token, resolusi nomor telepon penerima, dan transmisi via WhatsApp Gateway
+ */
+
+import { prisma } from '@/utils/prisma';
+import { WhatsappService } from '@/modules/whatsapp/services/whatsapp.service';
+import { briefingTokenService } from './briefing-token.service';
+import { IBriefingCollector } from './collectors/briefing-collector.interface';
+import { KepsekBriefingCollector } from './collectors/kepsek-briefing.collector';
+import {
+  BriefingRole,
+  UniversalBriefingData,
+} from '../types/briefing.types';
+
+export class DailyBriefingService {
+  private collectors = new Map<BriefingRole, IBriefingCollector>();
+  private whatsappService: WhatsappService;
+
+  constructor() {
+    this.whatsappService = new WhatsappService();
+
+    // ── Registrasi Collector Peran (Universal Registry) ──────────────────────
+    this.registerCollector('KEPALA_SEKOLAH', new KepsekBriefingCollector());
+    // Posisi jabatan masa depan cukup didaftarkan di sini:
+    // this.registerCollector('WALIKELAS', new WalasBriefingCollector());
+    // this.registerCollector('KAPROG', new KaprogBriefingCollector());
+    // this.registerCollector('KURIKULUM', new KurikulumBriefingCollector());
+  }
+
+  /**
+   * Mendaftarkan collector baru untuk posisi jabatan tertentu
+   */
+  public registerCollector(role: BriefingRole, collector: IBriefingCollector) {
+    this.collectors.set(role, collector);
+  }
+
+  /**
+   * Mengambil data briefing berdasarkan token publik
+   */
+  public async getBriefingByToken(token: string): Promise<UniversalBriefingData> {
+    const payload = briefingTokenService.verifyToken(token);
+    const collector = this.collectors.get(payload.role);
+
+    if (!collector) {
+      throw new Error(`Kolektor data untuk peran '${payload.role}' belum didukung`);
+    }
+
+    return collector.collect(
+      payload.tenantId,
+      payload.tanggal,
+      payload.targetUserId,
+      payload.targetEntityId
+    );
+  }
+
+  /**
+   * Mengumpulkan data briefing secara langsung (untuk preview di dashboard)
+   */
+  public async getBriefingDirect(
+    tenantId: string,
+    role: BriefingRole,
+    tanggal?: string,
+    targetUserId?: string,
+    targetEntityId?: string
+  ): Promise<UniversalBriefingData> {
+    const collector = this.collectors.get(role);
+    if (!collector) {
+      throw new Error(`Kolektor data untuk peran '${role}' belum didukung`);
+    }
+    return collector.collect(tenantId, tanggal, targetUserId, targetEntityId);
+  }
+
+  /**
+   * Menemukan nomor WhatsApp Kepala Sekolah untuk suatu tenant
+   */
+  public async resolveKepsekPhoneNumber(tenantId: string): Promise<{ phone: string; name: string } | null> {
+    // 1. Cek UserPosition dengan kode KEPALA_SEKOLAH
+    try {
+      const kepsekPosition = await prisma.userPosition.findFirst({
+        where: {
+          Position: {
+            tenant_id: tenantId,
+            code: { in: ['KEPALA_SEKOLAH', 'KEPSEK', 'HEADMASTER', 'KS'] },
+          },
+        },
+        include: {
+          User: true,
+        },
+      });
+
+      if (kepsekPosition?.User?.phone) {
+        return {
+          phone: kepsekPosition.User.phone,
+          name: kepsekPosition.User.full_name || 'Kepala Sekolah',
+        };
+      }
+    } catch {}
+
+    // 2. Cek User dengan role KEPALA_SEKOLAH
+    try {
+      const kepsekUser = await prisma.user.findFirst({
+        where: {
+          tenant_id: tenantId,
+          role: { in: ['ADMIN', 'SUPERADMIN', 'GURU'] },
+          OR: [
+            { full_name: { contains: 'Kepala Sekolah', mode: 'insensitive' } },
+            { email: { contains: 'kepsek', mode: 'insensitive' } },
+          ],
+        },
+      });
+
+      if (kepsekUser?.phone) {
+        return {
+          phone: kepsekUser.phone,
+          name: kepsekUser.full_name || 'Kepala Sekolah',
+        };
+      }
+    } catch {}
+
+    // 3. Cek Profil Sekolah (Sekolah.kepala_sekolah & no_telepon)
+    try {
+      const sekolah = await prisma.sekolah.findFirst({
+        where: { tenant_id: tenantId },
+      });
+
+      if (sekolah?.kepala_sekolah) {
+        // Cari nomor HP di tabel Guru yang namanya cocok
+        const matchedGuru = await prisma.guru.findFirst({
+          where: {
+            tenant_id: tenantId,
+            nama_guru: { contains: sekolah.kepala_sekolah.trim(), mode: 'insensitive' },
+          },
+        });
+
+        const phone = matchedGuru?.no_hp || matchedGuru?.telepon || sekolah.no_telepon;
+        if (phone) {
+          return {
+            phone,
+            name: sekolah.kepala_sekolah,
+          };
+        }
+      }
+
+      if (sekolah?.no_telepon) {
+        return {
+          phone: sekolah.no_telepon,
+          name: sekolah.kepala_sekolah || 'Kepala Sekolah',
+        };
+      }
+    } catch {}
+
+    return null;
+  }
+
+  /**
+   * Memformat template pesan WhatsApp
+   */
+  public formatWhatsappMessage(data: UniversalBriefingData, tokenUrl: string): string {
+    const lines: string[] = [];
+
+    lines.push(`*LAPORAN EKSEKUTIF HARIAN SEKOLAH*`);
+    lines.push(`${data.sekolahNama}`);
+    lines.push(`📅 ${data.tanggalStr}`);
+    lines.push(``);
+    lines.push(`Yth. *${data.targetName}*,`);
+    lines.push(`Berikut ringkasan operasional harian sekolah hari ini:`);
+    lines.push(``);
+
+    // Ringkasan Metrics Utama
+    lines.push(`📊 *RINGKASAN UTAMA*`);
+    for (const m of data.metrics) {
+      lines.push(`• ${m.label}: *${m.value}* (${m.sub || ''})`);
+    }
+
+    lines.push(``);
+
+    // Poin-poin Highlights
+    if (data.highlights && data.highlights.length > 0) {
+      lines.push(`⚡ *ATENSI & STATUS*`);
+      for (const h of data.highlights) {
+        lines.push(`• ${h}`);
+      }
+      lines.push(``);
+    }
+
+    // Tautan Akses Laporan Ber-token
+    lines.push(`🔗 *Laporan Lengkap & Rekapitulasi Divisi:*`);
+    lines.push(`${tokenUrl}`);
+    lines.push(``);
+    lines.push(`_Tautan di atas aman, bersifat read-only, dan dapat langsung dibuka di ponsel tanpa login (berlaku 48 jam)._`);
+    lines.push(`_Sistem Absenta Otomatis - Pukul 19:00 WIB_`);
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Menghasilkan token, pesan WA, dan mengirimkan ke penerima
+   */
+  public async sendBriefingViaWhatsapp(
+    tenantId: string,
+    role: BriefingRole = 'KEPALA_SEKOLAH',
+    tanggal?: string,
+    targetPhoneOverride?: string
+  ): Promise<{ success: boolean; message: string; recipient?: string; tokenUrl?: string }> {
+    // 1. Dapatkan config WA gateway tenant
+    const waConfig = await this.whatsappService.getConfig(tenantId);
+    if (!waConfig || !waConfig.is_active) {
+      return {
+        success: false,
+        message: 'WhatsApp Gateway belum diaktifkan pada tenant ini',
+      };
+    }
+
+    // 2. Kumpulkan data briefing
+    const data = await this.getBriefingDirect(tenantId, role, tanggal);
+
+    // 3. Tentukan nomor telepon tujuan
+    let recipientPhone = targetPhoneOverride;
+    let recipientName = data.targetName;
+
+    if (!recipientPhone) {
+      if (role === 'KEPALA_SEKOLAH') {
+        const resolved = await this.resolveKepsekPhoneNumber(tenantId);
+        if (resolved) {
+          recipientPhone = resolved.phone;
+          recipientName = resolved.name;
+        }
+      }
+    }
+
+    if (!recipientPhone) {
+      return {
+        success: false,
+        message: `Nomor WhatsApp untuk peran '${role}' tidak ditemukan pada sistem`,
+      };
+    }
+
+    // 4. Generate token 48 jam
+    const token = briefingTokenService.generateToken({
+      tenantId,
+      role,
+      tanggal: data.tanggalIso,
+    });
+
+    const hostUrl = process.env.PUBLIC_APP_URL || process.env.APP_URL || process.env.FRONTEND_URL || 'https://absenta.id';
+    const cleanHost = hostUrl.replace(/\/+$/, '');
+    const tokenUrl = `${cleanHost}/reports/daily-briefing?token=${token}`;
+
+    // 5. Format pesan WhatsApp
+    const message = this.formatWhatsappMessage(data, tokenUrl);
+
+    // 6. Kirim via WhatsApp Service
+    try {
+      await this.whatsappService.sendMessage(waConfig, recipientPhone, message);
+      return {
+        success: true,
+        message: `Laporan harian berhasil dikirim ke ${recipientName} (${recipientPhone})`,
+        recipient: recipientPhone,
+        tokenUrl,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Gagal mengirim WhatsApp: ${err.message || 'Error tidak diketahui'}`,
+      };
+    }
+  }
+}
+
+export const dailyBriefingService = new DailyBriefingService();

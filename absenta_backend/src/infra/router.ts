@@ -756,6 +756,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { reportingModule } = await import('../modules/reporting');
       await reportingModule(fastify);
 
+      // Universal Daily Briefing & Tokenized Reports Module
+      const { dailyBriefingRoutes } = await import('../modules/daily-briefing/routes/daily-briefing.routes');
+      await fastify.register(dailyBriefingRoutes, { prefix: '/reports' });
+
       // Sarpras Module (Protected & Capability Guarded)
       const { sarprasRoutes } = await import('../modules/sarpras/routes/sarpras.routes');
       await fastify.register(sarprasRoutes, { prefix: '/sarpras' });
