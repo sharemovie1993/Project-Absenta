@@ -97,8 +97,9 @@ export function Modal({
   zIndex = 50,
   disableClose = false
 }: ModalProps) {
-  const activeSizeKey = maxWidth || size || 'md';
-  const activeSizeClass = sizeClasses[activeSizeKey] || sizeClasses.md;
+  const rawKey = maxWidth || size || 'md';
+  const cleanKey = (typeof rawKey === 'string' ? rawKey.replace(/^max-w-/, '') : rawKey) as keyof typeof sizeClasses;
+  const activeSizeClass = sizeClasses[cleanKey] || sizeClasses[rawKey as keyof typeof sizeClasses] || sizeClasses.md;
   const isMouseDownOnWrapper = React.useRef(false);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {

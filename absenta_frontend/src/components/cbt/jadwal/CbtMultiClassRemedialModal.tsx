@@ -20,6 +20,7 @@ import {
   HelpCircle,
   ChevronRight,
   GraduationCap,
+  Info,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtJadwalUjian, CbtPesertaUjian, CbtBankSoal } from '@/types/cbt.types';
@@ -377,485 +378,536 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
       isOpen={isOpen}
       onClose={onClose}
       title="Sesi Remedial Terpadu Multi-Rombel (1-Click)"
-      maxWidth="max-w-4xl"
+      size="4xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
         {/* Header Hero Banner */}
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-indigo-500/10 border border-amber-500/30 dark:border-amber-500/20">
-          <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-indigo-500/10 border border-amber-500/30 dark:border-amber-500/20">
+          <div className="flex items-start sm:items-center justify-between gap-3 flex-col sm:flex-row">
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500 text-white shadow-2xs">
                   Remedial Hub
                 </span>
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                   {mapelTitle}
                 </span>
-                <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-800/60">
+                <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-800/60 shrink-0">
                   Tingkat {bankSoal.tingkat}
                 </span>
               </div>
-              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">
+              <h3 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 leading-tight">
                 Aktivasi Remedial Serentak Seluruh Rombel Binaan
               </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                Sistem otomatis mengagregasi seluruh siswa di bawah KKTP dari seluruh sesi kelas yang Anda ampu ke dalam 1 sesi remedial yang sama.
+              <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Sistem otomatis mengagregasi seluruh siswa di bawah KKTP dari seluruh sesi ujian reguler binaan Anda ke dalam 1 sesi remedial yang sama.
               </p>
             </div>
 
-            <div className="text-right shrink-0">
-              <div className="text-2xl font-black text-rose-600 dark:text-rose-400">
-                {isLoadingPeserta ? '...' : belowKktpStudents.length}
+            <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-amber-200/60 dark:border-amber-900/40">
+              <div className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400">
+                {isLoadingPeserta || isLoadingJadwal ? '...' : belowKktpStudents.length}
               </div>
-              <div className="text-[11px] font-bold text-slate-500">
+              <div className="text-[10.5px] sm:text-[11px] font-bold text-slate-500">
                 Siswa Perlu Remedial
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bento Grid 3 Kolom Ringkasan Deteksi */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* Box 1: Ambang KKTP */}
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-amber-500" />
-                Ambang KKTP
-              </span>
-              <span className="font-mono text-indigo-600 dark:text-indigo-400">{kktpThreshold} Poin</span>
+        {/* Loading State */}
+        {(isLoadingJadwal || isLoadingPeserta) ? (
+          <div className="py-12 sm:py-16 text-center space-y-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <RotateCw size={24} className="animate-spin mx-auto text-indigo-600" />
+            <div className="space-y-1">
+              <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
+                Menganalisis Riwayat Ujian & Hasil Siswa...
+              </p>
+              <p className="text-[11px] text-slate-500 max-w-sm mx-auto px-4">
+                Sistem sedang memindai seluruh sesi rombel binaan untuk mengidentifikasi siswa yang belum tuntas KKTP.
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={kktpThreshold}
-                onChange={(e) => setKktpThreshold(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                className="w-full px-2.5 py-1 text-sm font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/20"
-              />
-            </div>
-            <p className="text-[10px] text-slate-500">
-              Siswa nilai &lt; {kktpThreshold} otomatis terpilih.
-            </p>
           </div>
+        ) : sourceJadwals.length === 0 ? (
+          /* Empty State: Belum Ada Ujian Reguler yang Berjalan */
+          <div className="p-5 sm:p-7 rounded-2xl border border-amber-200/80 dark:border-amber-900/60 bg-gradient-to-b from-amber-50/60 to-white dark:from-amber-950/20 dark:to-slate-900 text-center space-y-4 shadow-2xs">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-xs">
+              <Info size={26} />
+            </div>
+            <div className="space-y-1.5 max-w-md mx-auto px-2">
+              <h4 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100">
+                Belum Ada Sesi Ujian Utama yang Selesai
+              </h4>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Fitur <strong>Remedial Akbar</strong> bekerja dengan mendeteksi dan mengumpulkan siswa yang nilainya di bawah ambang KKTP dari <strong>sesi ujian utama yang telah diselenggarakan</strong>.
+              </p>
+            </div>
 
-          {/* Box 2: Rombel Terdeteksi */}
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-              <span className="flex items-center gap-1.5">
-                <Users size={14} className="text-indigo-500" />
-                Rombel Terlibat
-              </span>
-              <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                {detectedClasses.length} Kelas
-              </span>
+            <div className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-amber-200/60 dark:border-amber-900/40 text-left max-w-lg mx-auto space-y-2 text-xs">
+              <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <Sparkles size={14} className="text-amber-500 shrink-0" />
+                Alur Kerja Remedial:
+              </div>
+              <ol className="list-decimal list-inside space-y-1.5 text-slate-600 dark:text-slate-400 text-[11.5px] leading-relaxed">
+                <li>Jadwalkan dan laksanakan ujian reguler untuk kelas binaan Anda melalui tombol <strong>"Aktifkan"</strong> atau tab <strong>"Sesi Ujian Kelas Binaan"</strong>.</li>
+                <li>Setelah siswa selesai mengerjakan dan nilai keluar, buka kembali menu ini.</li>
+                <li>Sistem akan otomatis menyeleksi siswa yang belum tuntas KKTP dari seluruh rombel untuk digabungkan ke 1 sesi remedial terpadu.</li>
+              </ol>
             </div>
-            <div className="text-[11px] text-slate-600 dark:text-slate-400 truncate">
-              {detectedClasses.map((c) => c.name).join(', ') || 'Memuat rombel...'}
-            </div>
-            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-              ✓ Tergabung dalam 1 Meja Pengawas
-            </p>
-          </div>
 
-          {/* Box 3: Total Terpilih */}
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-              <span className="flex items-center gap-1.5">
-                <GraduationCap size={14} className="text-emerald-500" />
-                Siswa Terpilih
-              </span>
-              <span className="font-black text-rose-600 dark:text-rose-400">
-                {selectedSiswaIds.length} Siswa
-              </span>
-            </div>
-            <div className="text-[11px] text-slate-600 dark:text-slate-400">
-              Dari {aggregatedStudents.length} total peserta terdata
-            </div>
-            <p className="text-[10px] text-slate-500">
-              Siswa $\ge$ KKTP aman terlindungi (tidak bisa masuk)
-            </p>
-          </div>
-        </div>
-
-        {/* Pemilihan Siswa & Rombel */}
-        <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-900">
-          <div className="p-3.5 bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 space-y-2.5">
-            {/* Filter Rombel Chips */}
-            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
-              <span className="text-[11px] font-bold text-slate-500 shrink-0 mr-1 flex items-center gap-1">
-                <Filter size={12} />
-                Kelas:
-              </span>
-              <button
+            <div className="pt-2 flex items-center justify-center gap-3">
+              <Button
                 type="button"
-                onClick={() => setSelectedClassFilter('ALL')}
-                className={cn(
-                  'px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
-                  selectedClassFilter === 'ALL'
-                    ? 'bg-indigo-600 text-white shadow-2xs'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-300'
-                )}
+                variant="outline"
+                onClick={onClose}
+                className="text-xs font-bold px-6 h-9 rounded-xl cursor-pointer"
               >
-                Semua Rombel ({aggregatedStudents.length})
-              </button>
-              {detectedClasses.map((cls) => (
-                <button
-                  key={cls.id}
-                  type="button"
-                  onClick={() => setSelectedClassFilter(cls.id)}
-                  className={cn(
-                    'px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5',
-                    selectedClassFilter === cls.id
-                      ? 'bg-indigo-600 text-white shadow-2xs'
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-300'
-                  )}
-                >
-                  <span>{cls.name}</span>
-                  {cls.belowKktp > 0 && (
-                    <span
-                      className={cn(
-                        'px-1.5 py-0.2 rounded-full text-[10px] font-black',
-                        selectedClassFilter === cls.id
-                          ? 'bg-white text-indigo-700'
-                          : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-                      )}
-                    >
-                      {cls.belowKktp}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Sub-toolbar: Search & Tab Status */}
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                <button
-                  type="button"
-                  onClick={() => setStudentTabFilter('below')}
-                  className={cn(
-                    'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer',
-                    studentTabFilter === 'below'
-                      ? 'bg-rose-600 text-white shadow-2xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                  )}
-                >
-                  Perlu Remedial ({belowKktpStudents.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStudentTabFilter('all')}
-                  className={cn(
-                    'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer',
-                    studentTabFilter === 'all'
-                      ? 'bg-indigo-600 text-white shadow-2xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                  )}
-                >
-                  Semua ({aggregatedStudents.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStudentTabFilter('above')}
-                  className={cn(
-                    'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer',
-                    studentTabFilter === 'above'
-                      ? 'bg-emerald-600 text-white shadow-2xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                  )}
-                >
-                  Tuntas ({aboveKktpStudents.length})
-                </button>
-              </div>
-
-              {/* Quick Select Actions */}
-              <div className="flex items-center gap-1.5 text-xs">
-                <button
-                  type="button"
-                  onClick={handleSelectAllBelow}
-                  className="px-2 py-1 rounded-lg text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 font-bold hover:bg-rose-100 transition-colors cursor-pointer"
-                >
-                  Pilih Semua &lt; KKTP
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeselectAll}
-                  className="px-2 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold transition-colors cursor-pointer"
-                >
-                  Bersihkan
-                </button>
-              </div>
-            </div>
-
-            {/* Search Box */}
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari siswa berdasarkan nama, NIS, atau rombel..."
-                value={searchStudent}
-                onChange={(e) => setSearchStudent(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500/20"
-              />
+                Tutup
+              </Button>
             </div>
           </div>
-
-          {/* Student List View */}
-          <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 custom-scrollbar">
-            {isLoadingPeserta ? (
-              <div className="py-12 text-center text-xs text-slate-500">
-                <RotateCw size={18} className="animate-spin mx-auto mb-2 text-indigo-600" />
-                Memuat data nilai seluruh peserta ujian dari {sourceJadwals.length} sesi rombel...
-              </div>
-            ) : displayedStudents.length === 0 ? (
-              <div className="py-10 text-center text-xs text-slate-500">
-                Tidak ada siswa yang sesuai dengan filter kriteria.
-              </div>
-            ) : (
-              displayedStudents.map((st) => {
-                const isSelected = selectedSiswaIds.includes(st.siswaId);
-                const isBelow = st.isFinished && st.nilaiAwal !== null && st.nilaiAwal < kktpThreshold;
-
-                return (
-                  <div
-                    key={st.siswaId}
-                    onClick={() => toggleSelectSiswa(st.siswaId)}
-                    className={cn(
-                      'p-2.5 px-3.5 flex items-center justify-between gap-3 text-xs transition-colors cursor-pointer select-none',
-                      isSelected
-                        ? 'bg-indigo-50/70 dark:bg-indigo-950/40'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                    )}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {}} // Controlled via parent onClick
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4 shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <div className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                          {st.namaSiswa}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[10.5px] text-slate-500">
-                          <span className="font-mono">{st.nis || '-'}</span>
-                          <span>•</span>
-                          <span className="font-semibold text-slate-700 dark:text-slate-300">
-                            {st.namaKelas}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="text-right">
-                        <div
-                          className={cn(
-                            'font-black text-xs font-mono',
-                            st.nilaiAwal === null
-                              ? 'text-slate-400'
-                              : isBelow
-                              ? 'text-rose-600 dark:text-rose-400'
-                              : 'text-emerald-600 dark:text-emerald-400'
-                          )}
-                        >
-                          {st.nilaiAwal !== null ? `${st.nilaiAwal}` : 'Belum Ada'}
-                        </div>
-                        <div className="text-[9.5px] font-bold text-slate-400">
-                          {isBelow ? 'Di Bawah KKTP' : st.nilaiAwal !== null ? 'Tuntas' : 'Belum Ujian'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Pengaturan Parameter Remedial */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-          {/* Kolom Kiri: Kebijakan Nilai Akhir */}
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Kebijakan Nilai Akhir (Remedial Policy)
-            </label>
-            <div className="space-y-1.5">
-              <label className="flex items-start gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs">
-                <input
-                  type="radio"
-                  name="remedial_policy"
-                  value="max_kktp"
-                  checked={scorePolicy === 'max_kktp'}
-                  onChange={() => setScorePolicy('max_kktp')}
-                  className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
-                />
-                <div>
-                  <div className="font-bold text-slate-800 dark:text-slate-200">
-                    Maksimal Nilai KKTP ({kktpThreshold}) (Rekomendasi Kurikulum)
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    Nilai remedial jika melebihi batas dipatok pada {kktpThreshold}.
-                  </div>
+        ) : (
+          /* Main Remedial Interface (Tampil saat ada Sesi Ujian Terdata) */
+          <>
+            {/* Bento Grid 3 Kolom Ringkasan Deteksi */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+              {/* Box 1: Ambang KKTP */}
+              <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck size={14} className="text-amber-500" />
+                    Ambang KKTP
+                  </span>
+                  <span className="font-mono text-indigo-600 dark:text-indigo-400">{kktpThreshold} Poin</span>
                 </div>
-              </label>
-
-              <label className="flex items-start gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs">
-                <input
-                  type="radio"
-                  name="remedial_policy"
-                  value="highest"
-                  checked={scorePolicy === 'highest'}
-                  onChange={() => setScorePolicy('highest')}
-                  className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
-                />
-                <div>
-                  <div className="font-bold text-slate-800 dark:text-slate-200">
-                    Nilai Tertinggi (Awal vs Remedial)
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    Mengambil skor terbaik yang dicapai siswa.
-                  </div>
-                </div>
-              </label>
-
-              <label className="flex items-start gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs">
-                <input
-                  type="radio"
-                  name="remedial_policy"
-                  value="murni"
-                  checked={scorePolicy === 'murni'}
-                  onChange={() => setScorePolicy('murni')}
-                  className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
-                />
-                <div>
-                  <div className="font-bold text-slate-800 dark:text-slate-200">
-                    Nilai Murni Hasil Remedial
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    Nilai remedial dicatat apa adanya tanpa batas atas.
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          {/* Kolom Kanan: Durasi, Waktu & Mode Masuk */}
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Nama Sesi Remedial
-              </label>
-              <input
-                type="text"
-                value={sessionName}
-                onChange={(e) => setSessionName(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold"
-                placeholder="Contoh: [REMEDIAL AKBAR] Bahasa Inggris Tingkat XI"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Durasi Pengerjaan
-                </label>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <input
                     type="number"
-                    min={10}
-                    max={300}
-                    value={durasiMenit}
-                    onChange={(e) => setDurasiMenit(Number(e.target.value) || 60)}
-                    className="w-full px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                    min={0}
+                    max={100}
+                    value={kktpThreshold}
+                    onChange={(e) => setKktpThreshold(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                    className="w-full px-2.5 py-1 text-sm font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-amber-500/20"
                   />
-                  <span className="text-xs text-slate-500">Menit</span>
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  Siswa nilai &lt; {kktpThreshold} otomatis terpilih.
+                </p>
+              </div>
+
+              {/* Box 2: Rombel Terdeteksi */}
+              <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <span className="flex items-center gap-1.5">
+                    <Users size={14} className="text-indigo-500" />
+                    Rombel Terlibat
+                  </span>
+                  <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                    {detectedClasses.length} Kelas
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-600 dark:text-slate-400 truncate">
+                  {detectedClasses.map((c) => c.name).join(', ') || 'Belum ada rombel'}
+                </div>
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                  ✓ Tergabung dalam 1 Meja Pengawas
+                </p>
+              </div>
+
+              {/* Box 3: Total Terpilih */}
+              <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <span className="flex items-center gap-1.5">
+                    <GraduationCap size={14} className="text-emerald-500" />
+                    Siswa Terpilih
+                  </span>
+                  <span className="font-black text-rose-600 dark:text-rose-400">
+                    {selectedSiswaIds.length} Siswa
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                  Dari {aggregatedStudents.length} total peserta terdata
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  Siswa ≥ KKTP aman terlindungi (tidak masuk remedial)
+                </p>
+              </div>
+            </div>
+
+            {/* Pemilihan Siswa & Rombel */}
+            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-900">
+              <div className="p-3 sm:p-3.5 bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 space-y-2.5">
+                {/* Filter Rombel Chips */}
+                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+                  <span className="text-[11px] font-bold text-slate-500 shrink-0 mr-1 flex items-center gap-1">
+                    <Filter size={12} />
+                    Kelas:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedClassFilter('ALL')}
+                    className={cn(
+                      'px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                      selectedClassFilter === 'ALL'
+                        ? 'bg-indigo-600 text-white shadow-2xs'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-300'
+                    )}
+                  >
+                    Semua Rombel ({aggregatedStudents.length})
+                  </button>
+                  {detectedClasses.map((cls) => (
+                    <button
+                      key={cls.id}
+                      type="button"
+                      onClick={() => setSelectedClassFilter(cls.id)}
+                      className={cn(
+                        'px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5',
+                        selectedClassFilter === cls.id
+                          ? 'bg-indigo-600 text-white shadow-2xs'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-300'
+                      )}
+                    >
+                      <span>{cls.name}</span>
+                      {cls.belowKktp > 0 && (
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.2 rounded-full text-[10px] font-black',
+                            selectedClassFilter === cls.id
+                              ? 'bg-white text-indigo-700'
+                              : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                          )}
+                        >
+                          {cls.belowKktp}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Sub-toolbar: Search & Tab Status */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 w-full sm:w-auto overflow-x-auto custom-scrollbar">
+                    <button
+                      type="button"
+                      onClick={() => setStudentTabFilter('below')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                        studentTabFilter === 'below'
+                          ? 'bg-rose-600 text-white shadow-2xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      )}
+                    >
+                      Perlu Remedial ({belowKktpStudents.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStudentTabFilter('all')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                        studentTabFilter === 'all'
+                          ? 'bg-indigo-600 text-white shadow-2xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      )}
+                    >
+                      Semua ({aggregatedStudents.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStudentTabFilter('above')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                        studentTabFilter === 'above'
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      )}
+                    >
+                      Tuntas ({aboveKktpStudents.length})
+                    </button>
+                  </div>
+
+                  {/* Quick Select Actions */}
+                  <div className="flex items-center gap-1.5 text-xs w-full sm:w-auto justify-end">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllBelow}
+                      className="px-2 py-1 rounded-lg text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 font-bold hover:bg-rose-100 transition-colors cursor-pointer text-[11px]"
+                    >
+                      Pilih Semua &lt; KKTP
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeselectAll}
+                      className="px-2 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold transition-colors cursor-pointer text-[11px]"
+                    >
+                      Bersihkan
+                    </button>
+                  </div>
+                </div>
+
+                {/* Search Box */}
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari siswa berdasarkan nama, NIS, atau rombel..."
+                    value={searchStudent}
+                    onChange={(e) => setSearchStudent(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500/20"
+                  />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Akses Masuk Siswa
+              {/* Student List View */}
+              <div className="max-h-56 sm:max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 custom-scrollbar">
+                {displayedStudents.length === 0 ? (
+                  <div className="py-8 sm:py-10 text-center text-xs text-slate-500">
+                    Tidak ada siswa yang sesuai dengan filter kriteria.
+                  </div>
+                ) : (
+                  displayedStudents.map((st) => {
+                    const isSelected = selectedSiswaIds.includes(st.siswaId);
+                    const isBelow = st.isFinished && st.nilaiAwal !== null && st.nilaiAwal < kktpThreshold;
+
+                    return (
+                      <div
+                        key={st.siswaId}
+                        onClick={() => toggleSelectSiswa(st.siswaId)}
+                        className={cn(
+                          'p-2 sm:p-2.5 px-3 sm:px-3.5 flex items-center justify-between gap-2 sm:gap-3 text-xs transition-colors cursor-pointer select-none',
+                          isSelected
+                            ? 'bg-indigo-50/70 dark:bg-indigo-950/40'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}} // Controlled via parent onClick
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4 shrink-0 cursor-pointer"
+                          />
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-800 dark:text-slate-100 truncate text-xs sm:text-[13px]">
+                              {st.namaSiswa}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[10px] sm:text-[10.5px] text-slate-500">
+                              <span className="font-mono">{st.nis || '-'}</span>
+                              <span>•</span>
+                              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                {st.namaKelas}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="text-right">
+                            <div
+                              className={cn(
+                                'font-black text-xs font-mono',
+                                st.nilaiAwal === null
+                                  ? 'text-slate-400'
+                                  : isBelow
+                                  ? 'text-rose-600 dark:text-rose-400'
+                                  : 'text-emerald-600 dark:text-emerald-400'
+                              )}
+                            >
+                              {st.nilaiAwal !== null ? `${st.nilaiAwal}` : 'Belum Ada'}
+                            </div>
+                            <div className="text-[9px] sm:text-[9.5px] font-bold text-slate-400">
+                              {isBelow ? 'Di Bawah KKTP' : st.nilaiAwal !== null ? 'Tuntas' : 'Belum Ujian'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Pengaturan Parameter Remedial */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 pt-1">
+              {/* Kolom Kiri: Kebijakan Nilai Akhir */}
+              <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Kebijakan Nilai Akhir (Remedial Policy)
                 </label>
-                <label className="flex items-center gap-2 pt-1 cursor-pointer">
+                <div className="space-y-1.5">
+                  <label className="flex items-start gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs">
+                    <input
+                      type="radio"
+                      name="remedial_policy"
+                      value="max_kktp"
+                      checked={scorePolicy === 'max_kktp'}
+                      onChange={() => setScorePolicy('max_kktp')}
+                      className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <div className="font-bold text-slate-800 dark:text-slate-200">
+                        Maksimal Nilai KKTP ({kktpThreshold}) (Rekomendasi Kurikulum)
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        Nilai remedial jika melebihi batas dipatok pada {kktpThreshold}.
+                      </div>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs">
+                    <input
+                      type="radio"
+                      name="remedial_policy"
+                      value="highest"
+                      checked={scorePolicy === 'highest'}
+                      onChange={() => setScorePolicy('highest')}
+                      className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <div className="font-bold text-slate-800 dark:text-slate-200">
+                        Nilai Tertinggi (Awal vs Remedial)
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        Mengambil skor terbaik yang dicapai siswa.
+                      </div>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-xs">
+                    <input
+                      type="radio"
+                      name="remedial_policy"
+                      value="murni"
+                      checked={scorePolicy === 'murni'}
+                      onChange={() => setScorePolicy('murni')}
+                      className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <div className="font-bold text-slate-800 dark:text-slate-200">
+                        Nilai Murni Hasil Remedial
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        Nilai remedial dicatat apa adanya tanpa batas atas.
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Kolom Kanan: Durasi, Waktu & Mode Masuk */}
+              <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Nama Sesi Remedial
+                  </label>
                   <input
-                    type="checkbox"
-                    checked={isTokenless}
-                    onChange={(e) => setIsTokenless(e.target.checked)}
-                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                    type="text"
+                    value={sessionName}
+                    onChange={(e) => setSessionName(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold"
+                    placeholder="Contoh: [REMEDIAL AKBAR] MPP AK Tingkat XI"
+                    required
                   />
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Bebas Token (Langsung Masuk)
-                  </span>
-                </label>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Durasi Pengerjaan
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={10}
+                        max={300}
+                        value={durasiMenit}
+                        onChange={(e) => setDurasiMenit(Number(e.target.value) || 60)}
+                        className="w-full px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                      />
+                      <span className="text-xs text-slate-500">Menit</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Akses Masuk Siswa
+                    </label>
+                    <label className="flex items-center gap-2 pt-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isTokenless}
+                        onChange={(e) => setIsTokenless(e.target.checked)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                      />
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Bebas Token (Langsung Masuk)
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                      Mulai
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={startDateInput}
+                      onChange={(e) => setStartDateInput(e.target.value)}
+                      className="w-full px-2 py-1 text-[11px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                      Berakhir
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={endDateInput}
+                      onChange={(e) => setEndDateInput(e.target.value)}
+                      className="w-full px-2 py-1 text-[11px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                      required
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
-                  Mulai
-                </label>
-                <input
-                  type="datetime-local"
-                  value={startDateInput}
-                  onChange={(e) => setStartDateInput(e.target.value)}
-                  className="w-full px-2 py-1 text-[11px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
-                  Berakhir
-                </label>
-                <input
-                  type="datetime-local"
-                  value={endDateInput}
-                  onChange={(e) => setEndDateInput(e.target.value)}
-                  className="w-full px-2 py-1 text-[11px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
-                  required
-                />
-              </div>
+            {/* Modal Footer Actions */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="text-xs font-bold cursor-pointer"
+              >
+                Batal
+              </Button>
+
+              <Button
+                type="submit"
+                variant="default"
+                disabled={selectedSiswaIds.length === 0 || createMultiRemedialMutation.isPending}
+                className="bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-700 hover:to-rose-700 text-white font-bold text-xs h-9 px-3.5 sm:px-4 rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {createMultiRemedialMutation.isPending ? (
+                  <>
+                    <RotateCw size={14} className="animate-spin" />
+                    <span>Menerbitkan Sesi Remedial Akbar...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={14} />
+                    <span>
+                      Aktifkan Sesi Remedial ({selectedSiswaIds.length} Siswa, {activeSelectedKelasIds.length} Rombel)
+                    </span>
+                  </>
+                )}
+              </Button>
             </div>
-          </div>
-        </div>
-
-        {/* Modal Footer Actions */}
-        <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            className="text-xs font-bold cursor-pointer"
-          >
-            Batal
-          </Button>
-
-          <Button
-            type="submit"
-            variant="default"
-            disabled={selectedSiswaIds.length === 0 || createMultiRemedialMutation.isPending}
-            className="bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-700 hover:to-rose-700 text-white font-bold text-xs h-9 px-4 rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-          >
-            {createMultiRemedialMutation.isPending ? (
-              <>
-                <RotateCw size={14} className="animate-spin" />
-                <span>Menerbitkan Sesi Remedial Akbar...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles size={14} />
-                <span>
-                  Aktifkan Sesi Remedial ({selectedSiswaIds.length} Siswa, {activeSelectedKelasIds.length} Rombel)
-                </span>
-              </>
-            )}
-          </Button>
-        </div>
+          </>
+        )}
       </form>
     </Modal>
   );
