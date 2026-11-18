@@ -46,4 +46,28 @@ export class CbtSettingsController {
       return sendError(reply, 400, error.message || 'Gagal menghapus event CBT', error);
     }
   }
+
+  static async getNudgeHistory(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const result = await CbtSettingsService.getNudgeHistory(tenant_id);
+      return sendResponse(reply, 200, true, 'Riwayat colek CBT berhasil diambil', result);
+    } catch (error: any) {
+      return sendError(reply, 500, error.message || 'Gagal mengambil riwayat colek CBT', error);
+    }
+  }
+
+  static async recordNudge(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { target_key, sender_name } = req.body || {};
+      if (!target_key) {
+        return sendError(reply, 400, 'Parameter target_key wajib dilampirkan');
+      }
+      const result = await CbtSettingsService.recordNudge(tenant_id, target_key, sender_name);
+      return sendResponse(reply, 200, true, 'Riwayat colek CBT berhasil dicatat', result);
+    } catch (error: any) {
+      return sendError(reply, 400, error.message || 'Gagal mencatat riwayat colek CBT', error);
+    }
+  }
 }

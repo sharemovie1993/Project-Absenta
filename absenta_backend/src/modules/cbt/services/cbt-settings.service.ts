@@ -31,6 +31,7 @@ export interface CbtTpEventsSummary {
 
 const CBT_CONFIG_KEY = 'CBT_EVENTS_CONFIG';
 const CBT_ACTIVE_KEY = 'CBT_ACTIVE_EVENT_ID';
+const CBT_NUDGE_HISTORY_KEY = 'CBT_NUDGE_HISTORY';
 
 export class CbtSettingsService {
   private static async setConfig(tenantId: string, key: string, value: string) {
@@ -342,5 +343,40 @@ export class CbtSettingsService {
     await this.setConfig(tenantId, CBT_CONFIG_KEY, JSON.stringify(allEvents));
 
     return { success: true, message: 'Event CBT berhasil dihapus' };
+  }
+
+  // ── SINKRONISASI RIWAYAT COLEK WHATSAPP MULTI-DEVICE ──
+  static async getNudgeHistory(tenantId: string): Promise<Record<string, { sent_at: string; sent_by: string }>> {
+    const configRow = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: CBT_NUDGE_HISTORY_KEY },
+    });
+
+    if (!configRow?.value) return {};
+
+    try {
+      const parsed = JSON.parse(configRow.value);
+      return typeof parsed === 'object' && parsed !== null ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  static async recordNudge(
+    tenantId: string,
+    targetKey: string,
+    senderName: string
+  ): Promise<Record<string, { sent_at: string; sent_by: string }>> {
+    if (!targetKey) {
+      throw new Error('target_key wajib disertakan');
+    }
+
+    const currentHistory = await this.getNudgeHistory(tenantId);
+    currentHistory[targetKey] = {
+      sent_at: new Date().toISOString(),
+      sent_by: senderName || 'Panitia CBT',
+    };
+
+    await this.setConfig(tenantId, CBT_NUDGE_HISTORY_KEY, JSON.stringify(currentHistory));
+    return currentHistory;
   }
 }

@@ -48,6 +48,7 @@ export const cbtQueryKeys = {
         : ([...cbtQueryKeys.all, 'peserta-list', jadwalId] as const)
       : ([...cbtQueryKeys.all, 'peserta-list'] as const),
   myExams: () => [...cbtQueryKeys.all, 'my-exams'] as const,
+  nudgeHistory: () => [...cbtQueryKeys.all, 'nudge-history'] as const,
 };
 
 // ─── API Client ─────────────────────────────────────────────────────────────
@@ -407,5 +408,21 @@ export const cbtApi = {
   deleteEvent: async (eventId: string) => {
     const res = await api.delete(`/cbt/settings/events/${eventId}`);
     return res.data;
+  },
+
+  // ==========================================
+  // 6. RIWAYAT COLEK WHATSAPP (MULTI-DEVICE SYNC)
+  // ==========================================
+  getNudgeHistory: async () => {
+    const res = await api.get('/cbt/settings/nudge-history');
+    return (res.data?.data || {}) as Record<string, { sent_at: string; sent_by: string }>;
+  },
+
+  recordNudge: async (targetKey: string, senderName?: string) => {
+    const res = await api.post('/cbt/settings/nudge-history', {
+      target_key: targetKey,
+      sender_name: senderName,
+    });
+    return (res.data?.data || {}) as Record<string, { sent_at: string; sent_by: string }>;
   },
 };

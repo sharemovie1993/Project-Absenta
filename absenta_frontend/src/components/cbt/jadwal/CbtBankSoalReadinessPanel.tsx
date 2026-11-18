@@ -29,6 +29,7 @@ import {
   getAllMgmpSharedMap,
   getNudgeHistory,
   recordNudge,
+  syncNudgeHistoryFromServer,
 } from './cbtMgmpHelper';
 import { CbtReadinessTeacherTable } from './CbtReadinessTeacherTable';
 import { CbtReadinessPaketTable } from './CbtReadinessPaketTable';
@@ -73,6 +74,20 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [nudgeTick, setNudgeTick] = useState<number>(Date.now());
+
+  // ── 0. Sinkronisasi Riwayat Colek WhatsApp Multi-Device (Server DB) ──
+  const { data: serverNudgeHistory } = useQuery({
+    queryKey: cbtQueryKeys.nudgeHistory(),
+    queryFn: () => cbtApi.getNudgeHistory(),
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
+
+  useEffect(() => {
+    if (serverNudgeHistory) {
+      syncNudgeHistoryFromServer(serverNudgeHistory, tenantId);
+    }
+  }, [serverNudgeHistory, tenantId]);
 
   useEffect(() => {
     if (targetTingkat && targetTingkat.length === 1) {

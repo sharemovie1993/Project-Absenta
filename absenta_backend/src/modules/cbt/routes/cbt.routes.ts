@@ -225,4 +225,12 @@ export async function cbtRoutes(fastify: any) {
   fastify.delete('/settings/events/:id', {
     preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtSettingsController.deleteEvent);
+
+  fastify.get('/settings/nudge-history', {
+    preHandler: [requireCapability('cbt.jadwal.view', cbtGuruExempt), determineDataScope()],
+  }, CbtSettingsController.getNudgeHistory);
+
+  fastify.post('/settings/nudge-history', {
+    preHandler: [requireCapability('cbt.jadwal.view', cbtGuruExempt), determineDataScope()],
+  }, CbtSettingsController.recordNudge);
 }

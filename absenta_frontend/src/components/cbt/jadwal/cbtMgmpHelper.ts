@@ -7,6 +7,7 @@
  */
 
 import type { CbtBankSoal } from '@/types/cbt.types';
+import { cbtApi } from '@/api/cbt.api';
 
 export interface CbtNudgeMeta {
   sent_at: string;
@@ -151,6 +152,36 @@ export function getNudgeHistory(tenantId = 'default'): Record<string, CbtNudgeMe
   }
 }
 
+export function syncNudgeHistoryFromServer(
+  serverData: Record<string, CbtNudgeMeta>,
+  tenantId = 'default'
+): Record<string, CbtNudgeMeta> {
+  try {
+    const local = getNudgeHistory(tenantId);
+    const merged = { ...local };
+
+    Object.entries(serverData || {}).forEach(([key, sMeta]) => {
+      const lMeta = local[key];
+      if (!lMeta) {
+        merged[key] = sMeta;
+      } else {
+        const sTime = new Date(sMeta.sent_at).getTime();
+        const lTime = new Date(lMeta.sent_at).getTime();
+        if (sTime > lTime) {
+          merged[key] = sMeta;
+        }
+      }
+    });
+
+    localStorage.setItem(`${NUDGE_STORAGE_PREFIX}${tenantId}`, JSON.stringify(merged));
+    window.dispatchEvent(new CustomEvent('cbt-nudge-updated', { detail: { merged } }));
+    return merged;
+  } catch (e) {
+    console.error('Failed to sync CBT nudge history from server:', e);
+    return getNudgeHistory(tenantId);
+  }
+}
+
 export function recordNudge(targetKey: string, senderName: string, tenantId = 'default'): void {
   try {
     const history = getNudgeHistory(tenantId);
@@ -160,6 +191,11 @@ export function recordNudge(targetKey: string, senderName: string, tenantId = 'd
     };
     localStorage.setItem(`${NUDGE_STORAGE_PREFIX}${tenantId}`, JSON.stringify(history));
     window.dispatchEvent(new CustomEvent('cbt-nudge-updated', { detail: { targetKey, meta: history[targetKey] } }));
+
+    // Simpan ke database server backend secara asinkron (multi-device sync)
+    cbtApi.recordNudge(targetKey, senderName).catch((err) => {
+      console.warn('Background sync CBT nudge to server failed:', err);
+    });
   } catch (e) {
     console.error('Failed to record CBT nudge:', e);
   }
