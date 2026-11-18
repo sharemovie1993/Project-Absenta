@@ -19,6 +19,7 @@ import {
 import Modal from '@/components/ui/Modal';
 import { Button, Input, Alert, AlertTitle, AlertDescription } from '@/components/ui';
 import { Loader } from '@/components/ui/Loader';
+import { cn } from '@/lib/utils';
 import {
   getDailyBriefingPreview,
   triggerDailyBriefingSend,
