@@ -3,11 +3,12 @@
  * Implementasi pengumpul data laporan harian eksekutif untuk Kepala Sekolah.
  *
  * Mengagregasi data makro seluruh divisi:
- * 1. Kesiswaan (Kehadiran siswa, Gerbang keterlambatan, Izin keluar piket)
- * 2. Kurikulum & Guru (Kehadiran guru, Sesi KBM berjalan, Jurnal KBM terisi, Inval)
- * 3. Wali Kelas & Rombel (Kelas dengan perhatian khusus / alpa tertinggi)
- * 4. BP/BK (Konseling & atensi siswa hari ini)
- * 5. Hubin & PKL (Kehadiran siswa magang di DUDI)
+ * 1. Early Warning & Radar Atensi (Siswa alpa berturut-turut, izin keluar piket)
+ * 2. Kesiswaan (Kehadiran siswa, Tren vs kemarin, Gerbang keterlambatan, Rombel apresiasi 100%)
+ * 3. Kurikulum & Guru (Kehadiran guru, Guru berhalangan & Inval, Sesi KBM, Jurnal KBM terisi)
+ * 4. Wali Kelas & Rombel (Rombel alpa terbanyak vs 100% hadir)
+ * 5. BP/BK (Konseling & pembinaan siswa hari ini)
+ * 6. Hubin & PKL (Kehadiran siswa magang di DUDI)
  */
 
 import { prisma } from '@/utils/prisma';
@@ -63,7 +64,7 @@ export class KepsekBriefingCollector implements IBriefingCollector {
     const sekolahNama = sekolahData?.nama || tenant?.name || 'Sekolah';
     const targetName = sekolahData?.kepala_sekolah || 'Bapak/Ibu Kepala Sekolah';
 
-    // ── 2. Kesiswaan: Kehadiran Siswa ──────────────────────────────────────────
+    // ── 2. Kesiswaan: Kehadiran Siswa Hari Ini ──────────────────────────────────
     let totalSiswaAktif = 0;
     let siswaHadir = 0;
     let siswaSakit = 0;
@@ -99,6 +100,30 @@ export class KepsekBriefingCollector implements IBriefingCollector {
     const persentaseSiswa = totalSiswaAktif > 0
       ? Math.round((siswaHadir / totalSiswaAktif) * 100)
       : (siswaHadir > 0 ? 100 : 0);
+
+    // ── 2.1 Perhitungan Tren Kehadiran Siswa vs Kemarin ────────────────────────
+    let kemarinHadir = 0;
+    try {
+      const prevDate = new Date(dateObj);
+      prevDate.setDate(prevDate.getDate() - 1);
+      const prevDateStr = prevDate.toISOString().slice(0, 10);
+      const { startUTC: prevStartUTC, endUTC: prevEndUTC } = getTenantDayRangeUTC(prevDateStr, tz);
+
+      const prevStats = await prisma.absenSiswa.groupBy({
+        by: ['status'],
+        where: {
+          tenant_id: tenantId,
+          created_at: { gte: prevStartUTC, lte: prevEndUTC },
+        },
+        _count: { id: true },
+      });
+      for (const p of prevStats) {
+        if ((p.status || '').toUpperCase() === 'HADIR') kemarinHadir += p._count.id;
+      }
+    } catch {}
+
+    const kemarinKehadiranPct = totalSiswaAktif > 0 ? Math.round((kemarinHadir / totalSiswaAktif) * 100) : null;
+    const kehadiranDeltaPct = kemarinKehadiranPct !== null ? Math.round((persentaseSiswa - kemarinKehadiranPct) * 10) / 10 : null;
 
     // Kedisiplinan: Gerbang & Piket
     let siswaTerlambat = 0;
@@ -181,30 +206,151 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       ? Math.round((sesiKbmTerlaksana / totalSesiKbm) * 100)
       : 100;
 
-    // ── 4. Wali Kelas: Rombel dengan Alpa Terbanyak ───────────────────────────
-    let topRombelAlpa: Array<{ kelasNama: string; alpaCount: number }> = [];
+    // ── 3.1 Guru Berhalangan Hadir & Status Inval ──────────────────────────────
+    let guruBerhalanganItems: Array<{ nama: string; status: string; catatan?: string; isInval: boolean }> = [];
     try {
-      const alpaByKelas = await prisma.absenSiswa.groupBy({
-        by: ['kelas_nama_snapshot'],
+      const absGuruList = await prisma.absenGuru.findMany({
+        where: {
+          tenant_id: tenantId,
+          status: { not: 'HADIR' },
+          created_at: { gte: startUTC, lte: endUTC },
+        },
+        include: {
+          Guru: { select: { nama_guru: true } },
+          SesiAbsensi: { select: { is_delegasi: true } },
+        },
+        take: 6,
+      });
+
+      guruBerhalanganItems = absGuruList.map(ag => ({
+        nama: ag.Guru?.nama_guru || 'Guru',
+        status: ag.status,
+        catatan: ag.catatan || undefined,
+        isInval: Boolean(ag.SesiAbsensi?.is_delegasi),
+      }));
+    } catch {}
+
+    // ── 4. Early Warning System: Siswa Alpa Berturut-turut ─────────────────────
+    let consecutiveAlpaItems: Array<{ nama: string; kelas: string; count: number }> = [];
+    try {
+      const todayAlpaRecords = await prisma.absenSiswa.findMany({
         where: {
           tenant_id: tenantId,
           status: 'ALPA',
           created_at: { gte: startUTC, lte: endUTC },
         },
+        select: {
+          siswa_id: true,
+          kelas_nama_snapshot: true,
+          Siswa: { select: { nama_siswa: true } },
+          SiswaAkademik: { select: { siswa: { select: { nama_siswa: true } } } },
+        },
+        take: 15,
+      });
+
+      const sevenDaysAgo = new Date(startUTC);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      for (const rec of todayAlpaRecords) {
+        if (!rec.siswa_id) continue;
+        const pastAlpa = await prisma.absenSiswa.count({
+          where: {
+            tenant_id: tenantId,
+            siswa_id: rec.siswa_id,
+            status: 'ALPA',
+            created_at: { gte: sevenDaysAgo, lt: startUTC },
+          },
+        });
+        const totalAlpaRecent = pastAlpa + 1;
+        if (totalAlpaRecent >= 2) {
+          const studentName = rec.Siswa?.nama_siswa || rec.SiswaAkademik?.siswa?.nama_siswa || 'Siswa';
+          consecutiveAlpaItems.push({
+            nama: studentName,
+            kelas: rec.kelas_nama_snapshot || 'Kelas',
+            count: totalAlpaRecent,
+          });
+        }
+      }
+      consecutiveAlpaItems.sort((a, b) => b.count - a.count);
+    } catch (err) {
+      console.warn('[Briefing:EarlyWarning] Error checking consecutive alpa:', err);
+    }
+
+    // ── 4.1 Siswa Izin Keluar Sekolah (Buku Piket) ─────────────────────────────
+    let izinKeluarItems: Array<{ nama: string; kelas: string; alasan: string; status: string; jamKeluar: string; jamKembali?: string }> = [];
+    try {
+      const ikList = await prisma.izinKeluarSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          created_at: { gte: startUTC, lte: endUTC },
+        },
+        include: {
+          SiswaAkademik: {
+            include: {
+              siswa: { select: { nama_siswa: true } },
+              kelas: { select: { nama_kelas: true } },
+            },
+          },
+        },
+        take: 5,
+        orderBy: { jam_keluar: 'desc' },
+      });
+
+      izinKeluarItems = ikList.map(ik => {
+        const jamK = ik.jam_keluar ? new Date(ik.jam_keluar).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: tz }) : '-';
+        const jamB = ik.jam_kembali ? new Date(ik.jam_kembali).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: tz }) : undefined;
+        return {
+          nama: ik.SiswaAkademik?.siswa?.nama_siswa || 'Siswa',
+          kelas: ik.SiswaAkademik?.kelas?.nama_kelas || 'Kelas',
+          alasan: ik.alasan,
+          status: ik.status === 'KEMBALI' ? 'Sudah Kembali' : 'Masih di Luar',
+          jamKeluar: jamK,
+          jamKembali: jamB,
+        };
+      });
+    } catch {}
+
+    // ── 5. Wali Kelas: Rombel dengan Alpa Terbanyak vs Kehadiran 100% ──────────
+    let topRombelAlpa: Array<{ kelasNama: string; alpaCount: number }> = [];
+    let rombelSempurna: string[] = [];
+
+    try {
+      const kelasGroup = await prisma.absenSiswa.groupBy({
+        by: ['kelas_nama_snapshot', 'status'],
+        where: {
+          tenant_id: tenantId,
+          created_at: { gte: startUTC, lte: endUTC },
+        },
         _count: { id: true },
       });
 
-      topRombelAlpa = alpaByKelas
-        .filter(k => k.kelas_nama_snapshot && k._count.id > 0)
-        .map(k => ({
-          kelasNama: k.kelas_nama_snapshot as string,
-          alpaCount: k._count.id,
-        }))
-        .sort((a, b) => b.alpaCount - a.alpaCount)
-        .slice(0, 4);
+      const mapKelas = new Map<string, { hadir: number; alpa: number; sakitIzin: number }>();
+      for (const kg of kelasGroup) {
+        const kName = kg.kelas_nama_snapshot;
+        if (!kName) continue;
+        if (!mapKelas.has(kName)) mapKelas.set(kName, { hadir: 0, alpa: 0, sakitIzin: 0 });
+        const obj = mapKelas.get(kName)!;
+        const st = (kg.status || '').toUpperCase();
+        if (st === 'HADIR') obj.hadir += kg._count.id;
+        else if (st === 'ALPA') obj.alpa += kg._count.id;
+        else obj.sakitIzin += kg._count.id;
+      }
+
+      mapKelas.forEach((val, kName) => {
+        if (val.hadir > 0 && val.alpa === 0 && val.sakitIzin === 0) {
+          rombelSempurna.push(kName);
+        }
+        if (val.alpa > 0) {
+          topRombelAlpa.push({ kelasNama: kName, alpaCount: val.alpa });
+        }
+      });
+
+      topRombelAlpa.sort((a, b) => b.alpaCount - a.alpaCount);
+      topRombelAlpa = topRombelAlpa.slice(0, 4);
+      rombelSempurna = rombelSempurna.slice(0, 4);
     } catch {}
 
-    // ── 5. BP/BK & Pembinaan ──────────────────────────────────────────────────
+    // ── 6. BP/BK & Pembinaan ──────────────────────────────────────────────────
     let bpbkItems: Array<{ title: string; note: string; status: string }> = [];
     try {
       const konselingList = await prisma.konselingSiswa.findMany({
@@ -228,7 +374,7 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       }));
     } catch {}
 
-    // ── 6. Hubin & PKL Industri ───────────────────────────────────────────────
+    // ── 7. Hubin & PKL Industri ───────────────────────────────────────────────
     let totalSiswaPklAktif = 0;
     let siswaPklHadir = 0;
     let siswaPklKendala = 0;
@@ -255,13 +401,27 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       }
     } catch {}
 
-    // ── 7. Komposisi Metrics Utama (Bento Grid Header) ────────────────────────
+    // ── 8. Indeks Kesehatan Sekolah (Traffic Light Status) ─────────────────────
+    const healthScore = Math.round(persentaseSiswa * 0.45 + persentaseGuru * 0.35 + persentaseJurnal * 0.20);
+    const statusBadge = {
+      score: healthScore,
+      label: healthScore >= 90 ? 'Sekolah Kondusif' : (healthScore >= 75 ? 'Perlu Atensi' : 'Butuh Intervensi'),
+      variant: (healthScore >= 90 ? 'success' : (healthScore >= 75 ? 'warning' : 'danger')) as 'success' | 'warning' | 'danger',
+    };
+
+    // ── 9. Komposisi Metrics Utama (Bento Grid Header) ────────────────────────
+    let siswaSub = `${siswaHadir.toLocaleString('id-ID')} dari ${totalSiswaAktif.toLocaleString('id-ID')} Siswa`;
+    if (kehadiranDeltaPct !== null) {
+      const deltaSign = kehadiranDeltaPct >= 0 ? '+' : '';
+      siswaSub += ` (${deltaSign}${kehadiranDeltaPct}% vs kemarin)`;
+    }
+
     const metrics: BriefingMetricItem[] = [
       {
         id: 'presensi_siswa',
         label: 'Kehadiran Siswa',
         value: `${persentaseSiswa}%`,
-        sub: `${siswaHadir.toLocaleString('id-ID')} dari ${totalSiswaAktif.toLocaleString('id-ID')} Siswa`,
+        sub: siswaSub,
         status: persentaseSiswa >= 95 ? 'success' : (persentaseSiswa >= 85 ? 'warning' : 'danger'),
         icon: 'GraduationCap',
       },
@@ -302,87 +462,146 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       });
     }
 
-    // ── 8. Highlights (Poin-Poin Kritis 30 Detik) ─────────────────────────────
+    // ── 10. Highlights (Poin-Poin Kritis 30 Detik) ────────────────────────────
+    const trendText = kehadiranDeltaPct !== null
+      ? (kehadiranDeltaPct >= 0 ? `naik +${kehadiranDeltaPct}% dibanding kemarin` : `turun ${kehadiranDeltaPct}% dibanding kemarin`)
+      : 'data awal';
+
     const highlights: string[] = [
-      `Tingkat kehadiran siswa mencapai ${persentaseSiswa}% (${siswaHadir} Hadir, ${siswaSakit} Sakit, ${siswaIzin} Izin, ${siswaAlpa} Alpa).`,
-      `Sebanyak ${guruHadir} dari ${totalGuru} guru hadir aktif melaksanakan tugas KBM (${persentaseGuru}%).`,
+      `Tingkat kehadiran siswa mencapai ${persentaseSiswa}% (${trendText}).`,
+      `Status Operasional Sekolah: ${statusBadge.label} (Indeks Keterlaksanaan: ${statusBadge.score}%).`,
+      `Kehadiran guru aktif tercatat ${persentaseGuru}% dengan kepatuhan jurnal KBM ${persentaseJurnal}%.`,
     ];
 
-    if (totalSesiKbm > 0) {
-      highlights.push(`Sebanyak ${sesiKbmTerlaksana} dari ${totalSesiKbm} sesi KBM telah tuntas tercatat di sistem.`);
+    if (consecutiveAlpaItems.length > 0) {
+      highlights.push(`Radar Peringatan Dini: Terdeteksi ${consecutiveAlpaItems.length} siswa alpa berturut-turut yang butuh penanganan segera.`);
     }
 
     if (siswaTerlambat > 0) {
-      highlights.push(`Tercatat ${siswaTerlambat} siswa tiba terlambat di gerbang sekolah dan telah ditertibkan.`);
+      highlights.push(`Ketertiban Gerbang: ${siswaTerlambat} siswa tiba terlambat di gerbang dan telah ditertibkan.`);
     } else {
       highlights.push('Ketertiban gerbang optimal: 0 siswa terlambat hari ini.');
     }
 
-    if (topRombelAlpa.length > 0 && topRombelAlpa[0].alpaCount > 1) {
-      highlights.push(`Perhatian Rombel: ${topRombelAlpa[0].kelasNama} mencatat ${topRombelAlpa[0].alpaCount} siswa alpa.`);
+    if (rombelSempurna.length > 0) {
+      highlights.push(`Apresiasi Rombel: ${rombelSempurna.length} kelas berhasil mencapai kehadiran 100% hari ini (${rombelSempurna.slice(0, 2).join(', ')}).`);
     }
 
-    // ── 9. Sections per Divisi (Detail Lengkap) ──────────────────────────────
-    const sections: BriefingSection[] = [
-      // DIVISI 1: KESISWAAN
-      {
-        id: 'kesiswaan',
-        title: 'Divisi Kesiswaan & Ketertiban',
-        category: 'Kesiswaan',
-        badge: persentaseSiswa >= 95 ? 'Optimal' : 'Perlu Perhatian',
-        summary: `Presensi siswa berada pada angka ${persentaseSiswa}%. Terdapat ${siswaTerlambat} siswa terlambat di gerbang dan ${siswaIzinKeluar} siswa izin keluar via piket.`,
-        stats: [
-          { label: 'Siswa Hadir', value: siswaHadir },
-          { label: 'Sakit', value: siswaSakit },
-          { label: 'Izin', value: siswaIzin },
-          { label: 'Alpa / Tanpa Keterangan', value: siswaAlpa },
-          { label: 'Terlambat di Gerbang', value: siswaTerlambat },
-          { label: 'Izin Keluar Kampus', value: siswaIzinKeluar },
-        ],
-        items: topRombelAlpa.map(r => ({
-          title: `Rombel ${r.kelasNama}`,
-          subtitle: 'Perlu tindak lanjut pembinaan oleh Wali Kelas',
-          badge: `${r.alpaCount} Siswa Alpa`,
-          badgeColor: 'text-rose-600 bg-rose-50 dark:bg-rose-950/50',
-        })),
-      },
+    // ── 11. Sections per Divisi (Detail Lengkap) ─────────────────────────────
+    const sections: BriefingSection[] = [];
 
-      // DIVISI 2: KURIKULUM & KBM
-      {
-        id: 'kurikulum',
-        title: 'Divisi Kurikulum & KBM Guru',
-        category: 'Kurikulum',
-        badge: `${persentaseGuru}% Guru Hadir`,
-        summary: `Sebanyak ${guruHadir} guru aktif mengajar. Total sesi KBM terjadwal sebanyak ${totalSesiKbm} sesi dengan ${guruInvalCount} sesi ditangani guru inval/pengganti.`,
-        stats: [
-          { label: 'Guru Hadir', value: guruHadir },
-          { label: 'Guru Izin / Sakit', value: guruTidakHadir },
-          { label: 'Total Sesi KBM', value: totalSesiKbm },
-          { label: 'KBM Terlaksana', value: sesiKbmTerlaksana },
-          { label: 'Guru Inval / Pengganti', value: guruInvalCount },
-        ],
-      },
-
-      // DIVISI 3: BP/BK & PEMBINAAN
-      {
-        id: 'bpbk',
-        title: 'Divisi BP/BK & Bimbingan Konseling',
-        category: 'Bimbingan Siswa',
-        badge: bpbkItems.length > 0 ? `${bpbkItems.length} Catatan Hari Ini` : 'Kondusif',
-        summary: bpbkItems.length > 0
-          ? `Tercatat ${bpbkItems.length} sesi layanan konseling & pembinaan karakter siswa hari ini.`
-          : 'Situasi sekolah terpantau kondusif, tidak ada laporan insiden darurat atau pembinaan khusus hari ini.',
-        items: bpbkItems.map(b => ({
-          title: b.title,
-          subtitle: b.note,
-          status: b.status,
-          badge: b.status,
-          badgeColor: 'text-amber-600 bg-amber-50 dark:bg-amber-950/50',
+    // SEKSI 1: RADAR ATENSI & PERINGATAN DINI (Jika ada temuan)
+    if (consecutiveAlpaItems.length > 0 || izinKeluarItems.length > 0) {
+      const earlyWarningItems = [
+        ...consecutiveAlpaItems.map(c => ({
+          title: c.nama,
+          subtitle: `Rombel ${c.kelas} • ${c.count} Hari Berturut-turut Alpa`,
+          badge: `${c.count}x Alpa Berulang`,
+          badgeColor: 'text-rose-700 bg-rose-100 border border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800',
+          note: 'Rekomendasi tindakan: Pemanggilan orang tua / home visit oleh Wali Kelas & Guru BK.',
         })),
-      },
+        ...izinKeluarItems.map(ik => ({
+          title: `${ik.nama} (${ik.kelas})`,
+          subtitle: `Izin Keluar Pukul ${ik.jamKeluar} • Keperluan: ${ik.alasan}`,
+          badge: ik.status,
+          badgeColor: ik.status === 'Sudah Kembali'
+            ? 'text-blue-700 bg-blue-100 border border-blue-300 dark:bg-blue-950/80 dark:text-blue-300 dark:border-blue-800'
+            : 'text-amber-700 bg-amber-100 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800',
+          note: ik.jamKembali ? `Tercatat telah kembali pada pukul ${ik.jamKembali}` : 'Masih dalam masa izin / belum kembali ke sekolah.',
+        })),
+      ];
+
+      sections.push({
+        id: 'early_warning',
+        title: '🚨 Radar Atensi & Peringatan Dini Pimpinan',
+        category: 'Atensi Pimpinan',
+        badge: consecutiveAlpaItems.length > 0 ? `${consecutiveAlpaItems.length} Alpa Berulang` : 'Perhatian',
+        summary: `Deteksi dini siswa dengan ketidakhadiran berulang dan rekap pergerakan siswa keluar kampus via buku piket.`,
+        items: earlyWarningItems,
+      });
+    }
+
+    // SEKSI 2: KESISWAAN & KETERTIBAN
+    const kesiswaanItems = [
+      ...rombelSempurna.map(r => ({
+        title: `Rombel ${r}`,
+        subtitle: 'Tingkat Kehadiran Sempurna',
+        badge: '100% Hadir 🏆',
+        badgeColor: 'text-emerald-700 bg-emerald-100 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800',
+        note: 'Apresiasi kedisiplinan: Seluruh siswa terdata hadir lengkap tanpa catatan alpa/izin.',
+      })),
+      ...topRombelAlpa.map(r => ({
+        title: `Rombel ${r.kelasNama}`,
+        subtitle: 'Perlu atensi pembinaan oleh Wali Kelas',
+        badge: `${r.alpaCount} Siswa Alpa`,
+        badgeColor: 'text-rose-700 bg-rose-100 border border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800',
+        note: 'Rombongan belajar dengan tingkat alpa tertinggi hari ini.',
+      })),
     ];
 
-    // DIVISI 4: HUBIN & PKL (Jika sekolah SMK / ada siswa PKL)
+    sections.push({
+      id: 'kesiswaan',
+      title: 'Divisi Kesiswaan & Kedisiplinan Siswa',
+      category: 'Kesiswaan',
+      badge: persentaseSiswa >= 95 ? 'Optimal' : 'Perlu Perhatian',
+      summary: `Presensi siswa berada pada angka ${persentaseSiswa}%. Terdapat ${siswaTerlambat} siswa terlambat gerbang dan ${siswaIzinKeluar} siswa izin keluar via piket.`,
+      stats: [
+        { label: 'Siswa Hadir', value: siswaHadir },
+        { label: 'Sakit', value: siswaSakit },
+        { label: 'Izin', value: siswaIzin },
+        { label: 'Alpa / Tanpa Ket.', value: siswaAlpa },
+        { label: 'Terlambat Gerbang', value: siswaTerlambat },
+        { label: 'Izin Keluar Kampus', value: siswaIzinKeluar },
+      ],
+      items: kesiswaanItems,
+    });
+
+    // SEKSI 3: KURIKULUM & KBM GURU
+    const kurikulumItems = guruBerhalanganItems.map(g => ({
+      title: g.nama,
+      subtitle: `Status: ${g.status} ${g.catatan ? `• ${g.catatan}` : ''}`,
+      badge: g.isInval ? 'Inval Tertangani' : 'Mandiri / Tugas',
+      badgeColor: g.isInval
+        ? 'text-emerald-700 bg-emerald-100 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800'
+        : 'text-amber-700 bg-amber-100 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800',
+      note: g.isInval ? 'Jam KBM di kelas telah diisi oleh guru inval/piket.' : 'Perlu pemantauan keterlaksanaan materi modul ajar mandiri.',
+    }));
+
+    sections.push({
+      id: 'kurikulum',
+      title: 'Divisi Kurikulum & KBM Guru',
+      category: 'Kurikulum',
+      badge: `${persentaseGuru}% Guru Hadir`,
+      summary: `Sebanyak ${guruHadir} guru aktif mengajar. Total sesi KBM terjadwal sebanyak ${totalSesiKbm} sesi dengan kepatuhan jurnal ${persentaseJurnal}%.`,
+      stats: [
+        { label: 'Guru Hadir', value: guruHadir },
+        { label: 'Guru Izin / Sakit', value: guruTidakHadir },
+        { label: 'Total Sesi KBM', value: totalSesiKbm },
+        { label: 'KBM Terlaksana', value: sesiKbmTerlaksana },
+        { label: 'Guru Inval / Pengganti', value: guruInvalCount },
+      ],
+      items: kurikulumItems.length > 0 ? kurikulumItems : undefined,
+    });
+
+    // SEKSI 4: BP/BK & PEMBINAAN
+    sections.push({
+      id: 'bpbk',
+      title: 'Divisi BP/BK & Bimbingan Konseling',
+      category: 'Bimbingan Siswa',
+      badge: bpbkItems.length > 0 ? `${bpbkItems.length} Catatan Hari Ini` : 'Kondusif',
+      summary: bpbkItems.length > 0
+        ? `Tercatat ${bpbkItems.length} sesi layanan konseling & pembinaan karakter siswa hari ini.`
+        : 'Situasi pembinaan terpantau kondusif, tidak ada laporan insiden darurat atau pembinaan khusus hari ini.',
+      items: bpbkItems.map(b => ({
+        title: b.title,
+        subtitle: b.note,
+        status: b.status,
+        badge: b.status,
+        badgeColor: 'text-amber-700 bg-amber-100 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800',
+      })),
+    });
+
+    // SEKSI 5: HUBIN & PKL (Jika sekolah SMK / ada siswa PKL)
     if (totalSiswaPklAktif > 0) {
       sections.push({
         id: 'hubin_pkl',
@@ -398,11 +617,10 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       });
     }
 
-    const now = new Date();
-    const expires = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
 
     return {
-      title: 'Laporan Eksekutif Harian Kepala Sekolah',
+      title: 'Laporan Harian Eksekutif Sekolah',
       role: 'KEPALA_SEKOLAH',
       roleLabel: 'Kepala Sekolah',
       tenantId,
@@ -410,8 +628,13 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       targetName,
       tanggalStr,
       tanggalIso: dateStr,
-      generatedAt: now.toISOString(),
-      expiresAt: expires.toISOString(),
+      generatedAt: new Date().toISOString(),
+      expiresAt,
+      statusBadge,
+      trend: {
+        kehadiranDeltaPct,
+        kemarinKehadiranPct,
+      },
       metrics,
       highlights,
       sections,

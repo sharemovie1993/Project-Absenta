@@ -28,6 +28,7 @@ import { MobileAcademicList } from '../../../components/academic/shared/MobileAc
 // ─── Subkomponent yang diekstrak ──────────────────────────────────────────────
 import { RekapBulananKelasToolbar } from '../../../components/attendance/rekap/RekapBulananKelasToolbar';
 import { RekapPresensiPrintModal } from '../../../components/attendance/rekap/RekapPresensiPrintModal';
+import { HistoricalBackfillModal } from '../../../components/attendance/backfill/HistoricalBackfillModal';
 import { useRekapBulananKelasColumns } from '../../../components/attendance/rekap/rekapBulananKelasColumns';
 import type { RekapBulananKelasRow, ViewMode } from '../../../components/attendance/rekap/types';
 
@@ -101,6 +102,7 @@ export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: 
   const [bulan, setBulan] = useState<string>(toLocalMonth());
   const [viewMode, setViewMode] = useState<ViewMode>('MATRIX');
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isBackfillModalOpen, setIsBackfillModalOpen] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfFilename, setPdfFilename] = useState<string>('Laporan_Rekap_Presensi.pdf');
   const [isWaliKelasAutoFiltered, setIsWaliKelasAutoFiltered] = useState(false);
@@ -381,6 +383,7 @@ export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: 
           setViewMode={setViewMode}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
+          onOpenBackfill={() => setIsBackfillModalOpen(true)}
         />
       </div>
 
@@ -441,6 +444,20 @@ export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: 
           viewMode={viewMode}
           rows={rows}
           dayNumbers={dayNumbers}
+        />
+      )}
+
+      {/* MODAL BACKFILL PRESENSI HISTORIS SEMESTER GANJIL */}
+      {isBackfillModalOpen && (
+        <HistoricalBackfillModal
+          isOpen={isBackfillModalOpen}
+          onClose={() => setIsBackfillModalOpen(false)}
+          kelasId={kelasId}
+          kelasNama={(kelasOptions ?? []).find(k => k.value === kelasId)?.label?.replace(/⭐/g, '').trim() ?? 'Kelas'}
+          tahunPelajaranId={tahunPelajaranId}
+          onSuccess={() => {
+            fetchData();
+          }}
         />
       )}
     </SectionCard>

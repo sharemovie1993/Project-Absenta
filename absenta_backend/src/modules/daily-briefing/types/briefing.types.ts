@@ -71,6 +71,15 @@ export interface UniversalBriefingData {
   tanggalIso: string;   // format: "2026-11-18"
   generatedAt: string;
   expiresAt: string;
+  statusBadge?: {
+    label: string;
+    variant: 'success' | 'warning' | 'danger';
+    score: number;
+  };
+  trend?: {
+    kehadiranDeltaPct: number | null;
+    kemarinKehadiranPct: number | null;
+  };
   metrics: BriefingMetricItem[];
   highlights: string[];
   sections: BriefingSection[];

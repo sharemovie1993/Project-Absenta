@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { Button, Input } from '../../ui';
-import { FileText, Printer } from 'lucide-react';
+import { FileText, Printer, UploadCloud } from 'lucide-react';
 import type { DropdownOption } from '../../../api/dropdown.api';
 import type { ViewMode } from './types';
 
@@ -27,6 +27,7 @@ interface RekapBulananKelasToolbarProps {
   // Actions
   onExportExcel: () => void;
   onExportPdf: () => void;
+  onOpenBackfill?: () => void;
 }
 
 export const ViewModeSwitcher = ({
@@ -84,10 +85,22 @@ export const RekapBulananKelasToolbar = React.memo(function RekapBulananKelasToo
   setViewMode,
   onExportExcel,
   onExportPdf,
+  onOpenBackfill,
 }: RekapBulananKelasToolbarProps) {
 
   const exportButtons = (
     <>
+      {onOpenBackfill && (
+        <Button
+          onClick={onOpenBackfill}
+          variant="outline"
+          size="sm"
+          className="h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest px-3 border-indigo-200 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+          title="Inisialisasi & Backfill Presensi Semester Ganjil"
+        >
+          <UploadCloud className="w-3.5 h-3.5 mr-1.5" /> Backfill Ganjil
+        </Button>
+      )}
       <Button
         onClick={onExportExcel}
         variant="outline"
@@ -193,27 +206,33 @@ export const RekapBulananKelasToolbar = React.memo(function RekapBulananKelasToo
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-black uppercase tracking-widest text-transparent select-none ml-1 hidden sm:block">&nbsp;</label>
+      <div className="lg:col-span-2 flex flex-wrap items-center gap-2 pt-0 sm:pt-5">
+        {onOpenBackfill && (
+          <Button
+            onClick={onOpenBackfill}
+            variant="outline"
+            size="sm"
+            className="h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest px-3 border-indigo-200 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+            title="Inisialisasi & Backfill Presensi Semester Ganjil"
+          >
+            <UploadCloud className="w-3.5 h-3.5 mr-1.5" /> Backfill Ganjil
+          </Button>
+        )}
         <Button
           onClick={onExportExcel}
           variant="outline"
           size="sm"
-          className="h-10 w-full rounded-xl font-bold text-[10px] uppercase tracking-widest px-4 border-slate-200 dark:border-slate-800"
+          className="h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest px-3.5 border-slate-200 dark:border-slate-800"
         >
-          <FileText className="w-3.5 h-3.5 mr-2" /> Export Excel
+          <FileText className="w-3.5 h-3.5 mr-1.5" /> Export Excel
         </Button>
-      </div>
-
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-black uppercase tracking-widest text-transparent select-none ml-1 hidden sm:block">&nbsp;</label>
         <Button
           onClick={onExportPdf}
           variant="outline"
           size="sm"
-          className="h-10 w-full rounded-xl font-bold text-[10px] uppercase tracking-widest px-4 border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+          className="h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest px-3.5 border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
         >
-          <Printer className="w-3.5 h-3.5 mr-2" /> Cetak PDF
+          <Printer className="w-3.5 h-3.5 mr-1.5" /> Cetak PDF
         </Button>
       </div>
     </div>

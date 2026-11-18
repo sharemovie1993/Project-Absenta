@@ -56,6 +56,10 @@ export default async function attendancePlugin(fastify: any) {
     const { pembinaKegiatanEskulRoutes } = await import('./pembina-kegiatan-eskul/pembina-kegiatan-eskul.routes');
     await subFastify.register(pembinaKegiatanEskulRoutes, { prefix: '/pembina-kegiatan-eskul' });
 
+    // 14. Historical Backfill Attendance Routes
+    const { historicalBackfillRoutes } = await import('./backfill/routes/historical-backfill.routes');
+    await subFastify.register(historicalBackfillRoutes, { prefix: '/backfill' });
+
 
     subFastify.post('/session', {
       handler: async (request: any, reply: any) => {

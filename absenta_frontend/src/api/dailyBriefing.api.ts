@@ -46,6 +46,15 @@ export interface UniversalBriefingData {
   tanggalIso: string;
   generatedAt: string;
   expiresAt: string;
+  statusBadge?: {
+    label: string;
+    variant: 'success' | 'warning' | 'danger';
+    score: number;
+  };
+  trend?: {
+    kehadiranDeltaPct: number | null;
+    kemarinKehadiranPct: number | null;
+  };
   metrics: BriefingMetricItem[];
   highlights: string[];
   sections: BriefingSection[];
