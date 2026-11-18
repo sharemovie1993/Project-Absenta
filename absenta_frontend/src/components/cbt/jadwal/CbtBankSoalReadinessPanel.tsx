@@ -32,7 +32,7 @@ import {
 } from './cbtMgmpHelper';
 import { CbtReadinessTeacherTable } from './CbtReadinessTeacherTable';
 import { CbtReadinessPaketTable } from './CbtReadinessPaketTable';
-import { buildClassSubjectMatrix } from './cbtClassSubjectMatrixHelper';
+import { buildClassSubjectMatrix, MatrixCellData } from './cbtClassSubjectMatrixHelper';
 import { CbtClassSubjectMatrixTable } from './CbtClassSubjectMatrixTable';
 import toast from 'react-hot-toast';
 
@@ -499,16 +499,35 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
       rawGuruMapel: guruMapelRes?.data || [],
       bankList,
       tingkat: matrixSelectedTingkat,
+      guruPhoneMap,
     });
-  }, [guruMapelRes?.data, bankList, matrixSelectedTingkat]);
+  }, [guruMapelRes?.data, bankList, matrixSelectedTingkat, guruPhoneMap]);
 
-  const handleCreateForMatrixCell = (mapelId: string, cellTingkat: number, guruId?: string, _jurusan?: string) => {
-    setSelectedBankToEdit(null);
-    setDefaultMapelForCreate(mapelId);
-    setDefaultGuruForCreate(guruId);
-    const romanTingkat = cellTingkat === 11 ? 'XI' : cellTingkat === 12 ? 'XII' : 'X';
-    setDefaultTingkatForCreate(romanTingkat);
-    setIsFormModalOpen(true);
+  const handleNudgeForMatrixCell = (cell: MatrixCellData) => {
+    const rawHp = cell.guruPengampuPhone || (cell.guruPengampuId ? guruPhoneMap.get(cell.guruPengampuId) : '');
+    const cleanHp = rawHp ? rawHp.replace(/[^0-9]/g, '').replace(/^0/, '62') : '';
+    const teacherName = cell.guruPengampu || 'Bapak/Ibu Guru';
+    const mapelName = cell.mapelName;
+    const kelasName = cell.kelasName;
+    const tingkatStr = `Tingkat ${formatTingkatRomawi(cell.tingkat)}`;
+    const senderName = user?.full_name || (user as any)?.nama || 'Panitia CBT';
+
+    const msg = `Halo Bapak/Ibu ${teacherName},\n\nMengingatkan persiapan Asesmen Ujian CBT untuk mata pelajaran *${mapelName}* di rombel *${kelasName}* (${tingkatStr}) yang saat ini belum memiliki bank soal di sistem meja panitia.\nMohon kesediaannya untuk segera menyiapkan dan mengunggah naskah butir soal agar proses penjadwalan ujian dapat berjalan lancar.\n\nTerima kasih atas kerja samanya.\n— Panitia CBT (${senderName})`;
+
+    if (!cleanHp) {
+      toast.error(`Nomor WhatsApp untuk ${teacherName} belum terdaftar di data guru. Membuka tautan umum WhatsApp...`);
+    } else {
+      toast.success(`Membuka WhatsApp untuk ${teacherName} (${cleanHp})`);
+    }
+
+    const waUrl = cleanHp ? `https://wa.me/${cleanHp}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, '_blank');
+
+    if (cell.guruPengampuId) {
+      const targetKey = cell.targetId || `${cell.guruPengampuId}_${cell.mapelId}_${cell.tingkat}`;
+      recordNudge(targetKey, senderName, tenantId);
+      setNudgeTick(Date.now());
+    }
   };
 
   return (
@@ -641,24 +660,6 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
                 </Button>
               )}
 
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSelectedBankToEdit(null);
-                  setDefaultMapelForCreate(undefined);
-                  setDefaultGuruForCreate(undefined);
-                  const firstTingkat = targetTingkat && targetTingkat.length > 0 ? (targetTingkat[0] === 11 ? 'XI' : targetTingkat[0] === 12 ? 'XII' : 'X') : undefined;
-                  setDefaultTingkatForCreate(firstTingkat);
-                  setIsFormModalOpen(true);
-                }}
-                className="text-xs h-7 px-2 font-bold border-indigo-300 text-indigo-700 bg-white hover:bg-indigo-50 cursor-pointer shadow-2xs"
-              >
-                <Plus size={11} className="mr-1" />
-                <span>Buat</span>
-              </Button>
-
               {onProceedToNextPhase && (
                 <Button
                   type="button"
@@ -682,7 +683,6 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           items={guruBelumList}
           mode="BELUM"
           onNudgeWhatsApp={handleNudgeWhatsApp}
-          onCreateForTarget={handleCreateForTarget}
           onPeriksaButir={(bank) => {
             setSelectedBankForDetail(bank);
             setIsDetailModalOpen(true);
@@ -699,7 +699,6 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           items={guruSudahList}
           mode="SUDAH"
           onNudgeWhatsApp={handleNudgeWhatsApp}
-          onCreateForTarget={handleCreateForTarget}
           onPeriksaButir={(bank) => {
             setSelectedBankForDetail(bank);
             setIsDetailModalOpen(true);
@@ -718,13 +717,6 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             setSelectedBankForDetail(bank);
             setIsDetailModalOpen(true);
           }}
-          onCreateForMapel={(paket) => {
-            setSelectedBankToEdit(null);
-            setDefaultMapelForCreate(paket.mapel_id);
-            const romanTingkat = paket.tingkat === 11 ? 'XI' : paket.tingkat === 12 ? 'XII' : 'X';
-            setDefaultTingkatForCreate(romanTingkat);
-            setIsFormModalOpen(true);
-          }}
         />
       )}
 
@@ -736,7 +728,8 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             setSelectedBankForDetail(bank);
             setIsDetailModalOpen(true);
           }}
-          onCreateForCell={handleCreateForMatrixCell}
+          onNudgeWhatsApp={handleNudgeForMatrixCell}
+          tenantId={tenantId}
         />
       )}
 

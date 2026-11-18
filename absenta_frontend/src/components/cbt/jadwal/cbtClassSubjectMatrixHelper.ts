@@ -19,9 +19,11 @@ export interface MatrixCellData {
   soalCount?: number;
   guruPembuat?: string;
   isJurusanSpecific?: boolean;
-  // Jika MISSING
+  // Guru Pengampu Rombel Kelas (Berlaku untuk COVERED maupun MISSING)
   guruPengampu?: string;
   guruPengampuId?: string;
+  guruPengampuPhone?: string;
+  targetId?: string;
 }
 
 export interface MatrixClassColumn {
@@ -66,8 +68,9 @@ export function buildClassSubjectMatrix(params: {
   rawGuruMapel: GuruMapel[];
   bankList: CbtBankSoal[];
   tingkat: number; // 10, 11, atau 12
+  guruPhoneMap?: Map<string, string>;
 }): ClassSubjectMatrixResult {
-  const { rawGuruMapel, bankList, tingkat } = params;
+  const { rawGuruMapel, bankList, tingkat, guruPhoneMap } = params;
 
   // 1. Kumpulkan seluruh kelas yang sah pada tingkat ini dari rawGuruMapel
   const classMap = new Map<string, { id: string; name: string; tingkat: number; jurusanKode?: string; jurusanId?: string }>();
@@ -344,6 +347,9 @@ export function buildClassSubjectMatrix(params: {
 
       const resolvedBank = specificJurusanBank || generalBank || teacherDirectBank;
 
+      const phone = assignment?.guruId ? guruPhoneMap?.get(assignment.guruId) : undefined;
+      const targetKey = assignment?.guruId ? `${assignment.guruId}_${sub.id}_${tingkat}` : undefined;
+
       if (resolvedBank) {
         totalCellsCovered++;
         const count = resolvedBank.jumlah_soal || resolvedBank._count?.Soal || 0;
@@ -361,6 +367,10 @@ export function buildClassSubjectMatrix(params: {
           soalCount: count,
           guruPembuat: resolvedBank.Guru?.nama_guru || 'Guru Penyusun',
           isJurusanSpecific: Boolean(specificJurusanBank),
+          guruPengampu: assignment.guruName,
+          guruPengampuId: assignment.guruId,
+          guruPengampuPhone: phone,
+          targetId: targetKey,
         });
       } else {
         cellMap.set(cellKey, {
@@ -373,6 +383,8 @@ export function buildClassSubjectMatrix(params: {
           jurusanKode: cls.jurusanKode,
           guruPengampu: assignment.guruName,
           guruPengampuId: assignment.guruId,
+          guruPengampuPhone: phone,
+          targetId: targetKey,
         });
       }
     });

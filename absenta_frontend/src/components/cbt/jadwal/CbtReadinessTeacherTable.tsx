@@ -20,7 +20,7 @@ interface CbtReadinessTeacherTableProps {
   items: AuditedTargetItem[];
   mode: 'BELUM' | 'SUDAH';
   onNudgeWhatsApp: (target: AuditedTargetItem) => void;
-  onCreateForTarget: (target: AuditedTargetItem) => void;
+  onCreateForTarget?: (target: AuditedTargetItem) => void;
   onPeriksaButir: (bank: CbtBankSoal) => void;
   onEditBank: (bank: CbtBankSoal) => void;
 }
@@ -159,21 +159,23 @@ export const CbtReadinessTeacherTable: React.FC<CbtReadinessTeacherTableProps> =
                       </button>
                     )}
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (target.bankSoal) {
-                          onPeriksaButir(target.bankSoal);
-                        } else {
-                          onCreateForTarget(target);
-                        }
-                      }}
-                      aria-label={`Tindakan untuk ${target.nama_guru}`}
-                      className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer ml-auto"
-                    >
-                      <Plus size={13} />
-                      <span>{target.bankSoal ? 'Isi' : 'Buat'}</span>
-                    </button>
+                    {onCreateForTarget && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (target.bankSoal) {
+                            onPeriksaButir(target.bankSoal);
+                          } else {
+                            onCreateForTarget(target);
+                          }
+                        }}
+                        aria-label={`Tindakan untuk ${target.nama_guru}`}
+                        className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer ml-auto"
+                      >
+                        <Plus size={13} />
+                        <span>{target.bankSoal ? 'Isi' : 'Buat'}</span>
+                      </button>
+                    )}
                   </>
                 ) : (
                   <>
@@ -351,22 +353,24 @@ export const CbtReadinessTeacherTable: React.FC<CbtReadinessTeacherTableProps> =
                           </button>
                         )}
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (target.bankSoal) {
-                              onPeriksaButir(target.bankSoal);
-                            } else {
-                              onCreateForTarget(target);
-                            }
-                          }}
-                          aria-label={`Tindakan untuk ${target.nama_guru}`}
-                          className="py-1 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
-                          title={target.bankSoal ? 'Input naskah butir soal' : 'Buatkan bank soal untuk guru ini'}
-                        >
-                          <Plus size={12} />
-                          <span>{target.bankSoal ? 'Isi' : 'Buat'}</span>
-                        </button>
+                        {onCreateForTarget && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (target.bankSoal) {
+                                onPeriksaButir(target.bankSoal);
+                              } else {
+                                onCreateForTarget(target);
+                              }
+                            }}
+                            aria-label={`Tindakan untuk ${target.nama_guru}`}
+                            className="py-1 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                            title={target.bankSoal ? 'Input naskah butir soal' : 'Buatkan bank soal untuk guru ini'}
+                          >
+                            <Plus size={12} />
+                            <span>{target.bankSoal ? 'Isi' : 'Buat'}</span>
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="flex items-center justify-end gap-1.5">

@@ -8,7 +8,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 interface CbtReadinessPaketTableProps {
   items: MapelPaketTeoriItem[];
   onPeriksaButir: (bank: CbtBankSoal) => void;
-  onCreateForMapel: (paket: MapelPaketTeoriItem) => void;
+  onCreateForMapel?: (paket: MapelPaketTeoriItem) => void;
 }
 
 export const CbtReadinessPaketTable: React.FC<CbtReadinessPaketTableProps> = ({
@@ -79,7 +79,7 @@ export const CbtReadinessPaketTable: React.FC<CbtReadinessPaketTableProps> = ({
                   <Eye size={13} />
                   <span>Periksa Butir Soal</span>
                 </button>
-              ) : (
+              ) : onCreateForMapel ? (
                 <button
                   type="button"
                   onClick={() => onCreateForMapel(paket)}
@@ -89,6 +89,10 @@ export const CbtReadinessPaketTable: React.FC<CbtReadinessPaketTableProps> = ({
                   <Plus size={13} />
                   <span>+ Buatkan Soal</span>
                 </button>
+              ) : (
+                <span className="text-xs text-rose-500 font-semibold italic">
+                  Menunggu Unggahan Guru
+                </span>
               )}
             </div>
           </div>
@@ -150,7 +154,7 @@ export const CbtReadinessPaketTable: React.FC<CbtReadinessPaketTableProps> = ({
                     >
                       Periksa
                     </button>
-                  ) : (
+                  ) : onCreateForMapel ? (
                     <button
                       type="button"
                       onClick={() => onCreateForMapel(paket)}
@@ -159,6 +163,10 @@ export const CbtReadinessPaketTable: React.FC<CbtReadinessPaketTableProps> = ({
                     >
                       + Buatkan
                     </button>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 italic">
+                      Menunggu Guru
+                    </span>
                   )}
                 </td>
               </tr>

@@ -2,40 +2,59 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   CheckCircle2,
   AlertCircle,
-  Plus,
-  Eye,
   FileQuestion,
-  GraduationCap,
   Layers,
-  Sparkles,
   Maximize2,
   Minimize2,
   StretchHorizontal,
   LayoutGrid,
+  MessageSquare,
+  Phone,
+  User,
+  Clock,
+  ShieldAlert,
 } from 'lucide-react';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import type { ClassSubjectMatrixResult, MatrixCellData } from './cbtClassSubjectMatrixHelper';
 import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
+import { getNudgeHistory, formatNudgeMinutesAgo } from './cbtMgmpHelper';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
 interface CbtClassSubjectMatrixTableProps {
   matrixResult: ClassSubjectMatrixResult;
   searchQuery?: string;
   onPeriksaButir?: (bank: CbtBankSoal) => void;
-  onCreateForCell?: (mapelId: string, tingkat: number, guruId?: string, jurusan?: string) => void;
+  onNudgeWhatsApp?: (cell: MatrixCellData) => void;
+  tenantId?: string;
 }
 
 export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProps> = ({
   matrixResult,
   searchQuery = '',
   onPeriksaButir,
-  onCreateForCell,
+  onNudgeWhatsApp,
+  tenantId = 'default',
 }) => {
   const { classes, subjects, cellMap, totalCellsCovered, totalCellsRequired, overallPercentage } = matrixResult;
 
   // View mode: 'fit' (Muat 20 kelas dalam 1 layar tanpa horizontal scroll) atau 'detailed' (Lebar + scroll horizontal)
   const [viewMode, setViewMode] = useState<'fit' | 'detailed'>('fit');
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Modal info sel yang belum ada soal & aksi Colek WA
+  const [selectedMissingCell, setSelectedMissingCell] = useState<MatrixCellData | null>(null);
+  const [nudgeTick, setNudgeTick] = useState<number>(Date.now());
+
+  // Listen event update colek WA
+  useEffect(() => {
+    const handleUpdate = () => setNudgeTick(Date.now());
+    window.addEventListener('cbt-nudge-updated', handleUpdate);
+    return () => window.removeEventListener('cbt-nudge-updated', handleUpdate);
+  }, []);
+
+  const nudgeHistory = useMemo(() => getNudgeHistory(tenantId), [tenantId, nudgeTick]);
 
   // Keyboard shortcut ESC to exit fullscreen
   useEffect(() => {
@@ -74,6 +93,12 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
   }
 
   const isFit = viewMode === 'fit';
+
+  // Info untuk sel missing yang sedang dibuka di modal
+  const selectedNudgeTargetKey = selectedMissingCell?.targetId || (selectedMissingCell?.guruPengampuId ? `${selectedMissingCell.guruPengampuId}_${selectedMissingCell.mapelId}_${selectedMissingCell.tingkat}` : '');
+  const selectedNudgeMeta = selectedNudgeTargetKey ? nudgeHistory[selectedNudgeTargetKey] : undefined;
+  const selectedHasNudged = Boolean(selectedNudgeMeta?.sent_at);
+  const selectedNudgeTimeAgo = selectedHasNudged ? formatNudgeMinutesAgo(selectedNudgeMeta?.sent_at) : null;
 
   return (
     <div
@@ -153,13 +178,13 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
 
           {/* Legend */}
           <div className="hidden xl:flex items-center gap-3 text-[11px] text-slate-600 dark:text-slate-400 pl-2 border-l border-slate-200 dark:border-slate-700">
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1" title="Klik sel untuk melihat butir soal">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-              <span>Ter-cover</span>
+              <span>Ter-cover (Lihat Soal)</span>
             </span>
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1" title="Klik sel untuk info guru & Colek WA">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
-              <span>Belum Ada</span>
+              <span>Belum Ada (Colek WA)</span>
             </span>
             <span className="flex items-center gap-1">
               <span className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700 inline-block" />
@@ -352,9 +377,17 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
                         );
                       }
 
-                      // Status COVERED
+                      // Evaluasi status Nudge jika belum ada bank soal
+                      const cellNudgeTargetKey = cell.targetId || (cell.guruPengampuId ? `${cell.guruPengampuId}_${cell.mapelId}_${cell.tingkat}` : '');
+                      const cellNudgeMeta = cellNudgeTargetKey ? nudgeHistory[cellNudgeTargetKey] : undefined;
+                      const cellHasNudged = Boolean(cellNudgeMeta?.sent_at);
+                      const cellNudgeTimeAgo = cellHasNudged ? formatNudgeMinutesAgo(cellNudgeMeta?.sent_at) : null;
+
+                      // Status COVERED: Sel Hijau (Klik untuk Lihat Soal)
                       if (cell.status === 'COVERED') {
-                        // Tampilan Fit / 1 Layar: Chip Kompak
+                        const coveredTitle = `Mata Pelajaran: ${sub.mapelName}\nKelas: ${cls.kelasName}\nJudul Bank Soal: ${cell.bankTitle || '-'}\nPenyusun: ${cell.guruPembuat || '-'}\nJumlah: ${cell.soalCount || 0} Soal\n(Klik untuk lihat/periksa butir soal)`;
+
+                        // Tampilan Fit / 1 Layar
                         if (isFit) {
                           return (
                             <td
@@ -364,7 +397,7 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
                               <button
                                 type="button"
                                 onClick={() => cell.bankSoal && onPeriksaButir && onPeriksaButir(cell.bankSoal)}
-                                title={`Mata Pelajaran: ${sub.mapelName}\nKelas: ${cls.kelasName}\nJudul Bank Soal: ${cell.bankTitle}\nPenyusun: ${cell.guruPembuat}\nJumlah: ${cell.soalCount} Soal\n(Klik untuk periksa butir soal)`}
+                                title={coveredTitle}
                                 className={cn(
                                   'w-full h-8 rounded-md border text-center transition-all cursor-pointer group flex flex-col items-center justify-center gap-0.5 shadow-2xs',
                                   cell.isJurusanSpecific
@@ -386,7 +419,7 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
                           );
                         }
 
-                        // Tampilan Normal: Kartu Lebar
+                        // Tampilan Normal / Detailed
                         return (
                           <td
                             key={cls.kelasId}
@@ -395,7 +428,7 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
                             <button
                               type="button"
                               onClick={() => cell.bankSoal && onPeriksaButir && onPeriksaButir(cell.bankSoal)}
-                              title={`Judul: ${cell.bankTitle}\nPenyusun: ${cell.guruPembuat}\nKlik untuk periksa butir soal`}
+                              title={coveredTitle}
                               className={cn(
                                 'w-full p-1.5 rounded-lg border text-left transition-all cursor-pointer group flex flex-col gap-0.5',
                                 cell.isJurusanSpecific
@@ -422,81 +455,84 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
                         );
                       }
 
-                      // Status MISSING
-                      // Tampilan Fit / 1 Layar: Chip Kompak + Tombol Buat Cepat
+                      // Status MISSING: Sel Merah Non-Create (Cukup Monitoring & Colek WA)
+                      const missingTitle = `Belum Ada Bank Soal\nMata Pelajaran: ${sub.mapelName}\nKelas: ${cls.kelasName}\nGuru Pengampu: ${cell.guruPengampu || '-'}\n${cellHasNudged ? `(Sudah di-WA ${cellNudgeTimeAgo})` : '(Klik untuk info guru pengampu & aksi Colek WA)'}`;
+
+                      // Tampilan Fit / 1 Layar
                       if (isFit) {
                         return (
                           <td
                             key={cls.kelasId}
                             className="p-1 border-r border-slate-100 dark:border-slate-800/80 text-center"
                           >
-                            <div
-                              title={`Belum Ada Bank Soal\nMata Pelajaran: ${sub.mapelName}\nKelas: ${cls.kelasName}\nGuru Pengampu: ${cell.guruPengampu || '-'}\n(Klik tombol Buat untuk mengisi bank soal)`}
-                              className="w-full h-8 rounded-md border border-rose-200 dark:border-rose-900/60 bg-rose-50/70 dark:bg-rose-950/30 flex items-center justify-center p-0.5"
-                            >
-                              {onCreateForCell ? (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    onCreateForCell(
-                                      cell.mapelId,
-                                      cell.tingkat,
-                                      cell.guruPengampuId,
-                                      cell.jurusanKode
-                                    )
-                                  }
-                                  className="w-full h-full rounded bg-rose-600 hover:bg-rose-700 text-white font-bold text-[9px] flex items-center justify-center gap-0.5 transition-colors cursor-pointer shadow-2xs"
-                                  title={`Buat Bank Soal: ${sub.mapelName} (${cls.kelasName})`}
-                                >
-                                  <Plus size={10} className="shrink-0" />
-                                  <span>Buat</span>
-                                </button>
-                              ) : (
-                                <span className="text-[8.5px] font-bold text-rose-500">Kosong</span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedMissingCell(cell)}
+                              title={missingTitle}
+                              className={cn(
+                                'w-full h-8 rounded-md border text-center transition-all cursor-pointer group flex flex-col items-center justify-center gap-0.5 shadow-2xs',
+                                cellHasNudged
+                                  ? 'bg-amber-50/80 hover:bg-amber-100/90 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200'
+                                  : 'bg-rose-50/80 hover:bg-rose-100/90 dark:bg-rose-950/40 border-rose-300 dark:border-rose-900/70 text-rose-800 dark:text-rose-200'
                               )}
-                            </div>
+                            >
+                              <div className="flex items-center justify-center gap-0.5">
+                                <AlertCircle size={10} className={cellHasNudged ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'} />
+                                <span className="font-extrabold text-[9px] leading-none">Belum</span>
+                              </div>
+                              {cellHasNudged ? (
+                                <span className="text-[7.5px] font-bold px-1 rounded-full bg-amber-200/90 dark:bg-amber-800 text-amber-900 dark:text-amber-100 leading-none">
+                                  Di-WA
+                                </span>
+                              ) : (
+                                <span className="text-[7.5px] font-medium text-rose-600/90 dark:text-rose-300/90 leading-none truncate max-w-[40px]">
+                                  {cell.guruPengampu ? cell.guruPengampu.split(' ')[0] : 'Colek'}
+                                </span>
+                              )}
+                            </button>
                           </td>
                         );
                       }
 
-                      // Tampilan Normal: Kartu Lebar
+                      // Tampilan Normal / Detailed
                       return (
                         <td
                           key={cls.kelasId}
                           className="p-1.5 border-r border-slate-100 dark:border-slate-800/80 text-center"
                         >
-                          <div className="w-full p-1.5 rounded-lg border border-rose-200/90 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/30 text-left flex flex-col gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedMissingCell(cell)}
+                            title={missingTitle}
+                            className={cn(
+                              'w-full p-1.5 rounded-lg border text-left flex flex-col gap-1 transition-all cursor-pointer group',
+                              cellHasNudged
+                                ? 'bg-amber-50/70 hover:bg-amber-100/80 dark:bg-amber-950/30 border-amber-200/90 dark:border-amber-900/60'
+                                : 'bg-rose-50/70 hover:bg-rose-100/80 dark:bg-rose-950/30 border-rose-200/90 dark:border-rose-900/60'
+                            )}
+                          >
                             <div className="flex items-center justify-between gap-1">
-                              <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-rose-600 dark:text-rose-400">
+                              <span className={cn('inline-flex items-center gap-1 text-[9.5px] font-bold', cellHasNudged ? 'text-amber-700 dark:text-amber-300' : 'text-rose-600 dark:text-rose-400')}>
                                 <AlertCircle size={10} className="shrink-0" />
                                 <span>Belum Ada</span>
                               </span>
-                              {onCreateForCell && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    onCreateForCell(
-                                      cell.mapelId,
-                                      cell.tingkat,
-                                      cell.guruPengampuId,
-                                      cell.jurusanKode
-                                    )
-                                  }
-                                  className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-600 hover:bg-rose-700 text-white cursor-pointer transition-colors shadow-2xs shrink-0 flex items-center gap-0.5"
-                                  title={`Buat Bank Soal untuk ${sub.mapelName} (${cls.kelasName})`}
-                                >
-                                  <Plus size={9} />
-                                  <span>Buat</span>
-                                </button>
+                              {cellHasNudged ? (
+                                <span className="text-[8px] font-bold px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
+                                  Di-WA
+                                </span>
+                              ) : (
+                                <span className="text-[8.5px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                                  <MessageSquare size={9} />
+                                  <span>Colek</span>
+                                </span>
                               )}
                             </div>
                             <span
-                              className="text-[9px] text-rose-700/80 dark:text-rose-300/80 truncate block"
-                              title={`Guru Pengampu: ${cell.guruPengampu || '-'}`}
+                              className="text-[9px] text-slate-600 dark:text-slate-300 truncate block group-hover:text-slate-900 dark:group-hover:text-white"
                             >
                               {cell.guruPengampu || '-'}
                             </span>
-                          </div>
+                          </button>
                         </td>
                       );
                     })}
@@ -576,6 +612,116 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
           </table>
         </div>
       </div>
+
+      {/* ── Modal Interaktif: Kesiapan Soal, Info Guru Pengampu & Aksi Colek WA ── */}
+      {selectedMissingCell && (
+        <Modal
+          isOpen={!!selectedMissingCell}
+          onClose={() => setSelectedMissingCell(null)}
+          title="Kesiapan Bank Soal & Colek Guru"
+          size="md"
+        >
+          <div className="p-5 space-y-4 text-xs">
+            {/* Banner Status */}
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-start gap-2.5">
+              <ShieldAlert size={18} className="text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <div className="font-bold text-rose-800 dark:text-rose-200 text-xs">
+                  Bank Soal Belum Tersedia
+                </div>
+                <p className="text-[11px] text-rose-700/90 dark:text-rose-300/90 leading-relaxed">
+                  Sesuai kebijakan pengawasan CBT, meja panitia bertugas memonitor dan memeriksa butir soal. Silakan ingatkan guru pengampu melalui WhatsApp agar naskah segera disiapkan.
+                </p>
+              </div>
+            </div>
+
+            {/* Rincian Rombel & Mapel */}
+            <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl">
+              <div>
+                <span className="text-[10px] text-slate-400 block font-medium">Mata Pelajaran</span>
+                <span className="font-bold text-slate-800 dark:text-slate-100 text-xs block truncate" title={selectedMissingCell.mapelName}>
+                  {selectedMissingCell.mapelName}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 block font-medium">Rombel Kelas</span>
+                <span className="font-bold text-slate-800 dark:text-slate-100 text-xs block">
+                  {selectedMissingCell.kelasName}
+                </span>
+              </div>
+            </div>
+
+            {/* Informasi Guru Pengampu */}
+            <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <User size={12} />
+                  <span>Guru Pengampu Kelas</span>
+                </span>
+                {selectedHasNudged ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                    <Clock size={10} />
+                    <span>Di-WA ({selectedNudgeTimeAgo})</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-400">Belum dicolek</span>
+                )}
+              </div>
+
+              <div>
+                <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100">
+                  {selectedMissingCell.guruPengampu || 'Belum Terploting di Kurikulum'}
+                </h4>
+                {selectedMissingCell.guruPengampuPhone ? (
+                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-1 mt-0.5">
+                    <Phone size={11} />
+                    <span>{selectedMissingCell.guruPengampuPhone}</span>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-slate-400 italic mt-0.5">
+                    (Nomor WhatsApp belum terdaftar di master data guru)
+                  </div>
+                )}
+              </div>
+
+              {selectedHasNudged && selectedNudgeMeta && (
+                <div className="text-[10.5px] text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  Pengingat terakhir dikirim oleh <span className="font-semibold text-slate-700 dark:text-slate-200">{selectedNudgeMeta.sent_by}</span> pada {new Date(selectedNudgeMeta.sent_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB.
+                </div>
+              )}
+            </div>
+
+            {/* Aksi Tombol */}
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedMissingCell(null)}
+                className="text-xs h-8 px-3 font-medium"
+              >
+                Tutup
+              </Button>
+
+              {onNudgeWhatsApp && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    onNudgeWhatsApp(selectedMissingCell);
+                    setSelectedMissingCell(null);
+                  }}
+                  className="text-xs h-8 px-3.5 font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <MessageSquare size={13} />
+                  <span>{selectedHasNudged ? 'Colek Ulang WA' : 'Colek WhatsApp Guru'}</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
