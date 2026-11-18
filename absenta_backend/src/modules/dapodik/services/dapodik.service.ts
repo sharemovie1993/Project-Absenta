@@ -1161,14 +1161,39 @@ export class DapodikService {
         if (allowedFields.includes('tempat_lahir') && item.tempat_lahir !== undefined) {
           updateData.tempat_lahir = item.tempat_lahir || null;
         }
-        if (allowedFields.includes('tanggal_lahir') && item.tanggal_lahir) {
-          updateData.tanggal_lahir = new Date(item.tanggal_lahir);
+        if (allowedFields.includes('tanggal_lahir')) {
+          if (item.tanggal_lahir) {
+            const parsedDate = new Date(item.tanggal_lahir);
+            if (!isNaN(parsedDate.getTime())) {
+              updateData.tanggal_lahir = parsedDate;
+            }
+          } else {
+            updateData.tanggal_lahir = null;
+          }
         }
 
         // Pengecekan Eksplisit Kelas: Hanya diperbarui jika kelas_id eksplisit disertakan dalam allowedFields
-        const shouldUpdateKelas = allowedFields.includes('kelas_id') && Boolean(item.kelas_id);
-        if (shouldUpdateKelas) {
-          updateData.kelas_id = item.kelas_id;
+        let targetKelasId = item.kelas_id;
+        if (allowedFields.includes('kelas_id')) {
+          // Jika kelas_id kosong tetapi rombel Dapodik ada, resolve otomatis dari tabel Kelas
+          if (!targetKelasId && item.rombel) {
+            const cleanRombel = item.rombel.trim();
+            const matchedKelas = await prisma.kelas.findFirst({
+              where: {
+                tenant_id: tenantId,
+                nama_kelas: { equals: cleanRombel, mode: 'insensitive' },
+              },
+              select: { id: true },
+            });
+            if (matchedKelas) {
+              targetKelasId = matchedKelas.id;
+            }
+          }
+        }
+
+        const shouldUpdateKelas = allowedFields.includes('kelas_id') && Boolean(targetKelasId);
+        if (shouldUpdateKelas && targetKelasId) {
+          updateData.kelas_id = targetKelasId;
           if (targetTpId) updateData.tahun_pelajaran_id = targetTpId;
           if (targetSemId) updateData.semester_id = targetSemId;
         }
@@ -1184,7 +1209,7 @@ export class DapodikService {
         }
 
         // Jika kelas_id disertakan, sinkronkan juga rekam akademik aktif
-        if (shouldUpdateKelas && item.kelas_id && targetTpId && targetSemId) {
+        if (shouldUpdateKelas && targetKelasId && targetTpId && targetSemId) {
           try {
             await prisma.siswaAkademik.upsert({
               where: {
@@ -1195,12 +1220,12 @@ export class DapodikService {
                 },
               },
               update: {
-                kelas_id: item.kelas_id,
+                kelas_id: targetKelasId,
                 status: 'AKTIF',
               },
               create: {
                 siswa_id: item.absentaId,
-                kelas_id: item.kelas_id,
+                kelas_id: targetKelasId,
                 tahun_pelajaran_id: targetTpId,
                 semester_id: targetSemId,
                 status: 'AKTIF',

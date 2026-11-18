@@ -306,6 +306,9 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     onSuccess: (res) => {
       toast.success(res.message || 'Sinkronisasi berhasil diproses.');
       setSelectedStudentIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ['dapodik-student-comparison'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      queryClient.invalidateQueries({ queryKey: ['academic'] });
       refetchComparison();
     },
     onError: (err: any) => {
@@ -512,20 +515,46 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   };
 
   const handleExecuteFieldSync = (selectedFields: string[]) => {
-    const targets = fieldSyncTargetStudents.map((s) => ({
-      absentaId: s.absentaRaw.id,
-      nisn: s.dapodikRaw?.nisn || s.nisn,
-      nik: s.dapodikRaw?.nik || s.nik || undefined,
-      nis: s.dapodikRaw?.registrasi_peserta_didik?.nipd || s.nis || undefined,
-      nama: s.dapodikRaw?.nama || s.nama,
-      jenis_kelamin: s.dapodikRaw?.jenis_kelamin || s.jenis_kelamin,
-      tempat_lahir: s.dapodikRaw?.tempat_lahir || s.tempat_lahir || undefined,
-      tanggal_lahir: s.dapodikRaw?.tanggal_lahir || s.tanggal_lahir || undefined,
-      rombel: s.dapodikRaw?.nama_rombel || s.rombel || undefined,
-      kelas_id: s.absentaRaw?.kelas_id || undefined,
-    }));
+    if (!fieldSyncTargetStudents || fieldSyncTargetStudents.length === 0) {
+      toast.warning('Tidak ada siswa yang dipilih.');
+      return;
+    }
+
+    if (!selectedFields || selectedFields.length === 0) {
+      toast.warning('Pilih setidaknya satu kolom data yang ingin diperbarui.');
+      return;
+    }
+
+    const targets = fieldSyncTargetStudents
+      .filter((s) => Boolean(s.absentaRaw?.id || s.id))
+      .map((s) => {
+        const d = s.dapodikRaw;
+        const dNipd = d?.nipd || d?.registrasi_peserta_didik?.nipd;
+        const dNama = d?.nama || d?.nama_siswa;
+        const dRombel = d?.nama_rombel || d?.rombongan_belajar?.nama || d?.rombel;
+
+        return {
+          absentaId: s.absentaRaw?.id || s.id,
+          // Mengambil nilai resmi dari Dapodik secara presisi
+          nisn: (d?.nisn !== undefined && d?.nisn !== null && String(d.nisn).trim() !== '') ? String(d.nisn).trim() : (s.nisn || undefined),
+          nik: (d?.nik !== undefined && d?.nik !== null && String(d.nik).trim() !== '') ? String(d.nik).trim() : (s.nik || undefined),
+          nis: (dNipd !== undefined && dNipd !== null && String(dNipd).trim() !== '') ? String(dNipd).trim() : (s.nis || undefined),
+          nama: (dNama && String(dNama).trim() !== '') ? String(dNama).trim() : s.nama,
+          jenis_kelamin: (d?.jenis_kelamin && String(d.jenis_kelamin).trim() !== '') ? String(d.jenis_kelamin).trim() : s.jenis_kelamin,
+          tempat_lahir: (d?.tempat_lahir !== undefined && d?.tempat_lahir !== null && String(d.tempat_lahir).trim() !== '') ? String(d.tempat_lahir).trim() : (s.tempat_lahir || undefined),
+          tanggal_lahir: (d?.tanggal_lahir !== undefined && d?.tanggal_lahir !== null && String(d.tanggal_lahir).trim() !== '') ? String(d.tanggal_lahir).trim() : (s.tanggal_lahir || undefined),
+          rombel: (dRombel && String(dRombel).trim() !== '') ? String(dRombel).trim() : (s.rombel || undefined),
+          kelas_id: s.absentaRaw?.kelas_id || undefined,
+        };
+      });
+
+    if (targets.length === 0) {
+      toast.warning('Tidak ada siswa valid yang dapat diperbarui.');
+      return;
+    }
 
     setIsFieldSyncModalOpen(false);
+    toast.info(`Memproses sinkronisasi data Dapodik untuk ${targets.length} siswa...`);
     syncMutation.mutate({
       action: 'UPDATE_SELECTED',
       fields_to_update: selectedFields,

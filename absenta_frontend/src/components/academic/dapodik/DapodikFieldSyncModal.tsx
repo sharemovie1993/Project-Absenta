@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export interface DapodikFieldSyncModalProps {
   isOpen: boolean;
@@ -239,9 +240,12 @@ export const DapodikFieldSyncModal: React.FC<DapodikFieldSyncModalProps> = ({
 
   const isCustomMode = !isBirthOnly && !isBiodataExcludeClass && !isAllIncluded;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.MouseEvent | React.FormEvent) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
     if (activeFieldKeys.length === 0) {
+      toast.warning('Pilih setidaknya 1 kolom data untuk diperbarui.');
       return;
     }
     onConfirm(activeFieldKeys);
