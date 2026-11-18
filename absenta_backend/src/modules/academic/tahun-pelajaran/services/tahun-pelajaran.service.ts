@@ -282,6 +282,21 @@ export class TahunPelajaranService {
           is_active: false,
         },
       });
+
+      // Otomatis nonaktifkan seluruh penugasan struktural tahun lampau agar tidak bocor ke tahun ajaran baru
+      await prisma.organizationalAssignment.updateMany({
+        where: {
+          tenant_id: existingTahunPelajaran.tenant_id,
+          tahun_pelajaran_id: { not: tahunPelajaranId },
+          is_active: true,
+        },
+        data: {
+          is_active: false,
+          end_date: new Date(),
+        },
+      });
+
+      await cacheInvalidationService.invalidateStrukturTree(existingTahunPelajaran.tenant_id);
     }
 
     const tahunPelajaran = await prisma.tahunPelajaran.update({

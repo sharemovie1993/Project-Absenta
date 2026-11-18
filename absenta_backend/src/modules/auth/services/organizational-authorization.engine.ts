@@ -21,8 +21,14 @@ export class OrganizationalAuthorizationEngine {
     is_active: boolean;
     start_date: Date | null;
     end_date: Date | null;
+    tahun_pelajaran_id?: string | null;
+    TahunPelajaran?: { is_active: boolean } | null;
   }): boolean {
     if (!assignment.is_active) return false;
+    // Hardening: Jika penugasan struktural terikat pada Tahun Pelajaran, TP tersebut HARUS aktif
+    if (assignment.tahun_pelajaran_id && assignment.TahunPelajaran && !assignment.TahunPelajaran.is_active) {
+      return false;
+    }
     const now = new Date();
     if (assignment.start_date && assignment.start_date.getTime() > now.getTime()) return false;
     if (assignment.end_date && assignment.end_date.getTime() < now.getTime()) return false;
@@ -36,10 +42,11 @@ export class OrganizationalAuthorizationEngine {
         where: { user_id: userId },
         include: {
           Position: { select: { id: true, tenant_id: true, code: true, name: true, scope_type: true, unit_type: true } },
+          TahunPelajaran: { select: { id: true, is_active: true } },
         },
       });
 
-      // 2. Fetch Teaching Assignments (Based on Schedule)
+      // 2. Fetch Teaching Assignments (Based on Schedule di Tahun Pelajaran Aktif)
       const guru = await prisma.guru.findFirst({
         where: { user_id: userId },
         select: { id: true }
@@ -48,7 +55,10 @@ export class OrganizationalAuthorizationEngine {
       let teachingKelasIds: string[] = [];
       if (guru) {
         const schedules = await prisma.jadwalKBM.findMany({
-          where: { guru_id: guru.id },
+          where: {
+            guru_id: guru.id,
+            TahunPelajaran: { is_active: true },
+          },
           select: { kelas_id: true }
         });
         teachingKelasIds = Array.from(new Set(schedules.map(s => s.kelas_id)));
@@ -59,6 +69,8 @@ export class OrganizationalAuthorizationEngine {
           is_active: Boolean(a.is_active),
           start_date: a.start_date ?? null,
           end_date: a.end_date ?? null,
+          tahun_pelajaran_id: a.tahun_pelajaran_id ?? null,
+          TahunPelajaran: a.TahunPelajaran ?? null,
         })
       );
 

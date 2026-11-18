@@ -47,18 +47,35 @@ export async function getGuruMeQuery(userId: string, tenantId: string): Promise<
 
   const guru: any = enrichGuruWithUser(rawGuru);
 
-  // 2. Ambil semua OrganizationalAssignment aktif untuk user ini
+  // 2. Ambil semua OrganizationalAssignment aktif untuk user ini (hanya struktural tanpa TP atau terikat TP aktif)
   const assignments = await prisma.organizationalAssignment.findMany({
     where: {
       user_id: userId,
       tenant_id: tenantId,
       is_active: true,
-      OR: [
-        { end_date: null },
-        { end_date: { gte: new Date() } },
+      AND: [
+        {
+          OR: [
+            { end_date: null },
+            { end_date: { gte: new Date() } },
+          ],
+        },
+        {
+          OR: [
+            { tahun_pelajaran_id: null },
+            { TahunPelajaran: { is_active: true } },
+          ],
+        },
       ],
     },
     include: {
+      TahunPelajaran: {
+        select: {
+          id: true,
+          tahun: true,
+          is_active: true,
+        },
+      },
       Position: {
         select: {
           id: true,
@@ -94,7 +111,12 @@ export async function getGuruMeQuery(userId: string, tenantId: string): Promise<
     .filter(Boolean)
     .join(', ');
 
-  const waliKelasAssignment = assignments.find(a => (a.Position?.code === 'WALIKELAS' || a.Position?.code === 'WALI_KELAS') && a.Kelas);
+  const waliKelasAssignment = assignments.find(
+    a =>
+      (a.Position?.code === 'WALIKELAS' || a.Position?.code === 'WALI_KELAS') &&
+      a.Kelas &&
+      (!a.tahun_pelajaran_id || a.TahunPelajaran?.is_active === true)
+  );
   const waliKelasDi = waliKelasAssignment?.Kelas
     ? { id: waliKelasAssignment.Kelas.id, nama_kelas: waliKelasAssignment.Kelas.nama_kelas }
     : undefined;

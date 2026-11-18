@@ -72,6 +72,10 @@ export class WaliKelasService {
           is_active: true,
           kelas_id: { not: null },
           Position: { code: 'WALIKELAS' },
+          OR: [
+            { tahun_pelajaran_id: null },
+            { TahunPelajaran: { is_active: true } },
+          ],
         },
         include: {
           Kelas: { select: { nama_kelas: true, tingkat: true } },
@@ -87,6 +91,10 @@ export class WaliKelasService {
             is_active: true,
             kelas_id: { not: null },
             Position: { OR: [{ code: 'WALIKELAS' }, { name: { contains: 'Wali', mode: 'insensitive' } }] },
+            OR: [
+              { tahun_pelajaran_id: null },
+              { TahunPelajaran: { is_active: true } },
+            ],
           },
           include: {
             Kelas: { select: { nama_kelas: true, tingkat: true } },
@@ -175,7 +183,14 @@ export class WaliKelasService {
 
     if (!params?.include_inactive) whereClause.is_active = true;
     if (params?.kelas_id) whereClause.kelas_id = params.kelas_id;
-    if (params?.tahun_pelajaran_id) whereClause.tahun_pelajaran_id = params.tahun_pelajaran_id;
+    if (params?.tahun_pelajaran_id) {
+      whereClause.tahun_pelajaran_id = params.tahun_pelajaran_id;
+    } else if (!params?.include_inactive) {
+      whereClause.OR = [
+        { tahun_pelajaran_id: null },
+        { TahunPelajaran: { is_active: true } },
+      ];
+    }
 
     if (params?.guru_id) {
       const guru = await prisma.guru.findFirst({
@@ -326,7 +341,6 @@ export class WaliKelasService {
         tenant_id: tenantId,
         position_id: position.id,
         kelas_id: input.kelas_id,
-        ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {}),
         is_active: true,
       },
       select: { user_id: true }
@@ -349,14 +363,6 @@ export class WaliKelasService {
           position_id: position.id,
           kelas_id: input.kelas_id,
           is_active: true,
-          ...(tahunPelajaranId
-            ? {
-                OR: [
-                  { tahun_pelajaran_id: tahunPelajaranId },
-                  { tahun_pelajaran_id: null },
-                ],
-              }
-            : {}),
         },
         data: { is_active: false, end_date: new Date(), updated_at: new Date() },
       });
