@@ -73,7 +73,7 @@ export class DashboardActionHubService {
 
     // 2. Query seluruh modul secara paralel (Promise.allSettled)
     const results = await Promise.allSettled([
-      guruId ? this.detectKbmJournalDebts(tenantId, guruId, startOfDay, endOfDay) : Promise.resolve([]),
+      guruId ? this.detectKbmJournalDebts(tenantId, guruId, startOfDay, endOfDay, timeZone) : Promise.resolve([]),
       guruId ? this.detectPiketDuty(tenantId, guruId, dateStr, timeZone) : Promise.resolve([]),
       guruId ? this.detectUpacaraDuty(tenantId, guruId, startOfDay) : Promise.resolve([]),
       guruId ? this.detectPklTasks(tenantId, guruId) : Promise.resolve([]),
@@ -125,10 +125,11 @@ export class DashboardActionHubService {
     tenantId: string, 
     guruId: string, 
     startOfDay: Date, 
-    endOfDay: Date
+    endOfDay: Date,
+    timeZone?: string
   ): Promise<UnifiedActionItem[]> {
     try {
-      // Periksa sesi mengajar hari ini atau 2 hari ke belakang yang belum memiliki ProgresMateri
+      // Periksa sesi mengajar hari ini atau 2 hari ke belakang yang pernah dibuka/selesai tapi belum ada ProgresMateri
       const pastThreeDays = new Date(startOfDay.getTime() - (2 * 24 * 60 * 60 * 1000));
       
       const unjournaledSessions = await prisma.sesiAbsensi.findMany({
@@ -138,6 +139,7 @@ export class DashboardActionHubService {
             { guru_id: guruId },
             { guru_pelaksana_id: guruId }
           ],
+          status: { in: ['BERLANGSUNG', 'SELESAI'] },
           tanggal: { gte: pastThreeDays, lte: endOfDay },
           ProgresMateri: { is: null }
         },
@@ -146,32 +148,57 @@ export class DashboardActionHubService {
           Mapel: { select: { id: true, nama_mapel: true } }
         },
         orderBy: { tanggal: 'desc' },
-        take: 3
+        take: 5
       });
 
-      return unjournaledSessions.map(sesi => ({
-        id: `kbm_journal_${sesi.id}`,
-        division: 'KURIKULUM',
-        urgency: 'CRITICAL',
-        title: 'Hutang Jurnal KBM',
-        subtitle: `${sesi.Mapel?.nama_mapel || 'KBM'} • ${sesi.Kelas?.nama_kelas || 'Kelas'} (Slot ${sesi.slot_kbm || '-'})`,
-        badgeText: 'Perlu Diisi',
-        action: {
-          label: 'Isi Jurnal ➔',
-          type: 'MODAL',
-          target: 'JURNAL_KBM_MODAL',
-          payload: {
-            id: sesi.id,
-            kelas_nama: sesi.Kelas?.nama_kelas,
-            mapel_nama: sesi.Mapel?.nama_mapel,
-            kegiatan: `${sesi.Mapel?.nama_mapel || 'KBM'} di ${sesi.Kelas?.nama_kelas || 'Kelas'}`
-          }
-        },
-        sourceModule: {
-          table: 'SesiAbsensi',
-          entityId: sesi.id
+      return unjournaledSessions.map(sesi => {
+        const tgl = new Date(sesi.tanggal);
+        const tglStr = tgl.toLocaleDateString('id-ID', {
+          timeZone: timeZone || 'Asia/Jakarta',
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+        });
+
+        let timeLabel = '';
+        if (sesi.waktu_mulai) {
+          const wMulai = new Date(sesi.waktu_mulai).toLocaleTimeString('id-ID', {
+            timeZone: timeZone || 'Asia/Jakarta',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+          timeLabel = ` • ${wMulai} WIB`;
+        } else if (sesi.slot_kbm) {
+          timeLabel = ` • Slot ${sesi.slot_kbm}`;
         }
-      }));
+
+        const mapelName = sesi.Mapel?.nama_mapel || 'KBM';
+        const kelasName = sesi.Kelas?.nama_kelas || 'Kelas';
+
+        return {
+          id: `kbm_journal_${sesi.id}`,
+          division: 'KURIKULUM',
+          urgency: 'CRITICAL',
+          title: 'Hutang Jurnal KBM',
+          subtitle: `${mapelName} • ${kelasName} (${tglStr}${timeLabel})`,
+          badgeText: 'Perlu Diisi',
+          action: {
+            label: 'Isi Jurnal ➔',
+            type: 'MODAL',
+            target: 'JURNAL_KBM_MODAL',
+            payload: {
+              id: sesi.id,
+              kelas_nama: sesi.Kelas?.nama_kelas,
+              mapel_nama: sesi.Mapel?.nama_mapel,
+              kegiatan: `${mapelName} di ${kelasName} (${tglStr})`
+            }
+          },
+          sourceModule: {
+            table: 'SesiAbsensi',
+            entityId: sesi.id
+          }
+        };
+      });
     } catch (e) {
       return [];
     }
