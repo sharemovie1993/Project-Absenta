@@ -67,7 +67,7 @@ export async function bulkResetSiswaPasswordCommand(
   payload: BulkResetSiswaPasswordPayload
 ) {
   const { tenantId } = ctx;
-  const { mode, customPassword, targetScope, kelas_id, siswa_ids } = payload;
+  const { mode, customPassword } = payload;
 
   if (mode === 'CUSTOM' && (!customPassword || customPassword.trim().length < 6)) {
     throw new Error('Kata sandi kustom minimal 6 karakter.');

@@ -26,7 +26,7 @@ export default defineCronJob({
 
     try {
       const activeTenants = await prisma.tenant.findMany({
-        where: { is_active: true },
+        where: { status: 'ACTIVE' },
         select: { id: true, name: true },
       });
 

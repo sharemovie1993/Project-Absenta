@@ -3,11 +3,10 @@
  * Registrasi rute Fastify untuk Daily Briefing & Tokenized Reports.
  */
 
-import { FastifyInstance } from 'fastify';
 import { dailyBriefingController } from '../controllers/daily-briefing.controller';
 import { requireCapability } from '@/middlewares/requireCapability';
 
-export async function dailyBriefingRoutes(fastify: FastifyInstance) {
+export async function dailyBriefingRoutes(fastify: any) {
   // 1. Endpoint Publik Bebas Login (Token-Guarded via Query `?token=...`)
   fastify.get(
     '/daily-briefing',

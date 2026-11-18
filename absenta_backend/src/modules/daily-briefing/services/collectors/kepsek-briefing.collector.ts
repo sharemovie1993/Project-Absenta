@@ -55,12 +55,13 @@ export class KepsekBriefingCollector implements IBriefingCollector {
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
       include: {
-        Sekolah: true,
+        sekolah: true,
       },
     });
 
-    const sekolahNama = tenant?.Sekolah?.nama_sekolah || tenant?.name || 'Sekolah';
-    const targetName = tenant?.Sekolah?.kepala_sekolah || 'Bapak/Ibu Kepala Sekolah';
+    const sekolahData = (tenant as any)?.sekolah?.[0];
+    const sekolahNama = sekolahData?.nama || tenant?.name || 'Sekolah';
+    const targetName = sekolahData?.kepala_sekolah || 'Bapak/Ibu Kepala Sekolah';
 
     // ── 2. Kesiswaan: Kehadiran Siswa ──────────────────────────────────────────
     let totalSiswaAktif = 0;
@@ -213,16 +214,16 @@ export class KepsekBriefingCollector implements IBriefingCollector {
         },
         select: {
           id: true,
-          jenis_konseling: true,
-          ringkasan_masalah: true,
+          tipe: true,
+          masalah: true,
           status: true,
         },
         take: 3,
       });
 
       bpbkItems = konselingList.map(k => ({
-        title: k.jenis_konseling || 'Konseling Siswa',
-        note: k.ringkasan_masalah || 'Tindak lanjut pembinaan',
+        title: k.tipe ? `Konseling ${k.tipe}` : 'Konseling Siswa',
+        note: k.masalah || 'Tindak lanjut pembinaan',
         status: k.status || 'PROSES',
       }));
     } catch {}

@@ -79,12 +79,13 @@ export class DailyBriefingService {
    * Menemukan nomor WhatsApp Kepala Sekolah untuk suatu tenant
    */
   public async resolveKepsekPhoneNumber(tenantId: string): Promise<{ phone: string; name: string } | null> {
-    // 1. Cek UserPosition dengan kode KEPALA_SEKOLAH
+    // 1. Cek OrganizationalAssignment dengan kode KEPALA_SEKOLAH / KS
     try {
-      const kepsekPosition = await prisma.userPosition.findFirst({
+      const kepsekPosition = await prisma.organizationalAssignment.findFirst({
         where: {
+          tenant_id: tenantId,
+          is_active: true,
           Position: {
-            tenant_id: tenantId,
             code: { in: ['KEPALA_SEKOLAH', 'KEPSEK', 'HEADMASTER', 'KS'] },
           },
         },
@@ -93,20 +94,21 @@ export class DailyBriefingService {
         },
       });
 
-      if (kepsekPosition?.User?.phone) {
+      if (kepsekPosition?.User?.no_hp) {
         return {
-          phone: kepsekPosition.User.phone,
+          phone: kepsekPosition.User.no_hp,
           name: kepsekPosition.User.full_name || 'Kepala Sekolah',
         };
       }
     } catch {}
 
-    // 2. Cek User dengan role KEPALA_SEKOLAH
+    // 2. Cek User dengan nama / email kepala sekolah
     try {
       const kepsekUser = await prisma.user.findFirst({
         where: {
           tenant_id: tenantId,
-          role: { in: ['ADMIN', 'SUPERADMIN', 'GURU'] },
+          status: 'ACTIVE',
+          no_hp: { not: null },
           OR: [
             { full_name: { contains: 'Kepala Sekolah', mode: 'insensitive' } },
             { email: { contains: 'kepsek', mode: 'insensitive' } },
@@ -114,15 +116,15 @@ export class DailyBriefingService {
         },
       });
 
-      if (kepsekUser?.phone) {
+      if (kepsekUser?.no_hp) {
         return {
-          phone: kepsekUser.phone,
+          phone: kepsekUser.no_hp,
           name: kepsekUser.full_name || 'Kepala Sekolah',
         };
       }
     } catch {}
 
-    // 3. Cek Profil Sekolah (Sekolah.kepala_sekolah & no_telepon)
+    // 3. Cek Profil Sekolah (Sekolah.kepala_sekolah & telepon)
     try {
       const sekolah = await prisma.sekolah.findFirst({
         where: { tenant_id: tenantId },
@@ -137,7 +139,7 @@ export class DailyBriefingService {
           },
         });
 
-        const phone = matchedGuru?.no_hp || matchedGuru?.telepon || sekolah.no_telepon;
+        const phone = matchedGuru?.no_hp || sekolah.telepon;
         if (phone) {
           return {
             phone,
@@ -146,9 +148,9 @@ export class DailyBriefingService {
         }
       }
 
-      if (sekolah?.no_telepon) {
+      if (sekolah?.telepon) {
         return {
-          phone: sekolah.no_telepon,
+          phone: sekolah.telepon,
           name: sekolah.kepala_sekolah || 'Kepala Sekolah',
         };
       }

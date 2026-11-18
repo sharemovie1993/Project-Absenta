@@ -3,7 +3,6 @@
  * Controller endpoint untuk Daily Briefing & Tokenized Reports.
  */
 
-import { FastifyRequest, FastifyReply } from 'fastify';
 import { dailyBriefingService } from '../services/daily-briefing.service';
 import { BriefingRole } from '../types/briefing.types';
 
@@ -13,8 +12,8 @@ export class DailyBriefingController {
    * GET /reports/daily-briefing
    * Endpoint publik yang diakses menggunakan query parameter `?token=...`
    */
-  async getBriefingByToken(request: FastifyRequest, reply: FastifyReply) {
-    const { token } = request.query as { token?: string };
+  async getBriefingByToken(request: any, reply: any) {
+    const { token } = (request.query || {}) as { token?: string };
 
     if (!token) {
       return reply.status(400).send({
@@ -42,7 +41,7 @@ export class DailyBriefingController {
    * POST /reports/daily-briefing/trigger-send
    * Endpoint untuk memicu pengiriman pesan WhatsApp secara manual / tes
    */
-  async triggerSend(request: FastifyRequest, reply: FastifyReply) {
+  async triggerSend(request: any, reply: any) {
     const tenantId = (request as any).tenantId;
     const body = (request.body || {}) as {
       role?: BriefingRole;
@@ -78,7 +77,7 @@ export class DailyBriefingController {
    * GET /reports/daily-briefing/preview
    * Endpoint untuk melihat pratinjau data laporan langsung di dashboard
    */
-  async previewBriefing(request: FastifyRequest, reply: FastifyReply) {
+  async previewBriefing(request: any, reply: any) {
     const tenantId = (request as any).tenantId;
     const { role, tanggal } = request.query as { role?: BriefingRole; tanggal?: string };
 
