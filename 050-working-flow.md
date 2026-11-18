@@ -55,9 +55,10 @@ graph TD
 - Memprioritaskan keamanan tipe data dan validasi input.
 
 ### 🧪 Fase 3: Verifikasi & Kompilasi
-- Menjalankan kompilasi TypeScript (`npm run build`) untuk menjamin tidak ada error tipe data (*type-safety compile*).
-- Melakukan perbaikan segera jika kompilasi mengalami kendala.
-- **Git Commit & Push**: Setelah verifikasi kompilasi bersih tanpa error, wajib melakukan git commit secara deskriptif dan melakukan push ke remote repository.
+- **Aturan Beban Lokal (Zero Local Build Overhead)**: Komputer lokal pengembang memiliki keterbatasan RAM dan CPU. **DILARANG menjalankan `npm run build` berat di mesin lokal**.
+- Verifikasi tipe data lokal dibatasi pada pengecekan statis ringan (`npx tsc --noEmit`) atau pendelegasian pengujian ke server VPS staging.
+- **Git Commit & Push**: Lakukan atomic commit deskriptif (`feat:`, `fix:`, `refactor:`) dan push ke branch `main`.
+- **Verifikasi Kompilasi Staging (Safe Deploy)**: Jalankan `powershell .\deploy-safe.ps1` (atau klik `deploy-safe.bat`). Skrip otomatis menguji build di sandbox terisolasi `/var/www/project-absenta-staging` pada server VPS (`10.10.10.116`) sebelum mempromosikannya ke produksi secara Zero-Downtime. Jika ada error kompilasi, pipeline staging akan berhenti dan produksi tetap 100% aman.
 
 ### 📝 Fase 4: Pembaruan Dokumentasi
 - Menandai item tugas yang selesai dengan tanda `[x]` di `todo.md` modul terkait.

@@ -28,10 +28,10 @@ Dokumen ini adalah pedoman tetap (MANDATORY) untuk interaksi antara USER (Owner)
     - Hapus file -> `Remove-Item -Recurse -Force`.
     - Pemisah Perintah -> Gunakan `;` (titik koma), JANGAN gunakan `&&`. (Contoh: `step1 ; step2`).
 - **Self-Correction Policy**: Setiap kali Antigravity melakukan kesalahan teknis atau salah asumsi lingkungan, Antigravity wajib mencatatnya di dokumen ini sebagai aturan baru atau pembaruan agar tidak terulang kembali.
-- **Verifikasi Wajib**: Setiap perubahan kode yang mempengaruhi struktur atau routing **WAJIB** diverifikasi dengan `npm run build` sebelum dilaporkan ke USER.
-- **Auto-run Build**: Antigravity diberikan izin untuk melakukan *auto-run* terhadap perintah `npm run build` secara mandiri untuk memastikan integritas kode tanpa menunggu instruksi manual.
-- **Git Workflow**: Antigravity wajib melakukan `git commit` dan `git push` setiap kali satu sub-tugas atau perbaikan (Atomic Commit) selesai dan berhasil di-build. Gunakan pesan commit standar (feat, fix, refactor).
-    - **Catatan Penting**: Root directory `Project Absenta` bukan merupakan repositori Git. Perintah Git hanya boleh dijalankan di dalam folder `absenta_backend` atau `absenta_frontend`. Selalu cek keberadaan folder `.git` sebelum eksekusi.
+- **Verifikasi Wajib (Zero Local Build Overhead)**: Komputer pengembang lokal memiliki keterbatasan RAM dan CPU yang hampir penuh. **DILARANG menjalankan `npm run build` berat di mesin lokal**. Seluruh kompilasi dan pengujian build produksi dialihkan ke sandbox staging VPS (`10.10.10.116`) via `deploy-safe.ps1` / `deploy-safe.bat`.
+- **Auto-run Safe Deploy**: Antigravity diberikan izin untuk memicu deployment aman ke staging VPS (`.\deploy-safe.ps1`) untuk membuktikan 0 error sebelum melaporkan penyelesaian tugas kepada USER.
+- **Git Workflow**: Antigravity wajib melakukan `git commit` dan `git push` setiap kali satu sub-tugas atau perbaikan (Atomic Commit) selesai. Gunakan pesan commit standar (feat, fix, refactor).
+    - **Catatan Repositori**: Root directory `D:\BarayaProject\Project Absenta` adalah repositori Git utama (`origin/main`). Lakukan `git add` dan `git commit` di root ini. Selalu verifikasi status dengan `git status`.
 
 ## 5. Aturan Log Ownership (Audit Log)
 - **Hard Rule**: Sistem memiliki aturan ketat "1 Event = 1 Log Owner" di `src/constants/logOwnership.ts`.
@@ -44,9 +44,9 @@ Dokumen ini adalah pedoman tetap (MANDATORY) untuk interaksi antara USER (Owner)
 - **Database**: Pastikan skema Prisma sinkron dengan perubahan logika bisnis.
 - **Arsitektur DRY & Reusabilitas**: Setiap kali modul baru dibuat di frontend maupun backend, wajib menerapkan **Prinsip DRY (Don't Repeat Yourself)** secara ketat. Manfaatkan, optimalkan, atau buat komponen UI/fungsi utility yang bersifat **reusable (dapat digunakan kembali)** guna menghindari duplikasi kode yang berlebihan dan mempermudah pemeliharaan jangka panjang.
 
-## 7. Aturan Validasi Tipe Data Statis (TypeScript) (MANDATORY)
-- **Auto-run TypeScript Check**: Antigravity **WAJIB** menjalankan pemeriksaan tipe data TypeScript secara statis menggunakan perintah `npx tsc --noEmit` pada folder yang terpengaruh (`absenta_frontend` dan/atau `absenta_backend`) setiap kali melakukan modifikasi pada berkas kode TypeScript (`.ts` atau `.tsx`).
-- **Standard Keberhasilan**: Tugas atau perbaikan kode dilarang dilaporkan selesai atau dianggap sukses sebelum kedua folder tersebut lolos uji `npx tsc --noEmit` dengan status bersih 100% tanpa adanya kesalahan tipe data (*type errors*).
+## 7. Aturan Validasi Tipe Data Statis (TypeScript) & Safe Staging Gate (MANDATORY)
+- **Safe Staging Validation**: Untuk menjaga resource komputer lokal tetap aman, validasi TypeScript dan kompilasi build produksi dilakukan di server staging VPS (`10.10.10.116`) melalui `.\deploy-safe.ps1`.
+- **Standard Keberhasilan**: Tugas atau perbaikan kode dilarang dilaporkan selesai atau dianggap sukses sebelum pipeline `deploy-safe.ps1` berhasil lolos uji 100% dengan status sukses dan PM2 ter-reload secara zero-downtime.
 
 ---
 **Status: ATURAN AKTIF & PERMANEN.**

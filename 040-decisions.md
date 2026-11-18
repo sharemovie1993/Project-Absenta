@@ -250,3 +250,13 @@
   - `StaffPortalAppLauncher.tsx` Blok 3 diubah dari inline filter → `import { filterNavByWorkspace, normalizeFlatMenu }`.
   - Sidebar.tsx masih menggunakan logika inline (kandidat untuk dipindahkan ke helper ini di iterasi berikutnya).
 
+2026-11: VPS Isolated Staging Sandbox & Zero Local Build Policy
+- **Keputusan**:
+  1. Menghentikan seluruh proses eksekusi kompilasi berat `npm run build` di komputer pengembang lokal.
+  2. Mengalihkan seluruh verifikasi build dan pengecekan TypeScript ke sandbox staging terisolasi `/var/www/project-absenta-staging` pada server VPS (`10.10.10.116`).
+  3. Membangun pipeline deployment aman otomatis `/var/www/deploy-safe.sh` dan script pemicu lokal `deploy-safe.ps1` / `deploy-safe.bat`.
+  4. Mengotomatiskan pembuatan direktori staging sandbox pada seluruh proses deployment server baru melalui `deploy-absenta-remote.ps1` dan `easy-update-remote.ps1` di `deployer`.
+- **Rasional**:
+  - Menghindari hang/freeze pada komputer lokal akibat keterbatasan RAM dan CPU yang hampir penuh.
+  - Menerapkan arsitektur Zero-Downtime Safe Deploy berstandar enterprise: jika terjadi kesalahan kode/TypeScript di branch `main`, kegagalan ditangkap 100% di sandbox staging dan server produksi `/var/www/project-absenta` sama sekali tidak tersentuh.
+

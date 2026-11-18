@@ -5,7 +5,7 @@
    - Pass 1: Automated project-wide regex/script scan.
    - Pass 2: Manual line-by-line inspection of target files.
 2. **Centralized `useCapabilities()` Hook**: NEVER write ad-hoc role checks or repetitive capability `||` expressions in individual components. ALWAYS consume the centralized `useCapabilities()` hook (`src/hooks/useCapabilities.ts`).
-3. **Empirical Build Verification**: ALWAYS run `npx tsc --noEmit` and `npm run build` to prove 0 compilation errors before declaring task completion.
+3. **Empirical Build Verification (Safe Staging)**: ALWAYS execute `.\deploy-safe.ps1` to trigger isolated staging verification on VPS (10.10.10.116) to prove 0 compilation errors before declaring task completion, avoiding heavy local machine builds.
 
 ---
 
