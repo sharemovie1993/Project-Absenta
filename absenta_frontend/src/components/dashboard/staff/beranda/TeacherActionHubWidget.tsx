@@ -43,6 +43,7 @@ const DIVISION_ICON: Record<string, any> = {
   KESISWAAN: ShieldCheck,
   HUBIN: Briefcase,
   SARPRAS: Building,
+  CBT: CheckSquare,
 };
 
 export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = React.memo(({

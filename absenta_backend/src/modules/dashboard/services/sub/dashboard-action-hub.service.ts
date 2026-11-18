@@ -3,10 +3,11 @@ import { prisma } from '@/utils/prisma';
 import { DashboardCommonHelper } from './dashboard-common.helper';
 import { Hari } from '@prisma/client';
 import { NilaiService } from '@/modules/rapor/services/nilai.service';
+import { CbtSettingsService } from '@/modules/cbt/services/cbt-settings.service';
 
 export interface UnifiedActionItem {
   id: string;
-  division: 'KURIKULUM' | 'RAPOR' | 'KESISWAAN' | 'PIKET' | 'HUBIN' | 'SARPRAS' | 'BPBK' | 'TU' | 'KOPERASI';
+  division: 'KURIKULUM' | 'RAPOR' | 'KESISWAAN' | 'PIKET' | 'HUBIN' | 'SARPRAS' | 'BPBK' | 'TU' | 'KOPERASI' | 'CBT';
   urgency: 'CRITICAL' | 'TODAY' | 'UPCOMING' | 'INFO';
   title: string;
   subtitle: string;
@@ -79,7 +80,8 @@ export class DashboardActionHubService {
       guruId ? this.detectPklTasks(tenantId, guruId) : Promise.resolve([]),
       this.detectRaporTasks(tenantId, userId, guruId),
       this.detectSarprasLoanTasks(tenantId, userId, startOfDay),
-      guruId ? this.detectPerangkatAjarTasks(tenantId, guruId) : Promise.resolve([])
+      guruId ? this.detectPerangkatAjarTasks(tenantId, guruId) : Promise.resolve([]),
+      guruId ? this.detectCbtBankSoalTasks(tenantId, guruId) : Promise.resolve([])
     ]);
 
     // 3. Konsolidasi seluruh item yang sukses diambil
@@ -773,6 +775,246 @@ export class DashboardActionHubService {
       }
 
       return actionItems;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /**
+   * 8. Deteksi Tugas Pembuatan & Pengisian Bank Soal CBT Guru
+   */
+  private async detectCbtBankSoalTasks(tenantId: string, guruId: string): Promise<UnifiedActionItem[]> {
+    try {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true }
+      });
+      if (!activeTp) return [];
+
+      const activeEvent = await CbtSettingsService.getActiveEvent(tenantId);
+      const targetTingkat = activeEvent?.target_tingkat || [];
+
+      const [guruMapelRows, jadwalRows, candidateBanks] = await Promise.all([
+        prisma.guruMapel.findMany({
+          where: { guru_id: guruId },
+          include: {
+            Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
+            Kelas: { select: { id: true, nama_kelas: true, tingkat: true, Jurusan: { select: { kode: true, singkatan: true, nama: true } } } },
+            Jurusan: { select: { kode: true, singkatan: true, nama: true } }
+          }
+        }),
+        prisma.jadwalKBM.findMany({
+          where: {
+            tenant_id: tenantId,
+            tahun_pelajaran_id: activeTp.id,
+            OR: [{ guru_id: guruId }, { guru_pelaksana_id: guruId }],
+            mapel_id: { not: null }
+          },
+          include: {
+            Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
+            Kelas: { select: { id: true, nama_kelas: true, tingkat: true, Jurusan: { select: { kode: true, singkatan: true, nama: true } } } }
+          }
+        }),
+        prisma.cbtBankSoal.findMany({
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { guru_id: guruId },
+              { Kontributor: { some: { guru_id: guruId } } }
+            ]
+          },
+          include: {
+            Mapel: { select: { id: true, nama_mapel: true } },
+            Kontributor: true
+          }
+        })
+      ]);
+
+      const isNonAcademicDuty = (name: string): boolean => {
+        const lower = (name || '').toLowerCase().trim();
+        const nonAcademicKeywords = [
+          'piket', 'tugas piket', 'bimbingan', 'konseling', 'bp/bk', 'bk',
+          'upacara', 'apel', 'literasi', 'istirahat', 'sholat', 'duha', 'dzuhur',
+          'ekskul', 'ekstrakurikuler', 'kokurikuler', 'wali kelas', 'p5',
+          'projek penguatan', 'keagamaan', 'senam'
+        ];
+        return nonAcademicKeywords.some((kw) => lower.includes(kw));
+      };
+
+      const resolveTingkat = (raw: any, textRef?: string): number => {
+        let tNum = Number(raw);
+        if (!tNum && textRef) {
+          const match = textRef.match(/\b(X|XI|XII|10|11|12)\b/i);
+          if (match) {
+            const roman = match[1].toUpperCase();
+            tNum = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
+          }
+        }
+        if (!tNum) {
+          tNum = raw === 'XI' ? 11 : raw === 'XII' ? 12 : 10;
+        }
+        return tNum;
+      };
+
+      const resolveJurusanKode = (jurRef?: any, kelasRef?: any): string => {
+        const jur = jurRef || kelasRef?.Jurusan;
+        if (!jur) return 'UMUM';
+        const code = jur.kode || jur.singkatan || (jur.nama ? String(jur.nama).trim() : '');
+        if (!code) return 'UMUM';
+        const clean = code.toUpperCase().trim();
+        return clean === 'SEMUA' || clean === 'UMUM' ? 'UMUM' : clean;
+      };
+
+      const formatRoman = (tingkat: number): string => {
+        if (tingkat === 10) return 'X';
+        if (tingkat === 11) return 'XI';
+        if (tingkat === 12) return 'XII';
+        return String(tingkat);
+      };
+
+      const mapelTingkatMap = new Map<string, any>();
+
+      const addAssignment = (mId: string, mName: string, mKode: string | undefined, rawTingkat: any, kName: string | undefined, jurRef: any, kelasRef: any) => {
+        if (!mId || !mName || isNonAcademicDuty(mName)) return;
+        const tNum = resolveTingkat(rawTingkat, kName);
+        if (targetTingkat.length > 0 && !targetTingkat.includes(tNum)) return;
+
+        const jurKode = resolveJurusanKode(jurRef, kelasRef);
+        const key = `${mId}_${tNum}`;
+        if (!mapelTingkatMap.has(key)) {
+          mapelTingkatMap.set(key, {
+            mapelId: mId,
+            mapelName: mName,
+            mapelKode: mKode,
+            tingkat: tNum,
+            jurusanMap: new Map<string, any>()
+          });
+        }
+
+        const entry = mapelTingkatMap.get(key);
+        if (!entry.jurusanMap.has(jurKode)) {
+          entry.jurusanMap.set(jurKode, {
+            jurusanKode: jurKode,
+            rombelNames: new Set<string>()
+          });
+        }
+        if (kName) entry.jurusanMap.get(jurKode).rombelNames.add(kName);
+      };
+
+      for (const gm of guruMapelRows) {
+        addAssignment(gm.mapel_id, gm.Mapel?.nama_mapel, gm.Mapel?.kode_mapel, gm.Kelas?.tingkat || gm.Mapel?.tingkat, gm.Kelas?.nama_kelas, gm.Jurusan, gm.Kelas);
+      }
+      for (const j of jadwalRows) {
+        addAssignment(j.mapel_id, j.Mapel?.nama_mapel, j.Mapel?.kode_mapel, j.Kelas?.tingkat || j.Mapel?.tingkat, j.Kelas?.nama_kelas, null, j.Kelas);
+      }
+
+      // Rekonsiliasi UMUM vs Spesifik
+      for (const entry of mapelTingkatMap.values()) {
+        const specificRombels = new Set<string>();
+        let hasSpecific = false;
+        for (const [jCode, group] of entry.jurusanMap.entries()) {
+          if (jCode !== 'UMUM') {
+            for (const r of group.rombelNames) specificRombels.add(r);
+            if (group.rombelNames.size > 0) hasSpecific = true;
+          }
+        }
+        if (entry.jurusanMap.has('UMUM')) {
+          const umumGroup = entry.jurusanMap.get('UMUM');
+          for (const r of specificRombels) umumGroup.rombelNames.delete(r);
+          if (hasSpecific && umumGroup.rombelNames.size === 0) {
+            entry.jurusanMap.delete('UMUM');
+          }
+        }
+      }
+
+      let totalDuties = 0;
+      let coveredDuties = 0;
+      const uncompletedList: string[] = [];
+
+      for (const mt of mapelTingkatMap.values()) {
+        const { mapelId, mapelName, tingkat, jurusanMap } = mt;
+        const roman = formatRoman(tingkat);
+        const normMapelName = mapelName.trim().toLowerCase();
+
+        const relatedBanks = candidateBanks.filter((b: any) => {
+          const bName = (b.Mapel?.nama_mapel || b.judul || '').trim().toLowerCase();
+          const isMatch = b.mapel_id === mapelId || (bName && bName.includes(normMapelName));
+          if (!isMatch) return false;
+          const bTingkatNum = b.tingkat === 'XI' ? 11 : b.tingkat === 'XII' ? 12 : b.tingkat === 'X' ? 10 : undefined;
+          return bTingkatNum === tingkat || bTingkatNum === undefined;
+        });
+
+        const isGeneralBank = (b: any) => {
+          const r = (b.jurusan || '').toUpperCase().trim();
+          return !r || r === 'SEMUA' || r === 'UMUM';
+        };
+
+        const generalBank = relatedBanks.find(isGeneralBank);
+        const hasSpecificBanks = relatedBanks.some((b: any) => b.jurusan && b.jurusan !== 'SEMUA' && b.jurusan !== 'UMUM');
+        const jurusanList = Array.from(jurusanMap.values());
+
+        if (generalBank && !hasSpecificBanks) {
+          totalDuties++;
+          if (generalBank.jumlah_soal > 0) {
+            coveredDuties++;
+          } else {
+            uncompletedList.push(`${mapelName} (Tingkat ${roman})`);
+          }
+          continue;
+        }
+
+        for (const jg of jurusanList) {
+          const { jurusanKode } = jg;
+          totalDuties++;
+          const jCode = jurusanKode !== 'UMUM' ? jurusanKode : undefined;
+          const matchJurusan = (bJur: string | null | undefined, target: string) => {
+            if (!bJur || !target) return false;
+            const parts = bJur.toUpperCase().split(/[,;/|]+/).map((s: string) => s.trim()).filter(Boolean);
+            return parts.includes(target.toUpperCase().trim());
+          };
+
+          const matchedBank = relatedBanks.find((b: any) => matchJurusan(b.jurusan, jurusanKode)) || generalBank;
+          const label = jCode && !mapelName.toUpperCase().includes(jCode)
+            ? `${mapelName} Jurusan ${jCode} (Tingkat ${roman})`
+            : `${mapelName} (Tingkat ${roman})`;
+
+          if (matchedBank && matchedBank.jumlah_soal > 0) {
+            coveredDuties++;
+          } else {
+            uncompletedList.push(label);
+          }
+        }
+      }
+
+      if (totalDuties === 0 || coveredDuties >= totalDuties) {
+        return [];
+      }
+
+      const percent = Math.round((coveredDuties / totalDuties) * 100);
+      const eventLabel = activeEvent?.nama_event || `TP ${activeTp.tahun}`;
+
+      return [{
+        id: `cbt_bank_soal_${guruId}`,
+        division: 'CBT',
+        urgency: coveredDuties === 0 ? 'TODAY' : 'UPCOMING',
+        title: 'Pembuatan Bank Soal CBT',
+        subtitle: `Belum dibuat: ${uncompletedList.slice(0, 2).join(', ')}${uncompletedList.length > 2 ? ' +' + (uncompletedList.length - 2) + ' lainnya' : ''} • ${eventLabel}`,
+        badgeText: `${coveredDuties}/${totalDuties} Siap`,
+        progress: {
+          current: coveredDuties,
+          total: totalDuties,
+          percent,
+          label: `${coveredDuties}/${totalDuties} Siap (${percent}%)`
+        },
+        action: {
+          label: 'Buat Bank Soal ➔',
+          type: 'NAVIGATE',
+          target: '/cbt/bank-soal'
+        },
+        sourceModule: {
+          table: 'CbtBankSoal',
+          entityId: guruId
+        }
+      }];
     } catch (e) {
       return [];
     }

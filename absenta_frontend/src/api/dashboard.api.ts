@@ -195,7 +195,7 @@ export async function getTuStats(params?: TuStatsParams): Promise<any> {
 // ⚡ Unified Action Hub (Cross-Divisional Smart Nudge) - GET /dashboard/my-action-hub
 export interface UnifiedActionItem {
   id: string;
-  division: 'KURIKULUM' | 'RAPOR' | 'KESISWAAN' | 'PIKET' | 'HUBIN' | 'SARPRAS' | 'BPBK' | 'TU' | 'KOPERASI';
+  division: 'KURIKULUM' | 'RAPOR' | 'KESISWAAN' | 'PIKET' | 'HUBIN' | 'SARPRAS' | 'BPBK' | 'TU' | 'KOPERASI' | 'CBT';
   urgency: 'CRITICAL' | 'TODAY' | 'UPCOMING' | 'INFO';
   title: string;
   subtitle: string;
