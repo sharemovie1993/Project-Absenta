@@ -4,12 +4,14 @@ import { useAuthStore } from '@/store/authStore';
 import { cbtApi } from '@/api/cbt.api';
 import type { CbtJadwalUjian } from '@/types/cbt.types';
 
-export function useMyPengawasCbt() {
+export function useMyPengawasCbt(overrideGuruId?: string) {
   const user = useAuthStore((state) => state.user);
   const effectiveGuruId =
+    overrideGuruId ||
     user?.guru_profile?.id ||
     (user as any)?.guru_id ||
     (user as any)?.ptk_id ||
+    user?.id ||
     null;
 
   const { data: myPengawasCbtData, isLoading, refetch } = useQuery<CbtJadwalUjian[]>({

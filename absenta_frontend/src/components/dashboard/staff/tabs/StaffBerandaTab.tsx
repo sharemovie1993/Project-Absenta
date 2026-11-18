@@ -313,7 +313,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     myPengawasCbtData,
     isLoading: isPengawasCbtLoading,
     refetch: refetchPengawasCbt,
-  } = useMyPengawasCbt();
+  } = useMyPengawasCbt(effectiveGuruId);
 
   const validSubTabs: TeacherSubTabId[] = useMemo(() => [
     'agenda',
@@ -321,13 +321,13 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     'tugas',
     'perangkat',
     'cbt',
+    'pengawas_cbt',
     'nilai',
     'remedial',
     'rekap',
     'supervisi',
-    ...(isPengawasCbt ? ['pengawas_cbt' as const] : []),
     ...(isPengujiSidang ? ['sidang_guru' as const] : []),
-  ], [isPengawasCbt, isPengujiSidang]);
+  ], [isPengujiSidang]);
 
   const [selectedPengawasJadwalId, setSelectedPengawasJadwalId] = useState<string | undefined>(undefined);
 

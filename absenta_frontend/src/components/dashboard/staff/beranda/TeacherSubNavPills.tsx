@@ -84,16 +84,14 @@ export const TeacherSubNavPills: React.FC<TeacherSubNavPillsProps> = React.memo(
       label: 'Bank Soal CBT',
       icon: Laptop,
     },
-    ...(isPengawasCbt ? [
-      {
-        id: 'pengawas_cbt' as const,
-        label: 'Pengawas Ujian CBT',
-        icon: Eye,
-        badgeCount: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
-        badgeVariant: 'emerald' as const,
-        temporaryStyle: 'cbt_radar' as const,
-      }
-    ] : []),
+    {
+      id: 'pengawas_cbt' as const,
+      label: 'Pengawas Ujian CBT',
+      icon: Eye,
+      badgeCount: pengawasCbtActiveCount > 0 ? pengawasCbtActiveCount : undefined,
+      badgeVariant: 'emerald' as const,
+      temporaryStyle: pengawasCbtActiveCount > 0 ? ('cbt_radar' as const) : undefined,
+    },
     {
       id: 'nilai',
       label: 'Buku Nilai',
