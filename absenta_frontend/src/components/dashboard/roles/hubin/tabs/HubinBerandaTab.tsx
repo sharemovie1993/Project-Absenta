@@ -94,6 +94,10 @@ export const HubinBerandaTab: React.FC<HubinBerandaTabProps> = React.memo(({
       case 'organisasi':
         onTabSelect('struktur_organisasi');
         break;
+      case 'meja_pembimbing':
+      case 'pembimbing_pkl':
+        navigate('/dashboard?tab=pembimbing_pkl');
+        break;
       default:
         // Jangan paksa kembali ke ringkasan jika id tidak dikenali
         break;
@@ -176,6 +180,13 @@ export const HubinBerandaTab: React.FC<HubinBerandaTabProps> = React.memo(({
         icon: Users,
         iconColorClass: 'text-teal-600 dark:text-teal-400',
         onClick: () => onTabSelect('penempatan'),
+      },
+      {
+        id: 'meja_pembimbing',
+        label: 'Meja Bimbingan',
+        icon: Briefcase,
+        iconColorClass: 'text-emerald-600 dark:text-emerald-400',
+        onClick: () => navigate('/dashboard?tab=pembimbing_pkl'),
       },
       {
         id: 'absensi',

@@ -3,12 +3,13 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Briefcase, Users, Clock, Calendar, CalendarCheck, Award, Printer,
-  ArrowLeft, SlidersHorizontal, RefreshCw, Building2, CheckCircle2, ChevronRight, UserCheck, ShieldCheck,
+  ArrowLeft, SlidersHorizontal, RefreshCw, Building2, CheckCircle2, ChevronRight, UserCheck, ShieldCheck, ArrowUpRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { hubinApi, type SiswaPkl } from '@/api/hubin.api';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
+import { useCapabilities } from '@/hooks/useCapabilities';
 import { Badge, Button } from '@/components/ui';
 import toast from 'react-hot-toast';
 
@@ -58,6 +59,7 @@ export interface PembimbingPklDashboardProps {
 export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ user }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isHubin, isAdmin } = useCapabilities();
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as PklTabId | null;
 
@@ -443,15 +445,15 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
         <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-4 sm:gap-5 items-start">
           {/* Left Sidebar (Desktop sticky & independent scroll without scrollbar UI) */}
           <aside className="hidden lg:block sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain no-scrollbar space-y-3.5 pb-6">
-            {/* Identitas Pembimbing PKL Ringkas (Ecosystem Banner Accent) */}
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-600 to-amber-700 text-white shadow-xs space-y-2.5 border border-orange-500/40 relative overflow-hidden">
+            {/* Identitas Pembimbing PKL Ringkas (Ecosystem Banner Accent - Teal) */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-teal-600 via-teal-600 to-emerald-700 text-white shadow-xs space-y-2.5 border border-teal-500/40 relative overflow-hidden">
               <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full blur-xl pointer-events-none" aria-hidden="true" />
               <div className="flex items-center gap-3 relative z-10">
-                <div className="w-10 h-10 rounded-xl bg-white/95 border border-white/40 text-orange-600 flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-white/95 border border-white/40 text-teal-600 flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
                   <UserCheck size={18} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-orange-200 block leading-tight">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-teal-200 block leading-tight">
                     Pembimbing PKL
                   </span>
                   <h4 className="text-xs font-black text-white truncate">{user?.full_name || 'Guru Pembimbing'}</h4>
@@ -460,7 +462,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
 
               {/* Status Banner */}
               <div className="pt-2 border-t border-white/20 flex items-center justify-between text-[11px] text-white/80 relative z-10">
-                <span className="font-medium text-orange-100">Tahun Pelajaran</span>
+                <span className="font-medium text-teal-100">Tahun Pelajaran</span>
                 <span className="font-bold text-white font-mono text-[10px] bg-white/20 backdrop-blur-xs px-2 py-0.5 rounded-md truncate">
                   {tpTahun || '2026/2027'} {semesterNama ? `• ${semesterNama}` : ''}
                 </span>
@@ -478,7 +480,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                     onClick={() => handleTabSelect(tab.id)}
                     className={cn(
                       'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer',
-                      isActive ? 'bg-gradient-to-r from-orange-600 to-amber-700 text-white shadow-xs font-black' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                      isActive ? 'bg-gradient-to-r from-teal-600 to-emerald-700 text-white shadow-xs font-black' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -489,7 +491,7 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
                       <span
                         className={cn(
                           'text-[10px] px-2 py-0.5 rounded-full font-bold',
-                          isActive ? 'bg-white/25 text-white' : tab.badgeColor || 'bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300'
+                          isActive ? 'bg-white/25 text-white' : tab.badgeColor || 'bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300'
                         )}
                       >
                         {tab.badge}
@@ -501,6 +503,21 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
 
                 {/* Quick Shortcuts */}
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                  {/* Quick Access ke Dashboard Hubin Sekolah jika user juga Pengelola Hubin / Admin */}
+                  {(isHubin || isAdmin) && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/dashboard?tab=hubin')}
+                      className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/80 hover:bg-amber-100 dark:hover:bg-amber-900/80 transition-all cursor-pointer shadow-2xs select-none"
+                      title="Buka Dashboard Manajemen Hubin Sekolah"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Briefcase className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span className="truncate">Dashboard Hubin</span>
+                      </div>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    </button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"

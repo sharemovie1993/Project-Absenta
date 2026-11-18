@@ -16,6 +16,7 @@ import {
   Tv,
   Settings,
   Network,
+  ArrowUpRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -341,6 +342,20 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
                 );
               })}
             </nav>
+
+            {/* Quick Access ke Meja Bimbingan PKL Pribadi */}
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard?tab=pembimbing_pkl')}
+              className="w-full mt-2 flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/80 hover:bg-teal-100 dark:hover:bg-teal-900/80 transition-all cursor-pointer shadow-2xs select-none"
+              title="Buka Meja Kerja Guru Pembimbing PKL Pribadi"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Briefcase className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                <span className="truncate">Meja Bimbingan Saya</span>
+              </div>
+              <ArrowUpRight className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+            </button>
           </aside>
 
           {/* Right Column: Dynamic Subtab Viewports (Keep-Alive Cache) */}

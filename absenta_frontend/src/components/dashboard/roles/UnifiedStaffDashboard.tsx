@@ -316,11 +316,12 @@ export const UnifiedStaffDashboard: React.FC = () => {
   );
 
   const isGlobalHubin = isHubin;
-  // Pembimbing PKL: Hanya jika user adalah Guru, BUKAN Waka Hubin/Kepsek, punya kapabilitas guidance / penugasan PKL
-  const isPembimbingPkl = !isHubin && !isKepsek && (
+  // Pembimbing PKL: Terbuka untuk guru pembimbing PKL terdaftar, guru dengan kapabilitas guidance, ATAU pengelola Hubin (pemisahan area kerja struktural vs operasional)
+  const isPembimbingPkl = !isKepsek && (
+    isHubin ||
     Boolean(isPembimbingPklFromCaps) ||
     teacherIdentity.isPembimbingPkl ||
-    Boolean(can('hubin.guidance.manage') && teacherIdentity.isPembimbingPkl)
+    Boolean(can('hubin.guidance.manage'))
   );
 
   // Piket Guru: Murni hanya jika guru terdaftar dalam jadwal piket (bukan Kepsek / Kaprog / Hubin yang fokus di struktural unit)
@@ -762,7 +763,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (isKesiswaan) parts.push('Tim Kesiswaan');
     if (isSarpras)   parts.push('Pengelola Sarpras');
     if (isHubin)     parts.push('Hubin / PKL');
-    else if (isPembimbingPkl) parts.push('Pembimbing PKL');
+    if (isPembimbingPkl && !parts.includes('Pembimbing PKL')) parts.push('Pembimbing PKL');
 
     // Koperasi
     if (isKoperasiHead) parts.push('Ketua Koperasi');
@@ -1552,9 +1553,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
                   case 'kaprog':
                     return { button: "bg-slate-900 text-amber-400 border border-amber-500/50 shadow-md shadow-amber-950/50", icon: "text-amber-400" };
                   case 'hubin':
-                  case 'pembimbing_pkl':
-                  case 'bkk':
                     return { button: "bg-slate-900 text-orange-400 border border-orange-500/50 shadow-md shadow-orange-950/50", icon: "text-orange-400" };
+                  case 'pembimbing_pkl':
+                    return { button: "bg-slate-900 text-teal-400 border border-teal-500/50 shadow-md shadow-teal-950/50", icon: "text-teal-400" };
+                  case 'bkk':
+                    return { button: "bg-slate-900 text-cyan-400 border border-cyan-500/50 shadow-md shadow-cyan-950/50", icon: "text-cyan-400" };
                   case 'binaan':
                     return { button: "bg-slate-900 text-sky-400 border border-sky-500/50 shadow-md shadow-sky-950/50", icon: "text-sky-400" };
                   case 'kesiswaan':

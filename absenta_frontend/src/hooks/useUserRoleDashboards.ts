@@ -78,13 +78,17 @@ export function useUserRoleDashboards() {
   const isTuStaff = isTU || roleName === 'TU' || jenisPtk === 'TENAGA_KEPENDIDIKAN' || (guruProfile?.is_tu ?? false);
   const isPendidik = !isTuStaff && !isKepsek && (jenisPtk === 'PENDIDIK' || (!jenisPtk && (roleName === 'GURU' || Boolean((user as Record<string, unknown>)?.isTeacher) || Boolean(guruProfile) || isWaliKelasFromCaps)));
 
-  const isPembimbingPkl = !isHubin && !isKepsek && Boolean(
-    (guruProfile as Record<string, unknown>)?.is_pembimbing_pkl || 
-    (typeof (guruProfile as Record<string, unknown>)?.active_pkl_count === 'number' && Number((guruProfile as Record<string, unknown>).active_pkl_count) > 0) ||
-    (typeof (guruProfile as Record<string, unknown>)?.total_pkl_count === 'number' && Number((guruProfile as Record<string, unknown>).total_pkl_count) > 0) ||
-    ((user?.guru_profile as Record<string, unknown>)?.is_pembimbing_pkl) ||
-    (typeof (user?.guru_profile as Record<string, unknown>)?.active_pkl_count === 'number' && Number((user?.guru_profile as Record<string, unknown>).active_pkl_count) > 0) ||
-    (typeof (user?.guru_profile as Record<string, unknown>)?.total_pkl_count === 'number' && Number((user?.guru_profile as Record<string, unknown>).total_pkl_count) > 0)
+  const isPembimbingPkl = !isKepsek && (
+    isHubin ||
+    Boolean(
+      (guruProfile as Record<string, unknown>)?.is_pembimbing_pkl || 
+      (typeof (guruProfile as Record<string, unknown>)?.active_pkl_count === 'number' && Number((guruProfile as Record<string, unknown>).active_pkl_count) > 0) ||
+      (typeof (guruProfile as Record<string, unknown>)?.total_pkl_count === 'number' && Number((guruProfile as Record<string, unknown>).total_pkl_count) > 0) ||
+      ((user?.guru_profile as Record<string, unknown>)?.is_pembimbing_pkl) ||
+      (typeof (user?.guru_profile as Record<string, unknown>)?.active_pkl_count === 'number' && Number((user?.guru_profile as Record<string, unknown>).active_pkl_count) > 0) ||
+      (typeof (user?.guru_profile as Record<string, unknown>)?.total_pkl_count === 'number' && Number((user?.guru_profile as Record<string, unknown>).total_pkl_count) > 0) ||
+      can('hubin.guidance.manage')
+    )
   );
 
   const isPureGerbangStaff = roleName === 'GERBANG' || roleName === 'PETUGAS_GERBANG' || (isGerbang && !isPendidik && !isAdminRole && !isKepsek && !isKurikulum);
@@ -216,8 +220,8 @@ export function useUserRoleDashboards() {
       });
     }
 
-    // 7. Hubin & Kemitraan DUDI
-    if (isHubin || isPembimbingPkl || isAdminRole || can('hubin.view') || can('hubin.manage')) {
+    // 7. Hubin & Kemitraan DUDI (Struktural Manajemen Sekolah)
+    if (isHubin || isAdminRole || can('hubin.view') || can('hubin.manage') || can('dashboard.view.hubin')) {
       list.push({
         id: 'dash-hubin',
         code: 'HUBIN',
