@@ -55,7 +55,9 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
     }
     try {
       setIsDownloading(true);
-      toast.info('Menyiapkan template Excel untuk kelas ' + kelasNama + '...');
+      toast('Menyiapkan template Excel untuk kelas ' + kelasNama + '...', {
+        icon: 'ℹ️',
+      });
       await historicalBackfillApi.downloadTemplate({
         kelasId,
         tahunPelajaranId,
