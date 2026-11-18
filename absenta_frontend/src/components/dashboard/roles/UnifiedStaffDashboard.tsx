@@ -175,7 +175,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   // ── 2. Base Data ──────────────────────────────────────────────────────────────
   const isGuruOrStaff = !isAdmin || Boolean(user?.guru_profile?.id);
-  const { guruProfile, refetch: refetchGuruProfile } = useGuruMe({ enabled: isGuruOrStaff });
+  const { identity: teacherIdentity, guruProfile, refetch: refetchGuruProfile } = useGuruMe({ enabled: isGuruOrStaff });
 
   // Query P5 Projects for facilitator role
   const { data: myP5ProjectsRes } = useQuery({
@@ -191,7 +191,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const isFasilitatorP5Actual = isFasilitatorP5 || Boolean(myP5ProjectsRes?.data && myP5ProjectsRes.data.length > 0);
   const p5ProjectCount = Math.max(fasilitatorP5Count || 0, myP5ProjectsRes?.data?.length || 0);
 
-  const guruId = user?.guru_profile?.id || guruProfile?.id;
+  const guruId = teacherIdentity.id || user?.guru_profile?.id || guruProfile?.id;
   const [isScanSosialisasiOpen, setIsScanSosialisasiOpen] = useState(false);
 
   // ── Query Sesi Aktif Rapat Sosialisasi Platform (Universal All Roles & All Dashboards) ──
@@ -229,11 +229,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   const myAttendanceItem = useMemo(() => {
     if (!sosialisasiData?.attendees) return null;
-    const currentNip = (user?.guru_profile as any)?.nip || guruProfile?.nip || (user as any)?.nip;
+    const currentNip = teacherIdentity.nipClean;
     return sosialisasiData.attendees.find(
       (a: any) => (guruId && a.guru_id === guruId) || (currentNip && a.nip === currentNip)
     );
-  }, [sosialisasiData?.attendees, guruId, guruProfile, user]);
+  }, [sosialisasiData?.attendees, guruId, teacherIdentity.nipClean]);
   const isMyAttendanceDone = Boolean(myAttendanceItem?.is_hadir);
 
   const { timelineItems, isLoading: timelineLoading, refetch: refetchTimeline } = useStaffTimeline(guruId, {
@@ -251,16 +251,16 @@ export const UnifiedStaffDashboard: React.FC = () => {
     return list;
   }, [guruProfile?.jabatan_list, user]);
 
-  const jabatan: string = guruProfile?.jabatan || (user?.guru_profile as any)?.jabatan || '';
+  const jabatan: string = teacherIdentity.jabatan || guruProfile?.jabatan || (user?.guru_profile as any)?.jabatan || '';
 
   const roleName = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
   const isAdminRole = isAdmin || roleName === 'ADMIN' || roleName === 'SUPERADMIN';
 
   // Jenis PTK Detection: PENDIDIK vs TENAGA KEPENDIDIKAN
   const jenisPtk = (
+    teacherIdentity.jenisPtk ||
     guruProfile?.jenis_ptk ||
     (user?.guru_profile as any)?.jenis_ptk ||
-    (user as any)?.jenis_ptk ||
     ''
   ).toUpperCase();
 
@@ -309,39 +309,20 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   const isPureGerbangStaff = isSecurityRole || (hasGerbangDuty && !isEffectivePendidik && !isAdminRole && !isKepsek && !isKurikulum);
 
-  const isWaliKelas = isWaliKelasFromCaps ||
-    !!guruProfile?.wali_kelas_di?.id ||
-    !!((user?.guru_profile as any)?.wali_kelas_di?.id);
+  const isWaliKelas = isWaliKelasFromCaps || teacherIdentity.isWaliKelas;
 
   const isGlobalHubin = isHubin;
   // Pembimbing PKL: Hanya jika user adalah Guru, BUKAN Waka Hubin/Kepsek, punya kapabilitas guidance / penugasan PKL
   const isPembimbingPkl = !isHubin && !isKepsek && (
     Boolean(isPembimbingPklFromCaps) ||
-    Boolean(
-      guruProfile?.is_pembimbing_pkl || 
-      (guruProfile?.active_pkl_count && guruProfile.active_pkl_count > 0) ||
-      (guruProfile?.total_pkl_count && guruProfile.total_pkl_count > 0) ||
-      ((user?.guru_profile as any)?.is_pembimbing_pkl) ||
-      ((user?.guru_profile as any)?.active_pkl_count > 0) ||
-      ((user?.guru_profile as any)?.total_pkl_count > 0)
-    ) ||
-    (can('hubin.guidance.manage') && Boolean(
-      guruProfile?.is_pembimbing_pkl || 
-      (guruProfile?.active_pkl_count && guruProfile.active_pkl_count > 0) ||
-      ((user?.guru_profile as any)?.is_pembimbing_pkl) ||
-      ((user?.guru_profile as any)?.active_pkl_count > 0)
-    ))
+    teacherIdentity.isPembimbingPkl ||
+    Boolean(can('hubin.guidance.manage') && teacherIdentity.isPembimbingPkl)
   );
 
   // Piket Guru: Murni hanya jika guru terdaftar dalam jadwal piket (bukan Kepsek / Kaprog / Hubin yang fokus di struktural unit)
   const isPiketGuruActual = !isKepsek && !isKaprog && !isHubin && (
     Boolean(isPiketGuru) ||
-    Boolean(
-      guruProfile?.is_piket_guru || 
-      (guruProfile?.active_piket_count && guruProfile.active_piket_count > 0) ||
-      ((user?.guru_profile as any)?.is_piket_guru) ||
-      ((user?.guru_profile as any)?.active_piket_count > 0)
-    )
+    teacherIdentity.isPiketGuru
   );
 
   const hasStructuralRole = isWaliKelas || isKurikulum || isKesiswaan || isKepsek
@@ -408,15 +389,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (waliKelasStrukturItem?.StrukturOrganisasi?.Kelas?.id) return waliKelasStrukturItem.StrukturOrganisasi.Kelas.id;
     if (waliKelasStrukturItem?.StrukturOrganisasi?.kelas_id) return waliKelasStrukturItem.StrukturOrganisasi.kelas_id;
     if (waliKelasStrukturItem?.kelas_id) return waliKelasStrukturItem.kelas_id;
-    return guruProfile?.wali_kelas_di?.id || (user?.guru_profile as any)?.wali_kelas_di?.id;
-  }, [waliKelasStrukturItem, guruProfile, user]);
+    return teacherIdentity.waliKelasId || guruProfile?.wali_kelas_di?.id;
+  }, [waliKelasStrukturItem, teacherIdentity.waliKelasId, guruProfile, user]);
 
   const waliKelasNama = useMemo(() => {
     if ((user as any)?.walikelas_kelas?.nama_kelas) return (user as any).walikelas_kelas.nama_kelas;
     if (waliKelasStrukturItem?.Kelas?.nama_kelas) return waliKelasStrukturItem.Kelas.nama_kelas;
     if (waliKelasStrukturItem?.StrukturOrganisasi?.Kelas?.nama_kelas) return waliKelasStrukturItem.StrukturOrganisasi.Kelas.nama_kelas;
-    return guruProfile?.wali_kelas_di?.nama_kelas || (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas || 'Kelas Binaan';
-  }, [waliKelasStrukturItem, guruProfile, user]);
+    return teacherIdentity.waliKelasDi || guruProfile?.wali_kelas_di?.nama_kelas || 'Kelas Binaan';
+  }, [waliKelasStrukturItem, teacherIdentity.waliKelasDi, guruProfile, user]);
 
   const handleTabChange = React.useCallback((newTab: string) => {
     useMobileSubtabSidebarStore.getState().close();
@@ -966,10 +947,6 @@ export const UnifiedStaffDashboard: React.FC = () => {
     jabatan, isTuStaff,
   ]);
 
-  const teacherIdentity = useMemo(() => {
-    return normalizeTeacherIdentity(guruProfile || (user as any)?.guru_profile || user);
-  }, [guruProfile, user]);
-
   const teacherInitials = teacherIdentity.initials || 'GU';
   const nipText = teacherIdentity.nipClean;
 
@@ -1458,8 +1435,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
               isOpen={isScanSosialisasiOpen}
               onClose={() => setIsScanSosialisasiOpen(false)}
               guruId={guruId || user?.id || ''}
-              guruNama={guruProfile?.nama_guru || user?.full_name || user?.name || 'Pengguna'}
-              guruNip={guruProfile?.nip || (user?.guru_profile as any)?.nip || (user as any)?.nip}
+              guruNama={teacherIdentity.namaLengkapGelar || teacherIdentity.nama || user?.full_name || 'Pengguna'}
+              guruNip={teacherIdentity.nipClean}
               tenantId={user?.tenant_id}
               activeSession={sosialisasiData?.session}
               isAlreadyAttended={isMyAttendanceDone}
@@ -1751,7 +1728,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
                 <StaffBerandaTab
                   user={user}
                   guruId={guruId}
-                  guruNama={guruProfile?.nama_guru || user?.full_name}
+                  guruNama={teacherIdentity.namaLengkapGelar || teacherIdentity.nama || user?.full_name || ''}
                   waliKelasNama={waliKelasNama}
                   waliKelasId={waliKelasId}
                   isWaliKelas={isWaliKelas}
@@ -1784,7 +1761,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
             <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
               <StaffKbmAbsenTab
                 guruId={guruId}
-                guruNama={guruProfile?.nama_guru || user?.full_name}
+                guruNama={teacherIdentity.namaLengkapGelar || teacherIdentity.nama || user?.full_name || ''}
                 timelineItems={timelineItems || []}
                 isLoadingTimeline={timelineLoading}
                 onRefreshTimeline={refetchTimeline}
@@ -2260,8 +2237,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
             isOpen={isScanSosialisasiOpen}
             onClose={() => setIsScanSosialisasiOpen(false)}
             guruId={guruId || user?.id || ''}
-            guruNama={guruProfile?.nama_guru || user?.full_name || user?.name || 'Pengguna'}
-            guruNip={guruProfile?.nip || (user?.guru_profile as any)?.nip || (user as any)?.nip}
+            guruNama={teacherIdentity.namaLengkapGelar || teacherIdentity.nama || user?.full_name || 'Pengguna'}
+            guruNip={teacherIdentity.nipClean}
             tenantId={user?.tenant_id}
             activeSession={sosialisasiData?.session}
             isAlreadyAttended={isMyAttendanceDone}

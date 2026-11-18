@@ -202,8 +202,8 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
 }) => {
   const navigate = useNavigate();
 
-  // 1. Fetch live teacher profile via React Query Hook
-  const { guruProfile, refetch: refetchGuruProfile } = useGuruMe();
+  // 1. Fetch live teacher profile via React Query Hook (Integrated SSOT Normalizer)
+  const { identity: teacherIdentity, guruProfile, refetch: refetchGuruProfile } = useGuruMe();
   const updateGuruMeMutation = useUpdateGuruMe();
   const queryClient = useQueryClient();
   const { loadUser } = useAuthStore();
@@ -214,12 +214,11 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const guruId: string | undefined = guruProfile?.id || (user as any)?.guru_profile?.id || (user as any)?.guru?.id || (user as any)?.guru_id || (user?.role?.name?.toLowerCase().includes('guru') ? user?.id : undefined);
-  const activeGuruName = guruProfile?.nama_guru || user?.full_name || user?.name || '';
+  const guruId: string | undefined = teacherIdentity.id || guruProfile?.id || (user as any)?.guru_profile?.id;
+  const activeGuruName = teacherIdentity.namaLengkapGelar || teacherIdentity.nama || user?.full_name || '';
 
-  // Resolve display photo: local preview → guruProfile.foto → fallback initials
-  const rawGuruPhoto = guruProfile?.foto || guruProfile?.foto_url || null;
-  const resolvedPhotoUrl = rawGuruPhoto ? resolveProfilePhotoUrl(rawGuruPhoto) : null;
+  // Resolve display photo: local preview → teacherIdentity.fotoUrl → fallback initials
+  const resolvedPhotoUrl = teacherIdentity.fotoUrl;
   const displayPhotoUrl = localPhotoPreview ?? resolvedPhotoUrl;
 
   // ── Jabatan Struktur Organisasi ───────────────────────────────────────────────
@@ -413,10 +412,6 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
       toast.error(err?.message || 'Gagal memperbarui data.');
     }
   };
-
-  const teacherIdentity = useMemo(() => {
-    return normalizeTeacherIdentity(guruProfile || (user as any)?.guru_profile || user);
-  }, [guruProfile, user]);
 
   const activeNama = teacherIdentity.namaLengkapGelar || teacherIdentity.nama || '';
   const activeNip = teacherIdentity.nipClean || '-';
@@ -1026,7 +1021,7 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                 </div>
               ) : (
                 <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-                  {guruProfile?.jabatan || (waliKelasNama ? `Wali Kelas ${waliKelasNama}` : 'Guru Mata Pelajaran')}
+                  {teacherIdentity.jabatan || (waliKelasNama ? `Wali Kelas ${waliKelasNama}` : 'Guru Mata Pelajaran')}
                 </span>
               )}
             </div>

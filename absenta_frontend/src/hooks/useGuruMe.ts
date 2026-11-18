@@ -1,6 +1,11 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { guruApi } from '../api/academic.api';
 import { useAuthStore } from '../store/authStore';
+import {
+  normalizeTeacherIdentity,
+  type TeacherIdentity,
+} from '../utils/academic/academicIdentityNormalizer';
 
 export const GURU_ME_QUERY_KEY = ['guru-profile-me'] as const;
 
@@ -9,7 +14,7 @@ export interface UseGuruMeOptions {
 }
 
 /**
- * Hook to fetch logged in teacher's profile data with smart fallbacks
+ * Universal Hook to fetch logged in teacher's profile data with 360-degree SSOT normalization
  */
 export function useGuruMe(options?: UseGuruMeOptions) {
   const { user } = useAuthStore();
@@ -50,8 +55,25 @@ export function useGuruMe(options?: UseGuruMeOptions) {
     staleTime: 60 * 1000,
   });
 
+  const mergedRaw = useMemo(() => {
+    const fetched = query.data;
+    const embedded = (user as any)?.guru_profile || (user as any)?.guru || null;
+    if (!fetched && !embedded && !user) return null;
+    return {
+      ...(user || {}),
+      ...(embedded || {}),
+      ...(fetched || {}),
+    };
+  }, [query.data, user]);
+
+  const identity: TeacherIdentity = useMemo(() => {
+    return normalizeTeacherIdentity(mergedRaw);
+  }, [mergedRaw]);
+
   return {
-    guruProfile: query.data ?? null,
+    identity,
+    guruProfile: query.data ?? (user as any)?.guru_profile ?? null,
+    raw: mergedRaw,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,
