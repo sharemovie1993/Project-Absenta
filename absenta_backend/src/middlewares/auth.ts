@@ -27,9 +27,13 @@ const PUBLIC_ENDPOINTS = [
   '/auth/check-email', '/api/auth/check-email',
   '/auth/tenant-info', '/api/auth/tenant-info',
   '/auth/dev/tenants', '/api/auth/dev/tenants', '/api/v1/auth/dev/tenants',
+  // Stress testing
   '/stress/attendance/session',
   // Public Sekolah Lookups
   '/api/sekolah/lookup-npsn',
+  // Universal Daily Briefing Public Route
+  '/api/reports/daily-briefing',
+  '/reports/daily-briefing',
   // Hardware/IoT Gateways (Validated via device_id)
   '/api/attendance/devices/heartbeat',
   '/api/attendance/devices/tap'
@@ -126,10 +130,11 @@ export async function authMiddleware(
     ((urlPath.startsWith('/api/invoice/') || urlPath.startsWith('/invoice/')) && urlPath.endsWith('/print'));
   const isPaymentPublic = urlPath.startsWith('/api/payment/public') || urlPath.startsWith('/payment/public');
   const isSosialisasiPublic = urlPath.startsWith('/api/public/sosialisasi') || urlPath.startsWith('/public/sosialisasi');
+  const isDailyBriefingPublic = urlPath.startsWith('/api/reports/daily-briefing') || urlPath.startsWith('/reports/daily-briefing');
   const isDocumentDownload = urlPath.includes('/documents/') && urlPath.endsWith('/download');
 
   const isPublicEndpoint =
-    (PUBLIC_ENDPOINTS.includes(urlPath) || isVerifyEmailPublic || isLookupNpsnPublic || isAuthPublic || isInvoicePublic || isPaymentPublic || isSosialisasiPublic || isDocumentDownload || urlPath.startsWith('/uploads/') || urlPath.startsWith('/api/uploads/')) &&
+    (PUBLIC_ENDPOINTS.includes(urlPath) || isVerifyEmailPublic || isLookupNpsnPublic || isAuthPublic || isInvoicePublic || isPaymentPublic || isSosialisasiPublic || isDailyBriefingPublic || isDocumentDownload || urlPath.startsWith('/uploads/') || urlPath.startsWith('/api/uploads/')) &&
     (!isSystemConfigPath || request.method === 'GET');
 
   if (isPublicEndpoint) {

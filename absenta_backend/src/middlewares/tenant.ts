@@ -37,6 +37,8 @@ export async function tenantMiddleware(
     urlPath.startsWith('/system/branding') ||
     urlPath.startsWith('/api/public/sosialisasi') ||
     urlPath.startsWith('/public/sosialisasi') ||
+    urlPath.startsWith('/api/reports/daily-briefing') ||
+    urlPath.startsWith('/reports/daily-briefing') ||
     urlPath.startsWith('/uploads/') ||
     urlPath.startsWith('/api/uploads/');
     

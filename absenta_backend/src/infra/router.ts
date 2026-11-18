@@ -156,7 +156,16 @@ export async function registerRoutes(fastify: any, prisma: any) {
         });
 
         // Universal Daily Briefing Tokenized Public Route (Tanpa Login, Token-Guarded)
-        fastify.get('/reports/daily-briefing', async (request: any, reply: any) => {
+        fastify.get('/reports/daily-briefing', {
+          config: { skipAuth: true, public: true }
+        }, async (request: any, reply: any) => {
+          const { dailyBriefingController } = await import('../modules/daily-briefing/controllers/daily-briefing.controller');
+          return dailyBriefingController.getBriefingByToken(request, reply);
+        });
+
+        fastify.get('/public/daily-briefing', {
+          config: { skipAuth: true, public: true }
+        }, async (request: any, reply: any) => {
           const { dailyBriefingController } = await import('../modules/daily-briefing/controllers/daily-briefing.controller');
           return dailyBriefingController.getBriefingByToken(request, reply);
         });
