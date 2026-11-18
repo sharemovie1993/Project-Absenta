@@ -255,7 +255,7 @@ export class DapodikService {
   }
 
   /**
-   * Mengosongkan cache snapshot Dapodik jika dibutuhkan
+   * Mengosongkan cache in-memory snapshot Dapodik jika dibutuhkan
    */
   static clearCache(tenantId?: string) {
     if (tenantId) {
@@ -263,6 +263,31 @@ export class DapodikService {
     } else {
       DapodikService.studentCache.clear();
     }
+  }
+
+  /**
+   * Menghancurkan metadata dan snapshot staging Dapodik (baik di persistent storage S3/MinIO/Lokal maupun in-memory cache).
+   * Digunakan untuk memastikan staging bersih total sebelum penarikan baru.
+   */
+  static async clearStagingSnapshot(tenantId: string): Promise<boolean> {
+    const key = DapodikService.getStagingStorageKey(tenantId);
+    // 1. Bersihkan in-memory cache
+    DapodikService.clearCache(tenantId);
+
+    // 2. Hapus file persistent snapshot dari storage (S3/MinIO/Lokal)
+    try {
+      await storageService.delete(key);
+    } catch (err: any) {
+      console.warn(`[DapodikService] Gagal menghapus storage key ${key}:`, err?.message || err);
+    }
+
+    // 3. Hapus legacy local file jika ada
+    const legacyPath = DapodikService.getLegacyLocalStagingPath(key);
+    if (fs.existsSync(legacyPath)) {
+      await fs.promises.unlink(legacyPath).catch(() => {});
+    }
+
+    return true;
   }
 
   /**
@@ -664,7 +689,12 @@ export class DapodikService {
     let effectiveSourceMode: 'LIVE' | 'STAGING' = sourceMode;
     let fallbackReason: string | undefined;
 
-    const existingCache = DapodikService.studentCache.get(tenantId);
+    // Jika diminta forceRefresh, bersihkan in-memory cache seketika agar tidak memakai memori lama
+    if (forceRefresh) {
+      DapodikService.clearCache(tenantId);
+    }
+
+    const existingCache = !forceRefresh ? DapodikService.studentCache.get(tenantId) : undefined;
     const hasValidCache = Boolean(
       existingCache &&
       Array.isArray(existingCache.rows) &&
@@ -676,13 +706,15 @@ export class DapodikService {
     const stagingSnapshot = await DapodikService.loadStagingSnapshot(tenantId);
 
     if (sourceMode === 'STAGING') {
-      // MODE STAGING PLATFORM (LOKAL DULU): Gunakan snapshot lokal bila ada; jika lokal masih kosong, otomatis tarik Live!
-      if (stagingSnapshot && stagingSnapshot.rows.length > 0) {
+      // MODE STAGING PLATFORM:
+      // Gunakan snapshot lokal bila ada dan TIDAK sedang meminta forceRefresh.
+      // Jika forceRefresh=true ATAU lokal masih kosong, wajib tarik Live fresh dari server Dapodik!
+      if (!forceRefresh && stagingSnapshot && stagingSnapshot.rows.length > 0) {
         dapodikRows = stagingSnapshot.rows;
         isFromCache = true;
         cachedAtDate = stagingSnapshot.savedAt;
         effectiveSourceMode = 'STAGING';
-      } else if (hasValidCache && existingCache) {
+      } else if (!forceRefresh && hasValidCache && existingCache) {
         dapodikRows = existingCache.rows;
         isFromCache = true;
         cachedAtDate = existingCache.fetchedAt;
@@ -693,9 +725,14 @@ export class DapodikService {
           const live = await this.fetchLiveDapodikRows(tenantId, cleanHost, cleanNpsn, cleanToken);
           dapodikRows = live.rows;
           cachedAtDate = live.fetchedAt;
-          effectiveSourceMode = 'LIVE';
+          effectiveSourceMode = 'STAGING';
           isFromCache = false;
+          // Timpa snapshot di staging storage dengan data fresh yang baru ditarik
+          await DapodikService.saveStagingSnapshot(tenantId, live.rows, cleanNpsn, cleanHost);
         } catch (err: any) {
+          if (forceRefresh) {
+            throw new Error(`Gagal menarik data baru dari Web Service Dapodik: ${err.message || 'Koneksi bermasalah'}`);
+          }
           throw new Error(
             `Belum ada snapshot Dapodik di Staging Lokal dan penarikan otomatis Live gagal: ${err.message || 'Koneksi bermasalah'}`
           );
@@ -716,6 +753,8 @@ export class DapodikService {
           dapodikRows = live.rows;
           cachedAtDate = live.fetchedAt;
           effectiveSourceMode = 'LIVE';
+          // Otomatis update snapshot persistent di Staging agar selaras dengan data Live terbaru
+          await DapodikService.saveStagingSnapshot(tenantId, live.rows, cleanNpsn, cleanHost);
         } catch (err: any) {
           // Jika user eksplisit klik "Tarik Data Baru" (forceRefresh=true), langsung tampilkan error asli (jangan menyembunyikan kegagalan di balik fallback staging)
           if (!forceRefresh) {
@@ -803,16 +842,21 @@ export class DapodikService {
     };
 
     // 3. Bangun Indeks Pencocokan (Lookup Maps) untuk Efisiensi O(N)
-    const absentaByNisn = new Map<string, typeof absentaStudents[0]>();
-    const absentaByNik = new Map<string, typeof absentaStudents[0]>();
+    // Menggunakan Map<string, Array<Siswa>> untuk mencegah overwrite jika di Absenta terdapat duplikasi NISN/NIK.
+    const absentaByNisn = new Map<string, Array<typeof absentaStudents[0]>>();
+    const absentaByNik = new Map<string, Array<typeof absentaStudents[0]>>();
     const matchedAbsentaIds = new Set<string>();
 
     for (const s of absentaStudents) {
       if (s.nisn && s.nisn.trim()) {
-        absentaByNisn.set(s.nisn.trim().toLowerCase(), s);
+        const k = s.nisn.trim().toLowerCase();
+        if (!absentaByNisn.has(k)) absentaByNisn.set(k, []);
+        absentaByNisn.get(k)!.push(s);
       }
       if (s.nik && s.nik.trim()) {
-        absentaByNik.set(s.nik.trim().toLowerCase(), s);
+        const k = s.nik.trim().toLowerCase();
+        if (!absentaByNik.has(k)) absentaByNik.set(k, []);
+        absentaByNik.get(k)!.push(s);
       }
     }
 
@@ -833,11 +877,17 @@ export class DapodikService {
       const dRombel = norm(dRow.nama_rombel || dRow.rombongan_belajar?.nama || dRow.rombel);
 
       // Cari pasangan di Absenta (Primary: NISN, Secondary: NIK)
+      // ZERO-FALLBACK: NISN hanya dicocokkan dengan NISN, NIK hanya dengan NIK (tidak boleh fallback ke NIS).
+      // Jika terdapat multi-kandidat dengan NISN sama di Absenta, prioritaskan yang namanya cocok.
       let match: typeof absentaStudents[0] | undefined;
       if (dNisn && absentaByNisn.has(dNisn)) {
-        match = absentaByNisn.get(dNisn);
+        const candidates = absentaByNisn.get(dNisn)!;
+        match = candidates.find((c) => !matchedAbsentaIds.has(c.id) && norm(c.nama_siswa) === dNama)
+             || candidates.find((c) => !matchedAbsentaIds.has(c.id));
       } else if (dNik && absentaByNik.has(dNik)) {
-        match = absentaByNik.get(dNik);
+        const candidates = absentaByNik.get(dNik)!;
+        match = candidates.find((c) => !matchedAbsentaIds.has(c.id) && norm(c.nama_siswa) === dNama)
+             || candidates.find((c) => !matchedAbsentaIds.has(c.id));
       }
 
       if (!match) {
@@ -1218,7 +1268,8 @@ export class DapodikService {
               data: {
                 tenant_id: tenantId,
                 nama_siswa: item.nama,
-                nis: item.nis || item.nisn || `NIS-${Date.now()}`,
+                // Zero-Fallback: Jangan pernah mengisi NIS menggunakan NISN
+                nis: item.nis || `NIS-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
                 nisn: item.nisn || null,
                 nik: item.nik || null,
                 jenis_kelamin: (item.jenis_kelamin || 'L').toUpperCase().startsWith('P') ? 'P' : 'L',

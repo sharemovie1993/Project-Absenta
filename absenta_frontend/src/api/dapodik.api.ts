@@ -188,6 +188,11 @@ export const getDapodikStagingMeta = async (): Promise<{ success: boolean; data:
   return response.data;
 };
 
+export const purgeDapodikStagingSnapshot = async (): Promise<{ success: boolean; message: string }> => {
+  const response = await axiosInstance.post('/dapodik/staging/purge');
+  return response.data;
+};
+
 export const syncDapodikStudents = async (
   payload: SyncStudentsPayload
 ): Promise<{ success: boolean; message: string; updatedCount: number; importedCount: number }> => {

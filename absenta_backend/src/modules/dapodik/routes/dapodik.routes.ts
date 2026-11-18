@@ -39,6 +39,12 @@ export async function dapodikRoutes(fastify: any) {
     handler: dapodikController.getStagingMeta.bind(dapodikController),
   });
 
+  // 5c. Hancurkan Metadata & Snapshot Staging Storage Platform (Purge)
+  fastify.post('/staging/purge', {
+    preHandler: [requireCapability('academic.dapodik.manage'), determineDataScope()],
+    handler: dapodikController.purgeStagingSnapshot.bind(dapodikController),
+  });
+
   // 6. Eksekusi Sinkronisasi / Pemutakhiran Siswa
   fastify.post('/sync-students', {
     preHandler: [requireCapability('academic.dapodik.manage'), determineDataScope()],

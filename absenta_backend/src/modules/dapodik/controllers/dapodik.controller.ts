@@ -153,6 +153,26 @@ export const dapodikController = {
   },
 
   /**
+   * Menghancurkan Snapshot Staging dan In-Memory Cache di Platform (Purge Staging)
+   */
+  async purgeStagingSnapshot(request: any, reply: any) {
+    try {
+      const user = request.user!;
+      const tenantId = user.tenantId || user.tenant_id;
+      await DapodikService.clearStagingSnapshot(tenantId);
+      return reply.status(200).send({
+        success: true,
+        message: 'Snapshot Staging Platform dan memori cache berhasil dihancurkan.',
+      });
+    } catch (err: any) {
+      return reply.status(500).send({
+        success: false,
+        message: err.message || 'Gagal menghancurkan staging snapshot',
+      });
+    }
+  },
+
+  /**
    * Menyinkronkan siswa yang dipilih
    */
   async syncStudents(request: any, reply: any) {

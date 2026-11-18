@@ -13,7 +13,7 @@ import {
   SlidersHorizontal, Settings2,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock, Sparkles,
   Printer, Bookmark, User, ExternalLink, X, ShieldCheck, Wrench,
-  UserPlus, Edit3, LogOut
+  UserPlus, Edit3, LogOut, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -29,6 +29,7 @@ import {
   testDapodikConnection,
   getDapodikStudentComparison,
   syncDapodikStudents,
+  purgeDapodikStagingSnapshot,
   type DapodikConfig,
   type ReconciledStudent,
   type StudentReconciliationStatus,
@@ -221,6 +222,33 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     } finally {
       setIsFetchingFresh(false);
     }
+  };
+
+  // Aksi Eksplisit: Hancurkan Snapshot Staging & Bersihkan Cache
+  const [isPurgingStaging, setIsPurgingStaging] = useState(false);
+  const handlePurgeStaging = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Hancurkan Snapshot Staging?',
+      message:
+        'Tindakan ini akan menghapus file snapshot staging lokal dan cache di memori server secara permanen. Snapshot baru akan dibuat saat Anda menarik data fresh dari Dapodik.',
+      confirmText: 'Ya, Hancurkan Snapshot',
+      onConfirm: async () => {
+        setIsPurgingStaging(true);
+        const toastId = toast.loading('Sedang menghancurkan snapshot staging...');
+        try {
+          await purgeDapodikStagingSnapshot();
+          queryClient.invalidateQueries({ queryKey: ['dapodik-student-comparison'] });
+          queryClient.invalidateQueries({ queryKey: ['dapodik-staging-meta'] });
+          toast.success('Snapshot staging dan cache memori berhasil dihancurkan.', { id: toastId });
+        } catch (err: any) {
+          toast.error(err?.response?.data?.message || err?.message || 'Gagal menghancurkan snapshot staging', { id: toastId });
+        } finally {
+          setIsPurgingStaging(false);
+          setConfirmDialog(null);
+        }
+      },
+    });
   };
 
   // Save Config Mutation
@@ -793,6 +821,19 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
               >
                 <Printer className="w-3.5 h-3.5 text-slate-500" />
                 Cetak Dokumen
+              </Button>
+
+              {/* Hancurkan / Purge Cache Staging */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handlePurgeStaging}
+                disabled={isPurgingStaging || isLoadingComparison}
+                className="h-7 px-2 text-[11px] font-semibold gap-1 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                title="Hancurkan snapshot staging dan bersihkan cache untuk penarikan fresh total"
+              >
+                <Trash2 className={`w-3.5 h-3.5 ${isPurgingStaging ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Bersihkan Staging</span>
               </Button>
 
               {/* Tarik Data Baru dari Dapodik Port 5774 */}
