@@ -818,20 +818,35 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     return map;
   }, [existingSchedules, bankList]);
 
-  // Kumpulan ID bank soal & mapel_id yang sedang terpasang di dalam slot matriks (mendukung multi-jurusan)
-  const usedBankIdsInMatrix = useMemo(() => {
-    const set = new Set<string>();
-    Object.values(matrix).forEach((rawVal) => {
+  // Kumpulan ID mapel/bank yang sedang terpasang di dalam slot matriks DIPISAH PER TINGKAT
+  // (PENTING: Mapel Kelas 10 yang sudah di-plot TIDAK BOLEH memblokir Kelas 11 atau Kelas 12!)
+  const usedSubjectIdsByTingkat = useMemo(() => {
+    const map = new Map<number, Set<string>>();
+    [10, 11, 12].forEach((t) => map.set(t, new Set<string>()));
+
+    Object.entries(matrix).forEach(([key, rawVal]) => {
+      if (!rawVal) return;
+      // Key format: `${dayIndex}_${sessionIndex}_${tingkat}`
+      const parts = key.split('_');
+      const tNum = Number(parts[2]);
+      if (!tNum || !map.has(tNum)) return;
+
+      const set = map.get(tNum)!;
+
       extractAllBankIdsFromMatrixValue(rawVal).forEach((id) => {
         set.add(id);
         const b = bankList.find((bank) => bank.id === id);
         if (b?.mapel_id) set.add(b.mapel_id);
       });
+
       if (rawVal && !rawVal.startsWith('{') && !rawVal.includes('__MULTI_JURUSAN__')) {
         set.add(rawVal);
+        const b = bankList.find((bank) => bank.id === rawVal);
+        if (b?.mapel_id) set.add(b.mapel_id);
       }
     });
-    return set;
+
+    return map;
   }, [matrix, bankList]);
 
   // State Modal Konfigurasi Multi-Jurusan (DDPK / Produktif)
@@ -1436,6 +1451,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                         (o) => isVocationalSubject(o.namaMapel, (o as any).kelompokMapel) || o.isAutoDraft
                       );
                       const totalSubjects = mainOptions.length + (hasVocationalInTingkat ? 1 : 0);
+                      const displayPlotted = Math.min(slottedCount, totalSubjects);
                       const theme = getTingkatTheme(tingkat);
 
                       return (
@@ -1460,7 +1476,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                                     : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                                 )}
                               >
-                                {slottedCount}/{totalSubjects} Terplot
+                                {displayPlotted}/{totalSubjects} Terplot
                               </span>
                             </div>
                           </div>
@@ -1564,9 +1580,11 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                           );
                         }
 
+                        const usedInThisTingkat = usedSubjectIdsByTingkat.get(tingkat) || new Set<string>();
+
                         const availableOptions = allOptionsForTingkat.filter((opt) => {
                           if (opt.id === selectedBankId || opt.mapelId === selectedBankId) return true;
-                          if (usedBankIdsInMatrix.has(opt.id) || usedBankIdsInMatrix.has(opt.mapelId)) return false;
+                          if (usedInThisTingkat.has(opt.id) || usedInThisTingkat.has(opt.mapelId)) return false;
                           return true;
                         });
 
