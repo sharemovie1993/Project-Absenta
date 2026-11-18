@@ -1,6 +1,7 @@
 import type { CbtBankSoal } from '@/types/cbt.types';
 import type { GuruMapel } from '@/types/academic';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
+import { JURUSAN_ALIASES } from './CbtMultiJurusanModal';
 
 export type MatrixCellStatus = 'COVERED' | 'MISSING' | 'NOT_APPLICABLE';
 
@@ -224,7 +225,15 @@ export function buildClassSubjectMatrix(params: {
         }
       }
 
-      if (clsJur && upperMapel.includes(clsJur)) return true;
+      if (clsJur) {
+        if (upperMapel.includes(clsJur)) return true;
+        const aliases = JURUSAN_ALIASES[clsJur] || [];
+        const isAliasMatch = aliases.some((a) => {
+          const reg = new RegExp(`(^|[^a-z0-9])${a}([^a-z0-9]|$)`, 'i');
+          return reg.test(mapelName);
+        });
+        if (isAliasMatch) return true;
+      }
       if (gmJurusanKode && new RegExp(`\\b${gmJurusanKode}\\b`, 'i').test(clsNameUpper)) return true;
 
       // Pemetaan rumpun kelas SMKN 1 PLERED & SMK Kejuruan:
@@ -331,9 +340,17 @@ export function buildClassSubjectMatrix(params: {
       const specificJurusanBank = matchingBanks.find((b) => {
         if (!b.jurusan) return false;
         const bJurUpper = b.jurusan.toUpperCase().trim();
-        if (clsJur && bJurUpper === clsJur) return true;
-        const reg = new RegExp(`\\b${bJurUpper}\\b`, 'i');
-        return reg.test(clsNameUpper);
+        const tokens = bJurUpper.split(/[,\s/|]+/).map((s) => s.trim());
+        if (clsJur && tokens.includes(clsJur)) return true;
+        if (clsJur) {
+          const aliases = JURUSAN_ALIASES[clsJur] || [];
+          if (aliases.some((a) => tokens.includes(a.toUpperCase()))) return true;
+        }
+        return tokens.some((tok) => {
+          if (!tok) return false;
+          const reg = new RegExp(`\\b${tok}\\b`, 'i');
+          return reg.test(clsNameUpper);
+        });
       });
 
       // Prioritas 2: Bank Soal umum (tanpa jurusan / 'SEMUA')

@@ -31,6 +31,9 @@ export interface SubjectOptionItem {
   isAutoDraft: boolean;
   label: string;
   jurusan?: string | null;
+  judul?: string;
+  kodeMapel?: string;
+  kelompokMapel?: string;
 }
 
 export interface CbtMultiJurusanModalProps {
@@ -47,17 +50,179 @@ export interface CbtMultiJurusanModalProps {
   onSave: (config: MultiJurusanSlotConfig) => void;
 }
 
-const JURUSAN_ALIASES: Record<string, string[]> = {
-  AKL: ['akl', 'ak', 'akuntansi'],
+export const JURUSAN_ALIASES: Record<string, string[]> = {
+  AKL: ['akl', 'ak', 'akuntansi', 'keuangan'],
+  AK: ['ak', 'akl', 'akuntansi', 'keuangan'],
   PHT: ['pht', 'htl', 'hotel', 'perhotelan'],
-  KUL: ['kul', 'tata boga', 'kuliner', 'boga'],
-  TAV: ['tav', 'audio video', 'elektronika', 'te'],
-  TOI: ['toi', 'otomasi industri', 'otomasi'],
-  TKJ: ['tkj', 'tjkt', 'komputer', 'jaringan'],
-  TKR: ['tkr', 'kendaraan ringan', 'otomotif'],
-  TSM: ['tsm', 'sepeda motor', 'motor'],
+  HTL: ['htl', 'pht', 'hotel', 'perhotelan'],
+  KUL: ['kul', 'kuliner', 'boga', 'tata boga'],
+  BOGA: ['boga', 'kul', 'kuliner', 'tata boga'],
+  TAV: ['tav', 'audio video', 'audio-video', 'elektronika', 'te'],
+  TOI: ['toi', 'otomasi industri', 'otomasi', 'elektro'],
+  TE: ['te', 'tav', 'toi', 'elektronika', 'audio video', 'otomasi'],
+  TKJ: ['tkj', 'tjkt', 'tkt', 'komputer', 'jaringan', 'it'],
+  TJKT: ['tjkt', 'tkj', 'tkt', 'komputer', 'jaringan', 'it'],
+  TKR: ['tkr', 'to', 'kendaraan ringan', 'otomotif', 'mobil'],
+  TSM: ['tsm', 'tbsm', 'sepeda motor', 'motor'],
+  TO: ['to', 'tkr', 'tsm', 'otomotif', 'kendaraan ringan', 'sepeda motor'],
   TP: ['tp', 'tm', 'pemesinan', 'mesin', 'teknik mesin'],
+  TM: ['tm', 'tp', 'pemesinan', 'mesin', 'teknik mesin'],
 };
+
+// Blacklist Mata Pelajaran Umum (Normatif / Adaptif) agar tidak pernah salah masuk ke slot kejuruan
+const MAPEL_UMUM_REGEX =
+  /\b(bahasa\s+indonesia|bahasa\s+inggris|bahasa\s+sunda|muatan\s+lokal|matematika|pendidikan\s+agama|paibp|pai|pendidikan\s+pancasila|ppkn|pancasila|pendidikan\s+jasmani|pjok|penjas|orkes|projek\s+ilmu\s+pengetahuan\s+alam|ipas|sejarah|seni\s+budaya|informatika|bimbingan\s+konseling|bk|bp)\b/i;
+
+export function isMapelUmum(name?: string, kode?: string, label?: string): boolean {
+  const combined = `${name || ''} ${kode || ''} ${label || ''}`.toLowerCase();
+  return MAPEL_UMUM_REGEX.test(combined);
+}
+
+export type KejuruanTargetCategory = 'MPP' | 'DDPK' | 'KK' | 'PRODUKTIF_ALL';
+
+export function detectKejuruanCategory(titleStr: string, fallbackTingkat: number): KejuruanTargetCategory {
+  const t = (titleStr || '').toLowerCase();
+  if (/\bmpp\b|mata\s+pelajaran\s+pilihan|mapel\s+pilihan|\bpilihan\b/.test(t)) {
+    return 'MPP';
+  }
+  if (/\bddpk\b|dasar[- ]dasar|dasar\s+program/.test(t)) {
+    return 'DDPK';
+  }
+  if (/konsentrasi|\bkk\b|keahlian/.test(t)) {
+    return 'KK';
+  }
+  if (fallbackTingkat === 10) return 'DDPK';
+  return 'PRODUKTIF_ALL';
+}
+
+export function evaluateOptionForJurusan(
+  opt: SubjectOptionItem,
+  jur: JurusanItem,
+  category: KejuruanTargetCategory
+): { score: number; isCategoryMatch: boolean; isJurusanMatch: boolean } {
+  // 1. Strict blacklist: Mapel umum otomatis didiskualifikasi dari slot kejuruan
+  if (isMapelUmum(opt.namaMapel, opt.kodeMapel, opt.label)) {
+    return { score: -9999, isCategoryMatch: false, isJurusanMatch: false };
+  }
+
+  const jurKodeUpper = (jur.kode || '').toUpperCase().trim();
+  const jurKodeLower = jurKodeUpper.toLowerCase();
+  const jurNamaLower = (jur.nama || '').toLowerCase().trim();
+  const aliases = JURUSAN_ALIASES[jurKodeUpper] || [jurKodeLower];
+
+  const optFullText = [
+    opt.namaMapel,
+    opt.judul,
+    opt.kodeMapel,
+    opt.label,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  const optJurLower = (opt.jurusan || '').toLowerCase().trim();
+
+  // 2. Evaluasi Kecocokan Kategori (MPP vs DDPK vs KK vs PRODUKTIF_ALL)
+  let categoryScore = 0;
+  let isCategoryMatch = false;
+
+  const hasMpp = /\bmpp\b|mata\s+pelajaran\s+pilihan|mapel\s+pilihan|\bpilihan\b/.test(optFullText);
+  const hasDdpk = /\bddpk\b|dasar[- ]dasar|dasar\s+program/.test(optFullText);
+  const hasKk = /\bkk\b|konsentrasi\s+keahlian|\bkeahlian\b/.test(optFullText);
+
+  if (category === 'MPP') {
+    if (hasMpp) {
+      categoryScore = 150;
+      isCategoryMatch = true;
+    } else if (hasDdpk || hasKk) {
+      // Salah rumpun kejuruan (misal slot MPP tapi mapelnya DDPK atau KK)
+      categoryScore = -500;
+    } else {
+      categoryScore = -200;
+    }
+  } else if (category === 'DDPK') {
+    if (hasDdpk) {
+      categoryScore = 150;
+      isCategoryMatch = true;
+    } else if (hasMpp || hasKk) {
+      categoryScore = -500;
+    } else {
+      categoryScore = -200;
+    }
+  } else if (category === 'KK') {
+    if (hasKk) {
+      categoryScore = 150;
+      isCategoryMatch = true;
+    } else if (hasDdpk || hasMpp) {
+      categoryScore = -500;
+    } else {
+      // Mapel kejuruan produktif tanpa prefix KK eksplisit
+      categoryScore = 40;
+      isCategoryMatch = true;
+    }
+  } else {
+    // PRODUKTIF_ALL
+    if (hasDdpk || hasKk || hasMpp) {
+      categoryScore = 100;
+      isCategoryMatch = true;
+    } else {
+      categoryScore = 50;
+      isCategoryMatch = true;
+    }
+  }
+
+  if (categoryScore <= 0) {
+    return { score: categoryScore, isCategoryMatch: false, isJurusanMatch: false };
+  }
+
+  // 3. Evaluasi Kecocokan Jurusan
+  let jurusanScore = 0;
+  let isJurusanMatch = false;
+
+  // Metadata jurusan persis (misal opt.jurusan === 'AKL' atau memuat 'AKL')
+  if (optJurLower) {
+    const tokens = optJurLower.split(/[,\s/|]+/);
+    if (tokens.includes(jurKodeLower)) {
+      jurusanScore += 80;
+      isJurusanMatch = true;
+    } else if (aliases.some((a) => tokens.includes(a))) {
+      jurusanScore += 70;
+      isJurusanMatch = true;
+    }
+  }
+
+  // Label tag [AKL], [KUL], dll
+  if (opt.label.toLowerCase().includes(`[${jurKodeLower}]`)) {
+    jurusanScore += 60;
+    isJurusanMatch = true;
+  }
+
+  // Token alias di dalam teks lengkap (misal "MPP AK" -> match 'ak', "KK TSM" -> match 'tsm')
+  const matchedAlias = aliases.find((a) => {
+    const reg = new RegExp(`(^|[^a-z0-9])${a}([^a-z0-9]|$)`, 'i');
+    return reg.test(optFullText);
+  });
+  if (matchedAlias) {
+    jurusanScore += 70;
+    isJurusanMatch = true;
+  }
+
+  // Nama panjang jurusan (misal 'akuntansi', 'kuliner', 'perhotelan', 'pemesinan')
+  if (jurNamaLower.length >= 4 && optFullText.includes(jurNamaLower)) {
+    jurusanScore += 60;
+    isJurusanMatch = true;
+  }
+
+  if (!isJurusanMatch) {
+    return { score: 0, isCategoryMatch, isJurusanMatch: false };
+  }
+
+  // 4. Bonus Kesiapan Soal (Soal > 0 diprioritaskan)
+  const readinessBonus = opt.soalCount > 0 ? 15 : 0;
+
+  const totalScore = categoryScore + jurusanScore + readinessBonus;
+  return { score: totalScore, isCategoryMatch, isJurusanMatch: true };
+}
 
 export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
   isOpen,
@@ -91,61 +256,69 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
     return jurusans.filter((j) => Boolean(assignments[j.kode])).length;
   }, [jurusans, assignments]);
 
-  // ⚡ Heuristik Auto-Match Otomatis Cerdas (Mendukung DDPK, MPP, Produktif SMK)
-  const handleAutoMatch = () => {
+  // ⚡ Heuristik Auto-Match Otomatis Cerdas & Presisi (Mendukung DDPK, KK, MPP SMK)
+  const handleAutoMatch = (overrideTitle?: string) => {
+    const activeTitle = (overrideTitle ?? title).trim() || defaultTitle;
+    const detectedCategory = detectKejuruanCategory(activeTitle, tingkat);
     let matchedCount = 0;
-    const nextAssignments: Record<string, string> = { ...assignments };
+    const nextAssignments: Record<string, string> = {};
+    const unmatchedJur: string[] = [];
 
     jurusans.forEach((jur) => {
-      const jurKodeUpper = (jur.kode || '').toUpperCase().trim();
-      const jurKodeLower = jurKodeUpper.toLowerCase();
-      const jurNamaLower = (jur.nama || '').toLowerCase().trim();
-      const aliases = JURUSAN_ALIASES[jurKodeUpper] || [jurKodeLower];
+      // Hitung skor evaluasi untuk setiap opsi mapel
+      const scoredOptions = subjectOptions
+        .map((opt) => {
+          const evalRes = evaluateOptionForJurusan(opt, jur, detectedCategory);
+          return {
+            opt,
+            score: evalRes.score,
+            isCategoryMatch: evalRes.isCategoryMatch,
+            isJurusanMatch: evalRes.isJurusanMatch,
+          };
+        })
+        .filter((item) => item.score > 0)
+        .sort((a, b) => b.score - a.score);
 
-      // Cari mata pelajaran terbaik untuk jurusan ini
-      const matched = subjectOptions.find((opt) => {
-        const optNameLower = opt.namaMapel.toLowerCase();
-        const optLabelLower = opt.label.toLowerCase();
-        const optJurLower = (opt.jurusan || '').toLowerCase();
-
-        // 1. Metadata jurusan pada bank soal cocok persis
-        if (optJurLower && (optJurLower === jurKodeLower || optJurLower === jurNamaLower)) {
-          return true;
-        }
-
-        // 2. Cocokkan alias resmi kurikulum (misal "MPP AK" -> AKL, "MPP HTL" -> PHT, "DDPK TM" -> TP)
-        const isAliasMatch = aliases.some((a) => {
-          const reg = new RegExp(`(^|[^a-z0-9])${a}([^a-z0-9]|$)`, 'i');
-          return reg.test(optNameLower) || reg.test(optLabelLower);
-        });
-        if (isAliasMatch) return true;
-
-        // 3. Nama mapel memuat kata kunci nama jurusan (misal "Akuntansi", "Kuliner", "Perhotelan")
-        if (
-          jurNamaLower.length >= 4 &&
-          (optNameLower.includes(jurNamaLower) || optLabelLower.includes(jurNamaLower))
-        ) {
-          return true;
-        }
-
-        return false;
-      });
-
-      if (matched) {
-        nextAssignments[jur.kode] = matched.id;
+      if (scoredOptions.length > 0) {
+        nextAssignments[jur.kode] = scoredOptions[0].opt.id;
         matchedCount++;
+      } else {
+        unmatchedJur.push(jur.kode);
       }
     });
 
     setAssignments(nextAssignments);
-    if (matchedCount > 0) {
-      toast.success(`⚡ Berhasil mencocokkan ${matchedCount} dari ${jurusans.length} jurusan secara otomatis!`);
+
+    const categoryLabel =
+      detectedCategory === 'MPP'
+        ? 'MPP (Mata Pelajaran Pilihan)'
+        : detectedCategory === 'DDPK'
+          ? 'DDPK (Dasar-Dasar Program Keahlian)'
+          : detectedCategory === 'KK'
+            ? 'Konsentrasi Keahlian (KK)'
+            : 'Mapel Produktif Kejuruan';
+
+    if (matchedCount === jurusans.length) {
+      toast.success(
+        `⚡ Sempurna! Seluruh ${matchedCount} jurusan berhasil dipetakan ke ${categoryLabel}.`,
+        { duration: 4000 }
+      );
+    } else if (matchedCount > 0) {
+      toast.success(
+        `⚡ Berhasil memetakan ${matchedCount} dari ${jurusans.length} jurusan ke ${categoryLabel}. (${unmatchedJur.join(', ')} belum memiliki bank soal ${detectedCategory})`,
+        { duration: 5000 }
+      );
     } else {
-      toast('Tidak ditemukan mapel dengan kode/nama jurusan yang cocok secara otomatis.', {
-        icon: 'ℹ️',
-      });
+      toast(
+        `Tidak ditemukan bank soal yang cocok untuk kategori ${categoryLabel} di Kelas ${tingkat}. Pastikan guru pengampu sudah membuat Bank Soal ${detectedCategory}.`,
+        { icon: 'ℹ️', duration: 5000 }
+      );
     }
   };
+
+  const currentCategory = useMemo(() => {
+    return detectKejuruanCategory(title, tingkat);
+  }, [title, tingkat]);
 
   const handleSelectMapel = (kodeJurusan: string, bankId: string) => {
     setAssignments((prev) => {
@@ -240,7 +413,7 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
                 type="button"
                 variant="outline"
                 size="xs"
-                onClick={handleAutoMatch}
+                onClick={() => handleAutoMatch()}
                 className="text-xs h-8 px-3 font-bold bg-purple-600 hover:bg-purple-700 text-white border-purple-600 shadow-2xs cursor-pointer flex items-center gap-1.5"
                 title="Cocokkan otomatis bank soal ke jurusan berdasarkan nama/kode mapel"
               >
@@ -271,7 +444,10 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
               <button
                 key={preset}
                 type="button"
-                onClick={() => setTitle(preset)}
+                onClick={() => {
+                  setTitle(preset);
+                  handleAutoMatch(preset);
+                }}
                 className={cn(
                   'px-2 py-0.5 rounded-md font-bold transition-all cursor-pointer',
                   title === preset
@@ -301,6 +477,19 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
                 const selectedBankId = assignments[jur.kode] || '';
                 const selectedOpt = subjectOptions.find((o) => o.id === selectedBankId);
                 const isZeroQuestions = Boolean(selectedOpt && selectedOpt.soalCount === 0);
+
+                // Klasifikasikan opsi mapel: Rekomendasi vs Lainnya untuk Jurusan ini
+                const recommendedOpts: SubjectOptionItem[] = [];
+                const otherOpts: SubjectOptionItem[] = [];
+
+                subjectOptions.forEach((opt) => {
+                  const evalRes = evaluateOptionForJurusan(opt, jur, currentCategory);
+                  if (evalRes.score > 0) {
+                    recommendedOpts.push(opt);
+                  } else {
+                    otherOpts.push(opt);
+                  }
+                });
 
                 return (
                   <tr
@@ -347,11 +536,22 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
                         )}
                       >
                         <option value="">— Pilih Bank Soal / Mapel Kejuruan —</option>
-                        {subjectOptions.map((opt) => (
-                          <option key={opt.id} value={opt.id}>
-                            {opt.label}
-                          </option>
-                        ))}
+                        {recommendedOpts.length > 0 && (
+                          <optgroup label={`⭐ Rekomendasi Jurusan ${jur.kode}`}>
+                            {recommendedOpts.map((opt) => (
+                              <option key={opt.id} value={opt.id}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        <optgroup label={recommendedOpts.length > 0 ? "Bank Soal Lainnya" : "Daftar Bank Soal"}>
+                          {otherOpts.map((opt) => (
+                            <option key={opt.id} value={opt.id}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </optgroup>
                       </select>
                     </td>
 

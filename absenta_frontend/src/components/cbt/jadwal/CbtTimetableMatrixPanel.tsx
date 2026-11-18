@@ -492,6 +492,9 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
         soalCount: count,
         isAutoDraft: false,
         jurusan: b.jurusan,
+        judul: b.judul,
+        kodeMapel: b.Mapel?.kode_mapel,
+        kelompokMapel: (b.Mapel as any)?.kelompok_mapel,
         label: count > 0 ? `${mName}${jurTag} (${count} Soal)` : `${mName}${jurTag} (0 Soal - Draft)`,
       });
     });
