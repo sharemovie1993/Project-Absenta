@@ -39,6 +39,7 @@ import toast from 'react-hot-toast';
 import { CbtBeritaAcaraPrintModal } from './CbtBeritaAcaraPrintModal';
 import { CbtDaftarHadirPrintModal } from './CbtDaftarHadirPrintModal';
 import { CbtAutoPlotConfigModal, type AutoPlotConfigOptions } from './CbtAutoPlotConfigModal';
+import { CbtKandidatPengawasModal } from './CbtKandidatPengawasModal';
 import { CbtDenahModal } from './CbtDenahModal';
 import { executeAutoPlotSupervisors } from './cbtAutoPlotEngine';
 
@@ -97,6 +98,7 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
   const [selectedJadwalForPrint, setSelectedJadwalForPrint] = useState<CbtJadwalUjian | null>(null);
   const [selectedJadwalForDaftarHadir, setSelectedJadwalForDaftarHadir] = useState<CbtJadwalUjian | null>(null);
   const [isAutoPlotModalOpen, setIsAutoPlotModalOpen] = useState(false);
+  const [isKandidatModalOpen, setIsKandidatModalOpen] = useState(false);
   const [showUnassignedGuruModal, setShowUnassignedGuruModal] = useState(false);
 
   // State Modal Denah Spasial Kampus
@@ -129,52 +131,149 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
     return { pendidikList: pendidik, tenagaKependidikanList: tu };
   }, [guruList]);
 
-  // List Pengawas Dikelompokkan (Optgroup: Pendidik vs Tenaga Kependidikan)
+  // ── DATA KANDIDAT PENGAWAS (WHITELIST PRA-PLOT) ──
+  const whitelistedCandidateIds = useMemo(() => {
+    const list = activeEvent?.pengawas_candidates;
+    return Array.isArray(list) ? list : [];
+  }, [activeEvent?.pengawas_candidates]);
+
+  const whitelistedCandidateSet = useMemo(() => {
+    return new Set(whitelistedCandidateIds);
+  }, [whitelistedCandidateIds]);
+
+  const { whitelistedCandidates, whitelistedPendidik, whitelistedTu } = useMemo(() => {
+    const wCandidates = (guruList || []).filter((g) => whitelistedCandidateSet.has(g.id));
+    const wPendidik: any[] = [];
+    const wTu: any[] = [];
+
+    wCandidates.forEach((g) => {
+      const ptk = (g.jenis_ptk || '').toUpperCase().trim();
+      if (
+        ptk === 'TENAGA_KEPENDIDIKAN' ||
+        ptk === 'TU' ||
+        ptk === 'TATA_USAHA' ||
+        ptk === 'STAFF' ||
+        ptk === 'STAF'
+      ) {
+        wTu.push(g);
+      } else {
+        wPendidik.push(g);
+      }
+    });
+
+    return {
+      whitelistedCandidates: wCandidates,
+      whitelistedPendidik: wPendidik,
+      whitelistedTu: wTu,
+    };
+  }, [whitelistedCandidateSet, guruList]);
+
+  // List Pengawas Dikelompokkan (Optgroup: Kandidat Terpilih diutamakan, lalu Non-Kandidat)
   const pengawasSelectOptions = useMemo(() => {
     const options: any[] = [
       { value: '', label: '— Belum Diploting —' },
     ];
 
-    if (pendidikList.length > 0) {
+    if (whitelistedCandidates.length > 0) {
+      // Prioritas 1: Kandidat Pengawas Terpilih
       options.push({
-        value: '__HEADER_PENDIDIK__',
-        label: `🎓 GURU PENDIDIK (${pendidikList.length})`,
+        value: '__HEADER_CANDIDATE__',
+        label: `⭐ KANDIDAT PENGAWAS TERPILIH (${whitelistedCandidates.length})`,
         isGroupHeader: true,
         disabled: true,
       });
 
-      pendidikList.forEach((g) => {
+      whitelistedCandidates.forEach((g) => {
+        const ptk = (g.jenis_ptk || '').toUpperCase().trim();
+        const isTU =
+          ptk === 'TENAGA_KEPENDIDIKAN' ||
+          ptk === 'TU' ||
+          ptk === 'TATA_USAHA' ||
+          ptk === 'STAFF' ||
+          ptk === 'STAF';
+
         options.push({
           value: g.id,
           label: `${g.nama_guru}${g.nip ? ` (NIP. ${g.nip})` : ''}`,
-          rightBadge: 'PENDIDIK',
-          rightBadgeClass: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800',
-          statusDotClass: 'bg-indigo-500',
+          rightBadge: isTU ? '⭐ KANDIDAT (TU)' : '⭐ KANDIDAT',
+          rightBadgeClass: isTU
+            ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200 border border-amber-300'
+            : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200 border border-emerald-300',
+          statusDotClass: isTU ? 'bg-amber-500' : 'bg-emerald-500',
         });
       });
-    }
 
-    if (tenagaKependidikanList.length > 0) {
-      options.push({
-        value: '__HEADER_TU__',
-        label: `🏢 TENAGA KEPENDIDIKAN / TU (${tenagaKependidikanList.length})`,
-        isGroupHeader: true,
-        disabled: true,
-      });
-
-      tenagaKependidikanList.forEach((g) => {
+      // Group 2: Pegawai Lainnya (Bukan Kandidat)
+      const nonCandidates = (guruList || []).filter((g) => !whitelistedCandidateSet.has(g.id));
+      if (nonCandidates.length > 0) {
         options.push({
-          value: g.id,
-          label: `${g.nama_guru}${g.nip ? ` (NIP. ${g.nip})` : ''}`,
-          rightBadge: 'STAF TU',
-          rightBadgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800',
-          statusDotClass: 'bg-amber-500',
+          value: '__HEADER_NON_CANDIDATE__',
+          label: `👥 PEGAWAI LAINNYA / NON-KANDIDAT (${nonCandidates.length})`,
+          isGroupHeader: true,
+          disabled: true,
         });
-      });
+
+        nonCandidates.forEach((g) => {
+          const ptk = (g.jenis_ptk || '').toUpperCase().trim();
+          const isTU =
+            ptk === 'TENAGA_KEPENDIDIKAN' ||
+            ptk === 'TU' ||
+            ptk === 'TATA_USAHA' ||
+            ptk === 'STAFF' ||
+            ptk === 'STAF';
+
+          options.push({
+            value: g.id,
+            label: `${g.nama_guru}${g.nip ? ` (NIP. ${g.nip})` : ''}`,
+            rightBadge: isTU ? 'TU' : 'PENDIDIK',
+            rightBadgeClass: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+            statusDotClass: 'bg-slate-400',
+          });
+        });
+      }
+    } else {
+      // Fallback jika belum menetapkan whitelist kandidat
+      if (pendidikList.length > 0) {
+        options.push({
+          value: '__HEADER_PENDIDIK__',
+          label: `🎓 GURU PENDIDIK (${pendidikList.length})`,
+          isGroupHeader: true,
+          disabled: true,
+        });
+
+        pendidikList.forEach((g) => {
+          options.push({
+            value: g.id,
+            label: `${g.nama_guru}${g.nip ? ` (NIP. ${g.nip})` : ''}`,
+            rightBadge: 'PENDIDIK',
+            rightBadgeClass: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800',
+            statusDotClass: 'bg-indigo-500',
+          });
+        });
+      }
+
+      if (tenagaKependidikanList.length > 0) {
+        options.push({
+          value: '__HEADER_TU__',
+          label: `🏢 TENAGA KEPENDIDIKAN / TU (${tenagaKependidikanList.length})`,
+          isGroupHeader: true,
+          disabled: true,
+        });
+
+        tenagaKependidikanList.forEach((g) => {
+          options.push({
+            value: g.id,
+            label: `${g.nama_guru}${g.nip ? ` (NIP. ${g.nip})` : ''}`,
+            rightBadge: 'STAF TU',
+            rightBadgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800',
+            statusDotClass: 'bg-amber-500',
+          });
+        });
+      }
     }
 
     return options;
-  }, [pendidikList, tenagaKependidikanList]);
+  }, [whitelistedCandidates, whitelistedCandidateSet, guruList, pendidikList, tenagaKependidikanList]);
 
   // ── 2. LOCAL DRAFT STATE FOR PLOTTING ──
   const [plottingDrafts, setPlottingDrafts] = useState<Record<string, PlottingDraftRow>>({});
@@ -909,17 +1008,30 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
 
   // Eksekusi Distribusi Otomatis
   const handleApplyAutoPlot = (config: AutoPlotConfigOptions) => {
-    let candidates =
-      config.candidateScope === 'PENDIDIK_ONLY'
-        ? pendidikList.length > 0
-          ? pendidikList
-          : guruList
-        : [...pendidikList, ...tenagaKependidikanList];
+    let candidates: any[] = [];
 
-    if (candidates.length === 0) candidates = guruList;
+    if (config.candidateScope === 'WHITELIST_ONLY') {
+      candidates = whitelistedCandidates;
+    } else if (config.candidateScope === 'WHITELIST_PENDIDIK') {
+      candidates = whitelistedPendidik;
+    } else if (config.candidateScope === 'WHITELIST_TU') {
+      candidates = whitelistedTu;
+    } else if (config.candidateScope === 'ALL_PENDIDIK') {
+      candidates = pendidikList.length > 0 ? pendidikList : guruList;
+    } else if (config.candidateScope === 'ALL_STAFF') {
+      candidates = [...pendidikList, ...tenagaKependidikanList];
+    }
+
+    if (candidates.length === 0) {
+      if (whitelistedCandidates.length > 0) {
+        candidates = whitelistedCandidates;
+      } else {
+        candidates = pendidikList.length > 0 ? pendidikList : guruList;
+      }
+    }
 
     if (!candidates.length) {
-      toast.error('Tidak ada data guru yang tersedia untuk diploting');
+      toast.error('Tidak ada data kandidat pengawas yang tersedia untuk diploting');
       return;
     }
 
@@ -1148,6 +1260,24 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
                 <UserCheck size={12} className={showProctor ? 'text-indigo-600' : 'text-slate-400'} />
                 <span>{showProctor ? 'Proktor: Aktif' : 'Proktor: Sembunyi'}</span>
               </button>
+
+              {/* Kandidat Pengawas Button */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsKandidatModalOpen(true)}
+                className={cn(
+                  'text-xs h-8 px-2.5 font-bold shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0 border transition-all',
+                  whitelistedCandidateIds.length > 0
+                    ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100'
+                    : 'border-amber-300 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 hover:bg-amber-100'
+                )}
+                title="Pra-Ploting: Kelola daftar kandidat pengawas ujian untuk event ini"
+              >
+                <Users size={12} className={whitelistedCandidateIds.length > 0 ? 'text-indigo-600' : 'text-amber-600'} />
+                <span>Kandidat ({whitelistedCandidateIds.length})</span>
+              </Button>
 
               {/* Plot Otomatis Button */}
               <Button
@@ -1861,6 +1991,17 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
         />
       )}
 
+      {/* ── MODAL PRA-PLOT: KANDIDAT PENGAWAS WHITELIST ── */}
+      {isKandidatModalOpen && (
+        <CbtKandidatPengawasModal
+          isOpen={isKandidatModalOpen}
+          onClose={() => setIsKandidatModalOpen(false)}
+          activeEvent={activeEvent || null}
+          guruList={guruList}
+          totalSesiCount={effectiveJadwalList.length}
+        />
+      )}
+
       {/* ── MODAL AUTO PLOT SOP SILANG ── */}
       {isAutoPlotModalOpen && (
         <CbtAutoPlotConfigModal
@@ -1868,9 +2009,12 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
           onClose={() => setIsAutoPlotModalOpen(false)}
           onConfirm={handleApplyAutoPlot}
           jadwalList={effectiveJadwalList}
-          pendidikCount={pendidikList.length || guruList.length}
-          tenagaKependidikanCount={tenagaKependidikanList.length}
-          alreadyPlottedCount={workloadStats.totalPlottedSessions}
+          whitelistedCandidateCount={whitelistedCandidateIds.length}
+          whitelistedPendidikCount={whitelistedPendidik.length}
+          whitelistedTuCount={whitelistedTu.length}
+          allPendidikCount={pendidikList.length}
+          allTuCount={tenagaKependidikanList.length}
+          onOpenKandidatModal={() => setIsKandidatModalOpen(true)}
         />
       )}
 

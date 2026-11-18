@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Modal, Button } from '@/components/ui';
-import { Wand2 } from 'lucide-react';
+import { Wand2, Users, AlertTriangle, ArrowRight, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CbtJadwalUjian } from '@/types/cbt.types';
 
 export type AutoPlotRoomStrategy = 'STAY_ROOM' | 'ROLLING_SESSION' | 'MAX_N_SESSION_PER_ROOM';
-export type AutoPlotCandidateScope = 'PENDIDIK_ONLY' | 'ALL_STAFF';
+export type AutoPlotCandidateScope = 'WHITELIST_ONLY' | 'WHITELIST_PENDIDIK' | 'WHITELIST_TU' | 'ALL_PENDIDIK' | 'ALL_STAFF';
 
 export interface AutoPlotConfigOptions {
   roomStrategy: AutoPlotRoomStrategy;
@@ -20,20 +20,31 @@ interface CbtAutoPlotConfigModalProps {
   onClose: () => void;
   onConfirm: (config: AutoPlotConfigOptions) => void;
   jadwalList: CbtJadwalUjian[];
-  pendidikCount: number;
-  tenagaKependidikanCount: number;
-  alreadyPlottedCount: number;
+  whitelistedCandidateCount: number;
+  whitelistedPendidikCount: number;
+  whitelistedTuCount: number;
+  allPendidikCount: number;
+  allTuCount: number;
+  onOpenKandidatModal?: () => void;
 }
 
 export const CbtAutoPlotConfigModal: React.FC<CbtAutoPlotConfigModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  pendidikCount,
-  tenagaKependidikanCount,
+  whitelistedCandidateCount,
+  whitelistedPendidikCount,
+  whitelistedTuCount,
+  allPendidikCount,
+  allTuCount,
+  onOpenKandidatModal,
 }) => {
+  const hasWhitelist = whitelistedCandidateCount > 0;
+
   const [roomStrategy, setRoomStrategy] = useState<AutoPlotRoomStrategy>('STAY_ROOM');
-  const [candidateScope, setCandidateScope] = useState<AutoPlotCandidateScope>('PENDIDIK_ONLY');
+  const [candidateScope, setCandidateScope] = useState<AutoPlotCandidateScope>(
+    hasWhitelist ? 'WHITELIST_ONLY' : 'ALL_PENDIDIK'
+  );
   const [onlyUnassigned, setOnlyUnassigned] = useState<boolean>(true);
 
   const handleApply = () => {
@@ -55,6 +66,67 @@ export const CbtAutoPlotConfigModal: React.FC<CbtAutoPlotConfigModalProps> = ({
       size="md"
     >
       <div className="space-y-4 py-1 text-xs">
+        {/* Banner Whitelist Status */}
+        {hasWhitelist ? (
+          <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                <UserCheck size={16} />
+              </div>
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white block text-[11px]">
+                  Tabel Kandidat: {whitelistedCandidateCount} Pegawai Terpilih
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  {whitelistedPendidikCount} Guru Pendidik • {whitelistedTuCount} Staf TU
+                </span>
+              </div>
+            </div>
+
+            {onOpenKandidatModal && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenKandidatModal();
+                }}
+                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 underline cursor-pointer shrink-0"
+              >
+                Ubah Kandidat
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle size={18} className="text-amber-600 shrink-0" />
+              <div>
+                <span className="font-bold text-amber-900 dark:text-amber-200 block text-[11px]">
+                  Belum Ada Kandidat Pengawas yang Ditetapkan
+                </span>
+                <span className="text-[10px] text-amber-700 dark:text-amber-300">
+                  Sebaiknya tentukan kandidat terlebih dahulu agar TU/guru non-pengawas tidak ikut terplot.
+                </span>
+              </div>
+            </div>
+
+            {onOpenKandidatModal && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  onClose();
+                  onOpenKandidatModal();
+                }}
+                className="text-[11px] h-7 font-bold border-amber-300 text-amber-800 dark:text-amber-200 shrink-0"
+              >
+                Atur Kandidat
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Pola Alokasi Ruang (Pill Segments) */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -104,25 +176,42 @@ export const CbtAutoPlotConfigModal: React.FC<CbtAutoPlotConfigModalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Kandidat Pengawas
+              Kandidat Pengawas yang Digunakan
             </label>
             <select
               value={candidateScope}
               onChange={(e) => setCandidateScope(e.target.value as AutoPlotCandidateScope)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold cursor-pointer"
             >
-              <option value="PENDIDIK_ONLY">
-                Guru Pendidik ({pendidikCount})
+              {hasWhitelist && (
+                <>
+                  <option value="WHITELIST_ONLY">
+                    🎯 Seluruh Kandidat Terpilih ({whitelistedCandidateCount})
+                  </option>
+                  {whitelistedPendidikCount > 0 && (
+                    <option value="WHITELIST_PENDIDIK">
+                      🎓 Hanya Guru Pendidik dari Kandidat ({whitelistedPendidikCount})
+                    </option>
+                  )}
+                  {whitelistedTuCount > 0 && (
+                    <option value="WHITELIST_TU">
+                      🏢 Hanya Staf TU dari Kandidat ({whitelistedTuCount})
+                    </option>
+                  )}
+                </>
+              )}
+              <option value="ALL_PENDIDIK">
+                🎓 Semua Guru Pendidik Sekolah ({allPendidikCount})
               </option>
               <option value="ALL_STAFF">
-                Pendidik + Staf TU ({pendidikCount + tenagaKependidikanCount})
+                👥 Seluruh Pegawai Pendidik &amp; TU ({allPendidikCount + allTuCount})
               </option>
             </select>
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Target Ploting
+              Target Ploting Sesi
             </label>
             <select
               value={onlyUnassigned ? 'UNASSIGNED' : 'ALL'}

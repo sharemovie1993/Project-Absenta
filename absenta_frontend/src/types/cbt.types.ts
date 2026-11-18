@@ -315,6 +315,7 @@ export interface CbtEventItem {
   days_config?: any[]; // Struktur ExamDayConfig (hari, tanggal, sesi, jam)
   room_mappings?: any[]; // Pemetaan kelas ke ruang ujian (KelasRoomMapping[])
   matrix_draft?: any; // Draft rancangan mapel per sesi & tingkat (TimetableMatrixState)
+  pengawas_candidates?: string[]; // Array of guru_id yang menjadi whitelist kandidat pengawas event ini
   lock_teacher_scheduling: boolean;
   token_refresh_interval?: number;
   strict_browser_guard: boolean;

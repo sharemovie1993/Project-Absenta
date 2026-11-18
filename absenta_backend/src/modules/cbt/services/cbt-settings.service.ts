@@ -13,6 +13,7 @@ export interface CbtEventItem {
   days_config?: any[]; // Struktur ExamDayConfig (hari, tanggal, sesi, jam)
   room_mappings?: any[]; // Pemetaan kelas ke ruang ujian (KelasRoomMapping[])
   matrix_draft?: any; // Draft rancangan mapel per sesi & tingkat (TimetableMatrixState)
+  pengawas_candidates?: string[]; // Array of guru_id yang menjadi whitelist kandidat pengawas event ini
   lock_teacher_scheduling: boolean;
   token_refresh_interval?: number;
   strict_browser_guard: boolean;
@@ -255,6 +256,9 @@ export class CbtSettingsService {
       days_config: Array.isArray(payload.days_config) ? payload.days_config : (existing?.days_config || []),
       room_mappings: Array.isArray(payload.room_mappings) ? payload.room_mappings : (existing?.room_mappings || []),
       matrix_draft: payload.matrix_draft !== undefined ? payload.matrix_draft : (existing?.matrix_draft || {}),
+      pengawas_candidates: Array.isArray(payload.pengawas_candidates)
+        ? payload.pengawas_candidates
+        : (existing?.pengawas_candidates || []),
       lock_teacher_scheduling: payload.lock_teacher_scheduling !== undefined ? payload.lock_teacher_scheduling : (existing?.lock_teacher_scheduling ?? true),
       token_refresh_interval: payload.token_refresh_interval !== undefined ? payload.token_refresh_interval : (existing?.token_refresh_interval ?? 0),
       strict_browser_guard: payload.strict_browser_guard !== undefined ? payload.strict_browser_guard : (existing?.strict_browser_guard ?? true),
