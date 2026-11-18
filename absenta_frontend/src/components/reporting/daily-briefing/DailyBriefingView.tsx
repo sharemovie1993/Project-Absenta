@@ -504,6 +504,13 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                       </div>
                     </div>
                   )}
+
+                  {/* Empty state bila tidak ada rincian kendala */}
+                  {(!sec.stats || sec.stats.length === 0) && (!sec.items || sec.items.length === 0) && (
+                    <div className="py-4 text-center rounded-xl bg-slate-50/60 dark:bg-slate-800/20 border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+                      ✨ Situasi operasional divisi terpantau kondusif. Tidak ada catatan kasus darurat hari ini.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
