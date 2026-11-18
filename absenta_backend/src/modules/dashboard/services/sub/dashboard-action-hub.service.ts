@@ -408,49 +408,128 @@ export class DashboardActionHubService {
     }
   }
 
-  // --- DETECTOR 4: Bimbingan Siswa PKL (Modul Hubin) ---
+  // --- DETECTOR 4: Penginputan Nilai PKL & Nilai Sidang (Modul Hubin) ---
   private async detectPklTasks(tenantId: string, guruId: string): Promise<UnifiedActionItem[]> {
     try {
-      const activePklStudents = await prisma.siswaPkl.findMany({
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+
+      const tpFilter = activeTp?.id
+        ? {
+            OR: [
+              { Siswa: { tahun_pelajaran_id: activeTp.id } },
+              { SiswaAkademik: { tahun_pelajaran_id: activeTp.id } },
+            ],
+          }
+        : {};
+
+      const items: UnifiedActionItem[] = [];
+
+      // 1. Channel Penginputan Nilai PKL (Kandidat Guru dari Ploting Penempatan Siswa PKL)
+      const bimbinganStudents = await prisma.siswaPkl.findMany({
         where: {
           tenant_id: tenantId,
           pembimbing_id: guruId,
-          status: 'AKTIF'
+          status: 'AKTIF',
+          ...tpFilter,
         },
         select: {
           id: true,
           nilai_akhir_pkl: true,
-          tanggal_selesai: true,
-        }
+          hard_kompetensi_teknis: true,
+          soft_kedisiplinan: true,
+        },
       });
 
-      if (!activePklStudents.length) return [];
+      if (bimbinganStudents.length > 0) {
+        const totalBimbingan = bimbinganStudents.length;
+        const assessedBimbingan = bimbinganStudents.filter(
+          s => s.nilai_akhir_pkl !== null || (s.hard_kompetensi_teknis !== null && s.soft_kedisiplinan !== null)
+        ).length;
+        const unassessedBimbingan = totalBimbingan - assessedBimbingan;
 
-      const unassessedCount = activePklStudents.filter(s => s.nilai_akhir_pkl === null).length;
+        items.push({
+          id: `pkl_nilai_pembimbing_${guruId}`,
+          division: 'HUBIN',
+          urgency: unassessedBimbingan > 0 ? 'UPCOMING' : 'INFO',
+          title: 'Penginputan Nilai PKL',
+          subtitle: unassessedBimbingan > 0
+            ? `${totalBimbingan} Siswa bimbingan PKL (${unassessedBimbingan} belum dinilai)`
+            : `${totalBimbingan} Siswa bimbingan PKL (Semua telah dinilai)`,
+          badgeText: unassessedBimbingan > 0 ? `${unassessedBimbingan} Belum Dinilai` : 'Lengkap',
+          progress: {
+            current: assessedBimbingan,
+            total: totalBimbingan,
+            percent: Math.round((assessedBimbingan / totalBimbingan) * 100),
+            label: `${assessedBimbingan}/${totalBimbingan} Dinilai`,
+          },
+          action: {
+            label: 'Input Nilai ➔',
+            type: 'NAVIGATE',
+            target: '/hubin/nilai-pkl?tab=dudi',
+          },
+          sourceModule: {
+            table: 'SiswaPkl',
+            entityId: guruId,
+          },
+        });
+      }
 
-      return [{
-        id: `pkl_guidance_${guruId}`,
-        division: 'HUBIN',
-        urgency: unassessedCount > 0 ? 'UPCOMING' : 'INFO',
-        title: 'Bimbingan Siswa PKL',
-        subtitle: `${activePklStudents.length} Siswa bimbingan PKL aktif di DUDI (${unassessedCount} belum dinilai)`,
-        badgeText: `${activePklStudents.length} Siswa`,
-        progress: {
-          current: activePklStudents.length - unassessedCount,
-          total: activePklStudents.length,
-          percent: Math.round(((activePklStudents.length - unassessedCount) / activePklStudents.length) * 100),
-          label: `${activePklStudents.length - unassessedCount}/${activePklStudents.length} Dinilai`
+      // 2. Channel Penginputan Nilai Sidang (Kandidat Guru dari Ploting Penguji Sidang PKL)
+      const sidangStudents = await prisma.siswaPkl.findMany({
+        where: {
+          tenant_id: tenantId,
+          status: 'AKTIF',
+          nilai_json: {
+            path: ['penguji_id'],
+            equals: guruId,
+          },
+          ...tpFilter,
         },
-        action: {
-          label: 'Kelola PKL ➔',
-          type: 'NAVIGATE',
-          target: '/dashboard?tab=pembimbing_pkl'
+        select: {
+          id: true,
+          nilai_json: true,
         },
-        sourceModule: {
-          table: 'SiswaPkl',
-          entityId: guruId
-        }
-      }];
+      });
+
+      if (sidangStudents.length > 0) {
+        const totalSidang = sidangStudents.length;
+        const assessedSidang = sidangStudents.filter(s => {
+          const nJson = s.nilai_json as any;
+          return nJson?.nilai_sidang !== null && nJson?.nilai_sidang !== undefined && nJson?.nilai_sidang !== '';
+        }).length;
+        const unassessedSidang = totalSidang - assessedSidang;
+
+        items.push({
+          id: `pkl_nilai_sidang_${guruId}`,
+          division: 'HUBIN',
+          urgency: unassessedSidang > 0 ? 'UPCOMING' : 'INFO',
+          title: 'Penginputan Nilai Sidang PKL',
+          subtitle: unassessedSidang > 0
+            ? `${totalSidang} Siswa uji sidang PKL (${unassessedSidang} belum dinilai sidang)`
+            : `${totalSidang} Siswa uji sidang PKL (Semua telah dinilai sidang)`,
+          badgeText: unassessedSidang > 0 ? `${unassessedSidang} Belum Diuji` : 'Lengkap',
+          progress: {
+            current: assessedSidang,
+            total: totalSidang,
+            percent: Math.round((assessedSidang / totalSidang) * 100),
+            label: `${assessedSidang}/${totalSidang} Teruji`,
+          },
+          action: {
+            label: 'Nilai Sidang ➔',
+            type: 'NAVIGATE',
+            target: '/hubin/nilai-pkl?tab=sidang',
+          },
+          sourceModule: {
+            table: 'SiswaPkl',
+            entityId: guruId,
+          },
+        });
+      }
+
+      return items;
     } catch (e) {
       return [];
     }

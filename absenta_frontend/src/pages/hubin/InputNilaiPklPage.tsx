@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard } from '@/components/ui';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
@@ -11,8 +12,11 @@ export interface InputNilaiPklPageProps extends UniversalNilaiPklViewProps {
 
 export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo((props) => {
   const { layoutMode = 'hubin', hideLayout = false } = props;
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as 'dudi' | 'sidang' | 'monitoring_sidang' | 'progres_pkl' | null;
+  const initialTab = tabParam || props.initialTab || 'dudi';
 
-  const content = <NilaiPklView {...props} isModal={false} hideHeaderStats={false} />;
+  const content = <NilaiPklView {...props} initialTab={initialTab} isModal={false} hideHeaderStats={false} />;
 
   if (hideLayout) {
     return content;
@@ -50,7 +54,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo((p
         }}
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
-          <NilaiPklView {...props} isModal={false} hideHeaderStats={false} />
+          <NilaiPklView {...props} initialTab={initialTab} isModal={false} hideHeaderStats={false} />
         </SectionCard>
       </AcademicPageLayout>
     </InfraErrorBoundary>
