@@ -544,6 +544,7 @@ export interface BuildMassScheduleParams {
   days: ExamDayConfig[];
   matrix: TimetableMatrixState;
   bankList: CbtBankSoal[];
+  rawGuruMapel?: any[];
   roomMappings: KelasRoomMapping[];
   activeTpId: string;
   activeSemId: string;
@@ -561,6 +562,7 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
     days,
     matrix,
     bankList,
+    rawGuruMapel,
     roomMappings,
     activeTpId,
     activeSemId,
@@ -667,35 +669,64 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
           });
         } else {
           // OPSI STANDAR (MAPEL UMUM PARALEL SETINGKAT)
-          const bank = bankMap.get(rawBankVal);
-          if (!bank) return;
+          // Mendukung rawBankVal berupa mapel_id (standar baru) maupun bank_soal_id (backward-compatibility)
+          const directBank = bankMap.get(rawBankVal);
+          const targetMapelId = directBank?.mapel_id || rawBankVal;
 
-          const mapelName = bank.Mapel?.nama_mapel || bank.MataPelajaran?.nama_mapel || bank.judul;
+          // Cari seluruh bank soal untuk mapel ini di tingkat ini
+          const candidateBanks = bankList.filter((b) => {
+            if (b.mapel_id !== targetMapelId) return false;
+            const bTingkat = resolveBankTingkatNumber(b);
+            if (bTingkat !== undefined && bTingkat !== tingkat) return false;
+            return true;
+          });
 
-          const resolveBankForClass = (cls: (typeof classesInTingkat)[number]) => {
+          // Jika tidak ada bank soal sama sekali di candidateBanks dan directBank juga tidak ada, abaikan
+          if (candidateBanks.length === 0 && !directBank) return;
+
+          const defaultFallbackBank = directBank || candidateBanks[0];
+
+          const resolveBankForClass = (cls: (typeof classesInTingkat)[number]): CbtBankSoal | null => {
             const clsJurCode = (cls.kode_jurusan || '').toUpperCase().trim();
             const clsName = (cls.nama_kelas || '').toUpperCase();
 
-            const specificBank = bankList.find((b) => {
-              if (b.id === bank.id) return false;
-              if (b.mapel_id !== bank.mapel_id) return false;
-              const bTingkat = resolveBankTingkatNumber(b);
-              if (bTingkat !== tingkat) return false;
+            // 1. Cari bank soal spesifik yang jurusannya cocok dengan rombel cls
+            const specificBank = candidateBanks.find((b) => {
               if (!b.jurusan) return false;
-
               const bJurUpper = b.jurusan.toUpperCase().trim();
-              if (clsJurCode && bJurUpper === clsJurCode) return true;
+              if (clsJurCode && (bJurUpper.includes(clsJurCode) || clsJurCode.includes(bJurUpper))) return true;
               const reg = new RegExp(`\\b${bJurUpper}\\b`, 'i');
               return reg.test(clsName);
             });
+            if (specificBank) return specificBank;
 
-            return specificBank || bank;
+            // 2. Cari bank soal buatan guru pengampu rombel ini (dari rawGuruMapel jika ada)
+            if (rawGuruMapel && Array.isArray(rawGuruMapel)) {
+              const gmAssignment = rawGuruMapel.find(
+                (gm: any) => gm.kelas_id === cls.kelas_id && gm.mapel_id === targetMapelId
+              );
+              if (gmAssignment?.guru_id) {
+                const guruBank = candidateBanks.find((b) => b.guru_id === gmAssignment.guru_id);
+                if (guruBank) return guruBank;
+              }
+            }
+
+            // 3. Fallback ke bank soal kandidat pertama yang paling siap (jumlah soal terbanyak)
+            if (candidateBanks.length > 0) {
+              const sorted = [...candidateBanks].sort(
+                (a, b) => (b.jumlah_soal || b._count?.Soal || 0) - (a.jumlah_soal || a._count?.Soal || 0)
+              );
+              return sorted[0];
+            }
+
+            return defaultFallbackBank || null;
           };
 
           if (generationMode === 'per_rombel_ruang') {
             // OPSI A (KONTRAK RESMI KELAS-CENTRIK): 1 Jadwal Ujian untuk setiap Ruang/Rombel
             classesInTingkat.forEach((cls) => {
               const effectiveBank = resolveBankForClass(cls);
+              if (!effectiveBank) return;
               const mapelName = effectiveBank.Mapel?.nama_mapel || effectiveBank.MataPelajaran?.nama_mapel || effectiveBank.judul;
               const jurTag = effectiveBank.jurusan ? ` [${effectiveBank.jurusan}]` : '';
               const rMapping = roomMapByKelasId.get(cls.kelas_id);
@@ -731,10 +762,11 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
             });
           } else {
             // OPSI B: 1 Jadwal Terpadu per Tingkat (Dikelompokkan secara Cerdas jika ada Varian Jurusan)
-            const groupsByBank = new Map<string, { bank: typeof bank; classes: typeof classesInTingkat }>();
+            const groupsByBank = new Map<string, { bank: CbtBankSoal; classes: typeof classesInTingkat }>();
 
             classesInTingkat.forEach((cls) => {
               const effectiveBank = resolveBankForClass(cls);
+              if (!effectiveBank) return;
               if (!groupsByBank.has(effectiveBank.id)) {
                 groupsByBank.set(effectiveBank.id, { bank: effectiveBank, classes: [] });
               }
@@ -955,31 +987,43 @@ export function reconstructMatrixFromExistingSchedules(
     if (matchedSess) {
       const key = `${targetDay.day_index}_${matchedSess.session_index}_${tingkat}`;
       const existingVal = reconstructed[key];
+      const thisBank = bankMap.get(j.bank_soal_id);
+      const thisMapelId = thisBank?.mapel_id || (j.BankSoal as any)?.mapel_id;
+      const effectiveVal = thisMapelId || j.bank_soal_id;
+
       if (!existingVal) {
-        reconstructed[key] = j.bank_soal_id;
-      } else if (existingVal !== j.bank_soal_id) {
-        // Multi-jurusan terdeteksi (ada beberapa bank soal berbeda dalam 1 slot tingkat & sesi yang sama)
-        let multiConfig = parseMultiJurusanSlot(existingVal);
-        if (!multiConfig) {
-          multiConfig = {
-            title: 'DDPK / Produktif Kejuruan',
-            assignments: {},
-          };
-          const firstBank = bankMap.get(existingVal);
-          const firstJur = firstBank?.jurusan;
-          if (firstJur) {
-            multiConfig.assignments[firstJur] = existingVal;
+        reconstructed[key] = effectiveVal;
+      } else if (existingVal !== effectiveVal) {
+        // Cek apakah existingVal dan effectiveVal sebenarnya mapel_id yang sama
+        const existingBank = bankMap.get(existingVal);
+        const existingMapelId = existingBank?.mapel_id || existingVal;
+
+        if (thisMapelId && existingMapelId === thisMapelId) {
+          // Mapelnya sama (misal Bahasa Inggris varian rombel berbeda) -> tetap mapel_id yang sama
+          reconstructed[key] = thisMapelId;
+        } else {
+          // Multi-jurusan terdeteksi (ada beberapa bank soal/mapel kejuruan berbeda dalam 1 slot tingkat & sesi yang sama)
+          let multiConfig = parseMultiJurusanSlot(existingVal);
+          if (!multiConfig) {
+            multiConfig = {
+              title: 'DDPK / Produktif Kejuruan',
+              assignments: {},
+            };
+            const firstBank = existingBank || bankMap.get(existingVal);
+            const firstJur = firstBank?.jurusan;
+            if (firstJur) {
+              multiConfig.assignments[firstJur] = existingVal;
+            }
           }
-        }
 
-        const { rombel } = parseScheduleRoomAndClass(j);
-        const thisBank = bankMap.get(j.bank_soal_id);
-        const jurCode = thisBank?.jurusan || (rombel.split(' ')[1] || '').trim();
-        if (jurCode) {
-          multiConfig.assignments[jurCode] = j.bank_soal_id;
-        }
+          const { rombel } = parseScheduleRoomAndClass(j);
+          const jurCode = thisBank?.jurusan || (rombel.split(' ')[1] || '').trim();
+          if (jurCode) {
+            multiConfig.assignments[jurCode] = j.bank_soal_id;
+          }
 
-        reconstructed[key] = serializeMultiJurusanSlot(multiConfig);
+          reconstructed[key] = serializeMultiJurusanSlot(multiConfig);
+        }
       }
     }
   });

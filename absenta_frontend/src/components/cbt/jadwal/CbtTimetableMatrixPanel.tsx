@@ -631,38 +631,162 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   }, [bankList, rawGuruMapel]);
 
   // Unified Main Subject Options (Luar Modal):
+  // 1 MATA PELAJARAN = 1 OPSI BERSIH (Key & Value: MAPEL_ID)
   // Menjaga tabel slot utama tetap bersih & ringkas dengan hanya menampilkan Mapel Umum Serentak
-  // (Pecahan mapel kejuruan seperti DDPK, KK, MPP per jurusan dan cangkang draft 0 soal disembunyikan
-  // dari slot utama karena alur penjadwalan kejuruan serentak SMK menggunakan slot Multi-Jurusan)
+  // (Pecahan bank soal guru disatukan ke induk Mapel, sedangkan kejuruan diplot via slot Multi-Jurusan)
   const mainSubjectOptionsByTingkat = useMemo(() => {
     const map = new Map<
       number,
       Array<{
-        id: string;
+        id: string; // MAPEL_ID!
         mapelId: string;
         tingkat: number;
-        guruId?: string;
         namaMapel: string;
-        namaGuru?: string;
         soalCount: number;
+        bankCount: number;
         isAutoDraft: boolean;
         label: string;
-        jurusan?: string | null;
       }>
     >();
 
     [10, 11, 12].forEach((t) => {
-      const all = subjectOptionsByTingkat.get(t) || [];
-      const cleanList = all.filter((opt) => {
-        if (opt.isAutoDraft) return false;
-        if (isVocationalSubject(opt.namaMapel, (opt as any).kelompokMapel)) return false;
-        return true;
+      const subjectGroupMap = new Map<
+        string,
+        {
+          mapelId: string;
+          tingkat: number;
+          namaMapel: string;
+          totalSoal: number;
+          banks: CbtBankSoal[];
+          kelompokMapel?: string;
+        }
+      >();
+
+      // 1. Ekstrak dari rawGuruMapel (Kurikulum resmi sekolah)
+      if (rawGuruMapel && Array.isArray(rawGuruMapel)) {
+        rawGuruMapel.forEach((gm: any) => {
+          const mId = gm.mapel_id;
+          if (!mId) return;
+
+          const mapelName = gm.Mapel?.nama_mapel || 'Mata Pelajaran';
+          const lowerName = mapelName.toLowerCase();
+          if (
+            lowerName.includes('bimbingan') ||
+            lowerName.includes('konseling') ||
+            lowerName.includes('bp/bk') ||
+            lowerName.includes('bk')
+          ) {
+            return;
+          }
+
+          // Deteksi apakah diajarkan di tingkat t
+          const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat;
+          let tNum = Number(rawTingkat);
+          if (!tNum && gm.Kelas?.nama_kelas) {
+            const match = gm.Kelas.nama_kelas.match(/\b(X|XI|XII|10|11|12)\b/i);
+            if (match) {
+              const roman = match[1].toUpperCase();
+              tNum = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
+            }
+          }
+
+          let isMatchTingkat = tNum === t;
+          if (!isMatchTingkat) {
+            const upper = mapelName.toUpperCase();
+            if ((upper.includes('DDPK') || upper.includes('DASAR')) && t === 10) isMatchTingkat = true;
+            else if ((upper.startsWith('KK ') || upper.startsWith('MPP ')) && (t === 11 || t === 12)) isMatchTingkat = true;
+            else if (!tNum && rawTingkat === (t === 11 ? 'XI' : t === 12 ? 'XII' : 'X')) isMatchTingkat = true;
+          }
+
+          if (isMatchTingkat && !subjectGroupMap.has(mId)) {
+            subjectGroupMap.set(mId, {
+              mapelId: mId,
+              tingkat: t,
+              namaMapel: mapelName,
+              totalSoal: 0,
+              banks: [],
+              kelompokMapel: gm.Mapel?.kelompok_mapel,
+            });
+          }
+        });
+      }
+
+      // 2. Hubungkan dengan bankList untuk menghitung total soal & bank soal
+      bankList.forEach((b) => {
+        const bTingkat = resolveBankTingkatNumber(b);
+        if (bTingkat !== t) return;
+        const mId = b.mapel_id;
+        if (!mId) return;
+
+        const mName = b.Mapel?.nama_mapel || b.MataPelajaran?.nama_mapel || b.judul || 'Mata Pelajaran';
+        if (!subjectGroupMap.has(mId)) {
+          subjectGroupMap.set(mId, {
+            mapelId: mId,
+            tingkat: t,
+            namaMapel: mName,
+            totalSoal: 0,
+            banks: [],
+            kelompokMapel: (b.Mapel as any)?.kelompok_mapel,
+          });
+        }
+
+        const entry = subjectGroupMap.get(mId)!;
+        entry.banks.push(b);
+        entry.totalSoal += b.jumlah_soal || b._count?.Soal || 0;
       });
-      map.set(t, cleanList);
+
+      // 3. Filter mapel umum (sembunyikan kejuruan karena kejuruan menggunakan Multi-Jurusan)
+      const list: Array<{
+        id: string;
+        mapelId: string;
+        tingkat: number;
+        namaMapel: string;
+        soalCount: number;
+        bankCount: number;
+        isAutoDraft: boolean;
+        label: string;
+      }> = [];
+
+      subjectGroupMap.forEach((entry) => {
+        if (isVocationalSubject(entry.namaMapel, entry.kelompokMapel)) {
+          return;
+        }
+
+        const bankCount = entry.banks.length;
+        const totalSoal = entry.totalSoal;
+        const isDraft = bankCount === 0 || totalSoal === 0;
+
+        let statusText = '';
+        if (totalSoal > 0) {
+          statusText = bankCount > 1 ? `(${totalSoal} Soal - ${bankCount} Bank)` : `(${totalSoal} Soal)`;
+        } else {
+          statusText = `(0 Soal - Belum Disetor)`;
+        }
+
+        list.push({
+          id: entry.mapelId, // PENTING: Value adalah mapel_id!
+          mapelId: entry.mapelId,
+          tingkat: t,
+          namaMapel: entry.namaMapel,
+          soalCount: totalSoal,
+          bankCount: bankCount,
+          isAutoDraft: isDraft,
+          label: `${entry.namaMapel} ${statusText}`,
+        });
+      });
+
+      // Urutkan: Siap soal di atas, lalu abjad ASC
+      list.sort((a, b) => {
+        if (a.soalCount > 0 && b.soalCount === 0) return -1;
+        if (a.soalCount === 0 && b.soalCount > 0) return 1;
+        return a.namaMapel.localeCompare(b.namaMapel);
+      });
+
+      map.set(t, list);
     });
 
     return map;
-  }, [subjectOptionsByTingkat]);
+  }, [bankList, rawGuruMapel]);
 
   // Map bank_soal_id ke daftar sesi ujian yang sudah ada di database (untuk Idempotensi & On-Demand)
   const publishedSessionsByBankId = useMemo(() => {
@@ -677,14 +801,38 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     return map;
   }, [existingSchedules]);
 
-  // Kumpulan ID bank soal yang sedang terpasang di dalam slot matriks (mendukung multi-jurusan)
+  // Map mapel_id ke daftar sesi ujian yang sudah ada di database
+  const publishedSessionsByMapelId = useMemo(() => {
+    const map = new Map<string, CbtJadwalUjian[]>();
+    if (!existingSchedules) return map;
+    const bankMap = new Map(bankList.map((b) => [b.id, b]));
+
+    existingSchedules.forEach((j) => {
+      const bank = bankMap.get(j.bank_soal_id);
+      const mId = bank?.mapel_id || (j.BankSoal as any)?.mapel_id;
+      if (mId) {
+        if (!map.has(mId)) map.set(mId, []);
+        map.get(mId)!.push(j);
+      }
+    });
+    return map;
+  }, [existingSchedules, bankList]);
+
+  // Kumpulan ID bank soal & mapel_id yang sedang terpasang di dalam slot matriks (mendukung multi-jurusan)
   const usedBankIdsInMatrix = useMemo(() => {
     const set = new Set<string>();
     Object.values(matrix).forEach((rawVal) => {
-      extractAllBankIdsFromMatrixValue(rawVal).forEach((id) => set.add(id));
+      extractAllBankIdsFromMatrixValue(rawVal).forEach((id) => {
+        set.add(id);
+        const b = bankList.find((bank) => bank.id === id);
+        if (b?.mapel_id) set.add(b.mapel_id);
+      });
+      if (rawVal && !rawVal.startsWith('{') && !rawVal.includes('__MULTI_JURUSAN__')) {
+        set.add(rawVal);
+      }
     });
     return set;
-  }, [matrix]);
+  }, [matrix, bankList]);
 
   // State Modal Konfigurasi Multi-Jurusan (DDPK / Produktif)
   const [multiModalState, setMultiModalState] = useState<{
@@ -1076,6 +1224,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
         days,
         matrix: effectiveMatrix,
         bankList: effectiveBankList,
+        rawGuruMapel,
         roomMappings: effectiveRoomMappings,
         activeTpId,
         activeSemId,
@@ -1416,24 +1565,37 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                         }
 
                         const availableOptions = allOptionsForTingkat.filter((opt) => {
-                          if (opt.id === selectedBankId) return true;
-                          if (usedBankIdsInMatrix.has(opt.id)) return false;
+                          if (opt.id === selectedBankId || opt.mapelId === selectedBankId) return true;
+                          if (usedBankIdsInMatrix.has(opt.id) || usedBankIdsInMatrix.has(opt.mapelId)) return false;
                           return true;
                         });
 
+                        // Backward-compatibility: jika slot matriks menyimpan bank_soal_id lama
+                        let selectedOpt = allOptionsForTingkat.find(
+                          (o) => o.id === selectedBankId || o.mapelId === selectedBankId
+                        );
+                        if (!selectedOpt && selectedBankId) {
+                          const matchingBank = bankList.find((b) => b.id === selectedBankId);
+                          if (matchingBank?.mapel_id) {
+                            selectedOpt = allOptionsForTingkat.find((o) => o.mapelId === matchingBank.mapel_id);
+                          }
+                        }
+
                         // Jika slot sudah terisi bank soal tertentu dari opsi lengkap (misal bank soal kejuruan spesifik),
                         // pastikan opsi tersebut tetap ada di dropdown agar value dan labelnya tidak hilang
-                        if (selectedBankId && !availableOptions.some((o) => o.id === selectedBankId)) {
-                          const currentSelectedOpt = subjectOptionsByTingkat.get(tingkat)?.find((o) => o.id === selectedBankId);
+                        if (selectedBankId && !availableOptions.some((o) => o.id === (selectedOpt?.id || selectedBankId))) {
+                          const currentSelectedOpt =
+                            selectedOpt ||
+                            (subjectOptionsByTingkat.get(tingkat)?.find((o) => o.id === selectedBankId) as any);
                           if (currentSelectedOpt) {
                             availableOptions.unshift(currentSelectedOpt);
                           }
                         }
 
-                        const selectedOpt =
-                          allOptionsForTingkat.find((o) => o.id === selectedBankId) ||
-                          subjectOptionsByTingkat.get(tingkat)?.find((o) => o.id === selectedBankId);
                         const isZeroQuestions = Boolean(selectedOpt && selectedOpt.soalCount === 0);
+                        const publishedCount =
+                          (publishedSessionsByMapelId.get(selectedOpt?.mapelId || selectedBankId)?.length || 0) ||
+                          (publishedSessionsByBankId.get(selectedBankId)?.length || 0);
 
                         const isAllPlotted =
                           !selectedBankId && availableOptions.length === 0 && allOptionsForTingkat.length > 0;
@@ -1441,7 +1603,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                         return (
                           <td key={tingkat} className={cn('p-2 align-middle transition-colors', theme.cellBg)}>
                             <select
-                              value={selectedBankId}
+                              value={selectedOpt?.id || selectedBankId}
                               onChange={(e) =>
                                 handleSelectBankSoal(day.day_index, sess.session_index, tingkat, e.target.value)
                               }
@@ -1478,20 +1640,20 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                                 {isZeroQuestions ? (
                                   <span
                                     className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1"
-                                    title="Bank Soal ini sudah dibuat guru namun masih 0 butir soal (draft)"
+                                    title="Mata pelajaran ini belum memiliki butir soal dari guru pengampu (menunggu guru membuat bank soal)"
                                   >
-                                    ⚠️ Wadah Masih 0 Soal
+                                    ⚠️ Menunggu Setoran Guru (0 Soal)
                                   </span>
-                                ) : (publishedSessionsByBankId.get(selectedBankId)?.length || 0) > 0 ? (
+                                ) : publishedCount > 0 ? (
                                   <>
                                     <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
-                                      <CheckCircle2 size={11} /> Terbit ({publishedSessionsByBankId.get(selectedBankId)?.length} Ruang)
+                                      <CheckCircle2 size={11} /> Terbit ({publishedCount} Ruang)
                                     </span>
                                     <span className="text-emerald-600 dark:text-emerald-400 text-[9px] font-semibold">Idempoten ✓</span>
                                   </>
                                 ) : (
                                   <span className="text-indigo-600 dark:text-indigo-400 font-bold">
-                                    Siap Terbit (Baru)
+                                    Siap Terbit ({selectedOpt?.soalCount || 0} Soal)
                                   </span>
                                 )}
                               </div>
