@@ -77,6 +77,15 @@ export interface StudentIdentity {
   status: string;
 }
 
+export interface TugasTambahanItem {
+  id?: string;
+  code: string;
+  kode: string;
+  nama: string;
+  kelas?: string | null;
+  detail?: string | null;
+}
+
 export interface TeacherIdentity {
   // Identitas Pokok
   id: string;
@@ -113,12 +122,16 @@ export interface TeacherIdentity {
   isWaliKelas: boolean;
   waliKelasDi: string | null;
   waliKelasId: string | null;
+  isKaprog: boolean;
+  kaprogJurusan: string | null;
   isPembimbingPkl: boolean;
   activePklCount: number;
   isPiketGuru: boolean;
   activePiketCount: number;
   isFasilitatorP5: boolean;
   activeP5Count: number;
+  tugasTambahanList: TugasTambahanItem[];
+  tugasTambahanLabel: string;
 
   // Tempat & Tanggal Lahir
   tempatLahir: string;
@@ -479,12 +492,16 @@ export function normalizeTeacherIdentity(raw: any): TeacherIdentity {
       isWaliKelas: false,
       waliKelasDi: null,
       waliKelasId: null,
+      isKaprog: false,
+      kaprogJurusan: null,
       isPembimbingPkl: false,
       activePklCount: 0,
       isPiketGuru: false,
       activePiketCount: 0,
       isFasilitatorP5: false,
       activeP5Count: 0,
+      tugasTambahanList: [],
+      tugasTambahanLabel: 'Guru Mata Pelajaran',
       tempatLahir: '',
       tanggalLahir: null,
       ttlFormatted: '-',
@@ -531,8 +548,208 @@ export function normalizeTeacherIdentity(raw: any): TeacherIdentity {
   }
   if (!namaLengkapGelar) namaLengkapGelar = nama || 'Guru';
 
-  const waliKelasDi = raw.wali_kelas_di?.nama_kelas || raw.wali_kelas_di?.nama || (typeof raw.wali_kelas_di === 'string' ? raw.wali_kelas_di : null);
-  const isWaliKelas = Boolean(raw.wali_kelas_di || (raw.jabatan && String(raw.jabatan).toLowerCase().includes('wali')));
+  // ── Penugasan Struktural & Organizational Positions ──────────────────────
+  // 1. Kumpulkan semua position code dari berbagai field payload
+  const rawCodes: string[] = [];
+  if (Array.isArray(raw.position_codes)) {
+    raw.position_codes.forEach((c: any) => { if (c) rawCodes.push(String(c).toUpperCase()); });
+  }
+  if (Array.isArray(raw.jabatan_list)) {
+    raw.jabatan_list.forEach((c: any) => { if (c) rawCodes.push(String(c).toUpperCase()); });
+  }
+  if (Array.isArray(raw.positions)) {
+    raw.positions.forEach((p: any) => {
+      const code = p?.code || p?.name || (typeof p === 'string' ? p : null);
+      if (code) rawCodes.push(String(code).toUpperCase());
+    });
+  }
+
+  // 2. Kumpulkan raw assignments
+  const rawAssignments: any[] = [];
+  if (Array.isArray(raw.organizational_assignments)) {
+    rawAssignments.push(...raw.organizational_assignments);
+  }
+  if (Array.isArray(raw.organizationalAssignments)) {
+    rawAssignments.push(...raw.organizationalAssignments);
+  }
+  if (Array.isArray(raw.assignments)) {
+    rawAssignments.push(...raw.assignments);
+  }
+
+  rawAssignments.forEach((a: any) => {
+    const code = a.position_code || a.Position?.code || a.pos_code || a.kode || a.code;
+    if (code) rawCodes.push(String(code).toUpperCase());
+  });
+
+  const uniqueCodes = Array.from(new Set(rawCodes));
+
+  // 3. Kaprog Resolution
+  const rawKaprogObj = raw.kaprog_jurusan || raw.kaprogJurusan || raw.Jurusan;
+  const kaprogJurusan = rawKaprogObj?.nama || rawKaprogObj?.nama_jurusan || rawKaprogObj?.singkatan || (typeof rawKaprogObj === 'string' ? rawKaprogObj : null);
+  const isKaprog = Boolean(
+    uniqueCodes.includes('KAPROG') ||
+    raw.is_kaprog ||
+    raw.isKaprog ||
+    rawKaprogObj ||
+    (raw.jabatan && String(raw.jabatan).toUpperCase().includes('KAPROG')) ||
+    (raw.tugas_tambahan && String(raw.tugas_tambahan).toUpperCase().includes('KAPROG'))
+  );
+
+  // 4. Wali Kelas Resolution (Ketat: Hanya true jika terdaftar resmi & ada objek/nama kelas)
+  const rawWaliKelasObj = raw.walikelas_kelas || raw.wali_kelas_di;
+  const waliKelasDi = rawWaliKelasObj?.nama_kelas || rawWaliKelasObj?.nama || (typeof rawWaliKelasObj === 'string' ? rawWaliKelasObj : null);
+  const waliKelasId = rawWaliKelasObj?.id || null;
+  const isWaliKelas = Boolean(
+    (uniqueCodes.includes('WALIKELAS') || uniqueCodes.includes('WALI_KELAS') || raw.is_wali_kelas || (raw.jabatan && String(raw.jabatan).toLowerCase().includes('wali'))) &&
+    (waliKelasDi || raw.walikelas_kelas || raw.wali_kelas_di)
+  );
+
+  // 5. Pembimbing PKL, Piket, P5
+  const isPembimbingPkl = Boolean(
+    uniqueCodes.includes('PEMBIMBING_PKL') ||
+    raw.is_pembimbing_pkl ||
+    (raw.active_pkl_count && raw.active_pkl_count > 0) ||
+    (raw.total_pkl_count && raw.total_pkl_count > 0)
+  );
+  const activePklCount = Number(raw.active_pkl_count || raw.total_pkl_count || 0);
+
+  const isPiketGuru = Boolean(
+    uniqueCodes.includes('PIKET') ||
+    uniqueCodes.includes('GURU_PIKET') ||
+    raw.is_piket_guru ||
+    (raw.active_piket_count && raw.active_piket_count > 0)
+  );
+  const activePiketCount = Number(raw.active_piket_count || 0);
+
+  const isFasilitatorP5 = Boolean(
+    uniqueCodes.includes('FASILITATOR_P5') ||
+    raw.is_fasilitator_p5 ||
+    (raw.active_p5_count && raw.active_p5_count > 0)
+  );
+  const activeP5Count = Number(raw.active_p5_count || 0);
+
+  // 6. Construct canonical tugasTambahanList
+  const POSITION_CODE_NAMES: Record<string, string> = {
+    KAPROG: 'Ketua Program Keahlian (Kaprog)',
+    WALIKELAS: 'Wali Kelas',
+    WALI_KELAS: 'Wali Kelas',
+    KEPALA_SEKOLAH: 'Kepala Sekolah',
+    KURIKULUM: 'Waka Kurikulum',
+    KESISWAAN: 'Waka Kesiswaan',
+    HUBIN: 'Waka Hubinmas',
+    SARPRAS: 'Waka Sarana & Prasarana',
+    BPBK: 'Guru BK / Konselor',
+    BKK: 'Bursa Kerja Khusus (BKK)',
+    TOOLMAN: 'Teknisi / Toolman',
+    KABENG: 'Kepala Bengkel / Lab',
+    PEMBINA_ESKUL: 'Pembina Ekstrakurikuler',
+    GERBANG: 'Petugas Piket Gerbang',
+    PETUGAS_KELAS: 'Petugas Kelas',
+    TU_KEPALA: 'Kepala Tata Usaha',
+    TU: 'Staf Tata Usaha',
+    TU_PERSURATAN: 'Staf TU Persuratan',
+    TU_KEUANGAN: 'Staf TU Keuangan',
+    TU_KEPEGAWAIAN: 'Staf TU Kepegawaian',
+    TU_SARPRAS: 'Staf TU Logistik & Sarpras',
+    KOPERASI: 'Pengurus Koperasi',
+    PEMBIMBING_PKL: 'Pembimbing PKL',
+    PIKET: 'Guru Piket',
+    GURU_PIKET: 'Guru Piket',
+    FASILITATOR_P5: 'Fasilitator P5',
+  };
+
+  const tugasTambahanList: TugasTambahanItem[] = [];
+  const addedCodes = new Set<string>();
+
+  // Prioritas 1: Kaprog
+  if (isKaprog) {
+    addedCodes.add('KAPROG');
+    tugasTambahanList.push({
+      code: 'KAPROG',
+      kode: 'KAPROG',
+      nama: kaprogJurusan ? `Kaprog — ${kaprogJurusan}` : 'Ketua Program Keahlian (Kaprog)',
+      detail: kaprogJurusan || null,
+    });
+  }
+
+  // Prioritas 2: Wali Kelas
+  if (isWaliKelas && waliKelasDi) {
+    addedCodes.add('WALIKELAS');
+    addedCodes.add('WALI_KELAS');
+    tugasTambahanList.push({
+      code: 'WALIKELAS',
+      kode: 'WALIKELAS',
+      nama: `Wali Kelas — ${waliKelasDi}`,
+      kelas: waliKelasDi,
+      detail: waliKelasDi,
+    });
+  }
+
+  // Prioritas 3: Structured assignments from OrganizationalAssignment
+  rawAssignments.forEach((a: any) => {
+    const rawCode = a.position_code || a.Position?.code || a.pos_code || a.kode || a.code;
+    if (!rawCode) return;
+    const cUpper = String(rawCode).toUpperCase();
+    if (addedCodes.has(cUpper)) return;
+    addedCodes.add(cUpper);
+
+    const posName = a.position_name || a.Position?.name || a.pos_name || POSITION_CODE_NAMES[cUpper] || rawCode;
+    const detail = a.kelas?.nama_kelas || a.Kelas?.nama_kelas || a.unit?.nama || a.Unit?.nama || null;
+    tugasTambahanList.push({
+      id: a.id,
+      code: cUpper,
+      kode: cUpper,
+      nama: detail ? `${posName} — ${detail}` : posName,
+      kelas: a.kelas?.nama_kelas || a.Kelas?.nama_kelas || null,
+      detail,
+    });
+  });
+
+  // Prioritas 4: Other position codes
+  uniqueCodes.forEach((cUpper) => {
+    if (addedCodes.has(cUpper)) return;
+    if (cUpper === 'GURU' || cUpper === 'STAFF' || cUpper === 'USER') return;
+    addedCodes.add(cUpper);
+    const posName = POSITION_CODE_NAMES[cUpper] || cUpper;
+    tugasTambahanList.push({
+      code: cUpper,
+      kode: cUpper,
+      nama: posName,
+      detail: null,
+    });
+  });
+
+  // Prioritas 5: Fungsional duties
+  if (isPembimbingPkl && !addedCodes.has('PEMBIMBING_PKL')) {
+    addedCodes.add('PEMBIMBING_PKL');
+    tugasTambahanList.push({
+      code: 'PEMBIMBING_PKL',
+      kode: 'PEMBIMBING_PKL',
+      nama: activePklCount > 0 ? `Pembimbing PKL (${activePklCount} Siswa)` : 'Pembimbing PKL',
+    });
+  }
+
+  if (isPiketGuru && !addedCodes.has('PIKET') && !addedCodes.has('GURU_PIKET')) {
+    addedCodes.add('PIKET');
+    tugasTambahanList.push({
+      code: 'PIKET',
+      kode: 'PIKET',
+      nama: 'Guru Piket',
+    });
+  }
+
+  if (isFasilitatorP5 && !addedCodes.has('FASILITATOR_P5')) {
+    addedCodes.add('FASILITATOR_P5');
+    tugasTambahanList.push({
+      code: 'FASILITATOR_P5',
+      kode: 'FASILITATOR_P5',
+      nama: activeP5Count > 0 ? `Fasilitator P5 (${activeP5Count} Projek)` : 'Fasilitator P5',
+    });
+  }
+
+  const tugasTambahanLabel = tugasTambahanList.length > 0
+    ? tugasTambahanList.map(t => t.nama).join(', ')
+    : 'Guru Mata Pelajaran';
 
   return {
     id: raw.id || raw.guru_id || raw.Guru?.id || '',
@@ -562,13 +779,17 @@ export function normalizeTeacherIdentity(raw: any): TeacherIdentity {
     noRfid: raw.no_rfid || raw.Guru?.no_rfid || null,
     isWaliKelas,
     waliKelasDi,
-    waliKelasId: raw.wali_kelas_di?.id || null,
-    isPembimbingPkl: Boolean(raw.is_pembimbing_pkl || (raw.active_pkl_count && raw.active_pkl_count > 0)),
-    activePklCount: Number(raw.active_pkl_count || raw.total_pkl_count || 0),
-    isPiketGuru: Boolean(raw.is_piket_guru || (raw.active_piket_count && raw.active_piket_count > 0)),
-    activePiketCount: Number(raw.active_piket_count || 0),
-    isFasilitatorP5: Boolean(raw.is_fasilitator_p5 || (raw.active_p5_count && raw.active_p5_count > 0)),
-    activeP5Count: Number(raw.active_p5_count || 0),
+    waliKelasId,
+    isKaprog,
+    kaprogJurusan,
+    isPembimbingPkl,
+    activePklCount,
+    isPiketGuru,
+    activePiketCount,
+    isFasilitatorP5,
+    activeP5Count,
+    tugasTambahanList,
+    tugasTambahanLabel,
     tempatLahir,
     tanggalLahir,
     ttlFormatted,

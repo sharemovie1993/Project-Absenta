@@ -309,7 +309,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   const isPureGerbangStaff = isSecurityRole || (hasGerbangDuty && !isEffectivePendidik && !isAdminRole && !isKepsek && !isKurikulum);
 
-  const isWaliKelas = isWaliKelasFromCaps || teacherIdentity.isWaliKelas;
+  const isWaliKelas = Boolean(
+    teacherIdentity.isWaliKelas ||
+    (user as any)?.walikelas_kelas?.id ||
+    (isWaliKelasFromCaps && Boolean((user as any)?.walikelas_kelas || teacherIdentity.waliKelasDi))
+  );
 
   const isGlobalHubin = isHubin;
   // Pembimbing PKL: Hanya jika user adalah Guru, BUKAN Waka Hubin/Kepsek, punya kapabilitas guidance / penugasan PKL
@@ -389,15 +393,16 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (waliKelasStrukturItem?.StrukturOrganisasi?.Kelas?.id) return waliKelasStrukturItem.StrukturOrganisasi.Kelas.id;
     if (waliKelasStrukturItem?.StrukturOrganisasi?.kelas_id) return waliKelasStrukturItem.StrukturOrganisasi.kelas_id;
     if (waliKelasStrukturItem?.kelas_id) return waliKelasStrukturItem.kelas_id;
-    return teacherIdentity.waliKelasId || guruProfile?.wali_kelas_di?.id;
+    return teacherIdentity.waliKelasId || guruProfile?.wali_kelas_di?.id || null;
   }, [waliKelasStrukturItem, teacherIdentity.waliKelasId, guruProfile, user]);
 
   const waliKelasNama = useMemo(() => {
+    if (!isWaliKelas && !waliKelasStrukturItem && !waliKelasId) return null;
     if ((user as any)?.walikelas_kelas?.nama_kelas) return (user as any).walikelas_kelas.nama_kelas;
     if (waliKelasStrukturItem?.Kelas?.nama_kelas) return waliKelasStrukturItem.Kelas.nama_kelas;
     if (waliKelasStrukturItem?.StrukturOrganisasi?.Kelas?.nama_kelas) return waliKelasStrukturItem.StrukturOrganisasi.Kelas.nama_kelas;
-    return teacherIdentity.waliKelasDi || guruProfile?.wali_kelas_di?.nama_kelas || 'Kelas Binaan';
-  }, [waliKelasStrukturItem, teacherIdentity.waliKelasDi, guruProfile, user]);
+    return teacherIdentity.waliKelasDi || guruProfile?.wali_kelas_di?.nama_kelas || null;
+  }, [isWaliKelas, waliKelasStrukturItem, waliKelasId, teacherIdentity.waliKelasDi, guruProfile, user]);
 
   const handleTabChange = React.useCallback((newTab: string) => {
     useMobileSubtabSidebarStore.getState().close();

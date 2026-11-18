@@ -439,6 +439,18 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
     includeLampiran: true,
   });
 
+  // Resolusi Tanggal Titimangsa Baku: Mengikuti Tanggal Pelaksanaan Sidang (SSOT)
+  const titimangsaDateFormatted = useMemo(() => {
+    if (beritaAcaraConfig.hariTanggal) {
+      const parts = beritaAcaraConfig.hariTanggal.split(',');
+      if (parts.length > 1) {
+        return parts.slice(1).join(',').trim();
+      }
+      return beritaAcaraConfig.hariTanggal.trim();
+    }
+    return currentDateFormatted;
+  }, [beritaAcaraConfig.hariTanggal, currentDateFormatted]);
+
   const [showEditBeritaAcara, setShowEditBeritaAcara] = useState(false);
 
   // =========================================================================
@@ -1195,20 +1207,20 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
 
                 {/* TANDA TANGAN RESMI 2-TIER (DENGAN ENGINE SIGNATURE DIGITAL INTERAKTIF) */}
                 <div className="space-y-4 pt-3 break-inside-avoid">
-                  {/* Baris 1: Kiri (Kaprog) & Kanan (Guru Penguji + Titimangsa) */}
-                  <div className="flex items-start justify-between w-full text-[11px]">
-                    <div className="w-[80mm] text-left">
+                  {/* Baris 1: Kiri (Kaprog) & Kanan (Guru Penguji + Titimangsa) - Simetris Anti-Geclok */}
+                  <div className="flex items-stretch justify-between w-full text-[11px]">
+                    <div className="w-[80mm] text-left flex flex-col justify-between">
                       <div>
                         <p className="font-semibold text-slate-700">Mengetahui,</p>
                         <p className="font-bold uppercase tracking-tight">
                           Ketua Program Keahlian
                         </p>
-                        <p className="text-[10px] text-slate-600 font-medium">
+                        <p className="text-[10px] text-slate-600 font-medium leading-tight">
                           {displayJurusanTitle}
                         </p>
                       </div>
                       {renderSignatureBox('KAPROG', 'Ketua Program Keahlian', 'left', 22)}
-                      <div>
+                      <div className="pt-1">
                         <p className="font-bold underline uppercase text-slate-900">
                           {customSigners.kaprog.nama}
                         </p>
@@ -1218,17 +1230,20 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="w-[80mm] text-right">
+                    <div className="w-[80mm] text-right flex flex-col justify-between">
                       <div>
                         <p className="text-slate-700">
-                          {titimangsaCity}, {currentDateFormatted}
+                          {titimangsaCity}, {titimangsaDateFormatted}
                         </p>
                         <p className="font-bold uppercase tracking-tight">
                           Guru Penguji Sidang PKL
                         </p>
+                        <p className="text-[10px] text-transparent select-none leading-tight pointer-events-none" aria-hidden="true">
+                          &nbsp;
+                        </p>
                       </div>
                       {renderSignatureBox('PENGUJI', 'Guru Penguji Sidang PKL', 'right', 22)}
-                      <div>
+                      <div className="pt-1">
                         <p className="font-bold underline uppercase text-slate-900">
                           {customSigners.penguji.nama}
                         </p>
@@ -1345,11 +1360,11 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                       <div className="flex justify-end pt-2 break-inside-avoid">
                         <div className="w-[75mm] text-right text-[10.5px]">
                           <div>
-                            <p className="text-slate-700">{titimangsaCity}, {currentDateFormatted}</p>
+                            <p className="text-slate-700">{titimangsaCity}, {titimangsaDateFormatted}</p>
                             <p className="font-bold uppercase tracking-tight">Guru Penguji Sidang PKL</p>
                           </div>
                           {renderSignatureBox('PENGUJI', 'Guru Penguji Sidang PKL', 'right', 20)}
-                          <div>
+                          <div className="pt-1">
                             <p className="font-bold underline uppercase text-slate-900">{customSigners.penguji.nama}</p>
                             <p className="text-[10px] text-slate-600 font-mono">NIP. {customSigners.penguji.nip || '-'}</p>
                           </div>
@@ -1738,19 +1753,20 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                     <div className="space-y-4 pt-2 break-inside-avoid">
                       {docType === 'REKAP_PENGUJI' || docType === 'DAFTAR_HADIR' ? (
                         <>
-                          <div className="flex items-start justify-between w-full text-[10.5px]">
-                            <div className={cn("text-left", pageOrientation === 'portrait' ? "w-[75mm]" : "w-[85mm]")}>
+                          {/* Baris 1: Kiri (Kaprog) & Kanan (Guru Penguji + Titimangsa) - Simetris Anti-Geclok */}
+                          <div className="flex items-stretch justify-between w-full text-[10.5px]">
+                            <div className={cn("text-left flex flex-col justify-between", pageOrientation === 'portrait' ? "w-[75mm]" : "w-[85mm]")}>
                               <div>
                                 <p className="font-semibold text-slate-700">Mengetahui,</p>
                                 <p className="font-bold uppercase tracking-tight">
                                   Ketua Program Keahlian
                                 </p>
-                                <p className="text-[9.5px] text-slate-600 font-medium">
+                                <p className="text-[9.5px] text-slate-600 font-medium leading-tight">
                                   {displayJurusanTitle}
                                 </p>
                               </div>
                               {renderSignatureBox('KAPROG', 'Ketua Program Keahlian', 'left', pageOrientation === 'portrait' ? 18 : 22)}
-                              <div>
+                              <div className="pt-1">
                                 <p className="font-bold underline uppercase text-slate-900">
                                   {customSigners.kaprog.nama}
                                 </p>
@@ -1760,17 +1776,20 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                               </div>
                             </div>
 
-                            <div className={cn("text-right", pageOrientation === 'portrait' ? "w-[75mm]" : "w-[85mm]")}>
+                            <div className={cn("text-right flex flex-col justify-between", pageOrientation === 'portrait' ? "w-[75mm]" : "w-[85mm]")}>
                               <div>
                                 <p className="text-slate-700">
-                                  {titimangsaCity}, {currentDateFormatted}
+                                  {titimangsaCity}, {titimangsaDateFormatted}
                                 </p>
                                 <p className="font-bold uppercase tracking-tight">
                                   Guru Penguji Sidang PKL
                                 </p>
+                                <p className="text-[9.5px] text-transparent select-none leading-tight pointer-events-none" aria-hidden="true">
+                                  &nbsp;
+                                </p>
                               </div>
                               {renderSignatureBox('PENGUJI', 'Guru Penguji Sidang PKL', 'right', pageOrientation === 'portrait' ? 18 : 22)}
-                              <div>
+                              <div className="pt-1">
                                 <p className="font-bold underline uppercase text-slate-900">
                                   {customSigners.penguji.nama}
                                 </p>
@@ -1790,7 +1809,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                                 </p>
                               </div>
                               {renderSignatureBox('KEPSEK', 'Kepala Sekolah', 'center', pageOrientation === 'portrait' ? 18 : 22)}
-                              <div>
+                              <div className="pt-1">
                                 <p className="font-bold underline uppercase text-slate-900">
                                   {customSigners.kepsek.nama}
                                 </p>
@@ -1803,15 +1822,20 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                         </>
                       ) : (
                         <>
-                          <div className="flex items-start justify-between w-full text-[10.5px]">
-                            <div className={cn("text-left space-y-10", pageOrientation === 'portrait' ? "w-[75mm]" : "w-[85mm]")}>
+                          {/* REKAP JURUSAN: Kiri (Waka Hubin) & Kanan (Kaprog + Titimangsa) - Simetris Anti-Geclok */}
+                          <div className="flex items-stretch justify-between w-full text-[10.5px]">
+                            <div className={cn("text-left flex flex-col justify-between", pageOrientation === 'portrait' ? "w-[75mm]" : "w-[85mm]")}>
                               <div>
                                 <p className="font-semibold text-slate-700">Mengetahui,</p>
                                 <p className="font-bold uppercase tracking-tight">
-                                  Wakil Kepala Sekolah Bidang Hubungan Industri
+                                  Wakil Kepala Sekolah Bidang Hubin
+                                </p>
+                                <p className="text-[9.5px] text-transparent select-none leading-tight pointer-events-none" aria-hidden="true">
+                                  &nbsp;
                                 </p>
                               </div>
-                              <div>
+                              {renderSignatureBox('WAKA_HUBIN', 'Wakil Kepala Sekolah Bidang Hubin', 'left', pageOrientation === 'portrait' ? 18 : 22)}
+                              <div className="pt-1">
                                 <p className="font-bold underline uppercase text-slate-900">
                                   {customSigners.wakaHubin.nama}
                                 </p>
@@ -1821,19 +1845,20 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                               </div>
                             </div>
 
-                            <div className={cn("text-right space-y-10", pageOrientation === 'portrait' ? "w-[75mm]" : "w-[85mm]")}>
+                            <div className={cn("text-right flex flex-col justify-between", pageOrientation === 'portrait' ? "w-[75mm]" : "w-[85mm]")}>
                               <div>
                                 <p className="text-slate-700">
-                                  {titimangsaCity}, {currentDateFormatted}
+                                  {titimangsaCity}, {titimangsaDateFormatted}
                                 </p>
                                 <p className="font-bold uppercase tracking-tight">
                                   Ketua Program Keahlian
                                 </p>
-                                <p className="text-[9.5px] text-slate-600 font-medium">
+                                <p className="text-[9.5px] text-slate-600 font-medium leading-tight">
                                   {displayJurusanTitle}
                                 </p>
                               </div>
-                              <div>
+                              {renderSignatureBox('KAPROG', 'Ketua Program Keahlian', 'right', pageOrientation === 'portrait' ? 18 : 22)}
+                              <div className="pt-1">
                                 <p className="font-bold underline uppercase text-slate-900">
                                   {customSigners.kaprog.nama}
                                 </p>
@@ -1845,14 +1870,15 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                           </div>
 
                           <div className="flex flex-col items-center justify-center text-center w-full pt-1">
-                            <div className={cn("space-y-10", pageOrientation === 'portrait' ? "w-[85mm]" : "w-[95mm]")}>
+                            <div className={cn(pageOrientation === 'portrait' ? "w-[85mm]" : "w-[95mm]")}>
                               <div>
                                 <p className="font-semibold text-slate-700">Mengetahui / Menyetujui,</p>
                                 <p className="font-bold uppercase tracking-tight">
                                   Kepala Sekolah
                                 </p>
                               </div>
-                              <div>
+                              {renderSignatureBox('KEPSEK', 'Kepala Sekolah', 'center', pageOrientation === 'portrait' ? 18 : 22)}
+                              <div className="pt-1">
                                 <p className="font-bold underline uppercase text-slate-900">
                                   {customSigners.kepsek.nama}
                                 </p>

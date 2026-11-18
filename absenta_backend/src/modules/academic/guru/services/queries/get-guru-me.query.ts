@@ -94,7 +94,7 @@ export async function getGuruMeQuery(userId: string, tenantId: string): Promise<
     .filter(Boolean)
     .join(', ');
 
-  const waliKelasAssignment = assignments.find(a => a.Position?.code === 'WALI_KELAS' && a.Kelas);
+  const waliKelasAssignment = assignments.find(a => (a.Position?.code === 'WALIKELAS' || a.Position?.code === 'WALI_KELAS') && a.Kelas);
   const waliKelasDi = waliKelasAssignment?.Kelas
     ? { id: waliKelasAssignment.Kelas.id, nama_kelas: waliKelasAssignment.Kelas.nama_kelas }
     : undefined;
