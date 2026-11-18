@@ -235,5 +235,97 @@ async normalizeWaPhones(request: any, reply: any) {
         message: error?.message || 'Gagal melakukan normalisasi nomor WhatsApp siswa',
       });
     }
+  },
+
+  /**
+   * Mengambil daftar duplikasi NIS dan NISN di seluruh siswa tenant (semua status: AKTIF, CALON, LULUS, MUTASI).
+   * Didesain khusus untuk audit dan koreksi data siswa mentah.
+   */
+  async getDuplicateIdentifiers(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: tenant_id not found' });
+      }
+
+      // Ambil seluruh data siswa tenant tanpa batasan status
+      const students = await prisma.siswa.findMany({
+        where: { tenant_id: String(tenantId) },
+        select: {
+          id: true,
+          nama_siswa: true,
+          nis: true,
+          nisn: true,
+          nik: true,
+          status: true,
+          kelas_id: true,
+          Kelas: {
+            select: { id: true, nama_kelas: true }
+          }
+        },
+        orderBy: { nama_siswa: 'asc' }
+      });
+
+      const nisGroups = new Map<string, any[]>();
+      const nisnGroups = new Map<string, any[]>();
+
+      for (const s of students) {
+        const cleanNis = (s.nis || '').trim();
+        // Kecualikan NIS kosong, placeholder dash '-', dan format generate sementara
+        if (cleanNis && cleanNis !== '-' && !cleanNis.startsWith('1111')) {
+          const key = cleanNis.toLowerCase();
+          if (!nisGroups.has(key)) nisGroups.set(key, []);
+          nisGroups.get(key)!.push(s);
+        }
+
+        const cleanNisn = (s.nisn || '').trim();
+        // Kecualikan NISN kosong, placeholder dash '-', dan format sementara
+        if (cleanNisn && cleanNisn !== '-' && !cleanNisn.startsWith('9999')) {
+          const key = cleanNisn.toLowerCase();
+          if (!nisnGroups.has(key)) nisnGroups.set(key, []);
+          nisnGroups.get(key)!.push(s);
+        }
+      }
+
+      const duplicateNis = Array.from(nisGroups.entries())
+        .filter(([_, list]) => list.length > 1)
+        .map(([identifier, list]) => ({
+          identifier,
+          count: list.length,
+          students: list
+        }));
+
+      const duplicateNisn = Array.from(nisnGroups.entries())
+        .filter(([_, list]) => list.length > 1)
+        .map(([identifier, list]) => ({
+          identifier,
+          count: list.length,
+          students: list
+        }));
+
+      const totalDuplicateNisStudents = duplicateNis.reduce((sum, g) => sum + g.count, 0);
+      const totalDuplicateNisnStudents = duplicateNisn.reduce((sum, g) => sum + g.count, 0);
+
+      return reply.status(200).send({
+        success: true,
+        data: {
+          summary: {
+            totalChecked: students.length,
+            totalDuplicateNisGroups: duplicateNis.length,
+            totalDuplicateNisStudents,
+            totalDuplicateNisnGroups: duplicateNisn.length,
+            totalDuplicateNisnStudents,
+          },
+          duplicateNis,
+          duplicateNisn,
+        }
+      });
+    } catch (error: any) {
+      console.error('Error fetching duplicate identifiers:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Gagal memeriksa duplikasi NIS / NISN'
+      });
+    }
   }
 };

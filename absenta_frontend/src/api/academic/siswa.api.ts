@@ -332,3 +332,39 @@ export const bulkResetSiswaPassword = async (payload: BulkResetSiswaPasswordPayl
 }> => {
   return requestWithFallback('post', '/academic/siswa/bulk-reset-password', { data: payload, timeout: 300000 });
 };
+
+export interface DuplicateStudentItem {
+  id: string;
+  nama_siswa: string;
+  nis: string | null;
+  nisn: string | null;
+  nik: string | null;
+  status: string;
+  kelas_id?: string | null;
+  Kelas?: { id: string; nama_kelas: string } | null;
+}
+
+export interface DuplicateGroupItem {
+  identifier: string;
+  count: number;
+  students: DuplicateStudentItem[];
+}
+
+export interface DuplicateAuditResponse {
+  summary: {
+    totalChecked: number;
+    totalDuplicateNisGroups: number;
+    totalDuplicateNisStudents: number;
+    totalDuplicateNisnGroups: number;
+    totalDuplicateNisnStudents: number;
+  };
+  duplicateNis: DuplicateGroupItem[];
+  duplicateNisn: DuplicateGroupItem[];
+}
+
+export const getDuplicateSiswaIdentifiers = async (): Promise<{
+  success: boolean;
+  data: DuplicateAuditResponse;
+}> => {
+  return requestWithFallback('get', '/academic/siswa/tools/duplicates');
+};

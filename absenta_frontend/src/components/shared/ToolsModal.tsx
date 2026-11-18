@@ -10,10 +10,11 @@ import {
   ChevronRight,
   ShieldCheck,
   KeyRound,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Copy
 } from 'lucide-react';
 
-export type ToolKey = 'analysis' | 'generateCode' | 'rfidPairing' | 'photoStudio' | 'waNormalize' | 'bulkPassword' | 'excelCompare';
+export type ToolKey = 'analysis' | 'generateCode' | 'rfidPairing' | 'photoStudio' | 'waNormalize' | 'bulkPassword' | 'excelCompare' | 'duplicateAudit';
 
 interface ToolsModalProps {
   isOpen: boolean;
@@ -85,14 +86,24 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({
       color: 'text-teal-500 bg-teal-500/10 border-teal-500/20 dark:bg-teal-500/20',
       badge: 'Baru',
     },
-    ...(isSiswa ? [{
-      key: 'excelCompare' as ToolKey,
-      title: 'Cek & Bandingkan Kelas (Excel)',
-      description: 'Tempel 3 kolom (NIS, NISN, Nama) dari Excel untuk mengecek kecocokan 1 kelas.',
-      icon: ArrowRightLeft,
-      color: 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20 dark:bg-indigo-500/20',
-      badge: 'Cek Kelas',
-    }] : []),
+    ...(isSiswa ? [
+      {
+        key: 'duplicateAudit' as ToolKey,
+        title: 'Cek Duplikasi NIS & NISN',
+        description: 'Audit & deteksi nomor NIS atau NISN ganda di seluruh siswa (Aktif, Calon, Mentah) dengan opsi koreksi langsung.',
+        icon: Copy,
+        color: 'text-amber-500 bg-amber-500/10 border-amber-500/20 dark:bg-amber-500/20',
+        badge: 'Audit Data',
+      },
+      {
+        key: 'excelCompare' as ToolKey,
+        title: 'Cek & Bandingkan Kelas (Excel)',
+        description: 'Tempel 3 kolom (NIS, NISN, Nama) dari Excel untuk mengecek kecocokan 1 kelas.',
+        icon: ArrowRightLeft,
+        color: 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20 dark:bg-indigo-500/20',
+        badge: 'Cek Kelas',
+      }
+    ] : []),
   ];
 
   return (

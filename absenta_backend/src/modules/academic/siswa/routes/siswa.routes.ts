@@ -282,6 +282,17 @@ export default async function siswaRoutes(fastify: any) {
     return siswaController.getAcademicRegistrationStats(request, reply);
   });
 
+  // GET /siswa/tools/duplicates - Audit & deteksi duplikasi NIS dan NISN seluruh siswa
+  fastify.get('/tools/duplicates', {
+    preHandler: [
+        requireCapability('academic.students.view.list'),
+        organizationalScopeMiddleware,
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.getDuplicateIdentifiers(request, reply);
+  });
+
   const validateSiswaSelfOrAdmin = async (request: any, reply: any) => {
     const user = request.user;
     const roleName = user?.roleName || user?.Role?.name || user?.role?.name;

@@ -43,6 +43,7 @@ import { useIsMobile } from '../../../hooks/useIsMobile';
 import { useJenjang } from '../../../hooks/useJenjang';
 
 import { SiswaBulkPasswordModal } from './SiswaBulkPasswordModal';
+import { SiswaDuplicateAuditModal } from './SiswaDuplicateAuditModal';
 import { ExcelCompareKelasModal } from './ExcelCompareKelasModal';
 import { ParentAccessModal, ParentAccessData } from './ParentAccessModal';
 
@@ -125,6 +126,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [isWaNormalizeOpen, setIsWaNormalizeOpen] = useState(false);
   const [isBulkPasswordOpen, setIsBulkPasswordOpen] = useState(false);
   const [isExcelCompareOpen, setIsExcelCompareOpen] = useState(false);
+  const [isDuplicateAuditOpen, setIsDuplicateAuditOpen] = useState(false);
 
   // State Modal Copy-Paste Magic Token & Link Akses Ortu
   const [parentAccessModalData, setParentAccessModalData] = useState<{
@@ -2478,12 +2480,23 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         targetType="siswa"
         onSelectTool={(key: ToolKey) => {
           if (key === 'analysis') handleRunAnalysis();
+          else if (key === 'duplicateAudit') setIsDuplicateAuditOpen(true);
           else if (key === 'generateCode') setIsNisWizardOpen(true);
           else if (key === 'rfidPairing') setIsRfidPairingOpen(true);
           else if (key === 'photoStudio') setIsPhotoStudioOpen(true);
           else if (key === 'waNormalize') setIsWaNormalizeOpen(true);
           else if (key === 'bulkPassword') setIsBulkPasswordOpen(true);
           else if (key === 'excelCompare') setIsExcelCompareOpen(true);
+        }}
+      />
+
+      <SiswaDuplicateAuditModal
+        isOpen={isDuplicateAuditOpen}
+        onClose={() => setIsDuplicateAuditOpen(false)}
+        onOpenEditSiswa={onEdit}
+        onDataUpdated={() => {
+          invalidateSiswaCache();
+          refetch();
         }}
       />
 
