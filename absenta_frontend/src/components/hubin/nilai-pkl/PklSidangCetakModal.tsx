@@ -59,7 +59,8 @@ interface PaginatedSheet<T> {
 function getPaginatedSheets<T>(
   items: T[],
   isPortrait: boolean,
-  isDaftarHadir: boolean
+  isDaftarHadir: boolean,
+  isLampiran: boolean = false
 ): PaginatedSheet<T>[] {
   const total = items.length;
   if (total === 0) {
@@ -75,8 +76,15 @@ function getPaginatedSheets<T>(
     ];
   }
 
-  // Batas baris untuk dokumen 1 halaman tunggal (Kop + Tabel + Tanda Tangan)
-  const singlePageMax = isPortrait ? (isDaftarHadir ? 12 : 15) : (isDaftarHadir ? 7 : 9);
+  // Batas baris untuk dokumen 1 halaman tunggal:
+  // - Lembar Lampiran Berita Acara: tanpa Kop Surat besar dan hanya 1 TTD Penguji di kanan bawah,
+  //   mampu menampung hingga 28 siswa dalam 1 halaman tunggal yang sangat rapi dan proporsional.
+  // - Daftar Hadir & Rekap: memiliki Kop Surat sekolah + TTD 2-Tier Kaprog/Penguji/Kepsek.
+  const singlePageMax = isLampiran
+    ? 28
+    : isPortrait
+    ? (isDaftarHadir ? 12 : 15)
+    : (isDaftarHadir ? 7 : 9);
 
   if (total <= singlePageMax) {
     return [
@@ -92,9 +100,23 @@ function getPaginatedSheets<T>(
   }
 
   // Kapasitas dokumen multi-halaman
-  const p1Max = isPortrait ? (isDaftarHadir ? 16 : 20) : (isDaftarHadir ? 9 : 12);
-  const midMax = isPortrait ? (isDaftarHadir ? 22 : 26) : (isDaftarHadir ? 12 : 16);
-  const lastMax = isPortrait ? (isDaftarHadir ? 12 : 15) : (isDaftarHadir ? 6 : 8);
+  const p1Max = isLampiran
+    ? 30
+    : isPortrait
+    ? (isDaftarHadir ? 16 : 20)
+    : (isDaftarHadir ? 9 : 12);
+
+  const midMax = isLampiran
+    ? 34
+    : isPortrait
+    ? (isDaftarHadir ? 22 : 26)
+    : (isDaftarHadir ? 12 : 16);
+
+  const lastMax = isLampiran
+    ? 24
+    : isPortrait
+    ? (isDaftarHadir ? 12 : 15)
+    : (isDaftarHadir ? 6 : 8);
 
   // Jika cukup dalam 2 halaman
   if (total <= p1Max + lastMax) {
@@ -859,9 +881,10 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
   }, [docType, displayJurusanTitle, selectedPengujiFilter]);
 
   // Pagination & Chunking untuk Lembar Lampiran Berita Acara (Multi-Halaman A4 Portrait)
+  // Khusus Lembar Lampiran (tanpa Kop besar), dapat menampung hingga 28 siswa dalam 1 halaman tunggal
   const lampiranSheets = useMemo(() => {
     if (!beritaAcaraConfig.includeLampiran) return [];
-    return getPaginatedSheets(filteredScores, true, false);
+    return getPaginatedSheets(filteredScores, true, false, true);
   }, [filteredScores, beritaAcaraConfig.includeLampiran]);
 
   // Pagination & Chunking untuk Daftar Hadir, Rekap Penguji, & Rekap Jurusan
@@ -1286,32 +1309,32 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                     pageNumber={1 + lampSheet.pageNumber}
                     totalPages={1 + lampiranSheets.length}
                     footerText={`Lampiran Berita Acara Sidang PKL — ${displayJurusanTitle}`}
-                    className="p-8 text-black bg-white"
+                    className="p-6 sm:p-7 text-black bg-white"
                   >
-                    <div className="text-center mb-3 space-y-0.5">
+                    <div className="text-center mb-2 space-y-0.5">
                       <h3 className="text-xs font-bold uppercase tracking-wider underline">
                         LAMPIRAN BERITA ACARA SIDANG PKL {lampSheet.totalPages > 1 ? `(BAGIAN ${lampSheet.pageNumber})` : ''}
                       </h3>
                       <p className="text-[11px] font-bold text-slate-800">
                         DAFTAR PESERTA & HASIL EVALUASI NILAI SIDANG
                       </p>
-                      <p className="text-[10px] text-slate-600 font-mono">
+                      <p className="text-[9.5px] text-slate-600 font-mono">
                         Program Keahlian: {displayJurusanTitle} &bull; Penguji: {selectedPengujiFilter !== 'ALL' ? selectedPengujiFilter : 'Semua Guru Penguji'}
                       </p>
                     </div>
 
                     {/* Tabel Daftar Peserta & Nilai Ringkas */}
-                    <table className="w-full text-[9.5px] border-collapse border border-black mb-4">
+                    <table className="w-full text-[9px] border-collapse border border-black mb-2">
                       <thead>
                         <tr className="bg-slate-100 text-center font-bold">
-                          <th className="border border-black px-1 py-1.5 w-6">No</th>
-                          <th className="border border-black px-1.5 py-1.5 w-20">NIS / NISN</th>
-                          <th className="border border-black px-2 py-1.5 text-left">Nama Lengkap Siswa</th>
-                          <th className="border border-black px-1 py-1.5 w-14">Kelas</th>
-                          <th className="border border-black px-2 py-1.5 text-left">Tempat PKL (DUDI)</th>
-                          <th className="border border-black px-1 py-1.5 w-12 bg-indigo-50/80">Nilai</th>
-                          <th className="border border-black px-1 py-1.5 w-14">Status</th>
-                          <th className="border border-black px-2 py-1.5 text-left min-w-[100px]">Catatan Penguji</th>
+                          <th className="border border-black px-1 py-1 w-6">No</th>
+                          <th className="border border-black px-1 py-1 w-20">NIS / NISN</th>
+                          <th className="border border-black px-1.5 py-1 text-left">Nama Lengkap Siswa</th>
+                          <th className="border border-black px-1 py-1 w-12">Kelas</th>
+                          <th className="border border-black px-1.5 py-1 text-left">Tempat PKL (DUDI)</th>
+                          <th className="border border-black px-1 py-1 w-12 bg-indigo-50/80">Nilai</th>
+                          <th className="border border-black px-1 py-1 w-14">Status</th>
+                          <th className="border border-black px-1.5 py-1 text-left min-w-[90px]">Catatan Penguji</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1327,16 +1350,16 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                             const hasScore = row.nilai_sidang !== null && row.nilai_sidang !== undefined && row.nilai_sidang !== '';
                             const isLulus = hasScore && Number(row.nilai_sidang) >= 70;
                             return (
-                              <tr key={row.siswa_pkl_id || rowNum} className="h-6">
+                              <tr key={row.siswa_pkl_id || rowNum} className="h-5">
                                 <td className="border border-black px-1 py-0.5 text-center font-mono">{rowNum}</td>
-                                <td className="border border-black px-1.5 py-0.5 font-mono text-center">{row.nis || '-'}</td>
-                                <td className="border border-black px-2 py-0.5 font-semibold truncate max-w-[150px]">{row.nama_siswa}</td>
+                                <td className="border border-black px-1 py-0.5 font-mono text-center">{row.nis || '-'}</td>
+                                <td className="border border-black px-1.5 py-0.5 font-semibold truncate max-w-[150px]">{row.nama_siswa}</td>
                                 <td className="border border-black px-1 py-0.5 text-center">{row.nama_kelas || '-'}</td>
-                                <td className="border border-black px-2 py-0.5 text-slate-800 truncate max-w-[140px]">{row.mitra_nama || '-'}</td>
+                                <td className="border border-black px-1.5 py-0.5 text-slate-800 truncate max-w-[140px]">{row.mitra_nama || '-'}</td>
                                 <td className="border border-black px-1 py-0.5 text-center font-mono font-bold bg-indigo-50/40">
                                   {row.nilai_sidang ?? '-'}
                                 </td>
-                                <td className="border border-black px-1 py-0.5 text-center font-bold text-[8.5px]">
+                                <td className="border border-black px-1 py-0.5 text-center font-bold text-[8px]">
                                   {!hasScore ? (
                                     <span className="text-slate-400">Belum</span>
                                   ) : isLulus ? (
@@ -1345,7 +1368,7 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
                                     <span className="text-amber-700">REVISI</span>
                                   )}
                                 </td>
-                                <td className="border border-black px-2 py-0.5 text-[8.5px] italic text-slate-700 truncate max-w-[140px]">
+                                <td className="border border-black px-1.5 py-0.5 text-[8px] italic text-slate-700 truncate max-w-[140px]">
                                   {row.catatan_sidang || '-'}
                                 </td>
                               </tr>
@@ -1357,16 +1380,16 @@ export const PklSidangCetakModal: React.FC<PklSidangCetakModalProps> = ({
 
                     {/* Pengesahan Penguji di Kanan Bawah Lampiran */}
                     {lampSheet.isLastPage && (
-                      <div className="flex justify-end pt-2 break-inside-avoid">
-                        <div className="w-[75mm] text-right text-[10.5px]">
+                      <div className="flex justify-end pt-1 break-inside-avoid">
+                        <div className="w-[75mm] text-right text-[10px]">
                           <div>
                             <p className="text-slate-700">{titimangsaCity}, {titimangsaDateFormatted}</p>
                             <p className="font-bold uppercase tracking-tight">Guru Penguji Sidang PKL</p>
                           </div>
-                          {renderSignatureBox('PENGUJI', 'Guru Penguji Sidang PKL', 'right', 20)}
-                          <div className="pt-1">
+                          {renderSignatureBox('PENGUJI', 'Guru Penguji Sidang PKL', 'right', 18)}
+                          <div className="pt-0.5">
                             <p className="font-bold underline uppercase text-slate-900">{customSigners.penguji.nama}</p>
-                            <p className="text-[10px] text-slate-600 font-mono">NIP. {customSigners.penguji.nip || '-'}</p>
+                            <p className="text-[9.5px] text-slate-600 font-mono">NIP. {customSigners.penguji.nip || '-'}</p>
                           </div>
                         </div>
                       </div>
