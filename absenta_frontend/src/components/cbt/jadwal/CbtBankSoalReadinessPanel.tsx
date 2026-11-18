@@ -9,6 +9,7 @@ import {
   AlertCircle,
   LayoutGrid,
   Check,
+  MessageSquare,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
@@ -474,11 +475,9 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
     setNudgeTick(Date.now());
   };
 
-  const handleCopyUncreatedTeachers = () => {
-    if (guruBelumList.length === 0) {
-      toast.success('Semua guru sudah menyerahkan bank soal');
-      return;
-    }
+  // Membangun pesan rekapitulasi broadcast untuk grup WhatsApp
+  const buildGroupBroadcastMessage = (): string => {
+    if (guruBelumList.length === 0) return '';
 
     // Resolusi domain tenant dinamis
     const getTenantLoginUrl = (): string => {
@@ -578,11 +577,48 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
       'Pass : sudah di beri tahu',
     ];
 
-    const messageText = lines.join('\n');
+    return lines.join('\n');
+  };
+
+  // Salin teks pengumuman grup ke clipboard
+  const handleCopyUncreatedTeachers = () => {
+    if (guruBelumList.length === 0) {
+      toast.success('Semua guru sudah menyerahkan bank soal');
+      return;
+    }
+    const messageText = buildGroupBroadcastMessage();
     navigator.clipboard.writeText(messageText);
     setCopied(true);
     toast.success('Daftar guru yang belum berhasil disalin untuk WhatsApp!');
     setTimeout(() => setCopied(false), 3000);
+  };
+
+  // Colek sekaligus dalam 1 Group WhatsApp
+  const handleNudgeGroupWhatsApp = () => {
+    if (guruBelumList.length === 0) {
+      toast.success('Semua guru sudah menyerahkan bank soal.');
+      return;
+    }
+    const messageText = buildGroupBroadcastMessage();
+    if (!messageText) return;
+
+    // Salin ke clipboard sebagai cadangan
+    try {
+      navigator.clipboard.writeText(messageText);
+    } catch {}
+
+    // Tandai semua guru yang belum sebagai "dicolek" (persisten & real-time di UI)
+    const senderName = user?.full_name || (user as any)?.nama || 'Panitia CBT';
+    guruBelumList.forEach((t) => {
+      recordNudge(t.id, senderName, tenantId);
+    });
+    setNudgeTick(Date.now());
+
+    // Buka WhatsApp untuk memilih grup sekolah / guru
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
+    window.open(waUrl, '_blank');
+
+    toast.success(`Membuka WhatsApp untuk Colek Group! ${guruBelumList.length} penugasan guru telah ditandai dicolek.`);
   };
 
   const handleCreateForTarget = (target: AuditedTargetItem) => {
@@ -754,22 +790,35 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             {/* Action Buttons */}
             <div className="flex items-center gap-1.5 shrink-0">
               {activeTab === 'BELUM' && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyUncreatedTeachers}
-                  className={cn(
-                    'text-xs h-7 px-2.5 font-bold cursor-pointer shadow-2xs flex items-center gap-1 transition-all',
-                    copied
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
-                      : 'border-emerald-400 text-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
-                  )}
-                  title="Salin daftar guru yang belum ke WhatsApp"
-                >
-                  {copied ? <Check size={12} className="text-emerald-600" /> : <Copy size={11} className="mr-0.5" />}
-                  <span>{copied ? 'Tersalin!' : 'Salin WA'}</span>
-                </Button>
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyUncreatedTeachers}
+                    className={cn(
+                      'text-xs h-7 px-2.5 font-bold cursor-pointer shadow-2xs flex items-center gap-1 transition-all',
+                      copied
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                        : 'border-slate-300 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                    )}
+                    title="Salin daftar guru yang belum ke WhatsApp"
+                  >
+                    {copied ? <Check size={12} className="text-emerald-600" /> : <Copy size={11} className="mr-0.5" />}
+                    <span>{copied ? 'Tersalin!' : 'Salin WA'}</span>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleNudgeGroupWhatsApp}
+                    className="text-xs h-7 px-2.5 font-bold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-2xs flex items-center gap-1 transition-all"
+                    title="Colek semua guru belum buat soal sekaligus dalam 1 Group WhatsApp"
+                  >
+                    <MessageSquare size={11} />
+                    <span>Colek 1 Group</span>
+                  </Button>
+                </>
               )}
 
               {onProceedToNextPhase && (
@@ -797,25 +846,38 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
               <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
                 <AlertCircle size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
                 <span>
-                  Terdapat <strong>{guruBelumList.length}</strong> guru/mapel belum menyelesaikan bank soal. Salin daftar untuk pengumuman grup WA.
+                  Terdapat <strong>{guruBelumList.length}</strong> penugasan guru/mapel yang belum menyelesaikan bank soal.
                 </span>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleCopyUncreatedTeachers}
-                className={cn(
-                  'shrink-0 h-6 sm:h-7 px-2.5 text-xs font-bold cursor-pointer shadow-2xs flex items-center gap-1.5 transition-all',
-                  copied
-                    ? 'border-emerald-500 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
-                    : 'border-emerald-500 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700'
-                )}
-                title="Salin format WhatsApp ke clipboard"
-              >
-                {copied ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
-                <span>{copied ? 'Berhasil Disalin!' : 'Salin ke WA Group'}</span>
-              </Button>
+              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyUncreatedTeachers}
+                  className={cn(
+                    'h-6 sm:h-7 px-2.5 text-xs font-bold cursor-pointer shadow-2xs flex items-center gap-1 transition-all',
+                    copied
+                      ? 'border-emerald-500 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+                      : 'border-slate-300 text-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                  )}
+                  title="Salin format WhatsApp ke clipboard"
+                >
+                  {copied ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                  <span>{copied ? 'Tersalin' : 'Salin Teks WA'}</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleNudgeGroupWhatsApp}
+                  className="h-6 sm:h-7 px-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-2xs flex items-center gap-1.5 transition-all"
+                  title="Buka WhatsApp untuk colek dalam 1 group dan tandai semua guru dicolek"
+                >
+                  <MessageSquare size={12} />
+                  <span>Colek dalam 1 Group</span>
+                </Button>
+              </div>
             </div>
           )}
 
