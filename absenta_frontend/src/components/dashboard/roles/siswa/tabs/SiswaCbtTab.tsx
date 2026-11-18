@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Calendar,
   CalendarDays,
   CalendarClock,
   DoorOpen,
@@ -19,6 +20,8 @@ import {
   KeyRound,
   RefreshCw,
   ChevronRight,
+  ChevronDown,
+  ChevronsUpDown,
   Hourglass,
   Ban,
   Trophy,
@@ -45,6 +48,78 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'riwayat', label: 'Riwayat' },
   { key: 'semua', label: 'Semua' },
 ];
+
+interface DayTheme {
+  borderLeft: string;
+  headerExpanded: string;
+  iconBg: string;
+  iconColor: string;
+  badge: string;
+}
+
+const DAY_THEMES: Record<string, DayTheme> = {
+  senin: {
+    borderLeft: 'border-l-[5px] border-l-blue-500 dark:border-l-blue-400',
+    headerExpanded: 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-200/80 dark:border-blue-800/60',
+    iconBg: 'bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400',
+    iconColor: 'text-blue-600 dark:text-blue-400',
+    badge: 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+  },
+  selasa: {
+    borderLeft: 'border-l-[5px] border-l-emerald-500 dark:border-l-emerald-400',
+    headerExpanded: 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-800/60',
+    iconBg: 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+    badge: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+  },
+  rabu: {
+    borderLeft: 'border-l-[5px] border-l-amber-500 dark:border-l-amber-400',
+    headerExpanded: 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-800/60',
+    iconBg: 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+    badge: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+  },
+  kamis: {
+    borderLeft: 'border-l-[5px] border-l-purple-500 dark:border-l-purple-400',
+    headerExpanded: 'bg-purple-50/70 dark:bg-purple-950/30 border-purple-200/80 dark:border-purple-800/60',
+    iconBg: 'bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400',
+    iconColor: 'text-purple-600 dark:text-purple-400',
+    badge: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+  },
+  jumat: {
+    borderLeft: 'border-l-[5px] border-l-teal-500 dark:border-l-teal-400',
+    headerExpanded: 'bg-teal-50/70 dark:bg-teal-950/30 border-teal-200/80 dark:border-teal-800/60',
+    iconBg: 'bg-teal-500/10 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400',
+    iconColor: 'text-teal-600 dark:text-teal-400',
+    badge: 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800',
+  },
+  sabtu: {
+    borderLeft: 'border-l-[5px] border-l-rose-500 dark:border-l-rose-400',
+    headerExpanded: 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-800/60',
+    iconBg: 'bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400',
+    iconColor: 'text-rose-600 dark:text-rose-400',
+    badge: 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+  },
+  minggu: {
+    borderLeft: 'border-l-[5px] border-l-orange-500 dark:border-l-orange-400',
+    headerExpanded: 'bg-orange-50/70 dark:bg-orange-950/30 border-orange-200/80 dark:border-orange-800/60',
+    iconBg: 'bg-orange-500/10 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400',
+    iconColor: 'text-orange-600 dark:text-orange-400',
+    badge: 'bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800',
+  },
+};
+
+const getDayTheme = (dayName: string): DayTheme => {
+  const clean = (dayName || '').toLowerCase().replace(/[^a-z]/g, '');
+  if (clean.includes('senin')) return DAY_THEMES.senin;
+  if (clean.includes('selasa')) return DAY_THEMES.selasa;
+  if (clean.includes('rabu')) return DAY_THEMES.rabu;
+  if (clean.includes('kamis')) return DAY_THEMES.kamis;
+  if (clean.includes('jumat')) return DAY_THEMES.jumat;
+  if (clean.includes('sabtu')) return DAY_THEMES.sabtu;
+  if (clean.includes('minggu')) return DAY_THEMES.minggu;
+  return DAY_THEMES.senin;
+};
 
 const formatExamDateIndo = (iso?: string | null) => {
   if (!iso) return '-';
@@ -401,6 +476,97 @@ export const SiswaCbtTab: React.FC = () => {
     return list;
   }, [exams, filter]);
 
+  // ── PENGELOMPOKAN JADWAL PER HARI UNTUK SISWA (STANDAR DESAIN PENGAWAS) ──
+  const groupedStudentDays = useMemo(() => {
+    const dayMap = new Map<string, {
+      dateFormatted: string;
+      isToday: boolean;
+      sessions: CbtStudentExamItem[];
+    }>();
+
+    filtered.forEach((item) => {
+      const rawDate = item.tanggal_mulai ? new Date(item.tanggal_mulai) : new Date();
+      const dateKey = !isNaN(rawDate.getTime())
+        ? rawDate.toISOString().split('T')[0]
+        : '9999-99-99';
+
+      const isToday = !isNaN(rawDate.getTime())
+        ? new Date().toDateString() === rawDate.toDateString()
+        : false;
+
+      const dateFormatted = formatExamDateIndo(item.tanggal_mulai);
+
+      if (!dayMap.has(dateKey)) {
+        dayMap.set(dateKey, {
+          dateFormatted,
+          isToday,
+          sessions: [],
+        });
+      }
+      dayMap.get(dateKey)!.sessions.push(item);
+    });
+
+    const result: {
+      dateKey: string;
+      dayName: string;
+      dateFormatted: string;
+      isToday: boolean;
+      sessions: CbtStudentExamItem[];
+    }[] = [];
+
+    dayMap.forEach((val, dateKey) => {
+      val.sessions.sort((a, b) => new Date(a.tanggal_mulai).getTime() - new Date(b.tanggal_mulai).getTime());
+
+      result.push({
+        dateKey,
+        dayName: val.dateFormatted.split(',')[0] || val.dateFormatted,
+        dateFormatted: val.dateFormatted,
+        isToday: val.isToday,
+        sessions: val.sessions,
+      });
+    });
+
+    result.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+    return result;
+  }, [filtered]);
+
+  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (groupedStudentDays.length > 0) {
+      setExpandedDays((prev) => {
+        const next = { ...prev };
+        groupedStudentDays.forEach((d) => {
+          if (next[d.dateKey] === undefined) {
+            next[d.dateKey] = true;
+          }
+        });
+        return next;
+      });
+    }
+  }, [groupedStudentDays]);
+
+  const toggleDay = (dateKey: string) => {
+    setExpandedDays((prev) => ({
+      ...prev,
+      [dateKey]: !prev[dateKey],
+    }));
+  };
+
+  const isAllExpanded = useMemo(() => {
+    if (groupedStudentDays.length === 0) return false;
+    return groupedStudentDays.every((d) => expandedDays[d.dateKey] !== false);
+  }, [groupedStudentDays, expandedDays]);
+
+  const handleToggleExpandAll = () => {
+    const targetState = !isAllExpanded;
+    const newDays: Record<string, boolean> = {};
+    groupedStudentDays.forEach((d) => {
+      newDays[d.dateKey] = targetState;
+    });
+    setExpandedDays(newDays);
+  };
+
   const finishedCount = useMemo(
     () => exams.filter((e) => e.status_peserta === 'FINISHED').length,
     [exams]
@@ -643,6 +809,184 @@ export const SiswaCbtTab: React.FC = () => {
                 <ChevronRight size={13} />
               </button>
             )}
+          </div>
+        ) : (filter === 'mendatang' || filter === 'semua') ? (
+          <div className="space-y-3 p-3 sm:p-4 bg-slate-50/70 dark:bg-slate-950/40">
+            {/* Top Subheader with Total Days & Expand All Button */}
+            <div className="flex items-center justify-between pb-1 text-xs text-slate-500 dark:text-slate-400">
+              <span className="font-semibold flex items-center gap-1.5">
+                <CalendarDays size={14} className="text-violet-500" />
+                <span>
+                  Jadwal Ujian Terbagi Dalam{' '}
+                  <strong className="text-violet-600 dark:text-violet-400 font-black">
+                    {groupedStudentDays.length} Hari
+                  </strong>{' '}
+                  (Total {filtered.length} Sesi)
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={handleToggleExpandAll}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer shadow-2xs transition-all"
+              >
+                <ChevronsUpDown size={13} className="text-slate-400" />
+                <span>{isAllExpanded ? 'Tutup Semua' : 'Buka Semua'}</span>
+              </button>
+            </div>
+
+            {/* List Grouped Days */}
+            {groupedStudentDays.map((day) => {
+              const isDayExpanded = expandedDays[day.dateKey] !== false;
+              const theme = getDayTheme(day.dayName);
+
+              return (
+                <div
+                  key={day.dateKey}
+                  className={cn(
+                    "rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs transition-all",
+                    theme.borderLeft
+                  )}
+                >
+                  {/* ── LEVEL 1: HARI (ACCORDION TOGGLE) ── */}
+                  <div
+                    onClick={() => toggleDay(day.dateKey)}
+                    className={cn(
+                      'px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between gap-3 cursor-pointer select-none transition-colors border-b',
+                      day.isToday
+                        ? 'bg-amber-500/10 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/80 hover:bg-amber-500/15'
+                        : isDayExpanded
+                        ? theme.headerExpanded
+                        : 'bg-white dark:bg-slate-900 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/30'
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={cn("p-1.5 rounded-lg shrink-0", day.isToday ? 'bg-amber-500/15 text-amber-600' : theme.iconBg)}>
+                        <Calendar
+                          size={16}
+                          className={day.isToday ? 'text-amber-600' : theme.iconColor}
+                        />
+                      </div>
+                      <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 tracking-tight truncate">
+                        {day.dateFormatted}
+                      </h4>
+                      {day.isToday && (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500 text-white animate-pulse">
+                          HARI INI
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={cn("px-2.5 py-0.5 rounded-lg text-xs font-bold border", theme.badge)}>
+                        {day.sessions.length} Sesi Ujian
+                      </span>
+                      <div className="text-slate-400">
+                        {isDayExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── LEVEL 2: DAFTAR SESI DALAM HARI ── */}
+                  {isDayExpanded && (
+                    <div className="p-2.5 sm:p-3 space-y-2 bg-slate-50/40 dark:bg-slate-900/40">
+                      {day.sessions.map((item) => {
+                        const timeRange = formatExamTimeRange(item.tanggal_mulai, item.tanggal_selesai);
+                        const subjectName = item.mapel && item.mapel !== '-' ? item.mapel : item.nama_sesi;
+                        const roomInfo = resolveRoomInfo(item);
+                        const sessionLabel = resolveSesiLabel(item);
+                        const actionable = isActionable(item);
+                        const isPaused = item.status_jadwal === 'PAUSED';
+                        const isResume = item.status_peserta === 'IN_PROGRESS';
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-3 sm:px-4 sm:py-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-all shadow-2xs"
+                          >
+                            {/* Kiri: Sesi, Jam, Ruang, Mapel, Durasi */}
+                            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-wrap">
+                              <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0">
+                                {sessionLabel}
+                              </span>
+
+                              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 shrink-0">
+                                <Clock size={13} className="text-slate-400" />
+                                <span className="font-semibold text-slate-700 dark:text-slate-300">{timeRange}</span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDenah(item)}
+                                className="px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0 transition-all group"
+                                title="Buka Denah Ruang Ujian"
+                              >
+                                <DoorOpen size={12} className="text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
+                                <span>Ruang {roomInfo.display}</span>
+                                <MapPin size={10} className="text-amber-500 animate-pulse ml-0.5" />
+                              </button>
+
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">
+                                  {subjectName}
+                                </span>
+                                {(item.kolaborasi_badge || item.is_kolaborasi) && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0">
+                                    {item.kolaborasi_badge || 'Kolaborasi'}
+                                  </span>
+                                )}
+                                <span className="text-[11px] text-slate-400 shrink-0 hidden md:inline">
+                                  • {item.durasi_menit} mnt
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Kanan: Aksi */}
+                            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                              {actionable ? (
+                                <button
+                                  type="button"
+                                  onClick={() => goToExamRoom(item)}
+                                  disabled={isPaused}
+                                  className="px-4 py-1.5 rounded-xl text-xs font-black bg-violet-600 hover:bg-violet-700 text-white shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                                >
+                                  {isPaused ? <PauseCircle size={14} /> : isResume ? <RotateCcw size={14} /> : <PlayCircle size={14} />}
+                                  <span>{isPaused ? 'Menunggu' : isResume ? 'Lanjutkan' : 'Kerjakan Ujian'}</span>
+                                </button>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                    <Lock size={10} className="text-slate-400" />
+                                    <span>Hari H</span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenDenah(item)}
+                                    className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800/60 flex items-center gap-1 cursor-pointer transition-all"
+                                    title="Denah Lokasi Ruangan"
+                                  >
+                                    <MapPin size={12} className="text-indigo-500" />
+                                    <span>Denah Ruang</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedDetailItem(item)}
+                                    className="px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 text-xs font-bold flex items-center gap-0.5 cursor-pointer transition-colors"
+                                    title="Detail Sesi Ujian"
+                                  >
+                                    <span>Detail</span>
+                                    <ChevronRight size={13} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <ul className="p-3 sm:p-4 space-y-3 bg-slate-50/70 dark:bg-slate-950/40">
