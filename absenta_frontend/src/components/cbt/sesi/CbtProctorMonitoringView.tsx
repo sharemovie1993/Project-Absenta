@@ -25,6 +25,7 @@ import {
   DoorOpen,
   Sparkles,
   Trash2,
+  Lock,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtPesertaUjian } from '@/types/cbt.types';
@@ -171,6 +172,23 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   }, [availableSchedules, selectedJadwalId, activeJadwalDetail]);
 
   const activeInfo = useMemo(() => parseSessionLabel(activeJadwal), [activeJadwal]);
+
+  // Deteksi Jendela Waktu Ujian Aktif:
+  // Berlaku jika status === 'ACTIVE', atau jika hari ini dan dalam rentang (mulai - 30 menit s/d selesai + 60 menit)
+  const isWithinExamWindow = useMemo(() => {
+    if (!activeJadwal) return false;
+    if (activeJadwal.status === 'ACTIVE') return true;
+    const nowTime = Date.now();
+    const start = new Date(activeJadwal.tanggal_mulai).getTime();
+    const end = new Date(activeJadwal.tanggal_selesai).getTime();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const jadwalDateStr = (activeJadwal.tanggal_mulai || '').slice(0, 10);
+    const isToday = jadwalDateStr === todayStr;
+    return isToday && nowTime >= start - 30 * 60 * 1000 && nowTime <= end + 60 * 60 * 1000;
+  }, [activeJadwal]);
+
+  // Mode Pra-Ujian Terkunci (Di Luar Jadwal Sesi):
+  const isPraUjianLocked = !isPanitiaView && !isWithinExamWindow && activeJadwal?.status === 'DRAFT';
 
   // Fetch live peserta dengan interval 10 detik
   const { data: pesertaList = [], isLoading, refetch } = useQuery({
@@ -347,6 +365,10 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
 
   const handleActivateSession = async () => {
     if (!activeJadwal) return;
+    if (isPraUjianLocked) {
+      toast.error('Sesi ujian belum dapat diaktifkan di luar jadwal pelaksanaan!');
+      return;
+    }
     const isConfirmed = await confirm({
       title: 'Aktifkan Sesi Ujian?',
       message: `Aktifkan sesi "${activeJadwal.nama_sesi}"? Siswa dapat mulai masuk menggunakan token "${activeJadwal.token_ujian}".`,
@@ -784,38 +806,62 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
         {/* Kanan: Hero Token Box */}
         {activeJadwal && (
           <div className="flex items-center gap-2 self-start md:self-center shrink-0">
-            <div
-              onClick={() => handleCopyToken(activeJadwal.token_ujian)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-500/80 dark:border-emerald-500 text-emerald-950 dark:text-emerald-100 cursor-pointer hover:bg-emerald-100/70 transition-all select-none shadow-xs group"
-              title="Klik untuk menyalin token siswa"
-            >
-              <div className="text-left">
-                <div className="text-[9px] uppercase font-black tracking-wider text-emerald-600 dark:text-emerald-400 leading-none">
-                  Token Siswa
-                </div>
-                <div className="font-mono text-base sm:text-lg font-black tracking-widest text-emerald-700 dark:text-emerald-300 leading-tight">
-                  {activeJadwal.token_ujian || '------'}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="p-1 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200/50 transition-colors cursor-pointer"
-                aria-label="Salin Token"
+            {isPraUjianLocked ? (
+              <div
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border-2 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 select-none shadow-xs"
+                title="Token ujian terkunci di luar jadwal sesi (akan dirilis saat hari pelaksanaan ujian)"
               >
-                {copiedToken ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
-              </button>
-            </div>
+                <div className="text-left">
+                  <div className="text-[9px] uppercase font-black tracking-wider text-slate-400 leading-none flex items-center gap-1">
+                    <span>Token Siswa</span>
+                    <Lock size={9} />
+                  </div>
+                  <div className="font-mono text-base sm:text-lg font-black tracking-widest text-slate-400 dark:text-slate-500 leading-tight">
+                    ••••••
+                  </div>
+                </div>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                  Terkunci
+                </span>
+              </div>
+            ) : (
+              <>
+                <div
+                  onClick={() => handleCopyToken(activeJadwal.token_ujian)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-500/80 dark:border-emerald-500 text-emerald-950 dark:text-emerald-100 cursor-pointer hover:bg-emerald-100/70 transition-all select-none shadow-xs group"
+                  title="Klik untuk menyalin token siswa"
+                >
+                  <div className="text-left">
+                    <div className="text-[9px] uppercase font-black tracking-wider text-emerald-600 dark:text-emerald-400 leading-none">
+                      Token Siswa
+                    </div>
+                    <div className="font-mono text-base sm:text-lg font-black tracking-widest text-emerald-700 dark:text-emerald-300 leading-tight">
+                      {activeJadwal.token_ujian || '------'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="p-1 rounded-lg text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200/50 transition-colors cursor-pointer"
+                    aria-label="Salin Token"
+                  >
+                    {copiedToken ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
+                  </button>
+                </div>
 
-            <button
-              type="button"
-              onClick={() => regenerateTokenMutation.mutate(activeJadwal.id)}
-              disabled={regenerateTokenMutation.isPending}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-800 cursor-pointer"
-              title="Acak Ulang Token"
-              aria-label="Acak Ulang Token"
-            >
-              <RotateCw size={14} className={regenerateTokenMutation.isPending ? 'animate-spin text-emerald-600' : ''} />
-            </button>
+                {isPanitiaView && (
+                  <button
+                    type="button"
+                    onClick={() => regenerateTokenMutation.mutate(activeJadwal.id)}
+                    disabled={regenerateTokenMutation.isPending}
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200 dark:border-slate-800 cursor-pointer"
+                    title="Acak Ulang Token"
+                    aria-label="Acak Ulang Token"
+                  >
+                    <RotateCw size={14} className={regenerateTokenMutation.isPending ? 'animate-spin text-emerald-600' : ''} />
+                  </button>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -850,6 +896,28 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
               </button>
             );
           })}
+        </div>
+      )}
+
+      {/* ── SECURITY GUARDRAIL BANNER DI LUAR JADWAL SESI (FASE PRA-UJIAN) ── */}
+      {isPraUjianLocked && (
+        <div className="px-3.5 py-2.5 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border-y border-amber-300 dark:border-amber-800/80 flex items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+              <Lock size={14} />
+            </div>
+            <div className="text-xs">
+              <p className="font-bold text-amber-950 dark:text-amber-100 flex items-center gap-1.5 flex-wrap">
+                <span>Mode Pra-Ujian (Di Luar Jadwal Sesi)</span>
+                <span className="px-1.5 py-0.2 rounded-md text-[9px] font-black uppercase bg-amber-500 text-white">
+                  TERKUNCI
+                </span>
+              </p>
+              <p className="text-[11px] text-amber-900/80 dark:text-amber-300/80 mt-0.5">
+                Token ujian dan kontrol aktivasi dikunci hingga waktu pelaksanaan demi integritas naskah. Anda dapat memanfaatkan mode ini untuk mengecek daftar peserta, mencetak presensi daftar hadir, dan meninjau denah tempat duduk.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -914,12 +982,31 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             <button
               type="button"
               onClick={handleActivateSession}
-              disabled={activateMutation.isPending}
-              className="h-7 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs cursor-pointer transition-all active:scale-95 shrink-0"
-              title="Aktifkan Sesi Ujian"
+              disabled={activateMutation.isPending || (isPraUjianLocked && !isPanitiaView)}
+              className={cn(
+                'h-7 px-3 rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all shrink-0',
+                isPraUjianLocked && !isPanitiaView
+                  ? 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-not-allowed'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer active:scale-95'
+              )}
+              title={
+                isPraUjianLocked && !isPanitiaView
+                  ? 'Aktivasi dikunci di luar jadwal pelaksanaan ujian'
+                  : 'Aktifkan Sesi Ujian'
+              }
             >
-              <Play size={11} className="fill-white" />
-              <span>{activeJadwal?.status === 'PAUSED' ? 'Lanjutkan' : 'Aktifkan'}</span>
+              {isPraUjianLocked && !isPanitiaView ? (
+                <Lock size={11} className="text-slate-400" />
+              ) : (
+                <Play size={11} className="fill-white" />
+              )}
+              <span>
+                {activeJadwal?.status === 'PAUSED'
+                  ? 'Lanjutkan'
+                  : isPraUjianLocked && !isPanitiaView
+                  ? 'Terkunci (Pra-Ujian)'
+                  : 'Aktifkan'}
+              </span>
             </button>
           )}
 
@@ -1012,8 +1099,8 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             </button>
           )}
 
-          {/* 7. Sesi Remedial Terarah CBT */}
-          {activeJadwal && (
+          {/* 7. Sesi Remedial Terarah CBT (Hanya saat sesi aktif, selesai, atau panitia) */}
+          {activeJadwal && (activeJadwal.status === 'ACTIVE' || activeJadwal.status === 'COMPLETED' || isPanitiaView) && (
             <button
               type="button"
               onClick={() => setIsRemedialModalOpen(true)}
@@ -1036,8 +1123,8 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             <span className="hidden lg:inline text-[11px] font-medium">Segarkan</span>
           </button>
 
-          {/* 8. Hapus Sesi Ujian */}
-          {activeJadwal && (
+          {/* 8. Hapus Sesi Ujian (HANYA PANITIA YANG BERHAK) */}
+          {isPanitiaView && activeJadwal && (
             <button
               type="button"
               onClick={handleDeleteSession}
