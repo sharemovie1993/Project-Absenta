@@ -112,10 +112,10 @@ export function useCapabilities() {
     const isPembimbingPkl =
       userPositions.includes('PEMBIMBING_PKL') ||
       Boolean(
-        (user as any)?.guru_profile?.is_pembimbing_pkl || 
-        (user as any)?.is_pembimbing_pkl || 
-        (user as any)?.guru_profile?.active_pkl_count > 0 ||
-        (user as any)?.guru_profile?.total_pkl_count > 0
+        (typeof (user as any)?.guru_profile?.active_pkl_count === 'number' && Number((user as any)?.guru_profile?.active_pkl_count) > 0) ||
+        (typeof (user as any)?.active_pkl_count === 'number' && Number((user as any)?.active_pkl_count) > 0) ||
+        (Boolean((user as any)?.guru_profile?.is_pembimbing_pkl) && Number((user as any)?.guru_profile?.active_pkl_count ?? 1) > 0) ||
+        (Boolean((user as any)?.is_pembimbing_pkl) && Number((user as any)?.active_pkl_count ?? 1) > 0)
       );
 
     // ═══════════════════════════════════════════════════════════════════

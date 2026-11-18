@@ -316,12 +316,12 @@ export const UnifiedStaffDashboard: React.FC = () => {
   );
 
   const isGlobalHubin = isHubin;
-  // Pembimbing PKL: Terbuka untuk guru pembimbing PKL terdaftar, guru dengan kapabilitas guidance, ATAU pengelola Hubin (pemisahan area kerja struktural vs operasional)
+  // Pembimbing PKL: Murni hanya tampil untuk guru yang ter-ploting di penempatan siswa PKL aktif
   const isPembimbingPkl = !isKepsek && (
-    isHubin ||
-    Boolean(isPembimbingPklFromCaps) ||
-    teacherIdentity.isPembimbingPkl ||
-    Boolean(can('hubin.guidance.manage'))
+    (typeof (guruProfile as any)?.active_pkl_count === 'number' && Number((guruProfile as any).active_pkl_count) > 0) ||
+    (typeof (user?.guru_profile as any)?.active_pkl_count === 'number' && Number((user?.guru_profile as any).active_pkl_count) > 0) ||
+    (Boolean(teacherIdentity.isPembimbingPkl) && Number(teacherIdentity.activePklCount || 0) > 0) ||
+    Boolean(isPembimbingPklFromCaps)
   );
 
   // Piket Guru: Murni hanya jika guru terdaftar dalam jadwal piket (bukan Kepsek / Kaprog / Hubin yang fokus di struktural unit)

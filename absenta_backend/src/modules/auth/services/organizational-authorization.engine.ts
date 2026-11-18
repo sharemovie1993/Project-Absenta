@@ -179,7 +179,7 @@ export class OrganizationalAuthorizationEngine {
     // 3. Dynamic Piket Otorisasi: Auto-grant piket capabilities if teacher is assigned in JadwalPiketGuru today
     const guru = await prisma.guru.findFirst({
       where: { user_id: userId },
-      select: { id: true }
+      select: { id: true, tenant_id: true }
     });
 
     if (guru) {
@@ -237,18 +237,45 @@ export class OrganizationalAuthorizationEngine {
       }
 
       // Pembimbing & Penguji Sidang PKL:
-      // Guru yang di-ploting sebagai pembimbing PKL ATAU penguji sidang PKL (nilai_json->penguji_id)
+      // Guru yang di-ploting sebagai pembimbing PKL aktif di Tahun Pelajaran aktif
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: guru.tenant_id, is_active: true },
+        select: { id: true },
+      });
+
+      const activePklWhere: any = {
+        tenant_id: guru.tenant_id,
+        pembimbing_id: guru.id,
+        status: 'AKTIF',
+      };
+      if (activeTp?.id) {
+        activePklWhere.OR = [
+          { Siswa: { tahun_pelajaran_id: activeTp.id } },
+          { SiswaAkademik: { tahun_pelajaran_id: activeTp.id } },
+        ];
+      }
+
+      const activePengujiWhere: any = {
+        tenant_id: guru.tenant_id,
+        status: 'AKTIF',
+        nilai_json: {
+          path: ['penguji_id'],
+          equals: guru.id,
+        },
+      };
+      if (activeTp?.id) {
+        activePengujiWhere.OR = [
+          { Siswa: { tahun_pelajaran_id: activeTp.id } },
+          { SiswaAkademik: { tahun_pelajaran_id: activeTp.id } },
+        ];
+      }
+
       const [pklCount, pengujiCount] = await Promise.all([
         prisma.siswaPkl.count({
-          where: { pembimbing_id: guru.id },
+          where: activePklWhere,
         }),
         prisma.siswaPkl.count({
-          where: {
-            nilai_json: {
-              path: ['penguji_id'],
-              equals: guru.id,
-            },
-          },
+          where: activePengujiWhere,
         }),
       ]);
 
@@ -260,7 +287,6 @@ export class OrganizationalAuthorizationEngine {
         capSet.add('hubin.absensi.verify');
         capSet.add('hubin.absensi.view.history');
         capSet.add('hubin.absensi.recap');
-        capSet.add('dashboard.view.hubin');
       }
     }
 

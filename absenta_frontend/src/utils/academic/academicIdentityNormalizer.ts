@@ -605,13 +605,12 @@ export function normalizeTeacherIdentity(raw: any): TeacherIdentity {
   );
 
   // 5. Pembimbing PKL, Piket, P5
+  const activePklCount = Number(raw.active_pkl_count || 0);
   const isPembimbingPkl = Boolean(
     uniqueCodes.includes('PEMBIMBING_PKL') ||
-    raw.is_pembimbing_pkl ||
-    (raw.active_pkl_count && raw.active_pkl_count > 0) ||
-    (raw.total_pkl_count && raw.total_pkl_count > 0)
+    activePklCount > 0 ||
+    (raw.is_pembimbing_pkl && activePklCount > 0)
   );
-  const activePklCount = Number(raw.active_pkl_count || raw.total_pkl_count || 0);
 
   const isPiketGuru = Boolean(
     uniqueCodes.includes('PIKET') ||

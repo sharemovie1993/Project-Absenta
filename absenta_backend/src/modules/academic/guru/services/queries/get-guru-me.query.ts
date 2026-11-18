@@ -126,14 +126,28 @@ export async function getGuruMeQuery(userId: string, tenantId: string): Promise<
     ? { id: unitAssignment.Unit.id, nama: unitAssignment.Unit.nama }
     : undefined;
 
-  // 4. Hitung jumlah siswa PKL yang dibimbing guru ini (aktif dan total penugasan)
+  // 4. Hitung jumlah siswa PKL yang dibimbing guru ini (hanya yang aktif dan terikat tahun pelajaran aktif)
+  const activeTp = await prisma.tahunPelajaran.findFirst({
+    where: { tenant_id: tenantId, is_active: true },
+    select: { id: true },
+  });
+
+  const activePklWhere: any = {
+    tenant_id: tenantId,
+    pembimbing_id: rawGuru.id,
+    status: 'AKTIF',
+  };
+
+  if (activeTp?.id) {
+    activePklWhere.OR = [
+      { Siswa: { tahun_pelajaran_id: activeTp.id } },
+      { SiswaAkademik: { tahun_pelajaran_id: activeTp.id } },
+    ];
+  }
+
   const [activePklCount, totalPklCount] = await Promise.all([
     prisma.siswaPkl.count({
-      where: {
-        tenant_id: tenantId,
-        pembimbing_id: rawGuru.id,
-        status: 'AKTIF',
-      },
+      where: activePklWhere,
     }),
     prisma.siswaPkl.count({
       where: {
@@ -153,8 +167,8 @@ export async function getGuruMeQuery(userId: string, tenantId: string): Promise<
 
   return {
     ...guru,
-    is_pembimbing_pkl: totalPklCount > 0,
-    active_pkl_count: activePklCount > 0 ? activePklCount : totalPklCount,
+    is_pembimbing_pkl: activePklCount > 0,
+    active_pkl_count: activePklCount,
     total_pkl_count: totalPklCount,
     is_piket_guru: activePiketCount > 0,
     active_piket_count: activePiketCount,
