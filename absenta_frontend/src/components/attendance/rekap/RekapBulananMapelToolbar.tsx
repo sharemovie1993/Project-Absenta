@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { Button, Input } from '../../ui';
-import { FileText, Printer, BookOpen, Layers } from 'lucide-react';
+import { FileText, Printer, BookOpen, Layers, UploadCloud } from 'lucide-react';
 import type { DropdownOption } from '../../../api/dropdown.api';
 import type { ViewMode } from './types';
 
@@ -48,6 +48,7 @@ interface RekapBulananMapelToolbarProps {
   onSelectAll: () => void;
   onExportExcel: () => void;
   onExportPdf: () => void;
+  onOpenBackfill?: () => void;
 }
 
 const ViewModeSwitcher = ({
@@ -115,6 +116,7 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
   onSelectAll,
   onExportExcel,
   onExportPdf,
+  onOpenBackfill,
 }: RekapBulananMapelToolbarProps) {
   const canExport = Boolean(mapelId && kelasId && hasData);
   const exportTooltip = !mapelId || !kelasId
@@ -236,6 +238,22 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
             >
               <Printer className="w-3 h-3 mr-1" /> PDF
             </Button>
+            {onOpenBackfill && (
+              <Button
+                onClick={onOpenBackfill}
+                disabled={!kelasId || !mapelId}
+                title={!kelasId || !mapelId ? "Pilih mata pelajaran dan kelas terlebih dahulu untuk backfill" : "Impor data presensi historis Semester Ganjil"}
+                variant="outline"
+                size="sm"
+                className={`h-8 rounded-lg font-bold text-[9.5px] uppercase tracking-wider px-2.5 shadow-2xs transition-all ${
+                  kelasId && mapelId
+                    ? 'border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 cursor-pointer'
+                    : 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-850 text-slate-400'
+                }`}
+              >
+                <UploadCloud className="w-3 h-3 mr-1 text-indigo-600 dark:text-indigo-400" /> Backfill Mapel
+              </Button>
+            )}
           </div>
         </div>
       </div>

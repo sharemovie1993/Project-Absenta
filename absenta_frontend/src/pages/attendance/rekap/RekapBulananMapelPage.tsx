@@ -31,6 +31,7 @@ import { MobileAcademicList } from '../../../components/academic/shared/MobileAc
 // ─── Subkomponen ─────────────────────────────────────────────────────────────
 import { RekapBulananMapelToolbar } from '../../../components/attendance/rekap/RekapBulananMapelToolbar';
 import { RekapPresensiPrintModal } from '../../../components/attendance/rekap/RekapPresensiPrintModal';
+import { HistoricalBackfillModal } from '../../../components/attendance/backfill/HistoricalBackfillModal';
 import { useRekapBulananMapelColumns } from '../../../components/attendance/rekap/rekapBulananMapelColumns';
 import type { RekapBulananKelasRow, ViewMode } from '../../../components/attendance/rekap/types';
 
@@ -66,6 +67,7 @@ export function RekapBulananMapelContent() {
   const [bulan, setBulan] = useState<string>(toLocalMonth());
   const [viewMode, setViewMode] = useState<ViewMode>('MATRIX');
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isBackfillModalOpen, setIsBackfillModalOpen] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfFilename, setPdfFilename] = useState<string>('Laporan_Rekap_Mapel.pdf');
 
@@ -547,6 +549,7 @@ export function RekapBulananMapelContent() {
           onSelectAll={handleSelectAll}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
+          onOpenBackfill={() => setIsBackfillModalOpen(true)}
         />
       </div>
 
@@ -607,6 +610,23 @@ export function RekapBulananMapelContent() {
           viewMode={viewMode}
           rows={rows}
           dayNumbers={dayNumbers}
+        />
+      )}
+
+      {/* MODAL BACKFILL PRESENSI HISTORIS SEMESTER GANJIL PER MAPEL */}
+      {isBackfillModalOpen && (
+        <HistoricalBackfillModal
+          isOpen={isBackfillModalOpen}
+          onClose={() => setIsBackfillModalOpen(false)}
+          kelasId={kelasId}
+          kelasNama={selectedKelasLabel || 'Kelas'}
+          mapelId={mapelId}
+          mapelNama={selectedMapelLabel || 'Mata Pelajaran'}
+          guruId={(guruMapelInfo as any)?.guru_id || (user as any)?.guru_id || myGuruId}
+          tahunPelajaranId={tahunPelajaranId}
+          onSuccess={() => {
+            fetchData();
+          }}
         />
       )}
     </div>

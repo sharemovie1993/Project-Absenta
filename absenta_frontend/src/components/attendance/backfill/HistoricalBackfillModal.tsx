@@ -25,6 +25,9 @@ interface HistoricalBackfillModalProps {
   onClose: () => void;
   kelasId: string;
   kelasNama?: string;
+  mapelId?: string;
+  mapelNama?: string;
+  guruId?: string;
   tahunPelajaranId?: string;
   semesterId?: string;
   onSuccess?: () => void;
@@ -35,6 +38,9 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
   onClose,
   kelasId,
   kelasNama = 'Kelas',
+  mapelId,
+  mapelNama,
+  guruId,
   tahunPelajaranId,
   semesterId,
   onSuccess,
@@ -55,11 +61,12 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
     }
     try {
       setIsDownloading(true);
-      toast('Menyiapkan template Excel untuk kelas ' + kelasNama + '...', {
+      toast(`Menyiapkan template Excel untuk kelas ${kelasNama}${mapelNama ? ` - Mapel ${mapelNama}` : ''}...`, {
         icon: 'ℹ️',
       });
       await historicalBackfillApi.downloadTemplate({
         kelasId,
+        mapelId,
         tahunPelajaranId,
         semesterId,
       });
@@ -108,6 +115,8 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
       setIsExecuting(true);
       const res = await historicalBackfillApi.execute({
         kelasId,
+        mapelId,
+        guruId,
         tahunPelajaranId,
         semesterId,
         dateList: previewData.dateList,
@@ -146,13 +155,21 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
               </span>
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  Backfill Presensi Semester Ganjil
+                  {mapelNama ? 'Backfill Presensi Mata Pelajaran' : 'Backfill Presensi Semester Ganjil'}
                   <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
-                    Terhubung ke Sesi KBM
+                    {mapelNama ? 'Terhubung ke Sesi Mapel' : 'Terhubung ke Sesi KBM'}
                   </Badge>
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Impor data presensi historis untuk kebutuhan analitik dan rekap rapor — Kelas <span className="font-semibold text-slate-700 dark:text-slate-300">{kelasNama}</span>
+                  {mapelNama ? (
+                    <>
+                      Impor data presensi historis Semester Ganjil — Kelas <span className="font-semibold text-slate-700 dark:text-slate-300">{kelasNama}</span> &bull; Mapel <span className="font-semibold text-indigo-600 dark:text-indigo-400">{mapelNama}</span>
+                    </>
+                  ) : (
+                    <>
+                      Impor data presensi historis untuk kebutuhan analitik dan rekap rapor — Kelas <span className="font-semibold text-slate-700 dark:text-slate-300">{kelasNama}</span>
+                    </>
+                  )}
                 </p>
               </div>
             </div>
@@ -188,7 +205,10 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
             </Button>
           </div>
           <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-            Berkas Excel sudah otomatis terisi <span className="font-semibold">seluruh nama siswa di kelas {kelasNama}</span> dan kolom tanggal hari sekolah aktif selama semester ganjil.
+            Berkas Excel sudah otomatis terisi <span className="font-semibold">seluruh nama siswa di kelas {kelasNama}</span>
+            {mapelNama ? (
+              <> untuk mata pelajaran <span className="font-semibold text-indigo-600 dark:text-indigo-400">{mapelNama}</span></>
+            ) : null} dan kolom tanggal hari sekolah aktif selama semester ganjil.
           </p>
           <div className="flex items-center gap-2 text-[10px] text-emerald-800 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-950/40 p-2 rounded-lg border border-emerald-200/60 dark:border-emerald-900/40 font-mono">
             <Sparkles className="w-3.5 h-3.5 shrink-0 text-emerald-600" />

@@ -34,6 +34,8 @@ export interface BackfillPreviewResponse {
 
 export interface BackfillExecutePayload {
   kelasId: string;
+  mapelId?: string;
+  guruId?: string;
   tahunPelajaranId?: string;
   semesterId?: string;
   dateList: string[];
@@ -62,6 +64,7 @@ export const historicalBackfillApi = {
    */
   async downloadTemplate(params: {
     kelasId: string;
+    mapelId?: string;
     tahunPelajaranId?: string;
     semesterId?: string;
     bulan?: number;
@@ -70,6 +73,7 @@ export const historicalBackfillApi = {
   }): Promise<void> {
     const queryParams = new URLSearchParams();
     queryParams.append('kelas_id', params.kelasId);
+    if (params.mapelId) queryParams.append('mapel_id', params.mapelId);
     if (params.tahunPelajaranId) queryParams.append('tahun_pelajaran_id', params.tahunPelajaranId);
     if (params.semesterId) queryParams.append('semester_id', params.semesterId);
     if (params.bulan) queryParams.append('bulan', String(params.bulan));

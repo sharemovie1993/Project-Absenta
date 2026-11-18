@@ -1,9 +1,11 @@
 import { prisma } from '@/utils/prisma';
 import * as XLSX from 'xlsx-js-style';
 import { getTenantTimezone, getTenantOffsetString } from '@/utils/timezone.utils';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 export interface GenerateTemplateParams {
   kelasId: string;
+  mapelId?: string;
   tahunPelajaranId?: string;
   semesterId?: string;
   bulan?: number; // 1-12 (opsional, jika ingin per bulan, contoh 8 untuk Agustus)
@@ -40,6 +42,23 @@ export class HistoricalBackfillService {
 
     if (!kelas) {
       throw new Error('Data kelas tidak ditemukan.');
+    }
+
+    // 2b. Ambil data mapel jika mode Backfill Per Mapel
+    let mapelObj: any = null;
+    let guruObj: any = null;
+    if (params.mapelId) {
+      mapelObj = await prisma.mapel.findFirst({
+        where: { id: params.mapelId, tenant_id: tenantId },
+        select: { id: true, nama_mapel: true, kode_mapel: true },
+      });
+      const guruMapel = await prisma.guruMapel.findFirst({
+        where: { tenant_id: tenantId, mapel_id: params.mapelId, kelas_id: kelasId },
+        include: { Guru: { select: { id: true, nama_guru: true } } },
+      });
+      if (guruMapel?.Guru) {
+        guruObj = guruMapel.Guru;
+      }
     }
 
     // 3. Resolve Tahun Pelajaran & Semester Ganjil
@@ -176,9 +195,15 @@ export class HistoricalBackfillService {
 
     // Header Judul Dokumen
     const namaSekolahStr = (sekolah?.nama || 'SEKOLAH').toUpperCase();
-    aoa.push([`REKAP PRESENSI HARIAN SISWA (SEMESTER GANJIL) — ${namaSekolahStr}`]);
-    aoa.push([`KELAS: ${kelas.nama_kelas}   |   TAHUN PELAJARAN: ${tpObj?.tahun || `${startYear}/${startYear + 1}`}   |   SEMESTER: ${semObj?.nama_semester || 'GANJIL'}`]);
-    aoa.push([`PETUNJUK: Cukup ketik huruf S (Sakit), I (Izin), A (Alpa), D (Dispen). Sel KOSONG atau H otomatis dihitung HADIR.`]);
+    if (mapelObj) {
+      aoa.push([`REKAP PRESENSI MATA PELAJARAN (SEMESTER GANJIL) — ${namaSekolahStr}`]);
+      aoa.push([`MATA PELAJARAN: ${mapelObj.nama_mapel}   |   GURU PENGAMPU: ${guruObj?.nama_guru || '-'}   |   KELAS: ${kelas.nama_kelas}`]);
+      aoa.push([`TAHUN PELAJARAN: ${tpObj?.tahun || `${startYear}/${startYear + 1}`}   |   SEMESTER: ${semObj?.nama_semester || 'GANJIL'}   |   PETUNJUK: Cukup ketik huruf S (Sakit), I (Izin), A (Alpa), D (Dispen). Sel KOSONG atau H = HADIR.`]);
+    } else {
+      aoa.push([`REKAP PRESENSI HARIAN SISWA (SEMESTER GANJIL) — ${namaSekolahStr}`]);
+      aoa.push([`KELAS: ${kelas.nama_kelas}   |   TAHUN PELAJARAN: ${tpObj?.tahun || `${startYear}/${startYear + 1}`}   |   SEMESTER: ${semObj?.nama_semester || 'GANJIL'}`]);
+      aoa.push([`PETUNJUK: Cukup ketik huruf S (Sakit), I (Izin), A (Alpa), D (Dispen). Sel KOSONG atau H otomatis dihitung HADIR.`]);
+    }
     aoa.push([]); // baris kosong pemisah
 
     // Baris Header Tabel (Row 4 & 5)
@@ -276,11 +301,15 @@ export class HistoricalBackfillService {
       }
     }
 
-    XLSX.utils.book_append_sheet(wb, ws, `Presensi_${kelas.nama_kelas.replace(/\s+/g, '_')}`);
+    const cleanKelas = kelas.nama_kelas.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const cleanMapel = mapelObj ? mapelObj.nama_mapel.replace(/[^a-zA-Z0-9_-]/g, '_') : '';
+    const sheetTitle = mapelObj ? `Presensi_${cleanMapel.substring(0, 15)}_${cleanKelas}`.substring(0, 31) : `Presensi_${cleanKelas}`.substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetTitle);
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    const cleanKelas = kelas.nama_kelas.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const fileName = `Format_Backfill_Presensi_${cleanKelas}_Semester_Ganjil.xlsx`;
+    const fileName = mapelObj
+      ? `Format_Backfill_Presensi_${cleanKelas}_${cleanMapel}_Semester_Ganjil.xlsx`
+      : `Format_Backfill_Presensi_${cleanKelas}_Semester_Ganjil.xlsx`;
 
     return { buffer, fileName };
   }
@@ -433,6 +462,8 @@ export class HistoricalBackfillService {
     userId: string,
     payload: {
       kelasId: string;
+      mapelId?: string;
+      guruId?: string;
       tahunPelajaranId?: string;
       semesterId?: string;
       dateList: string[]; // ['2026-08-01', '2026-08-02', ...]
@@ -443,13 +474,30 @@ export class HistoricalBackfillService {
       }[];
     }
   ): Promise<any> {
-    const { kelasId, dateList, students } = payload;
+    const { kelasId, mapelId, dateList, students } = payload;
 
     const kelas = await prisma.kelas.findFirst({
       where: { id: kelasId, tenant_id: tenantId },
       select: { id: true, nama_kelas: true, tingkat: true },
     });
     if (!kelas) throw new Error('Kelas tidak ditemukan.');
+
+    // 1b. Resolve Mapel & Guru jika Backfill Per Mapel
+    let mapelObj: any = null;
+    let resolvedGuruId = payload.guruId || null;
+    if (mapelId) {
+      mapelObj = await prisma.mapel.findFirst({
+        where: { id: mapelId, tenant_id: tenantId },
+        select: { id: true, nama_mapel: true },
+      });
+      if (!resolvedGuruId) {
+        const gm = await prisma.guruMapel.findFirst({
+          where: { tenant_id: tenantId, mapel_id: mapelId, kelas_id: kelasId },
+          select: { guru_id: true },
+        });
+        resolvedGuruId = gm?.guru_id || null;
+      }
+    }
 
     // 1. Resolve Tahun Pelajaran & Semester
     let tpId = payload.tahunPelajaranId;
@@ -547,11 +595,12 @@ export class HistoricalBackfillService {
       const startTimeTarget = new Date(`${dateStr}T07:15:00.000${tzOffset}`);
       const endTimeTarget = new Date(`${dateStr}T15:00:00.000${tzOffset}`);
 
-      // Cek apakah sudah ada SesiAbsensi di tanggal ini untuk kelas tersebut
+      // Cek apakah sudah ada SesiAbsensi di tanggal ini untuk kelas (dan mapel) tersebut
       let sesi = await prisma.sesiAbsensi.findFirst({
         where: {
           tenant_id: tenantId,
           kelas_id: kelasId,
+          mapel_id: mapelId || null,
           tanggal: { gte: startOfDay, lte: endOfDay },
         },
       });
@@ -561,20 +610,30 @@ export class HistoricalBackfillService {
           data: {
             tenant_id: tenantId,
             kelas_id: kelasId,
+            mapel_id: mapelId || null,
+            guru_id: resolvedGuruId || null,
             tahun_pelajaran_id: tpId,
             semester_id: semId,
             tanggal: startOfDay,
             waktu_mulai: startTimeTarget,
             waktu_selesai: endTimeTarget,
             status: 'SELESAI',
-            jenis_kegiatan: 'KBM',
+            jenis_kegiatan: mapelId ? 'MAPEL' : 'KBM',
             sumber_sesi: 'MANUAL',
-            keterangan: '[BACKFILL_SEMESTER_GANJIL] Inisialisasi rekap presensi historis',
+            keterangan: mapelObj
+              ? `[BACKFILL_SEMESTER_GANJIL] Presensi Mapel: ${mapelObj.nama_mapel}`
+              : '[BACKFILL_SEMESTER_GANJIL] Inisialisasi rekap presensi historis',
             created_by_user_id: userId,
           },
         });
         totalSesiCreated++;
       } else {
+        if (mapelId && !sesi.guru_id && resolvedGuruId) {
+          await prisma.sesiAbsensi.update({
+            where: { id: sesi.id },
+            data: { guru_id: resolvedGuruId },
+          });
+        }
         totalSesiReused++;
       }
 
@@ -614,7 +673,9 @@ export class HistoricalBackfillService {
               status,
               waktu_tap: isHadir ? startTimeTarget : null,
               poin_kehadiran: poin,
-              catatan: `[BACKFILL] Presensi semester ganjil (${status})`,
+              catatan: mapelObj
+                ? `[BACKFILL] Presensi mapel ${mapelObj.nama_mapel} (${status})`
+                : `[BACKFILL] Presensi semester ganjil (${status})`,
               updated_at: new Date(),
             },
           });
@@ -634,7 +695,9 @@ export class HistoricalBackfillService {
               kelas_nama_snapshot: kelas.nama_kelas,
               tingkat_snapshot: kelas.tingkat,
               tahun_pelajaran_id_snapshot: tpId,
-              catatan: `[BACKFILL] Presensi semester ganjil (${status})`,
+              catatan: mapelObj
+                ? `[BACKFILL] Presensi mapel ${mapelObj.nama_mapel} (${status})`
+                : `[BACKFILL] Presensi semester ganjil (${status})`,
             },
           });
         }
@@ -642,11 +705,17 @@ export class HistoricalBackfillService {
       }
     }
 
+    // Invalidate rekap, attendance, dan dashboard cache
+    await cacheInvalidationService.invalidateAttendanceCache(tenantId);
+
     return {
       success: true,
-      message: 'Backfill presensi semester ganjil berhasil dieksekusi.',
+      message: mapelObj
+        ? `Backfill presensi mapel ${mapelObj.nama_mapel} semester ganjil berhasil dieksekusi.`
+        : 'Backfill presensi semester ganjil berhasil dieksekusi.',
       result: {
         kelasNama: kelas.nama_kelas,
+        mapelNama: mapelObj?.nama_mapel || null,
         totalSesiCreated,
         totalSesiReused,
         totalTanggal: dateList.length,

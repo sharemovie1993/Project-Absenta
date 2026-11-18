@@ -19,6 +19,7 @@ export class HistoricalBackfillController {
       }
 
       const bulan = query.bulan ? Number(query.bulan) : undefined;
+      const mapelId = query.mapel_id || query.mapelId;
       const tahunPelajaranId = query.tahun_pelajaran_id || query.tahunPelajaranId;
       const semesterId = query.semester_id || query.semesterId;
       const startDate = query.start_date || query.startDate;
@@ -26,6 +27,7 @@ export class HistoricalBackfillController {
 
       const { buffer, fileName } = await historicalBackfillService.generateTemplate(tenantId, {
         kelasId,
+        mapelId,
         tahunPelajaranId,
         semesterId,
         bulan,
@@ -114,7 +116,7 @@ export class HistoricalBackfillController {
       }
 
       const body = (request.body || {}) as any;
-      const { kelasId, tahunPelajaranId, semesterId, dateList, students } = body;
+      const { kelasId, mapelId, mapel_id, guruId, guru_id, tahunPelajaranId, semesterId, dateList, students } = body;
 
       if (!kelasId || !Array.isArray(dateList) || dateList.length === 0 || !Array.isArray(students) || students.length === 0) {
         return reply.status(400).send({
@@ -125,6 +127,8 @@ export class HistoricalBackfillController {
 
       const result = await historicalBackfillService.executeBackfill(tenantId, userId, {
         kelasId,
+        mapelId: mapelId || mapel_id,
+        guruId: guruId || guru_id,
         tahunPelajaranId,
         semesterId,
         dateList,
