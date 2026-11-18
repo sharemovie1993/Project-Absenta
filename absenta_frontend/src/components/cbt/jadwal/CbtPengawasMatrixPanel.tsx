@@ -1055,54 +1055,163 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
       <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden">
         {topFlightDeck}
 
-        {/* ── Single-Row Unified Master Filter & Action Toolbar (1 Ruang, Zero Waste Vertical) ── */}
-        <div className="p-2 sm:p-2.5 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col xl:flex-row xl:items-center justify-between gap-2">
-          {/* Left: Filters & Search */}
-          <div className="flex items-center gap-1.5 flex-wrap flex-1">
-            {/* Mode Tampilan Switcher (Matriks Ruang vs Daftar Terurai) */}
-            <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
-              <button
-                type="button"
-                onClick={() => setViewMode('MATRIX')}
-                className={cn(
-                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1',
-                  viewMode === 'MATRIX'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
-                    : 'text-slate-500 hover:text-slate-900'
-                )}
-                title="Tampilan Matriks: 1 baris per Ruang dengan kolom Sesi (34 baris)"
-              >
-                <LayoutGrid size={12} />
-                <span>Matriks Ruang</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('LIST')}
-                className={cn(
-                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1',
-                  viewMode === 'LIST'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
-                    : 'text-slate-500 hover:text-slate-900'
-                )}
-                title="Tampilan Daftar Terurai per Sesi (102 baris)"
-              >
-                <ListFilter size={12} />
-                <span>Daftar Terurai</span>
-              </button>
+        {/* ── UNIFIED 2-TIER CLEAN TOOLBAR (ZERO CLUTTER, ZERO COLLISION) ── */}
+        <div className="p-2.5 sm:p-3 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5">
+          {/* TIER 1: Mode Switcher, Search Input, Status Badges & Primary Actions */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+            {/* Left: View Mode Switcher & Search Bar */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Mode Tampilan Switcher */}
+              <div className="flex items-center gap-0.5 p-0.5 bg-slate-200/70 dark:bg-slate-800 rounded-lg shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('MATRIX')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    viewMode === 'MATRIX'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  )}
+                  title="Tampilan Matriks: 1 baris per Ruang dengan kolom Sesi (34 baris)"
+                >
+                  <LayoutGrid size={13} />
+                  <span>Matriks Ruang</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('LIST')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    viewMode === 'LIST'
+                      ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  )}
+                  title="Tampilan Daftar Terurai per Sesi"
+                >
+                  <ListFilter size={13} />
+                  <span>Daftar Terurai</span>
+                </button>
+              </div>
+
+              {/* Search Input */}
+              <div className="relative w-full sm:w-56 lg:w-64">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari ruang, rombel, mapel, guru..."
+                  aria-label="Cari ruang, rombel, mapel, guru"
+                  className="w-full pl-8 pr-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 shadow-2xs"
+                />
+              </div>
             </div>
 
-            {/* Hari filter jika > 1 hari atau jika mode matriks */}
+            {/* Right: Badges & Primary Actions */}
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              {/* Quick Badge Guru Siap */}
+              <button
+                type="button"
+                onClick={() => setShowUnassignedGuruModal(true)}
+                className="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/80 dark:border-amber-800/60 hover:bg-amber-100 cursor-pointer flex items-center gap-1.5 shadow-2xs shrink-0"
+                title="Lihat daftar guru yang belum mendapatkan penugasan pengawas"
+              >
+                <Users size={12} />
+                <span>{workloadStats.unassignedTeachers.length} Siap</span>
+              </button>
+
+              {/* Bentrok indicator */}
+              {conflictJadwalIds.size > 0 ? (
+                <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/60 flex items-center gap-1.5 shadow-2xs shrink-0">
+                  <AlertTriangle size={12} />
+                  <span>{conflictJadwalIds.size} Bentrok</span>
+                </span>
+              ) : (
+                <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/60 flex items-center gap-1.5 shadow-2xs shrink-0">
+                  <CheckCircle2 size={12} />
+                  <span>Aman</span>
+                </span>
+              )}
+
+              {/* Toggle Visibilitas Kolom Proktor */}
+              <button
+                type="button"
+                onClick={() => setIsProctorEnabledLocal(!showProctor)}
+                className={cn(
+                  'text-xs font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs shrink-0',
+                  showProctor
+                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800'
+                    : 'bg-white text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-50'
+                )}
+                title="Tampilkan atau sembunyikan kolom Proktor / Pengawas 2"
+              >
+                <UserCheck size={12} className={showProctor ? 'text-indigo-600' : 'text-slate-400'} />
+                <span>{showProctor ? 'Proktor: Aktif' : 'Proktor: Sembunyi'}</span>
+              </button>
+
+              {/* Plot Otomatis Button */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleOpenAutoPlotModal}
+                className="text-xs h-8 px-2.5 font-bold border-indigo-200 text-indigo-700 dark:text-indigo-400 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0"
+                title="Distribusi otomatis pengawas menggunakan SOP silang sekolah"
+              >
+                <Wand2 size={12} className="text-indigo-600 dark:text-indigo-400" />
+                <span>Plot Otomatis</span>
+              </Button>
+
+              {/* Simpan Button */}
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={dirtyPlottingItems.length === 0 || bulkPlottingMutation.isPending}
+                onClick={() => bulkPlottingMutation.mutate()}
+                className={cn(
+                  'text-xs h-8 px-3 font-bold cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0',
+                  dirtyPlottingItems.length > 0
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white animate-pulse'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                )}
+              >
+                <Save size={12} className={cn(bulkPlottingMutation.isPending && 'animate-spin')} />
+                <span>
+                  {bulkPlottingMutation.isPending ? 'Menyimpan...' : `Simpan (${dirtyPlottingItems.length})`}
+                </span>
+              </Button>
+
+              {/* Lanjut Button */}
+              {onProceedToNextPhase && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={onProceedToNextPhase}
+                  className="text-xs h-8 px-3 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer flex items-center gap-1 shrink-0"
+                >
+                  <span>Lanjut</span>
+                  <ArrowRight size={13} />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* TIER 2: Dedicated Filter Ribbon (Hari Ujian Lega, Status Filter, & Tingkat) */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 pt-2 border-t border-slate-200/80 dark:border-slate-800">
+            {/* Left: Tab Hari Ujian (Pill Bar Lega & Jelas, Bebas Tabrakan) */}
             {availableDays.length > 0 && (
-              <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0 flex-wrap">
+              <div className="flex items-center gap-1 p-0.5 bg-slate-200/60 dark:bg-slate-800/80 rounded-lg shrink-0 flex-wrap overflow-x-auto">
                 {availableDays.length > 1 && (
                   <button
                     type="button"
                     onClick={() => setSelectedDayKey('ALL')}
                     className={cn(
-                      'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1',
+                      'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0',
                       selectedDayKey === 'ALL'
                         ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
-                        : 'text-slate-500 hover:text-slate-900'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                     )}
                     title="Tampilkan seluruh hari pelaksanaan ujian sekaligus"
                   >
@@ -1118,10 +1227,10 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
                       type="button"
                       onClick={() => setSelectedDayKey(d.key)}
                       className={cn(
-                        'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1',
+                        'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0',
                         isSelected
                           ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
-                          : 'text-slate-500 hover:text-slate-900'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                       )}
                     >
                       <Calendar size={11} className={isSelected ? 'text-indigo-600' : 'text-slate-400'} />
@@ -1132,485 +1241,369 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
               </div>
             )}
 
-            {/* Status Filter Tabs (Semua, Belum, Terplot) - Ringkas 1 Kata */}
-            <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
-              <button
-                type="button"
-                onClick={() => setStatusFilter('ALL')}
-                className={cn(
-                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
-                  statusFilter === 'ALL'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
-                    : 'text-slate-500 hover:text-slate-900'
-                )}
-              >
-                Semua ({effectiveJadwalList.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('UNPLOTTED')}
-                className={cn(
-                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
-                  statusFilter === 'UNPLOTTED'
-                    ? 'bg-white dark:bg-slate-900 text-rose-600 shadow-2xs font-black'
-                    : 'text-slate-500 hover:text-slate-900'
-                )}
-              >
-                Belum ({effectiveJadwalList.length - workloadStats.totalPlottedSessions})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('PLOTTED')}
-                className={cn(
-                  'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
-                  statusFilter === 'PLOTTED'
-                    ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-2xs font-black'
-                    : 'text-slate-500 hover:text-slate-900'
-                )}
-              >
-                Terplot ({workloadStats.totalPlottedSessions})
-              </button>
-            </div>
-
-            {/* Tingkat Filter Dinamis */}
-            <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
-              <span className="text-[10px] font-bold text-slate-400 uppercase px-1">TK:</span>
-              {tingkatFilterOptions.map((tk) => (
+            {/* Right: Status Ploting & Tingkat Filter */}
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {/* Status Filter Tabs (Semua, Belum, Terplot) */}
+              <div className="flex items-center gap-0.5 p-0.5 bg-slate-200/60 dark:bg-slate-800/80 rounded-lg shrink-0">
                 <button
-                  key={String(tk.val)}
                   type="button"
-                  onClick={() => setTingkatFilter(tk.val as any)}
+                  onClick={() => setStatusFilter('ALL')}
                   className={cn(
-                    'px-2 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer',
-                    tingkatFilter === tk.val
+                    'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer',
+                    statusFilter === 'ALL'
                       ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
-                      : 'text-slate-500 hover:text-slate-900'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                   )}
                 >
-                  {tk.label}
+                  Semua ({effectiveJadwalList.length})
                 </button>
-              ))}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('UNPLOTTED')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer',
+                    statusFilter === 'UNPLOTTED'
+                      ? 'bg-white dark:bg-slate-900 text-rose-600 shadow-2xs font-black'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  )}
+                >
+                  Belum ({effectiveJadwalList.length - workloadStats.totalPlottedSessions})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('PLOTTED')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer',
+                    statusFilter === 'PLOTTED'
+                      ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-2xs font-black'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  )}
+                >
+                  Terplot ({workloadStats.totalPlottedSessions})
+                </button>
+              </div>
 
-            {/* Sesi Jam Filter jika > 1 dan hanya pada mode LIST */}
-            {viewMode === 'LIST' && availableSessions.length > 1 && (
-              <select
-                value={selectedSessionKey}
-                onChange={(e) => setSelectedSessionKey(e.target.value)}
-                className="text-xs font-semibold py-1 px-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 shadow-2xs"
-              >
-                <option value="ALL">Semua Sesi</option>
-                {availableSessions.map((s) => (
-                  <option key={s.key} value={s.key}>{s.label}</option>
+              {/* Tingkat Filter Dinamis */}
+              <div className="flex items-center gap-0.5 p-0.5 bg-slate-200/60 dark:bg-slate-800/80 rounded-lg shrink-0">
+                <span className="text-[10px] font-bold text-slate-400 uppercase px-1">TK:</span>
+                {tingkatFilterOptions.map((tk) => (
+                  <button
+                    key={String(tk.val)}
+                    type="button"
+                    onClick={() => setTingkatFilter(tk.val as any)}
+                    className={cn(
+                      'px-2 py-1 rounded-md text-xs font-bold transition-all cursor-pointer',
+                      tingkatFilter === tk.val
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    )}
+                  >
+                    {tk.label}
+                  </button>
                 ))}
-              </select>
-            )}
+              </div>
 
-            {/* Search Input */}
-            <div className="relative w-full sm:w-40 lg:w-44 shrink-0">
-              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari ruang/guru..."
-                aria-label="Cari ruang atau nama guru"
-                className="w-full pl-7 pr-2 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 shadow-2xs"
-              />
+              {/* Sesi Jam Filter jika > 1 dan hanya pada mode LIST */}
+              {viewMode === 'LIST' && availableSessions.length > 1 && (
+                <select
+                  value={selectedSessionKey}
+                  onChange={(e) => setSelectedSessionKey(e.target.value)}
+                  className="text-xs font-semibold py-1 px-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 shadow-2xs"
+                >
+                  <option value="ALL">Semua Sesi</option>
+                  {availableSessions.map((s) => (
+                    <option key={s.key} value={s.key}>{s.label}</option>
+                  ))}
+                </select>
+              )}
+
+              {/* Kosongkan Ploting Button (Jika sudah ada terisi) */}
+              {workloadStats.totalPlottedSessions > 0 && (
+                <button
+                  type="button"
+                  onClick={handleConfirmClearAllPlotting}
+                  disabled={clearPlottingMutation.isPending}
+                  className="px-2 py-1 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                  title="Kosongkan seluruh penugasan pengawas pada event ini"
+                >
+                  <RotateCcw size={11} className={cn(clearPlottingMutation.isPending && 'animate-spin')} />
+                  <span>Kosongkan</span>
+                </button>
+              )}
             </div>
-          </div>
-
-          {/* Right: Actions & Quick Status */}
-          <div className="flex items-center gap-1.5 flex-wrap xl:flex-nowrap justify-between xl:justify-end shrink-0">
-            {/* Quick Badge Guru Siap */}
-            <button
-              type="button"
-              onClick={() => setShowUnassignedGuruModal(true)}
-              className="text-[11px] font-bold px-2 py-1 rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/80 dark:border-amber-800/60 hover:bg-amber-100 cursor-pointer flex items-center gap-1 shrink-0"
-              title="Lihat daftar guru yang belum mendapatkan penugasan pengawas"
-            >
-              <Users size={11} />
-              <span>{workloadStats.unassignedTeachers.length} Siap</span>
-            </button>
-
-            {/* Bentrok indicator */}
-            {conflictJadwalIds.size > 0 ? (
-              <span className="text-[11px] font-bold px-2 py-1 rounded-lg bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/60 flex items-center gap-1 shrink-0">
-                <AlertTriangle size={11} />
-                <span>{conflictJadwalIds.size} Bentrok</span>
-              </span>
-            ) : (
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/60 flex items-center gap-1 shrink-0">
-                <CheckCircle2 size={11} />
-                <span>Aman</span>
-              </span>
-            )}
-
-            {/* Toggle Visibilitas Kolom Proktor */}
-            <button
-              type="button"
-              onClick={() => setIsProctorEnabledLocal(!showProctor)}
-              className={cn(
-                'text-[11px] font-bold px-2 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1 shrink-0',
-                showProctor
-                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800'
-                  : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 hover:text-slate-700'
-              )}
-              title={
-                showProctor
-                  ? 'Kolom Proktor / Pengawas 2 sedang aktif. Klik untuk menyembunyikan.'
-                  : 'Kolom Proktor / Pengawas 2 disembunyikan. Klik untuk menampilkan.'
-              }
-            >
-              <UserCheck size={11} className={showProctor ? 'text-indigo-600' : 'text-slate-400'} />
-              <span>{showProctor ? 'Proktor: Aktif' : 'Proktor: Sembunyi'}</span>
-            </button>
-
-            {/* Kosongkan Button */}
-            {workloadStats.totalPlottedSessions > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={clearPlottingMutation.isPending}
-                onClick={handleConfirmClearAllPlotting}
-                className="text-xs h-7 px-2 font-bold text-rose-600 border-rose-200 bg-white hover:bg-rose-50 cursor-pointer shadow-2xs shrink-0"
-                title="Kosongkan seluruh penugasan pengawas"
-              >
-                <RotateCcw size={11} className={cn('mr-1', clearPlottingMutation.isPending && 'animate-spin')} />
-                <span>Kosongkan</span>
-              </Button>
-            )}
-
-            {/* Salin Sesi 1 Seharian (Hanya di mode Matriks) */}
-            {viewMode === 'MATRIX' && activeDaySessions.length > 1 && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleCopyAllRoomsFullDay}
-                className="text-xs h-7 px-2.5 font-bold text-amber-700 border-amber-200 bg-amber-50 hover:bg-amber-100 dark:text-amber-300 dark:border-amber-800/80 dark:bg-amber-950/40 cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
-                title="Salin penugasan Pengawas Sesi 1 ke seluruh sesi berikutnya untuk SEMUA ruang di hari ini"
-              >
-                <Zap size={11} className="text-amber-600 fill-amber-500" />
-                <span>Salin Sesi 1 Seharian</span>
-              </Button>
-            )}
-
-            {/* Plot Otomatis Button */}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleOpenAutoPlotModal}
-              className="text-xs h-7 px-2.5 font-bold text-indigo-700 border-indigo-200 bg-white hover:bg-indigo-50 dark:text-indigo-300 dark:border-indigo-700 dark:bg-slate-900 cursor-pointer shadow-2xs shrink-0"
-              title="Distribusi otomatis pengawas menggunakan SOP silang sekolah"
-            >
-              <Wand2 size={11} className="mr-1 text-indigo-600 dark:text-indigo-400" />
-              <span>Plot Otomatis</span>
-            </Button>
-
-            {/* Simpan Button */}
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              disabled={dirtyPlottingItems.length === 0 || bulkPlottingMutation.isPending}
-              onClick={() => bulkPlottingMutation.mutate()}
-              className={cn(
-                'text-xs h-7 px-2.5 font-bold text-white shadow-2xs cursor-pointer flex items-center gap-1 shrink-0',
-                dirtyPlottingItems.length > 0
-                  ? 'bg-indigo-600 hover:bg-indigo-700'
-                  : 'bg-slate-300 cursor-not-allowed text-slate-500'
-              )}
-            >
-              <Save size={11} />
-              <span>
-                {bulkPlottingMutation.isPending ? 'Menyimpan...' : `Simpan (${dirtyPlottingItems.length})`}
-              </span>
-            </Button>
-
-            {/* Lanjut Button */}
-            {onProceedToNextPhase && (
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={onProceedToNextPhase}
-                className="text-xs h-7 px-2.5 font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs cursor-pointer flex items-center gap-1 shrink-0"
-              >
-                <span>Lanjut</span>
-                <ArrowRight size={11} />
-              </Button>
-            )}
           </div>
         </div>
       </div>
 
       {/* ── 3. TABEL OPERASIONAL PLOTING PENGAWAS (MATRIKS RUANG ATAU DAFTAR TERURAI) ── */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-        {isLoadingJadwal ? (
-          <div className="p-12 text-center text-slate-400 space-y-2">
-            <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin mx-auto" />
-            <p className="text-xs font-medium">Memuat data jadwal &amp; plotting pengawas...</p>
-          </div>
-        ) : viewMode === 'MATRIX' ? (
-          /* ── TAMPILAN MATRIKS RUANG × SESI (MENDUKUNG SEMUA HARI MAUPUN PER-HARI) ── */
-          matrixDaysData.length === 0 || matrixDaysData.every((d) => d.roomRows.length === 0) ? (
-            <div className="p-12 text-center space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
-                <Filter size={20} />
-              </div>
-              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                Tidak ada ruangan yang cocok dengan filter
-              </p>
-              <p className="text-xs text-slate-400">
-                Coba ganti filter hari, tingkat, atau ubah kata kunci pencarian.
-              </p>
+      {isLoadingJadwal ? (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs p-12 text-center text-slate-400 space-y-2">
+          <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin mx-auto" />
+          <p className="text-xs font-medium">Memuat data jadwal &amp; plotting pengawas...</p>
+        </div>
+      ) : viewMode === 'MATRIX' ? (
+        /* ── TAMPILAN MATRIKS RUANG × SESI (MENDUKUNG SEMUA HARI MAUPUN PER-HARI) ── */
+        matrixDaysData.length === 0 || matrixDaysData.every((d) => d.roomRows.length === 0) ? (
+          <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs p-12 text-center space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+              <Filter size={20} />
             </div>
-          ) : (
-            <div className="divide-y divide-slate-200 dark:divide-slate-800">
-              {matrixDaysData.map((dayData) => {
-                if (dayData.roomRows.length === 0) return null;
-                return (
-                  <div key={dayData.dayKey} className="overflow-hidden">
-                    {/* Header Hari: Menunjukkan Nama Hari, Tanggal, dan Jumlah Sesi */}
-                    <div className="flex items-center justify-between px-3.5 py-2.5 bg-gradient-to-r from-slate-100 via-indigo-50/40 to-slate-50 dark:from-slate-800 dark:via-indigo-950/30 dark:to-slate-800/80 border-b border-slate-200 dark:border-slate-700">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
-                          <Calendar size={14} />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-xs font-black text-slate-900 dark:text-white">
-                              {dayData.dayLabel}
-                            </h3>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                              {dayData.schedules.length} Sesi Terjadwal
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                            {dayData.roomRows.length} Ruangan • {dayData.sessions.length} Sesi Ujian ({dayData.sessions.map((s) => s.displayTitle).join(', ')})
-                          </p>
-                        </div>
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+              Tidak ada ruangan yang cocok dengan filter
+            </p>
+            <p className="text-xs text-slate-400">
+              Coba ganti filter hari, tingkat, atau ubah kata kunci pencarian.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {matrixDaysData.map((dayData) => {
+              if (dayData.roomRows.length === 0) return null;
+              return (
+                <div
+                  key={dayData.dayKey}
+                  className="overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs"
+                >
+                  {/* Header Hari: Menunjukkan Nama Hari, Tanggal, dan Jumlah Sesi */}
+                  <div className="flex items-center justify-between px-3.5 py-2.5 bg-gradient-to-r from-slate-100/90 via-indigo-50/40 to-slate-50 dark:from-slate-800 dark:via-indigo-950/30 dark:to-slate-800/80 border-b border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                        <Calendar size={14} />
                       </div>
-
-                      {dayData.sessions.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCopyAllRoomsFullDay(dayData.sessions, dayData.roomRows)}
-                          className="text-[11px] h-7 font-bold border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50 shadow-2xs cursor-pointer flex items-center gap-1"
-                          title={`Salin pengawas dari Sesi 1 ke seluruh sesi berikutnya di semua ruangan khusus hari ${dayData.dayLabel.split(',')[0]}`}
-                        >
-                          <Zap size={11} className="text-amber-500 fill-amber-500" />
-                          <span>Salin Sesi 1 ({dayData.dayLabel.split(',')[0]})</span>
-                        </Button>
-                      )}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xs font-black text-slate-900 dark:text-white">
+                            {dayData.dayLabel}
+                          </h3>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                            {dayData.schedules.length} Sesi Terjadwal
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                          {dayData.roomRows.length} Ruangan • {dayData.sessions.length} Sesi Ujian ({dayData.sessions.map((s) => s.displayTitle).join(', ')})
+                        </p>
+                      </div>
                     </div>
 
-                    {/* Table Matriks Hari Ini */}
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse border-b border-slate-300 dark:border-slate-700 text-xs">
-                        <thead>
-                          <tr className="bg-slate-100/90 dark:bg-slate-800/95 border-b border-slate-300 dark:border-slate-700 text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-                            <th className="py-2 px-2.5 text-center w-10 border-r border-slate-200 dark:border-slate-700">No</th>
-                            <th className="py-2 px-3 min-w-[130px] border-r border-slate-200 dark:border-slate-700">Ruang &amp; Rombel</th>
-                            {dayData.sessions.map((slot) => (
-                              <th key={slot.slotKey} className="py-2 px-3 min-w-[260px] border-r border-slate-200 dark:border-slate-700">
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="font-black text-slate-800 dark:text-slate-100">
-                                    {slot.displayTitle}
-                                  </span>
-                                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-semibold">
-                                    {slot.jamMulai}–{slot.jamSelesai} {tzLabel}
+                    {dayData.sessions.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCopyAllRoomsFullDay(dayData.sessions, dayData.roomRows)}
+                        className="text-[11px] h-7 font-bold border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/50 shadow-2xs cursor-pointer flex items-center gap-1"
+                        title={`Salin pengawas dari Sesi 1 ke seluruh sesi berikutnya di semua ruangan khusus hari ${dayData.dayLabel.split(',')[0]}`}
+                      >
+                        <Zap size={11} className="text-amber-500 fill-amber-500" />
+                        <span>Salin Sesi 1 ({dayData.dayLabel.split(',')[0]})</span>
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Table Matriks Hari Ini */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse border-b border-slate-300 dark:border-slate-700 text-xs">
+                      <thead>
+                        <tr className="bg-slate-100/90 dark:bg-slate-800/95 border-b border-slate-300 dark:border-slate-700 text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                          <th className="py-2 px-2.5 text-center w-10 border-r border-slate-200 dark:border-slate-700">No</th>
+                          <th className="py-2 px-3 min-w-[130px] border-r border-slate-200 dark:border-slate-700">Ruang &amp; Rombel</th>
+                          {dayData.sessions.map((slot) => (
+                            <th key={slot.slotKey} className="py-2 px-3 min-w-[260px] border-r border-slate-200 dark:border-slate-700">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="font-black text-slate-800 dark:text-slate-100">
+                                  {slot.displayTitle}
+                                </span>
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-semibold">
+                                  {slot.jamMulai}–{slot.jamSelesai} {tzLabel}
+                                </span>
+                              </div>
+                            </th>
+                          ))}
+                          <th className="py-2 px-2 text-center w-28 shrink-0">Aksi Cepat</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-700/80 font-medium">
+                        {dayData.roomRows.map((r, idx) => {
+                          const tkMeta = TINGKAT_STYLES[r.tingkat] || TINGKAT_STYLES[10];
+                          const sessionsInRoom = Object.values(r.sessions);
+                          const hasConflict = sessionsInRoom.some((j) => conflictJadwalIds.has(j.id));
+                          const hasDirty = sessionsInRoom.some((j) => plottingDrafts[j.id]?.dirty);
+                          const isEven = idx % 2 === 1;
+
+                          // Pewarnaan se-row penuh dari kelas hingga sesi 1-3 (Style Excel Grid)
+                          let rowBgClass = '';
+                          let borderLeftClass = '';
+
+                          if (hasConflict) {
+                            rowBgClass = 'bg-rose-100/70 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60';
+                            borderLeftClass = 'border-l-4 border-l-rose-600';
+                          } else if (hasDirty) {
+                            rowBgClass = 'bg-indigo-100/60 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50';
+                            borderLeftClass = 'border-l-4 border-l-indigo-600';
+                          } else if (r.tingkat === 10) {
+                            rowBgClass = isEven
+                              ? 'bg-sky-100/60 dark:bg-sky-950/50 hover:bg-sky-100/90 dark:hover:bg-sky-900/60'
+                              : 'bg-sky-50/50 dark:bg-sky-950/25 hover:bg-sky-100/70 dark:hover:bg-sky-900/40';
+                            borderLeftClass = 'border-l-4 border-l-sky-500';
+                          } else if (r.tingkat === 11) {
+                            rowBgClass = isEven
+                              ? 'bg-emerald-100/60 dark:bg-emerald-950/50 hover:bg-emerald-100/90 dark:hover:bg-emerald-900/60'
+                              : 'bg-emerald-50/50 dark:bg-emerald-950/25 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40';
+                            borderLeftClass = 'border-l-4 border-l-emerald-500';
+                          } else if (r.tingkat === 12) {
+                            rowBgClass = isEven
+                              ? 'bg-amber-100/60 dark:bg-amber-950/50 hover:bg-amber-100/90 dark:hover:bg-amber-900/60'
+                              : 'bg-amber-50/50 dark:bg-amber-950/25 hover:bg-amber-100/70 dark:hover:bg-amber-900/40';
+                            borderLeftClass = 'border-l-4 border-l-amber-500';
+                          } else {
+                            rowBgClass = isEven
+                              ? 'bg-purple-100/60 dark:bg-purple-950/50 hover:bg-purple-100/90 dark:hover:bg-purple-900/60'
+                              : 'bg-purple-50/50 dark:bg-purple-950/25 hover:bg-purple-100/70 dark:hover:bg-purple-900/40';
+                            borderLeftClass = 'border-l-4 border-l-purple-500';
+                          }
+
+                          return (
+                            <tr
+                              key={r.roomCode}
+                              className={cn('transition-colors border-b border-slate-200 dark:border-slate-700/80', rowBgClass)}
+                            >
+                              {/* No */}
+                              <td className={cn(
+                                'py-1.5 px-2 text-center font-mono text-xs font-black align-middle border-r border-slate-200 dark:border-slate-700/80',
+                                borderLeftClass
+                              )}>
+                                <span className="text-slate-600 dark:text-slate-300">
+                                  {idx + 1}
+                                </span>
+                              </td>
+
+                              {/* Ruang & Rombel (Excel Style Ringkas) */}
+                              <td className="py-2 px-2.5 align-middle border-r border-slate-200 dark:border-slate-700/80 min-w-[130px]">
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenRoomDenah(r.roomCode, `Ploting Ruang: ${r.roomCode}`)}
+                                    className="px-2 py-0.5 rounded-md border font-mono font-black text-xs inline-flex items-center gap-1 shadow-2xs hover:scale-105 transition-all cursor-pointer bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700"
+                                    title="Klik untuk melihat posisi ruang di Denah Kampus"
+                                  >
+                                    <DoorOpen size={11} className={tkMeta.accent} />
+                                    <span>{r.roomCode}</span>
+                                  </button>
+                                  <span className="font-black text-xs text-slate-900 dark:text-white truncate" title={r.rombel}>
+                                    {r.rombel}
                                   </span>
                                 </div>
-                              </th>
-                            ))}
-                            <th className="py-2 px-2 text-center w-28 shrink-0">Aksi Cepat</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200 dark:divide-slate-700/80 font-medium">
-                          {dayData.roomRows.map((r, idx) => {
-                            const tkMeta = TINGKAT_STYLES[r.tingkat] || TINGKAT_STYLES[10];
-                            const sessionsInRoom = Object.values(r.sessions);
-                            const hasConflict = sessionsInRoom.some((j) => conflictJadwalIds.has(j.id));
-                            const hasDirty = sessionsInRoom.some((j) => plottingDrafts[j.id]?.dirty);
-                            const isEven = idx % 2 === 1;
+                              </td>
 
-                            // Pewarnaan se-row penuh dari kelas hingga sesi 1-3 (Style Excel Grid)
-                            let rowBgClass = '';
-                            let borderLeftClass = '';
-
-                            if (hasConflict) {
-                              rowBgClass = 'bg-rose-100/70 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60';
-                              borderLeftClass = 'border-l-4 border-l-rose-600';
-                            } else if (hasDirty) {
-                              rowBgClass = 'bg-indigo-100/60 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50';
-                              borderLeftClass = 'border-l-4 border-l-indigo-600';
-                            } else if (r.tingkat === 10) {
-                              rowBgClass = isEven
-                                ? 'bg-sky-100/60 dark:bg-sky-950/50 hover:bg-sky-100/90 dark:hover:bg-sky-900/60'
-                                : 'bg-sky-50/50 dark:bg-sky-950/25 hover:bg-sky-100/70 dark:hover:bg-sky-900/40';
-                              borderLeftClass = 'border-l-4 border-l-sky-500';
-                            } else if (r.tingkat === 11) {
-                              rowBgClass = isEven
-                                ? 'bg-emerald-100/60 dark:bg-emerald-950/50 hover:bg-emerald-100/90 dark:hover:bg-emerald-900/60'
-                                : 'bg-emerald-50/50 dark:bg-emerald-950/25 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40';
-                              borderLeftClass = 'border-l-4 border-l-emerald-500';
-                            } else if (r.tingkat === 12) {
-                              rowBgClass = isEven
-                                ? 'bg-amber-100/60 dark:bg-amber-950/50 hover:bg-amber-100/90 dark:hover:bg-amber-900/60'
-                                : 'bg-amber-50/50 dark:bg-amber-950/25 hover:bg-amber-100/70 dark:hover:bg-amber-900/40';
-                              borderLeftClass = 'border-l-4 border-l-amber-500';
-                            } else {
-                              rowBgClass = isEven
-                                ? 'bg-purple-100/60 dark:bg-purple-950/50 hover:bg-purple-100/90 dark:hover:bg-purple-900/60'
-                                : 'bg-purple-50/50 dark:bg-purple-950/25 hover:bg-purple-100/70 dark:hover:bg-purple-900/40';
-                              borderLeftClass = 'border-l-4 border-l-purple-500';
-                            }
-
-                            return (
-                              <tr
-                                key={r.roomCode}
-                                className={cn('transition-colors border-b border-slate-200 dark:border-slate-700/80', rowBgClass)}
-                              >
-                                {/* No */}
-                                <td className={cn(
-                                  'py-1.5 px-2 text-center font-mono text-xs font-black align-middle border-r border-slate-200 dark:border-slate-700/80',
-                                  borderLeftClass
-                                )}>
-                                  <span className="text-slate-600 dark:text-slate-300">
-                                    {idx + 1}
-                                  </span>
-                                </td>
-
-                                {/* Ruang & Rombel (Excel Style Ringkas) */}
-                                <td className="py-2 px-2.5 align-middle border-r border-slate-200 dark:border-slate-700/80 min-w-[130px]">
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenRoomDenah(r.roomCode, `Ploting Ruang: ${r.roomCode}`)}
-                                      className="px-2 py-0.5 rounded-md border font-mono font-black text-xs inline-flex items-center gap-1 shadow-2xs hover:scale-105 transition-all cursor-pointer bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700"
-                                      title="Klik untuk melihat posisi ruang di Denah Kampus"
-                                    >
-                                      <DoorOpen size={11} className={tkMeta.accent} />
-                                      <span>{r.roomCode}</span>
-                                    </button>
-                                    <span className="font-black text-xs text-slate-900 dark:text-white truncate" title={r.rombel}>
-                                      {r.rombel}
-                                    </span>
-                                  </div>
-                                </td>
-
-                                {/* Dynamic Session Columns */}
-                                {dayData.sessions.map((slot) => {
-                                  const j = r.sessions[slot.slotKey];
-                                  if (!j) {
-                                    return (
-                                      <td key={slot.slotKey} className="py-2 px-2.5 align-middle border-r border-slate-200 dark:border-slate-700/80 text-center">
-                                        <span className="text-[10px] text-slate-400 italic">— Tidak Ada Ujian —</span>
-                                      </td>
-                                    );
-                                  }
-
-                                  const draft = plottingDrafts[j.id] || {
-                                    jadwal_id: j.id,
-                                    ruang_ujian: r.roomCode,
-                                    pengawas_1_id: j.setting_keamanan?.pengawas_1_id || '',
-                                    proktor_id: j.setting_keamanan?.proktor_id || j.setting_keamanan?.pengawas_2_id || '',
-                                    dirty: false,
-                                  };
-
-                                  const isConflict = conflictJadwalIds.has(j.id);
-                                  const mapelName =
-                                    j.BankSoal?.Mapel?.nama_mapel ||
-                                    j.BankSoal?.MataPelajaran?.nama_mapel ||
-                                    j.BankSoal?.judul ||
-                                    'Mapel Umum';
-
+                              {/* Dynamic Session Columns */}
+                              {dayData.sessions.map((slot) => {
+                                const j = r.sessions[slot.slotKey];
+                                if (!j) {
                                   return (
-                                    <td key={slot.slotKey} className="py-2 px-2.5 align-middle border-r border-slate-200 dark:border-slate-700/80 min-w-[240px]">
-                                      <div className="space-y-1.5">
-                                        {/* Nama Mapel Bersih & Jelas */}
-                                        <div className="text-[11px] font-bold text-slate-900 dark:text-white truncate leading-tight" title={mapelName}>
-                                          {mapelName}
-                                        </div>
+                                    <td key={slot.slotKey} className="py-2 px-2.5 align-middle border-r border-slate-200 dark:border-slate-700/80 text-center">
+                                      <span className="text-[10px] text-slate-400 italic">— Tidak Ada Ujian —</span>
+                                    </td>
+                                  );
+                                }
 
-                                        {/* Pengawas 1 Dropdown */}
+                                const draft = plottingDrafts[j.id] || {
+                                  jadwal_id: j.id,
+                                  ruang_ujian: r.roomCode,
+                                  pengawas_1_id: j.setting_keamanan?.pengawas_1_id || '',
+                                  proktor_id: j.setting_keamanan?.proktor_id || j.setting_keamanan?.pengawas_2_id || '',
+                                  dirty: false,
+                                };
+
+                                const isConflict = conflictJadwalIds.has(j.id);
+                                const mapelName =
+                                  j.BankSoal?.Mapel?.nama_mapel ||
+                                  j.BankSoal?.MataPelajaran?.nama_mapel ||
+                                  j.BankSoal?.judul ||
+                                  'Mapel Umum';
+
+                                return (
+                                  <td key={slot.slotKey} className="py-2 px-2.5 align-middle border-r border-slate-200 dark:border-slate-700/80 min-w-[240px]">
+                                    <div className="space-y-1.5">
+                                      {/* Nama Mapel Bersih & Jelas */}
+                                      <div className="text-[11px] font-bold text-slate-900 dark:text-white truncate leading-tight" title={mapelName}>
+                                        {mapelName}
+                                      </div>
+
+                                      {/* Pengawas 1 Dropdown */}
+                                      <div>
+                                        <SearchableSelect
+                                          options={pengawasSelectOptions}
+                                          value={draft.pengawas_1_id}
+                                          onChange={(val) => handleUpdatePlotRow(j.id, 'pengawas_1_id', val)}
+                                          placeholder="Pilih Pengawas 1..."
+                                          aria-label={`Pengawas 1 ${j.nama_sesi}`}
+                                          clearable={true}
+                                          triggerClassName="bg-white/95 dark:bg-slate-900/95 text-xs py-1 h-8 rounded-lg border-slate-300 dark:border-slate-700 shadow-2xs font-medium"
+                                        />
+                                        {isConflict && (
+                                          <p className="text-[9px] font-black text-rose-600 mt-0.5 flex items-center gap-0.5">
+                                            <AlertTriangle size={10} className="shrink-0" />
+                                            <span className="truncate">Bentrok jam di ruang lain!</span>
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      {/* Proktor / Pengawas 2 (Hanya jika diaktifkan) */}
+                                      {showProctor && (
                                         <div>
                                           <SearchableSelect
                                             options={pengawasSelectOptions}
-                                            value={draft.pengawas_1_id}
-                                            onChange={(val) => handleUpdatePlotRow(j.id, 'pengawas_1_id', val)}
-                                            placeholder="Pilih Pengawas 1..."
-                                            aria-label={`Pengawas 1 ${j.nama_sesi}`}
+                                            value={draft.proktor_id}
+                                            onChange={(val) => handleUpdatePlotRow(j.id, 'proktor_id', val)}
+                                            placeholder="Opsional (Proktor/P2)..."
+                                            aria-label={`Proktor ${j.nama_sesi}`}
                                             clearable={true}
                                             triggerClassName="bg-white/95 dark:bg-slate-900/95 text-xs py-1 h-8 rounded-lg border-slate-300 dark:border-slate-700 shadow-2xs font-medium"
                                           />
-                                          {isConflict && (
-                                            <p className="text-[9px] font-black text-rose-600 mt-0.5 flex items-center gap-0.5">
-                                              <AlertTriangle size={10} className="shrink-0" />
-                                              <span className="truncate">Bentrok jam di ruang lain!</span>
-                                            </p>
-                                          )}
                                         </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                );
+                              })}
 
-                                        {/* Proktor / Pengawas 2 (Hanya jika diaktifkan) */}
-                                        {showProctor && (
-                                          <div>
-                                            <SearchableSelect
-                                              options={pengawasSelectOptions}
-                                              value={draft.proktor_id}
-                                              onChange={(val) => handleUpdatePlotRow(j.id, 'proktor_id', val)}
-                                              placeholder="Opsional (Proktor/P2)..."
-                                              aria-label={`Proktor ${j.nama_sesi}`}
-                                              clearable={true}
-                                              triggerClassName="bg-white/95 dark:bg-slate-900/95 text-xs py-1 h-8 rounded-lg border-slate-300 dark:border-slate-700 shadow-2xs font-medium"
-                                            />
-                                          </div>
-                                        )}
-                                      </div>
-                                    </td>
-                                  );
-                                })}
-
-                                {/* Aksi Cepat Ruang (Excel Compact) */}
-                                <td className="py-1.5 px-2 text-center align-middle border-b border-slate-200 dark:border-slate-700/80 w-28 shrink-0">
-                                  <div className="flex flex-col items-center justify-center gap-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCopyRoomFullDay(r, dayData.sessions)}
-                                      className="w-full px-2 py-1 rounded-md text-[10px] font-black bg-amber-500 hover:bg-amber-600 text-white shadow-2xs flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
-                                      title={`Salin pengawas Sesi 1 ke seluruh sesi berikutnya di ${r.roomCode}`}
-                                    >
-                                      <Zap size={11} className="fill-white" />
-                                      <span>Salin Seharian</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleClearRoomFullDay(r)}
-                                      className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 hover:text-rose-600 transition-colors flex items-center gap-0.5 cursor-pointer"
-                                      title={`Kosongkan pengawas untuk seluruh sesi di ${r.roomCode}`}
-                                    >
-                                      <RotateCcw size={9} />
-                                      <span>Kosongkan</span>
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                              {/* Aksi Cepat Ruang (Excel Compact) */}
+                              <td className="py-1.5 px-2 text-center align-middle border-b border-slate-200 dark:border-slate-700/80 w-28 shrink-0">
+                                <div className="flex flex-col items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyRoomFullDay(r, dayData.sessions)}
+                                    className="w-full px-2 py-1 rounded-md text-[10px] font-black bg-amber-500 hover:bg-amber-600 text-white shadow-2xs flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
+                                    title={`Salin pengawas Sesi 1 ke seluruh sesi berikutnya di ${r.roomCode}`}
+                                  >
+                                    <Zap size={11} className="fill-white" />
+                                    <span>Salin Seharian</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleClearRoomFullDay(r)}
+                                    className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 hover:text-rose-600 transition-colors flex items-center gap-0.5 cursor-pointer"
+                                    title={`Kosongkan pengawas untuk seluruh sesi di ${r.roomCode}`}
+                                  >
+                                    <RotateCcw size={9} />
+                                    <span>Kosongkan</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                );
-              })}
-            </div>
-          )
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : (
+        /* ── TAMPILAN DAFTAR TERURAI (102 BARIS ORIGINAL) ── */
+        <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
         ) : (
           /* ── TAMPILAN DAFTAR TERURAI (102 BARIS ORIGINAL) ── */
           sortedAndFilteredJadwal.length === 0 ? (
