@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Edit3, Key, User, Users, MapPin, Award, QrCode, Save, Loader2, Camera, Upload, X, RotateCcw, AlertCircle, Briefcase, Shield, BookOpen, LogOut, Moon, Sun } from 'lucide-react';
+import { Check, Edit3, Key, User, Users, MapPin, Award, QrCode, Save, Loader2, Camera, Upload, X, RotateCcw, AlertCircle, Briefcase, Shield, BookOpen, LogOut, Moon, Sun, Sparkles } from 'lucide-react';
 import { Button, Modal, SearchableSelect, Input, Label, Textarea } from '../../../ui';
 import { ConfirmModal } from '../../../ui/Modal';
 import { toast } from 'react-hot-toast';
@@ -166,18 +166,21 @@ function useGuruJabatan(guruId: string | undefined) {
 }
 
 function getJabatanColor(kode: string) {
-  const k = kode.toUpperCase();
+  const k = (kode || '').toUpperCase();
   if (k.includes('KEPALA') || k.includes('PRINCIPAL')) return 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
+  if (k.includes('KAPROG') || k.includes('JURUSAN')) return 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20';
   if (k.includes('WALI') || k.includes('WALAS')) return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20';
   if (k.includes('WAKASEK') || k.includes('WAKIL')) return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
   if (k.includes('BK') || k.includes('KONSELOR')) return 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
   if (k.includes('KURIKULUM')) return 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20';
+  if (k.includes('KESISWAAN')) return 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20';
   return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
 }
 
 function getJabatanIcon(kode: string): React.ReactNode {
-  const k = kode.toUpperCase();
+  const k = (kode || '').toUpperCase();
   if (k.includes('KEPALA') || k.includes('WAKASEK') || k.includes('WAKIL')) return <Shield size={11} />;
+  if (k.includes('KAPROG') || k.includes('JURUSAN')) return <Sparkles size={11} />;
   if (k.includes('WALI') || k.includes('WALAS')) return <Users size={11} />;
   if (k.includes('EKSKUL') || k.includes('PEMBINA')) return <BookOpen size={11} />;
   return <Briefcase size={11} />;
@@ -224,12 +227,14 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
   // ── Jabatan Struktur Organisasi ───────────────────────────────────────────────
   const { data: jabatanList = [], isLoading: isJabatanLoading } = useGuruJabatan(guruId);
 
-  // Build human-readable tugas tambahan label from jabatan list
-  const tugasTambahanLabel = jabatanList.length > 0
-    ? jabatanList.map(j => j.kelas ? `${j.nama} — ${j.kelas}` : j.nama).join(', ')
-    : waliKelasNama
-      ? `Wali Kelas ${waliKelasNama}`
-      : 'Guru Mata Pelajaran';
+  // Build human-readable tugas tambahan label from teacherIdentity (SSOT) or fallback jabatan list
+  const tugasTambahanLabel = teacherIdentity.tugasTambahanLabel || (
+    jabatanList.length > 0
+      ? jabatanList.map(j => j.kelas ? `${j.nama} — ${j.kelas}` : j.nama).join(', ')
+      : waliKelasNama
+        ? `Wali Kelas ${waliKelasNama}`
+        : 'Guru Mata Pelajaran'
+  );
 
   // 2. Account Settings Form State
   const [noHp, setNoHp] = useState('');
@@ -627,8 +632,18 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               <span className="inline-block px-3 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                 Guru Aktif
               </span>
-              {/* Jabatan badges from struktur organisasi */}
-              {isJabatanLoading ? (
+              {/* Jabatan badges from SSOT normalizer / organizational position */}
+              {teacherIdentity.tugasTambahanList.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 justify-center pt-0.5">
+                  {teacherIdentity.tugasTambahanList.map((j) => (
+                    <JabatanBadge key={j.code}
+                      nama={j.nama}
+                      color={getJabatanColor(j.kode || j.code)}
+                      icon={getJabatanIcon(j.kode || j.code)}
+                    />
+                  ))}
+                </div>
+              ) : isJabatanLoading ? (
                 <div className="flex items-center justify-center gap-1 text-[10px] text-slate-400">
                   <Loader2 size={11} className="animate-spin" /><span>Memuat jabatan...</span>
                 </div>
@@ -688,7 +703,15 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               <div className="flex items-start justify-between gap-2">
                 <span className="text-slate-400 font-bold shrink-0">Tugas Tambahan</span>
                 <div className="flex flex-wrap gap-1 justify-end">
-                  {isJabatanLoading ? (
+                  {teacherIdentity.tugasTambahanList.length > 0 ? (
+                    teacherIdentity.tugasTambahanList.map((j) => (
+                      <JabatanBadge key={j.code}
+                        nama={j.nama}
+                        color={getJabatanColor(j.kode || j.code)}
+                        icon={getJabatanIcon(j.kode || j.code)}
+                      />
+                    ))
+                  ) : isJabatanLoading ? (
                     <Loader2 size={12} className="animate-spin text-slate-400" />
                   ) : jabatanList.length > 0 ? (
                     jabatanList.map((j) => (
@@ -698,9 +721,13 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                         icon={getJabatanIcon(j.kode)}
                       />
                     ))
+                  ) : waliKelasNama ? (
+                    <span className="font-bold text-blue-600 dark:text-blue-400">
+                      Wali Kelas {waliKelasNama}
+                    </span>
                   ) : (
                     <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                      {waliKelasNama ? `Wali Kelas ${waliKelasNama}` : 'Guru Mata Pelajaran'}
+                      Guru Mata Pelajaran
                     </span>
                   )}
                 </div>
