@@ -263,12 +263,8 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         } else {
           const masterBank = masterBanksByMapelTingkat.get(mtKey);
           const masterSharedIds = masterBank ? mgmpSharedMap[masterBank.id] || [] : [];
-          const hasSpecificSharing = masterSharedIds.length > 0;
-          const isCovered =
-            masterBank &&
-            (hasSpecificSharing
-              ? masterSharedIds.includes(gId)
-              : Boolean(masterBank.is_shared || masterBank.status === 'PUBLISHED'));
+          // Rekan guru HANYA ter-cover jika ID-nya secara eksplisit dicentang dalam masterSharedIds
+          const isCovered = Boolean(masterBank && masterSharedIds.includes(gId));
 
           if (isCovered && masterBank) {
             const mCount = masterBank.jumlah_soal || masterBank._count?.Soal || 0;

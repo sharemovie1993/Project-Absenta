@@ -378,7 +378,6 @@ export class CbtBankSoalService {
         const orConditions: Prisma.CbtBankSoalWhereInput[] = [
           { guru_id: query.guru_id },
           { Kontributor: { some: { guru_id: query.guru_id, tenant_id: tenantId } } },
-          ...sharedScopeConditions,
         ];
 
         andConditions.push({ OR: orConditions });

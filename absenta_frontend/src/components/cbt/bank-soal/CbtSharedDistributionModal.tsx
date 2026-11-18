@@ -149,16 +149,13 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
         isExplicitRecipient: false,
       };
 
-    // Penerima adalah semua guru paralel selain penyusun utama
-    let recipients = allTeachers.filter((t) => !t.isAuthor);
-
-    // Jika bank soal memiliki daftar eksplisit spesifik, beri tanda atau prioritaskan
-    const isMassalOrAuto = bankSoal.is_shared === true || explicitSharedIds.length === 0;
+    // Penerima adalah guru paralel yang secara eksplisit dipilih (terdaftar di Kontributor)
+    let recipients = allTeachers.filter((t) => !t.isAuthor && explicitSharedIds.includes(t.id));
 
     return {
       author,
       recipients,
-      isAllCovered: isMassalOrAuto,
+      isAllCovered: recipients.length > 0 && recipients.length === allTeachers.filter((t) => !t.isAuthor).length,
     };
   }, [bankSoal, parallelTeachersRes?.data, targetTingkatNum, targetJurusanUpper, explicitSharedIds]);
 

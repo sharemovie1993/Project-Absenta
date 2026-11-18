@@ -819,11 +819,28 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         );
       }
 
-      await queryClient.invalidateQueries({
-        queryKey: cbtQueryKeys.bankSoal(),
-        exact: false,
-        refetchType: 'all',
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: cbtQueryKeys.bankSoal(),
+          exact: false,
+          refetchType: 'all',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['teacher-cbt-duty-status'],
+          exact: false,
+          refetchType: 'all',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['cbt-panitia-orchestrator'],
+          exact: false,
+          refetchType: 'all',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['cbt-existing-banks-by-mapel-tingkat'],
+          exact: false,
+          refetchType: 'all',
+        }),
+      ]);
 
       onSuccess();
       onClose();
@@ -1650,6 +1667,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                           selectedIds={selectedColleagueIds}
                           onChangeSelectedIds={setSelectedColleagueIds}
                           title="Pilih Rekan Guru Paralel Penerima Naskah:"
+                          isEditMode={Boolean(bankSoalToEdit)}
                         />
                       </div>
                     )}

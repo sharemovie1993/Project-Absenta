@@ -494,14 +494,12 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
         return bTingkat === tingkat || bTingkat === undefined;
       });
 
-      // Pisahkan bank milik guru vs bank master MGMP (milik rekan sejawat atau beririsan)
+      // Pisahkan bank milik guru vs bank master MGMP (hanya jika guru ini terdaftar sebagai kontributor penerima naskah)
       const ownBanks = candidateBanks.filter((b) => b.guru_id === guruId);
       const mgmpBanks = candidateBanks.filter(
         (b) =>
           b.guru_id !== guruId &&
-          (b.status === 'PUBLISHED' ||
-            Boolean(b.is_shared) ||
-            Boolean(b.Kontributor && b.Kontributor.some((c) => c.guru_id === guruId)))
+          Boolean(b.Kontributor && b.Kontributor.some((c) => c.guru_id === guruId && c.can_edit_soal !== false))
       );
 
       // Helper Bank Soal Umum (mencakup SEMUA jurusan / UMUM / tanpa jurusan)

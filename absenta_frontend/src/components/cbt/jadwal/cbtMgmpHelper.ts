@@ -58,12 +58,15 @@ export function getMgmpSharedTeacherIds(
   tenantId = 'default'
 ): string[] {
   if (typeof bankOrId !== 'string') {
-    const dbIds = (bankOrId.Kontributor || [])
-      .filter((c) => c.can_edit_soal !== false)
-      .map((c) => c.guru_id)
-      .filter(Boolean);
-    if (dbIds.length > 0) {
-      return Array.from(new Set(dbIds));
+    if (Array.isArray(bankOrId.Kontributor)) {
+      return Array.from(
+        new Set(
+          bankOrId.Kontributor
+            .filter((c) => c.can_edit_soal !== false)
+            .map((c) => c.guru_id)
+            .filter(Boolean)
+        )
+      );
     }
     return getMgmpSharedTeacherIds(bankOrId.id, tenantId);
   }
@@ -80,7 +83,11 @@ export function getMgmpSharedTeacherIds(
 
 export function setMgmpSharedTeacherIds(bankId: string, teacherIds: string[], tenantId = 'default'): void {
   try {
-    localStorage.setItem(`${STORAGE_PREFIX}${tenantId}_${bankId}`, JSON.stringify(teacherIds));
+    if (!teacherIds || teacherIds.length === 0) {
+      localStorage.removeItem(`${STORAGE_PREFIX}${tenantId}_${bankId}`);
+    } else {
+      localStorage.setItem(`${STORAGE_PREFIX}${tenantId}_${bankId}`, JSON.stringify(teacherIds));
+    }
     window.dispatchEvent(new CustomEvent('cbt-mgmp-sharing-updated', { detail: { bankId, teacherIds } }));
   } catch (e) {
     console.error('Failed to save MGMP sharing state:', e);
@@ -117,7 +124,7 @@ export function getAllMgmpSharedMap(
 
   if (Array.isArray(bankSoals)) {
     for (const bank of bankSoals) {
-      if (Array.isArray(bank.Kontributor) && bank.Kontributor.length > 0) {
+      if (Array.isArray(bank.Kontributor)) {
         result[bank.id] = Array.from(
           new Set(
             bank.Kontributor.filter((c) => c.can_edit_soal !== false)

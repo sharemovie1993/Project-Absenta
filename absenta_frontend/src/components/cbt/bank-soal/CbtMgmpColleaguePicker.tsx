@@ -14,6 +14,7 @@ interface CbtMgmpColleaguePickerProps {
   selectedIds: string[];
   onChangeSelectedIds: (ids: string[]) => void;
   title?: string;
+  isEditMode?: boolean;
 }
 
 export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
@@ -24,6 +25,7 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
   selectedIds,
   onChangeSelectedIds,
   title,
+  isEditMode = false,
 }) => {
   const { data: parallelTeachersRes, isLoading } = useQuery({
     queryKey: ['parallel-teachers', mapelId],
@@ -100,15 +102,18 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
   }, [parallelTeachersRes?.data, currentGuruId, targetTingkatNum, targetJurusanUpper]);
 
   // Otomatis sinkronkan centang rekan guru saat tingkat, mapel, atau sasaran jurusan berubah
+  // PENTING: Pada mode edit, JANGAN otomatis memilih semua agar penarikan share (uncheck) tidak tertimpa!
   const autoSelectedKeyRef = useRef<string>('');
   useEffect(() => {
     const currentKey = `${mapelId}_${tingkat}_${targetJurusanUpper}`;
     if (autoSelectedKeyRef.current !== currentKey) {
       autoSelectedKeyRef.current = currentKey;
-      // Centang hanya rekan guru yang lolos filter jurusan & tingkat
-      onChangeSelectedIds(parallelColleagues.map((c) => c.id));
+      if (!isEditMode) {
+        // Centang hanya rekan guru yang lolos filter jurusan & tingkat pada saat pembuatan baru
+        onChangeSelectedIds(parallelColleagues.map((c) => c.id));
+      }
     }
-  }, [parallelColleagues, mapelId, tingkat, targetJurusanUpper, onChangeSelectedIds]);
+  }, [parallelColleagues, mapelId, tingkat, targetJurusanUpper, onChangeSelectedIds, isEditMode]);
 
   if (!mapelId) {
     return (
