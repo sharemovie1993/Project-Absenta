@@ -185,29 +185,29 @@ export function generatePdfDapodikWaliKelas(data: PdfDapodikWaliKelasData): { bl
 
   // Tabel Autotable Multi-Page
   const tableRows = data.students.map((s, idx) => {
-    const diffsSummary =
-      s.diffs.length > 0
-        ? s.diffs.map((d) => `${d.label}: ${String(d.dapodikValue ?? '-')} vs ${String(d.absentaValue ?? '-')}`).join('\n')
-        : s.status === 'DAPODIK_ONLY'
-        ? 'Hanya di Dapodik'
-        : s.status === 'ABSENTA_ONLY'
-        ? 'Hanya di Absenta'
-        : 'Selaras';
+    const rombelDisplay =
+      s.dapodikRaw?.nama_rombel && s.absentaRaw?.rombel && s.dapodikRaw.nama_rombel !== s.absentaRaw.rombel
+        ? `${s.dapodikRaw.nama_rombel} / ${s.absentaRaw.rombel}`
+        : s.dapodikRaw?.nama_rombel || s.absentaRaw?.rombel || s.rombel || '-';
+
+    const otherDiffs = s.diffs.filter((d) => d.field !== 'nama');
+    const idInfo =
+      otherDiffs.length > 0
+        ? `${s.nisn || '-'}\nNIK: ${s.nik || s.dapodikRaw?.nik || '-'}\n*Beda: ${otherDiffs.map((d) => d.label).join(', ')}`
+        : `${s.nisn || '-'}\nNIK: ${s.nik || s.dapodikRaw?.nik || '-'}`;
 
     return [
       idx + 1,
-      `${s.nisn || '-'}\nNIK: ${s.nik || s.dapodikRaw?.nik || '-'}`,
+      idInfo,
       s.dapodikRaw?.nama || s.nama,
       s.absentaRaw?.nama_siswa || '-',
-      s.dapodikRaw?.nama_rombel || '-',
-      s.absentaRaw?.rombel || s.rombel || '-',
-      diffsSummary,
+      rombelDisplay,
       '[  ]', // Ijazah
       '[  ]', // KK
       '[  ]', // KTP
       '[  ]', // NISN
       '[  ]', // Akta
-      '',     // Catatan Validasi
+      '',     // Catatan Validasi / Nama Benar Sesuai Berkas
       '',     // Paraf
     ];
   });
@@ -219,18 +219,15 @@ export function generatePdfDapodikWaliKelas(data: PdfDapodikWaliKelasData): { bl
       [
         { content: 'No', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
         { content: 'NISN & NIK', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-        { content: 'Nama Siswa', colSpan: 2, styles: { halign: 'center' } },
-        { content: 'Rombel', colSpan: 2, styles: { halign: 'center' } },
-        { content: 'Rincian Selisih Data', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-        { content: 'Ceklis Berkas Pendukung Fisik / Upload', colSpan: 5, styles: { halign: 'center' } },
-        { content: 'Catatan Validasi / Status', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+        { content: 'Perbandingan Nama Siswa', colSpan: 2, styles: { halign: 'center' } },
+        { content: 'Rombel', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+        { content: 'Ceklis Berkas Autentik (Upload / Fisik)', colSpan: 5, styles: { halign: 'center' } },
+        { content: 'Catatan Validasi / Nama Benar Sesuai Berkas', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
         { content: 'Paraf', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
       ],
       [
-        { content: 'Dapodik (Port 5774)', styles: { halign: 'center' } },
-        { content: 'Absenta (Sekolah)', styles: { halign: 'center' } },
-        { content: 'Dapodik', styles: { halign: 'center' } },
-        { content: 'Absenta', styles: { halign: 'center' } },
+        { content: 'Nama di Dapodik (Port 5774)', styles: { halign: 'center' } },
+        { content: 'Nama di Absenta (Sekolah)', styles: { halign: 'center' } },
         { content: 'Ijazah', styles: { halign: 'center' } },
         { content: 'KK', styles: { halign: 'center' } },
         { content: 'KTP', styles: { halign: 'center' } },
@@ -259,19 +256,17 @@ export function generatePdfDapodikWaliKelas(data: PdfDapodikWaliKelasData): { bl
     },
     columnStyles: {
       0: { cellWidth: 7, halign: 'center' },
-      1: { cellWidth: 26, font: 'courier' },
-      2: { cellWidth: 35, fontStyle: 'bold' },
-      3: { cellWidth: 35 },
-      4: { cellWidth: 15, halign: 'center' },
-      5: { cellWidth: 15, halign: 'center' },
-      6: { cellWidth: 36 },
-      7: { cellWidth: 9, halign: 'center', font: 'courier' },
-      8: { cellWidth: 9, halign: 'center', font: 'courier' },
-      9: { cellWidth: 9, halign: 'center', font: 'courier' },
-      10: { cellWidth: 9, halign: 'center', font: 'courier' },
-      11: { cellWidth: 9, halign: 'center', font: 'courier' },
-      12: { cellWidth: 38 },
-      13: { cellWidth: 16, halign: 'center' },
+      1: { cellWidth: 28, font: 'courier' },
+      2: { cellWidth: 46, fontStyle: 'bold' },
+      3: { cellWidth: 46 },
+      4: { cellWidth: 20, halign: 'center' },
+      5: { cellWidth: 10, halign: 'center', font: 'courier' },
+      6: { cellWidth: 10, halign: 'center', font: 'courier' },
+      7: { cellWidth: 10, halign: 'center', font: 'courier' },
+      8: { cellWidth: 10, halign: 'center', font: 'courier' },
+      9: { cellWidth: 10, halign: 'center', font: 'courier' },
+      10: { cellWidth: 54 },
+      11: { cellWidth: 18, halign: 'center' },
     },
     didDrawPage: (_data) => {
       // Footer page numbering

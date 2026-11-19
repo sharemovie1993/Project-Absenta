@@ -180,7 +180,7 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
       };
     }
 
-    if (students.length <= 7) {
+    if (students.length <= 10) {
       return {
         sheets: [students],
         signatureSheetIndex: 0,
@@ -190,13 +190,13 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
     const sheets: ReconciledStudent[][] = [];
     let remaining = [...students];
 
-    // Lembar 1: 10 siswa
-    sheets.push(remaining.slice(0, 10));
-    remaining = remaining.slice(10);
+    // Lembar 1: 15 siswa (karena layout lebih ringkas & lega)
+    sheets.push(remaining.slice(0, 15));
+    remaining = remaining.slice(15);
 
     while (remaining.length > 0) {
-      // Jika sisa siswa <= 7, muat di lembar ini sekaligus tanda tangan
-      if (remaining.length <= 7) {
+      // Jika sisa siswa <= 10, muat di lembar ini sekaligus tanda tangan
+      if (remaining.length <= 10) {
         sheets.push(remaining);
         return {
           sheets,
@@ -204,19 +204,19 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
         };
       }
 
-      // Jika sisa antara 8 - 14:
-      if (remaining.length <= 14) {
+      // Jika sisa antara 11 - 18:
+      if (remaining.length <= 18) {
         sheets.push(remaining);
-        // Tanda tangan butuh lembar penutup jika baris > 7
+        // Tanda tangan butuh lembar penutup jika baris > 10
         return {
           sheets,
           signatureSheetIndex: sheets.length, // Lembar ekstra penutup
         };
       }
 
-      // Sisa > 14: potong 14 siswa
-      sheets.push(remaining.slice(0, 14));
-      remaining = remaining.slice(14);
+      // Sisa > 18: potong 18 siswa
+      sheets.push(remaining.slice(0, 18));
+      remaining = remaining.slice(18);
     }
 
     return {
@@ -692,131 +692,113 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
 
                 {/* TABEL DATA SISWA & CHECKLIST BERKAS */}
                 <div className="my-1.5 w-full">
-                  <table className="w-full border-collapse border border-black text-black font-serif text-[9px]">
+                  <table className="w-full border-collapse border border-black text-black font-serif text-[9.5px]">
                     <thead>
                       <tr className="bg-slate-100 font-bold text-center">
-                        <th rowSpan={2} className="border border-black p-1 w-6">
+                        <th rowSpan={2} className="border border-black p-1 w-7">
                           No
                         </th>
-                        <th rowSpan={2} className="border border-black p-1 w-24">
+                        <th rowSpan={2} className="border border-black p-1 w-28">
                           NISN &amp; NIK
                         </th>
-                        <th colSpan={2} className="border border-black p-0.5">
-                          Nama Siswa
+                        <th colSpan={2} className="border border-black p-1">
+                          Perbandingan Nama Siswa
                         </th>
-                        <th colSpan={2} className="border border-black p-0.5">
-                          Rombel
-                        </th>
-                        <th rowSpan={2} className="border border-black p-1 w-36">
-                          Rincian Selisih Data
+                        <th rowSpan={2} className="border border-black p-1 w-24">
+                          Rombel / Kelas
                         </th>
                         <th colSpan={5} className="border border-black p-0.5">
                           Ceklis Berkas Autentik (Upload / Fisik)
                         </th>
                         <th rowSpan={2} className="border border-black p-1">
-                          Catatan Validasi / Status
+                          Catatan Validasi / Nama Benar Sesuai Berkas
                         </th>
-                        <th rowSpan={2} className="border border-black p-1 w-11">
+                        <th rowSpan={2} className="border border-black p-1 w-14">
                           Paraf
                         </th>
                       </tr>
-                      <tr className="bg-slate-50 font-semibold text-center text-[8px]">
-                        <th className="border border-black p-0.5 w-32">Dapodik (Port 5774)</th>
-                        <th className="border border-black p-0.5 w-32">Absenta (Database)</th>
-                        <th className="border border-black p-0.5 w-14">Dapodik</th>
-                        <th className="border border-black p-0.5 w-14">Absenta</th>
-                        <th className="border border-black p-0.5 w-8" title="Ijazah SMP/MTs">
+                      <tr className="bg-slate-50 font-semibold text-center text-[8.5px]">
+                        <th className="border border-black p-1">Nama di Dapodik (Port 5774)</th>
+                        <th className="border border-black p-1">Nama di Absenta (Sekolah)</th>
+                        <th className="border border-black p-0.5 w-9" title="Ijazah SMP/MTs">
                           Ijazah
                         </th>
-                        <th className="border border-black p-0.5 w-8" title="Kartu Keluarga">
+                        <th className="border border-black p-0.5 w-9" title="Kartu Keluarga">
                           KK
                         </th>
-                        <th className="border border-black p-0.5 w-8" title="KTP Siswa / Ortu">
+                        <th className="border border-black p-0.5 w-9" title="KTP Siswa / Ortu">
                           KTP
                         </th>
-                        <th className="border border-black p-0.5 w-8" title="Bukti / Kartu NISN">
+                        <th className="border border-black p-0.5 w-9" title="Bukti / Kartu NISN">
                           NISN
                         </th>
-                        <th className="border border-black p-0.5 w-8" title="Akta Kelahiran">
+                        <th className="border border-black p-0.5 w-9" title="Akta Kelahiran">
                           Akta
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {pageStudents.map((s, idx) => (
-                        <tr key={s.id} className="text-center">
-                          <td className="border border-black p-1 font-semibold">
-                            {currentStartIdx + idx + 1}
-                          </td>
-                          <td className="border border-black p-1 text-left">
-                            <div className="font-mono font-bold text-black text-[9px]">
-                              {s.nisn || '-'}
-                            </div>
-                            <div className="font-mono text-[8px] text-slate-600">
-                              NIK: {s.nik || s.dapodikRaw?.nik || '-'}
-                            </div>
-                          </td>
-                          <td className="border border-black p-1 text-left font-semibold text-black">
-                            {s.dapodikRaw?.nama || s.nama}
-                          </td>
-                          <td className="border border-black p-1 text-left text-slate-800">
-                            {s.absentaRaw?.nama_siswa || '-'}
-                          </td>
-                          <td className="border border-black p-1 font-mono text-[8.5px]">
-                            {s.dapodikRaw?.nama_rombel || '-'}
-                          </td>
-                          <td className="border border-black p-1 font-mono text-[8.5px]">
-                            {s.absentaRaw?.rombel || s.rombel || '-'}
-                          </td>
-                          <td className="border border-black p-1 text-left text-[8px] leading-tight">
-                            {s.diffs.length > 0 ? (
-                              <ul className="list-disc list-inside space-y-0.5">
-                                {s.diffs.map((d, dIdx) => (
-                                  <li key={dIdx}>
-                                    <strong>{d.label}:</strong>{' '}
-                                    <span className="text-black font-semibold">
-                                      {String(d.dapodikValue ?? '-')}
-                                    </span>{' '}
-                                    <span className="text-slate-400">vs</span>{' '}
-                                    <span className="text-slate-700">
-                                      {String(d.absentaValue ?? '-')}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <span className="italic text-slate-500">
-                                {s.status === 'DAPODIK_ONLY'
-                                  ? 'Hanya di Dapodik'
-                                  : s.status === 'ABSENTA_ONLY'
-                                  ? 'Hanya di Absenta'
-                                  : 'Data Identik'}
-                              </span>
-                            )}
-                          </td>
-                          {/* 5 Kolom Checklist Berkas Fisik / Upload */}
-                          <td className="border border-black p-1 text-center">
-                            <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
-                          </td>
-                          <td className="border border-black p-1 text-center">
-                            <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
-                          </td>
-                          <td className="border border-black p-1 text-center">
-                            <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
-                          </td>
-                          <td className="border border-black p-1 text-center">
-                            <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
-                          </td>
-                          <td className="border border-black p-1 text-center">
-                            <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
-                          </td>
-                          {/* Catatan Validasi & Paraf */}
-                          <td className="border border-black p-1 text-left text-[8px] text-slate-400">
-                            &nbsp;
-                          </td>
-                          <td className="border border-black p-1">&nbsp;</td>
-                        </tr>
-                      ))}
+                      {pageStudents.map((s, idx) => {
+                        const rombelDisplay =
+                          s.dapodikRaw?.nama_rombel &&
+                          s.absentaRaw?.rombel &&
+                          s.dapodikRaw.nama_rombel !== s.absentaRaw.rombel
+                            ? `${s.dapodikRaw.nama_rombel} / ${s.absentaRaw.rombel}`
+                            : s.dapodikRaw?.nama_rombel || s.absentaRaw?.rombel || s.rombel || '-';
+
+                        const otherDiffs = s.diffs.filter((d) => d.field !== 'nama');
+
+                        return (
+                          <tr key={s.id} className="text-center">
+                            <td className="border border-black p-1 font-semibold">
+                              {currentStartIdx + idx + 1}
+                            </td>
+                            <td className="border border-black p-1 text-left">
+                              <div className="font-mono font-bold text-black text-[9px]">
+                                {s.nisn || '-'}
+                              </div>
+                              <div className="font-mono text-[8px] text-slate-600">
+                                NIK: {s.nik || s.dapodikRaw?.nik || '-'}
+                              </div>
+                              {otherDiffs.length > 0 && (
+                                <div className="text-[7.5px] text-amber-800 font-sans italic mt-0.5">
+                                  *{otherDiffs.map((d) => d.label).join(', ')}
+                                </div>
+                              )}
+                            </td>
+                            <td className="border border-black p-1.5 text-left font-bold text-black text-[9.5px]">
+                              {s.dapodikRaw?.nama || s.nama}
+                            </td>
+                            <td className="border border-black p-1.5 text-left text-slate-900 text-[9.5px]">
+                              {s.absentaRaw?.nama_siswa || '-'}
+                            </td>
+                            <td className="border border-black p-1 font-mono text-[8.5px]">
+                              {rombelDisplay}
+                            </td>
+                            {/* 5 Kolom Checklist Berkas Fisik / Upload */}
+                            <td className="border border-black p-1 text-center">
+                              <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
+                            </td>
+                            <td className="border border-black p-1 text-center">
+                              <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
+                            </td>
+                            <td className="border border-black p-1 text-center">
+                              <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
+                            </td>
+                            <td className="border border-black p-1 text-center">
+                              <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
+                            </td>
+                            <td className="border border-black p-1 text-center">
+                              <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
+                            </td>
+                            {/* Catatan Validasi & Paraf */}
+                            <td className="border border-black p-1 text-left text-[8px] text-slate-400">
+                              &nbsp;
+                            </td>
+                            <td className="border border-black p-1">&nbsp;</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
