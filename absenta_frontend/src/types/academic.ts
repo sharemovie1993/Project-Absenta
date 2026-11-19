@@ -38,6 +38,8 @@ export interface Guru {
   tmt_guru?: string;
   jenis_ptk?: string;
   wali_kelas_di?: { id: string; nama_kelas: string };
+  active_positions?: string[];
+  organizational_assignments?: any[];
   created_at: Date;
   updated_at: Date;
   

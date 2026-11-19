@@ -512,7 +512,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                   <div className="flex items-center justify-center gap-1">
                     <span>Samapta</span>
                     <Tooltip
-                      placement="top"
+                      placement="bottom"
                       content={
                         <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
                           <p className="font-bold text-slate-900 dark:text-white">Kesamaptaan Jasmani</p>
@@ -533,7 +533,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                   <div className="flex items-center justify-center gap-1">
                     <span>PBB</span>
                     <Tooltip
-                      placement="top"
+                      placement="bottom"
                       content={
                         <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
                           <p className="font-bold text-slate-900 dark:text-white">Peraturan Baris-Berbaris</p>
@@ -554,7 +554,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                   <div className="flex items-center justify-center gap-1">
                     <span>Disiplin</span>
                     <Tooltip
-                      placement="top"
+                      placement="bottom"
                       content={
                         <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
                           <p className="font-bold text-slate-900 dark:text-white">Kedisiplinan & Presensi 5 Siklus</p>
@@ -578,7 +578,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                   <div className="flex items-center justify-center gap-1">
                     <span>Mental</span>
                     <Tooltip
-                      placement="top"
+                      placement="bottom"
                       content={
                         <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
                           <p className="font-bold text-slate-900 dark:text-white">Mental, Karakter & Spiritual</p>
@@ -602,7 +602,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                   <div className="flex items-center justify-center gap-1">
                     <span>Akhir</span>
                     <Tooltip
-                      placement="top"
+                      placement="bottom"
                       content={
                         <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
                           <p className="font-bold text-slate-900 dark:text-white">Nilai Akhir Komposit</p>
@@ -624,7 +624,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                   <div className="flex items-center justify-center gap-1">
                     <span>Predikat</span>
                     <Tooltip
-                      placement="top"
+                      placement="bottom"
                       content={
                         <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
                           <p className="font-bold text-slate-900 dark:text-white">Skala Predikat Rapor</p>
@@ -646,7 +646,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                   <div className="flex items-center gap-1">
                     <span>Catatan Capaian Rapor</span>
                     <Tooltip
-                      placement="top"
+                      placement="bottom"
                       content={
                         <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
                           <p className="font-bold text-slate-900 dark:text-white">Integrasi Rapor Kokurikuler</p>

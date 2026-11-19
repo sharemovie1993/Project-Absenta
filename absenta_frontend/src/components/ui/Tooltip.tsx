@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
-type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right';
+export type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right';
 
-interface TooltipProps {
+export interface TooltipProps {
   content: React.ReactNode;
   children: React.ReactNode;
   placement?: TooltipPlacement;
@@ -10,42 +11,119 @@ interface TooltipProps {
   style?: React.CSSProperties;
 }
 
-export default function Tooltip({ content, children, placement = 'top', className, style }: TooltipProps) {
+export default function Tooltip({
+  content,
+  children,
+  placement = 'top',
+  className,
+  style,
+}: TooltipProps) {
   const [open, setOpen] = useState(false);
-  const pos = (() => {
-    if (placement === 'top') return 'bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2';
-    if (placement === 'bottom') return 'top-[calc(100%+8px)] left-1/2 -translate-x-1/2';
-    if (placement === 'left') return 'right-[calc(100%+8px)] top-1/2 -translate-y-1/2';
-    return 'left-[calc(100%+8px)] top-1/2 -translate-y-1/2';
-  })();
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{
+    top: number;
+    left: number;
+    actualPlacement: TooltipPlacement;
+  }>({
+    top: 0,
+    left: 0,
+    actualPlacement: placement,
+  });
+
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    let currentPlacement = placement;
+
+    // Auto-flip jika dekat batas atas atau bawah viewport
+    if (placement === 'top' && rect.top < 140) {
+      currentPlacement = 'bottom';
+    } else if (placement === 'bottom' && window.innerHeight - rect.bottom < 140) {
+      currentPlacement = 'top';
+    }
+
+    let top = 0;
+    let left = 0;
+
+    if (currentPlacement === 'top') {
+      top = rect.top - 8;
+      left = rect.left + rect.width / 2;
+    } else if (currentPlacement === 'bottom') {
+      top = rect.bottom + 8;
+      left = rect.left + rect.width / 2;
+    } else if (currentPlacement === 'left') {
+      top = rect.top + rect.height / 2;
+      left = rect.left - 8;
+    } else {
+      top = rect.top + rect.height / 2;
+      left = rect.right + 8;
+    }
+
+    // Hindari terpotong batas kiri/kanan layar
+    const safeLeft = Math.max(160, Math.min(window.innerWidth - 160, left));
+
+    setCoords({ top, left: safeLeft, actualPlacement: currentPlacement });
+  }, [placement]);
+
+  useEffect(() => {
+    if (open) {
+      updatePosition();
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+      return () => {
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
+      };
+    }
+  }, [open, updatePosition]);
+
   return (
-    <div
-      style={style}
-      className={`relative ${className || ''}`}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
-    >
-      {children}
-      {open && (
-        <div
-          role="tooltip"
-          className="absolute pos z-10 bg-white text-gray-700 text-xs px-2 py-1 rounded border border-gray-200 shadow dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700"
-          style={{
-            bottom: placement === 'top' ? 'calc(100% + 8px)' : undefined,
-            top: placement === 'bottom' ? 'calc(100% + 8px)' : (placement !== 'top' ? '50%' : undefined),
-            left: (placement === 'top' || placement === 'bottom') ? '50%' : (placement === 'right' ? 'calc(100% + 8px)' : undefined),
-            right: placement === 'left' ? 'calc(100% + 8px)' : undefined,
-            transform: (placement === 'top' || placement === 'bottom') ? 'translateX(-50%)' : 'translateY(-50%)',
-            whiteSpace: 'normal',
-            width: 'max-content',
-            maxWidth: '280px',
-          }}
-        >
-          {content}
-        </div>
-      )}
-    </div>
+    <>
+      <div
+        ref={triggerRef}
+        style={style}
+        className={`inline-flex items-center ${className || ''}`}
+        onMouseEnter={() => {
+          updatePosition();
+          setOpen(true);
+        }}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => {
+          updatePosition();
+          setOpen(true);
+        }}
+        onBlur={() => setOpen(false)}
+      >
+        {children}
+      </div>
+
+      {open &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            role="tooltip"
+            style={{
+              position: 'fixed',
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              transform:
+                coords.actualPlacement === 'top'
+                  ? 'translate(-50%, -100%)'
+                  : coords.actualPlacement === 'bottom'
+                  ? 'translate(-50%, 0)'
+                  : coords.actualPlacement === 'left'
+                  ? 'translate(-100%, -50%)'
+                  : 'translate(0, -50%)',
+              zIndex: 99999,
+              maxWidth: '320px',
+              width: 'max-content',
+            }}
+            className="pointer-events-none rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3 text-xs text-slate-700 dark:text-slate-200 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+          >
+            {content}
+          </div>,
+          document.body
+        )}
+    </>
   );
 }

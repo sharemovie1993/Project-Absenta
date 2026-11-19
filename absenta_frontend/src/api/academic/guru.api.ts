@@ -99,6 +99,20 @@ export interface UpdateGuruPayload {
   foto?: string;
 }
 
+export interface GuruPosition {
+  id: string;
+  code: string;
+  name: string;
+  scope_type: string;
+  order: number;
+}
+
+// Get Active Organizational Positions - GET /api/academic/guru/positions
+export const getGuruPositions = async (): Promise<GuruPosition[]> => {
+  const res = await requestWithFallback<{ success: boolean; data: GuruPosition[] }>('get', '/academic/guru/positions');
+  return res.data || [];
+};
+
 // Get Guru List - GET /api/academic/guru
 export const getGuruList = async (
   page = 1, 
@@ -106,7 +120,9 @@ export const getGuruList = async (
   search = "",
   status_kepegawaian = "",
   jenis_kelamin = "",
-  jenis_ptk = ""
+  jenis_ptk = "",
+  tahun_pelajaran_id = "",
+  position_code = ""
 ): Promise<PaginatedGuruResponse> => {
   const params = new URLSearchParams({
     page: String(page),
@@ -116,6 +132,8 @@ export const getGuruList = async (
   if (status_kepegawaian && status_kepegawaian !== 'ALL') params.append('status_kepegawaian', status_kepegawaian);
   if (jenis_kelamin && jenis_kelamin !== 'ALL') params.append('jenis_kelamin', jenis_kelamin);
   if (jenis_ptk && jenis_ptk !== 'ALL') params.append('jenis_ptk', jenis_ptk);
+  if (tahun_pelajaran_id && tahun_pelajaran_id !== 'ALL') params.append('tahun_pelajaran_id', tahun_pelajaran_id);
+  if (position_code && position_code !== 'ALL') params.append('position_code', position_code);
 
   return requestWithFallback<PaginatedGuruResponse>('get', `/academic/guru?${params.toString()}`, {
     headers: { 'X-Skip-403-Redirect': 'true' }
