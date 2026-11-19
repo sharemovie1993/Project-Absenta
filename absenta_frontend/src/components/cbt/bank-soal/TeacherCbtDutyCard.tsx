@@ -72,9 +72,9 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
     ? teacherFullName.split(',')[0].trim()
     : teacherFullName.trim();
 
-  // Jika sudah 100% bebas tugas, default-kan tertutup (compact) agar area kerja utama tidak tergeser.
-  // Jika masih ada tugas yang belum selesai, buka agar guru langsung melihat apa yang perlu dibuat/diisi.
-  const [isExpanded, setIsExpanded] = useState(!isFullyExempt);
+  // Default tertutup (compact self-reminder banner) agar tidak menutupi daftar naskah bank soal utama.
+  // Guru dapat membuka rincian kelas kapan saja dengan tombol 'Lihat Rincian'.
+  const [isExpanded, setIsExpanded] = useState(false);
   const [distributionBank, setDistributionBank] = useState<CbtBankSoal | null>(null);
 
   // Jika tidak sedang loading dan guru tidak punya penugasan mengajar di tingkat aktif
@@ -240,13 +240,61 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
               )}
             </div>
 
-            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed truncate">
-              {isFullyExempt
-                ? `Seluruh rombel binaan Anda (${items.length} mata pelajaran, ${totalRombelCount} kelas) telah memiliki naskah bank soal siap pakai.`
-                : pendingJurusanSummary
-                ? `Perlu perhatian: ${pendingJurusanSummary}. Klik "+ Buat" atau "Kelola Soal" untuk melengkapi.`
-                : 'Terdapat kelas binaan yang belum memiliki bank soal siap pakai.'}
-            </p>
+            {isFullyExempt ? (
+              <p className="text-[11px] text-emerald-700/90 dark:text-emerald-300/80 mt-0.5 leading-relaxed">
+                Seluruh rombel binaan Anda ({items.length} mata pelajaran, {totalRombelCount} kelas) telah memiliki naskah bank soal siap pakai.
+              </p>
+            ) : uncreatedDuties > 0 && onCreateBankSoal ? (
+              <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-300">
+                  Aksi Cepat:
+                </span>
+                {items
+                  .filter((it) => it.status === 'PENDING')
+                  .map((it) => (
+                    <button
+                      key={it.key}
+                      type="button"
+                      onClick={() => onCreateBankSoal(it.mapelId, it.tingkatRoman, it.targetJurusan)}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/60 shadow-2xs transition-all cursor-pointer group"
+                      title={`Klik untuk buat bank soal ${it.mapelName} ${it.targetJurusan ? `Jurusan ${it.targetJurusan}` : `Tingkat ${it.tingkatRoman}`}`}
+                    >
+                      <Plus size={11} className="text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform" />
+                      <span>
+                        + Buat {it.mapelName} {it.targetJurusan && it.targetJurusan !== 'UMUM' ? `(${it.targetJurusan})` : `(${it.tingkatRoman})`}
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            ) : uncreatedDuties === 0 && draftDuties > 0 && onPreviewBankSoal ? (
+              <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                  Perlu Diisi:
+                </span>
+                {items
+                  .filter((it) => (it.status === 'DRAFT_OWN' || it.status === 'DRAFT_MGMP') && it.bankSoal)
+                  .map((it) => (
+                    <button
+                      key={it.key}
+                      type="button"
+                      onClick={() => onPreviewBankSoal(it.bankSoal!)}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/60 shadow-2xs transition-all cursor-pointer group"
+                      title={`Klik untuk kelola butir soal ${it.mapelName}`}
+                    >
+                      <FileEdit size={11} className="text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
+                      <span>
+                        Kelola Soal {it.mapelName} {it.targetJurusan && it.targetJurusan !== 'UMUM' ? `(${it.targetJurusan})` : `(${it.tingkatRoman})`}
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed truncate">
+                {pendingJurusanSummary
+                  ? `Perlu perhatian: ${pendingJurusanSummary}.`
+                  : 'Terdapat kelas binaan yang belum memiliki bank soal siap pakai.'}
+              </p>
+            )}
           </div>
         </div>
 
