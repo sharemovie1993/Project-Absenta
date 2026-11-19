@@ -30,7 +30,7 @@ async function main() {
 
   await prisma.waTenantConnection.updateMany({
     where: { tenant_id: demoTenantId },
-    data: { status: 'disconnected', phone_number: null }
+    data: { status: 'disconnected', connected_number: null }
   });
 
   // 4. Cek sesi DADAN HAMDAN di tenant real (SMKN 1 PLERED)
