@@ -1085,9 +1085,10 @@ export class UnifiedKegiatanService {
         kelas_id: k.id,
         kelas_nama: k.nama_kelas,
         jurusan_id: k.jurusan_id,
-        total: countSiswa,
+        total: targetKelas, // Kumulatif target presensi seluruh sesi pertemuan
+        total_siswa: countSiswa, // Kapasitas siswa aktif rombel
         hadir: hadirKelas,
-        persen: persenKelas,
+        persen: Math.min(100, persenKelas),
       });
     }
 
@@ -1142,7 +1143,7 @@ export class UnifiedKegiatanService {
       tingkat,
       total: val.total,
       hadir: val.hadir,
-      persen: val.total > 0 && val.hadir > 0 ? Math.round((val.hadir / val.total) * 100) : 0,
+      persen: val.total > 0 && val.hadir > 0 ? Math.min(100, Math.round((val.hadir / val.total) * 100)) : 0,
     }));
 
     // ── ANALITIK TAMBAHAN 1: Status Breakdown (Donut Chart Analytics) ──
@@ -1194,7 +1195,7 @@ export class UnifiedKegiatanService {
         nama_jurusan: j.nama,
         total: j.total,
         hadir: j.hadir,
-        persen: j.total > 0 && j.hadir > 0 ? Math.round((j.hadir / j.total) * 100) : 0,
+        persen: j.total > 0 && j.hadir > 0 ? Math.min(100, Math.round((j.hadir / j.total) * 100)) : 0,
       }))
       .sort((a, b) => b.persen - a.persen);
 
