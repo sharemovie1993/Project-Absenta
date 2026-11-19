@@ -202,20 +202,50 @@ export class AttendanceStagingParserService {
       const students: ParsedAttendanceStudent[] = [];
       for (let r = 15; r < rows.length; r++) {
         const row = rows[r];
-        if (!row || !row[3]) continue;
+        if (!row) continue;
+
+        // 1. Cek baris footer/keterangan/tanda tangan pembina - STOP loop siswa
+        const rowJoined = row.map((c: any) => String(c || '')).join(' ').toUpperCase();
+        if (
+          rowJoined.includes('PARAF PEMBINA') ||
+          rowJoined.includes('PARAF PELATIH') ||
+          rowJoined.includes('KETERANGAN :') ||
+          rowJoined.includes('KETERANGAN:') ||
+          rowJoined.includes('MENGETAHUI') ||
+          rowJoined.includes('JUMLAH') ||
+          rowJoined.includes('TOTAL') ||
+          rowJoined.includes('REKAP') ||
+          rowJoined.includes('WALI KELAS') ||
+          rowJoined.includes('KEPALA SEKOLAH') ||
+          rowJoined.includes('NIP.') ||
+          rowJoined.includes('NIP ')
+        ) {
+          break; // Daftar siswa telah selesai, hentikan pembacaan baris bawah
+        }
+
+        const nama = String(row[3] || '').trim();
+        if (!nama) continue;
+
+        // 2. Proteksi jika baris legenda keterangan (I = IZIN, D = DISPENSASI, dll) terbaca
+        const upperNama = nama.toUpperCase();
+        if (
+          upperNama.includes('=') ||
+          /^[A-Z]\s*=\s*/i.test(nama) ||
+          upperNama.startsWith('I =') ||
+          upperNama.startsWith('D =') ||
+          upperNama.startsWith('A =') ||
+          upperNama.startsWith('S =') ||
+          upperNama.startsWith('H =') ||
+          upperNama.startsWith('UP =') ||
+          upperNama.startsWith('AP =') ||
+          upperNama.startsWith('AS =')
+        ) {
+          break; // Begitu menyentuh legenda keterangan, daftar siswa pasti sudah selesai
+        }
+
         const no = Number(row[0]) || students.length + 1;
         const nis = String(row[1] || '').trim();
         const nisn = String(row[2] || '').trim();
-        const nama = String(row[3] || '').trim();
-
-        if (
-          !nama ||
-          nama.toUpperCase().includes('JUMLAH') ||
-          nama.toUpperCase().includes('MENGETAHUI') ||
-          nama.toUpperCase().includes('REKAP')
-        ) {
-          continue;
-        }
 
         const attendance: Record<string, 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI'> = {};
         for (const sess of sessions) {
