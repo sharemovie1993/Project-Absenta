@@ -193,6 +193,7 @@ export class CbtBankSoalService {
     const andConditions: Prisma.CbtBankSoalWhereInput[] = [
       { tenant_id: tenantId },
     ];
+    const sharedScopeConditions: Prisma.CbtBankSoalWhereInput[] = [];
 
     if (query.status) {
       andConditions.push({ status: query.status });
@@ -345,7 +346,7 @@ export class CbtBankSoalService {
         unitAssignments.forEach((u: any) => registerTeachingScope(u.mapel_id, u.Kelas, u.Jurusan));
         delegatedJadwals.forEach((j: any) => registerTeachingScope(j.mapel_id, j.Kelas));
 
-        const sharedScopeConditions: Prisma.CbtBankSoalWhereInput[] = [];
+        // Isi sharedScopeConditions untuk paket Master MGMP se-sekolah yang relevan
 
         for (const scope of scopeMap.values()) {
           const jurusanCandidates: string[] = [];
