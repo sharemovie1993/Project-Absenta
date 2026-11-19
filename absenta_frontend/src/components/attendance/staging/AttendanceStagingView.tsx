@@ -29,6 +29,7 @@ import {
   type AttendanceStagingItem,
 } from '@/api/attendance-staging.api';
 import { AttendanceStagingDetailModal } from './AttendanceStagingDetailModal';
+import { AttendanceStagingPreSyncModal } from './AttendanceStagingPreSyncModal';
 
 export const AttendanceStagingView: React.FC = () => {
   const [urlInput, setUrlInput] = useState('');
@@ -42,8 +43,11 @@ export const AttendanceStagingView: React.FC = () => {
   // Modal detail
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedSheet, setSelectedSheet] = useState<AttendanceStagingItem | null>(null);
-  const [isSyncingSingle, setIsSyncingSingle] = useState(false);
-  const [isSyncingBulk, setIsSyncingBulk] = useState(false);
+
+  // Pre-Sync Confirmation Modal
+  const [preSyncModalOpen, setPreSyncModalOpen] = useState(false);
+  const [itemsToSync, setItemsToSync] = useState<AttendanceStagingItem[]>([]);
+  const [isExecutingSync, setIsExecutingSync] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch list sheets from API
@@ -95,48 +99,52 @@ export const AttendanceStagingView: React.FC = () => {
     }
   };
 
-  // Sync single sheet
-  const handleSyncSingle = async (id: string) => {
-    setIsSyncingSingle(true);
+  // Buka Pre-Sync Modal untuk 1 rombel
+  const openSinglePreSync = (item: AttendanceStagingItem) => {
+    setItemsToSync([item]);
+    setPreSyncModalOpen(true);
+  };
+
+  // Buka Pre-Sync Modal untuk bulk rombel
+  const openBulkPreSync = () => {
+    const selectedItems = stagingSheets.filter((s) => selectedIds.includes(s.id));
+    if (selectedItems.length === 0) return;
+    setItemsToSync(selectedItems);
+    setPreSyncModalOpen(true);
+  };
+
+  // Eksekusi Sinkronisasi setelah user mengonfirmasi di Modal
+  const handleExecuteSync = async (ids: string[]) => {
+    setIsExecutingSync(true);
     try {
-      const res = await attendanceStagingApi.syncSheet(id);
-      if (res.success) {
-        toast.success(res.message || 'Berhasil menyinkronkan data presensi.');
-        loadSheets();
-        if (selectedSheet?.id === id) {
-          // Refresh sheet detail if open
-          const updatedDetail = await attendanceStagingApi.getSheetDetail(id);
-          if (updatedDetail.success) setSelectedSheet(updatedDetail.data);
+      if (ids.length === 1) {
+        const res = await attendanceStagingApi.syncSheet(ids[0]);
+        if (res.success) {
+          toast.success(res.message || 'Berhasil menyinkronkan data presensi.');
+          loadSheets();
+          if (selectedSheet?.id === ids[0]) {
+            const updatedDetail = await attendanceStagingApi.getSheetDetail(ids[0]);
+            if (updatedDetail.success) setSelectedSheet(updatedDetail.data);
+          }
+        } else {
+          toast.error(res.message || 'Gagal menyinkronkan data.');
         }
       } else {
-        toast.error(res.message || 'Gagal menyinkronkan data.');
+        const res = await attendanceStagingApi.bulkSync(ids);
+        if (res.success) {
+          toast.success(res.message || `Berhasil menyinkronkan ${ids.length} rombel.`);
+          setSelectedIds([]);
+          loadSheets();
+        } else {
+          toast.error(res.message || 'Gagal melakukan sinkronisasi massal.');
+        }
       }
+      setPreSyncModalOpen(false);
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Gagal melakukan sinkronisasi.';
       toast.error(msg);
     } finally {
-      setIsSyncingSingle(false);
-    }
-  };
-
-  // Bulk Sync
-  const handleBulkSync = async () => {
-    if (selectedIds.length === 0) return;
-    setIsSyncingBulk(true);
-    try {
-      const res = await attendanceStagingApi.bulkSync(selectedIds);
-      if (res.success) {
-        toast.success(res.message || `Berhasil menyinkronkan ${selectedIds.length} rombel.`);
-        setSelectedIds([]);
-        loadSheets();
-      } else {
-        toast.error(res.message || 'Gagal melakukan sinkronisasi massal.');
-      }
-    } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Gagal sinkronisasi massal.';
-      toast.error(msg);
-    } finally {
-      setIsSyncingBulk(false);
+      setIsExecutingSync(false);
     }
   };
 
@@ -443,21 +451,12 @@ export const AttendanceStagingView: React.FC = () => {
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                onClick={handleBulkSync}
-                disabled={isSyncingBulk}
+                onClick={openBulkPreSync}
+                disabled={isExecutingSync}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs flex items-center gap-1.5 rounded-lg shadow-sm"
               >
-                {isSyncingBulk ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    Menyinkronkan {selectedIds.length} Rombel...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Sinkronkan Semua Terpilih
-                  </>
-                )}
+                <Sparkles className="w-3.5 h-3.5" />
+                Sinkronkan Semua Terpilih
               </Button>
 
               <Button
@@ -641,8 +640,8 @@ export const AttendanceStagingView: React.FC = () => {
 
                           <Button
                             size="sm"
-                            onClick={() => handleSyncSingle(item.id)}
-                            disabled={isSyncingSingle}
+                            onClick={() => openSinglePreSync(item)}
+                            disabled={isExecutingSync}
                             className={cn(
                               'h-8 px-2.5 text-xs rounded-lg flex items-center gap-1',
                               isSynced
@@ -684,8 +683,23 @@ export const AttendanceStagingView: React.FC = () => {
           setSelectedSheet(null);
         }}
         item={selectedSheet}
-        onSync={(id) => handleSyncSingle(id)}
-        isSyncing={isSyncingSingle}
+        onSync={(id) => {
+          const target = stagingSheets.find((s) => s.id === id) || selectedSheet;
+          if (target) openSinglePreSync(target);
+        }}
+        isSyncing={isExecutingSync}
+      />
+
+      {/* Pre-Sync Confirmation Modal */}
+      <AttendanceStagingPreSyncModal
+        isOpen={preSyncModalOpen}
+        onClose={() => {
+          setPreSyncModalOpen(false);
+          setItemsToSync([]);
+        }}
+        items={itemsToSync}
+        onConfirmSync={handleExecuteSync}
+        isSyncing={isExecutingSync}
       />
     </div>
   );
