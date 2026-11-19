@@ -143,4 +143,43 @@ export const attendanceStagingApi = {
     const response = await api.put(`/attendance/staging/${id}/students-mapping`, { mappings });
     return response.data;
   },
+
+  getClassStudents: async (kelasId: string): Promise<{ success: boolean; data: ClassStudentOption[] }> => {
+    const response = await api.get(`/attendance/staging/class-students/${kelasId}`);
+    return response.data;
+  },
+
+  createManualBackfill: async (payload: ManualBackfillPayload): Promise<{ success: boolean; message: string; data: any }> => {
+    const response = await api.post('/attendance/staging/manual-backfill', payload, { timeout: 180000 });
+    return response.data;
+  },
 };
+
+export interface ManualBackfillException {
+  siswa_id: string;
+  nama_siswa?: string;
+  nis?: string;
+  nama_kelas?: string;
+  status: 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI' | 'TERLAMBAT';
+  dates?: string[];
+  catatan?: string;
+  menit_keterlambatan?: number;
+}
+
+export interface ManualBackfillPayload {
+  file_title?: string;
+  dates: string[];
+  kelas_ids: string[];
+  jenis_kegiatan_mode: 'AUTO_SIKLUS' | 'KETARUNAAN' | 'UPACARA' | 'DUHA' | 'APEL_SORE' | 'ALL_SIKLUS';
+  exceptions?: ManualBackfillException[];
+  direct_sync?: boolean;
+}
+
+export interface ClassStudentOption {
+  siswa_id: string;
+  siswa_akademik_id: string;
+  nis: string;
+  nisn: string;
+  nama_siswa: string;
+  status: string;
+}

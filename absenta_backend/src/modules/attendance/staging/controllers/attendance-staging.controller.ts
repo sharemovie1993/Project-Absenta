@@ -252,4 +252,43 @@ export class AttendanceStagingController {
       return sendError(reply, 400, err.message, err);
     }
   }
+
+  /**
+   * GET /attendance/staging/class-students/:kelasId
+   * Ambil daftar siswa aktif dalam kelas
+   */
+  static async getClassStudents(req: any, reply: any) {
+    try {
+      const tenantId = req.user?.tenant_id;
+      const { kelasId } = req.params as { kelasId: string };
+      const students = await AttendanceStagingService.getClassStudents(tenantId, kelasId);
+      return sendResponse(reply, 200, true, 'Berhasil mengambil daftar siswa kelas', students);
+    } catch (err: any) {
+      return sendError(reply, 400, err.message, err);
+    }
+  }
+
+  /**
+   * POST /attendance/staging/manual-backfill
+   * Buat sesi dan presensi dari input Backfill Manual UI (Multi-Tanggal)
+   */
+  static async createManualBackfill(req: any, reply: any) {
+    try {
+      const tenantId = req.user?.tenant_id;
+      const userId = req.user?.id || 'SYSTEM_MANUAL';
+      const body = req.body;
+
+      const result = await AttendanceStagingService.createManualBackfill(tenantId, userId, body);
+      return sendResponse(
+        reply,
+        201,
+        true,
+        `Berhasil membuat ${result.totalSheetsCreated} lembar backfill (${result.totalSessionsPerSheet} sesi pertemuan per rombel). Siswa yang tidak dimasukkan ke daftar pengecualian otomatis dicatat HADIR.`,
+        result
+      );
+    } catch (err: any) {
+      appLogger.error({ err: err.message }, 'Gagal memproses backfill manual UI');
+      return sendError(reply, 400, err.message, err);
+    }
+  }
 }

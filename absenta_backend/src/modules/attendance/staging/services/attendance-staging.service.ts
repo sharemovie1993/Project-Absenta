@@ -965,4 +965,270 @@ export class AttendanceStagingService {
       errors,
     };
   }
+
+  /**
+   * Ambil daftar siswa aktif dalam suatu kelas untuk pemilihan siswa non-hadir di form manual backfill
+   */
+  static async getClassStudents(tenantId: string, kelasId: string) {
+    const activeTp = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true },
+      select: { id: true },
+    });
+
+    let students: any[] = [];
+    if (activeTp?.id) {
+      const sa = await prisma.siswaAkademik.findMany({
+        where: {
+          kelas_id: kelasId,
+          tahun_pelajaran_id: activeTp.id,
+        },
+        include: {
+          siswa: {
+            select: { id: true, nis: true, nisn: true, nama_siswa: true, status: true },
+          },
+        },
+        orderBy: { siswa: { nama_siswa: 'asc' } },
+      });
+      students = sa.map((s) => ({
+        siswa_id: s.siswa_id,
+        siswa_akademik_id: s.id,
+        nis: s.siswa?.nis || '',
+        nisn: s.siswa?.nisn || '',
+        nama_siswa: s.siswa?.nama_siswa || '',
+        status: s.siswa?.status || 'AKTIF',
+      }));
+    }
+
+    if (students.length === 0) {
+      const sis = await prisma.siswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: kelasId,
+          status: 'AKTIF',
+        },
+        select: { id: true, nis: true, nisn: true, nama_siswa: true, status: true },
+        orderBy: { nama_siswa: 'asc' },
+      });
+      students = sis.map((s) => ({
+        siswa_id: s.id,
+        siswa_akademik_id: s.id,
+        nis: s.nis || '',
+        nisn: s.nisn || '',
+        nama_siswa: s.nama_siswa || '',
+        status: s.status,
+      }));
+    }
+
+    return students;
+  }
+
+  /**
+   * Buat lembar staging dari input Backfill Manual UI (Multi-Tanggal & Exception-Based Entry)
+   * Siswa yang TIDAK dimasukkan ke daftar pengecualian otomatis dicatat HADIR.
+   */
+  static async createManualBackfill(
+    tenantId: string,
+    userId: string,
+    payload: {
+      file_title?: string;
+      dates: string[];
+      kelas_ids: string[];
+      jenis_kegiatan_mode: 'AUTO_SIKLUS' | 'KETARUNAAN' | 'UPACARA' | 'DUHA' | 'APEL_SORE' | 'ALL_SIKLUS';
+      exceptions?: Array<{
+        siswa_id: string;
+        status: 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI' | 'TERLAMBAT';
+        dates?: string[];
+        catatan?: string;
+        menit_keterlambatan?: number;
+      }>;
+      direct_sync?: boolean;
+    }
+  ) {
+    if (!payload.dates || payload.dates.length === 0) {
+      throw new Error('Minimal pilih 1 tanggal pelaksanaan presensi');
+    }
+    if (!payload.kelas_ids || payload.kelas_ids.length === 0) {
+      throw new Error('Minimal pilih 1 rombel kelas');
+    }
+
+    const activeTp = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true },
+      select: { id: true, tahun: true },
+    });
+    const activeSem = await prisma.semester.findFirst({
+      where: { tenant_id: tenantId, is_active: true },
+      select: { id: true, nama_semester: true },
+    });
+
+    const sortedDates = [...new Set(payload.dates)].sort();
+    const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+    // Bangun daftar sesi per tanggal
+    const sessions: Array<{
+      colIndex: number;
+      dateStr: string;
+      dateIso: string;
+      day: string;
+      sessionCode: string;
+      defaultType: 'UPACARA' | 'KETARUNAAN' | 'DUHA' | 'APEL_SORE';
+    }> = [];
+
+    let colIdx = 0;
+    for (const dStr of sortedDates) {
+      const d = new Date(`${dStr}T00:00:00Z`);
+      const dayNum = d.getUTCDay();
+      const dayName = dayNames[dayNum];
+
+      const dateSessions: Array<{ sessionCode: string; defaultType: 'UPACARA' | 'KETARUNAAN' | 'DUHA' | 'APEL_SORE' }> = [];
+
+      if (payload.jenis_kegiatan_mode === 'AUTO_SIKLUS') {
+        // Pagi
+        if (dayNum === 1) {
+          dateSessions.push({ sessionCode: 'PAGI', defaultType: 'UPACARA' });
+        } else if (dayNum === 5) {
+          dateSessions.push({ sessionCode: 'PAGI', defaultType: 'DUHA' });
+        } else if (dayNum >= 2 && dayNum <= 6) {
+          dateSessions.push({ sessionCode: 'PAGI', defaultType: 'KETARUNAAN' });
+        }
+        // Sore
+        if (dayNum >= 1 && dayNum <= 6) {
+          dateSessions.push({ sessionCode: 'SORE', defaultType: 'APEL_SORE' });
+        }
+      } else if (payload.jenis_kegiatan_mode === 'ALL_SIKLUS') {
+        if (dayNum === 1) dateSessions.push({ sessionCode: 'PAGI', defaultType: 'UPACARA' });
+        else if (dayNum === 5) dateSessions.push({ sessionCode: 'PAGI', defaultType: 'DUHA' });
+        else dateSessions.push({ sessionCode: 'PAGI', defaultType: 'KETARUNAAN' });
+        dateSessions.push({ sessionCode: 'SORE', defaultType: 'APEL_SORE' });
+      } else if (payload.jenis_kegiatan_mode === 'KETARUNAAN') {
+        dateSessions.push({ sessionCode: 'PAGI', defaultType: 'KETARUNAAN' });
+      } else if (payload.jenis_kegiatan_mode === 'UPACARA') {
+        dateSessions.push({ sessionCode: 'PAGI', defaultType: 'UPACARA' });
+      } else if (payload.jenis_kegiatan_mode === 'DUHA') {
+        dateSessions.push({ sessionCode: 'PAGI', defaultType: 'DUHA' });
+      } else if (payload.jenis_kegiatan_mode === 'APEL_SORE') {
+        dateSessions.push({ sessionCode: 'SORE', defaultType: 'APEL_SORE' });
+      }
+
+      if (dateSessions.length === 0) {
+        dateSessions.push({ sessionCode: 'PAGI', defaultType: 'KETARUNAAN' });
+      }
+
+      for (const ds of dateSessions) {
+        sessions.push({
+          colIndex: colIdx++,
+          dateStr: dStr,
+          dateIso: dStr,
+          day: dayName,
+          sessionCode: ds.sessionCode,
+          defaultType: ds.defaultType,
+        });
+      }
+    }
+
+    const createdSheets: any[] = [];
+    const syncResults: any[] = [];
+
+    const rentangTanggal = sortedDates.length === 1
+      ? sortedDates[0]
+      : `${sortedDates[0]} s/d ${sortedDates[sortedDates.length - 1]}`;
+
+    for (const kelasId of payload.kelas_ids) {
+      const kelas = await prisma.kelas.findFirst({
+        where: { id: kelasId, tenant_id: tenantId },
+        include: { Jurusan: true },
+      });
+      if (!kelas) continue;
+
+      const students = await this.getClassStudents(tenantId, kelasId);
+      if (students.length === 0) continue;
+
+      const sheetStudents = students.map((s, idx) => {
+        const attendance: Record<string, string> = {};
+
+        for (const sess of sessions) {
+          const sessKey = `${sess.dateIso}_${sess.sessionCode}`;
+
+          // Cek apakah siswa ada di daftar pengecualian (non-hadir)
+          const matchedEx = (payload.exceptions || []).find((ex) => {
+            if (ex.siswa_id !== s.siswa_id) return false;
+            if (!ex.dates || ex.dates.length === 0) return true;
+            return ex.dates.includes(sess.dateIso);
+          });
+
+          if (matchedEx) {
+            attendance[sessKey] = matchedEx.status;
+          } else {
+            // SISWA YANG TIDAK DISEBUT MAKA MENJADI HADIR!
+            attendance[sessKey] = 'HADIR';
+          }
+        }
+
+        return {
+          no: idx + 1,
+          nis: s.nis,
+          nisn: s.nisn,
+          nama: s.nama_siswa,
+          siswa_id: s.siswa_id,
+          is_matched: true,
+          matched_db_name: s.nama_siswa,
+          attendance,
+        };
+      });
+
+      const raw_sheet_data = {
+        sheetName: kelas.nama_kelas,
+        namaKelas: kelas.nama_kelas,
+        programKeahlian: kelas.Jurusan?.nama || '',
+        tahunPelajaran: activeTp?.tahun || '2026/2027',
+        rentangTanggal,
+        sessionCount: sessions.length,
+        sessions,
+        studentCount: sheetStudents.length,
+        students: sheetStudents,
+      };
+
+      const customTitle = payload.file_title
+        ? `${payload.file_title} - ${kelas.nama_kelas}`
+        : `Backfill Manual UI - ${kelas.nama_kelas} (${rentangTanggal})`;
+
+      const stagingSheet = await (prisma as any).attendanceStagingSheet.create({
+        data: {
+          tenant_id: tenantId,
+          source_url: 'UI_MANUAL_BACKFILL',
+          file_title: customTitle,
+          tahun_pelajaran_id: activeTp?.id || null,
+          tahun_pelajaran_nama: activeTp?.tahun || '2026/2027',
+          semester_id: activeSem?.id || null,
+          kelas_id: kelas.id,
+          nama_kelas: kelas.nama_kelas,
+          sheet_name: kelas.nama_kelas,
+          rentang_tanggal: rentangTanggal,
+          total_siswa: sheetStudents.length,
+          total_matched_siswa: sheetStudents.length,
+          raw_sheet_data,
+          status: 'READY',
+        },
+      });
+
+      createdSheets.push(stagingSheet);
+
+      if (payload.direct_sync) {
+        try {
+          const syncRes = await this.syncSheet(tenantId, stagingSheet.id, userId);
+          syncResults.push(syncRes);
+        } catch (syncErr: any) {
+          appLogger.error({ err: syncErr.message, sheetId: stagingSheet.id }, 'Gagal auto-sync lembar backfill manual');
+        }
+      }
+    }
+
+    return {
+      totalSheetsCreated: createdSheets.length,
+      totalSessionsPerSheet: sessions.length,
+      totalDates: sortedDates.length,
+      isDirectSynced: Boolean(payload.direct_sync),
+      sheets: createdSheets,
+      syncResults,
+    };
+  }
 }

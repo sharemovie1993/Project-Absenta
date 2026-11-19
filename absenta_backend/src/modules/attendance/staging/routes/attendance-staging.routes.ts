@@ -11,11 +11,17 @@ export default async function attendanceStagingRoutes(fastify: any) {
   // POST /attendance/staging/fetch - Unduh spreadsheet & simpan lembar ke staging
   fastify.post('/fetch', AttendanceStagingController.fetchSheet);
 
+  // POST /attendance/staging/manual-backfill - Buat sesi & presensi via input UI manual multi-tanggal
+  fastify.post('/manual-backfill', AttendanceStagingController.createManualBackfill);
+
   // GET /attendance/staging - List seluruh lembar staging
   fastify.get('/', AttendanceStagingController.listSheets);
 
   // GET /attendance/staging/class-options - Daftar kelas aktif di master untuk pemetaan
   fastify.get('/class-options', AttendanceStagingController.getClassOptions);
+
+  // GET /attendance/staging/class-students/:kelasId - Ambil daftar siswa aktif dalam kelas
+  fastify.get('/class-students/:kelasId', AttendanceStagingController.getClassStudents);
 
   // PUT /attendance/staging/:id/remap-class - Petakan ulang kelas master untuk 1 lembar staging
   fastify.put('/:id/remap-class', AttendanceStagingController.remapClass);

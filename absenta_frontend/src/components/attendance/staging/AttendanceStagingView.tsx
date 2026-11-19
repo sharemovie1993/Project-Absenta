@@ -32,6 +32,7 @@ import {
 import { AttendanceStagingDetailModal } from './AttendanceStagingDetailModal';
 import { AttendanceStagingPreSyncModal } from './AttendanceStagingPreSyncModal';
 import { AttendanceStagingClassMappingModal } from './AttendanceStagingClassMappingModal';
+import { AttendanceStagingManualBackfillModal } from './AttendanceStagingManualBackfillModal';
 
 export const AttendanceStagingView: React.FC = () => {
   const [urlInput, setUrlInput] = useState('');
@@ -54,6 +55,7 @@ export const AttendanceStagingView: React.FC = () => {
 
   // Class Mapping Modal & Inline state
   const [mappingModalOpen, setMappingModalOpen] = useState(false);
+  const [manualBackfillOpen, setManualBackfillOpen] = useState(false);
   const [isRemappingInline, setIsRemappingInline] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -307,24 +309,35 @@ export const AttendanceStagingView: React.FC = () => {
       {/* URL Ingestion Form Card */}
       <Card className="p-5 sm:p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl">
         <form onSubmit={handleFetchUrl} className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 Tarik Data dari Google Spreadsheet
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Pastikan tautan Google Spreadsheet berstatus <strong>"Siapa saja yang memiliki link dapat melihat (Viewer)"</strong>.
+                Pastikan tautan Google Spreadsheet berstatus <strong>&quot;Siapa saja yang memiliki link dapat melihat (Viewer)&quot;</strong>.
               </p>
             </div>
-            <a
-              href="https://docs.google.com/spreadsheets/d/1FHKzAAVEEcRz3uzEptsgRk09z7mqmQ1ZwFCIwF1Iwe0/edit?gid=1255049954#gid=1255049954"
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 font-medium"
-            >
-              <ExternalLink className="w-3.5 h-3.5" /> Buka Sampel Google Sheet
-            </a>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => setManualBackfillOpen(true)}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-black text-xs px-3.5 py-2 rounded-xl shadow-sm flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4 text-amber-200" />
+                Input Backfill Cepat (Manual UI)
+              </Button>
+              <a
+                href="https://docs.google.com/spreadsheets/d/1FHKzAAVEEcRz3uzEptsgRk09z7mqmQ1ZwFCIwF1Iwe0/edit?gid=1255049954#gid=1255049954"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 font-medium"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Sampel Spreadsheet
+              </a>
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
@@ -800,6 +813,14 @@ export const AttendanceStagingView: React.FC = () => {
         sheets={stagingSheets}
         classOptions={classOptions}
         onMappingSaved={loadSheets}
+      />
+
+      {/* Manual Multi-Date Backfill Modal */}
+      <AttendanceStagingManualBackfillModal
+        isOpen={manualBackfillOpen}
+        onClose={() => setManualBackfillOpen(false)}
+        classOptions={classOptions}
+        onSuccess={loadSheets}
       />
     </div>
   );
