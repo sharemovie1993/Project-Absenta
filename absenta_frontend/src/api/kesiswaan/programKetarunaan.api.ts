@@ -72,7 +72,7 @@ export async function getKetarunaanStats(params?: {
   tanggal_selesai?: string;
   scope_periode?: '1_tahun' | '1_semester' | '1_bulan' | 'kustom';
   bulan_ym?: string;
-  mode_agenda?: 'SEMUA_SIKLUS' | 'APEL_PAGI' | 'LATIHAN_KETARUNAAN' | 'APEL_SORE';
+  mode_agenda?: 'SEMUA_SIKLUS' | 'APEL_PAGI' | 'UPACARA' | 'KETARUNAAN' | 'LATIHAN_KETARUNAAN' | 'DUHA' | 'APEL_SORE';
   limit?: number;
 }): Promise<KetarunaanStatsResponse> {
   return getUnifiedStats({ ...params, jenis_kegiatan: 'KETARUNAAN' });

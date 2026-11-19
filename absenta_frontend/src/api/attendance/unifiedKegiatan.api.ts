@@ -93,6 +93,9 @@ export interface UnifiedTrendItem {
 
 export interface UnifiedPeriodSummary {
   total_sesi: number;
+  total_pertemuan_taruna?: number;
+  total_sesi_kelas?: number;
+  target_kelas_count?: number;
   avg_persen_siswa: number;
   avg_persen_guru: number;
   total_hadir_siswa: number;
@@ -404,7 +407,7 @@ export async function getUnifiedStats(params?: {
   tanggal_selesai?: string;
   scope_periode?: '1_tahun' | '1_semester' | '1_bulan' | 'kustom';
   bulan_ym?: string;
-  mode_agenda?: 'SEMUA_SIKLUS' | 'APEL_PAGI' | 'LATIHAN_KETARUNAAN' | 'APEL_SORE';
+  mode_agenda?: 'SEMUA_SIKLUS' | 'APEL_PAGI' | 'UPACARA' | 'KETARUNAAN' | 'LATIHAN_KETARUNAAN' | 'DUHA' | 'APEL_SORE';
   limit?: number;
 }): Promise<UnifiedStatsResponse> {
   return requestWithFallback<UnifiedStatsResponse>(

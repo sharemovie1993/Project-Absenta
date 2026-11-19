@@ -56,7 +56,7 @@ interface KetarunaanStatistikTabProps {
 
 type ScopePeriode = '1_tahun' | '1_semester' | '1_bulan';
 type RankingTabMode = 'global' | 'jurusan' | 'kelas';
-type ModeAgenda = 'SEMUA_SIKLUS' | 'APEL_PAGI' | 'LATIHAN_KETARUNAAN' | 'APEL_SORE';
+type ModeAgenda = 'SEMUA_SIKLUS' | 'APEL_PAGI' | 'UPACARA' | 'KETARUNAAN' | 'DUHA' | 'APEL_SORE';
 
 function formatBulanYm(ym: string) {
   if (!ym || ym === 'latest_30d') return '30 Hari Aktif Terakhir';
@@ -324,78 +324,135 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
           </div>
         )}
 
-        {/* Filter Mode Radar Agenda Siklus Mingguan Ketarunaan (Upacara + Ketarunaan + Dhuha + Apel Sore) */}
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+        {/* Pilar Siklus Mingguan Ketarunaan Terpadu (Upacara, Ketarunaan, Dhuha, Apel Sore) */}
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-amber-600" />
-                Radar Siklus Mingguan Taruna Kelas X (Apel Pagi + Makan Bersama Lapangan &amp; Apel Sore)
+              <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                <Shield className="w-4 h-4 text-amber-600" />
+                Pilar Siklus Disiplin Taruna Kelas X (Apel Pagi + Makan Lapangan &amp; Apel Sore)
               </span>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Seluruh apel pagi peserta Ketarunaan (Senin Upacara, Sel-Kam-Sab Latihan Ketarunaan, Jum&apos;at Dhuha) dilanjutkan makan pagi di lapangan serta Apel Sore masuk ke dalam radar perhitungan.
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Klik salah satu pilar untuk memfilter seluruh analitik dan peringkat di bawah ke agenda tersebut, atau pilih <strong>Semua Siklus</strong> untuk evaluasi menyeluruh.
               </p>
             </div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {([
-                { id: 'SEMUA_SIKLUS', label: 'Semua Siklus (4 Agenda)' },
-                { id: 'APEL_PAGI', label: 'Apel Pagi + Makan Lapangan' },
-                { id: 'LATIHAN_KETARUNAAN', label: 'Khusus Apel Ketarunaan' },
-                { id: 'APEL_SORE', label: 'Khusus Apel Sore' },
-              ] as Array<{ id: ModeAgenda; label: string }>).map((m) => {
-                const active = modeAgenda === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setModeAgenda(m.id)}
-                    className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all ${
-                      active
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-                    }`}
-                  >
-                    {m.label}
-                  </button>
-                );
-              })}
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setModeAgenda('SEMUA_SIKLUS')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  modeAgenda === 'SEMUA_SIKLUS'
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Semua Siklus (4 Agenda Taruna)
+              </button>
+              <button
+                type="button"
+                onClick={() => setModeAgenda('APEL_PAGI')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  modeAgenda === 'APEL_PAGI'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                Seluruh Apel Pagi
+              </button>
             </div>
           </div>
 
+          {/* 4 Interactive Agenda Pillar Cards */}
           {agendaBreakdown.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
-              {agendaBreakdown.map((ag) => (
-                <div
-                  key={ag.kode}
-                  className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex flex-col justify-between gap-1.5"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-xs font-black text-slate-800 dark:text-slate-100 block">
-                        {ag.nama}
-                      </span>
-                      <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                        {ag.hari_label}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+              {agendaBreakdown.map((ag) => {
+                const isCardActive =
+                  modeAgenda === ag.kode ||
+                  (modeAgenda === 'APEL_PAGI' && (ag.kode === 'UPACARA' || ag.kode === 'KETARUNAAN' || ag.kode === 'DUHA'));
+
+                return (
+                  <div
+                    key={ag.kode}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      if (modeAgenda === ag.kode) {
+                        setModeAgenda('SEMUA_SIKLUS');
+                      } else {
+                        setModeAgenda(ag.kode as ModeAgenda);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        setModeAgenda(modeAgenda === ag.kode ? 'SEMUA_SIKLUS' : (ag.kode as ModeAgenda));
+                      }
+                    }}
+                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer relative flex flex-col justify-between gap-2 select-none hover:shadow-md ${
+                      modeAgenda === ag.kode
+                        ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-500 dark:border-amber-500 ring-2 ring-amber-400/40 shadow-sm'
+                        : 'bg-slate-50/70 hover:bg-white dark:bg-slate-800/40 dark:hover:bg-slate-800 border-slate-200/80 dark:border-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-black text-slate-800 dark:text-slate-100 block">
+                            {ag.nama}
+                          </span>
+                          {modeAgenda === ag.kode && (
+                            <Badge variant="warning" className="text-[9px] font-black px-1.5 py-0">
+                              Aktif di Radar
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 block mt-0.5">
+                          {ag.hari_label}
+                        </span>
+                      </div>
+                      <Badge
+                        variant={ag.persen_hadir >= 85 ? 'success' : ag.persen_hadir >= 75 ? 'warning' : 'error'}
+                        className="text-[10px] font-black shrink-0"
+                      >
+                        {ag.persen_hadir}% Hadir
+                      </Badge>
+                    </div>
+
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
+                      {ag.deskripsi}
+                    </p>
+
+                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-300 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                      <span>{ag.total_pertemuan ?? 0} Pertemuan ({ag.total_sesi_kelas ?? 0} Sesi Kelas)</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        {(ag.hadir ?? 0).toLocaleString('id-ID')} Hadir
                       </span>
                     </div>
-                    <Badge
-                      variant={ag.persen_hadir >= 85 ? 'success' : ag.persen_hadir >= 75 ? 'warning' : 'error'}
-                      className="text-[10px] font-black shrink-0"
-                    >
-                      {ag.persen_hadir}% Hadir
-                    </Badge>
                   </div>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                    {ag.deskripsi}
-                  </p>
-                  <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                    <span>{ag.total_pertemuan ?? 0} Hari ({ag.total_sesi_kelas ?? 0} Sesi Kelas)</span>
-                    <span className="text-emerald-600 dark:text-emerald-400">
-                      {(ag.hadir ?? 0).toLocaleString('id-ID')}/{(ag.total_target ?? 0).toLocaleString('id-ID')} Kehadiran
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
+            </div>
+          )}
+
+          {/* Banner Indikator Radar Aktif */}
+          {modeAgenda !== 'SEMUA_SIKLUS' && (
+            <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-300/60 dark:border-amber-800/60 text-xs">
+              <span className="text-amber-800 dark:text-amber-300 font-semibold flex items-center gap-1.5">
+                <Search className="w-3.5 h-3.5 text-amber-600" />
+                Radar Aktif: Menampilkan data khusus <strong>{
+                  modeAgenda === 'APEL_PAGI'
+                    ? 'Seluruh Apel Pagi (Upacara + Ketarunaan + Dhuha)'
+                    : agendaBreakdown.find((a) => a.kode === modeAgenda)?.nama || modeAgenda
+                }</strong>. Seluruh metrik, grafik, dan peringkat di bawah terfilter ke agenda ini.
+              </span>
+              <button
+                type="button"
+                onClick={() => setModeAgenda('SEMUA_SIKLUS')}
+                className="text-[11px] font-black text-amber-700 dark:text-amber-400 hover:underline shrink-0 ml-2"
+              >
+                Reset ke Semua Siklus &rarr;
+              </button>
             </div>
           )}
         </div>
@@ -528,15 +585,31 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-black text-slate-800 dark:text-slate-100">
-                  {ringkasan?.total_sesi ?? trendList.length}
+                  {ringkasan?.total_pertemuan_taruna ?? ringkasan?.total_sesi ?? trendList.length}
                 </span>
-                <span className="text-xs text-slate-400 font-bold">Pertemuan</span>
+                <span className="text-xs text-slate-500 font-bold">
+                  {modeAgenda === 'SEMUA_SIKLUS'
+                    ? 'Sesi Pertemuan Taruna'
+                    : modeAgenda === 'APEL_SORE'
+                    ? 'Sesi Apel Sore'
+                    : modeAgenda === 'KETARUNAAN'
+                    ? 'Sesi Ketarunaan'
+                    : modeAgenda === 'UPACARA'
+                    ? 'Sesi Upacara'
+                    : modeAgenda === 'DUHA'
+                    ? 'Sesi Dhuha'
+                    : 'Sesi Pertemuan'}
+                </span>
               </div>
-              <div className="flex items-center gap-1.5 mt-1">
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                 <Badge variant={ringkasan?.arah_perkembangan === 'NAIK' ? 'success' : ringkasan?.arah_perkembangan === 'TURUN' ? 'error' : 'neutral'} className="text-[10px]">
                   {ringkasan?.arah_perkembangan === 'NAIK' ? 'Tren Positif' : ringkasan?.arah_perkembangan === 'TURUN' ? 'Perlu Pendampingan' : 'Konsisten'}
                 </Badge>
-                <span className="text-[11px] text-slate-400">Target Disiplin &gt;85%</span>
+                <span className="text-[11px] text-slate-400">
+                  {modeAgenda === 'SEMUA_SIKLUS'
+                    ? `${ringkasan?.total_sesi ?? 30} Hari Kalender (Pagi & Sore) • ${(ringkasan?.total_sesi_kelas ?? 1200).toLocaleString('id-ID')} Sesi Kelas`
+                    : `${ringkasan?.total_sesi ?? trendList.length} Hari Kalender • ${(ringkasan?.total_sesi_kelas ?? ((ringkasan?.total_pertemuan_taruna || 1) * 20)).toLocaleString('id-ID')} Sesi Kelas`}
+                </span>
               </div>
               <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full mt-3 overflow-hidden">
                 <div className="h-full bg-purple-500 rounded-full w-full" />

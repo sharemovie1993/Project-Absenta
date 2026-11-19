@@ -855,7 +855,7 @@ export class UnifiedKegiatanService {
     tanggal_selesai?: string;
     scope_periode?: '1_tahun' | '1_semester' | '1_bulan' | 'kustom';
     bulan_ym?: string;
-    mode_agenda?: 'SEMUA_SIKLUS' | 'APEL_PAGI' | 'LATIHAN_KETARUNAAN' | 'APEL_SORE';
+    mode_agenda?: 'SEMUA_SIKLUS' | 'APEL_PAGI' | 'UPACARA' | 'KETARUNAAN' | 'LATIHAN_KETARUNAAN' | 'DUHA' | 'APEL_SORE';
   }) {
     const jenis = params?.jenis_kegiatan || 'KETARUNAAN';
     const isKetarunaanRadar = jenis.toUpperCase().includes('KETARUNAAN');
@@ -985,13 +985,15 @@ export class UnifiedKegiatanService {
       return 'KETARUNAAN';
     };
 
-    // Terapkan filter Mode Agenda (SEMUA_SIKLUS / APEL_PAGI / LATIHAN_KETARUNAAN / APEL_SORE)
+    // Terapkan filter Mode Agenda (SEMUA_SIKLUS / APEL_PAGI / UPACARA / KETARUNAAN / DUHA / APEL_SORE)
     let sesiList = [...periodFilteredPool];
     if (isKetarunaanRadar && modeAgenda !== 'SEMUA_SIKLUS') {
       sesiList = periodFilteredPool.filter((s) => {
         const cat = classifyAgenda(s.jenis_kegiatan);
         if (modeAgenda === 'APEL_PAGI') return cat === 'UPACARA' || cat === 'KETARUNAAN' || cat === 'DUHA';
-        if (modeAgenda === 'LATIHAN_KETARUNAAN') return cat === 'KETARUNAAN';
+        if (modeAgenda === 'UPACARA') return cat === 'UPACARA';
+        if (modeAgenda === 'DUHA') return cat === 'DUHA';
+        if (modeAgenda === 'KETARUNAAN' || modeAgenda === 'LATIHAN_KETARUNAAN') return cat === 'KETARUNAAN';
         if (modeAgenda === 'APEL_SORE') return cat === 'APEL_SORE';
         return true;
       });
@@ -1256,6 +1258,11 @@ export class UnifiedKegiatanService {
     }
 
     const totalSesi = trend.length;
+    const targetClassCount = ketarunaanTargetKelasIds.length > 0 ? ketarunaanTargetKelasIds.length : 20;
+    const totalPertemuanTaruna = isKetarunaanRadar && targetClassCount > 0
+      ? Math.round(sesiList.length / targetClassCount)
+      : totalSesi;
+
     const avgPersenSiswa = totalSesi > 0 
       ? Math.round(trend.reduce((acc, t) => acc + t.persen_hadir_siswa, 0) / totalSesi) 
       : 0;
@@ -1278,6 +1285,9 @@ export class UnifiedKegiatanService {
 
     const ringkasan_periode = {
       total_sesi: totalSesi,
+      total_pertemuan_taruna: totalPertemuanTaruna,
+      total_sesi_kelas: sesiList.length,
+      target_kelas_count: targetClassCount,
       avg_persen_siswa: avgPersenSiswa,
       avg_persen_guru: avgPersenGuru,
       total_hadir_siswa: totalHadirSiswaKumulatif,
