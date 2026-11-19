@@ -555,8 +555,20 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false
           });
 
-          // Bersihkan cache React Query agar query refetch menggunakan sesi guru
+          // 🧹 Dual-Layer Cache Clearance:
+          // 1. Batalkan semua query yang sedang berjalan di latar belakang (in-flight network requests)
+          // 2. Bersihkan seluruh memori cache TanStack React Query
+          // 3. Bersihkan sisa state workspace / navigasi sementara di sessionStorage
+          try {
+            await queryClient.cancelQueries();
+          } catch {}
           queryClient.clear();
+          try {
+            sessionStorage.removeItem('portal_active_ws');
+            sessionStorage.removeItem('absenta_nav_state');
+            sessionStorage.removeItem('active_dashboard_tab');
+            localStorage.removeItem('absenta_nav_state');
+          } catch {}
 
           return true;
         } catch (err: any) {
@@ -603,8 +615,17 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false
           });
 
-          // Bersihkan cache React Query
+          // 🧹 Dual-Layer Cache Clearance saat kembali ke Admin
+          try {
+            await queryClient.cancelQueries();
+          } catch {}
           queryClient.clear();
+          try {
+            sessionStorage.removeItem('portal_active_ws');
+            sessionStorage.removeItem('absenta_nav_state');
+            sessionStorage.removeItem('active_dashboard_tab');
+            localStorage.removeItem('absenta_nav_state');
+          } catch {}
 
           // Muat ulang data user admin dari server untuk sinkronisasi profil terbaru
           try {

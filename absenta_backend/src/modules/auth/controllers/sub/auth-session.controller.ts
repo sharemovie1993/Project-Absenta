@@ -8,6 +8,7 @@ import { organizationalContextCache } from '../../services/organizational-contex
 import { getTenantCapabilities } from '@/utils/tenant-capabilities';
 import { getEffectiveAbsensiMode } from '@/utils/attendanceModeHelper';
 import { activityLogService } from '@/modules/activity/services/activity-log.service';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 import bcrypt from 'bcrypt';
 import { getSmartParentAppUrl } from '@/utils/url-helper';
 import * as jwt from 'jsonwebtoken';
@@ -785,9 +786,10 @@ async impersonate(request: any, reply: any) {
         return { success: false, message: 'Tidak diizinkan login sebagai SUPERADMIN' };
       }
 
-      // 4. Invalidate cache organisasi target user agar posisi/tugas ter-fresh
+      // 4. Invalidate cache organisasi dan Redis cache agar posisi/tugas ter-fresh
       try {
         await organizationalContextCache.invalidateUser(targetUser.id);
+        await cacheInvalidationService.invalidateUserCache(targetUser.tenant_id, targetUser.id);
       } catch {}
 
       // 5. Bangun userResponse lengkap menggunakan authService.getUserById
