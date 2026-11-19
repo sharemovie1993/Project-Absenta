@@ -211,7 +211,13 @@ export class SesiOpenNotifyService {
       }
 
       const isTagGuruActive = Boolean(setting.isTagGuru ?? true);
-      const tagText = cleanPhone ? `@${cleanPhone}` : `*${namaGuru}*`;
+
+      // Format teks Guru:
+      // Karena tidak semua anggota grup menyimpan nomor kontak guru di ponsel mereka,
+      // selalu sertakan Nama Guru lengkap (*Nama Guru*) bersama tag/mention nomor HP (@nomor_hp).
+      // Contoh hasil: *A. HIMAL MAULA, S.Pd.I.* (@6281909396234)
+      const tagWithNama = cleanPhone && isTagGuruActive ? `*${namaGuru}* (@${cleanPhone})` : `*${namaGuru}*`;
+      const tagOnly = cleanPhone && isTagGuruActive ? `@${cleanPhone}` : '';
 
       // Format waktu buka sesi lokal tenant
       const sessionTime = sesi.waktu_mulai ? new Date(sesi.waktu_mulai) : new Date();
@@ -267,15 +273,23 @@ export class SesiOpenNotifyService {
       const templateToUse = setting.template && setting.template.trim() ? setting.template : DEFAULT_KBM_TEMPLATE;
 
       if (templateToUse.includes('{{tag_guru}}') || templateToUse.includes('{{mention_guru}}')) {
-        caption = templateToUse
-          .replace(/{{tag_guru}}/g, tagText)
-          .replace(/{{mention_guru}}/g, tagText)
-          .replace(/{{nama_guru}}/g, namaGuru);
+        if (templateToUse.includes('{{nama_guru}}')) {
+          caption = templateToUse
+            .replace(/{{nama_guru}}/g, namaGuru)
+            .replace(/{{tag_guru}}/g, tagOnly || `*${namaGuru}*`)
+            .replace(/{{mention_guru}}/g, tagOnly || `*${namaGuru}*`)
+            .replace(/\s*\(\s*\)/g, '');
+        } else {
+          // Template hanya memiliki {{tag_guru}}, sertakan Nama Lengkap + Mention Tag
+          caption = templateToUse
+            .replace(/{{tag_guru}}/g, tagWithNama)
+            .replace(/{{mention_guru}}/g, tagWithNama);
+        }
       } else if (isTagGuruActive && cleanPhone) {
-        // Otomatis ngetag guru jika fitur tag aktif dan guru memiliki nomor WhatsApp
+        // Otomatis sertakan Nama Lengkap + Mention Tag jika opsi tag aktif
         caption = templateToUse
-          .replace(/\*{{nama_guru}}\*/g, tagText)
-          .replace(/{{nama_guru}}/g, tagText);
+          .replace(/\*{{nama_guru}}\*/g, tagWithNama)
+          .replace(/{{nama_guru}}/g, tagWithNama);
       } else {
         caption = templateToUse.replace(/{{nama_guru}}/g, namaGuru);
       }

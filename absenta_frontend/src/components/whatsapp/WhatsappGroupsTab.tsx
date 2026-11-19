@@ -297,7 +297,7 @@ const WhatsappGroupsTab: React.FC<WhatsappGroupsTabProps> = ({ localStatus }) =>
                   Tag / Mention Nomor WA Guru di Grup (@)
                 </span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Secara otomatis me-mention (@) nomor HP guru agar guru mendapat notifikasi langsung di aplikasi WhatsApp.
+                  Menyertakan nama lengkap beserta mention nomor WhatsApp (*Nama Guru* @nomor_hp) agar seluruh anggota grup tetap mengenali guru meskipun belum menyimpan kontaknya.
                 </span>
               </div>
               <Switch
