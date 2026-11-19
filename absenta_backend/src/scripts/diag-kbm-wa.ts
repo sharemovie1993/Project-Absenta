@@ -28,6 +28,13 @@ async function main() {
   });
   console.log('All Config kbm_wa_notification:', JSON.stringify(allKbmConfigs, null, 2));
 
+  // 2b. Cek WaAuthSession tenants
+  const authTenants = await prisma.waAuthSession.groupBy({
+    by: ['tenant_id'],
+    _count: { key_id: true }
+  });
+  console.log('WaAuthSession Tenants:', JSON.stringify(authTenants, null, 2));
+
   // 3. Sesi DADAN HAMDAN
   const dadanIds = gurus.map(g => g.id);
   const dadanSesis = await prisma.sesiAbsensi.findMany({
