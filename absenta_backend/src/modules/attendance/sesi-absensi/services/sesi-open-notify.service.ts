@@ -12,6 +12,19 @@ export interface KbmNotificationSetting {
   isTagGuru?: boolean;
 }
 
+export const DEFAULT_KBM_TEMPLATE = `📸 *LOG KEHADIRAN KBM KELAS*
+
+Saya {{tag_guru}} telah hadir dan membuka sesi pembelajaran.
+
+🏫 *Kelas:* {{nama_kelas}} ({{ruangan}})
+📚 *Mata Pelajaran:* {{nama_mapel}}
+⏰ *Jam Pelajaran:* Jam ke-{{jam_ke}} ({{jam_jadwal}} WIB)
+⏱️ *Status Waktu:* {{status_ketepatan}}
+📖 *Materi:* {{topik_materi}}
+👥 *Status Pengajar:* {{status_pengajar}}
+
+_Sistem Presensi Terpadu Absenta_`;
+
 export class SesiOpenNotifyService {
   private static instance: SesiOpenNotifyService;
 
@@ -35,7 +48,7 @@ export class SesiOpenNotifyService {
           isEnabled: false,
           groupJid: '',
           groupSubject: '',
-          template: 'Saya {{tag_guru}} Telah Hadir di Kelas *{{nama_kelas}}*',
+          template: DEFAULT_KBM_TEMPLATE,
           isTagGuru: true,
         };
       }
@@ -44,7 +57,7 @@ export class SesiOpenNotifyService {
         isEnabled: Boolean(parsed.isEnabled),
         groupJid: String(parsed.groupJid || '').trim(),
         groupSubject: String(parsed.groupSubject || '').trim(),
-        template: String(parsed.template || 'Saya {{tag_guru}} Telah Hadir di Kelas *{{nama_kelas}}*').trim(),
+        template: String(parsed.template || DEFAULT_KBM_TEMPLATE).trim(),
         isTagGuru: Boolean(parsed.isTagGuru ?? true),
       };
     } catch {
@@ -52,7 +65,7 @@ export class SesiOpenNotifyService {
         isEnabled: false,
         groupJid: '',
         groupSubject: '',
-        template: 'Saya {{tag_guru}} Telah Hadir di Kelas *{{nama_kelas}}*',
+        template: DEFAULT_KBM_TEMPLATE,
         isTagGuru: true,
       };
     }
@@ -111,14 +124,14 @@ export class SesiOpenNotifyService {
         return;
       }
 
-      // 1. Dapatkan detail guru, kelas, mapel
+      // 1. Dapatkan detail guru, kelas, mapel, jadwal, unit, materi
       const effectiveGuruId = sesi.guru_pelaksana_id || sesi.guru_id;
       let namaGuru = 'Guru Pengajar';
       let namaKelas = '-';
       let namaMapel = '-';
 
-      // Query paralel data pendukung
-      const [guruData, kelasData, mapelData, tz] = await Promise.all([
+      // Query paralel data pendukung akademik
+      const [guruData, kelasData, mapelData, jadwalData, unitData, progresData, tz] = await Promise.all([
         effectiveGuruId
           ? prisma.guru.findUnique({
               where: { id: effectiveGuruId },
@@ -138,7 +151,30 @@ export class SesiOpenNotifyService {
         sesi.mapel_id
           ? prisma.mapel.findUnique({
               where: { id: sesi.mapel_id },
-              select: { nama_mapel: true },
+              select: { nama_mapel: true, kode_mapel: true },
+            }).catch(() => null)
+          : null,
+        sesi.jadwal_kbm_id
+          ? prisma.jadwalKBM.findUnique({
+              where: { id: sesi.jadwal_kbm_id },
+              select: {
+                slot_index: true,
+                jam_mulai: true,
+                jam_selesai: true,
+                MasterRuangan: { select: { nama_ruangan: true } },
+              },
+            }).catch(() => null)
+          : null,
+        sesi.unit_pengajaran_id
+          ? prisma.unitPengajaran.findUnique({
+              where: { id: sesi.unit_pengajaran_id },
+              select: { nama_unit: true },
+            }).catch(() => null)
+          : null,
+        sesi.id
+          ? prisma.progresMateri.findFirst({
+              where: { sesi_id: sesi.id },
+              select: { judul_materi: true },
             }).catch(() => null)
           : null,
         getTenantTimezone(tenantId).catch(() => PLATFORM_TIMEZONE),
@@ -177,7 +213,7 @@ export class SesiOpenNotifyService {
       const isTagGuruActive = Boolean(setting.isTagGuru ?? true);
       const tagText = cleanPhone ? `@${cleanPhone}` : `*${namaGuru}*`;
 
-      // Format waktu lokal tenant
+      // Format waktu buka sesi lokal tenant
       const sessionTime = sesi.waktu_mulai ? new Date(sesi.waktu_mulai) : new Date();
       const waktuStr = sessionTime.toLocaleTimeString('id-ID', {
         hour: '2-digit',
@@ -185,10 +221,50 @@ export class SesiOpenNotifyService {
         timeZone: tz || 'Asia/Jakarta',
       });
 
+      // Resolusi Data Akademik untuk Supervisi Kurikulum & Kepala Sekolah
+      const jamKe = jadwalData?.slot_index ? `${jadwalData.slot_index}` : (sesi.slot_kbm ? `${sesi.slot_kbm}` : '-');
+
+      let jamJadwal = '-';
+      if (jadwalData?.jam_mulai && jadwalData?.jam_selesai) {
+        jamJadwal = `${jadwalData.jam_mulai} - ${jadwalData.jam_selesai}`;
+      } else if (sesi.waktu_mulai && sesi.waktu_selesai) {
+        const startStr = new Date(sesi.waktu_mulai).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: tz || 'Asia/Jakarta' });
+        const endStr = new Date(sesi.waktu_selesai).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: tz || 'Asia/Jakarta' });
+        jamJadwal = `${startStr} - ${endStr}`;
+      }
+
+      const ruangan = jadwalData?.MasterRuangan?.nama_ruangan || 'Ruang Kelas';
+      const topikMateri = progresData?.judul_materi || unitData?.nama_unit || sesi.keterangan || '-';
+      const isDelegasi = Boolean(sesi.is_delegasi || (sesi.guru_pelaksana_id && sesi.guru_id && sesi.guru_pelaksana_id !== sesi.guru_id));
+      const statusPengajar = isDelegasi ? 'Guru Pengganti (Inval)' : 'Pengajar Resmi';
+
+      // Hitung Ketepatan Waktu Guru
+      let statusKetepatan = `🟢 Terverifikasi (Buka: ${waktuStr} WIB)`;
+      if (jadwalData?.jam_mulai && jadwalData.jam_mulai.includes(':')) {
+        const [schedH, schedM] = jadwalData.jam_mulai.split(':').map(Number);
+        const openParts = new Intl.DateTimeFormat('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone: tz || 'Asia/Jakarta',
+        }).format(sessionTime).split(':').map(Number);
+
+        const schedMinutes = schedH * 60 + schedM;
+        const openMinutes = openParts[0] * 60 + openParts[1];
+        const diffMinutes = openMinutes - schedMinutes;
+
+        if (diffMinutes > 5) {
+          statusKetepatan = `🟡 Terlambat ${diffMinutes} Menit (Buka: ${waktuStr} WIB)`;
+        } else if (diffMinutes < -2) {
+          statusKetepatan = `🟢 Hadir Lebih Awal (Buka: ${waktuStr} WIB)`;
+        } else {
+          statusKetepatan = `🟢 Tepat Waktu (Buka: ${waktuStr} WIB)`;
+        }
+      }
+
       // 2. Susun teks pesan
       let caption: string;
-      const defaultTemplate = 'Saya {{tag_guru}} Telah Hadir di Kelas *{{nama_kelas}}*';
-      const templateToUse = setting.template && setting.template.trim() ? setting.template : defaultTemplate;
+      const templateToUse = setting.template && setting.template.trim() ? setting.template : DEFAULT_KBM_TEMPLATE;
 
       if (templateToUse.includes('{{tag_guru}}') || templateToUse.includes('{{mention_guru}}')) {
         caption = templateToUse
@@ -207,7 +283,13 @@ export class SesiOpenNotifyService {
       caption = caption
         .replace(/{{nama_kelas}}/g, namaKelas)
         .replace(/{{nama_mapel}}/g, namaMapel)
-        .replace(/{{waktu}}/g, waktuStr);
+        .replace(/{{waktu}}/g, waktuStr)
+        .replace(/{{jam_ke}}/g, jamKe)
+        .replace(/{{jam_jadwal}}/g, jamJadwal)
+        .replace(/{{status_ketepatan}}/g, statusKetepatan)
+        .replace(/{{ruangan}}/g, ruangan)
+        .replace(/{{topik_materi}}/g, topikMateri)
+        .replace(/{{status_pengajar}}/g, statusPengajar);
 
       // Kumpulkan daftar mentions JID untuk Baileys
       const mentions: string[] = [];

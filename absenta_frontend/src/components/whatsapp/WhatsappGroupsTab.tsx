@@ -279,14 +279,14 @@ const WhatsappGroupsTab: React.FC<WhatsappGroupsTabProps> = ({ localStatus }) =>
                 Format Teks Caption Pesan WA (Foto akan dilampirkan otomatis):
               </label>
               <span className="text-[10px] text-slate-400">
-                Variabel: <code className="text-emerald-600 dark:text-emerald-400">{'{{tag_guru}}'}</code> (tag/mention @WA), <code className="text-emerald-600 dark:text-emerald-400">{'{{nama_guru}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{nama_kelas}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{nama_mapel}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{waktu}}'}</code>
+                Variabel: <code className="text-emerald-600 dark:text-emerald-400">{'{{tag_guru}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{nama_guru}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{nama_kelas}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{ruangan}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{nama_mapel}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{jam_ke}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{jam_jadwal}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{status_ketepatan}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{topik_materi}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{status_pengajar}}'}</code>
               </span>
             </div>
             <textarea
-              rows={3}
+              rows={8}
               value={kbmConfig.template ?? ''}
               onChange={(e) => setKbmConfig({ ...kbmConfig, template: e.target.value })}
-              placeholder="Saya {{tag_guru}} Telah Hadir di Kelas *{{nama_kelas}}*"
+              placeholder={`📸 *LOG KEHADIRAN KBM KELAS*\n\nSaya {{tag_guru}} telah hadir dan membuka sesi pembelajaran.\n\n🏫 *Kelas:* {{nama_kelas}} ({{ruangan}})\n📚 *Mata Pelajaran:* {{nama_mapel}}\n⏰ *Jam Pelajaran:* Jam ke-{{jam_ke}} ({{jam_jadwal}} WIB)\n⏱️ *Status Waktu:* {{status_ketepatan}}\n📖 *Materi:* {{topik_materi}}\n👥 *Status Pengajar:* {{status_pengajar}}\n\n_Sistem Presensi Terpadu Absenta_`}
               className="w-full p-2.5 text-xs font-mono rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
 
@@ -306,25 +306,39 @@ const WhatsappGroupsTab: React.FC<WhatsappGroupsTabProps> = ({ localStatus }) =>
               />
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button
+            <div className="flex justify-between items-center gap-2">
+              <button
                 type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowTemplateConfig(false)}
-                className="h-8 px-3 text-xs"
+                onClick={() =>
+                  setKbmConfig({
+                    ...kbmConfig,
+                    template: `📸 *LOG KEHADIRAN KBM KELAS*\n\nSaya {{tag_guru}} telah hadir dan membuka sesi pembelajaran.\n\n🏫 *Kelas:* {{nama_kelas}} ({{ruangan}})\n📚 *Mata Pelajaran:* {{nama_mapel}}\n⏰ *Jam Pelajaran:* Jam ke-{{jam_ke}} ({{jam_jadwal}} WIB)\n⏱️ *Status Waktu:* {{status_ketepatan}}\n📖 *Materi:* {{topik_materi}}\n👥 *Status Pengajar:* {{status_pengajar}}\n\n_Sistem Presensi Terpadu Absenta_`,
+                  })
+                }
+                className="text-xs text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 underline font-medium"
               >
-                Batal
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleSaveTemplate}
-                disabled={savingKbmConfig}
-                className="h-8 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
-              >
-                Simpan Format
-              </Button>
+                Gunakan Format Lengkap (Standar Kurikulum & Kepsek)
+              </button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowTemplateConfig(false)}
+                  className="h-8 px-3 text-xs"
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveTemplate}
+                  disabled={savingKbmConfig}
+                  className="h-8 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+                >
+                  Simpan Format
+                </Button>
+              </div>
             </div>
           </div>
         )}
