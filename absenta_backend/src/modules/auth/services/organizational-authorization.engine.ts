@@ -288,6 +288,13 @@ export class OrganizationalAuthorizationEngine {
         capSet.add('hubin.absensi.view.history');
         capSet.add('hubin.absensi.recap');
       }
+
+      // Dynamic Wali Kelas Otorisasi: Auto-grant Dapodik View & Walas Dashboard jika user adalah Wali Kelas
+      if (ctx.positions.some(p => ['WALIKELAS', 'WALI_KELAS', 'WALI'].includes(p.code))) {
+        capSet.add('academic.dapodik.view');
+        capSet.add('dashboard.view.walikelas');
+        capSet.add('academic.homeroom.manage');
+      }
     }
 
     // 4. Base Self-Service Capabilities (Overview, Notifications & Profile)

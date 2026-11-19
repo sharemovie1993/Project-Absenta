@@ -196,7 +196,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   } = useQuery({
     queryKey: ['dapodik-student-comparison', compareOptions, sourceMode],
     queryFn: () => getDapodikStudentComparison(compareOptions, false, sourceMode),
-    enabled: Boolean(configData?.data?.is_configured),
+    enabled: isWalasMode ? true : Boolean(configData?.data?.is_configured),
     staleTime: 5 * 60 * 1000, // 5 menit cache di client
     refetchOnWindowFocus: false,
     retry: false,
@@ -823,8 +823,8 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
 
   return (
     <div className="space-y-3.5">
-      {!configForm.api_token ? (
-        /* Empty State Jika Belum Dikonfigurasi */
+      {(!isWalasMode && !configForm.api_token) ? (
+        /* Empty State Jika Belum Dikonfigurasi (Khusus Admin Sekolah di Halaman Utama Integrasi) */
         <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 space-y-4 shadow-xs">
           <div className="w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
             <Key className="w-6 h-6" />
@@ -851,13 +851,21 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
             <div className="flex items-center gap-2.5 flex-wrap min-w-0">
               <div className="flex items-center gap-2 min-w-0 max-w-full">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[240px]">
-                  {configForm.school_name || `NPSN ${configForm.npsn}`}
-                </span>
-                <span className="text-slate-300 dark:text-slate-700 hidden sm:inline shrink-0">•</span>
-                <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline truncate">
-                  {configForm.dapodik_host}
-                </span>
+                {isWalasMode ? (
+                  <span className="font-bold text-slate-900 dark:text-slate-100 truncate text-xs sm:text-sm">
+                    Cek Data Dapodik • {kelasNama || 'Kelas Binaan'}
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[240px]">
+                      {configForm.school_name || `NPSN ${configForm.npsn}`}
+                    </span>
+                    <span className="text-slate-300 dark:text-slate-700 hidden sm:inline shrink-0">•</span>
+                    <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline truncate">
+                      {configForm.dapodik_host}
+                    </span>
+                  </>
+                )}
               </div>
 
               {formattedCacheTime && (
@@ -894,46 +902,48 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
 
             {/* Sisi Kanan: Action Buttons Terpadu & Switcher Mode Dapodik */}
             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-              {/* SWITCHER PERBANDINGAN: STAGING PLATFORM VS DAPODIK LANGSUNG */}
-              <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] mr-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (sourceMode !== 'STAGING') {
-                      setSourceMode('STAGING');
-                      toast.info('Beralih ke Mode Dapodik Lokal (Staging Platform). Komputer Dapodik tidak perlu dinyalakan.');
-                    }
-                  }}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold transition-all ${
-                    sourceMode === 'STAGING'
-                      ? 'bg-amber-500 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                  title="Gunakan Data Dapodik yang tersimpan permanen di platform Absenta (Komputer Dapodik tidak perlu dinyalakan)"
-                >
-                  <HardDrive className="w-3 h-3" />
-                  <span>Dapodik Lokal (Staging)</span>
-                </button>
+              {/* SWITCHER PERBANDINGAN: STAGING PLATFORM VS DAPODIK LANGSUNG (Admin Only) */}
+              {!isWalasMode && (
+                <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] mr-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (sourceMode !== 'STAGING') {
+                        setSourceMode('STAGING');
+                        toast.info('Beralih ke Mode Dapodik Lokal (Staging Platform). Komputer Dapodik tidak perlu dinyalakan.');
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold transition-all ${
+                      sourceMode === 'STAGING'
+                        ? 'bg-amber-500 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
+                    title="Gunakan Data Dapodik yang tersimpan permanen di platform Absenta (Komputer Dapodik tidak perlu dinyalakan)"
+                  >
+                    <HardDrive className="w-3 h-3" />
+                    <span>Dapodik Lokal (Staging)</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (sourceMode !== 'LIVE') {
-                      setSourceMode('LIVE');
-                      toast.info('Beralih ke Mode Dapodik Langsung (Live Port 5774).');
-                    }
-                  }}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold transition-all ${
-                    sourceMode === 'LIVE'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                  title="Hubungkan langsung ke Web Service Dapodik operator secara real-time (Port 5774)"
-                >
-                  <Server className="w-3 h-3" />
-                  <span>Dapodik Langsung (Live)</span>
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (sourceMode !== 'LIVE') {
+                        setSourceMode('LIVE');
+                        toast.info('Beralih ke Mode Dapodik Langsung (Live Port 5774).');
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold transition-all ${
+                      sourceMode === 'LIVE'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
+                    title="Hubungkan langsung ke Web Service Dapodik operator secara real-time (Port 5774)"
+                  >
+                    <Server className="w-3 h-3" />
+                    <span>Dapodik Langsung (Live)</span>
+                  </button>
+                </div>
+              )}
 
               {/* Tombol Pengaturan Koneksi (Modal - Admin Only) */}
               {!isWalasMode && (
@@ -1461,14 +1471,16 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                   {(comparisonError as any)?.response?.data?.message || (comparisonError as any)?.message || 'Terjadi kesalahan sistem.'}
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setIsConnectionModalOpen(true)}
-                    className="h-7 text-xs gap-1.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300"
-                  >
-                    <Key className="w-3.5 h-3.5" /> Atur Koneksi &amp; Whitelist IP
-                  </Button>
+                  {!isWalasMode && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsConnectionModalOpen(true)}
+                      className="h-7 text-xs gap-1.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-300"
+                    >
+                      <Key className="w-3.5 h-3.5" /> Atur Koneksi &amp; Whitelist IP
+                    </Button>
+                  )}
                   {sourceMode === 'LIVE' && (
                     <Button
                       size="sm"

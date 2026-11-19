@@ -312,6 +312,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'dashboard.view.walikelas',
     'dashboard.view.overview',
     'core.tenants.view.detail',
+    'academic.dapodik.view',
 
     // Referensi Siswa Binaan
     'academic.students.view.list',
