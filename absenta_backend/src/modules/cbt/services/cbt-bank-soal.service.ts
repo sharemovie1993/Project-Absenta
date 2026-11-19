@@ -16,6 +16,7 @@ export interface QueryBankSoalDto {
   semester_id?: string;
   unit_pengajaran_id?: string;
   include_shared?: boolean;
+  ownership?: 'ALL' | 'OWN' | 'SHARED';
 }
 
 export class CbtBankSoalService {
@@ -390,12 +391,56 @@ export class CbtBankSoalService {
           ...sharedScopeConditions,
         ];
 
-        andConditions.push({ OR: orConditions });
+        if (query.ownership === 'OWN') {
+          andConditions.push({ guru_id: query.guru_id });
+        } else if (query.ownership === 'SHARED') {
+          andConditions.push({
+            guru_id: { not: query.guru_id },
+            OR: [
+              { Kontributor: { some: { guru_id: query.guru_id, tenant_id: tenantId } } },
+              ...sharedScopeConditions,
+            ],
+          });
+        } else {
+          andConditions.push({ OR: orConditions });
+        }
       }
     }
 
     const where: Prisma.CbtBankSoalWhereInput =
       andConditions.length === 1 ? andConditions[0] : { AND: andConditions };
+
+    // Metadata counts untuk tabs pemisahan: Soal Buatan Saya (OWN) vs Dibagikan Kepada Saya (SHARED) vs SEMUA
+    let countsMeta: { all: number; own: number; shared: number } | undefined;
+    if (query.guru_id) {
+      const baseConditions = andConditions.slice(0, -1);
+      const ownWhere: Prisma.CbtBankSoalWhereInput = {
+        AND: [...baseConditions, { guru_id: query.guru_id }],
+      };
+      const allWhere: Prisma.CbtBankSoalWhereInput = {
+        AND: [
+          ...baseConditions,
+          {
+            OR: [
+              { guru_id: query.guru_id },
+              { Kontributor: { some: { guru_id: query.guru_id, tenant_id: tenantId } } },
+              ...sharedScopeConditions,
+            ],
+          },
+        ],
+      };
+
+      const [totalOwn, totalAll] = await Promise.all([
+        prisma.cbtBankSoal.count({ where: ownWhere }).catch(() => 0),
+        prisma.cbtBankSoal.count({ where: allWhere }).catch(() => 0),
+      ]);
+
+      countsMeta = {
+        all: totalAll,
+        own: totalOwn,
+        shared: Math.max(0, totalAll - totalOwn),
+      };
+    }
 
     const [total, rawItems] = await Promise.all([
       prisma.cbtBankSoal.count({ where }),
@@ -418,6 +463,7 @@ export class CbtBankSoalService {
         totalItems: total,
         totalPages: Math.ceil(total / limit) || 1,
       },
+      counts: countsMeta,
     };
   }
 

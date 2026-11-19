@@ -66,6 +66,11 @@ export const cbtApi = {
         totalItems: number;
         totalPages: number;
       };
+      counts?: {
+        all: number;
+        own: number;
+        shared: number;
+      };
     };
   },
 

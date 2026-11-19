@@ -21,6 +21,8 @@ import {
   FileEdit,
   RotateCw,
   Sparkles,
+  User,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -87,6 +89,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
     return !isOrkestrasi && !lockTeacherScheduling;
   }, [readOnly, isPanitiaCbt, isOrkestrasi, lockTeacherScheduling]);
 
+  const [ownershipTab, setOwnershipTab] = useState<'OWN' | 'SHARED' | 'ALL'>('OWN');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -125,6 +128,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   }, [filter.values.tingkat]);
 
   // 2. Fetch Bank Soal via TanStack Query
+  const effectiveOwnership = !isPanitiaCbt ? ownershipTab : undefined;
   const { data, isLoading } = useQuery({
     queryKey: cbtQueryKeys.bankSoal({
       page,
@@ -132,7 +136,8 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
       search: filter.debouncedSearchQuery,
       tingkat: isPanitiaCbt ? normalizedTingkat : undefined,
       mapel_id: mapelId || (isPanitiaCbt ? filter.values.mapelId : undefined),
-      guru_id: guruId,
+      guru_id: currentGuruId,
+      ownership: effectiveOwnership,
     }),
     queryFn: () =>
       cbtApi.getBankSoalList({
@@ -141,12 +146,24 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         search: filter.debouncedSearchQuery,
         tingkat: isPanitiaCbt ? normalizedTingkat : undefined,
         mapel_id: mapelId || (isPanitiaCbt ? filter.values.mapelId : undefined),
-        guru_id: guruId,
+        guru_id: currentGuruId,
+        ownership: effectiveOwnership,
       }),
   });
 
   const items = data?.items || [];
   const pagination = data?.pagination;
+  const counts = data?.counts;
+
+  const emptyMessage = useMemo(() => {
+    if (ownershipTab === 'OWN') {
+      return 'Belum ada bank soal buatan Anda sendiri. Klik "+ Buat Bank Soal" untuk membuat naskah ujian mandiri atau naskah bersama (Master MGMP).';
+    }
+    if (ownershipTab === 'SHARED') {
+      return 'Belum ada bank soal bersama yang dibagikan oleh rekan guru MGMP kepada Anda.';
+    }
+    return 'Belum ada bank soal terdaftar';
+  }, [ownershipTab]);
 
   // Delete Mutation
   const deleteMutation = useMutation({
@@ -523,9 +540,98 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           className="shadow-2xs"
         />
       ) : (
-        /* Area Guru: Cukup tombol '+ Buat Bank Soal' ramping tanpa card banner & tanpa input pencarian */
-        !readOnly && (
-          <div className="flex items-center justify-end">
+        /* Area Guru: 3-Pill Switcher (Soal Buatan Saya vs Dibagikan Kepada Saya vs Semua Naskah) & Tombol Buat */
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl w-fit border border-slate-200/60 dark:border-slate-700/60 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => {
+                setOwnershipTab('OWN');
+                setPage(1);
+              }}
+              className={cn(
+                'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+                ownershipTab === 'OWN'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              )}
+            >
+              <User size={13} />
+              <span>Soal Buatan Saya</span>
+              {counts?.own !== undefined && (
+                <span
+                  className={cn(
+                    'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
+                    ownershipTab === 'OWN'
+                      ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                      : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  )}
+                >
+                  {counts.own}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setOwnershipTab('SHARED');
+                setPage(1);
+              }}
+              className={cn(
+                'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+                ownershipTab === 'SHARED'
+                  ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              )}
+            >
+              <Users size={13} />
+              <span>Dibagikan Kepada Saya</span>
+              {counts?.shared !== undefined && (
+                <span
+                  className={cn(
+                    'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
+                    ownershipTab === 'SHARED'
+                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
+                      : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  )}
+                >
+                  {counts.shared}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setOwnershipTab('ALL');
+                setPage(1);
+              }}
+              className={cn(
+                'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+                ownershipTab === 'ALL'
+                  ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              )}
+            >
+              <Layers size={13} />
+              <span>Semua Naskah</span>
+              {counts?.all !== undefined && (
+                <span
+                  className={cn(
+                    'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
+                    ownershipTab === 'ALL'
+                      ? 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
+                      : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                  )}
+                >
+                  {counts.all}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {!readOnly && (
             <Button
               type="button"
               variant="primary"
@@ -534,13 +640,13 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                 setSelectedBankSoal(null);
                 setIsFormModalOpen(true);
               }}
-              className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs h-8 sm:h-9 px-3.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all"
+              className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs h-8 sm:h-9 px-3.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all shrink-0 self-end sm:self-auto"
             >
               <Plus size={14} className="stroke-[2.5]" />
               <span>Buat Bank Soal</span>
             </Button>
-          </div>
-        )
+          )}
+        </div>
       )}
 
       {/* Konten Data: Mobile List vs Desktop Table */}
@@ -550,7 +656,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           data={items}
           isLoading={isLoading}
           totalItems={pagination?.totalItems || 0}
-          emptyMessage="Belum ada bank soal terdaftar"
+          emptyMessage={emptyMessage}
           titleKey="judul"
           badgeKey="tingkat"
           subtitleKey="Mapel.nama_mapel"
@@ -771,7 +877,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
             columns={columns}
             loading={isLoading}
             hoverable={true}
-            emptyMessage="Belum ada bank soal terdaftar"
+            emptyMessage={emptyMessage}
             pagination={{
               currentPage: page,
               totalPages: pagination?.totalPages || 1,

@@ -111,6 +111,7 @@ export const queryBankSoalSchema = z.object({
   semester_id: z.string().optional(),
   unit_pengajaran_id: z.string().optional(),
   include_shared: z.coerce.boolean().optional().default(true),
+  ownership: z.enum(['ALL', 'OWN', 'SHARED']).optional().default('ALL'),
 });
 
 export const updateBankContributorsSchema = z.object({
