@@ -517,12 +517,24 @@ export const SiswaCbtTab: React.FC = () => {
     dayMap.forEach((val, dateKey) => {
       val.sessions.sort((a, b) => new Date(a.tanggal_mulai).getTime() - new Date(b.tanggal_mulai).getTime());
 
+      // Dedup guard di UI: cegah duplikasi sesi pada slot waktu dan mapel yang sama
+      const uniqueSessions: CbtStudentExamItem[] = [];
+      const seenSlots = new Set<string>();
+
+      val.sessions.forEach((sess) => {
+        const slotKey = `${resolveSesiLabel(sess)}__${sess.mapel_induk || sess.mapel}`;
+        if (!seenSlots.has(slotKey)) {
+          seenSlots.add(slotKey);
+          uniqueSessions.push(sess);
+        }
+      });
+
       result.push({
         dateKey,
         dayName: val.dateFormatted.split(',')[0] || val.dateFormatted,
         dateFormatted: val.dateFormatted,
         isToday: val.isToday,
-        sessions: val.sessions,
+        sessions: uniqueSessions,
       });
     });
 

@@ -82,13 +82,21 @@ export const KATEGORI_OPTIONS = (Object.entries(KATEGORI_LABELS) as [MemberDocKa
 
 import { resolveProfilePhotoUrl } from '@/lib/utils';
 
-/** Kembalikan URL untuk stream/preview berkas secara inline (local & S3) */
+/** Kembalikan URL untuk stream/preview berkas secara inline (local & S3) dengan autentikasi token JWT */
 export function getMemberDocPreviewUrl(entityType: MemberDocEntityType, entityId: string, docId: string): string {
   const relative = entityType === 'SISWA'
     ? `/api/academic/siswa/${entityId}/documents/${docId}/download`
     : `/api/academic/guru/${entityId}/documents/${docId}/download`;
 
-  return resolveProfilePhotoUrl(relative);
+  const baseUrl = resolveProfilePhotoUrl(relative);
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    if (token) {
+      const sep = baseUrl.includes('?') ? '&' : '?';
+      return `${baseUrl}${sep}token=${encodeURIComponent(token)}`;
+    }
+  }
+  return baseUrl;
 }
 
 /** Format bytes ke string human-readable */

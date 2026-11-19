@@ -210,7 +210,7 @@ export class CbtTestEngineService {
       }
     }
 
-    return jadwalList
+    const rawResult = jadwalList
       .filter((j) => {
         const sec = (j.setting_keamanan as any) || {};
         // Sesi remedial hanya tampil di dashboard siswa yang memang terdaftar di target_siswa_ids
@@ -342,6 +342,44 @@ export class CbtTestEngineService {
               : null,
         };
       });
+
+    // ── DEDUP GUARD INDUSTRIAL STANDARD ──
+    // Mencegah siswa melihat jadwal ganda/dobel pada slot waktu yang sama jika pernah ada jadwal fallback rombel
+    const slotSeen = new Map<string, typeof rawResult[0]>();
+    const studentJur = (siswa.Kelas?.Jurusan?.kode || siswa.Kelas?.Jurusan?.singkatan || '').toUpperCase().trim();
+    const studentCls = (siswa.Kelas?.nama_kelas || '').toUpperCase().trim();
+
+    for (const item of rawResult) {
+      const dateIso = item.tanggal_mulai ? new Date(item.tanggal_mulai).toISOString() : 'no-date';
+      const slotKey = `${dateIso}__${item.nama_sesi_waktu || item.durasi_menit}__${item.mapel_induk || item.mapel}`;
+      const existing = slotSeen.get(slotKey);
+
+      if (!existing) {
+        slotSeen.set(slotKey, item);
+      } else {
+        // Prioritas 1: Jika salah satu sudah mulai atau selesai dikerjakan siswa
+        const existActive = existing.status_peserta === 'IN_PROGRESS' || existing.status_peserta === 'FINISHED';
+        const itemActive = item.status_peserta === 'IN_PROGRESS' || item.status_peserta === 'FINISHED';
+        if (itemActive && !existActive) {
+          slotSeen.set(slotKey, item);
+          continue;
+        }
+        if (existActive && !itemActive) continue;
+
+        // Prioritas 2: Kesesuaian spesifik dengan nama rombel atau jurusan siswa
+        const existMatch = (studentJur && (existing.judul_bank.toUpperCase().includes(studentJur) || existing.nama_sesi.toUpperCase().includes(studentJur))) ||
+                           (studentCls && existing.nama_sesi.toUpperCase().includes(studentCls));
+        const itemMatch = (studentJur && (item.judul_bank.toUpperCase().includes(studentJur) || item.nama_sesi.toUpperCase().includes(studentJur))) ||
+                          (studentCls && item.nama_sesi.toUpperCase().includes(studentCls));
+
+        if (itemMatch && !existMatch) {
+          slotSeen.set(slotKey, item);
+          continue;
+        }
+      }
+    }
+
+    return Array.from(slotSeen.values());
   }
 
   /**
