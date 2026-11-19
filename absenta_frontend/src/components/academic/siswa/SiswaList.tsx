@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, Suspense, lazy, useEffec
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera, Wrench, Copy, ExternalLink, MessageSquare, SlidersHorizontal } from 'lucide-react';
+import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, LogIn, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera, Wrench, Copy, ExternalLink, MessageSquare, SlidersHorizontal } from 'lucide-react';
 import { 
   Button, 
   Input, 
@@ -334,9 +334,12 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
 
-  const { user } = useAuthStore();
+  const { user, isImpersonating, impersonateSiswaAction } = useAuthStore();
   const { can, isAdmin, isKesiswaan, isKurikulum, isKepalaSekolah, isHubin } = useCapabilities();
   const { tingkatList } = useJenjang();
+  const isSuperAdmin = user?.role?.name === 'SUPERADMIN' || user?.tenant_id === 'system';
+  const canImpersonate = useMemo(() => (isAdmin || isSuperAdmin) && !isImpersonating, [isAdmin, isSuperAdmin, isImpersonating]);
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
   
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
@@ -820,6 +823,48 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   }, [mutationDate, mutationReason, mutationStatus, selectedIds, invalidateSiswaCache, refetch, onRefresh]);
 
 
+  // Handle Impersonate (Login Sebagai Siswa - Khusus Admin)
+  const handleImpersonate = useCallback(async (siswa: Siswa) => {
+    try {
+      const ok = await confirm({
+        title: `Login Sebagai ${siswa.nama_siswa}?`,
+        description: (
+          <div className="space-y-3">
+            <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl flex items-start gap-3">
+              <div className="bg-indigo-600 text-white p-2 rounded-xl shrink-0 shadow-sm">
+                <LogIn size={20} />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-black text-indigo-950 dark:text-indigo-200">
+                  Mode Pengawasan Impersonasi Siswa
+                </p>
+                <p className="text-[11px] text-indigo-800 dark:text-indigo-300 leading-relaxed">
+                  Anda akan masuk ke dalam sistem sebagai <strong>{siswa.nama_siswa}</strong> ({siswa.nis ? `NIS: ${siswa.nis}` : 'Siswa'}{siswa.Kelas?.nama_kelas ? ` • ${siswa.Kelas.nama_kelas}` : ''}). Anda dapat memeriksa dashboard siswa, jadwal KBM, kartu ujian, presensi, dan simulasi CBT dari sudut pandang siswa tersebut.
+                </p>
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
+              💡 <strong>Tips:</strong> Anda dapat kembali ke akun Administrator kapan saja menggunakan tombol di banner oranye pada bagian atas layar.
+            </div>
+          </div>
+        ),
+        confirmText: 'Ya, Login Sebagai Siswa',
+        cancelText: 'Batal'
+      });
+
+      if (!ok) return;
+
+      setImpersonatingId(siswa.id);
+      await impersonateSiswaAction(siswa.id);
+      toast.success(`Berhasil login sebagai ${siswa.nama_siswa}`);
+      navigate('/dashboard');
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal login sebagai siswa');
+    } finally {
+      setImpersonatingId(null);
+    }
+  }, [confirm, impersonateSiswaAction, navigate]);
+
   // Format status badge
   const getStatusBadge = (status: string) => {
     const cls = getStatusBadgeClass(status, 'academic');
@@ -1015,6 +1060,23 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
               <Eye className="w-4 h-4" />
             </Button>
           )}
+          {canImpersonate && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => handleImpersonate(siswa)}
+              aria-label={`Login sebagai ${siswa.nama_siswa}`}
+              title={`Login sebagai ${siswa.nama_siswa} (Khusus Administrator)`}
+              disabled={impersonatingId === siswa.id}
+              className="h-8 w-8 p-0 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+            >
+              {impersonatingId === siswa.id ? (
+                <Loader size="sm" className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <LogIn className="w-4 h-4" aria-hidden="true" />
+              )}
+            </Button>
+          )}
           {canSendAccess && (
             <Button
               size="sm"
@@ -1081,6 +1143,9 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   ].filter(Boolean) as any, [
     canManage, 
     canView, 
+    canImpersonate,
+    handleImpersonate,
+    impersonatingId,
     canSendAccess, 
     onEdit, 
     onView, 
@@ -1162,20 +1227,43 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         />
       </div>
 
-      <Button
-        size="xs"
-        variant="outline"
-        onClick={(e) => {
-          e.stopPropagation();
-          onView?.(siswa);
-        }}
-        aria-label={`Lihat detail ${siswa.nama_siswa}`}
-        className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
-      >
-        Detail
-      </Button>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {canImpersonate && (
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleImpersonate(siswa);
+            }}
+            disabled={impersonatingId === siswa.id}
+            aria-label={`Login sebagai ${siswa.nama_siswa}`}
+            title={`Login sebagai ${siswa.nama_siswa} (Khusus Administrator)`}
+            className="rounded-xl px-2.5 py-1.5 font-bold text-xs border-indigo-200 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100 dark:border-indigo-800 dark:text-indigo-300 dark:bg-indigo-950/30 flex items-center gap-1"
+          >
+            {impersonatingId === siswa.id ? (
+              <Loader size="sm" className="w-3 h-3 animate-spin" />
+            ) : (
+              <LogIn className="w-3 h-3" />
+            )}
+            <span>Login</span>
+          </Button>
+        )}
+        <Button
+          size="xs"
+          variant="outline"
+          onClick={(e) => {
+            e.stopPropagation();
+            onView?.(siswa);
+          }}
+          aria-label={`Lihat detail ${siswa.nama_siswa}`}
+          className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+        >
+          Detail
+        </Button>
+      </div>
     </div>
-  ), [onView]);
+  ), [onView, canImpersonate, handleImpersonate, impersonatingId]);
 
   if (isListLoading) {
     return (

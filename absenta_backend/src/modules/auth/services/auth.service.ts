@@ -967,12 +967,29 @@ export class AuthService {
     if (response.role?.name === 'SISWA') {
       const student = await prisma.siswa.findFirst({
         where: { user_id: user.id },
-        select: { id: true, kelas_id: true, Kelas: { select: { nama_kelas: true } } }
+        select: {
+          id: true,
+          nis: true,
+          nisn: true,
+          nama_siswa: true,
+          foto: true,
+          kelas_id: true,
+          Kelas: { select: { id: true, nama_kelas: true, tingkat: true } }
+        }
       });
       if (student) {
         response.siswa_id = student.id;
         (response as any).kelas_id = student.kelas_id;
         (response as any).kelas_nama = student.Kelas?.nama_kelas;
+        (response as any).siswa_profile = {
+          id: student.id,
+          nis: student.nis,
+          nisn: student.nisn,
+          nama_siswa: student.nama_siswa,
+          foto: student.foto,
+          nama_kelas: student.Kelas?.nama_kelas,
+          tingkat: student.Kelas?.tingkat
+        };
       }
     }
 

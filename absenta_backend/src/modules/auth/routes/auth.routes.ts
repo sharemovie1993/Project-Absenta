@@ -234,6 +234,12 @@ export async function authRoutes(fastify: any) {
     handler: authController.impersonateGuru.bind(authController),
   });
 
+  // Impersonate Siswa (Login Sebagai Siswa) - requires authentication and academic.students.manage (Admin only)
+  fastify.post('/impersonate-siswa', {
+    preHandler: [requireCapability('academic.students.manage'), determineDataScope()],
+    handler: authController.impersonateSiswa.bind(authController),
+  });
+
   // Logout - requires authentication
   fastify.post('/logout', {
     preHandler: [requireCapability('core.auth.logout'), determineDataScope()],

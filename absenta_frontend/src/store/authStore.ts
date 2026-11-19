@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { login, getCurrentUser, refreshToken, impersonateGuru } from '../api/auth.api';
+import { login, getCurrentUser, refreshToken, impersonateGuru, impersonateSiswa } from '../api/auth.api';
 import { completeOnboarding } from '../api/user.api';
 import { getMyTenant } from '../api/tenants.api';
 import { getMySubscription } from '../api/subscription.api';
@@ -109,6 +109,7 @@ interface AuthState {
   closeSubscriptionIssueModal: () => void;
   refreshSubscription: () => Promise<void>;
   impersonateGuruAction: (guruId: string) => Promise<boolean>;
+  impersonateSiswaAction: (siswaId: string) => Promise<boolean>;
   revertImpersonationAction: () => Promise<void>;
 }
 
@@ -573,6 +574,85 @@ export const useAuthStore = create<AuthState>()(
           return true;
         } catch (err: any) {
           set({ isLoading: false, error: err.message || 'Gagal login sebagai guru' });
+          throw err;
+        }
+      },
+
+      // Impersonate Siswa Action (Login Sebagai Siswa)
+      impersonateSiswaAction: async (siswaId: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const currentToken = get().token || localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          const currentRefreshToken = get().refreshToken || localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+          const currentUser = get().user;
+          const currentTenantId = get().tenantId;
+
+          if (!currentToken || !currentUser) {
+            throw new Error('Sesi Administrator tidak ditemukan. Silakan login kembali.');
+          }
+
+          const response = await impersonateSiswa(siswaId);
+          if (!response.success || !response.data) {
+            throw new Error(response.message || 'Gagal login sebagai siswa');
+          }
+
+          const { user: studentUser, token: studentToken, refreshToken: studentRefreshToken, impersonator } = response.data;
+
+          // Cadangkan sesi Admin asli ke localStorage jika belum ada
+          const existingBackup = localStorage.getItem('absenta_original_admin_session');
+          if (!existingBackup) {
+            const adminSessionBackup = {
+              token: currentToken,
+              refreshToken: currentRefreshToken,
+              user: currentUser,
+              tenantId: currentTenantId,
+              impersonator: impersonator || {
+                id: currentUser.id,
+                name: currentUser.full_name || currentUser.name,
+                email: currentUser.email,
+                role: currentUser.role?.name
+              },
+              impersonatedAt: new Date().toISOString()
+            };
+            localStorage.setItem('absenta_original_admin_session', JSON.stringify(adminSessionBackup));
+          }
+
+          // Pasang kredensial siswa baru
+          localStorage.setItem('access_token', studentToken);
+          if (studentRefreshToken) {
+            localStorage.setItem('refresh_token', studentRefreshToken);
+          }
+          if (studentUser.tenant_id) {
+            localStorage.setItem('tenant_id', studentUser.tenant_id);
+          }
+
+          set({
+            user: studentUser,
+            token: studentToken,
+            refreshToken: studentRefreshToken || null,
+            tenantId: studentUser.tenant_id || null,
+            tenantMode: (studentUser as any)?.tenant?.absensi_mode ?? null,
+            hasCompletedOnboarding: (studentUser as any).has_completed_onboarding ?? true,
+            isAuthenticated: true,
+            isImpersonating: true,
+            isLoading: false
+          });
+
+          // 🧹 Dual-Layer Cache Clearance
+          try {
+            await queryClient.cancelQueries();
+          } catch {}
+          queryClient.clear();
+          try {
+            sessionStorage.removeItem('portal_active_ws');
+            sessionStorage.removeItem('absenta_nav_state');
+            sessionStorage.removeItem('active_dashboard_tab');
+            localStorage.removeItem('absenta_nav_state');
+          } catch {}
+
+          return true;
+        } catch (err: any) {
+          set({ isLoading: false, error: err.message || 'Gagal login sebagai siswa' });
           throw err;
         }
       },

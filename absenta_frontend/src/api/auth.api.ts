@@ -234,4 +234,25 @@ export async function impersonateGuru(guruId: string): Promise<ImpersonateGuruRe
   return res.data;
 }
 
+export interface ImpersonateSiswaResponse {
+  success: boolean;
+  message: string;
+  data: {
+    user: any;
+    token: string;
+    refreshToken: string;
+    impersonator: {
+      id: string;
+      email?: string;
+      name?: string;
+      role?: string;
+    };
+  };
+}
+
+export async function impersonateSiswa(siswaId: string): Promise<ImpersonateSiswaResponse> {
+  const res = await axios.post('/auth/impersonate-siswa', { siswaId });
+  return res.data;
+}
+
 

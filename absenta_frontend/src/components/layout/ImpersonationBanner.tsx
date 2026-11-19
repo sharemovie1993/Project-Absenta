@@ -26,9 +26,12 @@ export const ImpersonationBanner: React.FC = () => {
   }
 
   const adminName = originalSession?.impersonator?.name || originalSession?.user?.full_name || 'Admin';
-  const teacherName = user?.full_name || user?.name || 'Guru';
-  const teacherNip = user?.guru_profile?.nip || '';
-  const teacherRole = user?.role?.name || 'GURU';
+  const roleName = String(user?.role?.name || '').toUpperCase();
+  const isSiswa = roleName === 'SISWA' || Boolean((user as any)?.siswa_id) || Boolean((user as any)?.siswa_profile);
+  const targetName = user?.full_name || user?.name || (isSiswa ? 'Siswa' : 'Guru');
+  const guruNip = (user as any)?.guru_profile?.nip || '';
+  const siswaNis = (user as any)?.siswa_profile?.nis || (user as any)?.nis || '';
+  const siswaKelas = (user as any)?.siswa_profile?.nama_kelas || (user as any)?.kelas_nama || '';
 
   const handleRevert = async () => {
     try {
@@ -45,7 +48,7 @@ export const ImpersonationBanner: React.FC = () => {
   return (
     <div className="sticky top-14 lg:top-16 z-30 mb-3 -mt-1 sm:-mt-0 rounded-2xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white shadow-lg border border-amber-400/40 px-3.5 sm:px-5 py-2.5 sm:py-3 animate-in slide-in-from-top-3 duration-300">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        {/* Sisi Kiri: Status Impersonasi & Profil Guru */}
+        {/* Sisi Kiri: Status Impersonasi & Profil Pengguna */}
         <div className="flex items-start sm:items-center gap-3 min-w-0">
           <div className="p-2 bg-white/20 backdrop-blur-xs rounded-xl shrink-0 shadow-inner mt-0.5 sm:mt-0">
             <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
@@ -54,18 +57,22 @@ export const ImpersonationBanner: React.FC = () => {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/25 text-amber-100 border border-white/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Mode Impersonasi Guru
+                {isSiswa ? 'Mode Impersonasi Siswa' : 'Mode Impersonasi Guru'}
               </span>
               <span className="text-[11px] text-amber-100/90 font-medium hidden sm:inline">
                 (Login oleh Admin: <strong className="text-white">{adminName}</strong>)
               </span>
             </div>
             <div className="text-xs sm:text-sm font-medium text-white/95 truncate mt-0.5">
-              Anda sedang melihat sistem sebagai: <strong className="font-black text-amber-100 underline decoration-amber-300 underline-offset-2">{teacherName}</strong>
-              {teacherNip ? (
-                <span className="text-xs text-amber-200/90 ml-1.5 font-mono">[{teacherNip}]</span>
+              Anda sedang melihat sistem sebagai: <strong className="font-black text-amber-100 underline decoration-amber-300 underline-offset-2">{targetName}</strong>
+              {isSiswa ? (
+                <span className="text-xs text-amber-200/90 ml-1.5 font-mono">
+                  [{siswaNis ? `NIS: ${siswaNis}` : 'Siswa'}{siswaKelas ? ` • ${siswaKelas}` : ''}]
+                </span>
+              ) : guruNip ? (
+                <span className="text-xs text-amber-200/90 ml-1.5 font-mono">[{guruNip}]</span>
               ) : (
-                <span className="text-xs text-amber-200/90 ml-1.5">({teacherRole})</span>
+                <span className="text-xs text-amber-200/90 ml-1.5">({roleName || 'Guru'})</span>
               )}
             </div>
           </div>

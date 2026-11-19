@@ -889,6 +889,250 @@ async impersonate(request: any, reply: any) {
       });
     }
   },
+  async impersonateSiswa(request: any, reply: any) {
+    try {
+      const caller = request.user;
+      if (!caller) {
+        reply.status(401);
+        return { success: false, message: 'Tidak terotentikasi' };
+      }
+
+      const callerRole = String(caller.roleName || caller.Role?.name || caller.role?.name || '').toUpperCase();
+      if (callerRole !== 'SUPERADMIN' && callerRole !== 'ADMIN') {
+        reply.status(403);
+        return { success: false, message: 'Hanya Administrator yang memiliki akses login sebagai siswa' };
+      }
+
+      // Cegah impersonasi bertingkat
+      if (caller.is_impersonated) {
+        reply.status(400);
+        return { success: false, message: 'Tidak dapat melakukan impersonasi saat berada di sesi impersonasi' };
+      }
+
+      const { siswa_id, siswaId } = request.body || {};
+      const targetSiswaId = String(siswa_id || siswaId || '').trim();
+      if (!targetSiswaId) {
+        reply.status(400);
+        return { success: false, message: 'ID Siswa target wajib dikirim' };
+      }
+
+      // 1. Dapatkan data siswa target
+      const siswa = await prisma.siswa.findUnique({
+        where: { id: targetSiswaId },
+        include: {
+          Kelas: { select: { id: true, nama_kelas: true } },
+          User: {
+            include: {
+              Role: {
+                include: {
+                  rolePermissions: {
+                    include: { Permission: true }
+                  }
+                }
+              }
+            }
+          },
+          Tenant: {
+            select: {
+              id: true,
+              name: true,
+              subdomain: true,
+              custom_domain: true,
+              status: true,
+              absensi_mode: true
+            }
+          }
+        }
+      });
+
+      if (!siswa) {
+        reply.status(404);
+        return { success: false, message: 'Data siswa tidak ditemukan' };
+      }
+
+      // 2. Tenant isolation check: Caller harus satu tenant dengan siswa, kecuali SUPERADMIN
+      const callerTenantId = caller.tenantId || caller.tenant_id;
+      if (callerRole !== 'SUPERADMIN' && callerTenantId && callerTenantId !== siswa.tenant_id) {
+        reply.status(403);
+        return { success: false, message: 'Anda tidak memiliki hak akses ke siswa di tenant ini' };
+      }
+
+      if (siswa.status === 'KELUAR' || siswa.status === 'LULUS' || siswa.status === 'ALUMNI') {
+        reply.status(400);
+        return { success: false, message: `Tidak dapat login sebagai siswa dengan status ${siswa.status}` };
+      }
+
+      // 3. Validasi atau Buat otomatis akun user siswa jika belum ada
+      let targetUser = siswa.User;
+      if (!targetUser) {
+        // Temukan Role SISWA di tenant ini atau sistem
+        const siswaRole = await prisma.role.findFirst({
+          where: {
+            name: 'SISWA',
+            OR: [
+              { tenant_id: siswa.tenant_id },
+              { tenant_id: null }
+            ]
+          }
+        });
+
+        if (!siswaRole) {
+          reply.status(500);
+          return { success: false, message: 'Role SISWA belum terkonfigurasi di sistem' };
+        }
+
+        const cleanNisn = siswa.nisn ? String(siswa.nisn).trim() : '';
+        const cleanNis = siswa.nis ? String(siswa.nis).trim() : '';
+        const emailPrefix = cleanNisn || cleanNis || siswa.id.slice(0, 8);
+        const baseEmail = `${emailPrefix}@absenta.id`;
+
+        const existingEmail = await prisma.user.findFirst({
+          where: { email: baseEmail }
+        });
+        const finalEmail = existingEmail ? `siswa.${siswa.id.slice(0, 8)}@absenta.id` : baseEmail;
+
+        const defaultPassword = await bcrypt.hash(cleanNisn || cleanNis || 'siswa123', 12);
+        targetUser = await prisma.user.create({
+          data: {
+            email: finalEmail,
+            full_name: siswa.nama_siswa,
+            password: defaultPassword,
+            role_id: siswaRole.id,
+            tenant_id: siswa.tenant_id,
+          },
+          include: {
+            Role: {
+              include: {
+                rolePermissions: {
+                  include: { Permission: true }
+                }
+              }
+            }
+          }
+        });
+
+        // Link siswa ke user baru
+        await prisma.siswa.update({
+          where: { id: siswa.id },
+          data: { user_id: targetUser.id }
+        });
+      }
+
+      if (targetUser.status === 'INACTIVE') {
+        reply.status(400);
+        return { success: false, message: 'Akun siswa ini dalam status dinonaktifkan' };
+      }
+
+      const targetRoleName = String(targetUser.Role?.name || '').toUpperCase();
+      if (targetRoleName === 'SUPERADMIN') {
+        reply.status(403);
+        return { success: false, message: 'Tidak diizinkan login sebagai SUPERADMIN' };
+      }
+
+      // 4. Invalidate cache organisasi dan Redis cache
+      try {
+        await organizationalContextCache.invalidateUser(targetUser.id);
+        await cacheInvalidationService.invalidateUserCache(targetUser.tenant_id, targetUser.id);
+      } catch {}
+
+      // 5. Bangun userResponse lengkap menggunakan authService.getUserById
+      const userResponse = await authService.getUserById(targetUser.id, targetUser.tenant_id);
+      if (!userResponse) {
+        reply.status(500);
+        return { success: false, message: 'Gagal memuat profil pengguna siswa' };
+      }
+
+      const impersonatorInfo = {
+        id: caller.id,
+        email: caller.email,
+        name: caller.name || caller.full_name || 'Admin',
+        role: callerRole
+      };
+
+      (userResponse as any).is_impersonated = true;
+      (userResponse as any).impersonator = impersonatorInfo;
+
+      // 6. Generate JWT token akses (masa aktif 1 jam untuk impersonasi pengawasan)
+      const tokenPayload = {
+        id: targetUser.id,
+        email: targetUser.email,
+        full_name: targetUser.full_name,
+        name: targetUser.full_name,
+        tenantId: targetUser.tenant_id,
+        roleId: targetUser.Role.id,
+        roleName: targetUser.Role.name,
+        is_impersonated: true,
+        impersonator_id: caller.id,
+        impersonator_name: caller.name || caller.full_name,
+        impersonator_role: callerRole,
+        exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 jam
+      };
+      const token = jwt.sign(tokenPayload, getJwtSecret());
+
+      // Generate refresh token
+      let refreshToken = '';
+      try {
+        const deviceHint = `Student Impersonation by ${caller.email || caller.id}`;
+        refreshToken = await refreshTokenService.createRefreshToken(
+          targetUser.id,
+          targetUser.tenant_id || 'system',
+          deviceHint,
+          1 // 1 hari
+        );
+      } catch {
+        refreshToken = jwt.sign({
+          id: targetUser.id,
+          tenantId: targetUser.tenant_id,
+          is_impersonated: true,
+          exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
+        }, getJwtSecret());
+      }
+
+      // 7. Catat audit activity log
+      try {
+        await prisma.activityLog.create({
+          data: {
+            tenant_id: targetUser.tenant_id || 'system',
+            user_id: caller.id,
+            action: 'ADMIN_IMPERSONATE_STUDENT',
+            entity: 'SISWA',
+            entity_id: siswa.id,
+            metadata: JSON.stringify({
+              admin_id: caller.id,
+              admin_email: caller.email,
+              admin_name: caller.name || caller.full_name,
+              siswa_id: siswa.id,
+              siswa_nama: siswa.nama_siswa,
+              siswa_nis: siswa.nis,
+              siswa_nisn: siswa.nisn,
+              target_user_id: targetUser.id,
+              target_user_email: targetUser.email,
+              request_ip: request.ip
+            })
+          }
+        });
+      } catch (logErr) {
+        console.error('[ImpersonateSiswa] Failed to log activity:', logErr);
+      }
+
+      return reply.status(200).send({
+        success: true,
+        message: `Berhasil login sebagai ${siswa.nama_siswa}`,
+        data: {
+          user: userResponse,
+          token,
+          refreshToken,
+          impersonator: impersonatorInfo
+        }
+      });
+    } catch (error: any) {
+      console.error('Error in impersonateSiswa controller:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error.message || 'Internal server error'
+      });
+    }
+  },
 async changePassword(request: any, reply: any) {
     try {
       const userPayload = request.user;

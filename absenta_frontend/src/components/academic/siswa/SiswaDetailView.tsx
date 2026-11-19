@@ -28,8 +28,13 @@ import {
   CreditCard,
   Building2,
   Send,
-  HeartHandshake
+  HeartHandshake,
+  LogIn
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import useConfirm from '../../../hooks/useConfirm';
+import { useCapabilities } from '../../../hooks/useCapabilities';
+import { useAuthStore } from '../../../store/authStore';
 import { Button, Modal, SearchableSelect, Input, Label, Textarea, Loader } from '../../ui';
 import { toast } from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -158,6 +163,13 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+  const confirm = useConfirm();
+  const { isAdmin } = useCapabilities();
+  const { user, isImpersonating, impersonateSiswaAction } = useAuthStore();
+  const isSuperAdmin = user?.role?.name === 'SUPERADMIN' || user?.tenant_id === 'system';
+  const canImpersonate = (isAdmin || isSuperAdmin) && !isImpersonating;
+  const [isImpersonatingThis, setIsImpersonatingThis] = useState(false);
 
   // Fetch Siswa Detail
   const { data: siswa, isLoading, refetch, isFetching } = useQuery({
@@ -533,6 +545,48 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
   const namaKelas = studentIdentity.namaKelas;
   const namaJurusan = studentIdentity.jurusanNama;
 
+  const handleImpersonate = useCallback(async () => {
+    if (!siswa) return;
+    try {
+      const ok = await confirm({
+        title: `Login Sebagai ${siswa.nama_siswa}?`,
+        description: (
+          <div className="space-y-3">
+            <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl flex items-start gap-3">
+              <div className="bg-indigo-600 text-white p-2 rounded-xl shrink-0 shadow-sm">
+                <LogIn size={20} />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-black text-indigo-950 dark:text-indigo-200">
+                  Mode Pengawasan Impersonasi Siswa
+                </p>
+                <p className="text-[11px] text-indigo-800 dark:text-indigo-300 leading-relaxed">
+                  Anda akan masuk ke dalam sistem sebagai <strong>{siswa.nama_siswa}</strong> ({siswa.nis ? `NIS: ${siswa.nis}` : 'Siswa'}{namaKelas ? ` • ${namaKelas}` : ''}). Anda dapat memeriksa dashboard siswa, jadwal KBM, kartu ujian, presensi, dan simulasi CBT dari sudut pandang siswa tersebut.
+                </p>
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
+              💡 <strong>Tips:</strong> Anda dapat kembali ke akun Administrator kapan saja menggunakan tombol di banner oranye pada bagian atas layar.
+            </div>
+          </div>
+        ),
+        confirmText: 'Ya, Login Sebagai Siswa',
+        cancelText: 'Batal'
+      });
+
+      if (!ok) return;
+
+      setIsImpersonatingThis(true);
+      await impersonateSiswaAction(siswa.id);
+      toast.success(`Berhasil login sebagai ${siswa.nama_siswa}`);
+      navigate('/dashboard');
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal login sebagai siswa');
+    } finally {
+      setIsImpersonatingThis(false);
+    }
+  }, [confirm, impersonateSiswaAction, navigate, siswa, namaKelas]);
+
   const alamatLengkapFormatted = formatAlamatLengkap({
     alamat: editAlamat,
     rt: editRt,
@@ -583,6 +637,23 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {canImpersonate && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleImpersonate}
+              disabled={isImpersonatingThis}
+              className="h-9 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border-indigo-200 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100 dark:border-indigo-800 dark:text-indigo-300 dark:bg-indigo-950/30 cursor-pointer"
+              title={`Login sebagai ${siswa.nama_siswa} (Khusus Administrator)`}
+            >
+              {isImpersonatingThis ? (
+                <Loader size="sm" className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <LogIn size={14} />
+              )}
+              <span className="hidden sm:inline">Login Sebagai Siswa</span>
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
