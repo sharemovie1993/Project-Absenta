@@ -9,6 +9,13 @@ export enum ModuleCapability {
   HUBIN = 'HUBIN',
   SARPRAS = 'SARPRAS',
   WHATSAPP = 'WHATSAPP',
+  CBT = 'CBT',
+  EASY_TUNNEL = 'EASY_TUNNEL',
+  KESISWAAN = 'KESISWAAN',
+  ACADEMIC = 'ACADEMIC',
+  KURIKULUM = 'KURIKULUM',
+  PAKET_LENGKAP = 'PAKET_LENGKAP',
+  ALL_IN_ONE = 'ALL-IN-ONE',
 }
 
 export const DEFAULT_CAPABILITIES: ModuleCapability[] = [ModuleCapability.CORE];

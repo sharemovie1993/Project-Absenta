@@ -344,7 +344,6 @@ export async function registerRoutes(fastify: any, prisma: any) {
       });
 
       fastify.get('/me/subscription', {
-        preHandler: [requireCapability('billing.my.subscription.view')],
         handler: async (request: any, reply: any) => {
           const { mySubscriptionController } = await import('../modules/billing/controllers/my-subscription.controller');
           return mySubscriptionController.getSubscription(request, reply);

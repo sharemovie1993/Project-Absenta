@@ -55,7 +55,7 @@ export default function PremiumFeatureGate({
     (subscription as any)?.end_date && new Date((subscription as any).end_date) < new Date()
   );
 
-  const isPaketLengkap = useMemo(() => isSubscriptionPaketLengkap(subscription), [subscription]);
+  const isPaketLengkap = useMemo(() => isSubscriptionPaketLengkap(subscription, user), [subscription, user]);
 
   // Cek child subscriptions yang punya modul ini tapi expired
   const subs: any[] =
@@ -98,7 +98,7 @@ export default function PremiumFeatureGate({
   // Catatan: Jika tenant berlangganan PAKET LENGKAP atau role adalah Admin, jangan pernah di-lock secara salah
   const isLocked =
     propIsLocked !== undefined
-      ? (isPaketLengkap || isAdmin ? false : propIsLocked)
+      ? (isPaketLengkap || isAdmin || isModuleAllowed ? false : propIsLocked)
       : !isModuleAllowed || (isStatusExpired && !isAdmin) || (isPastEndDate && !isAdmin) || hasExpiredChildSub;
 
   // Detect EXPIRED (pernah berlangganan tapi habis / status expired) vs TRIAL (belum pernah)

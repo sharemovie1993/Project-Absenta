@@ -6,7 +6,7 @@ export async function mySubscriptionRoutes(fastify: any) {
   fastify.get(
     '/',
     {
-      preHandler: [requireCapability("billing.my.subscription.view"), determineDataScope()]
+      preHandler: [determineDataScope()]
     },
     mySubscriptionController.getSubscription
   );

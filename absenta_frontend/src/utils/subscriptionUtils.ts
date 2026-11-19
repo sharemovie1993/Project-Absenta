@@ -4,10 +4,12 @@
  * konsisten di seluruh aplikasi tanpa false-lock / false-preview.
  */
 
+import { useAuthStore } from '../store/authStore';
+
 export const MODULE_ALIASES: Record<string, string[]> = {
   ABSENSI: ['ABSENSI', 'ATTENDANCE', 'ATTENDANCE_OPS', 'ABSENSI-MULTI_SESI', 'ABSENSI-SIMPLE', 'PRESENSI'],
   ATTENDANCE: ['ABSENSI', 'ATTENDANCE', 'ATTENDANCE_OPS', 'ABSENSI-MULTI_SESI', 'ABSENSI-SIMPLE', 'PRESENSI'],
-  ATTENDANCE_OPS: ['ABSENSI', 'ATTENDANCE', 'ATTENDANCE_OPS', 'ABSENSI-MULTI_SESI', 'ABSENSI-SIMPLE'],
+  ATTENDANCE_OPS: ['ABSENSI', 'ATTENDANCE', 'ATTENDANCE_OPS', 'ABSENSI-MULTI_SESI', 'ABSENSI-SIMPLE', 'PRESENSI'],
   KOPERASI: ['KOPERASI', 'COOPERATIVE', 'COOP', 'KOPERASI_SEKOLAH'],
   COOPERATIVE: ['KOPERASI', 'COOPERATIVE', 'COOP', 'KOPERASI_SEKOLAH'],
   COOP: ['KOPERASI', 'COOPERATIVE', 'COOP', 'KOPERASI_SEKOLAH'],
@@ -32,26 +34,45 @@ export const MODULE_ALIASES: Record<string, string[]> = {
 /**
  * Cek apakah langganan tenant adalah PAKET LENGKAP / ALL-IN-ONE
  */
-export function isSubscriptionPaketLengkap(subscription: any): boolean {
-  if (!subscription) return false;
+export function isSubscriptionPaketLengkap(subscription?: any, user?: any): boolean {
+  const sub = subscription || useAuthStore.getState().subscription;
+  const u = user || useAuthStore.getState().user;
+
+  // 1. Cek dari user features (disediakan langsung oleh /auth/me untuk seluruh staf/admin)
+  const userFeatures = u?.features || [];
+  if (Array.isArray(userFeatures)) {
+    const hasPaketLengkapFeature = userFeatures.some((f: any) => {
+      const uf = String(f).toUpperCase();
+      return (
+        uf === 'PAKET_LENGKAP' ||
+        uf === 'ALL-IN-ONE' ||
+        uf.includes('PAKET LENGKAP') ||
+        uf.includes('AKSES SELURUH MODUL')
+      );
+    });
+    if (hasPaketLengkapFeature) return true;
+  }
+
+  if (!sub) return false;
 
   const planName = String(
-    subscription?.Plan?.name ||
-    subscription?.plan?.name ||
-    subscription?.plan_name ||
+    sub?.Plan?.name ||
+    sub?.plan?.name ||
+    sub?.plan_name ||
+    sub?.package_name ||
     ''
   ).toUpperCase();
 
   const serviceCode = String(
-    subscription?.service_code ||
-    subscription?.Plan?.service_code ||
-    subscription?.plan_snapshot?.service_code ||
+    sub?.service_code ||
+    sub?.Plan?.service_code ||
+    sub?.plan_snapshot?.service_code ||
     ''
   ).toUpperCase();
 
   const moduleId = String(
-    subscription?.Plan?.module_id ||
-    subscription?.plan_snapshot?.module_id ||
+    sub?.Plan?.module_id ||
+    sub?.plan_snapshot?.module_id ||
     ''
   ).toUpperCase();
 
@@ -64,12 +85,12 @@ export function isSubscriptionPaketLengkap(subscription: any): boolean {
     return true;
   }
 
-  // Cek features list
+  // Cek features list pada subscription
   const features =
-    subscription?.features ||
-    subscription?.Plan?.features_json ||
-    subscription?.plan?.features_json ||
-    subscription?.plan_snapshot?.features_json ||
+    sub?.features ||
+    sub?.Plan?.features_json ||
+    sub?.plan?.features_json ||
+    sub?.plan_snapshot?.features_json ||
     [];
 
   if (Array.isArray(features)) {
@@ -86,10 +107,10 @@ export function isSubscriptionPaketLengkap(subscription: any): boolean {
   }
 
   // Cek child subscriptions
-  const childSubs: any[] = subscription?.subscriptions || [];
+  const childSubs: any[] = sub?.subscriptions || [];
   if (Array.isArray(childSubs)) {
     const hasChildPaketLengkap = childSubs.some((s: any) => {
-      const sName = String(s?.Plan?.name || s?.plan?.name || '').toUpperCase();
+      const sName = String(s?.Plan?.name || s?.plan?.name || s?.plan_name || '').toUpperCase();
       const sCode = String(s?.service_code || s?.Plan?.service_code || '').toUpperCase();
       const sStatus = String(s?.status || '').toUpperCase();
       const isActive = ['ACTIVE', 'TRIAL'].includes(sStatus);
@@ -105,13 +126,16 @@ export function isSubscriptionPaketLengkap(subscription: any): boolean {
  * Cek apakah modul tertentu terbuka (unlocked) untuk tenant
  */
 export function isModuleUnlocked(
-  subscription: any,
-  moduleCode: string,
+  subscription?: any,
+  moduleCode?: string,
   user?: any
 ): boolean {
+  const effectiveUser = user || useAuthStore.getState().user;
+  const effectiveSub = subscription || useAuthStore.getState().subscription;
+
   // 1. Role Admin / Superadmin selalu full akses
-  const role = String(user?.roleName || user?.role?.name || '').toUpperCase();
-  if (role.includes('ADMIN') || role === 'SUPERADMIN') {
+  const role = String(effectiveUser?.roleName || effectiveUser?.role?.name || '').toUpperCase();
+  if (role.includes('ADMIN') || role === 'SUPERADMIN' || role.startsWith('PLATFORM_') || effectiveUser?.tenant_id === 'system') {
     return true;
   }
 
@@ -122,8 +146,8 @@ export function isModuleUnlocked(
   }
 
   // 3. Jika berlangganan PAKET LENGKAP yang masih aktif -> SELURUH MODUL TERBUKA
-  if (isSubscriptionPaketLengkap(subscription)) {
-    const subStatus = String(subscription?.status || '').toUpperCase();
+  if (isSubscriptionPaketLengkap(effectiveSub, effectiveUser)) {
+    const subStatus = String(effectiveSub?.status || effectiveUser?.subscription_status || '').toUpperCase();
     const expiredStatuses = ['EXPIRED', 'CANCELLED', 'CANCELED', 'SUSPENDED', 'INACTIVE'];
     if (!expiredStatuses.includes(subStatus)) {
       return true;
@@ -140,18 +164,18 @@ export function isModuleUnlocked(
     }
   };
 
-  addFeatures(user?.features);
-  addFeatures(subscription?.features);
-  addFeatures(subscription?.Plan?.features_json);
-  addFeatures(subscription?.plan?.features_json);
-  addFeatures(subscription?.plan_snapshot?.features_json);
+  addFeatures(effectiveUser?.features);
+  addFeatures(effectiveSub?.features);
+  addFeatures(effectiveSub?.Plan?.features_json);
+  addFeatures(effectiveSub?.plan?.features_json);
+  addFeatures(effectiveSub?.plan_snapshot?.features_json);
 
   // Injek service code utama
-  if (subscription?.service_code) featurePool.push(String(subscription.service_code).toUpperCase());
-  if (subscription?.Plan?.service_code) featurePool.push(String(subscription.Plan.service_code).toUpperCase());
+  if (effectiveSub?.service_code) featurePool.push(String(effectiveSub.service_code).toUpperCase());
+  if (effectiveSub?.Plan?.service_code) featurePool.push(String(effectiveSub.Plan.service_code).toUpperCase());
 
   // Injek child subscriptions yang berstatus ACTIVE / TRIAL
-  const childSubs: any[] = subscription?.subscriptions || user?.subscriptions || [];
+  const childSubs: any[] = effectiveSub?.subscriptions || effectiveUser?.subscriptions || [];
   if (Array.isArray(childSubs)) {
     childSubs.forEach((s: any) => {
       const sStatus = String(s?.status || '').toUpperCase();
@@ -162,6 +186,15 @@ export function isModuleUnlocked(
         addFeatures(s?.plan_snapshot?.features_json);
       }
     });
+  }
+
+  // Jika featurePool memiliki penanda PAKET LENGKAP -> SELURUH MODUL TERBUKA
+  if (
+    featurePool.includes('PAKET_LENGKAP') ||
+    featurePool.includes('ALL-IN-ONE') ||
+    featurePool.some(f => f.includes('PAKET LENGKAP') || f.includes('AKSES SELURUH MODUL'))
+  ) {
+    return true;
   }
 
   // 5. Cek kecocokan modul & alias
