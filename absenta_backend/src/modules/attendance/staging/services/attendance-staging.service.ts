@@ -364,7 +364,7 @@ export class AttendanceStagingService {
             (student.nama ? studentMapByName.get(student.nama.toUpperCase().replace(/[^A-Z0-9]/g, '')) : undefined);
           if (!studentInfo) continue; // Lewati siswa yang tidak terdaftar di database
 
-          const status = student.attendance[`${sess.dateIso}_${sess.sessionCode}`] || 'HADIR';
+          const status = student.attendance[`${sess.dateIso}_${sess.sessionCode}`] || 'ALPA';
 
           const existingAbsen = await tx.absenSiswa.findFirst({
             where: {

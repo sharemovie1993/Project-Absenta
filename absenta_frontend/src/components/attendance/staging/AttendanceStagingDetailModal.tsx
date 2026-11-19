@@ -327,7 +327,7 @@ export const AttendanceStagingDetailModal: React.FC<AttendanceStagingDetailModal
                           </div>
                         </td>
                         {sessions.map((sess, sIdx) => {
-                          const status = st.attendance[`${sess.dateIso}_${sess.sessionCode}`] || 'HADIR';
+                          const status = st.attendance[`${sess.dateIso}_${sess.sessionCode}`] || 'ALPA';
                           return (
                             <td key={sIdx} className="p-1.5 text-center border-l border-slate-100 dark:border-slate-800">
                               <span

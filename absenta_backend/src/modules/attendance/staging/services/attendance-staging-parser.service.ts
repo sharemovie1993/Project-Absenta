@@ -253,12 +253,14 @@ export class AttendanceStagingParserService {
         const attendance: Record<string, 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI'> = {};
         for (const sess of sessions) {
           const rawStatus = String(row[sess.colIndex] || '').trim().toUpperCase();
-          let status: 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI' = 'HADIR';
-          if (rawStatus === 'S') status = 'SAKIT';
+          // Kebijakan resmi: cell kosong / tanpa status dianggap ALPA
+          let status: 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI' = 'ALPA';
+          if (rawStatus === 'H') status = 'HADIR';
+          else if (rawStatus === 'S') status = 'SAKIT';
           else if (rawStatus === 'I') status = 'IZIN';
           else if (rawStatus === 'A') status = 'ALPA';
           else if (rawStatus === 'D') status = 'DISPENSASI';
-          else if (rawStatus === 'H') status = 'HADIR';
+          else status = 'ALPA';
 
           attendance[`${sess.dateIso}_${sess.sessionCode}`] = status;
         }
