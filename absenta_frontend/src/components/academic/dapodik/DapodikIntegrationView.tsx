@@ -13,7 +13,7 @@ import {
   SlidersHorizontal, Settings2,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock, Sparkles,
   Printer, Bookmark, User, ExternalLink, X, ShieldCheck, Wrench,
-  UserPlus, Edit3, LogOut, Trash2, GitCompare
+  UserPlus, Edit3, LogOut, Trash2, GitCompare, FileCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -39,6 +39,7 @@ import {
 } from '@/api/dapodik.api';
 import { DAPODIK_AUDIT_TEMPLATES, type DapodikAuditTemplate } from './dapodikAuditTemplates';
 import { DapodikBeritaAcaraPrintModal, type DapodikPrintTemplateId } from './DapodikBeritaAcaraPrintModal';
+import { DapodikWaliKelasChecklistPrintModal } from './DapodikWaliKelasChecklistPrintModal';
 import { DapodikConnectionModal } from './DapodikConnectionModal';
 import { DapodikCriteriaModal } from './DapodikCriteriaModal';
 import { DapodikRombelMappingModal } from './DapodikRombelMappingModal';
@@ -58,6 +59,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
   const [isCriteriaModalOpen, setIsCriteriaModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isWaliKelasPrintOpen, setIsWaliKelasPrintOpen] = useState(false);
   const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
   const [isLppdUsiaModalOpen, setIsLppdUsiaModalOpen] = useState(false);
   const [printModalTemplate, setPrintModalTemplate] = useState<DapodikPrintTemplateId>('rekon_absenta');
@@ -516,6 +518,19 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     return filteredStudents.slice(startIndex, endIndex);
   }, [filteredStudents, startIndex, endIndex]);
 
+  const currentDiffFilterLabel = useMemo(() => {
+    if (diffAttributeFilter === 'ANY_DIFF') return 'Semua Selisih Atribut';
+    if (diffAttributeFilter && diffAttributeStats.counts[diffAttributeFilter]) {
+      return `Beda ${diffAttributeStats.counts[diffAttributeFilter].label}`;
+    }
+    if (statusFilter === 'MISMATCH') return 'Selisih Data (MISMATCH)';
+    if (statusFilter === 'DAPODIK_ONLY') return 'Hanya Ada di Dapodik';
+    if (statusFilter === 'ABSENTA_ONLY') return 'Hanya Ada di Absenta';
+    if (statusFilter === 'MATCH') return 'Data Selaras Identik';
+    if (rombelFilter) return `Rombel ${rombelFilter}`;
+    return 'Daftar Verifikasi Data Siswa';
+  }, [diffAttributeFilter, diffAttributeStats, statusFilter, rombelFilter]);
+
   // Selection Handlers (Support Page & All)
   const isAllPageSelected = useMemo(() => {
     return (
@@ -917,6 +932,19 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 Cetak Dokumen
               </Button>
 
+              {/* Cetak Lembar Verifikasi & Ceklis Berkas Siswa untuk Wali Kelas */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsWaliKelasPrintOpen(true)}
+                disabled={!summary || isLoadingComparison || filteredStudents.length === 0}
+                className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-amber-300 dark:border-amber-700/80 bg-amber-50/70 hover:bg-amber-100 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200"
+                title="Cetak lembar verifikasi berkas dan selisih data untuk diserahkan ke Wali Kelas"
+              >
+                <FileCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span>Lembar Wali Kelas ({filteredStudents.length})</span>
+              </Button>
+
               {/* Hancurkan / Purge Cache Staging */}
               <Button
                 size="sm"
@@ -1188,17 +1216,32 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 />
               </div>
 
-              {/* Reset Filter Button */}
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 px-2 py-1 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors ml-auto"
+              {/* Tombol Aksi Filter & Cetak */}
+              <div className="flex items-center gap-2 ml-auto">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsWaliKelasPrintOpen(true)}
+                  disabled={filteredStudents.length === 0}
+                  className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-amber-300 dark:border-amber-700 bg-amber-50/70 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200"
+                  title="Cetak lembar verifikasi berkas dan selisih data untuk diserahkan ke Wali Kelas"
                 >
-                  <X className="w-3 h-3" />
-                  Reset Filter
-                </button>
-              )}
+                  <Printer className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Cetak Lembar ({filteredStudents.length})</span>
+                </Button>
+
+                {/* Reset Filter Button */}
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 px-2 py-1 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                    Reset Filter
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Quick Chips Bar: Filter Cepat Perbedaan Atribut */}
@@ -1249,6 +1292,18 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                       </button>
                     );
                   })}
+
+                {/* Quick Print Button from Chips */}
+                <button
+                  type="button"
+                  onClick={() => setIsWaliKelasPrintOpen(true)}
+                  disabled={filteredStudents.length === 0}
+                  className="ml-auto px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Cetak lembar verifikasi berkas untuk diserahkan ke Wali Kelas berdasarkan data terfilter saat ini"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak Lembar Wali Kelas ({filteredStudents.length})</span>
+                </button>
               </div>
             )}
 
@@ -1642,6 +1697,20 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
         dapodikHost={configForm.dapodik_host}
         npsn={configForm.npsn}
         lastCheckAt={comparisonData?.data?.lastCheckAt}
+        sourceMode={cacheInfo?.sourceMode || sourceMode}
+      />
+
+      {/* ─── MODAL 3B: CETAK LEMBAR VERIFIKASI WALI KELAS & CEKLIS BERKAS (PDF / A4 LANDSCAPE) ─── */}
+      <DapodikWaliKelasChecklistPrintModal
+        isOpen={isWaliKelasPrintOpen}
+        onClose={() => setIsWaliKelasPrintOpen(false)}
+        students={filteredStudents}
+        activeFilterLabel={currentDiffFilterLabel}
+        activeRombel={rombelFilter || undefined}
+        activeTingkat={tingkatFilter || undefined}
+        activeDiffAttribute={diffAttributeFilter || undefined}
+        dapodikHost={configForm.dapodik_host}
+        npsn={configForm.npsn}
         sourceMode={cacheInfo?.sourceMode || sourceMode}
       />
 
