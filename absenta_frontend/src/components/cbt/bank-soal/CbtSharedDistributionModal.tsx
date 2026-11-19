@@ -227,7 +227,7 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
             <div>
               <span className="text-slate-500 block text-[10px]">Sasaran:</span>
               <strong className="text-slate-800 dark:text-slate-200">
-                Tingkat {tingkatDisplay} {targetJurusanUpper ? `• Jurusan ${targetJurusanUpper}` : '• Semua Jurusan'}
+                Tingkat {tingkatDisplay} {targetJurusanTokens.length > 0 ? `• Jurusan ${targetJurusanTokens.join(', ')}` : '• Semua Jurusan'}
               </strong>
             </div>
             <div className="col-span-2 sm:col-span-1">

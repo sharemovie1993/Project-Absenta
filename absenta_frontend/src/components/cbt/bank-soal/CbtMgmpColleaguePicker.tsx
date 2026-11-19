@@ -156,8 +156,8 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
         <div>
           <span className="font-bold">Anda adalah satu-satunya pengampu mapel ini di {scopeLabel}.</span>
           <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
-            {targetJurusanUpper ? (
-              <>Paket Master ini khusus dialokasikan untuk seluruh rombel <strong>{targetJurusanUpper}</strong> binaan Anda tanpa membebani guru jurusan lain.</>
+            {targetJurusanTokens.length > 0 ? (
+              <>Paket Master ini khusus dialokasikan untuk seluruh rombel <strong>{targetJurusanTokens.join(', ')}</strong> binaan Anda tanpa membebani guru jurusan lain.</>
             ) : (
               <>Paket Master MGMP ini akan langsung aktif untuk seluruh rombel binaan Anda dan terdaftar di jadwal ujian sekolah.</>
             )}
