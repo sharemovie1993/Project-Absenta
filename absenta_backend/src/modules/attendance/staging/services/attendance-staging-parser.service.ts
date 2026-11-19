@@ -17,6 +17,9 @@ export interface ParsedAttendanceStudent {
   nisn: string;
   nama: string;
   attendance: Record<string, 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI'>; // key: `${dateIso}_${sessionCode}`
+  siswa_id?: string;
+  is_matched?: boolean;
+  matched_db_name?: string;
 }
 
 export interface ParsedAttendanceSheetData {
