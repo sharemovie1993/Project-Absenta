@@ -21,6 +21,10 @@ import {
   PhoneCall,
   UserCheck,
   CheckCircle2,
+  Trophy,
+  Medal,
+  Crown,
+  Search,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -41,6 +45,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import {
   getKetarunaanStats,
   type KetarunaanTrendItem,
+  type KetarunaanTarunaRankingItem,
 } from '@/api/kesiswaan/programKetarunaan.api';
 
 interface KetarunaanStatistikTabProps {
@@ -49,7 +54,15 @@ interface KetarunaanStatistikTabProps {
   semesterId?: string;
 }
 
-type RentangPreset = 'bulan_ini' | '30_hari' | 'semester' | 'semua' | 'kustom';
+type ScopePeriode = '1_tahun' | '1_semester' | '1_bulan';
+type RankingTabMode = 'global' | 'jurusan' | 'kelas';
+
+function formatBulanYm(ym: string) {
+  if (!ym || ym === 'latest_30d') return '30 Hari Aktif Terakhir';
+  const [y, m] = ym.split('-');
+  const date = new Date(Number(y), Number(m) - 1, 1);
+  return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+}
 
 function formatTanggal(d?: string) {
   if (!d) return '-';
@@ -97,39 +110,28 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
   tahunPelajaranId,
   semesterId,
 }) => {
-  const [preset, setPreset] = useState<RentangPreset>('semua');
-  const [customStart, setCustomStart] = useState<string>('');
-  const [customEnd, setCustomEnd] = useState<string>('');
+  const [scopePeriode, setScopePeriode] = useState<ScopePeriode>('1_tahun');
+  const [selectedBulanYm, setSelectedBulanYm] = useState<string>('latest_30d');
   const [showAllMeetings, setShowAllMeetings] = useState<boolean>(false);
 
-  const dateRange = useMemo(() => {
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+  // State Hall of Fame & Peringkat Taruna Terbaik
+  const [rankingTab, setRankingTab] = useState<RankingTabMode>('global');
+  const [selectedRankingJurusanId, setSelectedRankingJurusanId] = useState<string>('ALL');
+  const [selectedRankingKelasId, setSelectedRankingKelasId] = useState<string>('ALL');
+  const [rankingSearch, setRankingSearch] = useState<string>('');
 
-    if (preset === 'bulan_ini') {
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      return { tanggal_mulai: firstDay, tanggal_selesai: todayStr, label: 'Bulan Ini' };
-    }
-    if (preset === '30_hari') {
-      const past30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      return { tanggal_mulai: past30, tanggal_selesai: todayStr, label: '30 Hari Terakhir' };
-    }
-    if (preset === 'semester') {
-      const past6m = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      return { tanggal_mulai: past6m, tanggal_selesai: todayStr, label: 'Semester Berjalan' };
-    }
-    if (preset === 'kustom' && customStart && customEnd) {
-      return { tanggal_mulai: customStart, tanggal_selesai: customEnd, label: `${customStart} s.d. ${customEnd}` };
-    }
-    return { tanggal_mulai: undefined, tanggal_selesai: undefined, label: 'Semua Riwayat' };
-  }, [preset, customStart, customEnd]);
+  const scopeLabel = useMemo(() => {
+    if (scopePeriode === '1_tahun') return '1 Tahun Pelajaran Penuh';
+    if (scopePeriode === '1_semester') return '1 Semester Aktif';
+    return `1 Bulan (${formatBulanYm(selectedBulanYm)})`;
+  }, [scopePeriode, selectedBulanYm]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['ketarunaan-stats', jadwalKegiatanId, dateRange.tanggal_mulai, dateRange.tanggal_selesai, tahunPelajaranId, semesterId],
+    queryKey: ['ketarunaan-stats', jadwalKegiatanId, scopePeriode, selectedBulanYm, tahunPelajaranId, semesterId],
     queryFn: () => getKetarunaanStats({
       jadwal_kegiatan_id: jadwalKegiatanId ?? undefined,
-      tanggal_mulai: dateRange.tanggal_mulai,
-      tanggal_selesai: dateRange.tanggal_selesai,
+      scope_periode: scopePeriode,
+      bulan_ym: scopePeriode === '1_bulan' ? selectedBulanYm : undefined,
       tahun_pelajaran_id: tahunPelajaranId || undefined,
       semester_id: semesterId || undefined,
     }),
@@ -146,6 +148,41 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
   const polaHari = useMemo(() => stats?.pola_hari ?? [], [stats?.pola_hari]);
   const atRiskStudents = useMemo(() => stats?.at_risk_students ?? [], [stats?.at_risk_students]);
   const barometer = stats?.barometer_sertifikasi;
+  const availableMonths = useMemo(() => stats?.available_months ?? [], [stats?.available_months]);
+  const tarunaRanking = stats?.taruna_ranking;
+
+  // Daftar taruna yang ditampilkan di tabel Peringkat sesuai tab & filter
+  const activeRankingRows = useMemo<KetarunaanTarunaRankingItem[]>(() => {
+    if (!tarunaRanking) return [];
+    let list: KetarunaanTarunaRankingItem[] = [];
+    if (rankingTab === 'global') {
+      list = tarunaRanking.top_global ?? [];
+    } else if (rankingTab === 'jurusan') {
+      if (selectedRankingJurusanId === 'ALL') {
+        list = tarunaRanking.best_per_jurusan ?? [];
+      } else {
+        list = tarunaRanking.top_by_jurusan?.[selectedRankingJurusanId] ?? [];
+      }
+    } else {
+      if (selectedRankingKelasId === 'ALL') {
+        list = tarunaRanking.best_per_kelas ?? [];
+      } else {
+        list = tarunaRanking.top_by_kelas?.[selectedRankingKelasId] ?? [];
+      }
+    }
+
+    if (rankingSearch.trim()) {
+      const q = rankingSearch.trim().toLowerCase();
+      list = list.filter(
+        (s) =>
+          s.nama_siswa.toLowerCase().includes(q) ||
+          s.nis.toLowerCase().includes(q) ||
+          s.nama_kelas.toLowerCase().includes(q) ||
+          s.nama_jurusan.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [tarunaRanking, rankingTab, selectedRankingJurusanId, selectedRankingKelasId, rankingSearch]);
 
   // Transform Data untuk Chart Recharts
   const chartTrendData = useMemo(() => {
@@ -195,49 +232,89 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      {/* FILTER BAR RENTANG WAKTU: Ringkas, Elegan, Bebas Noise */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-            <Calendar className="w-4 h-4" />
+      {/* FILTER BAR SCOPE DATA KETARUNAAN: 1 Tahun, 1 Semester, 1 Bulan */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                Scope Data &amp; Periode Evaluasi Ketarunaan
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Cakupan analitik &amp; peringkat aktif: <strong className="text-amber-600 dark:text-amber-400">{scopeLabel}</strong>
+                {ringkasan?.tanggal_mulai && ringkasan?.tanggal_selesai && (
+                  <span className="ml-1.5 text-[11px] text-slate-400">
+                    ({formatTanggal(ringkasan.tanggal_mulai)} – {formatTanggal(ringkasan.tanggal_selesai)})
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
-          <div>
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-              Rentang Waktu Laporan Ketarunaan
-            </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Menampilkan performa kehadiran: <strong className="text-amber-600 dark:text-amber-400">{dateRange.label}</strong>
-            </p>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {([
+              { id: '1_tahun', label: 'Scope 1 Tahun' },
+              { id: '1_semester', label: 'Scope 1 Semester' },
+              { id: '1_bulan', label: 'Scope 1 Bulan' },
+            ] as Array<{ id: ScopePeriode; label: string }>).map((p) => {
+              const isActive = scopePeriode === p.id;
+              return (
+                <Button
+                  key={p.id}
+                  size="sm"
+                  variant={isActive ? 'default' : 'outline'}
+                  onClick={() => setScopePeriode(p.id)}
+                  className={`h-8 px-3.5 text-xs font-bold rounded-xl transition-all ${
+                    isActive
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300'
+                  }`}
+                >
+                  {p.label}
+                </Button>
+              );
+            })}
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {(['bulan_ini', '30_hari', 'semester', 'semua'] as RentangPreset[]).map((p) => {
-            const labels: Record<RentangPreset, string> = {
-              bulan_ini: 'Bulan Ini',
-              '30_hari': '30 Hari Terakhir',
-              semester: 'Semester Ini',
-              semua: 'Semua Riwayat',
-              kustom: 'Kustom',
-            };
-            const isActive = preset === p;
-            return (
-              <Button
-                key={p}
-                size="sm"
-                variant={isActive ? 'default' : 'outline'}
-                onClick={() => setPreset(p)}
-                className={`h-8 px-3 text-xs font-bold rounded-xl transition-all ${
-                  isActive
-                    ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm'
-                    : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300'
+        {/* Sub-pilihan Bulan saat Scope 1 Bulan aktif */}
+        {scopePeriode === '1_bulan' && (
+          <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+              Pilih Bulan Pelaksanaan:
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setSelectedBulanYm('latest_30d')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                  selectedBulanYm === 'latest_30d'
+                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300'
                 }`}
               >
-                {labels[p]}
-              </Button>
-            );
-          })}
-        </div>
+                30 Hari Aktif Terakhir
+              </button>
+              {availableMonths.map((ym) => (
+                <button
+                  key={ym}
+                  type="button"
+                  onClick={() => setSelectedBulanYm(ym)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    selectedBulanYm === ym
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300'
+                  }`}
+                >
+                  {formatBulanYm(ym)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {isLoading ? (
@@ -255,15 +332,15 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
             Belum Ada Sesi Pertemuan Pada Periode Ini
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-4">
-            Tidak ada rekaman sesi Program Ketarunaan pada rentang waktu {dateRange.label}. Pilih rentang waktu lain atau buka 'Semua Riwayat' untuk melihat rekapitulasi data.
+            Tidak ada rekaman sesi Program Ketarunaan pada cakupan {scopeLabel}. Pilih cakupan 1 Tahun untuk melihat keseluruhan riwayat.
           </p>
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setPreset('semua')}
+            onClick={() => setScopePeriode('1_tahun')}
             className="text-xs font-bold border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300"
           >
-            Tampilkan Semua Riwayat
+            Tampilkan Scope 1 Tahun
           </Button>
         </div>
       ) : (
@@ -655,6 +732,314 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                   <strong>Insight Kesiswaan:</strong> Optimalkan patroli pembina dan gerbang kedisiplinan pada hari dengan tingkat kehadiran &lt;70% untuk menekan tingkat alpa apel pagi.
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+          {/* [WIDGET 5B] HALL OF FAME & PERINGKAT TARUNA TERBAIK (GLOBAL, JURUSAN, KELAS)     */}
+          {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-5">
+            {/* Header & Dimensi Peringkat */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-200/60 dark:border-amber-800/50">
+                  <Trophy className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
+                      Peringkat &amp; Hall of Fame Taruna Terbaik
+                    </h4>
+                    <Badge variant="warning" className="text-[10px] font-bold">
+                      {scopeLabel}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Pemeringkatan komposit berdasarkan Indeks Kehadiran Ketarunaan (85%) &amp; Konsistensi Apel Pendukung Upacara/Sore (15%)
+                  </p>
+                </div>
+              </div>
+
+              {/* Tab Switcher Dimensi Ranking: Global, Jurusan, Kelas */}
+              <div className="flex items-center gap-1.5 bg-slate-100/80 dark:bg-slate-800/70 p-1 rounded-xl self-start lg:self-auto flex-wrap">
+                {([
+                  { id: 'global', label: '🏆 Terbaik Global (Sekolah)' },
+                  { id: 'jurusan', label: '🛡️ Terbaik Jurusan (Kompi)' },
+                  { id: 'kelas', label: '🎖️ Terbaik Kelas (Peleton)' },
+                ] as Array<{ id: RankingTabMode; label: string }>).map((tab) => {
+                  const active = rankingTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setRankingTab(tab.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        active
+                          ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Sub-Filter Bar: Pilihan Jurusan / Pilihan Kelas + Pencarian */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {rankingTab === 'global' && (
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                    <Crown className="w-3.5 h-3.5 text-amber-500" />
+                    Menampilkan Top 20 Taruna Terbaik Tingkat Sekolah (Lintas Seluruh Jurusan &amp; Kelas)
+                  </span>
+                )}
+
+                {rankingTab === 'jurusan' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRankingJurusanId('ALL')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        selectedRankingJurusanId === 'ALL'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      Semua Jurusan (Juara #1 Tiap Jurusan)
+                    </button>
+                    {byJurusan.map((j) => (
+                      <button
+                        key={j.jurusan_id}
+                        type="button"
+                        onClick={() => setSelectedRankingJurusanId(j.jurusan_id)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                          selectedRankingJurusanId === j.jurusan_id
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        {j.nama_jurusan}
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {rankingTab === 'kelas' && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Filter Rombel:</span>
+                    <select
+                      value={selectedRankingKelasId}
+                      onChange={(e) => setSelectedRankingKelasId(e.target.value)}
+                      className="h-8 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    >
+                      <option value="ALL">🌟 Semua Rombel (Juara #1 Tiap Kelas/Peleton)</option>
+                      {kelasList
+                        .filter((k) => (k.total || 0) > 0)
+                        .sort((a, b) => a.kelas_nama.localeCompare(b.kelas_nama))
+                        .map((k) => (
+                          <option key={k.kelas_id} value={k.kelas_id}>
+                            Top 10 Kelas {k.kelas_nama}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Kotak Pencarian Cepat Taruna */}
+              <div className="relative w-full sm:w-64 shrink-0">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={rankingSearch}
+                  onChange={(e) => setRankingSearch(e.target.value)}
+                  placeholder="Cari nama taruna, NIS, kelas..."
+                  className="w-full h-8 pl-8 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+            </div>
+
+            {/* Podium Top 3 Global (Tampil saat di tab Global & tidak sedang mencari) */}
+            {rankingTab === 'global' && !rankingSearch.trim() && activeRankingRows.length >= 3 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
+                {activeRankingRows.slice(0, 3).map((st, idx) => {
+                  const isFirst = idx === 0;
+                  const isSecond = idx === 1;
+                  return (
+                    <div
+                      key={st.siswa_id}
+                      className={`p-4 rounded-2xl border relative overflow-hidden transition-all ${
+                        isFirst
+                          ? 'bg-gradient-to-br from-amber-50/90 via-yellow-50/50 to-white dark:from-amber-950/40 dark:via-slate-900 dark:to-slate-900 border-amber-300 dark:border-amber-700 shadow-sm'
+                          : isSecond
+                          ? 'bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900 border-slate-300 dark:border-slate-700'
+                          : 'bg-gradient-to-br from-orange-50/50 to-white dark:from-orange-950/20 dark:to-slate-900 border-orange-200 dark:border-orange-800/60'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-8 h-8 rounded-xl font-black text-xs flex items-center justify-center shrink-0 ${
+                              isFirst
+                                ? 'bg-amber-500 text-white shadow-xs'
+                                : isSecond
+                                ? 'bg-slate-400 text-white'
+                                : 'bg-orange-500 text-white'
+                            }`}
+                          >
+                            #{idx + 1}
+                          </span>
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
+                              {isFirst ? 'Juara 1 Umum Sekolah' : isSecond ? 'Juara 2 Umum Sekolah' : 'Juara 3 Umum Sekolah'}
+                            </span>
+                            <h5 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white line-clamp-1" title={st.nama_siswa}>
+                              {st.nama_siswa}
+                            </h5>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-base font-black text-emerald-600 dark:text-emerald-400 block leading-none">
+                            {st.skor_disiplin}
+                          </span>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase">Poin</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="outline" className="text-[10px] font-bold">
+                            {st.nama_kelas}
+                          </Badge>
+                          <span className="text-slate-400">•</span>
+                          <span className="text-slate-500 dark:text-slate-400 font-semibold">NIS: {st.nis}</span>
+                        </div>
+                        <span className="font-black text-emerald-600 dark:text-emerald-400">
+                          {st.hadir}/{st.total_sesi} Hadir ({st.persen_hadir}%)
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Tabel Peringkat Taruna */}
+            <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-50/70 dark:bg-slate-800/40">
+                    <th className="py-3 px-4 w-16 text-center">Rank</th>
+                    <th className="py-3 px-4">Identitas Taruna</th>
+                    <th className="py-3 px-4">Rombel &amp; Jurusan</th>
+                    <th className="py-3 px-4 text-center">Hadir Ketarunaan</th>
+                    <th className="py-3 px-4 text-center">Apel Pendukung</th>
+                    <th className="py-3 px-4 text-center">Rincian (H/D/S/I/A)</th>
+                    <th className="py-3 px-4 text-center">Skor Disiplin</th>
+                    <th className="py-3 px-4 text-right">Predikat</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                  {activeRankingRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-slate-400">
+                        Tidak ditemukan data peringkat taruna yang sesuai filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    activeRankingRows.map((row, idx) => {
+                      const displayRank =
+                        (rankingTab === 'jurusan' && selectedRankingJurusanId === 'ALL') ||
+                        (rankingTab === 'kelas' && selectedRankingKelasId === 'ALL')
+                          ? idx + 1
+                          : row.rank || idx + 1;
+
+                      return (
+                        <tr
+                          key={`${row.siswa_id}_${idx}`}
+                          className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
+                        >
+                          <td className="py-3 px-4 text-center">
+                            <span
+                              className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-black ${
+                                displayRank === 1
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                  : displayRank === 2
+                                  ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
+                                  : displayRank === 3
+                                  ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300'
+                                  : 'text-slate-500 font-bold'
+                              }`}
+                            >
+                              #{displayRank}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-black text-slate-800 dark:text-slate-100">{row.nama_siswa}</div>
+                            <div className="text-[10px] text-slate-400">NIS: {row.nis}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-slate-700 dark:text-slate-200">{row.nama_kelas}</span>
+                              <Badge variant="outline" className="text-[10px]">
+                                {row.nama_jurusan}
+                              </Badge>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="font-black text-emerald-600 dark:text-emerald-400">
+                              {row.persen_hadir}%
+                            </span>
+                            <span className="block text-[10px] text-slate-400">
+                              {row.hadir}/{row.total_sesi} Sesi
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="font-bold text-blue-600 dark:text-blue-400">
+                              {row.persen_apel_pendukung}%
+                            </span>
+                            <span className="block text-[10px] text-slate-400">Upacara &amp; Sore</span>
+                          </td>
+                          <td className="py-3 px-4 text-center font-mono text-[11px]">
+                            <span className="text-emerald-600 font-bold">{row.hadir}H</span>
+                            {' / '}
+                            <span className="text-purple-600">{row.dispensasi}D</span>
+                            {' / '}
+                            <span className="text-amber-600">{row.sakit}S</span>
+                            {' / '}
+                            <span className="text-blue-600">{row.izin}I</span>
+                            {' / '}
+                            <span className={row.alpa > 0 ? 'text-rose-600 font-black' : 'text-slate-400'}>
+                              {row.alpa}A
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-black text-xs">
+                              {row.skor_disiplin}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <Badge
+                              variant={
+                                row.predikat === 'Bintang Taruna Utama'
+                                  ? 'success'
+                                  : row.predikat === 'Taruna Teladan'
+                                  ? 'info'
+                                  : 'neutral'
+                              }
+                              className="text-[10px]"
+                            >
+                              {row.predikat}
+                            </Badge>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 

@@ -16,6 +16,7 @@ import {
   type UnifiedRfidTapResponse,
   type UnifiedStatsResponse,
   type UnifiedTrendItem,
+  type UnifiedTarunaRankingItem,
   type UnifiedLaporanTimRow,
   type UnifiedLaporanKelasRow,
 } from '../attendance/unifiedKegiatan.api';
@@ -30,6 +31,7 @@ export type TapKetarunaanRfidPayload = UnifiedRfidTapPayload;
 export type TapKetarunaanRfidResponse = UnifiedRfidTapResponse;
 export type KetarunaanStatsResponse = UnifiedStatsResponse;
 export type KetarunaanTrendItem = UnifiedTrendItem;
+export type KetarunaanTarunaRankingItem = UnifiedTarunaRankingItem;
 export type KetarunaanLaporanTimRow = UnifiedLaporanTimRow;
 export type KetarunaanLaporanKelasRow = UnifiedLaporanKelasRow;
 
@@ -68,6 +70,8 @@ export async function getKetarunaanStats(params?: {
   jadwal_kegiatan_id?: string;
   tanggal_mulai?: string;
   tanggal_selesai?: string;
+  scope_periode?: '1_tahun' | '1_semester' | '1_bulan' | 'kustom';
+  bulan_ym?: string;
   limit?: number;
 }): Promise<KetarunaanStatsResponse> {
   return getUnifiedStats({ ...params, jenis_kegiatan: 'KETARUNAAN' });

@@ -853,10 +853,12 @@ export class UnifiedKegiatanService {
     jenis_kegiatan?: string;
     tanggal_mulai?: string;
     tanggal_selesai?: string;
+    scope_periode?: '1_tahun' | '1_semester' | '1_bulan' | 'kustom';
+    bulan_ym?: string;
   }) {
     const jenis = params?.jenis_kegiatan || 'KETARUNAAN';
 
-    const sesiWhere: any = {
+    const baseSesiWhere: any = {
       tenant_id: tenantId,
       OR: [
         { jenis_kegiatan: { contains: jenis, mode: 'insensitive' } },
@@ -871,23 +873,14 @@ export class UnifiedKegiatanService {
         });
 
     if (activeTp?.id) {
-      sesiWhere.tahun_pelajaran_id = activeTp.id;
+      baseSesiWhere.tahun_pelajaran_id = activeTp.id;
     }
     if (params?.jadwal_kegiatan_id) {
-      sesiWhere.jadwal_kegiatan_id = params.jadwal_kegiatan_id;
-    }
-    if (params?.tanggal_mulai || params?.tanggal_selesai) {
-      sesiWhere.tanggal = {};
-      if (params.tanggal_mulai) {
-        sesiWhere.tanggal.gte = new Date(`${params.tanggal_mulai}T00:00:00.000Z`);
-      }
-      if (params.tanggal_selesai) {
-        sesiWhere.tanggal.lte = new Date(`${params.tanggal_selesai}T23:59:59.999Z`);
-      }
+      baseSesiWhere.jadwal_kegiatan_id = params.jadwal_kegiatan_id;
     }
 
-    const sesiListRaw = await prisma.sesiAbsensi.findMany({
-      where: sesiWhere,
+    const allYearSesiRaw = await prisma.sesiAbsensi.findMany({
+      where: baseSesiWhere,
       include: {
         _count: {
           select: {
@@ -900,10 +893,57 @@ export class UnifiedKegiatanService {
     });
 
     // Saring keluar sesi placeholder/template MENDATANG yang belum pernah dieksekusi (0 AbsenSiswa & 0 AbsenGuru)
-    const executedSesiList = sesiListRaw.filter(
+    const allExecutedYearSesi = allYearSesiRaw.filter(
       (s) => !(s.status === 'MENDATANG' && s._count.AbsenSiswa === 0 && s._count.AbsenGuru === 0)
     );
-    const sesiList = executedSesiList.length > 0 ? executedSesiList : sesiListRaw;
+    const basePool = allExecutedYearSesi.length > 0 ? allExecutedYearSesi : allYearSesiRaw;
+
+    // Daftar bulan unik yang memiliki sesi terlaksana (misal ['2026-10', '2026-09'])
+    const availableMonthsSet = new Set<string>();
+    for (const s of basePool) {
+      availableMonthsSet.add(s.tanggal.toISOString().slice(0, 7));
+    }
+    const available_months = Array.from(availableMonthsSet).sort().reverse();
+
+    // Terapkan filter Scope Periode (1 Tahun / 1 Semester / 1 Bulan / Kustom)
+    let sesiList = [...basePool];
+    const scope = params?.scope_periode;
+
+    if (scope === '1_semester') {
+      const targetSemId = params?.semester_id
+        ? params.semester_id
+        : (await prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }))?.id;
+      if (targetSemId) {
+        const semFiltered = sesiList.filter((s) => s.semester_id === targetSemId);
+        if (semFiltered.length > 0) sesiList = semFiltered;
+      }
+    } else if (scope === '1_bulan') {
+      if (params?.bulan_ym && params.bulan_ym !== 'latest_30d') {
+        sesiList = sesiList.filter((s) => s.tanggal.toISOString().slice(0, 7) === params.bulan_ym);
+      } else if (sesiList.length > 0) {
+        const maxDateMs = sesiList[sesiList.length - 1].tanggal.getTime();
+        const minDateMs = maxDateMs - 30 * 24 * 3600 * 1000;
+        sesiList = sesiList.filter((s) => {
+          const t = s.tanggal.getTime();
+          return t >= minDateMs && t <= maxDateMs;
+        });
+      }
+    } else if (params?.tanggal_mulai || params?.tanggal_selesai) {
+      const gteMs = params.tanggal_mulai ? new Date(`${params.tanggal_mulai}T00:00:00.000Z`).getTime() : 0;
+      const lteMs = params.tanggal_selesai ? new Date(`${params.tanggal_selesai}T23:59:59.999Z`).getTime() : Number.MAX_SAFE_INTEGER;
+      const dateFiltered = sesiList.filter((s) => {
+        const t = s.tanggal.getTime();
+        return t >= gteMs && t <= lteMs;
+      });
+      if (dateFiltered.length > 0 || scope === 'kustom') {
+        sesiList = dateFiltered;
+      } else if (sesiList.length > 0) {
+        // Fallback cerdas: jika preset 30 hari dari jam sistem kosong karena sesi terakhir >30 hari lalu, ambil 30 hari dari sesi terakhir
+        const maxDateMs = sesiList[sesiList.length - 1].tanggal.getTime();
+        const minDateMs = maxDateMs - 30 * 24 * 3600 * 1000;
+        sesiList = sesiList.filter((s) => s.tanggal.getTime() >= minDateMs && s.tanggal.getTime() <= maxDateMs);
+      }
+    }
 
     const totalSiswaMaster = await prisma.siswaAkademik.count({
       where: {
@@ -949,6 +989,14 @@ export class UnifiedKegiatanService {
           siap_sertifikasi: 0,
           butuh_pembinaan: 0,
           persen_kelayakan: 0,
+        },
+        available_months,
+        taruna_ranking: {
+          top_global: [],
+          best_per_jurusan: [],
+          top_by_jurusan: {},
+          best_per_kelas: [],
+          top_by_kelas: {},
         },
       };
     }
@@ -1308,6 +1356,208 @@ export class UnifiedKegiatanService {
       persen_kelayakan: totalStudentsTarget > 0 ? Math.round((siapSertifikasi / totalStudentsTarget) * 100) : 0,
     };
 
+    // ── ANALITIK TAMBAHAN 6: Hall of Fame & Peringkat Taruna Terbaik (Global, Per Jurusan, Per Kelas) ──
+    const ketStudentStatusRaw = await prisma.absenSiswa.groupBy({
+      by: ['siswa_id', 'status'],
+      where: {
+        sesi_id: { in: sesiIds },
+        tenant_id: tenantId,
+      },
+      _count: { id: true },
+    });
+
+    const ketStudentMap = new Map<string, { HADIR: number; DISPENSASI: number; SAKIT: number; IZIN: number; ALPA: number; total: number }>();
+    for (const row of ketStudentStatusRaw) {
+      if (!row.siswa_id) continue;
+      const cur = ketStudentMap.get(row.siswa_id) || { HADIR: 0, DISPENSASI: 0, SAKIT: 0, IZIN: 0, ALPA: 0, total: 0 };
+      if (row.status in cur) {
+        (cur as any)[row.status] += row._count.id;
+      }
+      cur.total += row._count.id;
+      ketStudentMap.set(row.siswa_id, cur);
+    }
+
+    // Ambil data apel pendukung (Upacara, Dhuha, Apel Sore) pada periode yang sama sebagai Tie-Breaker objektif
+    const minPeriodeDate = sesiList[0]?.tanggal;
+    const maxPeriodeDate = sesiList[sesiList.length - 1]?.tanggal;
+    const supSesiList = await prisma.sesiAbsensi.findMany({
+      where: {
+        tenant_id: tenantId,
+        status: 'SELESAI',
+        ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
+        ...(minPeriodeDate && maxPeriodeDate
+          ? {
+              tanggal: {
+                gte: new Date(minPeriodeDate.getTime() - 12 * 3600 * 1000),
+                lte: new Date(maxPeriodeDate.getTime() + 12 * 3600 * 1000),
+              },
+            }
+          : {}),
+        jenis_kegiatan: { in: ['UPACARA', 'Upacara', 'APEL_SORE', 'Apel Pulang', 'DUHA', 'Duha'] },
+      },
+      select: { id: true },
+    });
+    const supSesiIds = supSesiList.map((s) => s.id);
+    const supStudentMap = new Map<string, { HADIR: number; DISPENSASI: number; SAKIT: number; IZIN: number; ALPA: number; total: number }>();
+    if (supSesiIds.length > 0) {
+      const supRaw = await prisma.absenSiswa.groupBy({
+        by: ['siswa_id', 'status'],
+        where: { tenant_id: tenantId, sesi_id: { in: supSesiIds } },
+        _count: { id: true },
+      });
+      for (const row of supRaw) {
+        if (!row.siswa_id) continue;
+        const cur = supStudentMap.get(row.siswa_id) || { HADIR: 0, DISPENSASI: 0, SAKIT: 0, IZIN: 0, ALPA: 0, total: 0 };
+        if (row.status in cur) {
+          (cur as any)[row.status] += row._count.id;
+        }
+        cur.total += row._count.id;
+        supStudentMap.set(row.siswa_id, cur);
+      }
+    }
+
+    const allRankedIds = Array.from(ketStudentMap.keys());
+    const rankedProfiles = await prisma.siswa.findMany({
+      where: { id: { in: allRankedIds } },
+      select: {
+        id: true,
+        nama_siswa: true,
+        nis: true,
+        kelas_id: true,
+        SiswaAkademik: {
+          where: activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : { status: 'AKTIF' },
+          take: 1,
+          select: { kelas_id: true },
+        },
+      },
+    });
+
+    const kelasLookup = new Map(allKelas.map((k) => [k.id, k]));
+    const jurusanLookup = new Map(allJurusan.map((j) => [j.id, j.singkatan || j.kode || j.nama]));
+
+    const allRankedStudents: Array<any> = [];
+    for (const prof of rankedProfiles) {
+      const ks = ketStudentMap.get(prof.id);
+      if (!ks || ks.total === 0) continue;
+
+      const resolvedKelasId = prof.SiswaAkademik?.[0]?.kelas_id || prof.kelas_id || '';
+      const kInfo = kelasLookup.get(resolvedKelasId);
+      const resolvedJurusanId = kInfo?.jurusan_id || 'OTHER';
+      const namaJurusan = jurusanLookup.get(resolvedJurusanId) || 'Umum';
+      const namaKelas = kInfo?.nama_kelas || '-';
+
+      const persenHadir = Math.min(100, Math.round(((ks.HADIR + ks.DISPENSASI) / ks.total) * 100));
+      const ketScore = Math.max(
+        0,
+        Math.min(
+          100,
+          (ks.HADIR * 100 + ks.DISPENSASI * 85 + ks.SAKIT * 40 + ks.IZIN * 30 - ks.ALPA * 25) / ks.total
+        )
+      );
+
+      const sup = supStudentMap.get(prof.id);
+      const persenApelPendukung =
+        sup && sup.total > 0
+          ? Math.min(100, Math.round(((sup.HADIR + sup.DISPENSASI) / sup.total) * 100))
+          : persenHadir;
+      const supScore =
+        sup && sup.total > 0
+          ? Math.max(
+              0,
+              Math.min(
+                100,
+                (sup.HADIR * 100 + sup.DISPENSASI * 85 + sup.SAKIT * 40 + sup.IZIN * 30 - sup.ALPA * 20) / sup.total
+              )
+            )
+          : ketScore;
+
+      const skorDisiplin = Number((ketScore * 0.85 + supScore * 0.15).toFixed(1));
+      const predikat =
+        skorDisiplin >= 95 && ks.ALPA === 0
+          ? 'Bintang Taruna Utama'
+          : skorDisiplin >= 88 && ks.ALPA === 0
+          ? 'Taruna Teladan'
+          : skorDisiplin >= 80
+          ? 'Taruna Disiplin'
+          : 'Taruna Aktif';
+
+      allRankedStudents.push({
+        rank: 0,
+        siswa_id: prof.id,
+        nama_siswa: prof.nama_siswa,
+        nis: prof.nis || '-',
+        kelas_id: resolvedKelasId,
+        nama_kelas: namaKelas,
+        jurusan_id: resolvedJurusanId,
+        nama_jurusan: namaJurusan,
+        total_sesi: ks.total,
+        hadir: ks.HADIR,
+        dispensasi: ks.DISPENSASI,
+        sakit: ks.SAKIT,
+        izin: ks.IZIN,
+        alpa: ks.ALPA,
+        persen_hadir: persenHadir,
+        persen_apel_pendukung: persenApelPendukung,
+        skor_disiplin: skorDisiplin,
+        predikat,
+      });
+    }
+
+    allRankedStudents.sort((a, b) => {
+      if (b.skor_disiplin !== a.skor_disiplin) return b.skor_disiplin - a.skor_disiplin;
+      if (b.persen_hadir !== a.persen_hadir) return b.persen_hadir - a.persen_hadir;
+      if (b.hadir !== a.hadir) return b.hadir - a.hadir;
+      if (a.alpa !== b.alpa) return a.alpa - b.alpa;
+      if (b.persen_apel_pendukung !== a.persen_apel_pendukung) return b.persen_apel_pendukung - a.persen_apel_pendukung;
+      return a.nama_siswa.localeCompare(b.nama_siswa);
+    });
+
+    const top_global = allRankedStudents.slice(0, 20).map((s, idx) => ({ ...s, rank: idx + 1 }));
+
+    const top_by_jurusan: Record<string, any[]> = {};
+    const best_per_jurusan: any[] = [];
+    for (const s of allRankedStudents) {
+      if (!s.jurusan_id) continue;
+      if (!top_by_jurusan[s.jurusan_id]) {
+        top_by_jurusan[s.jurusan_id] = [];
+      }
+      if (top_by_jurusan[s.jurusan_id].length < 10) {
+        const rankInJurusan = top_by_jurusan[s.jurusan_id].length + 1;
+        const entry = { ...s, rank: rankInJurusan };
+        top_by_jurusan[s.jurusan_id].push(entry);
+        if (rankInJurusan === 1) {
+          best_per_jurusan.push(entry);
+        }
+      }
+    }
+    best_per_jurusan.sort((a, b) => b.skor_disiplin - a.skor_disiplin || b.persen_hadir - a.persen_hadir);
+
+    const top_by_kelas: Record<string, any[]> = {};
+    const best_per_kelas: any[] = [];
+    for (const s of allRankedStudents) {
+      if (!s.kelas_id) continue;
+      if (!top_by_kelas[s.kelas_id]) {
+        top_by_kelas[s.kelas_id] = [];
+      }
+      if (top_by_kelas[s.kelas_id].length < 10) {
+        const rankInKelas = top_by_kelas[s.kelas_id].length + 1;
+        const entry = { ...s, rank: rankInKelas };
+        top_by_kelas[s.kelas_id].push(entry);
+        if (rankInKelas === 1) {
+          best_per_kelas.push(entry);
+        }
+      }
+    }
+    best_per_kelas.sort((a, b) => b.skor_disiplin - a.skor_disiplin || a.nama_kelas.localeCompare(b.nama_kelas));
+
+    const taruna_ranking = {
+      top_global,
+      best_per_jurusan,
+      top_by_jurusan,
+      best_per_kelas,
+      top_by_kelas,
+    };
+
     return {
       trend,
       latest: {
@@ -1328,6 +1578,8 @@ export class UnifiedKegiatanService {
       pola_hari,
       at_risk_students,
       barometer_sertifikasi,
+      available_months,
+      taruna_ranking,
     };
   }
 

@@ -103,6 +103,27 @@ export interface UnifiedPeriodSummary {
   tanggal_selesai: string | null;
 }
 
+export interface UnifiedTarunaRankingItem {
+  rank: number;
+  siswa_id: string;
+  nama_siswa: string;
+  nis: string;
+  kelas_id: string;
+  nama_kelas: string;
+  jurusan_id: string;
+  nama_jurusan: string;
+  total_sesi: number;
+  hadir: number;
+  dispensasi: number;
+  sakit: number;
+  izin: number;
+  alpa: number;
+  persen_hadir: number;
+  persen_apel_pendukung: number;
+  skor_disiplin: number;
+  predikat: string;
+}
+
 export interface UnifiedStatsResponse {
   success: boolean;
   data: {
@@ -166,6 +187,14 @@ export interface UnifiedStatsResponse {
       siap_sertifikasi: number;
       butuh_pembinaan: number;
       persen_kelayakan: number;
+    };
+    available_months?: string[];
+    taruna_ranking?: {
+      top_global: UnifiedTarunaRankingItem[];
+      best_per_jurusan: UnifiedTarunaRankingItem[];
+      top_by_jurusan: Record<string, UnifiedTarunaRankingItem[]>;
+      best_per_kelas: UnifiedTarunaRankingItem[];
+      top_by_kelas: Record<string, UnifiedTarunaRankingItem[]>;
     };
   };
 }
@@ -345,6 +374,8 @@ export async function getUnifiedStats(params?: {
   jenis_kegiatan?: string;
   tanggal_mulai?: string;
   tanggal_selesai?: string;
+  scope_periode?: '1_tahun' | '1_semester' | '1_bulan' | 'kustom';
+  bulan_ym?: string;
   limit?: number;
 }): Promise<UnifiedStatsResponse> {
   return requestWithFallback<UnifiedStatsResponse>(
