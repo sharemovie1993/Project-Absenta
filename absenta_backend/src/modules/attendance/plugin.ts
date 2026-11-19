@@ -60,6 +60,10 @@ export default async function attendancePlugin(fastify: any) {
     const { historicalBackfillRoutes } = await import('./backfill/routes/historical-backfill.routes');
     await subFastify.register(historicalBackfillRoutes, { prefix: '/backfill' });
 
+    // 15. Attendance Staging Hub (Google Sheet Integrator)
+    const { default: attendanceStagingRoutes } = await import('./staging/routes/attendance-staging.routes');
+    await subFastify.register(attendanceStagingRoutes, { prefix: '/staging' });
+
 
     subFastify.post('/session', {
       handler: async (request: any, reply: any) => {

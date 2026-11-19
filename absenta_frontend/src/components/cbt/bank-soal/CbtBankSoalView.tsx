@@ -496,7 +496,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   }, [readOnly, currentGuruId, duplicateMutation.isPending]);
 
   return (
-    <div className="space-y-4 w-full max-w-full min-w-0">
+    <div className="space-y-4 w-full max-w-full min-w-0 pb-28 md:pb-6">
       {/* ── Banner Status Kesiapan / Bebas Tugas Bank Soal (Mode Guru) ── */}
       {!isPanitiaCbt && (
         <TeacherCbtDutyCard

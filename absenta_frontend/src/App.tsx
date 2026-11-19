@@ -191,6 +191,7 @@ const AnggotaKegiatanEskulPage = lazy(() => import('./pages/attendance/AnggotaKe
 const PetugasPage = lazy(() => import('./pages/attendance/PetugasPage'));
 const AttendanceSettingsPage = lazy(() => import('./pages/attendance/AttendanceSettingsPage'));
 const AttendanceDashboardPage = lazy(() => import('./pages/attendance/AttendanceDashboardPage'));
+const AttendanceStagingPage = lazy(() => import('./pages/attendance/AttendanceStagingPage'));
 // Removed KegiatanPage and ManualPage per deprecation request
 const StudentCardPage = lazy(() => import('./pages/academic/StudentCardPage'));
 const HomePage = lazy(() => import('./pages/public/HomePage'));
@@ -1572,6 +1573,11 @@ function App() {
                     {/* Removed deprecated attendance pages: kegiatan, manual */}
                     <Route element={<PetugasRoute />}>
                     </Route>
+                    <Route path="/attendance/staging" element={
+                      <ProtectedRoute requiredCapability={['academic.manage.academic', 'attendance.officers.manage', 'kesiswaan.schedules.manage', 'dashboard.view.kesiswaan']}>
+                        <AttendanceStagingPage />
+                      </ProtectedRoute>
+                    } />
                     <Route path="/attendance/tracking-siswa" element={
                       <ProtectedRoute requiredCapability="attendance.reports.view">
                         <TrackingSiswaPage />

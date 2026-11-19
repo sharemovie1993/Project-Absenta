@@ -378,8 +378,8 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                   Seluruh rombel binaan Anda ({items.length} mata pelajaran, {totalRombelCount} kelas) telah memiliki naskah bank soal siap pakai.
                 </p>
               ) : uncreatedDuties > 0 && onCreateBankSoal ? (
-                <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
-                  <span className="text-[10.5px] font-semibold text-rose-700 dark:text-rose-300">
+                <div className="flex items-center gap-1.5 flex-wrap overflow-x-auto no-scrollbar py-0.5 mt-1.5">
+                  <span className="text-[10.5px] font-semibold text-rose-700 dark:text-rose-300 shrink-0">
                     Aksi Cepat:
                   </span>
                   {items
@@ -389,10 +389,10 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                         key={it.key}
                         type="button"
                         onClick={() => onCreateBankSoal(it.mapelId, it.tingkatRoman, it.targetJurusan)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/60 shadow-2xs transition-all cursor-pointer group"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-[10.5px] font-bold bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/60 shadow-2xs transition-all cursor-pointer group shrink-0"
                         title={`Klik untuk buat bank soal ${it.mapelName} ${it.targetJurusan ? `Jurusan ${it.targetJurusan}` : `Tingkat ${it.tingkatRoman}`}`}
                       >
-                        <Plus size={11} className="text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform" />
+                        <Plus size={10} className="text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform" />
                         <span>
                           Buat {it.mapelName} {it.targetJurusan && it.targetJurusan !== 'UMUM' ? `(${it.targetJurusan})` : `(${it.tingkatRoman})`}
                         </span>
@@ -400,8 +400,8 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                     ))}
                 </div>
               ) : uncreatedDuties === 0 && draftDuties > 0 && onPreviewBankSoal ? (
-                <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
-                  <span className="text-[10.5px] font-semibold text-amber-700 dark:text-amber-300">
+                <div className="flex items-center gap-1.5 flex-wrap overflow-x-auto no-scrollbar py-0.5 mt-1.5">
+                  <span className="text-[10.5px] font-semibold text-amber-700 dark:text-amber-300 shrink-0">
                     Perlu Diisi:
                   </span>
                   {items
@@ -411,10 +411,10 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                         key={it.key}
                         type="button"
                         onClick={() => onPreviewBankSoal(it.bankSoal!)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/60 shadow-2xs transition-all cursor-pointer group"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-[10.5px] font-bold bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/60 shadow-2xs transition-all cursor-pointer group shrink-0"
                         title={`Klik untuk kelola butir soal ${it.mapelName}`}
                       >
-                        <FileEdit size={11} className="text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
+                        <FileEdit size={10} className="text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
                         <span>
                           Kelola Soal {it.mapelName} {it.targetJurusan && it.targetJurusan !== 'UMUM' ? `(${it.targetJurusan})` : `(${it.tingkatRoman})`}
                         </span>
@@ -698,64 +698,66 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
             </table>
           </div>
 
-          {/* Mobile Stacked Card View (Kompak & Humanis) */}
-          <div className="md:hidden space-y-2">
-            {items.map((item, idx) => {
+          {/* Mobile Stacked Card View (Kompak, Bersih & Sesuai Hirarki Desktop) */}
+          <div className="md:hidden space-y-2.5">
+            {items.map((item) => {
               const isCovered = item.status === 'COVERED_OWN' || item.status === 'COVERED_MGMP';
               const isDraft = item.status === 'DRAFT_OWN' || item.status === 'DRAFT_MGMP';
               const activeBank = item.ownBank || item.mgmpBank;
               const count = activeBank?.jumlah_soal || activeBank?._count?.Soal || 0;
               const isOwn = Boolean(item.ownBank);
-              const isSharedMgmp =
-                activeBank &&
-                (Boolean(activeBank.is_shared) ||
-                  Boolean(activeBank.Kontributor && activeBank.Kontributor.length > 0) ||
-                  Boolean(activeBank.is_kolaborasi_resmi) ||
-                  Boolean(activeBank.kolaborasi_badge));
               const recipients = resolveRecipientsForItem(item, activeBank, effectiveGuruId);
 
               return (
                 <div
                   key={item.key}
                   className={cn(
-                    'p-3 rounded-xl border text-xs space-y-2 transition-all shadow-2xs',
+                    'p-3.5 rounded-xl border text-xs space-y-2.5 transition-all shadow-2xs',
                     isCovered
                       ? 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800'
                       : isDraft
-                      ? 'bg-amber-50/30 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60'
-                      : 'bg-rose-50/30 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/60'
+                      ? 'bg-amber-50/20 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60'
+                      : 'bg-rose-50/20 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/60'
                   )}
                 >
-                  {/* Row 1: Header Mapel, Tingkat, Jurusan & Status Badge */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                      <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">
-                        {item.mapelName}
-                      </span>
-                      <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                        {item.tingkatRoman}
-                      </span>
-                      {item.targetJurusan && item.targetJurusan !== 'UMUM' && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-mono">
-                          {item.targetJurusan}
+                  {/* 1. Mata Pelajaran & Rombel Binaan + Status Badge */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
+                          {item.mapelName}
                         </span>
-                      )}
+                        <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          {item.tingkatRoman}
+                        </span>
+                        {item.targetJurusan && item.targetJurusan !== 'UMUM' && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-mono">
+                            {item.targetJurusan}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        <span className="font-medium">Kelas: </span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {item.rombelNames?.join(', ') || `Semua Rombel Tingkat ${item.tingkatRoman}`}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Status Badge */}
                     <div className="shrink-0">
                       {isCovered ? (
-                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-100/80 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-100/80 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800">
                           <CheckCircle2 size={10} />
                           <span>Siap Diuji</span>
                         </span>
                       ) : isDraft ? (
-                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-amber-800 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-950/80 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-amber-800 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-800">
                           <AlertTriangle size={10} />
                           <span>Draf (0 Soal)</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-rose-800 dark:text-rose-200 bg-rose-100/80 dark:bg-rose-950/80 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-rose-800 dark:text-rose-200 bg-rose-100/80 dark:bg-rose-950/80 px-2 py-0.5 rounded-full border border-rose-300 dark:border-rose-800">
                           <AlertCircle size={10} />
                           <span>Belum Dibuat</span>
                         </span>
@@ -763,81 +765,33 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                     </div>
                   </div>
 
-                  {/* Row 2: Kelas Binaan */}
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                    <span>Kelas: </span>
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">
-                      {item.rombelNames?.join(', ') || `Semua Rombel Tingkat ${item.tingkatRoman}`}
-                    </span>
-                  </div>
-
-                  {/* Row 3: Naskah Bank Soal & Tombol Aksi */}
-                  <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
-                    <div className="text-[11px] min-w-0 flex-1">
-                      {activeBank ? (
-                        <div>
-                          <div className="font-semibold text-slate-800 dark:text-slate-200 truncate" title={activeBank.judul}>
-                            {formatDisplayJudulBankSoal(activeBank.judul, activeBank.kode_bank, activeBank.tingkat)}
-                          </div>
-                          <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                            <span className="font-bold text-indigo-600 dark:text-indigo-400">{count} Soal</span>
-                            <span>•</span>
-                            <span>{isOwn ? 'Mandiri (Anda)' : `Oleh: ${(item.masterAuthorName || activeBank.Guru?.nama_guru || 'Rekan').split(',')[0]}`}</span>
-                          </div>
+                  {/* 2. Naskah Bank Soal Terhubung */}
+                  <div className="px-2.5 py-2 rounded-lg bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/70 space-y-1">
+                    {activeBank ? (
+                      <div>
+                        <div className="font-semibold text-slate-800 dark:text-slate-200 text-xs leading-snug line-clamp-2" title={activeBank.judul}>
+                          {formatDisplayJudulBankSoal(activeBank.judul, activeBank.kode_bank, activeBank.tingkat)}
                         </div>
-                      ) : (
-                        <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">
-                          Belum ada naskah bank soal
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Action Button */}
-                    <div className="shrink-0">
-                      {item.status === 'PENDING' && onCreateBankSoal && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() =>
-                            onCreateBankSoal(item.mapelId, item.tingkatRoman, item.targetJurusan)
-                          }
-                          className="text-[11px] h-6 px-2.5 rounded-lg bg-indigo-600 text-white font-bold flex items-center gap-1"
-                        >
-                          <Plus size={10} />
-                          <span>Buat</span>
-                        </Button>
-                      )}
-
-                      {isDraft && item.bankSoal && onPreviewBankSoal && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => onPreviewBankSoal(item.bankSoal!)}
-                          className="text-[11px] h-6 px-2.5 rounded-lg bg-amber-500 text-white font-bold flex items-center gap-1"
-                        >
-                          <FileEdit size={10} />
-                          <span>Kelola</span>
-                        </Button>
-                      )}
-
-                      {isCovered && item.bankSoal && onPreviewBankSoal && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onPreviewBankSoal(item.bankSoal!)}
-                          className="text-[11px] h-6 px-2 rounded-lg text-slate-600 dark:text-slate-300 font-bold flex items-center gap-1"
-                        >
-                          <Eye size={10} />
-                          <span>Lihat</span>
-                        </Button>
-                      )}
-                    </div>
+                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
+                          <span className="font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800">
+                            {count} Soal ({count > 0 ? 'Siap' : 'Draf'})
+                          </span>
+                          <span>•</span>
+                          <span>
+                            {isOwn ? 'Mandiri (Anda)' : `MGMP (Oleh: ${(item.masterAuthorName || activeBank.Guru?.nama_guru || 'Rekan').split(',')[0]})`}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 dark:text-slate-500 italic text-[11px] block py-0.5">
+                        Belum ada naskah bank soal
+                      </span>
+                    )}
                   </div>
 
-                  {/* Row 4: Dibagikan Kepada (Clean Inline Text / Chips) */}
+                  {/* 3. Dibagikan Kepada (Rekan Penerima Langsung) */}
                   {recipients.length > 0 && (
-                    <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-1 flex-wrap text-[10px]">
+                    <div className="flex items-center gap-1 flex-wrap text-[10px] px-0.5">
                       <span className="text-slate-400 shrink-0 font-medium">Dibagikan ke:</span>
                       {recipients.map((r, rIdx) => (
                         <span
@@ -854,6 +808,48 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                       ))}
                     </div>
                   )}
+
+                  {/* 4. Aksi Baris Bawah */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+                    {item.status === 'PENDING' && onCreateBankSoal && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() =>
+                          onCreateBankSoal(item.mapelId, item.tingkatRoman, item.targetJurusan)
+                        }
+                        className="text-[11px] h-7 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1 shadow-2xs"
+                      >
+                        <Plus size={11} />
+                        <span>+ Buat Bank Soal</span>
+                      </Button>
+                    )}
+
+                    {isDraft && item.bankSoal && onPreviewBankSoal && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => onPreviewBankSoal(item.bankSoal!)}
+                        className="text-[11px] h-7 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold flex items-center gap-1 shadow-2xs"
+                      >
+                        <FileEdit size={11} />
+                        <span>Kelola Butir Soal</span>
+                      </Button>
+                    )}
+
+                    {isCovered && item.bankSoal && onPreviewBankSoal && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onPreviewBankSoal(item.bankSoal!)}
+                        className="text-[11px] h-7 px-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold flex items-center gap-1 border border-slate-200 dark:border-slate-700"
+                      >
+                        <Eye size={11} />
+                        <span>Lihat Naskah</span>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })}

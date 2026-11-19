@@ -155,6 +155,7 @@ model Tenant {
   NilaiSiswa               NilaiSiswa[]
   RaporSiswa               RaporSiswa[]
   RaporStagingSheet        RaporStagingSheet[]
+  AttendanceStagingSheet   AttendanceStagingSheet[]
   SertifikatUkk            SertifikatUkk[]
   KelulusanSiswa           KelulusanSiswa[]
   P5Projek                 P5Projek[]
@@ -4895,6 +4896,35 @@ model RaporStagingSheet {
   @@index([tenant_id, tahun_pelajaran_nama, semester])
   @@index([tenant_id, nama_kelas])
   @@map("rapor_staging_sheets")
+}
+
+model AttendanceStagingSheet {
+  id                   String    @id @default(uuid())
+  tenant_id            String
+  source_url           String    @db.Text
+  file_title           String?
+  tahun_pelajaran_id   String?
+  tahun_pelajaran_nama String?
+  semester_id          String?
+  kelas_id             String?
+  nama_kelas           String
+  sheet_name           String
+  rentang_tanggal      String?   // "12-10-2026 s/d 17-10-2026"
+  total_siswa          Int       @default(0)
+  total_matched_siswa  Int       @default(0)
+  raw_sheet_data       Json      // Structured parsed data: dates, sessions, students
+  status               String    @default("READY") // "READY", "SYNCED", "ERROR"
+  sync_summary         Json?     // Result of sync: count of Upacara, Ketarunaan, Duha, Apel Pulang sessions created
+  last_synced_at       DateTime?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([tenant_id, nama_kelas])
+  @@index([tenant_id, status])
+  @@map("attendance_staging_sheets")
 }
 
 model SertifikatUkk {
