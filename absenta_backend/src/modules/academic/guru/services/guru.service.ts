@@ -120,6 +120,8 @@ export interface PaginationParams {
   status_kepegawaian?: string;
   jenis_kelamin?: string;
   jenis_ptk?: string;
+  tahun_pelajaran_id?: string;
+  position_code?: string;
 }
 
 export interface PaginatedGuruResponse {

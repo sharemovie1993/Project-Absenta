@@ -59,6 +59,16 @@ export default async function guruRoutes(fastify: any) {
     return guruController.bulkResetPassword(request, reply);
   });
 
+  // GET /guru/positions - Get active organizational positions for filters (HARUS sebelum /:id)
+  fastify.get('/positions', {
+    preHandler: [
+      requireCapability('academic.teachers.view.list', { exemptRoles: [RoleName.SISWA] }),
+      determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return guruController.getPositions(request, reply);
+  });
+
   // GET /guru/:id - Get guru by ID
   fastify.get('/:id', {
     preHandler: [

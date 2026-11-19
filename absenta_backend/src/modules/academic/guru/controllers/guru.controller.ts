@@ -22,6 +22,48 @@ interface ApiResponse<T = any> {
 }
 
 export class GuruController {
+  async getPositions(request: any, reply: any): Promise<ApiResponse> {
+    try {
+      const tenantId = request.tenantId || request.dataScope?.tenantId;
+      if (!tenantId) {
+        reply.status(401);
+        return { success: false, message: 'Unauthorized: tenant_id tidak ditemukan.' };
+      }
+
+      const positions = await prisma.organizationalPosition.findMany({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+        },
+        orderBy: [
+          { order: 'asc' },
+          { name: 'asc' },
+        ],
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          scope_type: true,
+          order: true,
+        },
+      });
+
+      reply.status(200);
+      return {
+        success: true,
+        message: 'Daftar posisi organisasi berhasil diambil',
+        data: positions,
+      };
+    } catch (error: any) {
+      console.error('Error in getPositions guru:', error);
+      reply.status(500);
+      return {
+        success: false,
+        message: error?.message || 'Gagal mengambil daftar posisi organisasi.',
+      };
+    }
+  }
+
   async bulkResetPassword(request: any, reply: any): Promise<ApiResponse> {
     try {
       const scope = { ...request.dataScope, userId: request.user?.id || request.dataScope?.userId };
@@ -57,6 +99,8 @@ export class GuruController {
       const status_kepegawaian = request.query.status_kepegawaian || undefined;
       const jenis_kelamin = request.query.jenis_kelamin || undefined;
       const jenis_ptk = request.query.jenis_ptk || undefined;
+      const tahun_pelajaran_id = request.query.tahun_pelajaran_id || undefined;
+      const position_code = request.query.position_code || undefined;
 
       const result = await guruService.getAllGuru(scope, {
         page,
@@ -65,7 +109,9 @@ export class GuruController {
         user_id,
         status_kepegawaian,
         jenis_kelamin,
-        jenis_ptk
+        jenis_ptk,
+        tahun_pelajaran_id,
+        position_code,
       });
 
       reply.status(200);

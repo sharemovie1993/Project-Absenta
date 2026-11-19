@@ -15,10 +15,12 @@ import {
   Search,
   ChevronDown,
   Sparkles,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
+import Tooltip from '@/components/ui/Tooltip';
 import {
   getKetarunaanNilaiKelas,
   saveKetarunaanNilaiBulk,
@@ -340,9 +342,32 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Bobot: Samapta {skema?.bobot_samapta ?? 25}% • PBB {skema?.bobot_pbb ?? 20}% • Disiplin {skema?.bobot_disiplin ?? 30}% • Mental {skema?.bobot_mental ?? 25}%
-              </p>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
+                <span>
+                  Bobot: Samapta {skema?.bobot_samapta ?? 25}% • PBB {skema?.bobot_pbb ?? 20}% • Disiplin {skema?.bobot_disiplin ?? 30}% • Mental {skema?.bobot_mental ?? 25}%
+                </span>
+                <Tooltip
+                  placement="bottom"
+                  content={
+                    <div className="space-y-1.5 p-1 text-[11px] leading-relaxed text-left">
+                      <p className="font-bold text-slate-900 dark:text-white">Rumus Nilai Akhir Komposit:</p>
+                      <p className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                        (Samapta×{skema?.bobot_samapta ?? 25}% + PBB×{skema?.bobot_pbb ?? 20}% + Disiplin×{skema?.bobot_disiplin ?? 30}% + Mental×{skema?.bobot_mental ?? 25}%) / 100
+                      </p>
+                      <p className="text-slate-600 dark:text-slate-300">
+                        Mode Pelatihan: <strong className="text-slate-800 dark:text-slate-100">{skema?.mode_pelatihan === 'FULL_TARUNA' ? 'Murni Ketarunaan (Porsi Fisik/PBB 70%)' : 'Semi Ketarunaan (Porsi Sikap/Karakter 55%)'}</strong>.
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        Nilai Disiplin & Mental dapat disinkronkan otomatis dari 5 siklus presensi (Upacara, Ketarunaan Pagi, Dhuha Jum'at, dan Apel Sore).
+                      </p>
+                    </div>
+                  }
+                >
+                  <span className="text-slate-400 hover:text-indigo-500 cursor-pointer inline-flex items-center">
+                    <Info className="w-3.5 h-3.5" />
+                  </span>
+                </Tooltip>
+              </div>
             </div>
           </div>
 
@@ -484,24 +509,160 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                 <th className="py-3 px-4 w-12 text-center">No</th>
                 <th className="py-3 px-4 min-w-[200px]">Identitas Taruna</th>
                 <th className="py-3 px-3 text-center w-28">
-                  Samapta
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Samapta</span>
+                    <Tooltip
+                      placement="top"
+                      content={
+                        <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
+                          <p className="font-bold text-slate-900 dark:text-white">Kesamaptaan Jasmani</p>
+                          <p className="text-slate-600 dark:text-slate-300">
+                            <strong>Sumber Data:</strong> Pengujian fisik lapangan (Lari 12 menit, Push-up, Sit-up, Shuttle run) oleh Guru PJOK / Pelatih Taruna (Skala 0-100).
+                          </p>
+                          <p className="text-slate-500">Bobot kontribusi: <strong>{skema?.bobot_samapta ?? 25}%</strong> ke nilai akhir.</p>
+                        </div>
+                      }
+                    >
+                      <Info className="w-3 h-3 text-slate-400 hover:text-indigo-500 cursor-pointer shrink-0" />
+                    </Tooltip>
+                  </div>
                   <span className="block text-[10px] font-normal text-slate-400">({skema?.bobot_samapta ?? 25}%)</span>
                 </th>
+
                 <th className="py-3 px-3 text-center w-28">
-                  PBB
+                  <div className="flex items-center justify-center gap-1">
+                    <span>PBB</span>
+                    <Tooltip
+                      placement="top"
+                      content={
+                        <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
+                          <p className="font-bold text-slate-900 dark:text-white">Peraturan Baris-Berbaris</p>
+                          <p className="text-slate-600 dark:text-slate-300">
+                            <strong>Sumber Data:</strong> Uji unjuk formasi baris-berbaris di tempat, langkah tegap, defile, dan penghormatan oleh Instruktur Ketarunaan (Skala 0-100).
+                          </p>
+                          <p className="text-slate-500">Bobot kontribusi: <strong>{skema?.bobot_pbb ?? 20}%</strong> ke nilai akhir.</p>
+                        </div>
+                      }
+                    >
+                      <Info className="w-3 h-3 text-slate-400 hover:text-indigo-500 cursor-pointer shrink-0" />
+                    </Tooltip>
+                  </div>
                   <span className="block text-[10px] font-normal text-slate-400">({skema?.bobot_pbb ?? 20}%)</span>
                 </th>
+
                 <th className="py-3 px-3 text-center w-28">
-                  Disiplin
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Disiplin</span>
+                    <Tooltip
+                      placement="top"
+                      content={
+                        <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
+                          <p className="font-bold text-slate-900 dark:text-white">Kedisiplinan & Presensi 5 Siklus</p>
+                          <p className="text-slate-600 dark:text-slate-300">
+                            <strong>Sumber Data:</strong> Integrasi Mesin Presensi Riil dari 3 siklus: Upacara Bendera (Senin), Latihan Ketarunaan Pagi (Sel/Rab/Kam/Sab), dan Apel Pulang Sore.
+                          </p>
+                          <p className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 bg-slate-100 dark:bg-slate-900 p-1 rounded border border-slate-200 dark:border-slate-800">
+                            Rumus: (Total Hadir Disiplin / Total Sesi Terlaksana) × 100 - Penalti Terlambat
+                          </p>
+                          <p className="text-slate-500">Bobot kontribusi: <strong>{skema?.bobot_disiplin ?? 30}%</strong> ke nilai akhir.</p>
+                        </div>
+                      }
+                    >
+                      <Info className="w-3 h-3 text-slate-400 hover:text-indigo-500 cursor-pointer shrink-0" />
+                    </Tooltip>
+                  </div>
                   <span className="block text-[10px] font-normal text-slate-400">({skema?.bobot_disiplin ?? 30}%)</span>
                 </th>
+
                 <th className="py-3 px-3 text-center w-28">
-                  Mental
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Mental</span>
+                    <Tooltip
+                      placement="top"
+                      content={
+                        <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
+                          <p className="font-bold text-slate-900 dark:text-white">Mental, Karakter & Spiritual</p>
+                          <p className="text-slate-600 dark:text-slate-300">
+                            <strong>Sumber Data:</strong> Presensi Pembiasaan Ibadah Dhuha Jum'at Pagi, pembinaan etika/moral, dan loyalitas jiwa korsa taruna.
+                          </p>
+                          <p className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 bg-slate-100 dark:bg-slate-900 p-1 rounded border border-slate-200 dark:border-slate-800">
+                            Rumus: (Total Hadir Sesi Dhuha / Total Sesi Dhuha Terlaksana) × 100
+                          </p>
+                          <p className="text-slate-500">Bobot kontribusi: <strong>{skema?.bobot_mental ?? 25}%</strong> ke nilai akhir.</p>
+                        </div>
+                      }
+                    >
+                      <Info className="w-3 h-3 text-slate-400 hover:text-indigo-500 cursor-pointer shrink-0" />
+                    </Tooltip>
+                  </div>
                   <span className="block text-[10px] font-normal text-slate-400">({skema?.bobot_mental ?? 25}%)</span>
                 </th>
-                <th className="py-3 px-3 text-center w-24">Akhir</th>
-                <th className="py-3 px-3 text-center w-20">Predikat</th>
-                <th className="py-3 px-4 min-w-[260px]">Catatan Capaian Rapor</th>
+
+                <th className="py-3 px-3 text-center w-24">
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Akhir</span>
+                    <Tooltip
+                      placement="top"
+                      content={
+                        <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
+                          <p className="font-bold text-slate-900 dark:text-white">Nilai Akhir Komposit</p>
+                          <p className="text-slate-600 dark:text-slate-300">
+                            Kalkulasi gabungan 4 pilar sesuai bobot skema aktif.
+                          </p>
+                          <p className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 bg-slate-100 dark:bg-slate-900 p-1 rounded border border-slate-200 dark:border-slate-800">
+                            (Samapta×{skema?.bobot_samapta ?? 25} + PBB×{skema?.bobot_pbb ?? 20} + Disiplin×{skema?.bobot_disiplin ?? 30} + Mental×{skema?.bobot_mental ?? 25}) / 100
+                          </p>
+                        </div>
+                      }
+                    >
+                      <Info className="w-3 h-3 text-slate-400 hover:text-indigo-500 cursor-pointer shrink-0" />
+                    </Tooltip>
+                  </div>
+                </th>
+
+                <th className="py-3 px-3 text-center w-20">
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Predikat</span>
+                    <Tooltip
+                      placement="top"
+                      content={
+                        <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
+                          <p className="font-bold text-slate-900 dark:text-white">Skala Predikat Rapor</p>
+                          <ul className="list-disc list-inside space-y-0.5 text-slate-600 dark:text-slate-300 font-mono text-[10px]">
+                            <li><strong>A</strong>: Nilai Akhir ≥ 86 (Sangat Baik / Unggul)</li>
+                            <li><strong>B</strong>: Nilai Akhir 71 - 85 (Baik / Memuaskan)</li>
+                            <li><strong>C</strong>: Nilai Akhir 56 - 70 (Cukup / Standar)</li>
+                            <li><strong>D</strong>: Nilai Akhir &lt; 56 (Perlu Pembinaan)</li>
+                          </ul>
+                        </div>
+                      }
+                    >
+                      <Info className="w-3 h-3 text-slate-400 hover:text-indigo-500 cursor-pointer shrink-0" />
+                    </Tooltip>
+                  </div>
+                </th>
+
+                <th className="py-3 px-4 min-w-[260px]">
+                  <div className="flex items-center gap-1">
+                    <span>Catatan Capaian Rapor</span>
+                    <Tooltip
+                      placement="top"
+                      content={
+                        <div className="p-1.5 space-y-1 text-[11px] text-left leading-relaxed max-w-xs">
+                          <p className="font-bold text-slate-900 dark:text-white">Integrasi Rapor Kokurikuler</p>
+                          <p className="text-slate-600 dark:text-slate-300">
+                            Narasi deskriptif resmi yang otomatis digenerate berbasis predikat dan mode pelatihan (Murni / Semi).
+                          </p>
+                          <p className="text-slate-500 text-[10px]">
+                            Saat tombol <em>"Kunci & Kirim ke Rapor"</em> ditekan, narasi ini langsung diteruskan ke lembar Rapor Kokurikuler Wali Kelas.
+                          </p>
+                        </div>
+                      }
+                    >
+                      <Info className="w-3 h-3 text-slate-400 hover:text-indigo-500 cursor-pointer shrink-0" />
+                    </Tooltip>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">

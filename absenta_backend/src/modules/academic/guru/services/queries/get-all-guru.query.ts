@@ -30,6 +30,43 @@ export async function getAllGuruQuery(
     whereClause.jenis_ptk = params.jenis_ptk;
   }
 
+  // Filter by organizational position and academic year
+  if (params?.position_code && params.position_code !== 'ALL') {
+    const assignWhere: any = { is_active: true };
+    if (params.tahun_pelajaran_id && params.tahun_pelajaran_id !== 'ALL') {
+      assignWhere.OR = [
+        { tahun_pelajaran_id: params.tahun_pelajaran_id },
+        { tahun_pelajaran_id: null },
+      ];
+    }
+
+    if (params.position_code === 'HAS_ANY_POSITION') {
+      whereClause.User = {
+        ...(whereClause.User || {}),
+        organizationalAssigns: {
+          some: assignWhere,
+        },
+      };
+    } else if (params.position_code === 'NO_POSITION') {
+      whereClause.User = {
+        ...(whereClause.User || {}),
+        organizationalAssigns: {
+          none: assignWhere,
+        },
+      };
+    } else {
+      assignWhere.Position = {
+        code: params.position_code,
+      };
+      whereClause.User = {
+        ...(whereClause.User || {}),
+        organizationalAssigns: {
+          some: assignWhere,
+        },
+      };
+    }
+  }
+
   // Add search functionality
   if (params?.search) {
     const search = String(params.search || '').trim();
@@ -66,7 +103,7 @@ export async function getAllGuruQuery(
   });
 
   const totalPages = Math.ceil(total / limit);
-  const enrichedGuru = gurus.map((g) => enrichGuruWithUser(g));
+  const enrichedGuru = gurus.map((g) => enrichGuruWithUser(g, params?.tahun_pelajaran_id));
 
   return {
     data: enrichedGuru as GuruResponse[],
