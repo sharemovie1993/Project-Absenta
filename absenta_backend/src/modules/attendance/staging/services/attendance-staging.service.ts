@@ -318,13 +318,20 @@ export class AttendanceStagingService {
         const sessionType = sess.defaultType;
         const jadwalKegiatanId = jadwalMap[sessionType];
 
-        // Cari atau buat SesiAbsensi
+        const dayStart = new Date(`${sess.dateIso}T00:00:00.000+07:00`);
+        const dayEnd = new Date(`${sess.dateIso}T23:59:59.999+07:00`);
+
+        // Cari atau buat SesiAbsensi (Cari sesi yang cocok atau gunakan placeholder template yang sudah ada)
         let sesi = await tx.sesiAbsensi.findFirst({
           where: {
             tenant_id: tenantId,
             kelas_id: targetKelasId,
-            tanggal: sessionDate,
-            jenis_kegiatan: sessionType,
+            tanggal: { gte: new Date(dayStart.getTime() - 12 * 3600 * 1000), lte: new Date(dayEnd.getTime() + 12 * 3600 * 1000) },
+            OR: [
+              ...(jadwalKegiatanId ? [{ jadwal_kegiatan_id: jadwalKegiatanId }] : []),
+              { jenis_kegiatan: { equals: sessionType, mode: 'insensitive' as any } },
+              { jenis_kegiatan: { contains: sessionType, mode: 'insensitive' as any } },
+            ],
           },
         });
 
@@ -346,6 +353,16 @@ export class AttendanceStagingService {
               jadwal_kegiatan_id: jadwalKegiatanId,
               created_by_user_id: userId,
               keterangan: `Sinkronisasi Staging Backfill (${sheetRecord.file_title || 'Google Sheet'})`,
+            },
+          });
+        } else if (sesi.status !== 'SELESAI' || !sesi.jadwal_kegiatan_id) {
+          // Jika sesi template / placeholder ditemukan, aktifkan menjadi SELESAI
+          sesi = await tx.sesiAbsensi.update({
+            where: { id: sesi.id },
+            data: {
+              status: 'SELESAI',
+              jadwal_kegiatan_id: sesi.jadwal_kegiatan_id || jadwalKegiatanId,
+              keterangan: sesi.keterangan || `Sinkronisasi Staging Backfill (${sheetRecord.file_title || 'Google Sheet'})`,
             },
           });
         }
