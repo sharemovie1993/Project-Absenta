@@ -427,9 +427,9 @@ export class AttendanceStagingService {
    * Helper pencocokan 1-to-1 presisi per siswa (Bijective Priority Matching)
    * Mengatasi kasus duplikasi NISN di database master sekolah.
    * Prioritas:
-   * 1. Manual mapping (siswa_id)
-   * 2. NIS sekolah (SSOT unik siswa di sekolah)
-   * 3. Nama siswa normalisasi (huruf kapital tanpa spasi/tanda baca)
+   * 1. NIS sekolah (SSOT unik siswa di sekolah)
+   * 2. Nama siswa normalisasi (huruf kapital tanpa spasi/tanda baca)
+   * 3. Explicit manual mapping (siswa_id)
    * 4. NISN (hanya jika belum terpakai)
    */
   static matchStudentsBijective(
@@ -441,15 +441,12 @@ export class AttendanceStagingService {
   } {
     const usedDbIds = new Set<string>();
 
-    // Pass 1: Prioritas 1 & 2 (Manual siswa_id dan NIS resmi sekolah)
+    // Pass 1: Prioritas 1 -> NIS resmi sekolah
     for (const st of sheetStudents) {
       const stNis = st.nis?.trim();
       let found: any = null;
 
-      if (st.siswa_id) {
-        found = classStudents.find((sa) => !usedDbIds.has(sa.siswa_id) && sa.siswa_id === st.siswa_id);
-      }
-      if (!found && stNis) {
+      if (stNis) {
         found = classStudents.find((sa) => !usedDbIds.has(sa.siswa_id) && sa.siswa?.nis?.trim() === stNis);
       }
 
@@ -466,7 +463,7 @@ export class AttendanceStagingService {
       }
     }
 
-    // Pass 2: Prioritas 3 (Nama Siswa) untuk yang belum cocok di Pass 1
+    // Pass 2: Prioritas 2 -> Nama Siswa (Normalisasi) untuk yang belum cocok di Pass 1
     for (const st of sheetStudents) {
       if (st.is_matched && usedDbIds.has(st.siswa_id)) continue;
 
@@ -491,7 +488,26 @@ export class AttendanceStagingService {
       }
     }
 
-    // Pass 3: Prioritas 4 (NISN) untuk yang belum cocok di Pass 1 & 2
+    // Pass 3: Prioritas 3 -> Explicit Manual Mapping (siswa_id)
+    for (const st of sheetStudents) {
+      if (st.is_matched && usedDbIds.has(st.siswa_id)) continue;
+
+      let found: any = null;
+      if (st.siswa_id && !usedDbIds.has(st.siswa_id)) {
+        found = classStudents.find((sa) => !usedDbIds.has(sa.siswa_id) && sa.siswa_id === st.siswa_id);
+      }
+
+      if (found) {
+        usedDbIds.add(found.siswa_id);
+        st.siswa_id = found.siswa_id;
+        st.nis = found.siswa?.nis || st.nis;
+        st.nisn = found.siswa?.nisn || st.nisn;
+        st.is_matched = true;
+        st.matched_db_name = found.siswa?.nama_siswa;
+      }
+    }
+
+    // Pass 4: Prioritas 4 -> NISN (hanya jika belum terpakai)
     for (const st of sheetStudents) {
       if (st.is_matched && usedDbIds.has(st.siswa_id)) continue;
 
