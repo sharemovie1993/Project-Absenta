@@ -184,8 +184,6 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     }
   };
   
-  const { user } = useAuthStore();
-  
   const isFiltered = useMemo(() => {
     return searchTerm !== '' || filterStatusKepegawaian !== 'ALL' || filterGender !== 'ALL' || filterJenisPtk !== 'ALL';
   }, [searchTerm, filterStatusKepegawaian, filterGender, filterJenisPtk]);
