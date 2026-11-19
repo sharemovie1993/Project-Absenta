@@ -494,13 +494,27 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
         return bTingkat === tingkat || bTingkat === undefined;
       });
 
-      // Pisahkan bank milik guru vs bank master MGMP (hanya jika guru ini terdaftar sebagai kontributor penerima naskah)
+      // Pisahkan bank milik guru vs bank master MGMP (baik terdaftar di Kontributor maupun Master MGMP yang mencakup jurusan binaan guru)
       const ownBanks = candidateBanks.filter((b) => b.guru_id === guruId);
-      const mgmpBanks = candidateBanks.filter(
-        (b) =>
-          b.guru_id !== guruId &&
-          Boolean(b.Kontributor && b.Kontributor.some((c) => c.guru_id === guruId && c.can_edit_soal !== false))
-      );
+
+      const isColleagueMgmpBank = (b: CbtBankSoal) => {
+        if (b.guru_id === guruId) return false;
+        // Kasus 1: Terdaftar eksplisit di relasi Kontributor
+        if (b.Kontributor && b.Kontributor.some((c) => c.guru_id === guruId && c.can_edit_soal !== false)) {
+          return true;
+        }
+        // Kasus 2: Bank soal adalah Master MGMP (is_shared / ber-kode resmi) dan kontributor kosong (mencakup se-jurusan)
+        if (b.is_shared && (!b.Kontributor || b.Kontributor.length === 0)) {
+          const rawJur = (b.jurusan || '').toUpperCase().trim();
+          if (!rawJur || rawJur === 'SEMUA' || rawJur === 'UMUM') return true;
+          const tokens = rawJur.split(/[,;/|]+/).map((s) => s.trim()).filter(Boolean);
+          const myJurusans = Array.from(jurusanMap.keys()).map((k) => k.toUpperCase().trim());
+          return tokens.some((t) => myJurusans.includes(t));
+        }
+        return false;
+      };
+
+      const mgmpBanks = candidateBanks.filter(isColleagueMgmpBank);
 
       // Helper Bank Soal Umum (mencakup SEMUA jurusan / UMUM / tanpa jurusan)
       const isGeneralBank = (b: CbtBankSoal) => {

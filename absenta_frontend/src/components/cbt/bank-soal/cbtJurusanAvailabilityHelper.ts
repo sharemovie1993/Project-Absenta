@@ -18,14 +18,17 @@ export interface JurusanOccupancyResult {
 
 /**
  * Helper Evaluasi Ketersediaan Sasaran Jurusan pada Bank Soal
- * Mencegah duplikasi bank soal untuk mata pelajaran & tingkat kelas yang sama.
+ * Mencegah duplikasi bank soal untuk mata pelajaran & tingkat kelas yang sama,
+ * sekaligus mengizinkan pembagian rombel mandiri dalam 1 jurusan yang sama (misal X TKJ 1&2 oleh Bu Maya, X TKJ 3 oleh Bu Rini).
  */
 export function evaluateJurusanOccupancy(params: {
   existingBanks?: CbtBankSoal[] | null;
   currentEditingBankId?: string | null;
   targetTingkat?: string | null;
+  currentGuruId?: string | null;
+  isSharedMode?: boolean;
 }): JurusanOccupancyResult {
-  const { existingBanks, currentEditingBankId, targetTingkat } = params;
+  const { existingBanks, currentEditingBankId, targetTingkat, currentGuruId, isSharedMode } = params;
   const occupiedMap = new Map<string, OccupiedJurusanInfo>();
   let isGeneralOccupied = false;
   let generalInfo: OccupiedJurusanInfo | undefined;
@@ -51,6 +54,23 @@ export function evaluateJurusanOccupancy(params: {
     if (cleanTargetTingkat && cleanTargetTingkat !== 'SEMUA') {
       const bTingkat = (b.tingkat || '').trim().toUpperCase();
       if (bTingkat && bTingkat !== cleanTargetTingkat && bTingkat !== 'SEMUA') {
+        return;
+      }
+    }
+
+    // ATURAN ARSITEKTUR KELAS & JURUSAN:
+    // Jika sebuah bank soal adalah MANDIRI (b.is_shared === false):
+    // Bank tersebut hanya milik rombel binaan guru bersangkutan, DILARANG mengunci jurusan untuk guru lain!
+    // Contoh: Bu Maya membuat MTK A mandiri untuk X TKJ 1 & 2. Bu Rini (pengampu X TKJ 3) TIDAK BOLEH terkunci.
+    if (!b.is_shared && currentGuruId && b.guru_id !== currentGuruId) {
+      return;
+    }
+
+    // Jika guru sedang membuat paket MANDIRI (isSharedMode === false), naskah MGMP rekan tidak boleh
+    // memblokir jika guru ini memang belum ter-cover atau ingin membuat naskah mandiri untuk kelasnya
+    if (!isSharedMode && b.is_shared && currentGuruId && b.guru_id !== currentGuruId) {
+      const isExplicitContributor = (b.Kontributor || []).some((c: any) => c.guru_id === currentGuruId);
+      if (!isExplicitContributor) {
         return;
       }
     }

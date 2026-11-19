@@ -42,8 +42,13 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
     return Number(tingkat) || null;
   }, [tingkat]);
 
-  const targetJurusanUpper = useMemo(() => {
-    return (jurusan || '').toUpperCase().trim();
+  const targetJurusanTokens = useMemo(() => {
+    if (!jurusan) return [];
+    return jurusan
+      .toUpperCase()
+      .split(/[,;/|]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
   }, [jurusan]);
 
   const parallelColleagues = useMemo(() => {
@@ -71,17 +76,23 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
         return;
       }
 
-      // Filter ketat 2: Jika sasaran jurusan diisi (misal KUL / PHT / TSM),
-      // hanya sertakan guru jika mengajar rombel di jurusan tersebut!
+      // Filter ketat 2: Jika sasaran jurusan diisi (misal KUL / PHT / TSM atau multi-jurusan),
+      // hanya sertakan guru jika mengajar rombel di salah satu jurusan tersebut!
       const kName = gm.Kelas?.nama_kelas || '';
       const jName = (gm.Jurusan?.nama || '').toUpperCase();
-      const isMatchJurusan = !targetJurusanUpper || (
-        (kName && new RegExp(`\\b${targetJurusanUpper}\\b`, 'i').test(kName)) ||
-        (jName && jName.includes(targetJurusanUpper))
-      );
+      const isMatchJurusan =
+        targetJurusanTokens.length === 0 ||
+        targetJurusanTokens.includes('SEMUA') ||
+        targetJurusanTokens.includes('UMUM') ||
+        targetJurusanTokens.some((tok) => {
+          return (
+            (kName && new RegExp(`\\b${tok}\\b`, 'i').test(kName)) ||
+            (jName && jName.includes(tok))
+          );
+        });
 
       // Jika target jurusan spesifik dipilih dan guru ini sama sekali tidak mengajar di jurusan tersebut, lewati!
-      if (targetJurusanUpper && !isMatchJurusan) {
+      if (targetJurusanTokens.length > 0 && !isMatchJurusan) {
         return;
       }
 
@@ -99,13 +110,13 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
     });
 
     return Array.from(map.values());
-  }, [parallelTeachersRes?.data, currentGuruId, targetTingkatNum, targetJurusanUpper]);
+  }, [parallelTeachersRes?.data, currentGuruId, targetTingkatNum, targetJurusanTokens]);
 
   // Otomatis sinkronkan centang rekan guru saat tingkat, mapel, atau sasaran jurusan berubah
   // PENTING: Pada mode edit, JANGAN otomatis memilih semua agar penarikan share (uncheck) tidak tertimpa!
   const autoSelectedKeyRef = useRef<string>('');
   useEffect(() => {
-    const currentKey = `${mapelId}_${tingkat}_${targetJurusanUpper}`;
+    const currentKey = `${mapelId}_${tingkat}_${targetJurusanTokens.join('-')}`;
     if (autoSelectedKeyRef.current !== currentKey) {
       autoSelectedKeyRef.current = currentKey;
       if (!isEditMode) {
@@ -113,7 +124,7 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
         onChangeSelectedIds(parallelColleagues.map((c) => c.id));
       }
     }
-  }, [parallelColleagues, mapelId, tingkat, targetJurusanUpper, onChangeSelectedIds, isEditMode]);
+  }, [parallelColleagues, mapelId, tingkat, targetJurusanTokens, onChangeSelectedIds, isEditMode]);
 
   if (!mapelId) {
     return (
@@ -134,8 +145,8 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
   }
 
   const tingkatLabel = tingkat && tingkat !== 'SEMUA' ? `Tingkat ${formatTingkatRomawi(tingkat)}` : '';
-  const scopeLabel = targetJurusanUpper
-    ? `konsentrasi keahlian ${targetJurusanUpper} pada ${tingkatLabel || 'tingkat ini'}`
+  const scopeLabel = targetJurusanTokens.length > 0
+    ? `konsentrasi keahlian ${targetJurusanTokens.join(', ')} pada ${tingkatLabel || 'tingkat ini'}`
     : `${tingkatLabel || 'tingkat ini'}`;
 
   if (parallelColleagues.length === 0) {
@@ -181,7 +192,7 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
       <div className="flex items-center justify-between gap-2">
         <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
           <Users size={14} className="text-indigo-600 dark:text-indigo-400" />
-          <span>{title || `Mau dibagi ke siapa saja? (Rekan Guru ${tingkatLabel}${targetJurusanUpper ? ` - ${targetJurusanUpper}` : ''})`}</span>
+          <span>{title || `Mau dibagi ke siapa saja? (Rekan Guru ${tingkatLabel}${targetJurusanTokens.length > 0 ? ` - ${targetJurusanTokens.join(', ')}` : ''})`}</span>
           <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
             {selectedIds.length} dari {parallelColleagues.length} guru dipilih
           </span>
@@ -200,8 +211,8 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
         <div className="flex items-start gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
           <UserCheck size={13} className="text-emerald-600 shrink-0 mt-0.5" />
           <span>
-            {targetJurusanUpper ? (
-              <>Rekan guru se-jurusan <strong>{targetJurusanUpper}</strong> yang dicentang otomatis menerima paket Master ini di akun mereka.</>
+            {targetJurusanTokens.length > 0 ? (
+              <>Rekan guru se-jurusan <strong>{targetJurusanTokens.join(', ')}</strong> yang dicentang otomatis menerima paket Master ini di akun mereka.</>
             ) : (
               <>Rekan guru yang dicentang otomatis menerima paket Master ini di akun mereka &amp; tercatat sebagai <strong>Ter-cover Master</strong> di meja orkestrasi panitia.</>
             )}

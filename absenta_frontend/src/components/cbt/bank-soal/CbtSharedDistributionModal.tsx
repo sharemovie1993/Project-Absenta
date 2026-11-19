@@ -48,8 +48,13 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
     return resolveBankTingkatNumber(bankSoal);
   }, [bankSoal]);
 
-  const targetJurusanUpper = useMemo(() => {
-    return (bankSoal?.jurusan || '').toUpperCase().trim();
+  const targetJurusanTokens = useMemo(() => {
+    if (!bankSoal?.jurusan) return [];
+    return (bankSoal.jurusan || '')
+      .toUpperCase()
+      .split(/[,;/|]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
   }, [bankSoal?.jurusan]);
 
   // 2. Ambil ID rekan yang secara eksplisit dicatat dalam Kontributor DB / Storage
@@ -103,22 +108,26 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
         return;
       }
 
-      // Filter jurusan jika bank soal spesifik untuk jurusan tertentu
+      // Filter jurusan jika bank soal spesifik untuk jurusan tertentu (mendukung multi-jurusan)
       const kName = gm.Kelas?.nama_kelas || '';
       const jName = (gm.Jurusan?.nama || '').toUpperCase();
       const isMatchJurusan =
-        !targetJurusanUpper ||
-        targetJurusanUpper === 'SEMUA' ||
-        targetJurusanUpper === 'UMUM' ||
-        (kName && new RegExp(`\\b${targetJurusanUpper}\\b`, 'i').test(kName)) ||
-        (jName && jName.includes(targetJurusanUpper));
+        targetJurusanTokens.length === 0 ||
+        targetJurusanTokens.includes('SEMUA') ||
+        targetJurusanTokens.includes('UMUM') ||
+        targetJurusanTokens.some((tok) => {
+          return (
+            (kName && new RegExp(`\\b${tok}\\b`, 'i').test(kName)) ||
+            (jName && jName.includes(tok))
+          );
+        });
 
-      if (targetJurusanUpper && targetJurusanUpper !== 'SEMUA' && targetJurusanUpper !== 'UMUM' && !isMatchJurusan) {
+      if (targetJurusanTokens.length > 0 && !targetJurusanTokens.includes('SEMUA') && !targetJurusanTokens.includes('UMUM') && !isMatchJurusan) {
         return;
       }
 
       const isAuthor = gId === bankSoal.guru_id;
-      const isExplicitRecipient = explicitSharedIds.includes(gId);
+      const isExplicitRecipient = explicitSharedIds.length > 0 ? explicitSharedIds.includes(gId) : true;
 
       if (!map.has(gId)) {
         map.set(gId, {
@@ -149,15 +158,15 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
         isExplicitRecipient: false,
       };
 
-    // Penerima adalah guru paralel yang secara eksplisit dipilih (terdaftar di Kontributor)
-    let recipients = allTeachers.filter((t) => !t.isAuthor && explicitSharedIds.includes(t.id));
+    // Penerima adalah guru paralel yang mengajar di jurusan sasaran paket naskah ini
+    let recipients = allTeachers.filter((t) => !t.isAuthor && t.isExplicitRecipient);
 
     return {
       author,
       recipients,
       isAllCovered: recipients.length > 0 && recipients.length === allTeachers.filter((t) => !t.isAuthor).length,
     };
-  }, [bankSoal, parallelTeachersRes?.data, targetTingkatNum, targetJurusanUpper, explicitSharedIds]);
+  }, [bankSoal, parallelTeachersRes?.data, targetTingkatNum, targetJurusanTokens, explicitSharedIds]);
 
   if (!bankSoal) return null;
 

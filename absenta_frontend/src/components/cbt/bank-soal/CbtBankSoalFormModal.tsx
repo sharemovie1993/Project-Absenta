@@ -412,8 +412,10 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       existingBanks,
       currentEditingBankId: bankSoalToEdit?.id,
       targetTingkat: tingkat,
+      currentGuruId: guruId,
+      isSharedMode: isShared,
     });
-  }, [existingBanks, bankSoalToEdit?.id, tingkat]);
+  }, [existingBanks, bankSoalToEdit?.id, tingkat, guruId, isShared]);
 
   // Auto-reset jika jurusan yang dipilih sebelumnya ternyata occupied saat ganti mapel/tingkat
   useEffect(() => {

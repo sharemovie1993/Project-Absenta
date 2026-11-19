@@ -362,8 +362,17 @@ export class CbtBankSoalService {
           ];
 
           if (jurusanCandidates.length > 0) {
+            const uniqueCandidates = Array.from(new Set(jurusanCandidates));
             jurusanOR.push({
-              jurusan: { in: Array.from(new Set(jurusanCandidates)) },
+              jurusan: { in: uniqueCandidates },
+            });
+            // Mendukung pencocokan multi-jurusan (misal bank soal berisi 'AKL, TKJ, PHT, KUL')
+            uniqueCandidates.forEach((cand) => {
+              if (cand && cand.length >= 2) {
+                jurusanOR.push({
+                  jurusan: { contains: cand, mode: 'insensitive' },
+                });
+              }
             });
           }
 
@@ -378,6 +387,7 @@ export class CbtBankSoalService {
         const orConditions: Prisma.CbtBankSoalWhereInput[] = [
           { guru_id: query.guru_id },
           { Kontributor: { some: { guru_id: query.guru_id, tenant_id: tenantId } } },
+          ...sharedScopeConditions,
         ];
 
         andConditions.push({ OR: orConditions });
