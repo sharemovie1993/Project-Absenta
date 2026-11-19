@@ -15,6 +15,10 @@ import {
   BookOpen,
   Sparkles,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
+import { resolveBankTingkatNumber } from '../jadwal/cbtJadwalHelper';
+import { formatTingkatRomawi, isAssignmentMatchingJurusan } from './cbtAsesmenHelper';
 import { useTeacherCbtDutyStatus, type TeacherDutyItem } from './useTeacherCbtDutyStatus';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import { useAuthStore } from '@/store/authStore';
@@ -76,6 +80,134 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
   // Guru dapat membuka rincian kelas kapan saja dengan tombol 'Lihat Rincian'.
   const [isExpanded, setIsExpanded] = useState(false);
   const [distributionBank, setDistributionBank] = useState<CbtBankSoal | null>(null);
+
+  const effectiveGuruId = guruId || user?.guru_profile?.id || user?.id;
+
+  // Query seluruh data penugasan guru paralel untuk memetakan nama penerima MGMP secara instan (tanpa modal)
+  const { data: parallelTeachersRes } = useQuery({
+    queryKey: ['parallel-teachers-duty-card'],
+    queryFn: () => listGuruMapel(),
+    staleTime: 60 * 1000,
+  });
+
+  const allGuruMapelList = parallelTeachersRes?.data || [];
+
+  // Helper pemeta nama guru penerima MGMP
+  const resolveRecipientsForItem = (
+    item: TeacherDutyItem,
+    activeBank: CbtBankSoal | undefined,
+    currentTeacherId?: string
+  ) => {
+    if (!activeBank) return [];
+
+    const isSharedMgmp =
+      Boolean(activeBank.is_shared) ||
+      Boolean(activeBank.Kontributor && activeBank.Kontributor.length > 0) ||
+      Boolean(activeBank.is_kolaborasi_resmi) ||
+      Boolean(activeBank.kolaborasi_badge);
+
+    if (!isSharedMgmp) return [];
+
+    const targetTingkatNum = resolveBankTingkatNumber(activeBank) || item.tingkat;
+    const targetJurusanTokens = (activeBank.jurusan || '')
+      .toUpperCase()
+      .split(/[,;/|]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const explicitSharedIds = (activeBank.Kontributor || [])
+      .map((c) => c.guru_id)
+      .filter(Boolean);
+
+    const map = new Map<
+      string,
+      {
+        id: string;
+        nama: string;
+        isSelf: boolean;
+        kelasNames: string[];
+      }
+    >();
+
+    allGuruMapelList.forEach((gm) => {
+      const gId = gm.guru_id;
+      const gName = gm.Guru?.nama_guru;
+      if (!gId || !gName) return;
+
+      // Filter Mapel
+      const isMatchMapel = gm.mapel_id === item.mapelId || gm.mapel_id === activeBank.mapel_id;
+      if (!isMatchMapel) return;
+
+      // Filter Tingkat
+      const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat;
+      let gmTingkatNum = Number(rawTingkat);
+      if (!gmTingkatNum && gm.Kelas?.nama_kelas) {
+        const match = gm.Kelas.nama_kelas.match(/\b(X|XI|XII|10|11|12)\b/i);
+        if (match) {
+          const roman = match[1].toUpperCase();
+          gmTingkatNum = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
+        }
+      }
+      if (targetTingkatNum && gmTingkatNum && gmTingkatNum !== targetTingkatNum) {
+        return;
+      }
+
+      // Filter Jurusan
+      const isMatchJurusan = isAssignmentMatchingJurusan(gm, targetJurusanTokens);
+      if (
+        targetJurusanTokens.length > 0 &&
+        !targetJurusanTokens.includes('SEMUA') &&
+        !targetJurusanTokens.includes('UMUM') &&
+        !isMatchJurusan
+      ) {
+        return;
+      }
+
+      // Jangan masukkan pembuat/penyusun utama paket (karena beliau adalah sumber, bukan penerima)
+      if (gId === activeBank.guru_id) {
+        return;
+      }
+
+      // Cek kontributor eksplisit jika ada
+      if (explicitSharedIds.length > 0 && !explicitSharedIds.includes(gId)) {
+        return;
+      }
+
+      const kName = gm.Kelas?.nama_kelas || '';
+      const isSelf = Boolean(currentTeacherId && gId === currentTeacherId);
+
+      if (!map.has(gId)) {
+        map.set(gId, {
+          id: gId,
+          nama: gName,
+          isSelf,
+          kelasNames: [],
+        });
+      }
+
+      const entry = map.get(gId)!;
+      if (kName && !entry.kelasNames.includes(kName)) {
+        entry.kelasNames.push(kName);
+      }
+    });
+
+    // Fallback jika belum terpetakan di SK KBM tapi ada di relasi Kontributor DB
+    if (map.size === 0 && activeBank.Kontributor && activeBank.Kontributor.length > 0) {
+      activeBank.Kontributor.forEach((c) => {
+        if (!c.guru_id || c.guru_id === activeBank.guru_id) return;
+        const gName = c.Guru?.nama_guru || 'Rekan Guru';
+        const isSelf = Boolean(currentTeacherId && c.guru_id === currentTeacherId);
+        map.set(c.guru_id, {
+          id: c.guru_id,
+          nama: gName,
+          isSelf,
+          kelasNames: [],
+        });
+      });
+    }
+
+    return Array.from(map.values());
+  };
 
   // Jika tidak sedang loading dan guru tidak punya penugasan mengajar di tingkat aktif
   if (isLoading || hasNoDuties || totalDuties === 0) {
@@ -261,7 +393,7 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                     >
                       <Plus size={11} className="text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform" />
                       <span>
-                        + Buat {it.mapelName} {it.targetJurusan && it.targetJurusan !== 'UMUM' ? `(${it.targetJurusan})` : `(${it.tingkatRoman})`}
+                        Buat {it.mapelName} {it.targetJurusan && it.targetJurusan !== 'UMUM' ? `(${it.targetJurusan})` : `(${it.tingkatRoman})`}
                       </span>
                     </button>
                   ))}
@@ -325,6 +457,7 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                   <th className="py-2.5 px-3 w-8 text-center">#</th>
                   <th className="py-2.5 px-3">Mata Pelajaran &amp; Rombel Binaan</th>
                   <th className="py-2.5 px-3">Naskah Bank Soal Terhubung</th>
+                  <th className="py-2.5 px-3">Dibagikan Kepada</th>
                   <th className="py-2.5 px-3 text-center">Status</th>
                   <th className="py-2.5 px-3 text-right">Aksi</th>
                 </tr>
@@ -343,6 +476,8 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                       Boolean(activeBank.Kontributor && activeBank.Kontributor.length > 0) ||
                       Boolean(activeBank.is_kolaborasi_resmi) ||
                       Boolean(activeBank.kolaborasi_badge));
+
+                  const recipients = resolveRecipientsForItem(item, activeBank, effectiveGuruId);
 
                   return (
                     <tr
@@ -431,29 +566,59 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                                   </span>
                                 )}
                               </span>
-
-                              {/* Tombol Lihat Penerima (Read-Only) */}
-                              {isSharedMgmp && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDistributionBank(activeBank);
-                                  }}
-                                  className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/70 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-1.5 py-0.2 rounded border border-indigo-200 dark:border-indigo-800 transition-colors cursor-pointer"
-                                  title="Lihat rekan guru yang menerima bank soal ini (Aman & Read-Only)"
-                                >
-                                  <Users size={10} className="text-indigo-600 dark:text-indigo-400" />
-                                  <span>Lihat Penerima</span>
-                                  <Eye size={9} className="opacity-70" />
-                                </button>
-                              )}
                             </div>
                           </div>
                         ) : (
                           <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">
                             Belum ada naskah bank soal
                           </span>
+                        )}
+                      </td>
+
+                      {/* Dibagikan Kepada (Rekan Penerima Langsung) */}
+                      <td className="py-2.5 px-3">
+                        {recipients.length > 0 ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {recipients.map((r) => (
+                                <span
+                                  key={r.id}
+                                  className={cn(
+                                    'inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border',
+                                    r.isSelf
+                                      ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold'
+                                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                  )}
+                                  title={
+                                    r.kelasNames && r.kelasNames.length > 0
+                                      ? `Kelas Ajar: ${r.kelasNames.join(', ')}`
+                                      : undefined
+                                  }
+                                >
+                                  <Users size={10} className={r.isSelf ? 'text-indigo-600' : 'text-slate-400'} />
+                                  <span>{r.nama}</span>
+                                  {r.isSelf && (
+                                    <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400">
+                                      (Anda)
+                                    </span>
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                            <div className="text-[9.5px] text-slate-400 dark:text-slate-500">
+                              {recipients.length} rekan guru terhubung otomatis
+                            </div>
+                          </div>
+                        ) : isSharedMgmp ? (
+                          <span className="text-slate-400 italic text-[10.5px]">
+                            Semua Rekan Se-Jurusan
+                          </span>
+                        ) : activeBank ? (
+                          <span className="text-slate-400 italic text-[10.5px]">
+                            Mandiri (Hanya Anda)
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">-</span>
                         )}
                       </td>
 
@@ -539,6 +704,14 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
               const isDraft = item.status === 'DRAFT_OWN' || item.status === 'DRAFT_MGMP';
               const activeBank = item.ownBank || item.mgmpBank;
               const count = activeBank?.jumlah_soal || activeBank?._count?.Soal || 0;
+              const isOwn = Boolean(item.ownBank);
+              const isSharedMgmp =
+                activeBank &&
+                (Boolean(activeBank.is_shared) ||
+                  Boolean(activeBank.Kontributor && activeBank.Kontributor.length > 0) ||
+                  Boolean(activeBank.is_kolaborasi_resmi) ||
+                  Boolean(activeBank.kolaborasi_badge));
+              const recipients = resolveRecipientsForItem(item, activeBank, effectiveGuruId);
 
               return (
                 <div
@@ -609,16 +782,11 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                           <div className="flex items-center gap-1 text-[9.5px] text-slate-500">
                             <span>{count} Soal</span>
                             <span>•</span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDistributionBank(activeBank);
-                              }}
-                              className="text-indigo-600 dark:text-indigo-400 font-semibold underline cursor-pointer"
-                            >
-                              Lihat Penerima
-                            </button>
+                            {isOwn ? (
+                              <span>Mandiri (Anda)</span>
+                            ) : (
+                              <span>Oleh: {item.masterAuthorName || activeBank.Guru?.nama_guru || 'Rekan'}</span>
+                            )}
                           </div>
                         </div>
                       ) : (
@@ -668,6 +836,32 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                       )}
                     </div>
                   </div>
+
+                  {/* Dibagikan Kepada (Mobile) */}
+                  {recipients.length > 0 ? (
+                    <div className="text-[10.5px] pt-1.5 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                      <div className="text-slate-400 font-medium text-[10px]">Dibagikan Kepada:</div>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {recipients.map((r) => (
+                          <span
+                            key={r.id}
+                            className={cn(
+                              'text-[9.5px] font-semibold px-1.5 py-0.2 rounded border',
+                              r.isSelf
+                                ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                            )}
+                          >
+                            {r.nama} {r.isSelf && '(Anda)'}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : activeBank && !isSharedMgmp ? (
+                    <div className="text-[10px] text-slate-400 italic pt-1 border-t border-slate-100 dark:border-slate-800">
+                      Mandiri (Hanya Anda)
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
