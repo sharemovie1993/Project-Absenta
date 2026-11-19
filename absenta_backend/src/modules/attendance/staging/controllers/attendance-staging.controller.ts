@@ -1,4 +1,3 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
 import { appLogger } from '@/utils/app-logger';
 import { sendResponse, sendError } from '@/utils/response';
 import { AttendanceStagingService } from '../services/attendance-staging.service';
@@ -21,7 +20,7 @@ export class AttendanceStagingController {
    * POST /attendance/staging/fetch
    * Unduh Google Sheet, parse seluruh rombel (multi-sheet), simpan ke staging
    */
-  static async fetchSheet(req: any, reply: FastifyReply) {
+  static async fetchSheet(req: any, reply: any) {
     try {
       const { url } = fetchUrlSchema.parse(req.body);
       const tenantId = req.user?.tenant_id;
@@ -30,10 +29,16 @@ export class AttendanceStagingController {
       }
 
       const result = await AttendanceStagingService.fetchAndStore(tenantId, url);
-      return sendResponse(reply, 200, `Berhasil mengekstrak ${result.totalSheets} lembar kelas ke wadah staging.`, result);
+      return sendResponse(
+        reply,
+        200,
+        true,
+        `Berhasil mengekstrak ${result.totalSheets} lembar kelas ke wadah staging.`,
+        result
+      );
     } catch (err: any) {
       appLogger.error({ err: err.message }, 'Gagal menarik data Google Sheet staging');
-      return sendError(reply, 400, err.message);
+      return sendError(reply, 400, err.message, err);
     }
   }
 
@@ -41,14 +46,14 @@ export class AttendanceStagingController {
    * GET /attendance/staging
    * Ambil daftar lembar kelas yang tertampung di staging
    */
-  static async listSheets(req: any, reply: FastifyReply) {
+  static async listSheets(req: any, reply: any) {
     try {
       const tenantId = req.user?.tenant_id;
       const { status, search } = req.query as { status?: string; search?: string };
       const sheets = await AttendanceStagingService.listSheets(tenantId, { status, search });
-      return sendResponse(reply, 200, 'Berhasil mengambil daftar staging absensi', sheets);
+      return sendResponse(reply, 200, true, 'Berhasil mengambil daftar staging absensi', sheets);
     } catch (err: any) {
-      return sendError(reply, 500, err.message);
+      return sendError(reply, 500, err.message, err);
     }
   }
 
@@ -56,14 +61,14 @@ export class AttendanceStagingController {
    * GET /attendance/staging/:id
    * Ambil rincian data 1 lembar staging
    */
-  static async getSheetDetail(req: any, reply: FastifyReply) {
+  static async getSheetDetail(req: any, reply: any) {
     try {
       const tenantId = req.user?.tenant_id;
       const { id } = req.params as { id: string };
       const detail = await AttendanceStagingService.getSheetDetail(tenantId, id);
-      return sendResponse(reply, 200, 'Berhasil mengambil rincian staging absensi', detail);
+      return sendResponse(reply, 200, true, 'Berhasil mengambil rincian staging absensi', detail);
     } catch (err: any) {
-      return sendError(reply, 404, err.message);
+      return sendError(reply, 404, err.message, err);
     }
   }
 
@@ -71,17 +76,23 @@ export class AttendanceStagingController {
    * POST /attendance/staging/:id/sync
    * Eksekusi sinkronisasi 1 lembar staging ke absensi resmi
    */
-  static async syncSheet(req: any, reply: FastifyReply) {
+  static async syncSheet(req: any, reply: any) {
     try {
       const tenantId = req.user?.tenant_id;
       const userId = req.user?.id || 'system';
       const { id } = req.params as { id: string };
 
       const result = await AttendanceStagingService.syncSheet(tenantId, id, userId);
-      return sendResponse(reply, 200, result.message, result);
+      return sendResponse(
+        reply,
+        200,
+        true,
+        `Sinkronisasi presensi ${result.className} berhasil (${result.summary.totalAttendanceRows} baris absensi disimpan)`,
+        result
+      );
     } catch (err: any) {
-      appLogger.error({ err: err.message }, 'Gagal sinkronisasi staging absensi');
-      return sendError(reply, 400, err.message);
+      appLogger.error({ err: err.message }, 'Gagal sinkronisasi data staging presensi');
+      return sendError(reply, 400, err.message, err);
     }
   }
 
@@ -89,16 +100,22 @@ export class AttendanceStagingController {
    * POST /attendance/staging/bulk-sync
    * Eksekusi sinkronisasi massal seluruh lembar terpilih
    */
-  static async bulkSync(req: any, reply: FastifyReply) {
+  static async bulkSync(req: any, reply: any) {
     try {
       const tenantId = req.user?.tenant_id;
       const userId = req.user?.id || 'system';
       const { ids } = bulkSyncSchema.parse(req.body);
 
       const result = await AttendanceStagingService.bulkSyncSheets(tenantId, ids, userId);
-      return sendResponse(reply, 200, `Sinkronisasi selesai: ${result.syncedCount} berhasil, ${result.failedCount} gagal.`, result);
+      return sendResponse(
+        reply,
+        200,
+        true,
+        `Sinkronisasi massal selesai. ${result.successful} berhasil, ${result.failed} gagal.`,
+        result
+      );
     } catch (err: any) {
-      return sendError(reply, 400, err.message);
+      return sendError(reply, 400, err.message, err);
     }
   }
 
@@ -106,14 +123,14 @@ export class AttendanceStagingController {
    * DELETE /attendance/staging/:id
    * Hapus 1 lembar staging
    */
-  static async deleteSheet(req: any, reply: FastifyReply) {
+  static async deleteSheet(req: any, reply: any) {
     try {
       const tenantId = req.user?.tenant_id;
       const { id } = req.params as { id: string };
-      await AttendanceStagingService.deleteSheet(tenantId, id);
-      return sendResponse(reply, 200, 'Berhasil menghapus lembar staging');
+      const result = await AttendanceStagingService.deleteSheet(tenantId, id);
+      return sendResponse(reply, 200, true, 'Lembar staging berhasil dihapus', result);
     } catch (err: any) {
-      return sendError(reply, 400, err.message);
+      return sendError(reply, 400, err.message, err);
     }
   }
 
@@ -121,14 +138,14 @@ export class AttendanceStagingController {
    * POST /attendance/staging/bulk-delete
    * Hapus massal lembar staging terpilih
    */
-  static async bulkDelete(req: any, reply: FastifyReply) {
+  static async bulkDelete(req: any, reply: any) {
     try {
       const tenantId = req.user?.tenant_id;
       const { ids } = bulkDeleteSchema.parse(req.body);
-      await AttendanceStagingService.bulkDeleteSheets(tenantId, ids);
-      return sendResponse(reply, 200, `Berhasil menghapus ${ids.length} lembar staging terpilih`);
+      const result = await AttendanceStagingService.bulkDeleteSheets(tenantId, ids);
+      return sendResponse(reply, 200, true, `${result.deletedCount} lembar staging berhasil dihapus`, result);
     } catch (err: any) {
-      return sendError(reply, 400, err.message);
+      return sendError(reply, 400, err.message, err);
     }
   }
 }

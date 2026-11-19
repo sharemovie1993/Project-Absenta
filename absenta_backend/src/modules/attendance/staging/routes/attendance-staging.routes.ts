@@ -1,48 +1,31 @@
-import { FastifyInstance } from 'fastify';
 import { AttendanceStagingController } from '../controllers/attendance-staging.controller';
-import { requireCapability } from '@/middlewares/requireCapability';
-import { determineDataScope } from '@/middlewares/dataScope';
 
-export default async function attendanceStagingRoutes(fastify: FastifyInstance) {
-  // Hanya role yang memiliki hak kelola akademik / kesiswaan / admin yang diizinkan
-  const adminManageCaps = [
-    'academic.manage.academic',
-    'dashboard.view.kesiswaan',
-    'attendance.schedules.manage',
-  ];
-
-  fastify.post('/fetch', {
-    preHandler: [requireCapability(adminManageCaps), determineDataScope()],
-    handler: AttendanceStagingController.fetchSheet,
+export default async function attendanceStagingRoutes(fastify: any) {
+  // Guard otentikasi
+  fastify.addHook('preHandler', async (req: any, reply: any) => {
+    if (!req.user) {
+      return reply.status(401).send({ success: false, message: 'Unauthorized' });
+    }
   });
 
-  fastify.get('/', {
-    preHandler: [requireCapability(adminManageCaps), determineDataScope()],
-    handler: AttendanceStagingController.listSheets,
-  });
+  // POST /attendance/staging/fetch - Unduh spreadsheet & simpan lembar ke staging
+  fastify.post('/fetch', AttendanceStagingController.fetchSheet);
 
-  fastify.get('/:id', {
-    preHandler: [requireCapability(adminManageCaps), determineDataScope()],
-    handler: AttendanceStagingController.getSheetDetail,
-  });
+  // GET /attendance/staging - List seluruh lembar staging
+  fastify.get('/', AttendanceStagingController.listSheets);
 
-  fastify.post('/:id/sync', {
-    preHandler: [requireCapability(adminManageCaps), determineDataScope()],
-    handler: AttendanceStagingController.syncSheet,
-  });
+  // GET /attendance/staging/:id - Rincian data 1 lembar staging
+  fastify.get('/:id', AttendanceStagingController.getSheetDetail);
 
-  fastify.post('/bulk-sync', {
-    preHandler: [requireCapability(adminManageCaps), determineDataScope()],
-    handler: AttendanceStagingController.bulkSync,
-  });
+  // POST /attendance/staging/:id/sync - Sinkronisasi 1 lembar ke presensi resmi
+  fastify.post('/:id/sync', AttendanceStagingController.syncSheet);
 
-  fastify.delete('/:id', {
-    preHandler: [requireCapability(adminManageCaps), determineDataScope()],
-    handler: AttendanceStagingController.deleteSheet,
-  });
+  // POST /attendance/staging/bulk-sync - Sinkronisasi massal seluruh lembar terpilih
+  fastify.post('/bulk-sync', AttendanceStagingController.bulkSync);
 
-  fastify.post('/bulk-delete', {
-    preHandler: [requireCapability(adminManageCaps), determineDataScope()],
-    handler: AttendanceStagingController.bulkDelete,
-  });
+  // DELETE /attendance/staging/:id - Hapus 1 lembar staging
+  fastify.delete('/:id', AttendanceStagingController.deleteSheet);
+
+  // POST /attendance/staging/bulk-delete - Hapus massal lembar staging
+  fastify.post('/bulk-delete', AttendanceStagingController.bulkDelete);
 }

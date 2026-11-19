@@ -33,7 +33,7 @@ export class AttendanceStagingService {
 
     const activeSem = await prisma.semester.findFirst({
       where: { tenant_id: tenantId, is_active: true },
-      select: { id: true, nama: true },
+      select: { id: true, nama_semester: true },
     });
 
     const savedRecords: any[] = [];
@@ -180,7 +180,6 @@ export class AttendanceStagingService {
     // 1. Resolve Kelas
     let targetKelasId = sheetRecord.kelas_id;
     if (!targetKelasId) {
-      const cleanTarget = sheetRecord.nama_kelas.replace(/\s+/g, '').toUpperCase();
       const matched = await prisma.kelas.findFirst({
         where: {
           tenant_id: tenantId,
@@ -251,19 +250,28 @@ export class AttendanceStagingService {
       jadwalMap[kt] = jk.id;
     }
 
-    // 4. Ambil master siswa kelas ini
-    const dbStudents = await prisma.siswa.findMany({
+    // 4. Ambil master siswa kelas ini via SiswaAkademik
+    const dbSiswaAkademik = await prisma.siswaAkademik.findMany({
       where: {
-        tenant_id: tenantId,
         kelas_id: targetKelasId,
+        tahun_pelajaran_id: tp.id,
+        semester_id: sem.id,
       },
-      select: { id: true, nis: true, nisn: true, nama_lengkap: true },
+      include: {
+        siswa: {
+          select: { id: true, nis: true, nisn: true, nama_siswa: true },
+        },
+      },
     });
 
-    const studentMapByNis = new Map<string, string>();
-    dbStudents.forEach((s) => {
-      if (s.nis) studentMapByNis.set(s.nis.trim(), s.id);
-      if (s.nisn) studentMapByNis.set(s.nisn.trim(), s.id);
+    const studentMapByNis = new Map<string, { siswaId: string; siswaAkademikId: string }>();
+    dbSiswaAkademik.forEach((sa) => {
+      if (sa.siswa?.nis) {
+        studentMapByNis.set(sa.siswa.nis.trim(), { siswaId: sa.siswa_id, siswaAkademikId: sa.id });
+      }
+      if (sa.siswa?.nisn) {
+        studentMapByNis.set(sa.siswa.nisn.trim(), { siswaId: sa.siswa_id, siswaAkademikId: sa.id });
+      }
     });
 
     // 5. Eksekusi Sinkronisasi per Sesi dalam Transaksi Atomik
@@ -321,31 +329,43 @@ export class AttendanceStagingService {
 
         // Masukkan / Upsert AbsenSiswa
         for (const student of rawData.students) {
-          const studentId = studentMapByNis.get(student.nis) || studentMapByNis.get(student.nisn);
-          if (!studentId) continue; // Lewati siswa yang tidak terdaftar di database
+          const studentInfo =
+            studentMapByNis.get(student.nis?.trim()) ||
+            (student.nisn ? studentMapByNis.get(student.nisn.trim()) : undefined);
+          if (!studentInfo) continue; // Lewati siswa yang tidak terdaftar di database
 
           const status = student.attendance[`${sess.dateIso}_${sess.sessionCode}`] || 'HADIR';
 
           const existingAbsen = await tx.absenSiswa.findFirst({
             where: {
               sesi_id: sesi.id,
-              siswa_id: studentId,
+              siswa_akademik_id: studentInfo.siswaAkademikId,
             },
           });
 
           if (existingAbsen) {
             await tx.absenSiswa.update({
-              where: { id: existingAbsen.id },
-              data: { status },
+              where: {
+                id_created_at: {
+                  id: existingAbsen.id,
+                  created_at: existingAbsen.created_at,
+                },
+              },
+              data: {
+                status,
+                waktu_tap: sessionDate,
+              },
             });
           } else {
             await tx.absenSiswa.create({
               data: {
                 tenant_id: tenantId,
                 sesi_id: sesi.id,
-                siswa_id: studentId,
+                siswa_id: studentInfo.siswaId,
+                siswa_akademik_id: studentInfo.siswaAkademikId,
                 status,
-                waktu_absen: sessionDate,
+                waktu_tap: sessionDate,
+                catatan: `Import Google Sheet (${sess.day} ${sess.sessionCode})`,
               },
             });
           }
