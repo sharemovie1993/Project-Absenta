@@ -308,15 +308,16 @@ export class AttendanceStagingService {
     });
 
     // 4b. Ambil Wali Kelas / Pendamping Rombel ini untuk pencatatan kepatuhan pembina
-    const waliAssign = await prisma.organizationalAssign.findFirst({
-      where: {
-        kelas_id: targetKelasId,
-        is_active: true,
-        OrganizationalPosition: { tenant_id: tenantId, code: 'WALIKELAS', is_active: true },
+    const waliPos = await prisma.organizationalPosition.findFirst({
+      where: { tenant_id: tenantId, code: 'WALIKELAS', is_active: true },
+      include: {
+        organizationalAssigns: {
+          where: { is_active: true, kelas_id: targetKelasId },
+          include: { User: { include: { Guru: { select: { id: true } } } } },
+        },
       },
-      include: { User: { include: { Guru: { select: { id: true } } } } },
     });
-    const waliGuruId = waliAssign?.User?.Guru?.id || null;
+    const waliGuruId = waliPos?.organizationalAssigns?.[0]?.User?.Guru?.id || null;
 
     // 5. Eksekusi Sinkronisasi per Sesi dalam Transaksi Atomik
     const summaryCounters = {
