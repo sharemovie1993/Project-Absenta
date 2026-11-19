@@ -230,7 +230,7 @@ export class KetarunaanPenilaianService {
     });
 
     // 3. Ambil seluruh siswa terdaftar aktif di kelas ini (via SiswaAkademik)
-    const siswaList = await prisma.siswaAkademik.findMany({
+    let siswaList = await prisma.siswaAkademik.findMany({
       where: {
         kelas_id,
         tahun_pelajaran_id,
@@ -253,6 +253,39 @@ export class KetarunaanPenilaianService {
         },
       },
     });
+
+    // Fallback: Jika SiswaAkademik belum di-generate untuk semester ini, ambil langsung dari tabel Siswa
+    if (siswaList.length === 0) {
+      const directSiswa = await prisma.siswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          kelas_id,
+          status: 'AKTIF',
+        },
+        select: {
+          id: true,
+          nis: true,
+          nisn: true,
+          nama_siswa: true,
+          jenis_kelamin: true,
+        },
+        orderBy: {
+          nama_siswa: 'asc',
+        },
+      });
+
+      siswaList = directSiswa.map((s) => ({
+        id: '',
+        siswa_id: s.id,
+        kelas_id,
+        tahun_pelajaran_id,
+        semester_id,
+        status: 'AKTIF',
+        created_at: new Date(),
+        updated_at: new Date(),
+        siswa: s,
+      })) as any;
+    }
 
     // 4. Ambil nilai siswa yang tersimpan di DB
     const savedScores = await prisma.ketarunaanNilaiSiswa.findMany({

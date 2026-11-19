@@ -75,10 +75,13 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
     enabled: Boolean(kelasId && tahunPelajaranId && semesterId),
   });
 
-  const payloadData = nilaiResponse?.data;
+  const payloadData: any =
+    (nilaiResponse as any)?.students != null
+      ? nilaiResponse
+      : (nilaiResponse as any)?.data ?? nilaiResponse;
   const skema = payloadData?.skema || null;
-  const students = payloadData?.students || [];
-  const isClassLocked = payloadData?.is_class_locked || false;
+  const students: KetarunaanNilaiStudent[] = payloadData?.students || [];
+  const isClassLocked = Boolean(payloadData?.is_class_locked);
 
   // Initialize local score state when data loads
   useEffect(() => {
@@ -235,7 +238,9 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
     if (!searchQuery.trim()) return students;
     const q = searchQuery.toLowerCase();
     return students.filter(
-      (s) => s.nama_siswa.toLowerCase().includes(q) || s.nis.toLowerCase().includes(q)
+      (s) =>
+        (s.nama_siswa || '').toLowerCase().includes(q) ||
+        (s.nis || '').toLowerCase().includes(q)
     );
   }, [students, searchQuery]);
 
