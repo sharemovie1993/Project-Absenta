@@ -26,6 +26,12 @@ export default async function attendanceStagingRoutes(fastify: any) {
   // GET /attendance/staging/:id - Rincian data 1 lembar staging
   fastify.get('/:id', AttendanceStagingController.getSheetDetail);
 
+  // GET /attendance/staging/:id/students-mapping - Ambil data pemetaan siswa
+  fastify.get('/:id/students-mapping', AttendanceStagingController.getStudentsMapping);
+
+  // PUT /attendance/staging/:id/students-mapping - Simpan pemetaan manual siswa
+  fastify.put('/:id/students-mapping', AttendanceStagingController.mapStudents);
+
   // POST /attendance/staging/:id/sync - Sinkronisasi 1 lembar ke presensi resmi
   fastify.post('/:id/sync', AttendanceStagingController.syncSheet);
 

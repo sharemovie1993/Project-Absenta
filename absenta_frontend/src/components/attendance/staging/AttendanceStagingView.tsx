@@ -775,6 +775,7 @@ export const AttendanceStagingView: React.FC = () => {
           if (target) openSinglePreSync(target);
         }}
         isSyncing={isExecutingSync}
+        onMappingSaved={loadSheets}
       />
 
       {/* Pre-Sync Confirmation Modal */}

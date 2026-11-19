@@ -102,4 +102,45 @@ export const attendanceStagingApi = {
     const response = await api.post('/attendance/staging/bulk-delete', { ids });
     return response.data;
   },
+
+  getStudentsMapping: async (id: string): Promise<{
+    success: boolean;
+    data: {
+      sheetId: string;
+      sheetName: string;
+      namaKelas: string;
+      totalSiswa: number;
+      totalMatchedSiswa: number;
+      sheetStudents: Array<{
+        no: number;
+        nama: string;
+        nis: string;
+        nisn: string;
+        isMatched: boolean;
+        matchedStudent: {
+          siswaId: string;
+          nama: string;
+          nis: string;
+        } | null;
+      }>;
+      classStudents: Array<{
+        siswaId: string;
+        siswaAkademikId: string;
+        nis: string;
+        nisn: string;
+        nama: string;
+      }>;
+    };
+  }> => {
+    const response = await api.get(`/attendance/staging/${id}/students-mapping`);
+    return response.data;
+  },
+
+  mapStudents: async (
+    id: string,
+    mappings: Array<{ sheetNo: number; siswaId: string }>
+  ): Promise<{ success: boolean; message: string; data: any }> => {
+    const response = await api.put(`/attendance/staging/${id}/students-mapping`, { mappings });
+    return response.data;
+  },
 };

@@ -188,6 +188,42 @@ export class AttendanceStagingController {
   }
 
   /**
+   * GET /attendance/staging/:id/students-mapping
+   * Ambil rincian pemetaan siswa per baris beserta daftar siswa master
+   */
+  static async getStudentsMapping(req: any, reply: any) {
+    try {
+      const tenantId = req.user?.tenant_id;
+      const { id } = req.params as { id: string };
+      const data = await AttendanceStagingService.getStudentsMapping(tenantId, id);
+      return sendResponse(reply, 200, true, 'Berhasil mengambil data pemetaan siswa', data);
+    } catch (err: any) {
+      return sendError(reply, 400, err.message, err);
+    }
+  }
+
+  /**
+   * PUT /attendance/staging/:id/students-mapping
+   * Simpan pemetaan manual siswa sheet ke master siswa
+   */
+  static async mapStudents(req: any, reply: any) {
+    try {
+      const tenantId = req.user?.tenant_id;
+      const { id } = req.params as { id: string };
+      const { mappings } = req.body as { mappings: Array<{ sheetNo: number; siswaId: string }> };
+
+      if (!mappings || !Array.isArray(mappings)) {
+        return sendError(reply, 400, 'Format pemetaan siswa tidak valid (harus berupa array)');
+      }
+
+      const result = await AttendanceStagingService.mapStudents(tenantId, id, mappings);
+      return sendResponse(reply, 200, true, 'Pemetaan siswa berhasil disimpan', result);
+    } catch (err: any) {
+      return sendError(reply, 400, err.message, err);
+    }
+  }
+
+  /**
    * DELETE /attendance/staging/:id
    * Hapus 1 lembar staging
    */

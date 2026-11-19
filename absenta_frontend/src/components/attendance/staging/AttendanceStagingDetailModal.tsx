@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FileSpreadsheet,
   CheckCircle2,
@@ -9,12 +9,19 @@ import {
   Calendar,
   Clock,
   Sparkles,
+  UserCheck,
+  Link2,
+  Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import type { AttendanceStagingItem } from '@/api/attendance-staging.api';
+import { toast } from 'react-hot-toast';
+import {
+  attendanceStagingApi,
+  type AttendanceStagingItem,
+} from '@/api/attendance-staging.api';
 
 export interface AttendanceStagingDetailModalProps {
   isOpen: boolean;
@@ -22,6 +29,7 @@ export interface AttendanceStagingDetailModalProps {
   item: AttendanceStagingItem | null;
   onSync: (id: string) => void;
   isSyncing?: boolean;
+  onMappingSaved?: () => void;
 }
 
 export const AttendanceStagingDetailModal: React.FC<AttendanceStagingDetailModalProps> = React.memo(({
@@ -30,25 +38,115 @@ export const AttendanceStagingDetailModal: React.FC<AttendanceStagingDetailModal
   item,
   onSync,
   isSyncing = false,
+  onMappingSaved,
 }) => {
   const [searchFilter, setSearchFilter] = useState('');
+  const [showOnlyUnmatched, setShowOnlyUnmatched] = useState(false);
+  const [mappingData, setMappingData] = useState<any>(null);
+  const [isLoadingMapping, setIsLoadingMapping] = useState(false);
+  const [mappingTargetStudent, setMappingTargetStudent] = useState<any | null>(null);
+  const [selectedMasterStudentId, setSelectedMasterStudentId] = useState('');
+  const [isSavingMapping, setIsSavingMapping] = useState(false);
+
+  // Load student mapping data
+  const loadMappingData = useCallback(async () => {
+    if (!item?.id) return;
+    setIsLoadingMapping(true);
+    try {
+      const res = await attendanceStagingApi.getStudentsMapping(item.id);
+      if (res.success) {
+        setMappingData(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load students mapping:', err);
+    } finally {
+      setIsLoadingMapping(false);
+    }
+  }, [item?.id]);
+
+  useEffect(() => {
+    if (isOpen && item?.id) {
+      loadMappingData();
+      setShowOnlyUnmatched(false);
+      setSearchFilter('');
+      setMappingTargetStudent(null);
+    }
+  }, [isOpen, item?.id, loadMappingData]);
 
   const rawData = item?.raw_sheet_data;
   const sessions = rawData?.sessions || [];
   const students = rawData?.students || [];
 
+  // Map student matching status by sheetNo
+  const studentMatchMap = useMemo(() => {
+    const map = new Map<number, { isMatched: boolean; matchedStudent: any }>();
+    if (mappingData?.sheetStudents) {
+      for (const st of mappingData.sheetStudents) {
+        map.set(st.no, {
+          isMatched: st.isMatched,
+          matchedStudent: st.matchedStudent,
+        });
+      }
+    }
+    return map;
+  }, [mappingData]);
+
+  // Unmatched count
+  const unmatchedCount = useMemo(() => {
+    if (!mappingData?.sheetStudents) return 0;
+    return mappingData.sheetStudents.filter((s: any) => !s.isMatched).length;
+  }, [mappingData]);
+
+  // Filter students based on search and unmatched toggle
   const filteredStudents = useMemo(() => {
-    if (!searchFilter.trim()) return students;
+    let list = students;
+    if (showOnlyUnmatched) {
+      list = list.filter((s) => {
+        const matchInfo = studentMatchMap.get(s.no);
+        return matchInfo ? !matchInfo.isMatched : false;
+      });
+    }
+    if (!searchFilter.trim()) return list;
     const q = searchFilter.toLowerCase();
-    return students.filter(
+    return list.filter(
       (s) =>
         s.nama.toLowerCase().includes(q) ||
         s.nis.toLowerCase().includes(q) ||
         s.nisn.toLowerCase().includes(q)
     );
-  }, [students, searchFilter]);
+  }, [students, searchFilter, showOnlyUnmatched, studentMatchMap]);
+
+  // Handle single student mapping save
+  const handleSaveStudentMapping = async () => {
+    if (!item?.id || !mappingTargetStudent || !selectedMasterStudentId) {
+      toast.error('Pilih siswa master terlebih dahulu.');
+      return;
+    }
+
+    setIsSavingMapping(true);
+    try {
+      const res = await attendanceStagingApi.mapStudents(item.id, [
+        { sheetNo: mappingTargetStudent.no, siswaId: selectedMasterStudentId },
+      ]);
+      if (res.success) {
+        toast.success(`Siswa ${mappingTargetStudent.nama} berhasil dipetakan.`);
+        setMappingTargetStudent(null);
+        setSelectedMasterStudentId('');
+        await loadMappingData();
+        onMappingSaved?.();
+      } else {
+        toast.error(res.message || 'Gagal memetakan siswa.');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Gagal memetakan siswa.');
+    } finally {
+      setIsSavingMapping(false);
+    }
+  };
 
   if (!isOpen || !item) return null;
+
+  const currentMatched = mappingData?.totalMatchedSiswa ?? item.total_matched_siswa;
 
   return (
     <Modal
@@ -80,7 +178,7 @@ export const AttendanceStagingDetailModal: React.FC<AttendanceStagingDetailModal
           </Button>
         </div>
       }
-      description={`Periode: ${item.rentang_tanggal || '1 Minggu'} • Total: ${item.total_siswa} Siswa (${item.total_matched_siswa} Cocok di Absenta) • ${sessions.length} Sesi Terdeteksi`}
+      description={`Periode: ${item.rentang_tanggal || '1 Minggu'} • Total: ${item.total_siswa} Siswa (${currentMatched} Cocok di Absenta) • ${sessions.length} Sesi Terdeteksi`}
     >
       <div className="p-4 sm:p-6 pt-2 max-h-[75vh] overflow-y-auto space-y-4 w-full min-w-0">
         {/* Smart Day & Column Dispatcher Preview Chips */}
@@ -122,6 +220,25 @@ export const AttendanceStagingDetailModal: React.FC<AttendanceStagingDetailModal
           </div>
         </div>
 
+        {/* Unmatched Alert Banner & Action */}
+        {unmatchedCount > 0 && (
+          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                Terdapat <strong>{unmatchedCount} siswa</strong> yang belum terhubung ke database master (misal karena NIS kosong atau salah ketik nama).
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowOnlyUnmatched(!showOnlyUnmatched)}
+              className="text-xs font-bold text-amber-700 dark:text-amber-300 hover:underline px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/50"
+            >
+              {showOnlyUnmatched ? 'Tampilkan Semua Siswa' : `Filter ${unmatchedCount} Siswa Belum Cocok`}
+            </button>
+          </div>
+        )}
+
         {/* Search bar & info */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <input
@@ -144,7 +261,7 @@ export const AttendanceStagingDetailModal: React.FC<AttendanceStagingDetailModal
                 <tr>
                   <th className="p-2.5 font-bold text-slate-700 dark:text-slate-300 w-10 text-center">No</th>
                   <th className="p-2.5 font-bold text-slate-700 dark:text-slate-300 w-24">NIS</th>
-                  <th className="p-2.5 font-bold text-slate-700 dark:text-slate-300 min-w-[180px]">Nama Siswa</th>
+                  <th className="p-2.5 font-bold text-slate-700 dark:text-slate-300 min-w-[200px]">Nama Siswa & Status DB</th>
                   {sessions.map((sess, sIdx) => (
                     <th key={sIdx} className="p-2 font-bold text-center border-l border-slate-200 dark:border-slate-700 whitespace-nowrap min-w-[48px]">
                       <div className="text-[9px] text-slate-400 font-semibold">{sess.day.slice(0, 3)}</div>
@@ -166,43 +283,149 @@ export const AttendanceStagingDetailModal: React.FC<AttendanceStagingDetailModal
                     </td>
                   </tr>
                 ) : (
-                  filteredStudents.map((st) => (
-                    <tr key={st.no} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="p-2 text-center text-slate-400 font-mono text-[10px]">{st.no}</td>
-                      <td className="p-2 font-mono text-[10px] text-slate-600 dark:text-slate-300">{st.nis}</td>
-                      <td className="p-2 font-semibold text-slate-900 dark:text-white truncate max-w-[200px]" title={st.nama}>
-                        {st.nama}
-                      </td>
-                      {sessions.map((sess, sIdx) => {
-                        const status = st.attendance[`${sess.dateIso}_${sess.sessionCode}`] || 'HADIR';
-                        return (
-                          <td key={sIdx} className="p-1.5 text-center border-l border-slate-100 dark:border-slate-800">
-                            <span
-                              className={cn(
-                                'inline-block w-6 h-6 leading-6 text-center text-[10px] font-black rounded-lg',
-                                status === 'HADIR' && 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800',
-                                status === 'SAKIT' && 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800',
-                                status === 'IZIN' && 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800',
-                                status === 'ALPA' && 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800',
-                                status === 'DISPENSASI' && 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
-                              )}
-                              title={`${sess.day} (${sess.dateStr}) [${sess.sessionCode}]: ${status}`}
-                            >
-                              {status === 'HADIR' ? 'H' : status === 'SAKIT' ? 'S' : status === 'IZIN' ? 'I' : status === 'ALPA' ? 'A' : 'D'}
-                            </span>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))
+                  filteredStudents.map((st) => {
+                    const matchInfo = studentMatchMap.get(st.no);
+                    const isMatched = matchInfo?.isMatched ?? false;
+
+                    return (
+                      <tr key={st.no} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="p-2 text-center text-slate-400 font-mono text-[10px]">{st.no}</td>
+                        <td className="p-2 font-mono text-[10px] text-slate-600 dark:text-slate-300">
+                          {st.nis || matchInfo?.matchedStudent?.nis || '-'}
+                        </td>
+                        <td className="p-2 max-w-[220px]">
+                          <div className="font-semibold text-slate-900 dark:text-white truncate" title={st.nama}>
+                            {st.nama}
+                          </div>
+                          
+                          {/* Status DB & Action Pemetaan Manual */}
+                          <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                            {isMatched ? (
+                              <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                                <CheckCircle2 size={10} />
+                                <span>Cocok di DB</span>
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                                  <AlertTriangle size={10} />
+                                  <span>Belum Terhubung</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMappingTargetStudent(st);
+                                    setSelectedMasterStudentId('');
+                                  }}
+                                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-200 underline inline-flex items-center gap-0.5"
+                                  title="Petakan siswa ini ke data master secara manual"
+                                >
+                                  <Link2 size={10} /> Petakan
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        {sessions.map((sess, sIdx) => {
+                          const status = st.attendance[`${sess.dateIso}_${sess.sessionCode}`] || 'HADIR';
+                          return (
+                            <td key={sIdx} className="p-1.5 text-center border-l border-slate-100 dark:border-slate-800">
+                              <span
+                                className={cn(
+                                  'inline-block w-6 h-6 leading-6 text-center text-[10px] font-black rounded-lg',
+                                  status === 'HADIR' && 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800',
+                                  status === 'SAKIT' && 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800',
+                                  status === 'IZIN' && 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800',
+                                  status === 'ALPA' && 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800',
+                                  status === 'DISPENSASI' && 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                                )}
+                                title={`${sess.day} (${sess.dateStr}) [${sess.sessionCode}]: ${status}`}
+                              >
+                                {status === 'HADIR' ? 'H' : status === 'SAKIT' ? 'S' : status === 'IZIN' ? 'I' : status === 'ALPA' ? 'A' : 'D'}
+                              </span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
+
+      {/* Modal Dialog Pemetaan Siswa Manual */}
+      {mappingTargetStudent && (
+        <Modal
+          isOpen={Boolean(mappingTargetStudent)}
+          onClose={() => setMappingTargetStudent(null)}
+          size="md"
+          title={
+            <div className="flex items-center gap-2">
+              <UserCheck size={18} className="text-indigo-600" />
+              <span>Petakan Siswa ke Database Master</span>
+            </div>
+          }
+          description={`Hubungkan data siswa dari Google Sheet dengan siswa resmi di rombel ${item.nama_kelas}.`}
+        >
+          <div className="p-5 space-y-4">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1">
+              <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Data di Google Sheet:</div>
+              <div className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                {mappingTargetStudent.no}. {mappingTargetStudent.nama}
+              </div>
+              <div className="text-xs font-mono text-slate-500">
+                NIS: {mappingTargetStudent.nis || '(Kosong di Sheet)'}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Pilih Siswa Master yang Sesuai:
+              </label>
+              <select
+                value={selectedMasterStudentId}
+                onChange={(e) => setSelectedMasterStudentId(e.target.value)}
+                className="w-full text-xs p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              >
+                <option value="">-- Pilih Siswa Master di Rombel Ini --</option>
+                {(mappingData?.classStudents || []).map((cs: any) => (
+                  <option key={cs.siswaId} value={cs.siswaId}>
+                    {cs.nama} {cs.nis ? `(NIS: ${cs.nis})` : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-slate-400">
+                Pilihan menampilkan seluruh siswa aktif yang terdaftar di kelas master ini.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMappingTargetStudent(null)}
+              >
+                Batal
+              </Button>
+              <Button
+                size="sm"
+                disabled={!selectedMasterStudentId || isSavingMapping}
+                onClick={handleSaveStudentMapping}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
+              >
+                {isSavingMapping ? 'Menyimpan...' : 'Simpan Pemetaan'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </Modal>
   );
 });
+
+AttendanceStagingDetailModal.displayName = 'AttendanceStagingDetailModal';
 
 AttendanceStagingDetailModal.displayName = 'AttendanceStagingDetailModal';
