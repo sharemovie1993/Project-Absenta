@@ -105,6 +105,8 @@ export interface UnifiedPeriodSummary {
 
 export interface UnifiedTarunaRankingItem {
   rank: number;
+  is_tied?: boolean;
+  tied_count?: number;
   siswa_id: string;
   nama_siswa: string;
   nis: string;
@@ -114,6 +116,9 @@ export interface UnifiedTarunaRankingItem {
   nama_jurusan: string;
   total_sesi: number;
   hadir: number;
+  hadir_tepat_waktu?: number;
+  terlambat?: number;
+  total_menit_terlambat?: number;
   dispensasi: number;
   sakit: number;
   izin: number;
@@ -122,6 +127,7 @@ export interface UnifiedTarunaRankingItem {
   persen_apel_pendukung: number;
   skor_disiplin: number;
   predikat: string;
+  sumber_data?: 'BACKFILL' | 'REALTIME' | 'HYBRID';
 }
 
 export interface UnifiedStatsResponse {
@@ -190,7 +196,18 @@ export interface UnifiedStatsResponse {
     };
     available_months?: string[];
     taruna_ranking?: {
+      ranking_metadata?: {
+        total_sesi_dievaluasi: number;
+        sesi_realtime_count: number;
+        sesi_backfill_count: number;
+        persen_data_backfill: number;
+        is_backfill_dominant: boolean;
+        total_kandidat_sempurna: number;
+        is_tie_at_top: boolean;
+        top_tied_score: number;
+      };
       top_global: UnifiedTarunaRankingItem[];
+      all_tied_global?: UnifiedTarunaRankingItem[];
       best_per_jurusan: UnifiedTarunaRankingItem[];
       top_by_jurusan: Record<string, UnifiedTarunaRankingItem[]>;
       best_per_kelas: UnifiedTarunaRankingItem[];

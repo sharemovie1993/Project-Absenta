@@ -424,7 +424,9 @@ export class AttendanceStagingService {
             (student.nama ? studentMapByName.get(student.nama.toUpperCase().replace(/[^A-Z0-9]/g, '')) : undefined);
           if (!studentInfo) continue; // Lewati siswa yang tidak terdaftar di database
 
-          const status = student.attendance[`${sess.dateIso}_${sess.sessionCode}`] || 'ALPA';
+          const rawCellStatus = student.attendance[`${sess.dateIso}_${sess.sessionCode}`] || 'ALPA';
+          const isLateCell = rawCellStatus === 'TERLAMBAT';
+          const status = isLateCell ? 'HADIR' : rawCellStatus;
 
           const existingAbsen = await tx.absenSiswa.findFirst({
             where: {
@@ -443,6 +445,8 @@ export class AttendanceStagingService {
               },
               data: {
                 status,
+                is_terlambat: isLateCell,
+                menit_keterlambatan: isLateCell ? 15 : 0,
                 waktu_tap: sessionDate,
                 kelas_id_snapshot: targetKelasId,
                 kelas_nama_snapshot: sheetRecord.nama_kelas,
@@ -457,6 +461,8 @@ export class AttendanceStagingService {
                 siswa_id: studentInfo.siswaId,
                 siswa_akademik_id: studentInfo.siswaAkademikId,
                 status,
+                is_terlambat: isLateCell,
+                menit_keterlambatan: isLateCell ? 15 : 0,
                 waktu_tap: sessionDate,
                 kelas_id_snapshot: targetKelasId,
                 kelas_nama_snapshot: sheetRecord.nama_kelas,

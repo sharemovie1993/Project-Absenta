@@ -1356,25 +1356,102 @@ export class UnifiedKegiatanService {
       persen_kelayakan: totalStudentsTarget > 0 ? Math.round((siapSertifikasi / totalStudentsTarget) * 100) : 0,
     };
 
-    // ── ANALITIK TAMBAHAN 6: Hall of Fame & Peringkat Taruna Terbaik (Global, Per Jurusan, Per Kelas) ──
+    // ── ANALITIK TAMBAHAN 6: Hall of Fame & Peringkat Taruna Terbaik (Adil, Anti-Bias Backfill, Hitung Keterlambatan) ──
     const ketStudentStatusRaw = await prisma.absenSiswa.groupBy({
-      by: ['siswa_id', 'status'],
+      by: ['siswa_id', 'status', 'is_terlambat'],
       where: {
         sesi_id: { in: sesiIds },
         tenant_id: tenantId,
       },
       _count: { id: true },
+      _sum: { menit_keterlambatan: true },
     });
 
-    const ketStudentMap = new Map<string, { HADIR: number; DISPENSASI: number; SAKIT: number; IZIN: number; ALPA: number; total: number }>();
+    const ketStudentMap = new Map<
+      string,
+      {
+        HADIR: number;
+        HADIR_TEPAT: number;
+        TERLAMBAT: number;
+        MENIT_TERLAMBAT: number;
+        DISPENSASI: number;
+        SAKIT: number;
+        IZIN: number;
+        ALPA: number;
+        total: number;
+      }
+    >();
+
     for (const row of ketStudentStatusRaw) {
       if (!row.siswa_id) continue;
-      const cur = ketStudentMap.get(row.siswa_id) || { HADIR: 0, DISPENSASI: 0, SAKIT: 0, IZIN: 0, ALPA: 0, total: 0 };
-      if (row.status in cur) {
-        (cur as any)[row.status] += row._count.id;
+      const cur = ketStudentMap.get(row.siswa_id) || {
+        HADIR: 0,
+        HADIR_TEPAT: 0,
+        TERLAMBAT: 0,
+        MENIT_TERLAMBAT: 0,
+        DISPENSASI: 0,
+        SAKIT: 0,
+        IZIN: 0,
+        ALPA: 0,
+        total: 0,
+      };
+      const stUpper = String(row.status || '').toUpperCase();
+      if (stUpper === 'HADIR' || stUpper === 'TERLAMBAT') {
+        cur.HADIR += row._count.id;
+        if (row.is_terlambat || stUpper === 'TERLAMBAT') {
+          cur.TERLAMBAT += row._count.id;
+          cur.MENIT_TERLAMBAT += row._sum?.menit_keterlambatan || row._count.id * 15;
+        } else {
+          cur.HADIR_TEPAT += row._count.id;
+        }
+      } else if (stUpper === 'DISPENSASI' || stUpper === 'DISPEN') {
+        cur.DISPENSASI += row._count.id;
+      } else if (stUpper === 'SAKIT') {
+        cur.SAKIT += row._count.id;
+      } else if (stUpper === 'IZIN') {
+        cur.IZIN += row._count.id;
+      } else if (stUpper === 'ALPA') {
+        cur.ALPA += row._count.id;
       }
       cur.total += row._count.id;
       ketStudentMap.set(row.siswa_id, cur);
+    }
+
+    // Deteksi komposisi sumber sesi: Backfill (Google Sheet) vs Realtime (Tap RFID / Terminal)
+    let sesiBackfillCount = 0;
+    let sesiRealtimeCount = 0;
+    for (const s of sesiList) {
+      const ketLower = String(s.keterangan || '').toLowerCase();
+      if (ketLower.includes('staging') || ketLower.includes('backfill') || ketLower.includes('import')) {
+        sesiBackfillCount++;
+      } else {
+        sesiRealtimeCount++;
+      }
+    }
+    const totalSesiEvaluasi = sesiList.length;
+    const persenDataBackfill = totalSesiEvaluasi > 0 ? Math.round((sesiBackfillCount / totalSesiEvaluasi) * 100) : 0;
+    const isBackfillDominant = persenDataBackfill >= 50;
+
+    // Ambil data keterlambatan nyata siswa di sekolah (KBM / Gerbang) sebagai faktor penalti kedisiplinan waktu
+    const allRankedIds = Array.from(ketStudentMap.keys());
+    const schoolLateRaw = await prisma.absenSiswa.groupBy({
+      by: ['siswa_id'],
+      where: {
+        tenant_id: tenantId,
+        siswa_id: { in: allRankedIds },
+        is_terlambat: true,
+        sesi_id: { notIn: sesiIds },
+      },
+      _count: { id: true },
+      _sum: { menit_keterlambatan: true },
+    });
+    const schoolLateMap = new Map<string, { count: number; minutes: number }>();
+    for (const r of schoolLateRaw) {
+      if (!r.siswa_id) continue;
+      schoolLateMap.set(r.siswa_id, {
+        count: r._count.id,
+        minutes: r._sum?.menit_keterlambatan || r._count.id * 10,
+      });
     }
 
     // Ambil data apel pendukung (Upacara, Dhuha, Apel Sore) pada periode yang sama sebagai Tie-Breaker objektif
@@ -1416,7 +1493,6 @@ export class UnifiedKegiatanService {
       }
     }
 
-    const allRankedIds = Array.from(ketStudentMap.keys());
     const rankedProfiles = await prisma.siswa.findMany({
       where: { id: { in: allRankedIds } },
       select: {
@@ -1446,12 +1522,23 @@ export class UnifiedKegiatanService {
       const namaJurusan = jurusanLookup.get(resolvedJurusanId) || 'Umum';
       const namaKelas = kInfo?.nama_kelas || '-';
 
+      const schLate = schoolLateMap.get(prof.id) || { count: 0, minutes: 0 };
+      const totalTerlambat = ks.TERLAMBAT + schLate.count;
+      const totalMenitTerlambat = ks.MENIT_TERLAMBAT + schLate.minutes;
+
       const persenHadir = Math.min(100, Math.round(((ks.HADIR + ks.DISPENSASI) / ks.total) * 100));
       const ketScore = Math.max(
         0,
         Math.min(
           100,
-          (ks.HADIR * 100 + ks.DISPENSASI * 85 + ks.SAKIT * 40 + ks.IZIN * 30 - ks.ALPA * 25) / ks.total
+          (ks.HADIR_TEPAT * 100 +
+            ks.TERLAMBAT * 75 +
+            ks.DISPENSASI * 85 +
+            ks.SAKIT * 40 +
+            ks.IZIN * 30 -
+            ks.ALPA * 25 -
+            Math.min(25, ks.MENIT_TERLAMBAT * 0.5)) /
+            ks.total
         )
       );
 
@@ -1471,9 +1558,10 @@ export class UnifiedKegiatanService {
             )
           : ketScore;
 
-      const skorDisiplin = Number((ketScore * 0.85 + supScore * 0.15).toFixed(1));
+      const latePenaltySekolah = Math.min(15, schLate.count * 1.5 + schLate.minutes * 0.05);
+      const skorDisiplin = Number(Math.max(0, ketScore * 0.85 + supScore * 0.15 - latePenaltySekolah).toFixed(1));
       const predikat =
-        skorDisiplin >= 95 && ks.ALPA === 0
+        skorDisiplin >= 95 && ks.ALPA === 0 && totalTerlambat === 0
           ? 'Bintang Taruna Utama'
           : skorDisiplin >= 88 && ks.ALPA === 0
           ? 'Taruna Teladan'
@@ -1481,8 +1569,13 @@ export class UnifiedKegiatanService {
           ? 'Taruna Disiplin'
           : 'Taruna Aktif';
 
+      const rankKey = `${skorDisiplin}_${persenHadir}_${totalTerlambat}_${totalMenitTerlambat}_${ks.ALPA}_${persenApelPendukung}`;
+
       allRankedStudents.push({
         rank: 0,
+        is_tied: false,
+        tied_count: 1,
+        rank_key: rankKey,
         siswa_id: prof.id,
         nama_siswa: prof.nama_siswa,
         nis: prof.nis || '-',
@@ -1492,6 +1585,9 @@ export class UnifiedKegiatanService {
         nama_jurusan: namaJurusan,
         total_sesi: ks.total,
         hadir: ks.HADIR,
+        hadir_tepat_waktu: ks.HADIR_TEPAT,
+        terlambat: totalTerlambat,
+        total_menit_terlambat: totalMenitTerlambat,
         dispensasi: ks.DISPENSASI,
         sakit: ks.SAKIT,
         izin: ks.IZIN,
@@ -1500,58 +1596,152 @@ export class UnifiedKegiatanService {
         persen_apel_pendukung: persenApelPendukung,
         skor_disiplin: skorDisiplin,
         predikat,
+        sumber_data: isBackfillDominant ? 'BACKFILL' : sesiBackfillCount > 0 ? 'HYBRID' : 'REALTIME',
       });
     }
 
     allRankedStudents.sort((a, b) => {
       if (b.skor_disiplin !== a.skor_disiplin) return b.skor_disiplin - a.skor_disiplin;
       if (b.persen_hadir !== a.persen_hadir) return b.persen_hadir - a.persen_hadir;
-      if (b.hadir !== a.hadir) return b.hadir - a.hadir;
+      if (a.terlambat !== b.terlambat) return a.terlambat - b.terlambat;
+      if (a.total_menit_terlambat !== b.total_menit_terlambat) return a.total_menit_terlambat - b.total_menit_terlambat;
+      if (b.hadir_tepat_waktu !== a.hadir_tepat_waktu) return b.hadir_tepat_waktu - a.hadir_tepat_waktu;
       if (a.alpa !== b.alpa) return a.alpa - b.alpa;
       if (b.persen_apel_pendukung !== a.persen_apel_pendukung) return b.persen_apel_pendukung - a.persen_apel_pendukung;
       return a.nama_siswa.localeCompare(b.nama_siswa);
     });
 
-    const top_global = allRankedStudents.slice(0, 20).map((s, idx) => ({ ...s, rank: idx + 1 }));
+    // Hitung Dense / Shared Rank Global agar taruna dengan nilai identik mendapat Peringkat Bersama (Tidak bias abjad nama)
+    const globalKeyCounts = new Map<string, number>();
+    for (const s of allRankedStudents) {
+      globalKeyCounts.set(s.rank_key, (globalKeyCounts.get(s.rank_key) || 0) + 1);
+    }
+
+    let currentDenseRank = 0;
+    let prevRankKey = '';
+    for (const s of allRankedStudents) {
+      if (s.rank_key !== prevRankKey) {
+        currentDenseRank++;
+        prevRankKey = s.rank_key;
+      }
+      const tCount = globalKeyCounts.get(s.rank_key) || 1;
+      s.rank = currentDenseRank;
+      s.is_tied = tCount > 1;
+      s.tied_count = tCount;
+    }
+
+    const allTiedRank1 = allRankedStudents.filter((s) => s.rank === 1);
+    const topTiedScore = allRankedStudents[0]?.skor_disiplin || 0;
+
+    // Untuk Top 20 Global: jika terdapat banyak taruna yang Tie #1 (karena data backfill),
+    // distribusikan secara proporsional lintas kelas (Round-Robin per Rombel) agar tidak didominasi kelas X AKL 1 / huruf A
+    let top_global: any[] = [];
+    if (allTiedRank1.length > 1) {
+      const byClassBuckets = new Map<string, any[]>();
+      for (const s of allRankedStudents) {
+        const arr = byClassBuckets.get(s.kelas_id) || [];
+        arr.push(s);
+        byClassBuckets.set(s.kelas_id, arr);
+      }
+      const classKeys = Array.from(byClassBuckets.keys());
+      let round = 0;
+      while (top_global.length < 20) {
+        let addedInRound = false;
+        for (const ck of classKeys) {
+          const bucket = byClassBuckets.get(ck) || [];
+          if (bucket[round]) {
+            top_global.push({ ...bucket[round] });
+            addedInRound = true;
+            if (top_global.length >= 20) break;
+          }
+        }
+        if (!addedInRound) break;
+        round++;
+      }
+      top_global.sort((a, b) => a.rank - b.rank || b.skor_disiplin - a.skor_disiplin || a.nama_kelas.localeCompare(b.nama_kelas));
+    } else {
+      top_global = allRankedStudents.slice(0, 20).map((s) => ({ ...s }));
+    }
+
+    // Peringkat Per Jurusan (Dense Rank per Jurusan)
+    const jurusanBuckets = new Map<string, any[]>();
+    for (const s of allRankedStudents) {
+      if (!s.jurusan_id) continue;
+      const arr = jurusanBuckets.get(s.jurusan_id) || [];
+      arr.push(s);
+      jurusanBuckets.set(s.jurusan_id, arr);
+    }
 
     const top_by_jurusan: Record<string, any[]> = {};
     const best_per_jurusan: any[] = [];
-    for (const s of allRankedStudents) {
-      if (!s.jurusan_id) continue;
-      if (!top_by_jurusan[s.jurusan_id]) {
-        top_by_jurusan[s.jurusan_id] = [];
+    for (const [jId, list] of jurusanBuckets.entries()) {
+      const jKeyCounts = new Map<string, number>();
+      for (const s of list) {
+        jKeyCounts.set(s.rank_key, (jKeyCounts.get(s.rank_key) || 0) + 1);
       }
-      if (top_by_jurusan[s.jurusan_id].length < 10) {
-        const rankInJurusan = top_by_jurusan[s.jurusan_id].length + 1;
-        const entry = { ...s, rank: rankInJurusan };
-        top_by_jurusan[s.jurusan_id].push(entry);
-        if (rankInJurusan === 1) {
-          best_per_jurusan.push(entry);
+      let jRank = 0;
+      let jPrevKey = '';
+      const rankedInJurusan = list.map((s) => {
+        if (s.rank_key !== jPrevKey) {
+          jRank++;
+          jPrevKey = s.rank_key;
         }
+        const tc = jKeyCounts.get(s.rank_key) || 1;
+        return { ...s, rank: jRank, is_tied: tc > 1, tied_count: tc };
+      });
+      top_by_jurusan[jId] = rankedInJurusan.slice(0, 15);
+      if (rankedInJurusan[0]) {
+        best_per_jurusan.push(rankedInJurusan[0]);
       }
     }
     best_per_jurusan.sort((a, b) => b.skor_disiplin - a.skor_disiplin || b.persen_hadir - a.persen_hadir);
 
-    const top_by_kelas: Record<string, any[]> = {};
-    const best_per_kelas: any[] = [];
+    // Peringkat Per Kelas (Dense Rank per Kelas)
+    const kelasBuckets = new Map<string, any[]>();
     for (const s of allRankedStudents) {
       if (!s.kelas_id) continue;
-      if (!top_by_kelas[s.kelas_id]) {
-        top_by_kelas[s.kelas_id] = [];
+      const arr = kelasBuckets.get(s.kelas_id) || [];
+      arr.push(s);
+      kelasBuckets.set(s.kelas_id, arr);
+    }
+
+    const top_by_kelas: Record<string, any[]> = {};
+    const best_per_kelas: any[] = [];
+    for (const [kId, list] of kelasBuckets.entries()) {
+      const kKeyCounts = new Map<string, number>();
+      for (const s of list) {
+        kKeyCounts.set(s.rank_key, (kKeyCounts.get(s.rank_key) || 0) + 1);
       }
-      if (top_by_kelas[s.kelas_id].length < 10) {
-        const rankInKelas = top_by_kelas[s.kelas_id].length + 1;
-        const entry = { ...s, rank: rankInKelas };
-        top_by_kelas[s.kelas_id].push(entry);
-        if (rankInKelas === 1) {
-          best_per_kelas.push(entry);
+      let kRank = 0;
+      let kPrevKey = '';
+      const rankedInKelas = list.map((s) => {
+        if (s.rank_key !== kPrevKey) {
+          kRank++;
+          kPrevKey = s.rank_key;
         }
+        const tc = kKeyCounts.get(s.rank_key) || 1;
+        return { ...s, rank: kRank, is_tied: tc > 1, tied_count: tc };
+      });
+      top_by_kelas[kId] = rankedInKelas.slice(0, 15);
+      if (rankedInKelas[0]) {
+        best_per_kelas.push(rankedInKelas[0]);
       }
     }
     best_per_kelas.sort((a, b) => b.skor_disiplin - a.skor_disiplin || a.nama_kelas.localeCompare(b.nama_kelas));
 
     const taruna_ranking = {
+      ranking_metadata: {
+        total_sesi_dievaluasi: totalSesiEvaluasi,
+        sesi_realtime_count: sesiRealtimeCount,
+        sesi_backfill_count: sesiBackfillCount,
+        persen_data_backfill: persenDataBackfill,
+        is_backfill_dominant: isBackfillDominant,
+        total_kandidat_sempurna: allTiedRank1.length,
+        is_tie_at_top: allTiedRank1.length > 1,
+        top_tied_score: topTiedScore,
+      },
       top_global,
+      all_tied_global: allTiedRank1.slice(0, 200),
       best_per_jurusan,
       top_by_jurusan,
       best_per_kelas,

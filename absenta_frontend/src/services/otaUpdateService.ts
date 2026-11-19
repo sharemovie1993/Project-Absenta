@@ -6,8 +6,49 @@ import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import toast from 'react-hot-toast';
 
 const OTA_MANIFEST_URL = 'https://ota.absenta.id/version.json';
+const OTA_TRACK_URL = 'https://ota.absenta.id/api/track';
 const CURRENT_OTA_VERSION_KEY = 'absenta_current_ota_version';
 const LAST_OTA_CHECK_KEY = 'absenta_last_ota_check_time';
+const DEVICE_UUID_KEY = 'absenta_ota_device_uuid';
+
+let cachedDeviceUuid: string | null = null;
+
+/** Menghasilkan atau mengambil ID unik permanen perangkat untuk telemetri OTA */
+export const getOrCreateOtaDeviceId = async (): Promise<string> => {
+  if (cachedDeviceUuid) return cachedDeviceUuid;
+
+  try {
+    const { value } = await Preferences.get({ key: DEVICE_UUID_KEY });
+    if (value && value.trim().length >= 8) {
+      cachedDeviceUuid = value.trim();
+      return cachedDeviceUuid;
+    }
+  } catch {}
+
+  try {
+    const localVal = localStorage.getItem(DEVICE_UUID_KEY);
+    if (localVal && localVal.trim().length >= 8) {
+      cachedDeviceUuid = localVal.trim();
+      await Preferences.set({ key: DEVICE_UUID_KEY, value: cachedDeviceUuid }).catch(() => {});
+      return cachedDeviceUuid;
+    }
+  } catch {}
+
+  const randomUuid =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : 'dev-' + Math.random().toString(36).substring(2, 10) + '-' + Date.now().toString(36);
+
+  cachedDeviceUuid = randomUuid;
+  try {
+    localStorage.setItem(DEVICE_UUID_KEY, randomUuid);
+  } catch {}
+  try {
+    await Preferences.set({ key: DEVICE_UUID_KEY, value: randomUuid });
+  } catch {}
+
+  return randomUuid;
+};
 
 export interface OtaManifest {
   app_id: string;
@@ -101,8 +142,9 @@ export const getActiveOtaVersion = async (): Promise<string> => {
 };
 
 /** Fetch manifest OTA dari server dengan fallback multi-layer (CapacitorHttp -> fetch) */
-async function fetchRemoteManifest(): Promise<OtaManifest> {
-  const urlWithCacheBuster = `${OTA_MANIFEST_URL}?_t=${Date.now()}`;
+async function fetchRemoteManifest(currentVersion: string = '1.0.3'): Promise<OtaManifest> {
+  const deviceId = await getOrCreateOtaDeviceId();
+  const urlWithCacheBuster = `${OTA_MANIFEST_URL}?_t=${Date.now()}&did=${encodeURIComponent(deviceId)}&v=${encodeURIComponent(currentVersion)}`;
 
   // 1. Coba via CapacitorHttp (native Android stack - kebal CORS & WebView limits)
   if (isMobileNative()) {
@@ -113,6 +155,8 @@ async function fetchRemoteManifest(): Promise<OtaManifest> {
           'Accept': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
+          'X-Absenta-Device-Id': deviceId,
+          'X-Absenta-App-Version': currentVersion,
         },
         connectTimeout: 8000,
         readTimeout: 8000,
@@ -183,7 +227,7 @@ export const checkOtaUpdate = async (
   setState({ isChecking: true, error: null, currentVersion });
 
   try {
-    const manifest = await fetchRemoteManifest();
+    const manifest = await fetchRemoteManifest(currentVersion);
     const now = Date.now();
     await Preferences.set({ key: LAST_OTA_CHECK_KEY, value: now.toString() });
 
@@ -256,6 +300,22 @@ export const startOtaDownload = async (): Promise<boolean> => {
       await CapacitorUpdater.set({ id: downloaded.id });
       await Preferences.set({ key: CURRENT_OTA_VERSION_KEY, value: state.manifest.version });
       console.log('[OTA] ✅ Bundle baru berhasil disimpan dan siap diterapkan!');
+
+      // Kirim telemetri sukses instalasi bundle OTA
+      getOrCreateOtaDeviceId()
+        .then((deviceId) => {
+          fetch(OTA_TRACK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'ota_installed',
+              device_id: deviceId,
+              app_version: state.manifest?.version || '',
+              ua: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+            }),
+          }).catch(() => {});
+        })
+        .catch(() => {});
 
       setState({
         isDownloading: false,

@@ -119,6 +119,7 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
   const [selectedRankingJurusanId, setSelectedRankingJurusanId] = useState<string>('ALL');
   const [selectedRankingKelasId, setSelectedRankingKelasId] = useState<string>('ALL');
   const [rankingSearch, setRankingSearch] = useState<string>('');
+  const [showAllTiedGlobal, setShowAllTiedGlobal] = useState<boolean>(false);
 
   const scopeLabel = useMemo(() => {
     if (scopePeriode === '1_tahun') return '1 Tahun Pelajaran Penuh';
@@ -150,13 +151,16 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
   const barometer = stats?.barometer_sertifikasi;
   const availableMonths = useMemo(() => stats?.available_months ?? [], [stats?.available_months]);
   const tarunaRanking = stats?.taruna_ranking;
+  const rankingMeta = tarunaRanking?.ranking_metadata;
 
   // Daftar taruna yang ditampilkan di tabel Peringkat sesuai tab & filter
   const activeRankingRows = useMemo<KetarunaanTarunaRankingItem[]>(() => {
     if (!tarunaRanking) return [];
     let list: KetarunaanTarunaRankingItem[] = [];
     if (rankingTab === 'global') {
-      list = tarunaRanking.top_global ?? [];
+      list = showAllTiedGlobal
+        ? (tarunaRanking.all_tied_global ?? tarunaRanking.top_global ?? [])
+        : (tarunaRanking.top_global ?? []);
     } else if (rankingTab === 'jurusan') {
       if (selectedRankingJurusanId === 'ALL') {
         list = tarunaRanking.best_per_jurusan ?? [];
@@ -182,7 +186,7 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
       );
     }
     return list;
-  }, [tarunaRanking, rankingTab, selectedRankingJurusanId, selectedRankingKelasId, rankingSearch]);
+  }, [tarunaRanking, rankingTab, selectedRankingJurusanId, selectedRankingKelasId, rankingSearch, showAllTiedGlobal]);
 
   // Transform Data untuk Chart Recharts
   const chartTrendData = useMemo(() => {
@@ -753,9 +757,18 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                     <Badge variant="warning" className="text-[10px] font-bold">
                       {scopeLabel}
                     </Badge>
+                    {rankingMeta?.is_backfill_dominant ? (
+                      <Badge variant="info" className="text-[10px] font-bold">
+                        Mode Nominasi Setara (Data Backfill + Penalti Terlambat Sekolah)
+                      </Badge>
+                    ) : (
+                      <Badge variant="success" className="text-[10px] font-bold">
+                        Realtime Presisi Aktif
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Pemeringkatan komposit berdasarkan Indeks Kehadiran Ketarunaan (85%) &amp; Konsistensi Apel Pendukung Upacara/Sore (15%)
+                    Pemeringkatan komposit berdasarkan Kehadiran Ketarunaan (85%), Apel Pendukung (15%), dikurangi Penalti Keterlambatan (Ketarunaan &amp; KBM/Gerbang)
                   </p>
                 </div>
               </div>
@@ -786,13 +799,45 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
               </div>
             </div>
 
+            {/* Banner Audit Keadilan & Sumber Data (Backfill vs Realtime) */}
+            {rankingMeta && rankingMeta.is_backfill_dominant && (
+              <div className="p-3.5 rounded-2xl border border-amber-200/80 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed">
+                    <strong className="text-amber-900 dark:text-amber-200">
+                      Proteksi Keadilan Ranking (Data Bersumber dari Backfill {rankingMeta.persen_data_backfill}%):
+                    </strong>{' '}
+                    Karena data sesi ketarunaan saat ini diimpor dari <strong>Google Sheet Backfill</strong> (belum memuat timestamp kecepatan tap RFID ketarunaan), sistem mengintegrasikan <strong>data keterlambatan KBM/Gerbang Sekolah</strong> sebagai faktor pengurang skor, serta menetapkan <strong>Peringkat Bersama (<code>#1 SETARA</code>)</strong> bagi <strong>{rankingMeta.total_kandidat_sempurna} Taruna</strong> yang meraih skor tertinggi identik (<strong>{rankingMeta.top_tied_score} Poin</strong> — 100% Hadir, 0 Alpa, 0 Terlambat). Sistem <strong>tidak menetapkan Juara 1 Tunggal berdasarkan urutan abjad nama</strong>.
+                  </div>
+                </div>
+
+                {rankingTab === 'global' && rankingMeta.total_kandidat_sempurna > 20 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowAllTiedGlobal((prev) => !prev)}
+                    className="h-8 px-3 text-[11px] font-bold shrink-0 border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200"
+                  >
+                    {showAllTiedGlobal
+                      ? 'Tampilkan 20 Perwakilan Lintas Kelas'
+                      : `Lihat Semua ${rankingMeta.total_kandidat_sempurna} Kandidat #1 Setara`}
+                  </Button>
+                )}
+              </div>
+            )}
+
             {/* Sub-Filter Bar: Pilihan Jurusan / Pilihan Kelas + Pencarian */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-1.5 flex-wrap">
                 {rankingTab === 'global' && (
                   <span className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                     <Crown className="w-3.5 h-3.5 text-amber-500" />
-                    Menampilkan Top 20 Taruna Terbaik Tingkat Sekolah (Lintas Seluruh Jurusan &amp; Kelas)
+                    {showAllTiedGlobal
+                      ? `Menampilkan Seluruh ${activeRankingRows.length} Kandidat Peringkat #1 Bersama (Setara) Tingkat Sekolah`
+                      : rankingMeta?.is_tie_at_top
+                      ? `Menampilkan 20 Perwakilan Nominasi #1 Setara Lintas Rombel (Dari Total ${rankingMeta.total_kandidat_sempurna} Kandidat Sempurna)`
+                      : 'Menampilkan Top 20 Taruna Terbaik Tingkat Sekolah'}
                   </span>
                 )}
 
@@ -807,7 +852,7 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
                       }`}
                     >
-                      Semua Jurusan (Juara #1 Tiap Jurusan)
+                      Semua Jurusan (Perwakilan #1 Tiap Jurusan)
                     </button>
                     {byJurusan.map((j) => (
                       <button
@@ -834,13 +879,13 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                       onChange={(e) => setSelectedRankingKelasId(e.target.value)}
                       className="h-8 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     >
-                      <option value="ALL">🌟 Semua Rombel (Juara #1 Tiap Kelas/Peleton)</option>
+                      <option value="ALL">🌟 Semua Rombel (Perwakilan #1 Tiap Kelas/Peleton)</option>
                       {kelasList
                         .filter((k) => (k.total || 0) > 0)
                         .sort((a, b) => a.kelas_nama.localeCompare(b.kelas_nama))
                         .map((k) => (
                           <option key={k.kelas_id} value={k.kelas_id}>
-                            Top 10 Kelas {k.kelas_nama}
+                            Daftar Kandidat Kelas {k.kelas_nama}
                           </option>
                         ))}
                     </select>
@@ -861,69 +906,118 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
               </div>
             </div>
 
-            {/* Podium Top 3 Global (Tampil saat di tab Global & tidak sedang mencari) */}
+            {/* Podium Top 3 (Hanya tampil jika juara 1 tidak Tie massal) ATAU 3 Kartu Ringkasan Keadilan Nominasi */}
             {rankingTab === 'global' && !rankingSearch.trim() && activeRankingRows.length >= 3 && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
-                {activeRankingRows.slice(0, 3).map((st, idx) => {
-                  const isFirst = idx === 0;
-                  const isSecond = idx === 1;
-                  return (
-                    <div
-                      key={st.siswa_id}
-                      className={`p-4 rounded-2xl border relative overflow-hidden transition-all ${
-                        isFirst
-                          ? 'bg-gradient-to-br from-amber-50/90 via-yellow-50/50 to-white dark:from-amber-950/40 dark:via-slate-900 dark:to-slate-900 border-amber-300 dark:border-amber-700 shadow-sm'
-                          : isSecond
-                          ? 'bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900 border-slate-300 dark:border-slate-700'
-                          : 'bg-gradient-to-br from-orange-50/50 to-white dark:from-orange-950/20 dark:to-slate-900 border-orange-200 dark:border-orange-800/60'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`w-8 h-8 rounded-xl font-black text-xs flex items-center justify-center shrink-0 ${
-                              isFirst
-                                ? 'bg-amber-500 text-white shadow-xs'
-                                : isSecond
-                                ? 'bg-slate-400 text-white'
-                                : 'bg-orange-500 text-white'
-                            }`}
-                          >
-                            #{idx + 1}
-                          </span>
-                          <div>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
-                              {isFirst ? 'Juara 1 Umum Sekolah' : isSecond ? 'Juara 2 Umum Sekolah' : 'Juara 3 Umum Sekolah'}
+              rankingMeta?.is_tie_at_top ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
+                  <div className="p-4 rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/70 to-white dark:from-amber-950/30 dark:to-slate-900">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                        Kandidat Peringkat #1 Setara
+                      </span>
+                      <Trophy className="w-4 h-4 text-amber-500" />
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                      {rankingMeta.total_kandidat_sempurna} Taruna
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      Meraih skor sempurna <strong>{rankingMeta.top_tied_score} Poin</strong> (100% Hadir Ketarunaan, 100% Apel Pendukung, 0 Alpa, 0 Terlambat)
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl border border-blue-200 dark:border-blue-800/60 bg-gradient-to-br from-blue-50/70 to-white dark:from-blue-950/30 dark:to-slate-900">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                        Distribusi Proporsional Rombel
+                      </span>
+                      <Users className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                      {tarunaRanking?.best_per_kelas?.length || 20} Peleton Kelas
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      Tabel di bawah menampilkan perwakilan merata lintas kelas (bukan urutan abjad A-Z dari satu kelas saja)
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 bg-gradient-to-br from-emerald-50/70 to-white dark:from-emerald-950/30 dark:to-slate-900">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                        Koreksi Keterlambatan Aktif
+                      </span>
+                      <Clock className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                      Penalti Waktu Aktif
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      Taruna yang tercatat terlambat di sekolah/KBM otomatis turun peringkat. Pembeda detik tap aktif saat menggunakan RFID Realtime
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
+                  {activeRankingRows.slice(0, 3).map((st, idx) => {
+                    const isFirst = idx === 0;
+                    const isSecond = idx === 1;
+                    return (
+                      <div
+                        key={st.siswa_id}
+                        className={`p-4 rounded-2xl border relative overflow-hidden transition-all ${
+                          isFirst
+                            ? 'bg-gradient-to-br from-amber-50/90 via-yellow-50/50 to-white dark:from-amber-950/40 dark:via-slate-900 dark:to-slate-900 border-amber-300 dark:border-amber-700 shadow-sm'
+                            : isSecond
+                            ? 'bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900 border-slate-300 dark:border-slate-700'
+                            : 'bg-gradient-to-br from-orange-50/50 to-white dark:from-orange-950/20 dark:to-slate-900 border-orange-200 dark:border-orange-800/60'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`w-8 h-8 rounded-xl font-black text-xs flex items-center justify-center shrink-0 ${
+                                isFirst
+                                  ? 'bg-amber-500 text-white shadow-xs'
+                                  : isSecond
+                                  ? 'bg-slate-400 text-white'
+                                  : 'bg-orange-500 text-white'
+                              }`}
+                            >
+                              #{st.rank}
                             </span>
-                            <h5 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white line-clamp-1" title={st.nama_siswa}>
-                              {st.nama_siswa}
-                            </h5>
+                            <div>
+                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
+                                {isFirst ? 'Juara 1 Umum Sekolah' : isSecond ? 'Juara 2 Umum Sekolah' : 'Juara 3 Umum Sekolah'}
+                              </span>
+                              <h5 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white line-clamp-1" title={st.nama_siswa}>
+                                {st.nama_siswa}
+                              </h5>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-base font-black text-emerald-600 dark:text-emerald-400 block leading-none">
+                              {st.skor_disiplin}
+                            </span>
+                            <span className="text-[9px] text-slate-400 font-bold uppercase">Poin</span>
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-base font-black text-emerald-600 dark:text-emerald-400 block leading-none">
-                            {st.skor_disiplin}
-                          </span>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase">Poin</span>
-                        </div>
-                      </div>
 
-                      <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-[11px]">
-                        <div className="flex items-center gap-1.5">
-                          <Badge variant="outline" className="text-[10px] font-bold">
-                            {st.nama_kelas}
-                          </Badge>
-                          <span className="text-slate-400">•</span>
-                          <span className="text-slate-500 dark:text-slate-400 font-semibold">NIS: {st.nis}</span>
+                        <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-[11px]">
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="outline" className="text-[10px] font-bold">
+                              {st.nama_kelas}
+                            </Badge>
+                            <span className="text-slate-400">•</span>
+                            <span className="text-slate-500 dark:text-slate-400 font-semibold">NIS: {st.nis}</span>
+                          </div>
+                          <span className="font-black text-emerald-600 dark:text-emerald-400">
+                            {st.hadir}/{st.total_sesi} Hadir ({st.persen_hadir}%)
+                          </span>
                         </div>
-                        <span className="font-black text-emerald-600 dark:text-emerald-400">
-                          {st.hadir}/{st.total_sesi} Hadir ({st.persen_hadir}%)
-                        </span>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )
             )}
 
             {/* Tabel Peringkat Taruna */}
@@ -931,10 +1025,11 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-50/70 dark:bg-slate-800/40">
-                    <th className="py-3 px-4 w-16 text-center">Rank</th>
+                    <th className="py-3 px-4 w-24 text-center">Status Rank</th>
                     <th className="py-3 px-4">Identitas Taruna</th>
                     <th className="py-3 px-4">Rombel &amp; Jurusan</th>
                     <th className="py-3 px-4 text-center">Hadir Ketarunaan</th>
+                    <th className="py-3 px-4 text-center">Keterlambatan</th>
                     <th className="py-3 px-4 text-center">Apel Pendukung</th>
                     <th className="py-3 px-4 text-center">Rincian (H/D/S/I/A)</th>
                     <th className="py-3 px-4 text-center">Skor Disiplin</th>
@@ -944,17 +1039,16 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
                   {activeRankingRows.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-slate-400">
+                      <td colSpan={9} className="py-8 text-center text-slate-400">
                         Tidak ditemukan data peringkat taruna yang sesuai filter.
                       </td>
                     </tr>
                   ) : (
                     activeRankingRows.map((row, idx) => {
-                      const displayRank =
-                        (rankingTab === 'jurusan' && selectedRankingJurusanId === 'ALL') ||
-                        (rankingTab === 'kelas' && selectedRankingKelasId === 'ALL')
-                          ? idx + 1
-                          : row.rank || idx + 1;
+                      const displayRank = row.rank || idx + 1;
+                      const isTied = Boolean(row.is_tied && (row.tied_count || 1) > 1);
+                      const lateCount = row.terlambat ?? 0;
+                      const lateMinutes = row.total_menit_terlambat ?? 0;
 
                       return (
                         <tr
@@ -962,31 +1056,56 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                           className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
                         >
                           <td className="py-3 px-4 text-center">
-                            <span
-                              className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-black ${
-                                displayRank === 1
-                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                  : displayRank === 2
-                                  ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
-                                  : displayRank === 3
-                                  ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300'
-                                  : 'text-slate-500 font-bold'
-                              }`}
-                            >
-                              #{displayRank}
-                            </span>
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span
+                                className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-black ${
+                                  displayRank === 1
+                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                    : displayRank === 2
+                                    ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
+                                    : displayRank === 3
+                                    ? 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300'
+                                    : 'text-slate-500 font-bold'
+                                }`}
+                              >
+                                #{displayRank} {isTied ? 'SETARA' : ''}
+                              </span>
+                              {isTied && (
+                                <span className="text-[9px] text-slate-400 font-semibold">
+                                  ({row.tied_count} Kandidat Setara)
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 px-4">
                             <div className="font-black text-slate-800 dark:text-slate-100">{row.nama_siswa}</div>
                             <div className="text-[10px] text-slate-400">NIS: {row.nis}</div>
                           </td>
                           <td className="py-3 px-4">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-bold text-slate-700 dark:text-slate-200">{row.nama_kelas}</span>
                               <Badge variant="outline" className="text-[10px]">
                                 {row.nama_jurusan}
                               </Badge>
                             </div>
+                            {isTied && rankingTab === 'kelas' && selectedRankingKelasId === 'ALL' && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedRankingKelasId(row.kelas_id)}
+                                className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline mt-0.5 block"
+                              >
+                                Lihat {row.tied_count} kandidat #1 setara di {row.nama_kelas} &rarr;
+                              </button>
+                            )}
+                            {isTied && rankingTab === 'jurusan' && selectedRankingJurusanId === 'ALL' && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedRankingJurusanId(row.jurusan_id)}
+                                className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline mt-0.5 block"
+                              >
+                                Lihat {row.tied_count} kandidat #1 setara di {row.nama_jurusan} &rarr;
+                              </button>
+                            )}
                           </td>
                           <td className="py-3 px-4 text-center">
                             <span className="font-black text-emerald-600 dark:text-emerald-400">
@@ -995,6 +1114,22 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                             <span className="block text-[10px] text-slate-400">
                               {row.hadir}/{row.total_sesi} Sesi
                             </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {lateCount === 0 ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                                0x Terlambat
+                              </span>
+                            ) : (
+                              <div>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-[10px] font-black">
+                                  {lateCount}x Terlambat
+                                </span>
+                                <span className="block text-[10px] text-rose-500 mt-0.5 font-semibold">
+                                  {lateMinutes} menit
+                                </span>
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-4 text-center">
                             <span className="font-bold text-blue-600 dark:text-blue-400">

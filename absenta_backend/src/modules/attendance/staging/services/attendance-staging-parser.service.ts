@@ -16,7 +16,7 @@ export interface ParsedAttendanceStudent {
   nis: string;
   nisn: string;
   nama: string;
-  attendance: Record<string, 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI'>; // key: `${dateIso}_${sessionCode}`
+  attendance: Record<string, 'HADIR' | 'TERLAMBAT' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI'>; // key: `${dateIso}_${sessionCode}`
   siswa_id?: string;
   is_matched?: boolean;
   matched_db_name?: string;
@@ -250,12 +250,13 @@ export class AttendanceStagingParserService {
         const nis = String(row[1] || '').trim();
         const nisn = String(row[2] || '').trim();
 
-        const attendance: Record<string, 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI'> = {};
+        const attendance: Record<string, 'HADIR' | 'TERLAMBAT' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI'> = {};
         for (const sess of sessions) {
           const rawStatus = String(row[sess.colIndex] || '').trim().toUpperCase();
           // Kebijakan resmi: cell kosong / tanpa status dianggap ALPA
-          let status: 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI' = 'ALPA';
+          let status: 'HADIR' | 'TERLAMBAT' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI' = 'ALPA';
           if (rawStatus === 'H') status = 'HADIR';
+          else if (rawStatus === 'T' || rawStatus === 'TL' || rawStatus === 'TERLAMBAT') status = 'TERLAMBAT';
           else if (rawStatus === 'S') status = 'SAKIT';
           else if (rawStatus === 'I') status = 'IZIN';
           else if (rawStatus === 'A') status = 'ALPA';
