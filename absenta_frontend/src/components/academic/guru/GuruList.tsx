@@ -39,6 +39,7 @@ import {
   Skeleton
 } from '../../ui';
 import { UniversalTeacherIdentity } from '@/components/common/UniversalTeacherIdentity';
+import { useAcademicFilter, AcademicFilterToolbar } from '@/components/common/academic-filter';
 
 // Lazy load Table to improve mobile performance (TBT)
 const Table = lazy(() => import('../../ui/Table').then(module => ({ default: module.Table })));
@@ -50,9 +51,8 @@ import { ExpressPhotoStudioModal } from '../shared/ExpressPhotoStudioModal';
 import { ToolsModal, type ToolKey } from '../../shared/ToolsModal';
 import { WaNormalizationModal } from '../../shared/WaNormalizationModal';
 import { GuruBulkPasswordModal } from './GuruBulkPasswordModal';
-import { getGuruList, deleteGuru, updateGuru, guruQueryKeys, normalizeGuruWaPhones } from '../../../api/academic/guru.api';
+import { getGuruList, deleteGuru, updateGuru, guruQueryKeys, normalizeGuruWaPhones, getGuruPositions } from '../../../api/academic/guru.api';
 import type { Guru } from '../../../types/academic';
-import { useDebounce } from '../../../hooks/useDebounce';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
 interface GuruListProps {
@@ -85,17 +85,43 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   const canImpersonate = useMemo(() => (isAdmin || isSuperAdmin) && !isImpersonating, [isAdmin, isSuperAdmin, isImpersonating]);
   const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false); // hanya untuk operasi delete/toggle
-  const [searchTerm, setSearchTerm] = useState('');
   const queryClient = useQueryClient();
+
+  // Unified Academic Filter Engine (SSOT untuk Tahun Pelajaran & Search)
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: false,
+    enableTingkat: false,
+    enableKelas: false,
+    enableSearch: true,
+    searchDebounceMs: 400,
+    searchPlaceholder: 'Cari guru (NIP, Nama, RFID)...',
+  });
+
+  const [filterPosition, setFilterPosition] = useState<string>('ALL');
   const [filterStatusKepegawaian, setFilterStatusKepegawaian] = useState<string>('ALL');
   const [filterGender, setFilterGender] = useState<string>('ALL');
   const [filterJenisPtk, setFilterJenisPtk] = useState<string>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState('1');
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  
-  // Use debounced search term
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // Ambil daftar jabatan organisasi aktif untuk filter
+  const { data: positionsData } = useQuery({
+    queryKey: ['guru-positions-list'],
+    queryFn: getGuruPositions,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const positionOptions = useMemo(() => [
+    { label: 'Semua Jabatan Organisasi', value: 'ALL' },
+    { label: '⭐ Memiliki Jabatan Organisasi', value: 'HAS_ANY_POSITION' },
+    { label: '👤 Guru Tanpa Tugas Tambahan', value: 'NO_POSITION' },
+    ...(positionsData || []).map((p) => ({
+      label: `${p.name} (${p.code})`,
+      value: p.code,
+    })),
+  ], [positionsData]);
   
   const [selectedGuru, setSelectedGuru] = useState<Guru | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -185,22 +211,62 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   };
   
   const isFiltered = useMemo(() => {
-    return searchTerm !== '' || filterStatusKepegawaian !== 'ALL' || filterGender !== 'ALL' || filterJenisPtk !== 'ALL';
-  }, [searchTerm, filterStatusKepegawaian, filterGender, filterJenisPtk]);
+    return (
+      Boolean(academicFilter.values.searchQuery) ||
+      filterPosition !== 'ALL' ||
+      filterStatusKepegawaian !== 'ALL' ||
+      filterGender !== 'ALL' ||
+      filterJenisPtk !== 'ALL'
+    );
+  }, [academicFilter.values.searchQuery, filterPosition, filterStatusKepegawaian, filterGender, filterJenisPtk]);
 
-  const handleResetFilter = () => {
-    setSearchTerm('');
+  const handleResetFilter = useCallback(() => {
+    academicFilter.setSearchQuery('');
+    setFilterPosition('ALL');
     setFilterStatusKepegawaian('ALL');
     setFilterGender('ALL');
     setFilterJenisPtk('ALL');
-  };
+    setCurrentPage(1);
+    setPageInput('1');
+  }, [academicFilter]);
+
+  // Reset pagination ke halaman 1 setiap kali filter berubah
+  React.useEffect(() => {
+    setCurrentPage(1);
+    setPageInput('1');
+  }, [
+    academicFilter.debouncedSearchQuery,
+    academicFilter.values.tahunPelajaranId,
+    filterPosition,
+    filterStatusKepegawaian,
+    filterGender,
+    filterJenisPtk
+  ]);
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // ── useQuery: Fetch guru list ────────────────────────────────────────────
   const { data: listRes, isLoading: isListLoading, refetch } = useQuery({
-    queryKey: guruQueryKeys.list({ page: currentPage, limit: itemsPerPage, search: debouncedSearchTerm, status: filterStatusKepegawaian, gender: filterGender, jenis_ptk: filterJenisPtk }),
-    queryFn: () => getGuruList(currentPage, itemsPerPage, debouncedSearchTerm, filterStatusKepegawaian, filterGender, filterJenisPtk),
+    queryKey: guruQueryKeys.list({ 
+      page: currentPage, 
+      limit: itemsPerPage, 
+      search: academicFilter.debouncedSearchQuery, 
+      status: filterStatusKepegawaian, 
+      gender: filterGender, 
+      jenis_ptk: filterJenisPtk,
+      tahun_pelajaran_id: academicFilter.values.tahunPelajaranId,
+      position_code: filterPosition,
+    }),
+    queryFn: () => getGuruList(
+      currentPage, 
+      itemsPerPage, 
+      academicFilter.debouncedSearchQuery, 
+      filterStatusKepegawaian, 
+      filterGender, 
+      filterJenisPtk,
+      academicFilter.values.tahunPelajaranId,
+      filterPosition,
+    ),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -504,6 +570,32 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       )
     },
     { 
+      key: 'active_positions', 
+      label: 'Jabatan / Penugasan',
+      render: (_: any, guru: Guru) => {
+        const positions = guru.active_positions || [];
+        if (positions.length === 0) {
+          return (
+            <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">
+              -
+            </span>
+          );
+        }
+        return (
+          <div className="flex flex-wrap gap-1 max-w-[240px]">
+            {positions.map((pos, idx) => (
+              <span
+                key={idx}
+                className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60 shadow-2xs"
+              >
+                {pos}
+              </span>
+            ))}
+          </div>
+        );
+      }
+    },
+    { 
       key: 'no_hp', 
       label: 'No. HP',
       render: (value: string | null, guru: Guru) => (
@@ -719,7 +811,23 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
           data={guru}
           variant="chip"
           showPhoto
-          subtitle={`${guru.nip ? `NIP: ${guru.nip}` : (guru.status_kepegawaian || 'Guru')}`}
+          subtitle={
+            <div className="flex flex-col gap-0.5">
+              <span>{guru.nip ? `NIP: ${guru.nip}` : (guru.status_kepegawaian || 'Guru')}</span>
+              {guru.active_positions && guru.active_positions.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {guru.active_positions.map((pos: string, idx: number) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60"
+                    >
+                      {pos}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          }
           className="bg-transparent border-0 shadow-none p-0"
         />
       </div>
@@ -764,156 +872,127 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
 
   return (
     <div className="flex flex-col">
-      {/* Toolbar Baris Kedua - Filter & Search (Desktop Only) */}
-      <div className="hidden md:flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
-        <div className="flex-1 relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
-          <Input
-            placeholder="Cari guru (NIP, Nama, RFID)..."
-            aria-label="Cari Guru"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
-          />
-        </div>
-        <div className="w-full md:w-52">
-          <SearchableSelect
-            value={filterStatusKepegawaian}
-            onValueChange={setFilterStatusKepegawaian}
-            options={[
-              { label: 'Semua Status', value: 'ALL' },
-              { label: 'PNS', value: 'PNS' },
-              { label: 'GTT', value: 'GTT' },
-              { label: 'GTY', value: 'GTY' },
-              { label: 'Honorer', value: 'HONORER' }
-            ]}
-            placeholder="Filter Status"
-            triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
-          />
-        </div>
-        <div className="w-full md:w-52">
-          <SearchableSelect
-            value={filterGender}
-            onValueChange={setFilterGender}
-            options={[
-              { label: 'Semua Gender', value: 'ALL' },
-              { label: 'Laki-laki', value: 'L' },
-              { label: 'Perempuan', value: 'P' }
-            ]}
-            placeholder="Filter Gender"
-            triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
-          />
-        </div>
-        <div className="w-full md:w-52">
-          <SearchableSelect
-            value={filterJenisPtk}
-            onValueChange={setFilterJenisPtk}
-            options={[
-              { label: 'Semua Jenis PTK', value: 'ALL' },
-              { label: 'Pendidik (Guru)', value: 'PENDIDIK' },
-              { label: 'Tenaga Kependidikan', value: 'TENAGA_KEPENDIDIKAN' }
-            ]}
-            placeholder="Filter Jenis PTK"
-            triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
-          />
-        </div>
+      {/* Unified Academic Filter Toolbar (Tahun Pelajaran SSOT, Search, Jabatan Organisasi, Status, Jenis PTK, Gender) */}
+      <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10">
+        <AcademicFilterToolbar
+          {...academicFilter.toolbarProps}
+          variant="card"
+          searchPlaceholder="Cari guru (NIP, Nama, RFID)..."
+          onReset={isFiltered ? handleResetFilter : undefined}
+        >
+          <div className="w-full sm:w-60">
+            <SearchableSelect
+              value={filterPosition}
+              onValueChange={setFilterPosition}
+              options={positionOptions}
+              placeholder="Filter Jabatan Organisasi"
+              searchPlaceholder="Cari jabatan..."
+              triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+            />
+          </div>
+          <div className="w-full sm:w-44">
+            <SearchableSelect
+              value={filterStatusKepegawaian}
+              onValueChange={setFilterStatusKepegawaian}
+              options={[
+                { label: 'Semua Status', value: 'ALL' },
+                { label: 'PNS', value: 'PNS' },
+                { label: 'GTT', value: 'GTT' },
+                { label: 'GTY', value: 'GTY' },
+                { label: 'Honorer', value: 'HONORER' }
+              ]}
+              placeholder="Filter Status"
+              triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+            />
+          </div>
+          <div className="w-full sm:w-48">
+            <SearchableSelect
+              value={filterJenisPtk}
+              onValueChange={setFilterJenisPtk}
+              options={[
+                { label: 'Semua Jenis PTK', value: 'ALL' },
+                { label: 'Pendidik (Guru)', value: 'PENDIDIK' },
+                { label: 'Tenaga Kependidikan', value: 'TENAGA_KEPENDIDIKAN' }
+              ]}
+              placeholder="Filter Jenis PTK"
+              triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+            />
+          </div>
+          <div className="w-full sm:w-40">
+            <SearchableSelect
+              value={filterGender}
+              onValueChange={setFilterGender}
+              options={[
+                { label: 'Semua Gender', value: 'ALL' },
+                { label: 'Laki-laki', value: 'L' },
+                { label: 'Perempuan', value: 'P' }
+              ]}
+              placeholder="Filter Gender"
+              triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+            />
+          </div>
+        </AcademicFilterToolbar>
       </div>
       
       {/* Guru List Content - Hybrid View */}
       <div className="bg-transparent overflow-hidden">
         {isMobile ? (
           <div className="p-4 space-y-4">
-            {/* Mobile Search & Filter Section */}
-            <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  type="text"
-                  placeholder="Cari guru (NIP, Nama, RFID)..."
-                  aria-label="Cari guru"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <SearchableSelect
-                  value={filterStatusKepegawaian}
-                  onValueChange={setFilterStatusKepegawaian}
-                  options={[
-                    { label: 'Semua Status', value: 'ALL' },
-                    { label: 'PNS', value: 'PNS' },
-                    { label: 'GTT', value: 'GTT' },
-                    { label: 'GTY', value: 'GTY' },
-                    { label: 'Honorer', value: 'HONORER' }
-                  ]}
-                  placeholder="Status"
-                  searchPlaceholder="Cari Status..."
-                  triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                />
-
-                <SearchableSelect
-                  value={filterGender}
-                  onValueChange={setFilterGender}
-                  options={[
-                    { label: 'Semua Gender', value: 'ALL' },
-                    { label: 'Laki-laki', value: 'L' },
-                    { label: 'Perempuan', value: 'P' }
-                  ]}
-                  placeholder="Gender"
-                  searchPlaceholder="Cari Gender..."
-                  triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                />
-              </div>
-
-              {/* Action Buttons on Mobile */}
-              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                {canManage && onAdd && (
-                  <Button 
-                    onClick={onAdd}
-                    variant="toolbarPrimary"
-                    size="toolbar"
-                    className="flex-1"
-                  >
-                    <Plus className="w-4 h-4 mr-1.5" />
-                    Tambah Guru
-                  </Button>
-                )}
-                {onImport && (
-                  <Button
-                    onClick={onImport}
-                    variant="toolbarOutline"
-                    size="toolbar"
-                  >
-                    <Upload className="w-4 h-4 mr-1.5" />
-                    Import
-                  </Button>
-                )}
-                {onExport && (
-                  <Button
-                    onClick={onExport}
-                    variant="toolbarOutline"
-                    size="toolbar"
-                    disabled={isExporting}
-                  >
-                    <Download className="w-4 h-4 mr-1.5" />
-                    Export
-                  </Button>
-                )}
-                <Button
-                  onClick={() => {
-                    refetch();
-                    onRefresh?.();
-                  }}
-                  variant="toolbarGhost"
+            {/* Mobile Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2 p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              {canManage && onAdd && (
+                <Button 
+                  onClick={onAdd}
+                  variant="toolbarPrimary"
                   size="toolbar"
-                  className="p-2"
-                  aria-label="Refresh data"
+                  className="flex-1"
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Tambah Guru
                 </Button>
-              </div>
+              )}
+              {onImport && (
+                <Button
+                  onClick={onImport}
+                  variant="toolbarOutline"
+                  size="toolbar"
+                >
+                  <Upload className="w-4 h-4 mr-1.5" />
+                  Import
+                </Button>
+              )}
+              {onExport && (
+                <Button
+                  onClick={onExport}
+                  variant="toolbarOutline"
+                  size="toolbar"
+                  disabled={isExporting}
+                >
+                  <Download className="w-4 h-4 mr-1.5" />
+                  Export
+                </Button>
+              )}
+              <Button
+                variant="toolbarOutline"
+                size="toolbar"
+                onClick={() => setIsToolsOpen(true)}
+                className="rounded-xl border-indigo-200 hover:bg-indigo-50 dark:border-indigo-900/40 dark:hover:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 font-bold"
+              >
+                <Wrench className="w-3.5 h-3.5 mr-1.5 text-indigo-500" />
+                Tools
+              </Button>
+              <Button
+                onClick={() => {
+                  refetch();
+                  onRefresh?.();
+                }}
+                variant="toolbarGhost"
+                size="toolbar"
+                className="p-2"
+                aria-label="Refresh data"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
             </div>
 
             <MobileAcademicList

@@ -102,9 +102,11 @@ export const GuruPage: React.FC = () => {
         exportDataToExcel<Guru>(response.data, [
           { header: 'Nama Lengkap', accessor: (row: Guru) => row.nama_guru, width: 30 },
           { header: 'NIP', accessor: (row: Guru) => row.nip || '-', width: 20 },
+          { header: 'Jabatan / Tugas', accessor: (row: Guru) => (row.active_positions && row.active_positions.length > 0) ? row.active_positions.join(', ') : '-', width: 25 },
           { header: 'Email', accessor: (row: Guru) => row.email || '-', width: 25 },
           { header: 'No. HP', accessor: (row: Guru) => row.no_hp || '-', width: 15 },
           { header: 'Status Kepegawaian', accessor: (row: Guru) => row.status_kepegawaian || '-', width: 20 },
+          { header: 'Jenis PTK', accessor: (row: Guru) => row.jenis_ptk || 'PENDIDIK', width: 20 },
           { header: 'JK', accessor: (row: Guru) => row.jenis_kelamin || '-', width: 5 }
         ], 'Laporan_Guru', 'DAFTAR TENAGA PENDIDIK & KEPENDIDIKAN');
         toast.success('Data guru berhasil diekspor.');
