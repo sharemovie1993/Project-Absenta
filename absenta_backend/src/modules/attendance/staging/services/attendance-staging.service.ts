@@ -210,15 +210,20 @@ export class AttendanceStagingService {
       targetKelasId = matched.id;
     }
 
-    // 2. Resolve TP & Semester
-    const tp = await prisma.tahunPelajaran.findFirst({
-      where: { tenant_id: tenantId, is_active: true },
-    });
-    const sem = await prisma.semester.findFirst({
-      where: { tenant_id: tenantId, is_active: true },
-    });
+    // 2. Resolve TP & Semester (Gunakan Konteks Sheet jika tersedia, fallback ke Aktif)
+    const targetTpId = sheetRecord.tahun_pelajaran_id;
+    const targetSemId = sheetRecord.semester_id;
+
+    const tp = targetTpId
+      ? await prisma.tahunPelajaran.findFirst({ where: { id: targetTpId, tenant_id: tenantId } })
+      : await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } });
+
+    const sem = targetSemId
+      ? await prisma.semester.findFirst({ where: { id: targetSemId, tenant_id: tenantId } })
+      : await prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } });
+
     if (!tp || !sem) {
-      throw new Error('Tahun Pelajaran atau Semester aktif belum dikonfigurasi di sekolah ini.');
+      throw new Error('Tahun Pelajaran atau Semester belum dikonfigurasi di sekolah ini.');
     }
 
     // 3. Resolve atau Auto-Create Jadwal Kegiatan untuk tiap Jenis Kegiatan
@@ -401,6 +406,9 @@ export class AttendanceStagingService {
               data: {
                 status,
                 waktu_tap: sessionDate,
+                kelas_id_snapshot: targetKelasId,
+                kelas_nama_snapshot: sheetRecord.nama_kelas,
+                tahun_pelajaran_id_snapshot: tp.id,
               },
             });
           } else {
@@ -412,6 +420,9 @@ export class AttendanceStagingService {
                 siswa_akademik_id: studentInfo.siswaAkademikId,
                 status,
                 waktu_tap: sessionDate,
+                kelas_id_snapshot: targetKelasId,
+                kelas_nama_snapshot: sheetRecord.nama_kelas,
+                tahun_pelajaran_id_snapshot: tp.id,
                 catatan: `Import Google Sheet (${sess.day} ${sess.sessionCode})`,
               },
             });

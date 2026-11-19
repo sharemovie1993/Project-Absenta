@@ -45,6 +45,8 @@ import {
 
 interface KetarunaanStatistikTabProps {
   jadwalKegiatanId: string | null;
+  tahunPelajaranId?: string;
+  semesterId?: string;
 }
 
 type RentangPreset = 'bulan_ini' | '30_hari' | 'semester' | 'semua' | 'kustom';
@@ -90,7 +92,11 @@ const DONUT_COLORS: Record<string, string> = {
   DISPENSASI: '#a855f7',  // Purple
 };
 
-export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({ jadwalKegiatanId }) => {
+export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
+  jadwalKegiatanId,
+  tahunPelajaranId,
+  semesterId,
+}) => {
   const [preset, setPreset] = useState<RentangPreset>('semua');
   const [customStart, setCustomStart] = useState<string>('');
   const [customEnd, setCustomEnd] = useState<string>('');
@@ -119,11 +125,13 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({ 
   }, [preset, customStart, customEnd]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['ketarunaan-stats', jadwalKegiatanId, dateRange.tanggal_mulai, dateRange.tanggal_selesai],
+    queryKey: ['ketarunaan-stats', jadwalKegiatanId, dateRange.tanggal_mulai, dateRange.tanggal_selesai, tahunPelajaranId, semesterId],
     queryFn: () => getKetarunaanStats({
       jadwal_kegiatan_id: jadwalKegiatanId ?? undefined,
       tanggal_mulai: dateRange.tanggal_mulai,
       tanggal_selesai: dateRange.tanggal_selesai,
+      tahun_pelajaran_id: tahunPelajaranId || undefined,
+      semester_id: semesterId || undefined,
     }),
     staleTime: 60 * 1000,
   });

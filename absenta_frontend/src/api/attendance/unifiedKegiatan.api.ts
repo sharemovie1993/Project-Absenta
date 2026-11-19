@@ -367,6 +367,8 @@ export async function getUnifiedLaporanTim(params: {
   sesi_id?: string;
   jadwal_kegiatan_id?: string;
   jenis_kegiatan?: string;
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
 }): Promise<{ success: boolean; data: UnifiedLaporanTimRow[]; tanggal: string; jenis_kegiatan: string }> {
   return requestWithFallback<{ success: boolean; data: UnifiedLaporanTimRow[]; tanggal: string; jenis_kegiatan: string }>(
     'get',
@@ -380,6 +382,8 @@ export async function getUnifiedLaporanKelas(params: {
   kelas_id?: string;
   jadwal_kegiatan_id?: string;
   jenis_kegiatan?: string;
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
 }): Promise<{ success: boolean; data: UnifiedLaporanKelasRow[] }> {
   return requestWithFallback<{ success: boolean; data: UnifiedLaporanKelasRow[] }>(
     'get',

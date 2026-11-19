@@ -9,6 +9,8 @@ import { getKetarunaanLaporanTim } from '@/api/kesiswaan/programKetarunaan.api';
 interface KetarunaanLaporanTimTabProps {
   jadwalKegiatanId: string | null;
   sesiId: string | null;
+  tahunPelajaranId?: string;
+  semesterId?: string;
 }
 
 function formatWaktu(w?: string | null) {
@@ -47,15 +49,19 @@ function statusBadge(status: string) {
 export const KetarunaanLaporanTimTab: React.FC<KetarunaanLaporanTimTabProps> = ({
   jadwalKegiatanId,
   sesiId,
+  tahunPelajaranId,
+  semesterId,
 }) => {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['ketarunaan-laporan-tim', selectedDate, sesiId],
+    queryKey: ['ketarunaan-laporan-tim', selectedDate, sesiId, jadwalKegiatanId, tahunPelajaranId, semesterId],
     queryFn: () => getKetarunaanLaporanTim({
       tanggal: selectedDate,
       sesi_id: sesiId ?? undefined,
       jadwal_kegiatan_id: jadwalKegiatanId ?? undefined,
+      tahun_pelajaran_id: tahunPelajaranId || undefined,
+      semester_id: semesterId || undefined,
     }),
     staleTime: 60_000,
   });

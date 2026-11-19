@@ -22,6 +22,7 @@ import { SectionCard } from '@/components/ui/SectionCard';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { UniversalEcosystemTopbar } from './common';
+import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import {
   getKetarunaanGuardStatus,
   getKetarunaanStats,
@@ -120,6 +121,15 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
     [setSearchParams]
   );
 
+  // Konteks Akademik Terpadu
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+  });
+
+  const selectedTpId = academicFilter.values.tahunPelajaranId;
+  const selectedSemId = academicFilter.values.semesterId;
+
   // 1. Guard Status
   const { data: guard, isLoading: isGuardLoading, refetch: refetchGuard } = useQuery({
     queryKey: ['ketarunaan-guard'],
@@ -145,10 +155,12 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
 
   // 3. Stats Agregat
   const { data: stats, isLoading: isStatsLoading, refetch: refetchStats } = useQuery({
-    queryKey: ['ketarunaan-stats', jadwalKegiatanId],
+    queryKey: ['ketarunaan-stats', jadwalKegiatanId, selectedTpId, selectedSemId],
     queryFn: () =>
       getKetarunaanStats({
         jadwal_kegiatan_id: jadwalKegiatanId,
+        tahun_pelajaran_id: selectedTpId || undefined,
+        semester_id: selectedSemId || undefined,
       }),
     enabled: Boolean(guard?.is_active && jadwalKegiatanId),
     staleTime: 60 * 1000,
@@ -334,6 +346,11 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
           })}
         </div>
 
+        {/* Toolbar Konteks Akademik Terpadu */}
+        <div className="mb-2">
+          <AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />
+        </div>
+
         {/* Navigasi Subtab Dashboard */}
         <SectionCard fullWidth noPadding className="overflow-hidden border border-slate-200/80 dark:border-slate-800">
           <div className="px-4 sm:px-6 pt-3.5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -358,19 +375,33 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
             >
               {activeTab === 'statistik' && (
                 <div className="p-4 sm:p-6">
-                  <KetarunaanStatistikTab jadwalKegiatanId={jadwalKegiatanId} />
+                  <KetarunaanStatistikTab
+                    jadwalKegiatanId={jadwalKegiatanId}
+                    tahunPelajaranId={selectedTpId}
+                    semesterId={selectedSemId}
+                  />
                 </div>
               )}
 
               {activeTab === 'laporan_kelas' && (
                 <div className="p-4 sm:p-6">
-                  <KetarunaanLaporanKelasTab jadwalKegiatanId={jadwalKegiatanId} sesiId={sesiId} />
+                  <KetarunaanLaporanKelasTab
+                    jadwalKegiatanId={jadwalKegiatanId}
+                    sesiId={sesiId}
+                    tahunPelajaranId={selectedTpId}
+                    semesterId={selectedSemId}
+                  />
                 </div>
               )}
 
               {activeTab === 'laporan_tim' && (
                 <div className="p-4 sm:p-6">
-                  <KetarunaanLaporanTimTab jadwalKegiatanId={jadwalKegiatanId} sesiId={sesiId} />
+                  <KetarunaanLaporanTimTab
+                    jadwalKegiatanId={jadwalKegiatanId}
+                    sesiId={sesiId}
+                    tahunPelajaranId={selectedTpId}
+                    semesterId={selectedSemId}
+                  />
                 </div>
               )}
 

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -101,6 +102,15 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
   const [activeTab, setActiveTab] = useState('statistik');
   const { isKesiswaan, isAdmin, can } = useCapabilities();
 
+  // Konteks Akademik Terpadu (Single Source of Truth)
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+  });
+
+  const selectedTpId = academicFilter.values.tahunPelajaranId;
+  const selectedSemId = academicFilter.values.semesterId;
+
   // Guard check
   const {
     data: guard,
@@ -133,9 +143,11 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
     data: statsData,
     isLoading: isStatsLoading,
   } = useQuery({
-    queryKey: ['ketarunaan-stats', jadwalKegiatanId],
+    queryKey: ['ketarunaan-stats', jadwalKegiatanId, selectedTpId, selectedSemId],
     queryFn: () => getKetarunaanStats({
       jadwal_kegiatan_id: jadwalKegiatanId ?? undefined,
+      tahun_pelajaran_id: selectedTpId || undefined,
+      semester_id: selectedSemId || undefined,
       limit: 10,
     }),
     enabled: Boolean(guard?.is_active),
@@ -300,18 +312,24 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
                 {activeTab === 'statistik' && (
                   <KetarunaanStatistikTab
                     jadwalKegiatanId={jadwalKegiatanId}
+                    tahunPelajaranId={selectedTpId}
+                    semesterId={selectedSemId}
                   />
                 )}
                 {activeTab === 'laporan_tim' && (
                   <KetarunaanLaporanTimTab
                     jadwalKegiatanId={jadwalKegiatanId}
                     sesiId={sesiId}
+                    tahunPelajaranId={selectedTpId}
+                    semesterId={selectedSemId}
                   />
                 )}
                 {activeTab === 'laporan_kelas' && (
                   <KetarunaanLaporanKelasTab
                     jadwalKegiatanId={jadwalKegiatanId}
                     sesiId={sesiId}
+                    tahunPelajaranId={selectedTpId}
+                    semesterId={selectedSemId}
                   />
                 )}
               </Suspense>
@@ -321,7 +339,14 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
   );
 
   if (hideLayout) {
-    return <InfraErrorBoundary>{mainContent}</InfraErrorBoundary>;
+    return (
+      <InfraErrorBoundary>
+        <div className="space-y-4">
+          <AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />
+          {mainContent}
+        </div>
+      </InfraErrorBoundary>
+    );
   }
 
   return (
@@ -330,6 +355,7 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
         title="Program Ketarunaan"
         description="Pusat laporan perkembangan kedisiplinan taruna, evaluasi peleton rombel, dan kepanitiaan Ketarunaan."
         breadcrumbs={breadcrumbs}
+        toolbar={<AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />}
         stats={statCards}
         isLoadingStats={isGuardLoading || isStatsLoading || isSesiLoading}
         hardeningModuleKey="program_ketarunaan"

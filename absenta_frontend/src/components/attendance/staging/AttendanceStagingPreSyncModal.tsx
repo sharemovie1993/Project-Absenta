@@ -102,6 +102,17 @@ export const AttendanceStagingPreSyncModal: React.FC<AttendanceStagingPreSyncMod
       }
     >
       <div className="space-y-4 text-xs">
+        {/* Academic Context Badge */}
+        <div className="flex items-center justify-between px-3 py-2 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/50 text-xs">
+          <span className="flex items-center gap-1.5 font-bold text-indigo-900 dark:text-indigo-200">
+            <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+            Konteks Akademik Target:
+          </span>
+          <span className="font-semibold text-indigo-700 dark:text-indigo-300">
+            {items[0]?.tahun_pelajaran_nama ? `Tahun Pelajaran ${items[0].tahun_pelajaran_nama}` : 'Tahun Pelajaran Aktif'}
+          </span>
+        </div>
+
         {/* Rombel Chips Container */}
         <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2">
           <div className="flex items-center justify-between text-slate-600 dark:text-slate-300 font-semibold text-xs">

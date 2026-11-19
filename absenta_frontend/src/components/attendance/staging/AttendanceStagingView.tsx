@@ -657,9 +657,12 @@ export const AttendanceStagingView: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Rentang Tanggal */}
+                      {/* Rentang Tanggal & Konteks TP */}
                       <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">
-                        {item.rentang_tanggal || '-'}
+                        <div>{item.rentang_tanggal || '-'}</div>
+                        <div className="text-[10px] font-sans font-medium text-indigo-600 dark:text-indigo-400 mt-0.5">
+                          TP: {item.tahun_pelajaran_nama || 'TP Aktif'}
+                        </div>
                       </td>
 
                       {/* Total Siswa */}

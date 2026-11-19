@@ -10,6 +10,8 @@ import { HistoricalBackfillModal } from '@/components/attendance/backfill/Histor
 interface KetarunaanLaporanKelasTabProps {
   jadwalKegiatanId: string | null;
   sesiId: string | null;
+  tahunPelajaranId?: string;
+  semesterId?: string;
 }
 
 function formatWaktu(w?: string | null) {
@@ -43,6 +45,8 @@ function statusBadge(status: string) {
 export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps> = ({
   jadwalKegiatanId,
   sesiId,
+  tahunPelajaranId,
+  semesterId,
 }) => {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [expandedKelas, setExpandedKelas] = useState<Set<string>>(new Set());
@@ -53,11 +57,13 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
   const [selectedBackfillKelasNama, setSelectedBackfillKelasNama] = useState<string>('');
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['ketarunaan-laporan-kelas', selectedDate, jadwalKegiatanId],
+    queryKey: ['ketarunaan-laporan-kelas', selectedDate, jadwalKegiatanId, tahunPelajaranId, semesterId],
     queryFn: () => getKetarunaanLaporanKelas({
       tanggal: selectedDate,
       jadwal_kegiatan_id: jadwalKegiatanId ?? undefined,
       sesi_id: sesiId ?? undefined,
+      tahun_pelajaran_id: tahunPelajaranId || undefined,
+      semester_id: semesterId || undefined,
     }),
     staleTime: 60_000,
   });

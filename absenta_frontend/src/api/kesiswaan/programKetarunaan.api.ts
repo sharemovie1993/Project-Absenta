@@ -77,6 +77,8 @@ export async function getKetarunaanLaporanTim(params: {
   tanggal?: string;
   sesi_id?: string;
   jadwal_kegiatan_id?: string;
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
 }): Promise<{ success: boolean; data: KetarunaanLaporanTimRow[]; tanggal: string; jenis_kegiatan: string }> {
   return getUnifiedLaporanTim({ ...params, jenis_kegiatan: 'Ketarunaan' });
 }
@@ -86,6 +88,8 @@ export async function getKetarunaanLaporanKelas(params: {
   kelas_id?: string;
   jadwal_kegiatan_id?: string;
   sesi_id?: string;
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
 }): Promise<{ success: boolean; data: KetarunaanLaporanKelasRow[] }> {
   return getUnifiedLaporanKelas({ ...params, jenis_kegiatan: 'Ketarunaan' });
 }
