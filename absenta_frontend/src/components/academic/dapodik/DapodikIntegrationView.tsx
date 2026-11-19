@@ -49,6 +49,19 @@ import { DapodikFieldSyncModal } from './DapodikFieldSyncModal';
 import { getTodayIsoDate } from '@/utils/dapodik/dapodikAgeStats';
 import { isClassEquivalent } from '@/utils/dapodik/dapodikClassUtils';
 
+const formatDiffValue = (field: string, val: any): React.ReactNode => {
+  if (val === null || val === undefined || val === '') {
+    return <span className="text-slate-400 italic">(Kosong)</span>;
+  }
+  if (field === 'jenis_kelamin') {
+    const s = String(val).trim().toUpperCase();
+    if (s === 'L') return 'Laki-laki (L)';
+    if (s === 'P') return 'Perempuan (P)';
+    return String(val);
+  }
+  return String(val);
+};
+
 export interface UniversalDapodikIntegrationViewProps {
   hideLayout?: boolean;
   kelasNama?: string;
@@ -959,17 +972,19 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 </Button>
               )}
 
-              {/* Tombol Kriteria Pencocokan & Template (Modal) */}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsCriteriaModalOpen(true)}
-                className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-indigo-200 dark:border-indigo-800/70 text-indigo-700 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100/60"
-                title="Atur Bidang Pencocokan dan Template Audit"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                Kriteria Audit ({activeCriteriaCount})
-              </Button>
+              {/* Tombol Kriteria Pencocokan & Template (Modal - Admin Only) */}
+              {!isWalasMode && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsCriteriaModalOpen(true)}
+                  className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-indigo-200 dark:border-indigo-800/70 text-indigo-700 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100/60"
+                  title="Atur Bidang Pencocokan dan Template Audit"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  Kriteria Audit ({activeCriteriaCount})
+                </Button>
+              )}
 
               {/* Pusat Tools & Utilitas Dapodik (Rekap LPPD, Cetak Berita Acara, dll - Admin Only) */}
               {!isWalasMode && (
@@ -1010,10 +1025,10 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 onClick={() => setIsWaliKelasPrintOpen(true)}
                 disabled={!summary || isLoadingComparison || filteredStudents.length === 0}
                 className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-amber-300 dark:border-amber-700/80 bg-amber-50/70 hover:bg-amber-100 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200"
-                title="Cetak lembar verifikasi berkas dan selisih data untuk diserahkan ke Wali Kelas"
+                title="Cetak lembar verifikasi berkas dan selisih data siswa"
               >
                 <FileCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>Lembar Wali Kelas ({filteredStudents.length})</span>
+                <span>{isWalasMode ? `Cetak Lembar Verifikasi (${filteredStudents.length})` : `Lembar Wali Kelas (${filteredStudents.length})`}</span>
               </Button>
 
               {/* Hancurkan / Purge Cache Staging (Admin Only) */}
@@ -1070,67 +1085,107 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
               2. BENTO STATS CARDS (RINGKAS & ZERO NOISE)
           ═══════════════════════════════════════════════════════════════════ */}
           {summary && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-              <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-                <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
-                  <span>Total Dapodik</span>
-                  <Users className="w-3.5 h-3.5 text-blue-500" />
+            isWalasMode ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
+                  <div>
+                    <div className="text-slate-500 text-xs font-medium">Total Siswa Binaan</div>
+                    <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">
+                      {students.length} <span className="text-xs font-normal text-slate-400">Siswa</span>
+                    </div>
+                  </div>
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                    <Users className="w-5 h-5" />
+                  </div>
                 </div>
-                <div className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
-                  {summary.totalDapodik.toLocaleString('id-ID')}
-                </div>
-              </div>
 
-              <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-                <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
-                  <span>Total Absenta</span>
-                  <School className="w-3.5 h-3.5 text-indigo-500" />
+                <div className="bg-emerald-50/60 dark:bg-emerald-950/20 p-3 rounded-xl border border-emerald-200/70 dark:border-emerald-800/40 shadow-xs flex items-center justify-between">
+                  <div>
+                    <div className="text-emerald-700 dark:text-emerald-400 text-xs font-semibold">Data Selaras (100%)</div>
+                    <div className="text-xl font-black text-emerald-800 dark:text-emerald-300 mt-0.5">
+                      {summary.matchCount} <span className="text-xs font-normal text-emerald-600/70 dark:text-emerald-400/70">Siswa</span>
+                    </div>
+                  </div>
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100/70 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
                 </div>
-                <div className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
-                  {summary.totalAbsenta.toLocaleString('id-ID')}
-                </div>
-              </div>
 
-              <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-200/70 dark:border-emerald-800/40 shadow-xs">
-                <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400 text-[11px] font-semibold">
-                  <span>Selaras (100%)</span>
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                </div>
-                <div className="text-lg font-black text-emerald-800 dark:text-emerald-300 mt-0.5">
-                  {summary.matchCount.toLocaleString('id-ID')}
+                <div className="bg-amber-50/60 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-200/70 dark:border-amber-800/40 shadow-xs flex items-center justify-between">
+                  <div>
+                    <div className="text-amber-800 dark:text-amber-300 text-xs font-semibold">Perlu Dicek (Selisih Data)</div>
+                    <div className="text-xl font-black text-amber-900 dark:text-amber-200 mt-0.5">
+                      {summary.mismatchCount} <span className="text-xs font-normal text-amber-600/70 dark:text-amber-400/70">Siswa</span>
+                    </div>
+                  </div>
+                  <div className="w-9 h-9 rounded-xl bg-amber-100/70 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
                 </div>
               </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+                  <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
+                    <span>Total Dapodik</span>
+                    <Users className="w-3.5 h-3.5 text-blue-500" />
+                  </div>
+                  <div className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                    {summary.totalDapodik.toLocaleString('id-ID')}
+                  </div>
+                </div>
 
-              <div className="bg-amber-50/50 dark:bg-amber-950/20 p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-800/40 shadow-xs">
-                <div className="flex items-center justify-between text-amber-800 dark:text-amber-300 text-[11px] font-semibold">
-                  <span>Selisih Data</span>
-                  <AlertTriangle className="w-3.5 h-3.5" />
+                <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+                  <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
+                    <span>Total Absenta</span>
+                    <School className="w-3.5 h-3.5 text-indigo-500" />
+                  </div>
+                  <div className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                    {summary.totalAbsenta.toLocaleString('id-ID')}
+                  </div>
                 </div>
-                <div className="text-lg font-black text-amber-900 dark:text-amber-200 mt-0.5">
-                  {summary.mismatchCount.toLocaleString('id-ID')}
-                </div>
-              </div>
 
-              <div className="bg-blue-50/50 dark:bg-blue-950/20 p-2.5 rounded-xl border border-blue-200/70 dark:border-blue-800/40 shadow-xs">
-                <div className="flex items-center justify-between text-blue-700 dark:text-blue-300 text-[11px] font-semibold">
-                  <span>Dapodik Saja</span>
-                  <Download className="w-3.5 h-3.5" />
+                <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-200/70 dark:border-emerald-800/40 shadow-xs">
+                  <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400 text-[11px] font-semibold">
+                    <span>Selaras (100%)</span>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="text-lg font-black text-emerald-800 dark:text-emerald-300 mt-0.5">
+                    {summary.matchCount.toLocaleString('id-ID')}
+                  </div>
                 </div>
-                <div className="text-lg font-black text-blue-800 dark:text-blue-200 mt-0.5">
-                  {summary.dapodikOnlyCount.toLocaleString('id-ID')}
-                </div>
-              </div>
 
-              <div className="bg-rose-50/50 dark:bg-rose-950/20 p-2.5 rounded-xl border border-rose-200/70 dark:border-rose-800/40 shadow-xs">
-                <div className="flex items-center justify-between text-rose-700 dark:text-rose-300 text-[11px] font-semibold">
-                  <span>Absenta Saja</span>
-                  <HelpCircle className="w-3.5 h-3.5" />
+                <div className="bg-amber-50/50 dark:bg-amber-950/20 p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-800/40 shadow-xs">
+                  <div className="flex items-center justify-between text-amber-800 dark:text-amber-300 text-[11px] font-semibold">
+                    <span>Selisih Data</span>
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="text-lg font-black text-amber-900 dark:text-amber-200 mt-0.5">
+                    {summary.mismatchCount.toLocaleString('id-ID')}
+                  </div>
                 </div>
-                <div className="text-lg font-black text-rose-800 dark:text-rose-200 mt-0.5">
-                  {summary.absentaOnlyCount.toLocaleString('id-ID')}
+
+                <div className="bg-blue-50/50 dark:bg-blue-950/20 p-2.5 rounded-xl border border-blue-200/70 dark:border-blue-800/40 shadow-xs">
+                  <div className="flex items-center justify-between text-blue-700 dark:text-blue-300 text-[11px] font-semibold">
+                    <span>Dapodik Saja</span>
+                    <Download className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="text-lg font-black text-blue-800 dark:text-blue-200 mt-0.5">
+                    {summary.dapodikOnlyCount.toLocaleString('id-ID')}
+                  </div>
+                </div>
+
+                <div className="bg-rose-50/50 dark:bg-rose-950/20 p-2.5 rounded-xl border border-rose-200/70 dark:border-rose-800/40 shadow-xs">
+                  <div className="flex items-center justify-between text-rose-700 dark:text-rose-300 text-[11px] font-semibold">
+                    <span>Absenta Saja</span>
+                    <HelpCircle className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="text-lg font-black text-rose-800 dark:text-rose-200 mt-0.5">
+                    {summary.absentaOnlyCount.toLocaleString('id-ID')}
+                  </div>
                 </div>
               </div>
-            </div>
+            )
           )}
 
           {/* ═══════════════════════════════════════════════════════════════════
@@ -1166,24 +1221,28 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                     onClick={() => setStatusFilter('MISMATCH')}
                     className="h-7 text-xs font-medium px-2.5 text-amber-700 dark:text-amber-300"
                   >
-                    Selisih Data ({summary?.mismatchCount || 0})
+                    {isWalasMode ? 'Perlu Dicek' : 'Selisih Data'} ({summary?.mismatchCount || 0})
                   </Button>
-                  <Button
-                    size="sm"
-                    variant={statusFilter === 'DAPODIK_ONLY' ? 'primary' : 'outline'}
-                    onClick={() => setStatusFilter('DAPODIK_ONLY')}
-                    className="h-7 text-xs font-medium px-2.5 text-blue-700 dark:text-blue-300"
-                  >
-                    Hanya Dapodik ({summary?.dapodikOnlyCount || 0})
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={statusFilter === 'ABSENTA_ONLY' ? 'primary' : 'outline'}
-                    onClick={() => setStatusFilter('ABSENTA_ONLY')}
-                    className="h-7 text-xs font-medium px-2.5 text-rose-700 dark:text-rose-300"
-                  >
-                    Hanya Absenta ({summary?.absentaOnlyCount || 0})
-                  </Button>
+                  {!isWalasMode && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant={statusFilter === 'DAPODIK_ONLY' ? 'primary' : 'outline'}
+                        onClick={() => setStatusFilter('DAPODIK_ONLY')}
+                        className="h-7 text-xs font-medium px-2.5 text-blue-700 dark:text-blue-300"
+                      >
+                        Hanya Dapodik ({summary?.dapodikOnlyCount || 0})
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={statusFilter === 'ABSENTA_ONLY' ? 'primary' : 'outline'}
+                        onClick={() => setStatusFilter('ABSENTA_ONLY')}
+                        className="h-7 text-xs font-medium px-2.5 text-rose-700 dark:text-rose-300"
+                      >
+                        Hanya Absenta ({summary?.absentaOnlyCount || 0})
+                      </Button>
+                    </>
+                  )}
                   <Button
                     size="sm"
                     variant={statusFilter === 'MATCH' ? 'primary' : 'outline'}
@@ -1247,38 +1306,42 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 </div>
               )}
 
-              {/* 2. Filter Tingkat */}
-              <div className="w-full sm:w-36">
-                <SearchableSelect
-                  value={tingkatFilter}
-                  onValueChange={setTingkatFilter}
-                  options={[
-                    { value: '', label: 'Semua Tingkat' },
-                    { value: '10', label: 'Tingkat 10 (X)' },
-                    { value: '11', label: 'Tingkat 11 (XI)' },
-                    { value: '12', label: 'Tingkat 12 (XII)' },
-                    { value: '13', label: 'Tingkat 13 (XIII)' },
-                  ]}
-                  placeholder="Semua Tingkat"
-                  searchPlaceholder="Pilih tingkat..."
-                  triggerClassName="h-7 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
-                />
-              </div>
+              {/* 2. Filter Tingkat (Admin Only) */}
+              {!isWalasMode && (
+                <div className="w-full sm:w-36">
+                  <SearchableSelect
+                    value={tingkatFilter}
+                    onValueChange={setTingkatFilter}
+                    options={[
+                      { value: '', label: 'Semua Tingkat' },
+                      { value: '10', label: 'Tingkat 10 (X)' },
+                      { value: '11', label: 'Tingkat 11 (XI)' },
+                      { value: '12', label: 'Tingkat 12 (XII)' },
+                      { value: '13', label: 'Tingkat 13 (XIII)' },
+                    ]}
+                    placeholder="Semua Tingkat"
+                    searchPlaceholder="Pilih tingkat..."
+                    triggerClassName="h-7 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
+                  />
+                </div>
+              )}
 
-              {/* 3. Filter Gender */}
-              <div className="w-full sm:w-32">
-                <SearchableSelect
-                  value={genderFilter}
-                  onValueChange={setGenderFilter}
-                  options={[
-                    { value: '', label: 'Semua Gender' },
-                    { value: 'L', label: 'Laki-laki (L)' },
-                    { value: 'P', label: 'Perempuan (P)' },
-                  ]}
-                  placeholder="Semua Gender"
-                  triggerClassName="h-7 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
-                />
-              </div>
+              {/* 3. Filter Gender (Admin Only) */}
+              {!isWalasMode && (
+                <div className="w-full sm:w-32">
+                  <SearchableSelect
+                    value={genderFilter}
+                    onValueChange={setGenderFilter}
+                    options={[
+                      { value: '', label: 'Semua Gender' },
+                      { value: 'L', label: 'Laki-laki (L)' },
+                      { value: 'P', label: 'Perempuan (P)' },
+                    ]}
+                    placeholder="Semua Gender"
+                    triggerClassName="h-7 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
+                  />
+                </div>
+              )}
 
               {/* 4. Filter Perbedaan Atribut */}
               <div className="w-full sm:w-56">
@@ -1299,17 +1362,19 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
 
               {/* Tombol Aksi Filter & Cetak */}
               <div className="flex items-center gap-2 ml-auto">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setIsWaliKelasPrintOpen(true)}
-                  disabled={filteredStudents.length === 0}
-                  className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-amber-300 dark:border-amber-700 bg-amber-50/70 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200"
-                  title="Cetak lembar verifikasi berkas dan selisih data untuk diserahkan ke Wali Kelas"
-                >
-                  <Printer className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Cetak Lembar ({filteredStudents.length})</span>
-                </Button>
+                {!isWalasMode && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsWaliKelasPrintOpen(true)}
+                    disabled={filteredStudents.length === 0}
+                    className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-amber-300 dark:border-amber-700 bg-amber-50/70 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200"
+                    title="Cetak lembar verifikasi berkas dan selisih data untuk diserahkan ke Wali Kelas"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Cetak Lembar ({filteredStudents.length})</span>
+                  </Button>
+                )}
 
                 {/* Reset Filter Button */}
                 {hasActiveFilters && (
@@ -1374,17 +1439,19 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                     );
                   })}
 
-                {/* Quick Print Button from Chips */}
-                <button
-                  type="button"
-                  onClick={() => setIsWaliKelasPrintOpen(true)}
-                  disabled={filteredStudents.length === 0}
-                  className="ml-auto px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  title="Cetak lembar verifikasi berkas untuk diserahkan ke Wali Kelas berdasarkan data terfilter saat ini"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Cetak Lembar Wali Kelas ({filteredStudents.length})</span>
-                </button>
+                {/* Quick Print Button from Chips (Admin Only) */}
+                {!isWalasMode && (
+                  <button
+                    type="button"
+                    onClick={() => setIsWaliKelasPrintOpen(true)}
+                    disabled={filteredStudents.length === 0}
+                    className="ml-auto px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    title="Cetak lembar verifikasi berkas untuk diserahkan ke Wali Kelas berdasarkan data terfilter saat ini"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Cetak Lembar Wali Kelas ({filteredStudents.length})</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -1414,41 +1481,55 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 </div>
 
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {selectedStudents.some((s) => Boolean(s.absentaRaw)) && (
+                  {isWalasMode ? (
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={handleOpenBulkMutasi}
-                      disabled={syncMutation.isPending || isSubmittingMutasi}
-                      className="h-7 text-xs font-semibold gap-1.5 border-rose-300 bg-rose-50/50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-300"
+                      variant="primary"
+                      onClick={() => setIsWaliKelasPrintOpen(true)}
+                      className="h-7 text-xs font-semibold gap-1.5 bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
                     >
-                      <LogOut className="w-3.5 h-3.5" />
-                      Mutasi / Keluarkan Terpilih ({selectedStudents.filter((s) => Boolean(s.absentaRaw)).length})
+                      <Printer className="w-3.5 h-3.5" />
+                      Cetak Lembar Verifikasi Terpilih ({selectedStudentIds.size})
                     </Button>
+                  ) : (
+                    <>
+                      {selectedStudents.some((s) => Boolean(s.absentaRaw)) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleOpenBulkMutasi}
+                          disabled={syncMutation.isPending || isSubmittingMutasi}
+                          className="h-7 text-xs font-semibold gap-1.5 border-rose-300 bg-rose-50/50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:border-rose-800 dark:text-rose-300"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          Mutasi / Keluarkan Terpilih ({selectedStudents.filter((s) => Boolean(s.absentaRaw)).length})
+                        </Button>
+                      )}
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleBulkUpdate}
+                        disabled={syncMutation.isPending}
+                        className="h-7 text-xs font-semibold gap-1.5 border-indigo-300 bg-indigo-50/50 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-300"
+                        title="Pilih kolom data (misal hanya tempat & tgl lahir) dan perbarui ke Absenta"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Perbarui Biodata Terpilih ({selectedStudents.filter((s) => Boolean(s.absentaRaw && s.dapodikRaw)).length})
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={handleBulkImport}
+                        disabled={syncMutation.isPending}
+                        className="h-7 text-xs font-semibold gap-1.5"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Import Siswa Terpilih
+                      </Button>
+                    </>
                   )}
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleBulkUpdate}
-                    disabled={syncMutation.isPending}
-                    className="h-7 text-xs font-semibold gap-1.5 border-indigo-300 bg-indigo-50/50 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-300"
-                    title="Pilih kolom data (misal hanya tempat & tgl lahir) dan perbarui ke Absenta"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Perbarui Biodata Terpilih ({selectedStudents.filter((s) => Boolean(s.absentaRaw && s.dapodikRaw)).length})
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={handleBulkImport}
-                    disabled={syncMutation.isPending}
-                    className="h-7 text-xs font-semibold gap-1.5"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Import Siswa Terpilih
-                  </Button>
                 </div>
               </div>
             )}
@@ -1521,13 +1602,25 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                           className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                         />
                       </th>
-                      <th className="p-2.5">Status</th>
-                      <th className="p-2.5">NISN &amp; NIK</th>
-                      <th className="p-2.5">Nama di Dapodik</th>
-                      <th className="p-2.5">Nama di Absenta</th>
-                      <th className="p-2.5">Rombel Dapodik</th>
-                      <th className="p-2.5">Rombel Absenta</th>
-                      <th className="p-2.5 text-right">Aksi</th>
+                      {isWalasMode ? (
+                        <>
+                          <th className="p-2.5 w-28">Status</th>
+                          <th className="p-2.5 w-36">NISN &amp; NIK</th>
+                          <th className="p-2.5 min-w-[200px]">Nama Siswa</th>
+                          <th className="p-2.5 min-w-[340px]">Keterangan Selisih Data (Dapodik vs Absenta)</th>
+                          <th className="p-2.5 w-32 text-center">Aksi</th>
+                        </>
+                      ) : (
+                        <>
+                          <th className="p-2.5">Status</th>
+                          <th className="p-2.5">NISN &amp; NIK</th>
+                          <th className="p-2.5">Nama di Dapodik</th>
+                          <th className="p-2.5">Nama di Absenta</th>
+                          <th className="p-2.5">Rombel Dapodik</th>
+                          <th className="p-2.5">Rombel Absenta</th>
+                          <th className="p-2.5 text-right">Aksi</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1548,134 +1641,258 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                               className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                             />
                           </td>
-                          <td className="p-2.5 whitespace-nowrap">
-                            {renderStatusBadge(s.status)}
-                            {s.status === 'MISMATCH' && s.diffs && s.diffs.length > 0 && (
-                              <div className="mt-1 flex flex-wrap gap-1 max-w-[150px]">
-                                {s.diffs.map((d) => {
-                                  const isCurrentFilter = diffAttributeFilter === d.field;
-                                  const shortLabel =
-                                    d.field === 'nama_siswa' ? 'Nama' :
-                                    d.field === 'kelas' ? 'Rombel' :
-                                    d.field === 'tanggal_lahir' ? 'Tgl Lahir' :
-                                    d.field === 'tempat_lahir' ? 'Tmp Lahir' :
-                                    d.field === 'jenis_kelamin' ? 'Gender' :
-                                    d.field.toUpperCase();
-                                  return (
-                                    <button
-                                      key={d.field}
-                                      type="button"
-                                      onClick={() => setDiffAttributeFilter(isCurrentFilter ? '' : d.field)}
-                                      className={cn(
-                                        "inline-flex items-center text-[9.5px] px-1.5 py-0.2 rounded border transition-colors cursor-pointer",
-                                        isCurrentFilter
-                                          ? "bg-indigo-600 text-white border-indigo-700 font-bold"
-                                          : "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:border-amber-400 hover:bg-amber-100"
-                                      )}
-                                      title={`Filter hanya siswa dengan perbedaan ${d.label} (Klik untuk filter)`}
-                                    >
-                                      {shortLabel}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-2.5">
-                            <div className="font-mono font-bold text-slate-900 dark:text-slate-100">
-                              {s.nisn || '-'}
-                            </div>
-                            <div className="font-mono text-[10px] text-slate-400">
-                              NIK: {s.nik || '-'}
-                            </div>
-                          </td>
-                          <td className="p-2.5 font-medium text-slate-800 dark:text-slate-200">
-                            {s.dapodikRaw ? (
-                              s.dapodikRaw.nama || s.dapodikRaw.nama_siswa || s.nama
-                            ) : (
-                              <span className="text-slate-400 italic">Belum Ada di Dapodik</span>
-                            )}
-                          </td>
-                          <td className="p-2.5 font-medium text-slate-800 dark:text-slate-200">
-                            {s.absentaRaw ? (
-                              <button
-                                type="button"
-                                onClick={() => setSelectedSiswaDetailId(s.absentaRaw.id || s.id)}
-                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold inline-flex items-center gap-1.5 cursor-pointer text-left group transition-colors"
-                                title="Buka Profil Lengkap & Rekam Jejak Siswa (Mutasi, Berkas, Biodata)"
-                              >
-                                <span className="group-hover:underline">
-                                  {s.absentaRaw.nama_siswa || s.absentaRaw.nama || s.nama}
-                                </span>
-                                <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-indigo-500" />
-                              </button>
-                            ) : (
-                              <span className="text-slate-400 italic">Belum Ada di Absenta</span>
-                            )}
-                          </td>
-                          <td className="p-2.5 text-slate-600 dark:text-slate-400">
-                            {s.dapodikRaw?.nama_rombel || '-'}
-                          </td>
-                          <td className="p-2.5 text-slate-600 dark:text-slate-400">
-                            {s.absentaRaw?.SiswaAkademik?.[0]?.kelas?.nama_kelas || (s.absentaRaw as any)?.Kelas?.nama_kelas || s.rombel || '-'}
-                          </td>
-                          <td className="p-2.5 text-right whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {s.status === 'DAPODIK_ONLY' ? (
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  onClick={() => handleSingleImport(s)}
-                                  className="h-6.5 px-2.5 text-[11px] font-bold gap-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-xs"
-                                  title="Tarik & Daftarkan Siswa Dapodik ini ke Absenta"
-                                >
-                                  <UserPlus className="w-3 h-3" /> Tarik ke Absenta
-                                </Button>
-                              ) : (
-                                <>
-                                  {Boolean(s.absentaRaw && s.dapodikRaw) && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleSingleUpdate(s)}
-                                      className="h-6.5 px-2 text-[11px] font-semibold gap-1 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg"
-                                      title="Tarik & Perbarui Kolom Tertentu dari Dapodik"
-                                    >
-                                      <RefreshCw className="w-3 h-3 text-indigo-600" /> Perbarui
-                                    </Button>
-                                  )}
+                          {isWalasMode ? (
+                            <>
+                              {/* 1. Status */}
+                              <td className="p-2.5 whitespace-nowrap">
+                                {s.status === 'MATCH' ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-xs">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                    Selaras
+                                  </span>
+                                ) : s.status === 'MISMATCH' ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 shadow-xs">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                                    Beda Data ({s.diffs?.length || 0})
+                                  </span>
+                                ) : (
+                                  renderStatusBadge(s.status)
+                                )}
+                              </td>
+
+                              {/* 2. NISN & NIK */}
+                              <td className="p-2.5">
+                                <div className="font-mono font-bold text-slate-900 dark:text-slate-100 text-xs">
+                                  {s.nisn || '-'}
+                                </div>
+                                <div className="font-mono text-[10.5px] text-slate-400 mt-0.5">
+                                  NIK: {s.nik || '-'}
+                                </div>
+                              </td>
+
+                              {/* 3. Nama Siswa */}
+                              <td className="p-2.5">
+                                {s.diffs?.some((d) => d.field === 'nama_siswa') ? (
+                                  <div className="space-y-1">
+                                    <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 flex-wrap">
+                                      <span>{s.dapodikRaw?.nama || s.dapodikRaw?.nama_siswa || s.nama}</span>
+                                      <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">Dapodik</span>
+                                    </div>
+                                    <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 flex-wrap">
+                                      <span>{s.absentaRaw?.nama_siswa || s.absentaRaw?.nama || s.nama}</span>
+                                      <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">Absenta</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                                      {s.absentaRaw?.nama_siswa || s.absentaRaw?.nama || s.dapodikRaw?.nama || s.nama}
+                                    </span>
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* 4. Keterangan Selisih Data */}
+                              <td className="p-2.5">
+                                {s.status === 'MATCH' ? (
+                                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                    <span>Seluruh data identik selaras (100%)</span>
+                                  </div>
+                                ) : s.diffs && s.diffs.length > 0 ? (
+                                  <div className="space-y-1.5 max-w-lg">
+                                    {s.diffs.map((d) => (
+                                      <div
+                                        key={d.field}
+                                        className="p-1.5 rounded-lg bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 text-[11px]"
+                                      >
+                                        <div className="font-bold text-amber-900 dark:text-amber-200 mb-1 flex items-center gap-1">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                          <span>{d.label}</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-1.5 text-[10.5px]">
+                                          <div className="bg-white/95 dark:bg-slate-800/95 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-900/50">
+                                            <span className="text-[9.5px] text-blue-600 dark:text-blue-400 font-bold block">Dapodik:</span>
+                                            <span className="font-semibold text-slate-800 dark:text-slate-100">
+                                              {formatDiffValue(d.field, d.dapodikValue)}
+                                            </span>
+                                          </div>
+                                          <div className="bg-white/95 dark:bg-slate-800/95 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900/50">
+                                            <span className="text-[9.5px] text-rose-600 dark:text-rose-400 font-bold block">Absenta:</span>
+                                            <span className="font-semibold text-rose-700 dark:text-rose-300">
+                                              {formatDiffValue(d.field, d.absentaValue)}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : s.status === 'DAPODIK_ONLY' ? (
+                                  <span className="text-blue-600 dark:text-blue-400 text-xs italic">Siswa terdaftar di Dapodik, belum ada di Absenta</span>
+                                ) : s.status === 'ABSENTA_ONLY' ? (
+                                  <span className="text-rose-600 dark:text-rose-400 text-xs italic">Siswa terdaftar di Absenta, belum ada di Dapodik</span>
+                                ) : (
+                                  <span className="text-slate-400 text-xs italic">-</span>
+                                )}
+                              </td>
+
+                              {/* 5. Aksi */}
+                              <td className="p-2.5 text-center whitespace-nowrap">
+                                <div className="flex items-center justify-center gap-1.5">
                                   <Button
                                     size="sm"
                                     variant="outline"
                                     onClick={() => setSelectedSiswaDetailId(s.absentaRaw?.id || s.id)}
-                                    className="h-6.5 px-2 text-[11px] font-semibold gap-1 text-slate-700 dark:text-slate-300 hover:text-indigo-600 hover:border-indigo-300 rounded-lg"
-                                    title="Buka & Edit Data Siswa (NIS, NISN, NIK, Biodata)"
+                                    className="h-7 px-2.5 text-[11px] font-bold gap-1 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg shadow-xs cursor-pointer"
+                                    title="Buka profil lengkap siswa untuk verifikasi berkas (Ijazah, KK, Akta) dan koreksi data"
                                   >
-                                    <Edit3 className="w-3 h-3 text-indigo-500" /> Detail / Edit
+                                    <Edit3 className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                                    <span>Koreksi Siswa</span>
                                   </Button>
                                   <Button
                                     size="sm"
-                                    variant="outline"
-                                    onClick={() => handleOpenSingleMutasi(s)}
-                                    className="h-6.5 px-2 text-[11px] font-semibold gap-1 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg"
-                                    title="Mutasikan atau Keluarkan Siswa dari Absenta"
+                                    variant="ghost"
+                                    onClick={() => setInspectedStudent(s)}
+                                    className="h-7 w-7 p-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                                    title="Intip Perbandingan Mentah Dapodik vs Absenta"
                                   >
-                                    <LogOut className="w-3 h-3" /> Mutasi
+                                    <Eye className="w-3.5 h-3.5" />
                                   </Button>
-                                </>
-                              )}
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="p-2.5 whitespace-nowrap">
+                                {renderStatusBadge(s.status)}
+                                {s.status === 'MISMATCH' && s.diffs && s.diffs.length > 0 && (
+                                  <div className="mt-1 flex flex-wrap gap-1 max-w-[150px]">
+                                    {s.diffs.map((d) => {
+                                      const isCurrentFilter = diffAttributeFilter === d.field;
+                                      const shortLabel =
+                                        d.field === 'nama_siswa' ? 'Nama' :
+                                        d.field === 'kelas' ? 'Rombel' :
+                                        d.field === 'tanggal_lahir' ? 'Tgl Lahir' :
+                                        d.field === 'tempat_lahir' ? 'Tmp Lahir' :
+                                        d.field === 'jenis_kelamin' ? 'Gender' :
+                                        d.field.toUpperCase();
+                                      return (
+                                        <button
+                                          key={d.field}
+                                          type="button"
+                                          onClick={() => setDiffAttributeFilter(isCurrentFilter ? '' : d.field)}
+                                          className={cn(
+                                            "inline-flex items-center text-[9.5px] px-1.5 py-0.2 rounded border transition-colors cursor-pointer",
+                                            isCurrentFilter
+                                              ? "bg-indigo-600 text-white border-indigo-700 font-bold"
+                                              : "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:border-amber-400 hover:bg-amber-100"
+                                          )}
+                                          title={`Filter hanya siswa dengan perbedaan ${d.label} (Klik untuk filter)`}
+                                        >
+                                          {shortLabel}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="p-2.5">
+                                <div className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                                  {s.nisn || '-'}
+                                </div>
+                                <div className="font-mono text-[10px] text-slate-400">
+                                  NIK: {s.nik || '-'}
+                                </div>
+                              </td>
+                              <td className="p-2.5 font-medium text-slate-800 dark:text-slate-200">
+                                {s.dapodikRaw ? (
+                                  s.dapodikRaw.nama || s.dapodikRaw.nama_siswa || s.nama
+                                ) : (
+                                  <span className="text-slate-400 italic">Belum Ada di Dapodik</span>
+                                )}
+                              </td>
+                              <td className="p-2.5 font-medium text-slate-800 dark:text-slate-200">
+                                {s.absentaRaw ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedSiswaDetailId(s.absentaRaw.id || s.id)}
+                                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold inline-flex items-center gap-1.5 cursor-pointer text-left group transition-colors"
+                                    title="Buka Profil Lengkap & Rekam Jejak Siswa (Mutasi, Berkas, Biodata)"
+                                  >
+                                    <span className="group-hover:underline">
+                                      {s.absentaRaw.nama_siswa || s.absentaRaw.nama || s.nama}
+                                    </span>
+                                    <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-indigo-500" />
+                                  </button>
+                                ) : (
+                                  <span className="text-slate-400 italic">Belum Ada di Absenta</span>
+                                )}
+                              </td>
+                              <td className="p-2.5 text-slate-600 dark:text-slate-400">
+                                {s.dapodikRaw?.nama_rombel || '-'}
+                              </td>
+                              <td className="p-2.5 text-slate-600 dark:text-slate-400">
+                                {s.absentaRaw?.SiswaAkademik?.[0]?.kelas?.nama_kelas || (s.absentaRaw as any)?.Kelas?.nama_kelas || s.rombel || '-'}
+                              </td>
+                              <td className="p-2.5 text-right whitespace-nowrap">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {s.status === 'DAPODIK_ONLY' ? (
+                                    <Button
+                                      size="sm"
+                                      variant="primary"
+                                      onClick={() => handleSingleImport(s)}
+                                      className="h-6.5 px-2.5 text-[11px] font-bold gap-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-xs"
+                                      title="Tarik & Daftarkan Siswa Dapodik ini ke Absenta"
+                                    >
+                                      <UserPlus className="w-3 h-3" /> Tarik ke Absenta
+                                    </Button>
+                                  ) : (
+                                    <>
+                                      {Boolean(s.absentaRaw && s.dapodikRaw) && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleSingleUpdate(s)}
+                                          className="h-6.5 px-2 text-[11px] font-semibold gap-1 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg"
+                                          title="Tarik & Perbarui Kolom Tertentu dari Dapodik"
+                                        >
+                                          <RefreshCw className="w-3 h-3 text-indigo-600" /> Perbarui
+                                        </Button>
+                                      )}
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setSelectedSiswaDetailId(s.absentaRaw?.id || s.id)}
+                                        className="h-6.5 px-2 text-[11px] font-semibold gap-1 text-slate-700 dark:text-slate-300 hover:text-indigo-600 hover:border-indigo-300 rounded-lg"
+                                        title="Buka & Edit Data Siswa (NIS, NISN, NIK, Biodata)"
+                                      >
+                                        <Edit3 className="w-3 h-3 text-indigo-500" /> Detail / Edit
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleOpenSingleMutasi(s)}
+                                        className="h-6.5 px-2 text-[11px] font-semibold gap-1 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg"
+                                        title="Mutasikan atau Keluarkan Siswa dari Absenta"
+                                      >
+                                        <LogOut className="w-3 h-3" /> Mutasi
+                                      </Button>
+                                    </>
+                                  )}
 
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setInspectedStudent(s)}
-                                className="h-6.5 px-1.5 text-[11px] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                                title="Intip Perbandingan Detail Dapodik vs Absenta"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </Button>
-                            </div>
-                          </td>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setInspectedStudent(s)}
+                                    className="h-6.5 px-1.5 text-[11px] text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                                    title="Intip Perbandingan Detail Dapodik vs Absenta"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </>
+                          )}
                         </tr>
                       );
                     })}
