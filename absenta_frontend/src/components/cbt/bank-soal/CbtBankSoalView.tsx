@@ -263,7 +263,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           const isMassalPackage = isRowMassalPackage(row);
 
           const cleanJudul = formatDisplayJudulBankSoal(row.judul, row.kode_bank, row.tingkat);
-          const authorShortName = (row.Guru?.nama_guru || '').split(',')[0]?.trim();
+          const hasTingkatInTitle = cleanJudul.toLowerCase().includes('tingkat') || cleanJudul.toLowerCase().includes('kelas');
 
           return (
             <div className="space-y-1 py-0.5">
@@ -271,12 +271,14 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                 {cleanJudul}
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-mono text-[11px] font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50/70 dark:bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-800/50">
+                <span className="font-mono text-[10.5px] font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50/70 dark:bg-indigo-950/50 px-2 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-800/50">
                   {row.kode_bank}
                 </span>
-                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200/60 dark:border-slate-700/60">
-                  Tingkat {getTingkatRoman(row.tingkat)}
-                </span>
+                {!hasTingkatInTitle && row.tingkat && (
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200/60 dark:border-slate-700/60">
+                    Tingkat {getTingkatRoman(row.tingkat)}
+                  </span>
+                )}
                 {row.kolaborasi_badge && (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800/50">
                     {row.kolaborasi_badge}
@@ -289,22 +291,22 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                 )}
                 {isFromColleague ? (
                   <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60"
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60"
                     title={`Paket ujian MGMP disusun oleh rekan: ${row.Guru?.nama_guru || 'Rekan Pengampu'}`}
                   >
                     <Users size={10} />
-                    <span>Paket MGMP (Penyusun: {authorShortName || 'Rekan'})</span>
+                    <span>MGMP</span>
                   </span>
                 ) : (row.kolaborasi_badge || isMassalPackage) ? (
                   <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
                     title="Paket Soal MGMP Terpusat (Anda adalah Penyusun Utamanya)"
                   >
                     <Users size={10} />
-                    <span>Paket MGMP (Milik Anda)</span>
+                    <span>Master MGMP</span>
                   </span>
                 ) : isSharedBank ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60">
                     <Share2 size={10} />
                     <span>Dibagikan</span>
                   </span>
@@ -361,7 +363,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         key: 'guru',
         title: 'Guru Pengampu',
         label: 'Guru Pengampu',
-        className: 'min-w-[180px]',
+        className: 'min-w-[190px]',
         render: (_val: unknown, row: CbtBankSoal) => {
           const isFromColleague = Boolean(currentGuruId && row.guru_id !== currentGuruId);
           const isMassalPackage = isRowMassalPackage(row);
@@ -372,36 +374,26 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
             Boolean(row.Kontributor && row.Kontributor.length > 0);
 
           return (
-            <div className="space-y-0.5">
-              <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+            <div className="space-y-1">
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" title={row.Guru?.nama_guru}>
                 {row.Guru?.nama_guru || '-'}
               </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {isFromColleague ? (
-                  <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
-                    Penyusun Rekan MGMP
-                  </span>
-                ) : isMgmpOrShared ? (
-                  <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400">
-                    Penyusun Utama (Anda)
-                  </span>
-                ) : null}
-
-                {(isFromColleague || isMgmpOrShared) && (
+              {(isFromColleague || isMgmpOrShared) && (
+                <div>
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setDistributionBank(row);
                     }}
-                    className="inline-flex items-center gap-1 text-[9.5px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 hover:underline cursor-pointer bg-indigo-50/60 dark:bg-indigo-950/40 px-1.5 py-0.2 rounded border border-indigo-200/60 dark:border-indigo-800/60"
+                    className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-950/80 cursor-pointer bg-indigo-50/80 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md border border-indigo-200/70 dark:border-indigo-800/60 transition-colors"
                     title="Lihat rekan guru yang menerima / berbagi naskah ini (Aman & Read-Only)"
                   >
-                    <Users size={9} />
-                    <span>Lihat Rekan</span>
+                    <Users size={11} />
+                    <span>Lihat Rekan Penerima</span>
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           );
         },
