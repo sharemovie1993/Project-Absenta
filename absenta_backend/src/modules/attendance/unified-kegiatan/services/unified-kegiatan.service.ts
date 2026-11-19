@@ -933,6 +933,17 @@ export class UnifiedKegiatanService {
         total_siswa_master: totalSiswaMaster,
         by_tingkat: [],
         by_kelas: [],
+        status_breakdown: { HADIR: 0, SAKIT: 0, IZIN: 0, ALPA: 0, DISPENSASI: 0, total: 0 },
+        by_jurusan: [],
+        pola_hari: [],
+        at_risk_students: [],
+        barometer_sertifikasi: {
+          indeks_disiplin: 0,
+          total_taruna: totalSiswaMaster,
+          siap_sertifikasi: 0,
+          butuh_pembinaan: 0,
+          persen_kelayakan: 0,
+        },
       };
     }
 
@@ -1037,7 +1048,7 @@ export class UnifiedKegiatanService {
 
     const allKelas = await prisma.kelas.findMany({
       where: { tenant_id: tenantId, is_active: true },
-      select: { id: true, nama_kelas: true, tingkat: true },
+      select: { id: true, nama_kelas: true, tingkat: true, jurusan_id: true },
     });
 
     const byKelas: Array<any> = [];
@@ -1073,6 +1084,7 @@ export class UnifiedKegiatanService {
       byKelas.push({
         kelas_id: k.id,
         kelas_nama: k.nama_kelas,
+        jurusan_id: k.jurusan_id,
         total: countSiswa,
         hadir: hadirKelas,
         persen: persenKelas,
@@ -1133,6 +1145,135 @@ export class UnifiedKegiatanService {
       persen: val.total > 0 && val.hadir > 0 ? Math.round((val.hadir / val.total) * 100) : 0,
     }));
 
+    // ── ANALITIK TAMBAHAN 1: Status Breakdown (Donut Chart Analytics) ──
+    const statusBreakdownRaw = await prisma.absenSiswa.groupBy({
+      by: ['status'],
+      where: {
+        sesi_id: { in: sesiIds },
+        tenant_id: tenantId,
+      },
+      _count: { id: true },
+    });
+    const status_breakdown = {
+      HADIR: 0,
+      SAKIT: 0,
+      IZIN: 0,
+      ALPA: 0,
+      DISPENSASI: 0,
+      total: 0,
+    };
+    for (const item of statusBreakdownRaw) {
+      if (item.status in status_breakdown) {
+        (status_breakdown as any)[item.status] = item._count.id;
+        status_breakdown.total += item._count.id;
+      }
+    }
+
+    // ── ANALITIK TAMBAHAN 2: Komparasi Lintas Program Keahlian (Department Benchmark) ──
+    const allJurusan = await prisma.jurusan.findMany({
+      where: { tenant_id: tenantId },
+      select: { id: true, nama: true, singkatan: true, kode: true },
+    });
+    const jurusanMap = new Map<string, { id: string; nama: string; total: number; hadir: number }>();
+    for (const j of allJurusan) {
+      jurusanMap.set(j.id, { id: j.id, nama: j.singkatan || j.kode || j.nama, total: 0, hadir: 0 });
+    }
+    jurusanMap.set('OTHER', { id: 'OTHER', nama: 'Umum / Lainnya', total: 0, hadir: 0 });
+
+    for (const bk of byKelas) {
+      const jKey = bk.jurusan_id && jurusanMap.has(bk.jurusan_id) ? bk.jurusan_id : 'OTHER';
+      const jEntry = jurusanMap.get(jKey)!;
+      jEntry.total += bk.total;
+      jEntry.hadir += bk.hadir;
+    }
+
+    const by_jurusan = Array.from(jurusanMap.values())
+      .filter(j => j.total > 0 || j.hadir > 0)
+      .map(j => ({
+        jurusan_id: j.id,
+        nama_jurusan: j.nama,
+        total: j.total,
+        hadir: j.hadir,
+        persen: j.total > 0 && j.hadir > 0 ? Math.round((j.hadir / j.total) * 100) : 0,
+      }))
+      .sort((a, b) => b.persen - a.persen);
+
+    // ── ANALITIK TAMBAHAN 3: Pola Hari Kehadiran (Day-of-Week Disciplinary Heatmap) ──
+    const HARI_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu'];
+    const dayMap = new Map<number, { hari: string; total_pertemuan: number; total_persen: number; total_hadir: number; total_target: number }>();
+    for (const t of trend) {
+      const dNum = new Date(`${t.tanggal}T00:00:00Z`).getUTCDay();
+      const cur = dayMap.get(dNum) || { hari: HARI_NAMES[dNum], total_pertemuan: 0, total_persen: 0, total_hadir: 0, total_target: 0 };
+      cur.total_pertemuan += 1;
+      cur.total_persen += t.persen_hadir_siswa;
+      cur.total_hadir += t.hadir_siswa;
+      cur.total_target += t.total_siswa;
+      dayMap.set(dNum, cur);
+    }
+    const pola_hari = Array.from(dayMap.entries())
+      .filter(([_, v]) => v.total_pertemuan > 0)
+      .map(([dNum, v]) => ({
+        day_index: dNum,
+        hari: v.hari,
+        total_pertemuan: v.total_pertemuan,
+        avg_persen: Math.round(v.total_persen / v.total_pertemuan),
+        total_hadir: v.total_hadir,
+        total_target: v.total_target,
+      }))
+      .sort((a, b) => a.day_index - b.day_index);
+
+    // ── ANALITIK TAMBAHAN 4: Early Warning Radar (Taruna Berisiko Alpa Tinggi) ──
+    const atRiskRaw = await prisma.absenSiswa.groupBy({
+      by: ['siswa_id'],
+      where: {
+        sesi_id: { in: sesiIds },
+        tenant_id: tenantId,
+        status: 'ALPA',
+      },
+      _count: { id: true },
+      having: { id: { _count: { gte: 2 } } },
+      orderBy: { _count: { id: 'desc' } },
+      take: 8,
+    });
+
+    const studentIds = atRiskRaw.map(r => r.siswa_id).filter(Boolean) as string[];
+    const studentsInfo = await prisma.siswa.findMany({
+      where: { id: { in: studentIds } },
+      select: {
+        id: true,
+        nama_siswa: true,
+        nis: true,
+        Kelas: {
+          select: { nama_kelas: true },
+        },
+      },
+    });
+    const studentMap = new Map(studentsInfo.map(s => [s.id, s]));
+
+    const at_risk_students = atRiskRaw.map(r => {
+      const st = r.siswa_id ? studentMap.get(r.siswa_id) : undefined;
+      return {
+        siswa_id: r.siswa_id,
+        nama_siswa: st?.nama_siswa || 'Siswa Taruna',
+        nis: st?.nis || '-',
+        nama_kelas: st?.Kelas?.nama_kelas || '-',
+        total_alpa: r._count.id,
+      };
+    });
+
+    // ── ANALITIK TAMBAHAN 5: Barometer Kelulusan & Kesiapan Sertifikat Ketarunaan ──
+    const totalStudentsTarget = totalSiswaMaster;
+    const avgDisiplin = avgPersenSiswa;
+    const siapSertifikasi = Math.round((totalStudentsTarget * Math.min(avgDisiplin, 100)) / 100);
+    const butuhPendampingan = Math.max(totalStudentsTarget - siapSertifikasi, 0);
+    const barometer_sertifikasi = {
+      indeks_disiplin: avgDisiplin,
+      total_taruna: totalStudentsTarget,
+      siap_sertifikasi: siapSertifikasi,
+      butuh_pembinaan: butuhPendampingan,
+      persen_kelayakan: totalStudentsTarget > 0 ? Math.round((siapSertifikasi / totalStudentsTarget) * 100) : 0,
+    };
+
     return {
       trend,
       latest: {
@@ -1148,6 +1289,11 @@ export class UnifiedKegiatanService {
       total_siswa_master: totalSiswaMaster,
       by_tingkat: byTingkat,
       by_kelas: byKelas,
+      status_breakdown,
+      by_jurusan,
+      pola_hari,
+      at_risk_students,
+      barometer_sertifikasi,
     };
   }
 

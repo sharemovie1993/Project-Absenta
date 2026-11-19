@@ -130,6 +130,43 @@ export interface UnifiedStatsResponse {
       hadir: number;
       persen: number;
     }>;
+    status_breakdown?: {
+      HADIR: number;
+      SAKIT: number;
+      IZIN: number;
+      ALPA: number;
+      DISPENSASI: number;
+      total: number;
+    };
+    by_jurusan?: Array<{
+      jurusan_id: string;
+      nama_jurusan: string;
+      total: number;
+      hadir: number;
+      persen: number;
+    }>;
+    pola_hari?: Array<{
+      day_index: number;
+      hari: string;
+      total_pertemuan: number;
+      avg_persen: number;
+      total_hadir: number;
+      total_target: number;
+    }>;
+    at_risk_students?: Array<{
+      siswa_id: string;
+      nama_siswa: string;
+      nis: string;
+      nama_kelas: string;
+      total_alpa: number;
+    }>;
+    barometer_sertifikasi?: {
+      indeks_disiplin: number;
+      total_taruna: number;
+      siap_sertifikasi: number;
+      butuh_pembinaan: number;
+      persen_kelayakan: number;
+    };
   };
 }
 
