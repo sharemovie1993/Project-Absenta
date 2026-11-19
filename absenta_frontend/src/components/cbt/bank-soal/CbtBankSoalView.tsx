@@ -788,9 +788,6 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
               </div>
             );
           }}
-              </div>
-            );
-          }}
         />
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
