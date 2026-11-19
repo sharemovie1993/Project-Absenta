@@ -1073,7 +1073,7 @@ export class UnifiedKegiatanService {
           targetKelas += s._count.AbsenSiswa > 0 ? s._count.AbsenSiswa : countSiswa;
         }
       } else {
-        targetKelas = countSiswa * Math.max(sesiList.length, 1);
+        targetKelas = 0;
         hadirKelas = 0;
       }
 
