@@ -39,15 +39,24 @@ async function main() {
     orderBy: { updated_at: 'desc' },
     take: 5
   });
-  console.log('Sesi DADAN HAMDAN:', JSON.stringify(dadanSesis.map(s => ({
-    id: s.id,
-    tenant_id: s.tenant_id,
-    status: s.status,
-    has_foto: Boolean(s.foto_kegiatan),
-    foto_preview: s.foto_kegiatan ? s.foto_kegiatan.substring(0, 50) + '...' : null,
-    waktu_mulai: s.waktu_mulai,
-    updated_at: s.updated_at
-  })), null, 2));
+  console.log('Sesi DADAN HAMDAN:', JSON.stringify(dadanSesis, null, 2));
+
+  // 3b. Coba tes panggil notifyKbmSessionOpened langsung untuk sesi ini dan lihat lognya!
+  if (dadanSesis.length > 0 && dadanSesis[0].foto_kegiatan) {
+    console.log('\n--- TESTING NOTIFY FOR SESI 0 ---');
+    const { sesiOpenNotifyService } = await import('../modules/attendance/sesi-absensi/services/sesi-open-notify.service');
+    try {
+      await sesiOpenNotifyService.notifyKbmSessionOpened(
+        dadanSesis[0].tenant_id,
+        dadanSesis[0],
+        null,
+        dadanSesis[0].foto_kegiatan
+      );
+      console.log('notifyKbmSessionOpened execution finished without crash.');
+    } catch (e: any) {
+      console.error('notifyKbmSessionOpened EXCEPTION:', e);
+    }
+  }
 
   // 4. WA Gateway Health & Groups
   try {
