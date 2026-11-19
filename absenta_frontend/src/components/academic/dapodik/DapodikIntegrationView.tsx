@@ -13,10 +13,11 @@ import {
   SlidersHorizontal, Settings2,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock, Sparkles,
   Printer, Bookmark, User, ExternalLink, X, ShieldCheck, Wrench,
-  UserPlus, Edit3, LogOut, Trash2
+  UserPlus, Edit3, LogOut, Trash2, GitCompare
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { cn } from '@/lib/utils';
 import { Button, Input, Badge, Loader, Modal, ModalFooter, Label, Textarea } from '@/components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { SiswaDetailModal } from '@/components/academic/siswa/SiswaDetailModal';
@@ -93,6 +94,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
   const [rombelFilter, setRombelFilter] = useState('');
   const [tingkatFilter, setTingkatFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
+  const [diffAttributeFilter, setDiffAttributeFilter] = useState<string>('');
 
   // Matching Options State (Opsi Bidang Pencocokan)
   const [compareOptions, setCompareOptions] = useState<CompareOptions>({
@@ -374,13 +376,66 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     return Array.from(rombelSet).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   }, [students]);
 
+  // Agregasi Statistik Perbedaan Atribut Siswa (Dapodik vs Absenta)
+  const diffAttributeStats = useMemo(() => {
+    const counts: Record<string, { label: string; count: number }> = {
+      kelas: { label: 'Rombel / Kelas', count: 0 },
+      nama_siswa: { label: 'Nama Siswa', count: 0 },
+      nis: { label: 'Nomor Induk Siswa (NIS)', count: 0 },
+      nisn: { label: 'NISN', count: 0 },
+      nik: { label: 'NIK', count: 0 },
+      tanggal_lahir: { label: 'Tanggal Lahir', count: 0 },
+      tempat_lahir: { label: 'Tempat Lahir', count: 0 },
+      jenis_kelamin: { label: 'Jenis Kelamin', count: 0 },
+    };
+
+    let totalStudentsWithDiffs = 0;
+
+    students.forEach((s) => {
+      if (s.diffs && s.diffs.length > 0) {
+        totalStudentsWithDiffs++;
+        s.diffs.forEach((d) => {
+          if (!counts[d.field]) {
+            counts[d.field] = { label: d.label || d.field, count: 0 };
+          }
+          counts[d.field].count++;
+        });
+      }
+    });
+
+    return { counts, totalStudentsWithDiffs };
+  }, [students]);
+
+  // Pilihan Dropdown Filter Perbedaan Atribut
+  const diffAttributeOptions = useMemo(() => {
+    const list = [
+      { value: '', label: 'Semua Status Atribut (Tanpa Filter)' },
+      { 
+        value: 'ANY_DIFF', 
+        label: `Semua Perbedaan Atribut (${diffAttributeStats.totalStudentsWithDiffs} Siswa)` 
+      },
+    ];
+
+    Object.entries(diffAttributeStats.counts)
+      .sort((a, b) => b[1].count - a[1].count)
+      .forEach(([field, item]) => {
+        list.push({
+          value: field,
+          label: `Beda ${item.label} (${item.count} siswa)`,
+        });
+      });
+
+    return list;
+  }, [diffAttributeStats]);
+
   // Cek apakah ada filter aktif selain default
   const hasActiveFilters = Boolean(
     searchQuery.trim() ||
     statusFilter !== 'ALL' ||
     rombelFilter ||
     tingkatFilter ||
-    genderFilter
+    genderFilter ||
+    diffAttributeFilter
   );
 
   const handleResetFilters = useCallback(() => {
@@ -389,6 +444,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     setRombelFilter('');
     setTingkatFilter('');
     setGenderFilter('');
+    setDiffAttributeFilter('');
   }, []);
 
   const filteredStudents = useMemo(() => {
@@ -398,7 +454,16 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
         return false;
       }
 
-      // 2. Filter Rombel
+      // 2. Filter Perbedaan Atribut Spesifik (Dapodik vs Absenta)
+      if (diffAttributeFilter) {
+        if (diffAttributeFilter === 'ANY_DIFF') {
+          if (!s.diffs || s.diffs.length === 0) return false;
+        } else {
+          if (!s.diffs || !s.diffs.some((d) => d.field === diffAttributeFilter)) return false;
+        }
+      }
+
+      // 3. Filter Rombel
       if (rombelFilter) {
         const sRombel = (s.rombel || s.dapodikRaw?.nama_rombel || '').trim();
         if (sRombel !== rombelFilter) {
@@ -406,7 +471,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
         }
       }
 
-      // 3. Filter Tingkat
+      // 4. Filter Tingkat
       if (tingkatFilter) {
         const sTingkat = getStudentTingkat(s);
         if (sTingkat !== tingkatFilter) {
@@ -414,7 +479,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
         }
       }
 
-      // 4. Filter Gender
+      // 5. Filter Gender
       if (genderFilter) {
         const sGender = (s.jenis_kelamin || '').toUpperCase().startsWith('L') ? 'L' : 'P';
         if (sGender !== genderFilter) {
@@ -422,7 +487,7 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
         }
       }
 
-      // 5. Pencarian Teks
+      // 6. Pencarian Teks
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchNama = s.nama.toLowerCase().includes(q);
@@ -435,12 +500,12 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
 
       return true;
     });
-  }, [students, statusFilter, rombelFilter, tingkatFilter, genderFilter, searchQuery, getStudentTingkat]);
+  }, [students, statusFilter, diffAttributeFilter, rombelFilter, tingkatFilter, genderFilter, searchQuery, getStudentTingkat]);
 
   // Reset pagination when filter/search/options change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, rombelFilter, tingkatFilter, genderFilter, compareOptions, pageSize]);
+  }, [searchQuery, statusFilter, diffAttributeFilter, rombelFilter, tingkatFilter, genderFilter, compareOptions, pageSize]);
 
   // Paginated Slicing (Lightweight DOM: Render only 25 - 100 rows instead of 2,755)
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
@@ -1106,6 +1171,23 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 />
               </div>
 
+              {/* 4. Filter Perbedaan Atribut */}
+              <div className="w-full sm:w-56">
+                <SearchableSelect
+                  value={diffAttributeFilter}
+                  onValueChange={setDiffAttributeFilter}
+                  options={diffAttributeOptions}
+                  placeholder="Perbedaan Atribut"
+                  searchPlaceholder="Cari perbedaan atribut..."
+                  triggerClassName={cn(
+                    "h-7 text-xs rounded-lg border",
+                    diffAttributeFilter
+                      ? "bg-amber-50/90 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-bold"
+                      : "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
+                  )}
+                />
+              </div>
+
               {/* Reset Filter Button */}
               {hasActiveFilters && (
                 <button
@@ -1118,6 +1200,57 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 </button>
               )}
             </div>
+
+            {/* Quick Chips Bar: Filter Cepat Perbedaan Atribut */}
+            {diffAttributeStats.totalStudentsWithDiffs > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100 dark:border-slate-800/60 text-xs">
+                <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 shrink-0">
+                  <GitCompare className="w-3.5 h-3.5 text-amber-500" /> Filter Perbedaan:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setDiffAttributeFilter(diffAttributeFilter === 'ANY_DIFF' ? '' : 'ANY_DIFF')}
+                  className={cn(
+                    "px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all border inline-flex items-center gap-1 cursor-pointer",
+                    diffAttributeFilter === 'ANY_DIFF'
+                      ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                      : "bg-amber-50/80 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60"
+                  )}
+                  title="Tampilkan seluruh siswa yang memiliki selisih atribut data"
+                >
+                  <AlertTriangle className="w-3 h-3" />
+                  Semua Selisih ({diffAttributeStats.totalStudentsWithDiffs})
+                </button>
+                {Object.entries(diffAttributeStats.counts)
+                  .filter(([_, item]) => item.count > 0)
+                  .sort((a, b) => b[1].count - a[1].count)
+                  .map(([field, item]) => {
+                    const isSelected = diffAttributeFilter === field;
+                    return (
+                      <button
+                        key={field}
+                        type="button"
+                        onClick={() => setDiffAttributeFilter(isSelected ? '' : field)}
+                        className={cn(
+                          "px-2 py-0.5 rounded-md text-[11px] font-medium transition-all border inline-flex items-center gap-1.5 cursor-pointer",
+                          isSelected
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs font-bold"
+                            : "bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:text-indigo-600 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700"
+                        )}
+                        title={`Filter hanya siswa dengan perbedaan ${item.label}`}
+                      >
+                        <span>{item.label}</span>
+                        <span className={cn(
+                          "px-1 py-0.2 rounded text-[10px] font-bold",
+                          isSelected ? "bg-white/25 text-white" : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                        )}>
+                          {item.count}
+                        </span>
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
 
             {/* Bulk Selection Bar */}
             {selectedStudentIds.size > 0 && (
@@ -1279,6 +1412,36 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                           </td>
                           <td className="p-2.5 whitespace-nowrap">
                             {renderStatusBadge(s.status)}
+                            {s.status === 'MISMATCH' && s.diffs && s.diffs.length > 0 && (
+                              <div className="mt-1 flex flex-wrap gap-1 max-w-[150px]">
+                                {s.diffs.map((d) => {
+                                  const isCurrentFilter = diffAttributeFilter === d.field;
+                                  const shortLabel =
+                                    d.field === 'nama_siswa' ? 'Nama' :
+                                    d.field === 'kelas' ? 'Rombel' :
+                                    d.field === 'tanggal_lahir' ? 'Tgl Lahir' :
+                                    d.field === 'tempat_lahir' ? 'Tmp Lahir' :
+                                    d.field === 'jenis_kelamin' ? 'Gender' :
+                                    d.field.toUpperCase();
+                                  return (
+                                    <button
+                                      key={d.field}
+                                      type="button"
+                                      onClick={() => setDiffAttributeFilter(isCurrentFilter ? '' : d.field)}
+                                      className={cn(
+                                        "inline-flex items-center text-[9.5px] px-1.5 py-0.2 rounded border transition-colors cursor-pointer",
+                                        isCurrentFilter
+                                          ? "bg-indigo-600 text-white border-indigo-700 font-bold"
+                                          : "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:border-amber-400 hover:bg-amber-100"
+                                      )}
+                                      title={`Filter hanya siswa dengan perbedaan ${d.label} (Klik untuk filter)`}
+                                    >
+                                      {shortLabel}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </td>
                           <td className="p-2.5">
                             <div className="font-mono font-bold text-slate-900 dark:text-slate-100">
