@@ -175,76 +175,52 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
       onClose={onClose}
       size="2xl"
       title={
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-            <Users size={18} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                Distribusi Rekan Bank Soal MGMP
-              </h3>
-              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                <Lock size={10} />
-                <span>Read-Only (Aman)</span>
-              </span>
+        <div className="flex items-center justify-between gap-3 w-full pr-6">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+              <Users size={18} />
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
-              Pratinjau rekan guru paralel yang terhubung dan bebas tugas dengan naskah bank soal ini.
-            </p>
+            <div className="min-w-0">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-tight truncate">
+                Distribusi Rekan MGMP
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                Rekan guru paralel yang otomatis terhubung &amp; bebas tugas
+              </p>
+            </div>
           </div>
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+            <Lock size={10} />
+            <span>Read-Only</span>
+          </span>
         </div>
       }
     >
-      <div className="space-y-4 p-4 text-xs">
-        {/* â”€â”€ 1. Ringkasan Naskah Bank Soal â”€â”€ */}
-        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
-                Paket Bank Soal MGMP
-              </div>
-              <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 mt-0.5">
+      <div className="space-y-3.5 p-4 text-xs">
+        {/* ── 1. Ringkasan Naskah Bank Soal (Kompak & Elegan) ── */}
+        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100">
                 {bankSoal.judul}
               </h4>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+                {bankSoal.jumlah_soal || bankSoal._count?.Soal || 0} Butir Soal Siap
+              </span>
             </div>
-
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
-              {bankSoal.jumlah_soal || bankSoal._count?.Soal || 0} Butir Soal Siap
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px]">
-            <div>
-              <span className="text-slate-500 block text-[10px]">Mata Pelajaran:</span>
-              <strong className="text-slate-800 dark:text-slate-200">{mapelTitle}</strong>
-            </div>
-            <div>
-              <span className="text-slate-500 block text-[10px]">Sasaran:</span>
-              <strong className="text-slate-800 dark:text-slate-200">
-                Tingkat {tingkatDisplay} {targetJurusanTokens.length > 0 ? `• Jurusan ${targetJurusanTokens.join(', ')}` : '• Semua Jurusan'}
-              </strong>
-            </div>
-            <div className="col-span-2 sm:col-span-1">
-              <span className="text-slate-500 block text-[10px]">Penyusun Utama:</span>
-              <strong className="text-indigo-700 dark:text-indigo-300">
-                {colleaguesData.author?.nama || bankSoal.Guru?.nama_guru || 'Penyusun Utama'}
-                {isAuthorSelf && ' (Anda)'}
-              </strong>
+            <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
+              <span>Sasaran: <strong className="text-slate-700 dark:text-slate-200">{targetJurusanTokens.length > 0 ? targetJurusanTokens.join(', ') : 'Semua Jurusan'}</strong></span>
+              <span>•</span>
+              <span>Penyusun Utama: <strong className="text-indigo-600 dark:text-indigo-400">{colleaguesData.author?.nama || bankSoal.Guru?.nama_guru || 'Penyusun Utama'}{isAuthorSelf && ' (Anda)'}</strong></span>
             </div>
           </div>
         </div>
 
-        {/* â”€â”€ 2. Daftar Rekan Guru Paralel Penerima â”€â”€ */}
+        {/* ── 2. Daftar Rekan Guru Paralel Penerima ── */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
-              <GraduationCap size={15} className="text-indigo-600 dark:text-indigo-400" />
-              <span>Daftar Rekan Guru Pengampu Paralel Ter-Cover ({colleaguesData.recipients.length} Rekan)</span>
-            </div>
-            <span className="text-[10.5px] font-medium text-slate-500">
-              Otomatis sinkron dengan Jadwal KBM &amp; SK
-            </span>
+          <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 text-xs">
+            <GraduationCap size={15} className="text-indigo-600 dark:text-indigo-400" />
+            <span>Daftar Rekan Pengampu Ter-Cover ({colleaguesData.recipients.length} Rekan)</span>
           </div>
 
           {isLoading ? (
@@ -263,60 +239,51 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
             </div>
           ) : (
             <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 max-h-72 overflow-y-auto shadow-2xs">
-              {colleaguesData.recipients.map((teacher, idx) => (
+              {colleaguesData.recipients.map((teacher) => (
                 <div
                   key={teacher.id}
                   className="p-3 flex items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold flex items-center justify-center shrink-0 text-xs">
-                      {idx + 1}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">
+                        {teacher.nama}
+                      </span>
+                      {teacher.nip && (
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          NIP: {teacher.nip}
+                        </span>
+                      )}
                     </div>
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">
-                          {teacher.nama}
-                        </span>
-                        {teacher.nip && (
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            NIP: {teacher.nip}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Rombel ajar rekan */}
-                      <div className="flex items-center gap-1 flex-wrap mt-1">
-                        <span className="text-[10px] text-slate-500">Kelas Ajar:</span>
-                        {((teacher as any).matchedJurusanKelas?.length > 0
+                    {/* Rombel ajar rekan */}
+                    <div className="flex items-center gap-1 flex-wrap mt-1">
+                      <span className="text-[10px] text-slate-500">Kelas Ajar:</span>
+                      {((teacher as any).matchedJurusanKelas?.length > 0
+                        ? (teacher as any).matchedJurusanKelas
+                        : teacher.kelasNames
+                      ).length > 0 ? (
+                        ((teacher as any).matchedJurusanKelas?.length > 0
                           ? (teacher as any).matchedJurusanKelas
                           : teacher.kelasNames
-                        ).length > 0 ? (
-                          ((teacher as any).matchedJurusanKelas?.length > 0
-                            ? (teacher as any).matchedJurusanKelas
-                            : teacher.kelasNames
-                          ).map((k: string, kIdx: number) => (
-                            <span
-                              key={kIdx}
-                              className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800"
-                            >
-                              {k}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-[10px] text-slate-400 italic">Semua Rombel Tingkat {tingkatDisplay}</span>
-                        )}
-                      </div>
+                        ).map((k: string, kIdx: number) => (
+                          <span
+                            key={kIdx}
+                            className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800"
+                          >
+                            {k}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[10px] text-slate-400 italic">Semua Rombel Tingkat {tingkatDisplay}</span>
+                      )}
                     </div>
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
-                      <CheckCircle2 size={11} className="text-emerald-600 shrink-0" />
+                    <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 rounded-full">
+                      <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
                       <span>Bebas Tugas (MGMP)</span>
-                    </span>
-                    <span className="text-[9.5px] text-slate-400 block mt-0.5">
-                      Otomatis siap diuji
                     </span>
                   </div>
                 </div>
@@ -325,16 +292,7 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
           )}
         </div>
 
-        {/* â”€â”€ 3. Jaminan Bebas Human Error Banner â”€â”€ */}
-        <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 flex items-start gap-2.5 text-blue-900 dark:text-blue-200">
-          <ShieldCheck size={18} className="text-blue-600 shrink-0 mt-0.5" />
-          <div className="text-[11px] leading-relaxed">
-            <span className="font-bold">Keamanan Distribusi:</span> Halaman ini bersifat <strong>hanya lihat (read-only)</strong>.
-            Anda dapat memastikan seluruh rekan sejawat telah ter-cover tanpa risiko mengubah setelan ujian, tanpa tombol simpan, dan tanpa risiko salah klik.
-          </div>
-        </div>
-
-        {/* â”€â”€ 4. Action Footer â”€â”€ */}
+        {/* ── 3. Action Footer ── */}
         <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-slate-800">
           <Button
             type="button"
