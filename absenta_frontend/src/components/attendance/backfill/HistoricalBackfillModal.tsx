@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   FileSpreadsheet,
   Download,
@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Info,
   RefreshCw,
+  Shield,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Modal, Button, Badge } from '../../ui';

@@ -698,6 +698,195 @@ async impersonate(request: any, reply: any) {
       return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
     }
   },
+  async impersonateGuru(request: any, reply: any) {
+    try {
+      const caller = request.user;
+      if (!caller) {
+        reply.status(401);
+        return { success: false, message: 'Tidak terotentikasi' };
+      }
+
+      const callerRole = String(caller.roleName || caller.Role?.name || caller.role?.name || '').toUpperCase();
+      if (callerRole !== 'SUPERADMIN' && callerRole !== 'ADMIN') {
+        reply.status(403);
+        return { success: false, message: 'Hanya Administrator yang memiliki akses login sebagai guru' };
+      }
+
+      // Cegah impersonasi bertingkat
+      if (caller.is_impersonated) {
+        reply.status(400);
+        return { success: false, message: 'Tidak dapat melakukan impersonasi saat berada di sesi impersonasi' };
+      }
+
+      const { guru_id, guruId } = request.body || {};
+      const targetGuruId = String(guru_id || guruId || '').trim();
+      if (!targetGuruId) {
+        reply.status(400);
+        return { success: false, message: 'ID Guru target wajib dikirim' };
+      }
+
+      // 1. Dapatkan data guru target
+      const guru = await prisma.guru.findUnique({
+        where: { id: targetGuruId },
+        include: {
+          User: {
+            include: {
+              Role: {
+                include: {
+                  rolePermissions: {
+                    include: { Permission: true }
+                  }
+                }
+              }
+            }
+          },
+          Tenant: {
+            select: {
+              id: true,
+              name: true,
+              subdomain: true,
+              custom_domain: true,
+              status: true,
+              absensi_mode: true
+            }
+          }
+        }
+      });
+
+      if (!guru) {
+        reply.status(404);
+        return { success: false, message: 'Data guru tidak ditemukan' };
+      }
+
+      // 2. Tenant isolation check: Caller harus satu tenant dengan guru, kecuali SUPERADMIN
+      const callerTenantId = caller.tenantId || caller.tenant_id;
+      if (callerRole !== 'SUPERADMIN' && callerTenantId && callerTenantId !== guru.tenant_id) {
+        reply.status(403);
+        return { success: false, message: 'Anda tidak memiliki hak akses ke guru di tenant ini' };
+      }
+
+      // 3. Validasi akun user guru
+      if (!guru.User) {
+        reply.status(404);
+        return { success: false, message: 'Guru ini belum memiliki akun user di sistem' };
+      }
+
+      if (guru.User.status === 'INACTIVE') {
+        reply.status(400);
+        return { success: false, message: 'Akun guru ini dalam status dinonaktifkan' };
+      }
+
+      const targetUser = guru.User;
+      const targetRoleName = String(targetUser.Role?.name || '').toUpperCase();
+
+      // Prohibit impersonating SUPERADMIN
+      if (targetRoleName === 'SUPERADMIN') {
+        reply.status(403);
+        return { success: false, message: 'Tidak diizinkan login sebagai SUPERADMIN' };
+      }
+
+      // 4. Invalidate cache organisasi target user agar posisi/tugas ter-fresh
+      try {
+        await organizationalContextCache.invalidateUser(targetUser.id);
+      } catch {}
+
+      // 5. Bangun userResponse lengkap menggunakan authService.getUserById
+      const userResponse = await authService.getUserById(targetUser.id, targetUser.tenant_id);
+      if (!userResponse) {
+        reply.status(500);
+        return { success: false, message: 'Gagal memuat profil pengguna guru' };
+      }
+
+      const impersonatorInfo = {
+        id: caller.id,
+        email: caller.email,
+        name: caller.name || caller.full_name || 'Admin',
+        role: callerRole
+      };
+
+      (userResponse as any).is_impersonated = true;
+      (userResponse as any).impersonator = impersonatorInfo;
+
+      // 6. Generate JWT token akses (masa aktif 1 jam untuk impersonasi pengawasan)
+      const tokenPayload = {
+        id: targetUser.id,
+        email: targetUser.email,
+        full_name: targetUser.full_name,
+        name: targetUser.full_name,
+        tenantId: targetUser.tenant_id,
+        roleId: targetUser.Role.id,
+        roleName: targetUser.Role.name,
+        is_impersonated: true,
+        impersonator_id: caller.id,
+        impersonator_name: caller.name || caller.full_name,
+        impersonator_role: callerRole,
+        exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 jam
+      };
+      const token = jwt.sign(tokenPayload, getJwtSecret());
+
+      // Generate refresh token
+      let refreshToken = '';
+      try {
+        const deviceHint = `Impersonation by ${caller.email || caller.id}`;
+        refreshToken = await refreshTokenService.createRefreshToken(
+          targetUser.id,
+          targetUser.tenant_id || 'system',
+          deviceHint,
+          1 // 1 hari
+        );
+      } catch {
+        refreshToken = jwt.sign({
+          id: targetUser.id,
+          tenantId: targetUser.tenant_id,
+          is_impersonated: true,
+          exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
+        }, getJwtSecret());
+      }
+
+      // 7. Catat audit activity log
+      try {
+        await prisma.activityLog.create({
+          data: {
+            tenant_id: targetUser.tenant_id || 'system',
+            user_id: caller.id,
+            action: 'ADMIN_IMPERSONATE_TEACHER',
+            entity: 'GURU',
+            entity_id: guru.id,
+            metadata: JSON.stringify({
+              admin_id: caller.id,
+              admin_email: caller.email,
+              admin_name: caller.name || caller.full_name,
+              guru_id: guru.id,
+              guru_name: guru.nama_guru,
+              guru_nip: guru.nip,
+              target_user_id: targetUser.id,
+              target_user_email: targetUser.email,
+              request_ip: request.ip
+            })
+          }
+        });
+      } catch (logErr) {
+        console.error('[ImpersonateGuru] Failed to log activity:', logErr);
+      }
+
+      return reply.status(200).send({
+        success: true,
+        message: `Berhasil login sebagai ${guru.nama_guru}`,
+        data: {
+          user: userResponse,
+          token,
+          refreshToken,
+          impersonator: impersonatorInfo
+        }
+      });
+    } catch (error: any) {
+      console.error('Error in impersonateGuru controller:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error.message || 'Internal server error'
+      });
+    }
+  },
 async changePassword(request: any, reply: any) {
     try {
       const userPayload = request.user;

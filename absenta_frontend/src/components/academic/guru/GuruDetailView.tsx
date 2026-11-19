@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Check, 
@@ -24,10 +25,13 @@ import {
   Phone,
   Mail,
   Calendar,
-  FileText
+  FileText,
+  LogIn
 } from 'lucide-react';
 import { Button, Modal, SearchableSelect, Input, Label, Textarea, Loader } from '../../ui';
 import { toast } from 'react-hot-toast';
+import useConfirm from '../../../hooks/useConfirm';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getGuruDetail, updateGuru, guruQueryKeys } from '../../../api/academic/guru.api';
 import { listGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
@@ -222,6 +226,14 @@ export const GuruDetailView: React.FC<GuruDetailViewProps> = ({
   });
   const guruMapelList = guruMapelRes?.data || [];
 
+  const navigate = useNavigate();
+  const confirm = useConfirm();
+  const { isAdmin } = useCapabilities();
+  const { user: currentUser, isImpersonating, impersonateGuruAction } = useAuthStore();
+  const isSuperAdmin = currentUser?.role?.name === 'SUPERADMIN' || currentUser?.tenant_id === 'system';
+  const canImpersonate = (isAdmin || isSuperAdmin) && !isImpersonating;
+  const [isImpersonatingLoading, setIsImpersonatingLoading] = useState(false);
+
   // Local photo upload states
   const [isWebcamOpen, setIsWebcamOpen] = useState(false);
   const [localPhotoPreview, setLocalPhotoPreview] = useState<string | null>(null);
@@ -392,6 +404,49 @@ export const GuruDetailView: React.FC<GuruDetailViewProps> = ({
     }
   };
 
+  // Handle Impersonate (Login Sebagai Guru)
+  const handleImpersonate = useCallback(async () => {
+    if (!guru) return;
+    try {
+      const ok = await confirm({
+        title: `Login Sebagai ${guru.nama_guru}?`,
+        description: (
+          <div className="space-y-3">
+            <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl flex items-start gap-3">
+              <div className="bg-indigo-600 text-white p-2 rounded-xl shrink-0 shadow-sm">
+                <LogIn size={20} />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-black text-indigo-950 dark:text-indigo-200">
+                  Mode Pengawasan Impersonasi
+                </p>
+                <p className="text-[11px] text-indigo-800 dark:text-indigo-300 leading-relaxed">
+                  Anda akan masuk ke dalam sistem sebagai <strong>{guru.nama_guru}</strong> ({guru.nip ? `NIP: ${guru.nip}` : guru.status_kepegawaian || 'Guru'}). Anda dapat memeriksa dashboard, jadwal mengajar, dan bank soal dari sudut pandang guru tersebut.
+                </p>
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
+              💡 <strong>Tips:</strong> Anda dapat kembali ke akun Administrator kapan saja menggunakan tombol di banner oranye pada bagian atas layar.
+            </div>
+          </div>
+        ),
+        confirmText: 'Ya, Login Sebagai Guru',
+        cancelText: 'Batal'
+      });
+
+      if (!ok) return;
+
+      setIsImpersonatingLoading(true);
+      await impersonateGuruAction(guru.id);
+      toast.success(`Berhasil login sebagai ${guru.nama_guru}`);
+      navigate('/dashboard');
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal login sebagai guru');
+    } finally {
+      setIsImpersonatingLoading(false);
+    }
+  }, [guru, confirm, impersonateGuruAction, navigate]);
+
   // Photo upload handler
   const handleUploadPhoto = useCallback(async (file: File) => {
     if (!guruId) return;
@@ -503,6 +558,23 @@ export const GuruDetailView: React.FC<GuruDetailViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {canImpersonate && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleImpersonate}
+              disabled={isImpersonatingLoading}
+              className="h-9 px-3.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800 flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title={`Login sebagai ${guru.nama_guru}`}
+            >
+              {isImpersonatingLoading ? (
+                <Loader2 size={14} className="animate-spin text-indigo-600" />
+              ) : (
+                <LogIn size={14} className="text-indigo-600 dark:text-indigo-400" />
+              )}
+              <span className="hidden sm:inline">Login Sebagai Guru</span>
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -704,7 +776,24 @@ export const GuruDetailView: React.FC<GuruDetailViewProps> = ({
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                {canImpersonate ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleImpersonate}
+                    disabled={isImpersonatingLoading}
+                    className="h-10 px-4 rounded-xl text-xs font-extrabold border-indigo-200 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100 dark:border-indigo-800 dark:text-indigo-300 dark:bg-indigo-950/30 flex items-center gap-2 cursor-pointer"
+                  >
+                    {isImpersonatingLoading ? (
+                      <Loader2 size={14} className="animate-spin text-indigo-600" />
+                    ) : (
+                      <LogIn size={14} className="text-indigo-600 dark:text-indigo-400" />
+                    )}
+                    <span>Login Sebagai Guru Ini</span>
+                  </Button>
+                ) : <div />}
+
                 <Button
                   type="submit"
                   disabled={isSavingAccount}

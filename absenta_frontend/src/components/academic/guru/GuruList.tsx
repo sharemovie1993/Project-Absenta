@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, Suspense, lazy } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import useConfirm from '../../../hooks/useConfirm';
@@ -24,7 +25,8 @@ import {
   X,
   Zap,
   Camera,
-  Wrench
+  Wrench,
+  LogIn
 } from 'lucide-react';
 import { 
   Button, 
@@ -76,7 +78,12 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
 }) => {
   const isMobile = useIsMobile();
   const confirm = useConfirm();
-  const { can } = useCapabilities();
+  const navigate = useNavigate();
+  const { can, isAdmin } = useCapabilities();
+  const { user, isImpersonating, impersonateGuruAction } = useAuthStore();
+  const isSuperAdmin = user?.role?.name === 'SUPERADMIN' || user?.tenant_id === 'system';
+  const canImpersonate = useMemo(() => (isAdmin || isSuperAdmin) && !isImpersonating, [isAdmin, isSuperAdmin, isImpersonating]);
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false); // hanya untuk operasi delete/toggle
   const [searchTerm, setSearchTerm] = useState('');
   const queryClient = useQueryClient();
@@ -306,6 +313,48 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       confirm.setLoading(false);
     }
   }, [confirm, invalidateGuruCache, queryClient, refetch, onRefresh]);
+
+  // Handle Impersonate (Login Sebagai Guru)
+  const handleImpersonate = useCallback(async (guru: Guru) => {
+    try {
+      const ok = await confirm({
+        title: `Login Sebagai ${guru.nama_guru}?`,
+        description: (
+          <div className="space-y-3">
+            <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl flex items-start gap-3">
+              <div className="bg-indigo-600 text-white p-2 rounded-xl shrink-0 shadow-sm">
+                <LogIn size={20} />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-black text-indigo-950 dark:text-indigo-200">
+                  Mode Pengawasan Impersonasi
+                </p>
+                <p className="text-[11px] text-indigo-800 dark:text-indigo-300 leading-relaxed">
+                  Anda akan masuk ke dalam sistem sebagai <strong>{guru.nama_guru}</strong> ({guru.nip ? `NIP: ${guru.nip}` : guru.status_kepegawaian || 'Guru'}). Anda dapat memeriksa dashboard, jadwal mengajar, dan bank soal dari sudut pandang guru tersebut.
+                </p>
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
+              💡 <strong>Tips:</strong> Anda dapat kembali ke akun Administrator kapan saja menggunakan tombol di banner oranye pada bagian atas layar.
+            </div>
+          </div>
+        ),
+        confirmText: 'Ya, Login Sebagai Guru',
+        cancelText: 'Batal'
+      });
+
+      if (!ok) return;
+
+      setImpersonatingId(guru.id);
+      await impersonateGuruAction(guru.id);
+      toast.success(`Berhasil login sebagai ${guru.nama_guru}`);
+      navigate('/dashboard');
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal login sebagai guru');
+    } finally {
+      setImpersonatingId(null);
+    }
+  }, [confirm, impersonateGuruAction, navigate]);
 
   const [togglingJenisPtkId, setTogglingJenisPtkId] = useState<string | null>(null);
 
@@ -574,6 +623,23 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
           >
             <Eye className="w-4 h-4" aria-hidden="true" />
           </Button>
+          {canImpersonate && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => handleImpersonate(guru)}
+              aria-label={`Login sebagai ${guru.nama_guru}`}
+              title={`Login sebagai ${guru.nama_guru}`}
+              disabled={impersonatingId === guru.id}
+              className="h-8 w-8 p-0 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+            >
+              {impersonatingId === guru.id ? (
+                <Loader size="sm" className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <LogIn className="w-4 h-4" aria-hidden="true" />
+              )}
+            </Button>
+          )}
           {canManage && (
             <Button
               size="sm"
@@ -589,7 +655,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         </div>
       )
     },
-  ].filter(Boolean) as any, [canManage, onEdit, onView, selectedIds, gurus, allVisibleSelected, confirm, handleDelete, handleToggleJenisPtk, togglingJenisPtkId, invalidateGuruCache, queryClient, refetch, onRefresh]);
+  ].filter(Boolean) as any, [canManage, canImpersonate, handleImpersonate, impersonatingId, onEdit, onView, selectedIds, gurus, allVisibleSelected, confirm, handleDelete, handleToggleJenisPtk, togglingJenisPtkId, invalidateGuruCache, queryClient, refetch, onRefresh]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
@@ -660,20 +726,43 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         />
       </div>
 
-      <Button
-        size="xs"
-        variant="outline"
-        onClick={(e) => {
-          e.stopPropagation();
-          onView?.(guru);
-        }}
-        aria-label={`Detail ${guru.nama_guru}`}
-        className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
-      >
-        Detail
-      </Button>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {canImpersonate && (
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleImpersonate(guru);
+            }}
+            disabled={impersonatingId === guru.id}
+            aria-label={`Login sebagai ${guru.nama_guru}`}
+            title={`Login sebagai ${guru.nama_guru}`}
+            className="rounded-xl px-2.5 py-1.5 font-bold text-xs border-indigo-200 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100 dark:border-indigo-800 dark:text-indigo-300 dark:bg-indigo-950/30 flex items-center gap-1"
+          >
+            {impersonatingId === guru.id ? (
+              <Loader size="sm" className="w-3 h-3 animate-spin" />
+            ) : (
+              <LogIn className="w-3 h-3" />
+            )}
+            <span>Masuk</span>
+          </Button>
+        )}
+        <Button
+          size="xs"
+          variant="outline"
+          onClick={(e) => {
+            e.stopPropagation();
+            onView?.(guru);
+          }}
+          aria-label={`Detail ${guru.nama_guru}`}
+          className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+        >
+          Detail
+        </Button>
+      </div>
     </div>
-  ), [onView]);
+  ), [onView, canImpersonate, handleImpersonate, impersonatingId]);
 
   return (
     <div className="flex flex-col">

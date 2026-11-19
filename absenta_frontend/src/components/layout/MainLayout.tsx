@@ -6,6 +6,7 @@ import { Topbar } from './Topbar';
 // Sidebar is lazy loaded below
 import { useAuthStore } from '@/store/authStore';
 import SubscriptionStateBanner from '@/components/common/SubscriptionStateBanner';
+import { ImpersonationBanner } from './ImpersonationBanner';
 import { HelpCircle } from 'lucide-react';
 // InstructionPanel is lazy loaded below
 import { InstructionProvider, useInstruction } from '@/contexts/InstructionContext';
@@ -220,6 +221,7 @@ function MainLayoutContent() {
 
             {/* Area Konten Utama */}
             <main className="min-w-0 relative">
+              <ImpersonationBanner />
               <PendingPaymentBlocker />
               
               {/* Global Subscription Banner */}

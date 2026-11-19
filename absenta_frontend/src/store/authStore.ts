@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { login, getCurrentUser, refreshToken } from '../api/auth.api';
+import { login, getCurrentUser, refreshToken, impersonateGuru } from '../api/auth.api';
 import { completeOnboarding } from '../api/user.api';
 import { getMyTenant } from '../api/tenants.api';
 import { getMySubscription } from '../api/subscription.api';
@@ -63,6 +63,13 @@ export interface User {
     nama_kelas: string;
     tingkat?: number | null;
   } | null;
+  is_impersonated?: boolean;
+  impersonator?: {
+    id: string;
+    email?: string;
+    name?: string;
+    role?: string;
+  };
   features?: string[]; // Tenant level features (CORE, ABSENSI, KOPERASI)
   created_at: string;
   updated_at: string;
@@ -84,6 +91,7 @@ interface AuthState {
   hasCompletedOnboarding: boolean;
   subscriptionIssueModalOpen: boolean;
   subscriptionIssueModalMessage: string | null;
+  isImpersonating: boolean;
   
   // Actions
   loginAction: (email: string, password: string, tenantIdDev?: string, rememberMe?: boolean) => Promise<void>;
@@ -100,6 +108,8 @@ interface AuthState {
   openSubscriptionIssueModal: (message?: string) => void;
   closeSubscriptionIssueModal: () => void;
   refreshSubscription: () => Promise<void>;
+  impersonateGuruAction: (guruId: string) => Promise<boolean>;
+  revertImpersonationAction: () => Promise<void>;
 }
 
 // Helper to safely access auth storage (localStorage for remembered, sessionStorage for non-remembered)
@@ -158,6 +168,7 @@ export const useAuthStore = create<AuthState>()(
       hasCompletedOnboarding: true,
       subscriptionIssueModalOpen: false,
       subscriptionIssueModalMessage: null,
+      isImpersonating: typeof window !== 'undefined' ? !!localStorage.getItem('absenta_original_admin_session') : false,
 
       // Login action dengan integrasi API
       loginAction: async (email: string, password: string, tenantIdDev?: string, rememberMe: boolean = true) => {
@@ -347,6 +358,7 @@ export const useAuthStore = create<AuthState>()(
               tenantMode: (response.data as any)?.tenant?.absensi_mode ?? null,
               isLoading: false,
               hasCompletedOnboarding: response.data.has_completed_onboarding ?? false,
+              isImpersonating: typeof window !== 'undefined' ? !!localStorage.getItem('absenta_original_admin_session') : false,
             });
             console.log('🚀 [AUTH-DEBUG] loadUser success, tenantMode:', (response.data as any)?.tenant?.absensi_mode);
             const actualRoleName = response.data.role?.name || (response.data as any).roleName || '';
@@ -455,6 +467,7 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('selected_tenant');
         localStorage.removeItem('portal_active_ws');
         localStorage.removeItem('absenta_nav_state');
+        localStorage.removeItem('absenta_original_admin_session');
 
         // Bersihkan seluruh token & demo session state dari sessionStorage
         try {
@@ -481,7 +494,132 @@ export const useAuthStore = create<AuthState>()(
           isLoading: false,
           error: null,
           hasCompletedOnboarding: true,
+          isImpersonating: false,
         });
+      },
+
+      // Impersonate Guru Action (Login Sebagai Guru)
+      impersonateGuruAction: async (guruId: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const currentToken = get().token || localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          const currentRefreshToken = get().refreshToken || localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+          const currentUser = get().user;
+          const currentTenantId = get().tenantId;
+
+          if (!currentToken || !currentUser) {
+            throw new Error('Sesi Administrator tidak ditemukan. Silakan login kembali.');
+          }
+
+          const response = await impersonateGuru(guruId);
+          if (!response.success || !response.data) {
+            throw new Error(response.message || 'Gagal login sebagai guru');
+          }
+
+          const { user: teacherUser, token: teacherToken, refreshToken: teacherRefreshToken, impersonator } = response.data;
+
+          // Cadangkan sesi Admin asli ke localStorage
+          const adminSessionBackup = {
+            token: currentToken,
+            refreshToken: currentRefreshToken,
+            user: currentUser,
+            tenantId: currentTenantId,
+            impersonator: impersonator || {
+              id: currentUser.id,
+              name: currentUser.full_name || currentUser.name,
+              email: currentUser.email,
+              role: currentUser.role?.name
+            },
+            impersonatedAt: new Date().toISOString()
+          };
+          localStorage.setItem('absenta_original_admin_session', JSON.stringify(adminSessionBackup));
+
+          // Pasang kredensial guru baru
+          localStorage.setItem('access_token', teacherToken);
+          if (teacherRefreshToken) {
+            localStorage.setItem('refresh_token', teacherRefreshToken);
+          }
+          if (teacherUser.tenant_id) {
+            localStorage.setItem('tenant_id', teacherUser.tenant_id);
+          }
+
+          set({
+            user: teacherUser,
+            token: teacherToken,
+            refreshToken: teacherRefreshToken || null,
+            tenantId: teacherUser.tenant_id || null,
+            tenantMode: (teacherUser as any)?.tenant?.absensi_mode ?? null,
+            hasCompletedOnboarding: (teacherUser as any).has_completed_onboarding ?? true,
+            isAuthenticated: true,
+            isImpersonating: true,
+            isLoading: false
+          });
+
+          // Bersihkan cache React Query agar query refetch menggunakan sesi guru
+          queryClient.clear();
+
+          return true;
+        } catch (err: any) {
+          set({ isLoading: false, error: err.message || 'Gagal login sebagai guru' });
+          throw err;
+        }
+      },
+
+      // Revert Impersonation Action (Kembali ke Akun Admin)
+      revertImpersonationAction: async () => {
+        set({ isLoading: true });
+        try {
+          const rawBackup = localStorage.getItem('absenta_original_admin_session');
+          if (!rawBackup) {
+            get().logout();
+            window.location.href = '/login';
+            return;
+          }
+
+          const backup = JSON.parse(rawBackup);
+          const { token, refreshToken: refToken, user: adminUser, tenantId } = backup;
+
+          localStorage.removeItem('absenta_original_admin_session');
+
+          if (token) {
+            localStorage.setItem('access_token', token);
+          }
+          if (refToken) {
+            localStorage.setItem('refresh_token', refToken);
+          }
+          if (tenantId) {
+            localStorage.setItem('tenant_id', tenantId);
+          }
+
+          set({
+            user: adminUser,
+            token: token,
+            refreshToken: refToken || null,
+            tenantId: tenantId || null,
+            tenantMode: (adminUser as any)?.tenant?.absensi_mode ?? null,
+            hasCompletedOnboarding: (adminUser as any)?.has_completed_onboarding ?? true,
+            isAuthenticated: true,
+            isImpersonating: false,
+            isLoading: false
+          });
+
+          // Bersihkan cache React Query
+          queryClient.clear();
+
+          // Muat ulang data user admin dari server untuk sinkronisasi profil terbaru
+          try {
+            await get().loadUser();
+          } catch (e) {
+            console.warn('Failed to loadUser after reverting impersonation:', e);
+          }
+
+          window.location.href = '/academic/guru';
+        } catch (err) {
+          console.error('Error reverting impersonation:', err);
+          localStorage.removeItem('absenta_original_admin_session');
+          get().logout();
+          window.location.href = '/login';
+        }
       },
 
       // Setter actions

@@ -20,6 +20,9 @@ export class HistoricalBackfillController {
 
       const bulan = query.bulan ? Number(query.bulan) : undefined;
       const mapelId = query.mapel_id || query.mapelId;
+      const jenisKegiatan = query.jenis_kegiatan || query.jenisKegiatan;
+      const jadwalKegiatanId = query.jadwal_kegiatan_id || query.jadwalKegiatanId;
+      const hari = query.hari;
       const tahunPelajaranId = query.tahun_pelajaran_id || query.tahunPelajaranId;
       const semesterId = query.semester_id || query.semesterId;
       const startDate = query.start_date || query.startDate;
@@ -28,6 +31,9 @@ export class HistoricalBackfillController {
       const { buffer, fileName } = await historicalBackfillService.generateTemplate(tenantId, {
         kelasId,
         mapelId,
+        jenisKegiatan,
+        jadwalKegiatanId,
+        hari,
         tahunPelajaranId,
         semesterId,
         bulan,
@@ -116,7 +122,21 @@ export class HistoricalBackfillController {
       }
 
       const body = (request.body || {}) as any;
-      const { kelasId, mapelId, mapel_id, guruId, guru_id, tahunPelajaranId, semesterId, dateList, students } = body;
+      const {
+        kelasId,
+        mapelId,
+        mapel_id,
+        guruId,
+        guru_id,
+        jenisKegiatan,
+        jenis_kegiatan,
+        jadwalKegiatanId,
+        jadwal_kegiatan_id,
+        tahunPelajaranId,
+        semesterId,
+        dateList,
+        students,
+      } = body;
 
       if (!kelasId || !Array.isArray(dateList) || dateList.length === 0 || !Array.isArray(students) || students.length === 0) {
         return reply.status(400).send({
@@ -129,6 +149,8 @@ export class HistoricalBackfillController {
         kelasId,
         mapelId: mapelId || mapel_id,
         guruId: guruId || guru_id,
+        jenisKegiatan: jenisKegiatan || jenis_kegiatan,
+        jadwalKegiatanId: jadwalKegiatanId || jadwal_kegiatan_id,
         tahunPelajaranId,
         semesterId,
         dateList,

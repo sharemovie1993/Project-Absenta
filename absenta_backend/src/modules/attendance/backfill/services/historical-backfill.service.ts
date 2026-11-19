@@ -6,6 +6,9 @@ import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 export interface GenerateTemplateParams {
   kelasId: string;
   mapelId?: string;
+  jenisKegiatan?: string;
+  jadwalKegiatanId?: string;
+  hari?: string;
   tahunPelajaranId?: string;
   semesterId?: string;
   bulan?: number; // 1-12 (opsional, jika ingin per bulan, contoh 8 untuk Agustus)
@@ -58,6 +61,28 @@ export class HistoricalBackfillService {
       });
       if (guruMapel?.Guru) {
         guruObj = guruMapel.Guru;
+      }
+    }
+
+    // 2c. Ambil data kegiatan jika mode Backfill Ketarunaan
+    const isKetarunaan = (params.jenisKegiatan || '').toUpperCase() === 'KETARUNAAN' || Boolean(params.jadwalKegiatanId);
+    let jadwalKegiatan: any = null;
+    if (isKetarunaan) {
+      if (params.jadwalKegiatanId) {
+        jadwalKegiatan = await prisma.jadwalKegiatan.findFirst({
+          where: { id: params.jadwalKegiatanId, tenant_id: tenantId },
+        });
+      }
+      if (!jadwalKegiatan) {
+        jadwalKegiatan = await prisma.jadwalKegiatan.findFirst({
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { nama: { contains: 'Ketarunaan', mode: 'insensitive' } },
+              { jenis_kegiatan: { contains: 'Ketarunaan', mode: 'insensitive' } },
+            ],
+          },
+        });
       }
     }
 
@@ -167,6 +192,16 @@ export class HistoricalBackfillService {
       computedEndDate = new Date(startYear, 11, 20);  // 20 Desember
     }
 
+    // Day enum mapper: 0=Min, 1=Sen, 2=Sel, 3=Rab, 4=Kam, 5=Jum, 6=Sab
+    const dayEnumMap: Record<number, string> = {
+      1: 'SENIN',
+      2: 'SELASA',
+      3: 'RABU',
+      4: 'KAMIS',
+      5: 'JUMAT',
+      6: 'SABTU',
+    };
+
     // Filter hari sekolah aktif (Senin - Jumat / Sabtu, lewati hari Minggu = 0)
     const effectiveDates: { dateStr: string; dayName: string; dayNum: number }[] = [];
     const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -175,14 +210,27 @@ export class HistoricalBackfillService {
     while (curr <= computedEndDate) {
       const dayOfWeek = curr.getDay();
       if (dayOfWeek !== 0) { // Lewati hari Minggu
-        const y = curr.getFullYear();
-        const m = String(curr.getMonth() + 1).padStart(2, '0');
-        const d = String(curr.getDate()).padStart(2, '0');
-        effectiveDates.push({
-          dateStr: `${y}-${m}-${d}`,
-          dayName: dayNames[dayOfWeek],
-          dayNum: curr.getDate(),
-        });
+        const hariEnum = dayEnumMap[dayOfWeek];
+        let includeDate = true;
+
+        if (isKetarunaan) {
+          if (params.hari && params.hari !== 'SEMUA') {
+            includeDate = hariEnum === params.hari.toUpperCase();
+          } else if (jadwalKegiatan?.hari && Array.isArray(jadwalKegiatan.hari) && jadwalKegiatan.hari.length > 0) {
+            includeDate = (jadwalKegiatan.hari as string[]).includes(hariEnum);
+          }
+        }
+
+        if (includeDate) {
+          const y = curr.getFullYear();
+          const m = String(curr.getMonth() + 1).padStart(2, '0');
+          const d = String(curr.getDate()).padStart(2, '0');
+          effectiveDates.push({
+            dateStr: `${y}-${m}-${d}`,
+            dayName: dayNames[dayOfWeek],
+            dayNum: curr.getDate(),
+          });
+        }
       }
       curr.setDate(curr.getDate() + 1);
     }
@@ -195,7 +243,13 @@ export class HistoricalBackfillService {
 
     // Header Judul Dokumen
     const namaSekolahStr = (sekolah?.nama || 'SEKOLAH').toUpperCase();
-    if (mapelObj) {
+    if (isKetarunaan) {
+      const agendaNama = (jadwalKegiatan?.nama || 'PROGRAM KETARUNAAN').toUpperCase();
+      const hariLabel = params.hari && params.hari !== 'SEMUA' ? params.hari : (jadwalKegiatan?.hari?.join(', ') || 'SELASA, RABU, KAMIS');
+      aoa.push([`REKAP PRESENSI ${agendaNama} (SEMESTER GANJIL) — ${namaSekolahStr}`]);
+      aoa.push([`PELETON / KELAS: ${kelas.nama_kelas}   |   HARI LATIHAN: ${hariLabel}   |   JAM: ${jadwalKegiatan?.waktu_mulai || '06:30'} - ${jadwalKegiatan?.waktu_selesai || '07:30'}`]);
+      aoa.push([`TAHUN PELAJARAN: ${tpObj?.tahun || `${startYear}/${startYear + 1}`}   |   SEMESTER: ${semObj?.nama_semester || 'GANJIL'}   |   PETUNJUK: Cukup ketik huruf S (Sakit), I (Izin), A (Alpa), D (Dispen). Sel KOSONG atau H = HADIR.`]);
+    } else if (mapelObj) {
       aoa.push([`REKAP PRESENSI MATA PELAJARAN (SEMESTER GANJIL) — ${namaSekolahStr}`]);
       aoa.push([`MATA PELAJARAN: ${mapelObj.nama_mapel}   |   GURU PENGAMPU: ${guruObj?.nama_guru || '-'}   |   KELAS: ${kelas.nama_kelas}`]);
       aoa.push([`TAHUN PELAJARAN: ${tpObj?.tahun || `${startYear}/${startYear + 1}`}   |   SEMESTER: ${semObj?.nama_semester || 'GANJIL'}   |   PETUNJUK: Cukup ketik huruf S (Sakit), I (Izin), A (Alpa), D (Dispen). Sel KOSONG atau H = HADIR.`]);
@@ -303,14 +357,20 @@ export class HistoricalBackfillService {
 
     const cleanKelas = kelas.nama_kelas.replace(/[^a-zA-Z0-9_-]/g, '_');
     const cleanMapel = mapelObj ? mapelObj.nama_mapel.replace(/[^a-zA-Z0-9_-]/g, '_') : '';
-    const sheetTitle = mapelObj ? `Presensi_${cleanMapel.substring(0, 15)}_${cleanKelas}`.substring(0, 31) : `Presensi_${cleanKelas}`.substring(0, 31);
+    let sheetTitle = `Presensi_${cleanKelas}`.substring(0, 31);
+    let fileName = `Format_Backfill_Presensi_${cleanKelas}_Semester_Ganjil.xlsx`;
+
+    if (isKetarunaan) {
+      sheetTitle = `Ketarunaan_${cleanKelas}`.substring(0, 31);
+      fileName = `Format_Backfill_Ketarunaan_${cleanKelas}_Semester_Ganjil.xlsx`;
+    } else if (mapelObj) {
+      sheetTitle = `Presensi_${cleanMapel.substring(0, 15)}_${cleanKelas}`.substring(0, 31);
+      fileName = `Format_Backfill_Presensi_${cleanKelas}_${cleanMapel}_Semester_Ganjil.xlsx`;
+    }
+
     XLSX.utils.book_append_sheet(wb, ws, sheetTitle);
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    const fileName = mapelObj
-      ? `Format_Backfill_Presensi_${cleanKelas}_${cleanMapel}_Semester_Ganjil.xlsx`
-      : `Format_Backfill_Presensi_${cleanKelas}_Semester_Ganjil.xlsx`;
-
     return { buffer, fileName };
   }
 
@@ -464,6 +524,8 @@ export class HistoricalBackfillService {
       kelasId: string;
       mapelId?: string;
       guruId?: string;
+      jenisKegiatan?: string;
+      jadwalKegiatanId?: string;
       tahunPelajaranId?: string;
       semesterId?: string;
       dateList: string[]; // ['2026-08-01', '2026-08-02', ...]
@@ -475,6 +537,7 @@ export class HistoricalBackfillService {
     }
   ): Promise<any> {
     const { kelasId, mapelId, dateList, students } = payload;
+    const isKetarunaan = (payload.jenisKegiatan || '').toUpperCase() === 'KETARUNAAN' || Boolean(payload.jadwalKegiatanId);
 
     const kelas = await prisma.kelas.findFirst({
       where: { id: kelasId, tenant_id: tenantId },
@@ -485,7 +548,7 @@ export class HistoricalBackfillService {
     // 1b. Resolve Mapel & Guru jika Backfill Per Mapel
     let mapelObj: any = null;
     let resolvedGuruId = payload.guruId || null;
-    if (mapelId) {
+    if (mapelId && !isKetarunaan) {
       mapelObj = await prisma.mapel.findFirst({
         where: { id: mapelId, tenant_id: tenantId },
         select: { id: true, nama_mapel: true },
@@ -496,6 +559,29 @@ export class HistoricalBackfillService {
           select: { guru_id: true },
         });
         resolvedGuruId = gm?.guru_id || null;
+      }
+    }
+
+    // 1c. Resolve Jadwal Kegiatan jika Backfill Ketarunaan
+    let resolvedJadwalKegiatanId = payload.jadwalKegiatanId || null;
+    let jadwalKegiatanObj: any = null;
+    if (isKetarunaan) {
+      if (resolvedJadwalKegiatanId) {
+        jadwalKegiatanObj = await prisma.jadwalKegiatan.findFirst({
+          where: { id: resolvedJadwalKegiatanId, tenant_id: tenantId },
+        });
+      }
+      if (!jadwalKegiatanObj) {
+        jadwalKegiatanObj = await prisma.jadwalKegiatan.findFirst({
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { nama: { contains: 'Ketarunaan', mode: 'insensitive' } },
+              { jenis_kegiatan: { contains: 'Ketarunaan', mode: 'insensitive' } },
+            ],
+          },
+        });
+        resolvedJadwalKegiatanId = jadwalKegiatanObj?.id || null;
       }
     }
 
@@ -592,37 +678,56 @@ export class HistoricalBackfillService {
     for (const dateStr of dateList) {
       const startOfDay = new Date(`${dateStr}T00:00:00.000${tzOffset}`);
       const endOfDay = new Date(`${dateStr}T23:59:59.999${tzOffset}`);
-      const startTimeTarget = new Date(`${dateStr}T07:15:00.000${tzOffset}`);
-      const endTimeTarget = new Date(`${dateStr}T15:00:00.000${tzOffset}`);
 
-      // Cek apakah sudah ada SesiAbsensi di tanggal ini untuk kelas (dan mapel) tersebut
-      let sesi = await prisma.sesiAbsensi.findFirst({
-        where: {
-          tenant_id: tenantId,
-          kelas_id: kelasId,
-          mapel_id: mapelId || null,
-          tanggal: { gte: startOfDay, lte: endOfDay },
-        },
-      });
+      // Cek apakah sudah ada SesiAbsensi di tanggal ini
+      let sesiWhere: any = {
+        tenant_id: tenantId,
+        kelas_id: kelasId,
+        tanggal: { gte: startOfDay, lte: endOfDay },
+      };
+
+      if (isKetarunaan) {
+        sesiWhere.OR = [
+          ...(resolvedJadwalKegiatanId ? [{ jadwal_kegiatan_id: resolvedJadwalKegiatanId }] : []),
+          { jenis_kegiatan: { contains: 'KETARUNAAN', mode: 'insensitive' } },
+        ];
+      } else {
+        sesiWhere.mapel_id = mapelId || null;
+      }
+
+      let sesi = await prisma.sesiAbsensi.findFirst({ where: sesiWhere });
+
+      const waktuMulaiParts = (jadwalKegiatanObj?.waktu_mulai || '06:30').split(':');
+      const waktuSelesaiParts = (jadwalKegiatanObj?.waktu_selesai || '07:30').split(':');
+      const startH = isKetarunaan ? (waktuMulaiParts[0] || '06') : '07';
+      const startM = isKetarunaan ? (waktuMulaiParts[1] || '30') : '15';
+      const endH = isKetarunaan ? (waktuSelesaiParts[0] || '07') : '15';
+      const endM = isKetarunaan ? (waktuSelesaiParts[1] || '30') : '00';
+
+      const startTimeTarget = new Date(`${dateStr}T${startH}:${startM}:00.000${tzOffset}`);
+      const endTimeTarget = new Date(`${dateStr}T${endH}:${endM}:00.000${tzOffset}`);
 
       if (!sesi) {
         sesi = await prisma.sesiAbsensi.create({
           data: {
             tenant_id: tenantId,
             kelas_id: kelasId,
-            mapel_id: mapelId || null,
-            guru_id: resolvedGuruId || null,
+            mapel_id: isKetarunaan ? null : (mapelId || null),
+            guru_id: isKetarunaan ? null : (resolvedGuruId || null),
+            jadwal_kegiatan_id: isKetarunaan ? resolvedJadwalKegiatanId : null,
             tahun_pelajaran_id: tpId,
             semester_id: semId,
             tanggal: startOfDay,
             waktu_mulai: startTimeTarget,
             waktu_selesai: endTimeTarget,
             status: 'SELESAI',
-            jenis_kegiatan: mapelId ? 'MAPEL' : 'KBM',
+            jenis_kegiatan: isKetarunaan ? 'KETARUNAAN' : (mapelId ? 'MAPEL' : 'KBM'),
             sumber_sesi: 'MANUAL',
-            keterangan: mapelObj
-              ? `[BACKFILL_SEMESTER_GANJIL] Presensi Mapel: ${mapelObj.nama_mapel}`
-              : '[BACKFILL_SEMESTER_GANJIL] Inisialisasi rekap presensi historis',
+            keterangan: isKetarunaan
+              ? `[BACKFILL_SEMESTER_GANJIL] Presensi Kegiatan Ketarunaan`
+              : (mapelObj
+                ? `[BACKFILL_SEMESTER_GANJIL] Presensi Mapel: ${mapelObj.nama_mapel}`
+                : '[BACKFILL_SEMESTER_GANJIL] Inisialisasi rekap presensi historis'),
             created_by_user_id: userId,
           },
         });
@@ -673,9 +778,11 @@ export class HistoricalBackfillService {
               status,
               waktu_tap: isHadir ? startTimeTarget : null,
               poin_kehadiran: poin,
-              catatan: mapelObj
-                ? `[BACKFILL] Presensi mapel ${mapelObj.nama_mapel} (${status})`
-                : `[BACKFILL] Presensi semester ganjil (${status})`,
+              catatan: isKetarunaan
+                ? `[BACKFILL] Presensi Ketarunaan (${status})`
+                : (mapelObj
+                  ? `[BACKFILL] Presensi mapel ${mapelObj.nama_mapel} (${status})`
+                  : `[BACKFILL] Presensi semester ganjil (${status})`),
               updated_at: new Date(),
             },
           });
@@ -695,9 +802,11 @@ export class HistoricalBackfillService {
               kelas_nama_snapshot: kelas.nama_kelas,
               tingkat_snapshot: kelas.tingkat,
               tahun_pelajaran_id_snapshot: tpId,
-              catatan: mapelObj
-                ? `[BACKFILL] Presensi mapel ${mapelObj.nama_mapel} (${status})`
-                : `[BACKFILL] Presensi semester ganjil (${status})`,
+              catatan: isKetarunaan
+                ? `[BACKFILL] Presensi Ketarunaan (${status})`
+                : (mapelObj
+                  ? `[BACKFILL] Presensi mapel ${mapelObj.nama_mapel} (${status})`
+                  : `[BACKFILL] Presensi semester ganjil (${status})`),
             },
           });
         }
@@ -710,12 +819,15 @@ export class HistoricalBackfillService {
 
     return {
       success: true,
-      message: mapelObj
-        ? `Backfill presensi mapel ${mapelObj.nama_mapel} semester ganjil berhasil dieksekusi.`
-        : 'Backfill presensi semester ganjil berhasil dieksekusi.',
+      message: isKetarunaan
+        ? `Backfill presensi ketarunaan peleton ${kelas.nama_kelas} berhasil dieksekusi.`
+        : (mapelObj
+          ? `Backfill presensi mapel ${mapelObj.nama_mapel} semester ganjil berhasil dieksekusi.`
+          : 'Backfill presensi semester ganjil berhasil dieksekusi.'),
       result: {
         kelasNama: kelas.nama_kelas,
         mapelNama: mapelObj?.nama_mapel || null,
+        jenisKegiatan: isKetarunaan ? 'KETARUNAAN' : (mapelObj ? 'MAPEL' : 'KBM'),
         totalSesiCreated,
         totalSesiReused,
         totalTanggal: dateList.length,

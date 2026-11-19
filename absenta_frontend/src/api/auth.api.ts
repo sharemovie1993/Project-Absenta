@@ -213,3 +213,25 @@ export async function restoreInitialBundle(file: File): Promise<{ success: boole
   return res.data;
 }
 
+export interface ImpersonateGuruResponse {
+  success: boolean;
+  message: string;
+  data: {
+    user: any;
+    token: string;
+    refreshToken: string;
+    impersonator: {
+      id: string;
+      email?: string;
+      name?: string;
+      role?: string;
+    };
+  };
+}
+
+export async function impersonateGuru(guruId: string): Promise<ImpersonateGuruResponse> {
+  const res = await axios.post('/auth/impersonate-guru', { guruId });
+  return res.data;
+}
+
+

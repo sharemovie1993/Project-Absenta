@@ -228,6 +228,12 @@ export async function authRoutes(fastify: any) {
     handler: authController.impersonate.bind(authController),
   });
 
+  // Impersonate Guru (Login Sebagai Guru) - requires authentication and academic.teachers.manage
+  fastify.post('/impersonate-guru', {
+    preHandler: [requireCapability('academic.teachers.manage'), determineDataScope()],
+    handler: authController.impersonateGuru.bind(authController),
+  });
+
   // Logout - requires authentication
   fastify.post('/logout', {
     preHandler: [requireCapability('core.auth.logout'), determineDataScope()],

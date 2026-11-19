@@ -69,6 +69,13 @@ export interface UserResponse {
     nama_kelas: string;
     tingkat?: number | null;
   } | null;
+  is_impersonated?: boolean;
+  impersonator?: {
+    id: string;
+    email?: string;
+    name?: string;
+    role?: string;
+  };
   created_at: Date;
   updated_at: Date;
 }
