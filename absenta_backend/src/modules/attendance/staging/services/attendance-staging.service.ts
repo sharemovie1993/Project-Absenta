@@ -210,19 +210,20 @@ export class AttendanceStagingService {
     for (const kt of kegiatanTypes) {
       const namaKegiatan =
         kt === 'UPACARA'
-          ? 'Upacara Bendera'
+          ? 'Upacara'
           : kt === 'KETARUNAAN'
-          ? 'Latihan Ketarunaan'
+          ? 'Ketarunaan'
           : kt === 'DUHA'
-          ? 'Pembiasaan Sholat Dhuha'
-          : 'Apel Pulang Siswa';
+          ? 'Duha'
+          : 'Apel Pulang';
 
       let jk = await prisma.jadwalKegiatan.findFirst({
         where: {
           tenant_id: tenantId,
           OR: [
+            { nama: { equals: namaKegiatan, mode: 'insensitive' } },
+            { jenis_kegiatan: { equals: namaKegiatan, mode: 'insensitive' } },
             { jenis_kegiatan: { contains: kt, mode: 'insensitive' } },
-            { nama: { contains: namaKegiatan, mode: 'insensitive' } },
             { nama: { contains: kt, mode: 'insensitive' } },
           ],
         },
@@ -233,10 +234,10 @@ export class AttendanceStagingService {
           data: {
             tenant_id: tenantId,
             nama: namaKegiatan,
-            jenis_kegiatan: kt,
+            jenis_kegiatan: namaKegiatan,
             hari: ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'],
             waktu_mulai: kt === 'APEL_SORE' ? '15:30' : '06:30',
-            waktu_selesai: kt === 'APEL_SORE' ? '16:00' : '07:30',
+            waktu_selesai: kt === 'APEL_SORE' ? '16:00' : (kt === 'KETARUNAAN' ? '07:30' : '07:50'),
             target_semua_kelas: true,
             berlaku_mulai: new Date(),
             tahun_pelajaran_id: tp.id,
