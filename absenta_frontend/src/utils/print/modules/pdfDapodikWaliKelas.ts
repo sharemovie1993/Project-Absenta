@@ -108,6 +108,27 @@ function drawLandscapeKop(doc: jsPDF, data: PdfDapodikWaliKelasData): number {
   return y + 3.5;
 }
 
+function getDapodikRombel(s: ReconciledStudent): string {
+  return s.dapodikRaw?.nama_rombel || s.rombel || 'Tanpa Rombel';
+}
+
+function getRombelSortRank(rombel: string): number {
+  if (!rombel || rombel === 'Tanpa Rombel') return 99999;
+  const trimmed = rombel.trim().toUpperCase();
+  if (trimmed.startsWith('XIII') || trimmed.startsWith('13')) return 4000;
+  if (trimmed.startsWith('XII') || trimmed.startsWith('12')) return 3000;
+  if (trimmed.startsWith('XI') || trimmed.startsWith('11')) return 2000;
+  if (trimmed.startsWith('X') || trimmed.startsWith('10')) return 1000;
+  return 5000;
+}
+
+function compareDapodikRombel(a: string, b: string): number {
+  const rankA = getRombelSortRank(a);
+  const rankB = getRombelSortRank(b);
+  if (rankA !== rankB) return rankA - rankB;
+  return a.localeCompare(b, 'id', { numeric: true, sensitivity: 'base' });
+}
+
 export function generatePdfDapodikWaliKelas(data: PdfDapodikWaliKelasData): { blobUrl: string } {
   const doc = new jsPDF({
     orientation: 'landscape',
@@ -183,25 +204,62 @@ export function generatePdfDapodikWaliKelas(data: PdfDapodikWaliKelasData): { bl
   doc.setTextColor(0, 0, 0);
   currentY += 3.5;
 
-  // Tabel Autotable Multi-Page
-  const tableRows = data.students.map((s, idx) => {
-    const rombelDisplay =
-      s.dapodikRaw?.nama_rombel && s.absentaRaw?.rombel && s.dapodikRaw.nama_rombel !== s.absentaRaw.rombel
-        ? `${s.dapodikRaw.nama_rombel} / ${s.absentaRaw.rombel}`
-        : s.dapodikRaw?.nama_rombel || s.absentaRaw?.rombel || s.rombel || '-';
+  // Sorting & Grouping Berdasarkan Kelas Dapodik
+  const sortedStudents = [...data.students].sort((a, b) => {
+    const rombelA = getDapodikRombel(a);
+    const rombelB = getDapodikRombel(b);
+    const rombelComp = compareDapodikRombel(rombelA, rombelB);
+    if (rombelComp !== 0) return rombelComp;
+    const nameA = a.dapodikRaw?.nama || a.nama || '';
+    const nameB = b.dapodikRaw?.nama || b.nama || '';
+    return nameA.localeCompare(nameB, 'id', { sensitivity: 'base' });
+  });
 
+  const rombelCounts = new Map<string, number>();
+  sortedStudents.forEach((s) => {
+    const r = getDapodikRombel(s);
+    rombelCounts.set(r, (rombelCounts.get(r) || 0) + 1);
+  });
+
+  let currentRombel = '';
+  let studentIdxInRombel = 0;
+  const tableRows: any[] = [];
+
+  sortedStudents.forEach((s) => {
+    const r = getDapodikRombel(s);
+    if (r !== currentRombel) {
+      currentRombel = r;
+      studentIdxInRombel = 0;
+      const count = rombelCounts.get(r) || 0;
+      tableRows.push([
+        {
+          content: `ROMBONGAN BELAJAR DAPODIK: ${r.toUpperCase()} (${count} Siswa)`,
+          colSpan: 12,
+          styles: {
+            fillColor: [226, 232, 240], // slate-200
+            fontStyle: 'bold',
+            textColor: [0, 0, 0],
+            halign: 'left',
+            fontSize: 7.5,
+            cellPadding: 1.5,
+          },
+        },
+      ]);
+    }
+
+    studentIdxInRombel += 1;
     const otherDiffs = s.diffs.filter((d) => d.field !== 'nama');
     const idInfo =
       otherDiffs.length > 0
         ? `${s.nisn || '-'}\nNIK: ${s.nik || s.dapodikRaw?.nik || '-'}\n*Beda: ${otherDiffs.map((d) => d.label).join(', ')}`
         : `${s.nisn || '-'}\nNIK: ${s.nik || s.dapodikRaw?.nik || '-'}`;
 
-    return [
-      idx + 1,
+    tableRows.push([
+      studentIdxInRombel,
       idInfo,
       s.dapodikRaw?.nama || s.nama,
       s.absentaRaw?.nama_siswa || '-',
-      rombelDisplay,
+      r,
       '[  ]', // Ijazah
       '[  ]', // KK
       '[  ]', // KTP
@@ -209,7 +267,7 @@ export function generatePdfDapodikWaliKelas(data: PdfDapodikWaliKelasData): { bl
       '[  ]', // Akta
       '',     // Catatan Validasi / Nama Benar Sesuai Berkas
       '',     // Paraf
-    ];
+    ]);
   });
 
   autoTable(doc, {

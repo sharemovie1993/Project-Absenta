@@ -61,6 +61,27 @@ function getTodayIsoDate(): string {
   return `${y}-${m}-${d}`;
 }
 
+export function getDapodikRombel(s: ReconciledStudent): string {
+  return s.dapodikRaw?.nama_rombel || s.rombel || 'Tanpa Rombel';
+}
+
+export function getRombelSortRank(rombel: string): number {
+  if (!rombel || rombel === 'Tanpa Rombel') return 99999;
+  const trimmed = rombel.trim().toUpperCase();
+  if (trimmed.startsWith('XIII') || trimmed.startsWith('13')) return 4000;
+  if (trimmed.startsWith('XII') || trimmed.startsWith('12')) return 3000;
+  if (trimmed.startsWith('XI') || trimmed.startsWith('11')) return 2000;
+  if (trimmed.startsWith('X') || trimmed.startsWith('10')) return 1000;
+  return 5000;
+}
+
+export function compareDapodikRombel(a: string, b: string): number {
+  const rankA = getRombelSortRank(a);
+  const rankB = getRombelSortRank(b);
+  if (rankA !== rankB) return rankA - rankB;
+  return a.localeCompare(b, 'id', { numeric: true, sensitivity: 'base' });
+}
+
 export const DapodikWaliKelasChecklistPrintModal: React.FC<
   DapodikWaliKelasChecklistPrintModalProps
 > = ({
@@ -166,69 +187,227 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
   }, [activeRombel]);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PEMBAGIAN HALAMAN (PAGINATION CHUNKING) ANTI-OVERFLOW
-  // Kapasitas Halaman A4 Landscape (297mm x 210mm):
-  // - Halaman 1 (ada Kop & Petunjuk): Maks 10 siswa jika multi-halaman, atau 7 siswa jika satu halaman + TTD
-  // - Halaman Lanjutan: Maks 14 siswa per halaman
-  // - Halaman Terakhir dengan TTD: Maks 7 siswa. Jika lebih, TTD dipindah ke lembar penutup terpisah.
+  // SORTING & GROUPING BERDASARKAN KELAS DAPODIK
   // ═══════════════════════════════════════════════════════════════════════════
-  const chunkedPages = useMemo(() => {
-    if (students.length === 0) {
-      return {
-        sheets: [[] as ReconciledStudent[]],
-        signatureSheetIndex: 0,
-      };
-    }
+  const [pageBreakPerRombel, setPageBreakPerRombel] = useState<boolean>(false);
 
-    if (students.length <= 10) {
-      return {
-        sheets: [students],
-        signatureSheetIndex: 0,
-      };
-    }
-
-    const sheets: ReconciledStudent[][] = [];
-    let remaining = [...students];
-
-    // Lembar 1: 15 siswa (karena layout lebih ringkas & lega)
-    sheets.push(remaining.slice(0, 15));
-    remaining = remaining.slice(15);
-
-    while (remaining.length > 0) {
-      // Jika sisa siswa <= 10, muat di lembar ini sekaligus tanda tangan
-      if (remaining.length <= 10) {
-        sheets.push(remaining);
-        return {
-          sheets,
-          signatureSheetIndex: sheets.length - 1,
-        };
-      }
-
-      // Jika sisa antara 11 - 18:
-      if (remaining.length <= 18) {
-        sheets.push(remaining);
-        // Tanda tangan butuh lembar penutup jika baris > 10
-        return {
-          sheets,
-          signatureSheetIndex: sheets.length, // Lembar ekstra penutup
-        };
-      }
-
-      // Sisa > 18: potong 18 siswa
-      sheets.push(remaining.slice(0, 18));
-      remaining = remaining.slice(18);
-    }
-
-    return {
-      sheets,
-      signatureSheetIndex: sheets.length - 1,
-    };
+  // Sorting: Prioritas Kelas Dapodik (Natural Order X -> XI -> XII) lalu Nama Siswa (A-Z)
+  const sortedStudents = useMemo(() => {
+    const list = [...students];
+    list.sort((a, b) => {
+      const rombelA = getDapodikRombel(a);
+      const rombelB = getDapodikRombel(b);
+      const rombelComp = compareDapodikRombel(rombelA, rombelB);
+      if (rombelComp !== 0) return rombelComp;
+      const nameA = a.dapodikRaw?.nama || a.nama || '';
+      const nameB = b.dapodikRaw?.nama || b.nama || '';
+      return nameA.localeCompare(nameB, 'id', { sensitivity: 'base' });
+    });
+    return list;
   }, [students]);
 
-  const totalPages =
-    chunkedPages.signatureSheetIndex >= chunkedPages.sheets.length
-      ? chunkedPages.sheets.length + 1
-      : chunkedPages.sheets.length;
+  // Grouping Berdasarkan Rombongan Belajar Dapodik
+  interface RombelGroup {
+    rombelName: string;
+    students: ReconciledStudent[];
+  }
+
+  const rombelGroups = useMemo<RombelGroup[]>(() => {
+    const map = new Map<string, ReconciledStudent[]>();
+    sortedStudents.forEach((s) => {
+      const rombel = getDapodikRombel(s);
+      if (!map.has(rombel)) {
+        map.set(rombel, []);
+      }
+      map.get(rombel)!.push(s);
+    });
+
+    return Array.from(map.entries()).map(([rombelName, groupStudents]) => ({
+      rombelName,
+      students: groupStudents,
+    }));
+  }, [sortedStudents]);
+
+  // Peta nomor urut siswa dalam rombelnya masing-masing (1..N per rombel)
+  const studentIndexInRombelMap = useMemo(() => {
+    const map = new Map<string, number>();
+    rombelGroups.forEach((g) => {
+      g.students.forEach((s, idx) => {
+        map.set(s.id, idx + 1);
+      });
+    });
+    return map;
+  }, [rombelGroups]);
+
+  // Peta jumlah siswa per rombel
+  const rombelCountMap = useMemo(() => {
+    const map = new Map<string, number>();
+    rombelGroups.forEach((g) => {
+      map.set(g.rombelName, g.students.length);
+    });
+    return map;
+  }, [rombelGroups]);
+
+  interface SheetPlan {
+    sheetId: string;
+    rombelName?: string;
+    isFirstPageOfGroup: boolean;
+    pageStudents: ReconciledStudent[];
+    hasSignatures: boolean;
+    isSignaturesOnlySheet?: boolean;
+    classTitle?: string;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PEMBAGIAN HALAMAN (PAGINATION CHUNKING) ANTI-OVERFLOW
+  // Mendukung Mode Pisah Lembar per Rombel maupun Mode Gabung Berkelanjutan
+  // ═══════════════════════════════════════════════════════════════════════════
+  const computedSheets = useMemo<SheetPlan[]>(() => {
+    if (pageBreakPerRombel) {
+      const plans: SheetPlan[] = [];
+      rombelGroups.forEach((group, gIdx) => {
+        const gStudents = group.students;
+        if (gStudents.length <= 10) {
+          plans.push({
+            sheetId: `g-${gIdx}-0`,
+            rombelName: group.rombelName,
+            isFirstPageOfGroup: true,
+            pageStudents: gStudents,
+            hasSignatures: true,
+            classTitle: group.rombelName,
+          });
+        } else {
+          let remaining = [...gStudents];
+          // Lembar 1 rombel ini: 15 siswa
+          plans.push({
+            sheetId: `g-${gIdx}-0`,
+            rombelName: group.rombelName,
+            isFirstPageOfGroup: true,
+            pageStudents: remaining.slice(0, 15),
+            hasSignatures: false,
+            classTitle: group.rombelName,
+          });
+          remaining = remaining.slice(15);
+          let subIdx = 1;
+
+          while (remaining.length > 0) {
+            if (remaining.length <= 10) {
+              plans.push({
+                sheetId: `g-${gIdx}-${subIdx}`,
+                rombelName: group.rombelName,
+                isFirstPageOfGroup: false,
+                pageStudents: remaining,
+                hasSignatures: true,
+                classTitle: group.rombelName,
+              });
+              break;
+            } else if (remaining.length <= 18) {
+              plans.push({
+                sheetId: `g-${gIdx}-${subIdx}`,
+                rombelName: group.rombelName,
+                isFirstPageOfGroup: false,
+                pageStudents: remaining,
+                hasSignatures: false,
+                classTitle: group.rombelName,
+              });
+              subIdx++;
+              plans.push({
+                sheetId: `g-${gIdx}-${subIdx}-sig`,
+                rombelName: group.rombelName,
+                isFirstPageOfGroup: false,
+                pageStudents: [],
+                hasSignatures: true,
+                isSignaturesOnlySheet: true,
+                classTitle: group.rombelName,
+              });
+              break;
+            } else {
+              plans.push({
+                sheetId: `g-${gIdx}-${subIdx}`,
+                rombelName: group.rombelName,
+                isFirstPageOfGroup: false,
+                pageStudents: remaining.slice(0, 18),
+                hasSignatures: false,
+                classTitle: group.rombelName,
+              });
+              remaining = remaining.slice(18);
+              subIdx++;
+            }
+          }
+        }
+      });
+      return plans.length > 0
+        ? plans
+        : [
+            {
+              sheetId: 'empty',
+              isFirstPageOfGroup: true,
+              pageStudents: [],
+              hasSignatures: true,
+            },
+          ];
+    } else {
+      // Continuous Grouped Flow
+      const plans: SheetPlan[] = [];
+      let remaining = [...sortedStudents];
+      if (remaining.length === 0) {
+        return [{ sheetId: 'empty', isFirstPageOfGroup: true, pageStudents: [], hasSignatures: true }];
+      }
+
+      if (remaining.length <= 10) {
+        return [{ sheetId: 'c-0', isFirstPageOfGroup: true, pageStudents: remaining, hasSignatures: true }];
+      }
+
+      plans.push({
+        sheetId: 'c-0',
+        isFirstPageOfGroup: true,
+        pageStudents: remaining.slice(0, 15),
+        hasSignatures: false,
+      });
+      remaining = remaining.slice(15);
+      let subIdx = 1;
+
+      while (remaining.length > 0) {
+        if (remaining.length <= 10) {
+          plans.push({
+            sheetId: `c-${subIdx}`,
+            isFirstPageOfGroup: false,
+            pageStudents: remaining,
+            hasSignatures: true,
+          });
+          break;
+        } else if (remaining.length <= 18) {
+          plans.push({
+            sheetId: `c-${subIdx}`,
+            isFirstPageOfGroup: false,
+            pageStudents: remaining,
+            hasSignatures: false,
+          });
+          subIdx++;
+          plans.push({
+            sheetId: `c-${subIdx}-sig`,
+            isFirstPageOfGroup: false,
+            pageStudents: [],
+            hasSignatures: true,
+            isSignaturesOnlySheet: true,
+          });
+          break;
+        } else {
+          plans.push({
+            sheetId: `c-${subIdx}`,
+            isFirstPageOfGroup: false,
+            pageStudents: remaining.slice(0, 18),
+            hasSignatures: false,
+          });
+          remaining = remaining.slice(18);
+          subIdx++;
+        }
+      }
+      return plans;
+    }
+  }, [pageBreakPerRombel, rombelGroups, sortedStudents]);
+
+  const totalPages = computedSheets.length;
 
   // Dual-Engine PDF Download
   const handleDownloadPdf = async () => {
@@ -400,19 +579,49 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
       onToggleLogoDaerah={setShowLogoDaerah}
       onToggleLogoSekolah={setShowLogoSekolah}
       extraActions={
-        <button
-          type="button"
-          onClick={() => setIsDrawerOpen((o) => !o)}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-            isDrawerOpen
-              ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
-          }`}
-          title="Atur Nama Wali Kelas, Operator Dapodik, & Kepala Sekolah"
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Atur Penandatangan</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Toggle Mode Lembar: Berkelanjutan vs Pisah per Rombel */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
+            <button
+              type="button"
+              onClick={() => setPageBreakPerRombel(false)}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                !pageBreakPerRombel
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white'
+              }`}
+              title="Tampilkan seluruh rombel berurutan dalam lembar bersambung"
+            >
+              Gabung Berurutan
+            </button>
+            <button
+              type="button"
+              onClick={() => setPageBreakPerRombel(true)}
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                pageBreakPerRombel
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white'
+              }`}
+              title="Pisahkan halaman cetak untuk masing-masing kelas / rombel"
+            >
+              Pisah Lembar Tiap Kelas
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen((o) => !o)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+              isDrawerOpen
+                ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+            }`}
+            title="Atur Nama Wali Kelas, Operator Dapodik, & Kepala Sekolah"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Atur Penandatangan</span>
+          </button>
+        </div>
       }
       onDownloadPdf={handleDownloadPdf}
       downloadPdfText={isExportingPdf ? 'Memproses...' : 'Unduh PDF (Landscape)'}
@@ -605,25 +814,24 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
 
         {/* LEMBAR-LEMBAR CETAK MULTI-SHEET A4 LANDSCAPE */}
         <div className="flex-1 flex flex-col items-center gap-6 overflow-x-auto w-full">
-          {chunkedPages.sheets.map((pageStudents, pageIdx) => {
-            const pageNumber = pageIdx + 1;
-            const currentStartIdx = accumulatedIndex;
-            accumulatedIndex += pageStudents.length;
-
-            const isFirstPage = pageIdx === 0;
-            const hasSignaturesOnThisPage = chunkedPages.signatureSheetIndex === pageIdx;
+          {computedSheets.map((sheet, sheetIdx) => {
+            const pageNumber = sheetIdx + 1;
+            const isFirstPage = pageBreakPerRombel ? sheet.isFirstPageOfGroup : sheetIdx === 0;
+            const activeRombelLabel = pageBreakPerRombel && sheet.rombelName ? sheet.rombelName : activeRombel;
 
             return (
               <PrintDocumentSheet
-                key={pageIdx}
+                key={sheet.sheetId}
                 orientation="landscape"
                 pageNumber={pageNumber}
                 totalPages={totalPages}
-                footerText={`Lembar Verifikasi Selisih Data & Ceklis Berkas Siswa untuk Wali Kelas — ${
-                  sekolahData?.nama || tenantInfo?.name || 'Sekolah'
-                } (NPSN: ${npsn})`}
+                footerText={
+                  pageBreakPerRombel && sheet.rombelName
+                    ? `Lembar Verifikasi Rombel ${sheet.rombelName} — ${sekolahData?.nama || tenantInfo?.name || 'Sekolah'} (NPSN: ${npsn})`
+                    : `Lembar Verifikasi Selisih Data Siswa — ${sekolahData?.nama || tenantInfo?.name || 'Sekolah'} (NPSN: ${npsn})`
+                }
               >
-                {/* KOP SURAT RESMI PADA HALAMAN PERTAMA */}
+                {/* KOP SURAT RESMI PADA HALAMAN PERTAMA DARI GRUP / DOKUMEN */}
                 {isFirstPage ? (
                   <PrintHeader
                     variant="landscape"
@@ -634,7 +842,7 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
                 ) : (
                   <div className="pb-1 mb-2 border-b border-black flex items-center justify-between text-[9px] font-serif">
                     <span className="font-bold uppercase tracking-wider text-black">
-                      Lanjutan Lembar Verifikasi Data Wali Kelas — {sekolahData?.nama || tenantInfo.name}
+                      Lanjutan Lembar Verifikasi {sheet.rombelName ? `Kelas ${sheet.rombelName}` : 'Data Siswa'} — {sekolahData?.nama || tenantInfo.name}
                     </span>
                     <span className="italic text-slate-700">
                       Halaman {pageNumber} dari {totalPages}
@@ -642,7 +850,7 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
                   </div>
                 )}
 
-                {/* JUDUL DOKUMEN & METADATA (HANYA HALAMAN PERTAMA) */}
+                {/* JUDUL DOKUMEN & METADATA (HANYA HALAMAN PERTAMA GRUP/DOKUMEN) */}
                 {isFirstPage && (
                   <>
                     <div className="text-center my-2 space-y-0.5 font-serif">
@@ -650,7 +858,9 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
                         LEMBAR VERIFIKASI SELISIH DATA DAPODIK &amp; CEKLIS BERKAS PENDUKUNG SISWA
                       </h3>
                       <h4 className="text-[10px] font-bold uppercase tracking-wider text-black">
-                        UNTUK WALI KELAS &amp; TIM OPERATOR PENDATAAN PENDIDIKAN
+                        {pageBreakPerRombel && sheet.rombelName
+                          ? `ROMBONGAN BELAJAR: ${sheet.rombelName}`
+                          : 'UNTUK WALI KELAS &amp; TIM OPERATOR PENDATAAN PENDIDIKAN'}
                       </h4>
                       <p className="text-[9px] font-normal italic text-slate-700">
                         Nomor: {documentNumber}
@@ -665,15 +875,23 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
                       </div>
                       <div>
                         <span className="font-semibold text-slate-600">Rombongan Belajar:</span>{' '}
-                        <strong className="text-black">{activeRombel || 'Semua Rombel (Gabungan)'}</strong>
+                        <strong className="text-black">
+                          {activeRombelLabel || 'Semua Rombel (Gabungan)'}
+                        </strong>
                       </div>
                       <div>
                         <span className="font-semibold text-slate-600">Tingkat:</span>{' '}
                         <strong className="text-black">{activeTingkat ? `Kelas ${activeTingkat}` : 'Semua Tingkat'}</strong>
                       </div>
                       <div>
-                        <span className="font-semibold text-slate-600">Total Siswa Terfilter:</span>{' '}
-                        <strong className="text-black">{students.length} Siswa</strong>
+                        <span className="font-semibold text-slate-600">
+                          {pageBreakPerRombel && sheet.rombelName ? 'Siswa di Kelas Ini:' : 'Total Siswa Terfilter:'}
+                        </span>{' '}
+                        <strong className="text-black">
+                          {pageBreakPerRombel && sheet.rombelName
+                            ? `${rombelCountMap.get(sheet.rombelName) || sheet.pageStudents.length} Siswa`
+                            : `${students.length} Siswa`}
+                        </strong>
                       </div>
                       <div>
                         <span className="font-semibold text-slate-600">Tanggal Tarik/Cetak:</span>{' '}
@@ -690,121 +908,158 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
                   </>
                 )}
 
-                {/* TABEL DATA SISWA & CHECKLIST BERKAS */}
-                <div className="my-1.5 w-full">
-                  <table className="w-full border-collapse border border-black text-black font-serif text-[9.5px]">
-                    <thead>
-                      <tr className="bg-slate-100 font-bold text-center">
-                        <th rowSpan={2} className="border border-black p-1 w-7">
-                          No
-                        </th>
-                        <th rowSpan={2} className="border border-black p-1 w-28">
-                          NISN &amp; NIK
-                        </th>
-                        <th colSpan={2} className="border border-black p-1">
-                          Perbandingan Nama Siswa
-                        </th>
-                        <th rowSpan={2} className="border border-black p-1 w-24">
-                          Rombel / Kelas
-                        </th>
-                        <th colSpan={5} className="border border-black p-0.5">
-                          Ceklis Berkas Autentik (Upload / Fisik)
-                        </th>
-                        <th rowSpan={2} className="border border-black p-1">
-                          Catatan Validasi / Nama Benar Sesuai Berkas
-                        </th>
-                        <th rowSpan={2} className="border border-black p-1 w-14">
-                          Paraf
-                        </th>
-                      </tr>
-                      <tr className="bg-slate-50 font-semibold text-center text-[8.5px]">
-                        <th className="border border-black p-1">Nama di Dapodik (Port 5774)</th>
-                        <th className="border border-black p-1">Nama di Absenta (Sekolah)</th>
-                        <th className="border border-black p-0.5 w-9" title="Ijazah SMP/MTs">
-                          Ijazah
-                        </th>
-                        <th className="border border-black p-0.5 w-9" title="Kartu Keluarga">
-                          KK
-                        </th>
-                        <th className="border border-black p-0.5 w-9" title="KTP Siswa / Ortu">
-                          KTP
-                        </th>
-                        <th className="border border-black p-0.5 w-9" title="Bukti / Kartu NISN">
-                          NISN
-                        </th>
-                        <th className="border border-black p-0.5 w-9" title="Akta Kelahiran">
-                          Akta
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pageStudents.map((s, idx) => {
-                        const rombelDisplay =
-                          s.dapodikRaw?.nama_rombel &&
-                          s.absentaRaw?.rombel &&
-                          s.dapodikRaw.nama_rombel !== s.absentaRaw.rombel
-                            ? `${s.dapodikRaw.nama_rombel} / ${s.absentaRaw.rombel}`
-                            : s.dapodikRaw?.nama_rombel || s.absentaRaw?.rombel || s.rombel || '-';
+                {/* KONDISI LEMBAR KHUSUS PENUTUP / TANDA TANGAN SAJA */}
+                {sheet.isSignaturesOnlySheet ? (
+                  <div className="my-3 p-3 bg-slate-50 border border-slate-300 rounded text-[10px] font-serif text-black space-y-1.5">
+                    <p className="font-bold uppercase text-slate-800">
+                      Rekapitulasi Verifikasi &amp; Penyerahan Berkas
+                    </p>
+                    <p className="text-justify leading-relaxed">
+                      Telah dilaksanakan pemeriksaan dan pencocokan silang data peserta didik pada rombongan belajar{' '}
+                      <strong>{activeRombelLabel || 'seluruh rombel'}</strong>. Seluruh berkas pendukung fisik dan perbaikan data
+                      pada lembar ini diserahkan kepada tim Operator Pendataan Dapodik / Tata Usaha untuk
+                      dimutakhirkan ke dalam sistem Dapodik Kemendikbudristek dan database sekolah.
+                    </p>
+                  </div>
+                ) : (
+                  /* TABEL DATA SISWA & CHECKLIST BERKAS */
+                  <div className="my-1.5 w-full">
+                    <table className="w-full border-collapse border border-black text-black font-serif text-[9.5px]">
+                      <thead>
+                        <tr className="bg-slate-100 font-bold text-center">
+                          <th rowSpan={2} className="border border-black p-1 w-7">
+                            No
+                          </th>
+                          <th rowSpan={2} className="border border-black p-1 w-28">
+                            NISN &amp; NIK
+                          </th>
+                          <th colSpan={2} className="border border-black p-1">
+                            Perbandingan Nama Siswa
+                          </th>
+                          <th rowSpan={2} className="border border-black p-1 w-24">
+                            Rombel / Kelas
+                          </th>
+                          <th colSpan={5} className="border border-black p-0.5">
+                            Ceklis Berkas Autentik (Upload / Fisik)
+                          </th>
+                          <th rowSpan={2} className="border border-black p-1">
+                            Catatan Validasi / Nama Benar Sesuai Berkas
+                          </th>
+                          <th rowSpan={2} className="border border-black p-1 w-14">
+                            Paraf
+                          </th>
+                        </tr>
+                        <tr className="bg-slate-50 font-semibold text-center text-[8.5px]">
+                          <th className="border border-black p-1">Nama di Dapodik (Port 5774)</th>
+                          <th className="border border-black p-1">Nama di Absenta (Sekolah)</th>
+                          <th className="border border-black p-0.5 w-9" title="Ijazah SMP/MTs">
+                            Ijazah
+                          </th>
+                          <th className="border border-black p-0.5 w-9" title="Kartu Keluarga">
+                            KK
+                          </th>
+                          <th className="border border-black p-0.5 w-9" title="KTP Siswa / Ortu">
+                            KTP
+                          </th>
+                          <th className="border border-black p-0.5 w-9" title="Bukti / Kartu NISN">
+                            NISN
+                          </th>
+                          <th className="border border-black p-0.5 w-9" title="Akta Kelahiran">
+                            Akta
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sheet.pageStudents.map((s, idx) => {
+                          const currentRombel = getDapodikRombel(s);
+                          const isFirstOfRombelOnThisSheet =
+                            idx === 0 || getDapodikRombel(sheet.pageStudents[idx - 1]) !== currentRombel;
+                          const groupCount = rombelCountMap.get(currentRombel) || 0;
+                          const idxInRombel = studentIndexInRombelMap.get(s.id) || idx + 1;
+                          const otherDiffs = s.diffs.filter((d) => d.field !== 'nama');
 
-                        const otherDiffs = s.diffs.filter((d) => d.field !== 'nama');
-
-                        return (
-                          <tr key={s.id} className="text-center">
-                            <td className="border border-black p-1 font-semibold">
-                              {currentStartIdx + idx + 1}
-                            </td>
-                            <td className="border border-black p-1 text-left">
-                              <div className="font-mono font-bold text-black text-[9px]">
-                                {s.nisn || '-'}
-                              </div>
-                              <div className="font-mono text-[8px] text-slate-600">
-                                NIK: {s.nik || s.dapodikRaw?.nik || '-'}
-                              </div>
-                              {otherDiffs.length > 0 && (
-                                <div className="text-[7.5px] text-amber-800 font-sans italic mt-0.5">
-                                  *{otherDiffs.map((d) => d.label).join(', ')}
-                                </div>
+                          return (
+                            <React.Fragment key={s.id}>
+                              {/* Banner Header Rombel Jika Berpindah Rombel di Mode Berkelanjutan */}
+                              {!pageBreakPerRombel && isFirstOfRombelOnThisSheet && (
+                                <tr className="bg-slate-200 text-black font-bold">
+                                  <td
+                                    colSpan={12}
+                                    className="border border-black px-2 py-1 text-left bg-slate-200"
+                                  >
+                                    <div className="flex items-center justify-between font-serif text-[9px]">
+                                      <span>
+                                        ROMBONGAN BELAJAR DAPODIK:{' '}
+                                        <strong className="text-black uppercase font-extrabold">
+                                          {currentRombel}
+                                        </strong>
+                                      </span>
+                                      <span className="font-normal italic text-[8.5px] text-slate-700">
+                                        {groupCount} Siswa Perlu Verifikasi
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
                               )}
-                            </td>
-                            <td className="border border-black p-1.5 text-left font-bold text-black text-[9.5px]">
-                              {s.dapodikRaw?.nama || s.nama}
-                            </td>
-                            <td className="border border-black p-1.5 text-left text-slate-900 text-[9.5px]">
-                              {s.absentaRaw?.nama_siswa || '-'}
-                            </td>
-                            <td className="border border-black p-1 font-mono text-[8.5px]">
-                              {rombelDisplay}
-                            </td>
-                            {/* 5 Kolom Checklist Berkas Fisik / Upload */}
-                            <td className="border border-black p-1 text-center">
-                              <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
-                            </td>
-                            <td className="border border-black p-1 text-center">
-                              <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
-                            </td>
-                            <td className="border border-black p-1 text-center">
-                              <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
-                            </td>
-                            <td className="border border-black p-1 text-center">
-                              <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
-                            </td>
-                            <td className="border border-black p-1 text-center">
-                              <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
-                            </td>
-                            {/* Catatan Validasi & Paraf */}
-                            <td className="border border-black p-1 text-left text-[8px] text-slate-400">
-                              &nbsp;
-                            </td>
-                            <td className="border border-black p-1">&nbsp;</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+
+                              <tr className="text-center">
+                                <td className="border border-black p-1 font-semibold">
+                                  {idxInRombel}
+                                </td>
+                                <td className="border border-black p-1 text-left">
+                                  <div className="font-mono font-bold text-black text-[9px]">
+                                    {s.nisn || '-'}
+                                  </div>
+                                  <div className="font-mono text-[8px] text-slate-600">
+                                    NIK: {s.nik || s.dapodikRaw?.nik || '-'}
+                                  </div>
+                                  {otherDiffs.length > 0 && (
+                                    <div className="text-[7.5px] text-amber-800 font-sans italic mt-0.5">
+                                      *{otherDiffs.map((d) => d.label).join(', ')}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="border border-black p-1.5 text-left font-bold text-black text-[9.5px]">
+                                  {s.dapodikRaw?.nama || s.nama}
+                                </td>
+                                <td className="border border-black p-1.5 text-left text-slate-900 text-[9.5px]">
+                                  {s.absentaRaw?.nama_siswa || '-'}
+                                </td>
+                                <td className="border border-black p-1 font-mono text-[8.5px]">
+                                  {currentRombel}
+                                </td>
+                                {/* 5 Kolom Checklist Berkas Fisik / Upload */}
+                                <td className="border border-black p-1 text-center">
+                                  <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
+                                </td>
+                                <td className="border border-black p-1 text-center">
+                                  <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
+                                </td>
+                                <td className="border border-black p-1 text-center">
+                                  <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
+                                </td>
+                                <td className="border border-black p-1 text-center">
+                                  <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
+                                </td>
+                                <td className="border border-black p-1 text-center">
+                                  <div className="w-3.5 h-3.5 border border-black mx-auto rounded-xs"></div>
+                                </td>
+                                {/* Catatan Validasi & Paraf */}
+                                <td className="border border-black p-1 text-left text-[8px] text-slate-400">
+                                  &nbsp;
+                                </td>
+                                <td className="border border-black p-1">&nbsp;</td>
+                              </tr>
+                            </React.Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
                 {/* BLOK TANDA TANGAN JIKA TERCANTUM PADA HALAMAN INI */}
-                {hasSignaturesOnThisPage && (
+                {sheet.hasSignatures && (
                   <div className="mt-3 pt-1 w-full">
                     <UniversalDocumentSignatures
                       layout={includeKepsekTier ? 'triangle_2tier' : 'dual_custom'}
@@ -823,7 +1078,10 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
                         signatureImage: operatorSigner.signatureImage || undefined,
                       }}
                       signerRight={{
-                        roleTitle: waliKelasSigner.roleTitle || 'Wali Kelas,',
+                        roleTitle:
+                          pageBreakPerRombel && sheet.rombelName
+                            ? `Wali Kelas ${sheet.rombelName},`
+                            : waliKelasSigner.roleTitle || 'Wali Kelas,',
                         personName:
                           waliKelasSigner.personName || '........................................',
                         nip: waliKelasSigner.nip || undefined,
@@ -847,78 +1105,6 @@ export const DapodikWaliKelasChecklistPrintModal: React.FC<
               </PrintDocumentSheet>
             );
           })}
-
-          {/* LEMBAR PENUTUP EKSTRA KHUSUS TANDA TANGAN (JIKA HALAMAN DATA TERAKHIR TERLALU PADAT) */}
-          {chunkedPages.signatureSheetIndex >= chunkedPages.sheets.length && (
-            <PrintDocumentSheet
-              orientation="landscape"
-              pageNumber={totalPages}
-              totalPages={totalPages}
-              footerText={`Lembar Verifikasi Selisih Data & Ceklis Berkas Siswa untuk Wali Kelas — ${
-                sekolahData?.nama || tenantInfo?.name || 'Sekolah'
-              } (NPSN: ${npsn})`}
-            >
-              <div className="pb-1 mb-3 border-b border-black flex items-center justify-between text-[9px] font-serif">
-                <span className="font-bold uppercase tracking-wider text-black">
-                  Pengesahan Lembar Verifikasi Data Wali Kelas — {sekolahData?.nama || tenantInfo.name}
-                </span>
-                <span className="italic text-slate-700">
-                  Halaman {totalPages} dari {totalPages}
-                </span>
-              </div>
-
-              <div className="my-3 p-3 bg-slate-50 border border-slate-300 rounded text-[10px] font-serif text-black space-y-1.5">
-                <p className="font-bold uppercase text-slate-800">
-                  Rekapitulasi Verifikasi &amp; Penyerahan Berkas
-                </p>
-                <p className="text-justify leading-relaxed">
-                  Telah dilaksanakan pemeriksaan dan pencocokan silang data peserta didik pada rombongan belajar{' '}
-                  <strong>{activeRombel || 'seluruh rombel'}</strong> sejumlah{' '}
-                  <strong>{students.length} siswa</strong>. Seluruh berkas pendukung fisik dan perbaikan data
-                  pada lembar ini diserahkan kepada tim Operator Pendataan Dapodik / Tata Usaha untuk
-                  dimutakhirkan ke dalam sistem Dapodik Kemendikbudristek dan database sekolah.
-                </p>
-              </div>
-
-              <div className="mt-6 pt-2 w-full">
-                <UniversalDocumentSignatures
-                  layout={includeKepsekTier ? 'triangle_2tier' : 'dual_custom'}
-                  titimangsaCity={titimangsaCity || 'Purwakarta'}
-                  titimangsaDate={titimangsaDate || formatIndoLongDate(getTodayIsoDate())}
-                  verifierLabel=""
-                  makerLabel=""
-                  notesOrApprovalLabel="Mengetahui / Mengesahkan,"
-                  signerLeft={{
-                    roleTitle:
-                      operatorSigner.roleTitle || 'Petugas Pendataan /\nOperator Dapodik,',
-                    personName:
-                      operatorSigner.personName || '........................................',
-                    nip: operatorSigner.nip || undefined,
-                    isAssigned: Boolean(operatorSigner.personName),
-                    signatureImage: operatorSigner.signatureImage || undefined,
-                  }}
-                  signerRight={{
-                    roleTitle: waliKelasSigner.roleTitle || 'Wali Kelas,',
-                    personName:
-                      waliKelasSigner.personName || '........................................',
-                    nip: waliKelasSigner.nip || undefined,
-                    isAssigned: Boolean(waliKelasSigner.personName),
-                    signatureImage: waliKelasSigner.signatureImage || undefined,
-                  }}
-                  signerCenter={{
-                    roleTitle:
-                      kepsekSigner.roleTitle || `Kepala ${sekolahData?.nama || tenantInfo.name}`,
-                    personName:
-                      kepsekSigner.personName || '........................................',
-                    nip: kepsekSigner.nip || undefined,
-                    isAssigned: Boolean(kepsekSigner.personName),
-                    signatureImage: kepsekSigner.signatureImage || undefined,
-                  }}
-                  spacingHeightMm={16}
-                />
-              </div>
-            </PrintDocumentSheet>
-          )}
         </div>
       </div>
     </UniversalDocumentModal>
