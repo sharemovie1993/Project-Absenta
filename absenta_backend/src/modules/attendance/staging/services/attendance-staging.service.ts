@@ -645,6 +645,48 @@ export class AttendanceStagingService {
       if (found) return found;
     }
 
+    // Pemetaan khusus rumpun Kuliner (KULINER -> KUL)
+    if (rawTarget.includes('KULINER 1') || rawTarget.includes('KULINER1')) {
+      const found = tenantClasses.find((k) => k.nama_kelas.replace(/\s+/g, '') === 'XKUL1' || k.nama_kelas === 'X KUL 1');
+      if (found) return found;
+    }
+    if (rawTarget.includes('KULINER 2') || rawTarget.includes('KULINER2')) {
+      const found = tenantClasses.find((k) => k.nama_kelas.replace(/\s+/g, '') === 'XKUL2' || k.nama_kelas === 'X KUL 2');
+      if (found) return found;
+    }
+    if (rawTarget.includes('KULINER')) {
+      const found = tenantClasses.find((k) => k.nama_kelas.replace(/\s+/g, '') === 'XKUL' || k.nama_kelas === 'X KUL');
+      if (found) return found;
+    }
+
+    // Pemetaan khusus rumpun Mesin (TP -> TM)
+    if (rawTarget.includes('TP 1') || rawTarget.includes('TP1')) {
+      const found = tenantClasses.find((k) => k.nama_kelas.replace(/\s+/g, '') === 'XTM1' || k.nama_kelas === 'X TM 1');
+      if (found) return found;
+    }
+    if (rawTarget.includes('TP 2') || rawTarget.includes('TP2')) {
+      const found = tenantClasses.find((k) => k.nama_kelas.replace(/\s+/g, '') === 'XTM2' || k.nama_kelas === 'X TM 2');
+      if (found) return found;
+    }
+    if (rawTarget.includes('TP 3') || rawTarget.includes('TP3')) {
+      const found = tenantClasses.find((k) => k.nama_kelas.replace(/\s+/g, '') === 'XTM3' || k.nama_kelas === 'X TM 3');
+      if (found) return found;
+    }
+
+    // Pemetaan khusus rumpun IT (TKJ -> TJKT)
+    if (rawTarget.includes('TKJ 1') || rawTarget.includes('TKJ1')) {
+      const found = tenantClasses.find((k) => k.nama_kelas.replace(/\s+/g, '') === 'XTJKT1' || k.nama_kelas === 'X TJKT 1');
+      if (found) return found;
+    }
+    if (rawTarget.includes('TKJ 2') || rawTarget.includes('TKJ2')) {
+      const found = tenantClasses.find((k) => k.nama_kelas.replace(/\s+/g, '') === 'XTJKT2' || k.nama_kelas === 'X TJKT 2');
+      if (found) return found;
+    }
+    if (rawTarget.includes('TKJ 3') || rawTarget.includes('TKJ3')) {
+      const found = tenantClasses.find((k) => k.nama_kelas.replace(/\s+/g, '') === 'XTJKT3' || k.nama_kelas === 'X TJKT 3');
+      if (found) return found;
+    }
+
     // Ekstrak angka nomor rombel jika ada (misal: "2" dari "PHT 2" atau "TE 5")
     const matchNum = rawTarget.match(/(\d+)/);
     const targetNum = matchNum ? matchNum[1] : null;

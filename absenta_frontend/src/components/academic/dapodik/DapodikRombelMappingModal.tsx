@@ -77,6 +77,45 @@ const normalizeRoman = (s: string) => {
     .replace(/^kelas\s+/i, '');
 };
 
+// Normalizer Kesetaraan Rombel Halal (KULINER=KUL, TP=TM, TKJ=TJKT)
+const normalizeClassEquivalent = (className?: string | null): string => {
+  if (!className) return '';
+  let s = String(className).toUpperCase().trim();
+  s = s.replace(/^(?:KELAS|TINGKAT)\s+/i, '');
+  s = s.replace(/^10\b|^10(?=[A-Z\s\-_])/, 'X');
+  s = s.replace(/^11\b|^11(?=[A-Z\s\-_])/, 'XI');
+  s = s.replace(/^12\b|^12(?=[A-Z\s\-_])/, 'XII');
+  s = s.replace(/[\-_.]+/g, ' ').replace(/\s+/g, ' ').trim();
+  s = s.replace(/\bKULINER\b/g, 'KUL');
+  s = s.replace(/KULINER(\d+)/g, 'KUL $1');
+  s = s.replace(/\bTKJ\b/g, 'TJKT');
+  s = s.replace(/TKJ(\d+)/g, 'TJKT $1');
+  s = s.replace(/\bTP\b/g, 'TM');
+  s = s.replace(/TP(\d+)/g, 'TM $1');
+  s = s.replace(/([A-Z])(\d+)/g, '$1 $2');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+};
+
+const isClassEquivalent = (classA?: string | null, classB?: string | null): boolean => {
+  if (!classA && !classB) return true;
+  if (!classA || !classB) return false;
+  const rawA = String(classA).trim().toUpperCase();
+  const rawB = String(classB).trim().toUpperCase();
+  if (rawA === rawB) return true;
+  if (rawA.replace(/\s+/g, '') === rawB.replace(/\s+/g, '')) return true;
+  const normA = normalizeClassEquivalent(rawA);
+  const normB = normalizeClassEquivalent(rawB);
+  if (normA === normB) return true;
+  if (normA.replace(/\s+/g, '') === normB.replace(/\s+/g, '')) return true;
+  const stripGradeA = normA.replace(/^(?:XIII|XII|XI|X)\s*/, '').replace(/\s+/g, '');
+  const stripGradeB = normB.replace(/^(?:XIII|XII|XI|X)\s*/, '').replace(/\s+/g, '');
+  if (stripGradeA && stripGradeB && stripGradeA === stripGradeB) {
+    return true;
+  }
+  return false;
+};
+
 export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps> = ({
   isOpen,
   onClose,
@@ -188,7 +227,18 @@ export const DapodikRombelMappingModal: React.FC<DapodikRombelMappingModalProps>
         continue;
       }
 
-      // Prioritas 2: Multi-token inclusion (e.g. "X TKRO 1" matches "X-TKRO-1")
+      // Prioritas 2: Kesetaraan Rombel Halal (KULINER=KUL, TP=TM, TKJ=TJKT)
+      const halalMatch = classes.find((k) => {
+        const kStr = (k as any).nama_kelas || k.label || '';
+        return isClassEquivalent(rName, kStr);
+      });
+
+      if (halalMatch) {
+        newMapping[rName] = String(halalMatch.value);
+        continue;
+      }
+
+      // Prioritas 3: Multi-token inclusion (e.g. "X TKRO 1" matches "X-TKRO-1")
       const tokens = rName.toUpperCase().split(/[\s-_]+/).filter(Boolean);
       if (tokens.length >= 2) {
         const tokenMatch = classes.find((k) => {

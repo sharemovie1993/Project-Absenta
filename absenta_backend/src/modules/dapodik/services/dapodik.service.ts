@@ -121,6 +121,78 @@ export class DapodikService {
   }
 
   /**
+   * Standar Normalisasi Kesetaraan Rombel Dapodik vs Platform Absenta (Rombel Halal / Equivalent)
+   * Mengatasi perbedaan nomenklatur resmi antara Dapodik dan Platform Absenta:
+   * - KULINER = KUL (KULINER 1/2 -> KUL 1/2)
+   * - TP 1..3 = TM 1..3 (Teknik Pemesinan di Dapodik setara Teknik Mesin di Absenta)
+   * - TKJ 1..3 = TJKT 1..3 (Teknik Komputer Jaringan setara TJKT Kurikulum Merdeka)
+   */
+  static normalizeClassEquivalent(className?: string | null): string {
+    if (!className) return '';
+
+    let s = String(className).toUpperCase().trim();
+
+    // 1. Hilangkan prefix "KELAS " atau "TINGKAT " jika ada
+    s = s.replace(/^(?:KELAS|TINGKAT)\s+/i, '');
+
+    // 2. Normalisasi angka tingkat ke romawi di awal: 10 -> X, 11 -> XI, 12 -> XII
+    s = s.replace(/^10\b|^10(?=[A-Z\s\-_])/, 'X');
+    s = s.replace(/^11\b|^11(?=[A-Z\s\-_])/, 'XI');
+    s = s.replace(/^12\b|^12(?=[A-Z\s\-_])/, 'XII');
+
+    // 3. Bersihkan tanda hubung / titik / spasi ganda
+    s = s.replace(/[\-_.]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // 4. Substitusi Alias Jurusan / Rombel Resmi:
+    // KULINER -> KUL (e.g. KULINER, KULINER 1, KULINER1, KULINER 2, KULINER2)
+    s = s.replace(/\bKULINER\b/g, 'KUL');
+    s = s.replace(/KULINER(\d+)/g, 'KUL $1');
+
+    // TKJ -> TJKT (e.g. TKJ 1, TKJ1, TKJ 2, TKJ2, TKJ 3, TKJ3)
+    s = s.replace(/\bTKJ\b/g, 'TJKT');
+    s = s.replace(/TKJ(\d+)/g, 'TJKT $1');
+
+    // TP -> TM (Teknik Pemesinan -> Teknik Mesin: e.g. TP 1, TP1, TP 2, TP2, TP 3, TP3)
+    s = s.replace(/\bTP\b/g, 'TM');
+    s = s.replace(/TP(\d+)/g, 'TM $1');
+
+    // 5. Normalisasi spasi dan digit (misal: "XTM1" -> "X TM 1")
+    s = s.replace(/([A-Z])(\d+)/g, '$1 $2');
+    s = s.replace(/\s+/g, ' ').trim();
+
+    return s;
+  }
+
+  static isClassEquivalent(classA?: string | null, classB?: string | null): boolean {
+    if (!classA && !classB) return true;
+    if (!classA || !classB) return false;
+
+    const rawA = String(classA).trim().toUpperCase();
+    const rawB = String(classB).trim().toUpperCase();
+
+    // 1. Exact match langsung (dengan atau tanpa spasi)
+    if (rawA === rawB) return true;
+    if (rawA.replace(/\s+/g, '') === rawB.replace(/\s+/g, '')) return true;
+
+    // 2. Bandingkan setelah substitusi alias halal (KULINER=KUL, TP=TM, TKJ=TJKT)
+    const normA = DapodikService.normalizeClassEquivalent(rawA);
+    const normB = DapodikService.normalizeClassEquivalent(rawB);
+
+    if (normA === normB) return true;
+    if (normA.replace(/\s+/g, '') === normB.replace(/\s+/g, '')) return true;
+
+    // 3. Toleransi fleksibel jika salah satu pihak tidak mencantumkan tingkat "X/XI/XII" di awal
+    // Misal "KULINER 1" vs "X KUL 1", "TP 2" vs "XI TM 2", "TKJ 3" vs "XII TJKT 3"
+    const stripGradeA = normA.replace(/^(?:XIII|XII|XI|X)\s*/, '').replace(/\s+/g, '');
+    const stripGradeB = normB.replace(/^(?:XIII|XII|XI|X)\s*/, '').replace(/\s+/g, '');
+    if (stripGradeA && stripGradeB && stripGradeA === stripGradeB) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Migrasi otomatis satu kali jika snapshot lama masih berada di disk lokal VPS saat driver aktif adalah S3.
    */
   private static async promoteLegacyLocalStagingIfNeeded(key: string): Promise<void> {
@@ -985,13 +1057,9 @@ export class DapodikService {
         }
 
         if (opt.checkKelas && dRombel && aKelas) {
-          let dK = dRombel;
-          let aK = aKelas;
-          if (opt.ignoreClassWhitespace) {
-            dK = dK.replace(/\s+/g, '');
-            aK = aK.replace(/\s+/g, '');
-          }
-          if (dK !== aK) {
+          // Kesetaraan Rombel Halal (KULINER=KUL, TP=TM, TKJ=TJKT)
+          const isEquivalent = DapodikService.isClassEquivalent(dRombel, aKelas);
+          if (!isEquivalent) {
             diffs.push({
               field: 'kelas',
               label: 'Rombongan Belajar / Kelas',
@@ -1178,13 +1246,26 @@ export class DapodikService {
           // Jika kelas_id kosong tetapi rombel Dapodik ada, resolve otomatis dari tabel Kelas
           if (!targetKelasId && item.rombel) {
             const cleanRombel = item.rombel.trim();
-            const matchedKelas = await prisma.kelas.findFirst({
+            let matchedKelas = await prisma.kelas.findFirst({
               where: {
                 tenant_id: tenantId,
                 nama_kelas: { equals: cleanRombel, mode: 'insensitive' },
               },
               select: { id: true },
             });
+
+            // Fallback resolusi kelas halal / alias ekuivalen (KULINER=KUL, TP=TM, TKJ=TJKT)
+            if (!matchedKelas) {
+              const allTenantKelas = await prisma.kelas.findMany({
+                where: { tenant_id: tenantId },
+                select: { id: true, nama_kelas: true },
+              });
+              const foundEquivalent = allTenantKelas.find((k) => DapodikService.isClassEquivalent(cleanRombel, k.nama_kelas));
+              if (foundEquivalent) {
+                matchedKelas = { id: foundEquivalent.id };
+              }
+            }
+
             if (matchedKelas) {
               targetKelasId = matchedKelas.id;
             }
@@ -1250,11 +1331,27 @@ export class DapodikService {
         });
 
         if (!existing) {
-          // Resolve jurusan_id dari kelas jika ada pemetaan kelas
+          // Resolve kelas_id & jurusan_id dari kelas jika ada pemetaan kelas atau nama rombel halal
+          let targetImportKelasId = item.kelas_id;
           let resolvedJurusanId = item.jurusan_id;
-          if (!resolvedJurusanId && item.kelas_id) {
+
+          if (!targetImportKelasId && item.rombel) {
+            const allTenantKelas = await prisma.kelas.findMany({
+              where: { tenant_id: tenantId },
+              select: { id: true, nama_kelas: true, jurusan_id: true },
+            });
+            const foundEquivalent = allTenantKelas.find((k) => DapodikService.isClassEquivalent(item.rombel, k.nama_kelas));
+            if (foundEquivalent) {
+              targetImportKelasId = foundEquivalent.id;
+              if (!resolvedJurusanId && foundEquivalent.jurusan_id) {
+                resolvedJurusanId = foundEquivalent.jurusan_id;
+              }
+            }
+          }
+
+          if (!resolvedJurusanId && targetImportKelasId) {
             const kelasRecord = await prisma.kelas.findUnique({
-              where: { id: item.kelas_id },
+              where: { id: targetImportKelasId },
               select: { jurusan_id: true },
             });
             if (kelasRecord?.jurusan_id) {
@@ -1273,11 +1370,11 @@ export class DapodikService {
                 jenis_kelamin: (item.jenis_kelamin || 'L').toUpperCase().startsWith('P') ? 'P' : 'L',
                 tempat_lahir: item.tempat_lahir || undefined,
                 tanggal_lahir: item.tanggal_lahir ? new Date(item.tanggal_lahir) : undefined,
-                kelas_id: item.kelas_id || undefined,
+                kelas_id: targetImportKelasId || undefined,
                 jurusan_id: resolvedJurusanId || undefined,
                 tahun_pelajaran_id: targetTpId,
                 semester_id: targetSemId,
-                status: item.kelas_id ? 'AKTIF' : 'CALON',
+                status: targetImportKelasId ? 'AKTIF' : 'CALON',
               },
               {
                 tenantId,
