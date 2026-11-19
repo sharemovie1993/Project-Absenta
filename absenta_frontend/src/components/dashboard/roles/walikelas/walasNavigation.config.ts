@@ -10,6 +10,7 @@ import {
   Award,
   FileSpreadsheet,
   Printer,
+  GitCompare,
   type LucideIcon,
 } from 'lucide-react';
 import type { WaliKelasTabId } from './types';
@@ -61,6 +62,7 @@ export const WALAS_SUBTABS_BASE: WalasTabDefinition[] = [
   // 👥 KATEGORI 1: ROMBEL & AKADEMIK
   { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', category: 'akademik', icon: LayoutDashboard, targetPath: '/dashboard?tab=binaan&subtab=ringkasan', color: 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400' },
   { id: 'siswa', label: 'Siswa', shortLabel: 'Siswa', category: 'akademik', icon: Users, targetPath: '/dashboard?tab=binaan&subtab=siswa', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+  { id: 'cek-dapodik', label: 'Cek Dapodik', shortLabel: 'Dapodik', category: 'akademik', icon: GitCompare, targetPath: '/dashboard?tab=binaan&subtab=cek-dapodik', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'struktur', label: 'Struktur', shortLabel: 'Struktur', category: 'akademik', icon: Shield, targetPath: '/dashboard?tab=binaan&subtab=struktur', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
   { id: 'ketuntasan', label: 'Ketuntasan', shortLabel: 'Ketuntasan', category: 'akademik', icon: Radio, targetPath: '/dashboard?tab=binaan&subtab=ketuntasan', color: 'bg-purple-50 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400' },
 
@@ -82,6 +84,7 @@ export interface WalasTabBadges {
   tidakHadirToday?: number;
   atRiskCount?: number;
   remedialCount?: number;
+  dapodikMismatchCount?: number;
   totalJurnal?: number;
   pendingIzin?: number;
   totalPelanggaran?: number;
@@ -93,6 +96,7 @@ export function getWalasNavTabs(badges?: WalasTabBadges) {
     let badge: number | string | undefined;
 
     if (tab.id === 'siswa' && badges?.totalSiswa && badges.totalSiswa > 0) badge = badges.totalSiswa;
+    if (tab.id === 'cek-dapodik' && badges?.dapodikMismatchCount && badges.dapodikMismatchCount > 0) badge = badges.dapodikMismatchCount;
     if (tab.id === 'presensi' && badges?.tidakHadirToday && badges.tidakHadirToday > 0) badge = badges.tidakHadirToday;
     if (tab.id === 'deteksi' && badges?.atRiskCount && badges.atRiskCount > 0) badge = badges.atRiskCount;
     if (tab.id === 'ketuntasan' && badges?.remedialCount && badges.remedialCount > 0) badge = badges.remedialCount;

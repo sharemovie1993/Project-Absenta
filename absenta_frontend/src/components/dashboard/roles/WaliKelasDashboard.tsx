@@ -24,6 +24,7 @@ import { useWalasDashboardData } from './walikelas/useWalasDashboardData';
 import type { WaliKelasTabId } from './walikelas/types';
 import { WalasBerandaTab } from './walikelas/tabs/WalasBerandaTab';
 import { WalasSiswaTab } from './walikelas/tabs/WalasSiswaTab';
+import { WalasCekDapodikTab } from './walikelas/tabs/WalasCekDapodikTab';
 import { WalasStrukturTab } from './walikelas/tabs/WalasStrukturTab';
 import { WalasPresensiTab } from './walikelas/tabs/WalasPresensiTab';
 import { WalasDeteksiDiniTab } from './walikelas/tabs/WalasDeteksiDiniTab';
@@ -65,7 +66,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
   const subtabParam = searchParams.get('subtab') as WaliKelasTabId | null;
 
   const validTabs: WaliKelasTabId[] = [
-    'ringkasan', 'siswa', 'struktur', 'presensi', 'deteksi', 'ketuntasan', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rekap', 'rapor'
+    'ringkasan', 'siswa', 'cek-dapodik', 'struktur', 'presensi', 'deteksi', 'ketuntasan', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rekap', 'rapor'
   ];
 
   // Mobile Filter Collapsible State
@@ -399,6 +400,19 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
                     kelasNama={activeKelasNama}
                     tahunPelajaranId={academicFilter.values.tahunPelajaranId || walasData?.academicContext?.selectedTahunPelajaranId}
                     semesterId={academicFilter.values.semesterId || walasData?.academicContext?.selectedSemesterId}
+                    data={walasData}
+                  />
+                </div>
+              )}
+
+              {visitedTabs.has('cek-dapodik') && (
+                <div
+                  key="tab-cek-dapodik"
+                  className={cn('w-full', activeTab === 'cek-dapodik' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
+                  <WalasCekDapodikTab
+                    kelasId={activeKelasId}
+                    kelasNama={activeKelasNama}
                     data={walasData}
                   />
                 </div>

@@ -47,12 +47,23 @@ import { DapodikToolsModal, type DapodikToolKey } from './DapodikToolsModal';
 import { DapodikLppdUsiaModal } from './DapodikLppdUsiaModal';
 import { DapodikFieldSyncModal } from './DapodikFieldSyncModal';
 import { getTodayIsoDate } from '@/utils/dapodik/dapodikAgeStats';
+import { isClassEquivalent } from '@/utils/dapodik/dapodikClassUtils';
 
 export interface UniversalDapodikIntegrationViewProps {
   hideLayout?: boolean;
+  kelasNama?: string;
+  kelasId?: string;
+  lockKelasScope?: boolean;
+  isWalasMode?: boolean;
 }
 
-export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewProps> = () => {
+export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewProps> = ({
+  hideLayout = false,
+  kelasNama,
+  kelasId,
+  lockKelasScope = false,
+  isWalasMode = false,
+}) => {
   const queryClient = useQueryClient();
 
   // Modals Open State (Packaging All Settings in Modals to Eliminate Visual Noise)
@@ -320,10 +331,26 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     },
   });
 
-  // Students List & Filtering
-  const students = useMemo(() => {
+  // Students List & Filtering (Scope Aware untuk Walas / Universal View)
+  const rawStudents = useMemo(() => {
     return comparisonData?.data?.students || [];
   }, [comparisonData]);
+
+  const students = useMemo(() => {
+    if (!lockKelasScope || !kelasNama) {
+      return rawStudents;
+    }
+    return rawStudents.filter((s) => {
+      const absKelas = s.absentaRaw?.SiswaAkademik?.[0]?.kelas?.nama_kelas || (s.absentaRaw as any)?.Kelas?.nama_kelas;
+      const dapRombel = s.dapodikRaw?.nama_rombel || s.dapodikRaw?.rombel;
+      const sRombel = s.rombel;
+      return (
+        isClassEquivalent(absKelas, kelasNama) ||
+        isClassEquivalent(dapRombel, kelasNama) ||
+        isClassEquivalent(sRombel, kelasNama)
+      );
+    });
+  }, [rawStudents, lockKelasScope, kelasNama]);
 
   const activeCriteriaCount = useMemo(() => {
     let count = 0;
@@ -338,7 +365,35 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
     return count;
   }, [compareOptions]);
 
-  const summary = comparisonData?.data?.summary;
+  const summary = useMemo(() => {
+    if (!lockKelasScope || !kelasNama) {
+      return comparisonData?.data?.summary;
+    }
+    let totalDapodik = 0;
+    let totalAbsenta = 0;
+    let matchCount = 0;
+    let mismatchCount = 0;
+    let dapodikOnlyCount = 0;
+    let absentaOnlyCount = 0;
+
+    students.forEach((s) => {
+      if (s.dapodikRaw) totalDapodik++;
+      if (s.absentaRaw) totalAbsenta++;
+      if (s.status === 'MATCH') matchCount++;
+      else if (s.status === 'MISMATCH') mismatchCount++;
+      else if (s.status === 'DAPODIK_ONLY') dapodikOnlyCount++;
+      else if (s.status === 'ABSENTA_ONLY') absentaOnlyCount++;
+    });
+
+    return {
+      totalDapodik,
+      totalAbsenta,
+      matchCount,
+      mismatchCount,
+      dapodikOnlyCount,
+      absentaOnlyCount,
+    };
+  }, [comparisonData?.data?.summary, lockKelasScope, kelasNama, students]);
   const cacheInfo = comparisonData?.data?.cacheInfo;
 
   const totalDapodikSourceCount = useMemo(
@@ -880,17 +935,19 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 </button>
               </div>
 
-              {/* Tombol Pengaturan Koneksi (Modal) */}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsConnectionModalOpen(true)}
-                className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                title="Buka Pengaturan Koneksi, Host, Token, dan Whitelist IP"
-              >
-                <Key className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                Pengaturan Koneksi
-              </Button>
+              {/* Tombol Pengaturan Koneksi (Modal - Admin Only) */}
+              {!isWalasMode && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsConnectionModalOpen(true)}
+                  className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  title="Buka Pengaturan Koneksi, Host, Token, dan Whitelist IP"
+                >
+                  <Key className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  Pengaturan Koneksi
+                </Button>
+              )}
 
               {/* Tombol Kriteria Pencocokan & Template (Modal) */}
               <Button
@@ -904,33 +961,37 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 Kriteria Audit ({activeCriteriaCount})
               </Button>
 
-              {/* Pusat Tools & Utilitas Dapodik (Rekap LPPD, Cetak Berita Acara, dll) */}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsToolsModalOpen(true)}
-                className="h-7 px-2.5 text-[11px] font-bold gap-1.5 border-indigo-200 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
-                title="Buka Tools & Utilitas Integrasi Dapodik"
-              >
-                <Wrench className="w-3.5 h-3.5 text-indigo-500" />
-                Tools
-              </Button>
+              {/* Pusat Tools & Utilitas Dapodik (Rekap LPPD, Cetak Berita Acara, dll - Admin Only) */}
+              {!isWalasMode && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsToolsModalOpen(true)}
+                  className="h-7 px-2.5 text-[11px] font-bold gap-1.5 border-indigo-200 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+                  title="Buka Tools & Utilitas Integrasi Dapodik"
+                >
+                  <Wrench className="w-3.5 h-3.5 text-indigo-500" />
+                  Tools
+                </Button>
+              )}
 
-              {/* Cetak Berita Acara Rekonsiliasi */}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setPrintModalTemplate('rekon_absenta');
-                  setIsPrintModalOpen(true);
-                }}
-                disabled={!summary || isLoadingComparison}
-                className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                title="Cetak Berita Acara Rekonsiliasi Data"
-              >
-                <Printer className="w-3.5 h-3.5 text-slate-500" />
-                Cetak Dokumen
-              </Button>
+              {/* Cetak Berita Acara Rekonsiliasi (Admin Only) */}
+              {!isWalasMode && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setPrintModalTemplate('rekon_absenta');
+                    setIsPrintModalOpen(true);
+                  }}
+                  disabled={!summary || isLoadingComparison}
+                  className="h-7 px-2.5 text-[11px] font-semibold gap-1.5 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  title="Cetak Berita Acara Rekonsiliasi Data"
+                >
+                  <Printer className="w-3.5 h-3.5 text-slate-500" />
+                  Cetak Dokumen
+                </Button>
+              )}
 
               {/* Cetak Lembar Verifikasi & Ceklis Berkas Siswa untuk Wali Kelas */}
               <Button
@@ -945,18 +1006,20 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 <span>Lembar Wali Kelas ({filteredStudents.length})</span>
               </Button>
 
-              {/* Hancurkan / Purge Cache Staging */}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handlePurgeStaging}
-                disabled={isPurgingStaging || isLoadingComparison}
-                className="h-7 px-2 text-[11px] font-semibold gap-1 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                title="Hancurkan snapshot staging dan bersihkan cache untuk penarikan fresh total"
-              >
-                <Trash2 className={`w-3.5 h-3.5 ${isPurgingStaging ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Bersihkan Staging</span>
-              </Button>
+              {/* Hancurkan / Purge Cache Staging (Admin Only) */}
+              {!isWalasMode && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handlePurgeStaging}
+                  disabled={isPurgingStaging || isLoadingComparison}
+                  className="h-7 px-2 text-[11px] font-semibold gap-1 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                  title="Hancurkan snapshot staging dan bersihkan cache untuk penarikan fresh total"
+                >
+                  <Trash2 className={`w-3.5 h-3.5 ${isPurgingStaging ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Bersihkan Staging</span>
+                </Button>
+              )}
 
               {/* Tarik Data Baru dari Dapodik Port 5774 */}
               <Button
@@ -1151,20 +1214,28 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
                 <span>Filter Siswa:</span>
               </div>
 
-              {/* 1. Filter Rombel Dapodik */}
-              <div className="w-full sm:w-48">
-                <SearchableSelect
-                  value={rombelFilter}
-                  onValueChange={setRombelFilter}
-                  options={[
-                    { value: '', label: 'Semua Rombel' },
-                    ...availableRombelList.map((r) => ({ value: r, label: r })),
-                  ]}
-                  placeholder="Semua Rombel"
-                  searchPlaceholder="Cari rombel..."
-                  triggerClassName="h-7 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
-                />
-              </div>
+              {/* 1. Filter Rombel Dapodik (Locked badge saat mode kelas binaan Walas) */}
+              {lockKelasScope && kelasNama ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50/90 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/80 rounded-lg text-xs font-bold text-amber-900 dark:text-amber-200 shrink-0 shadow-xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>Kelas Binaan: <strong className="text-amber-950 dark:text-amber-100">{kelasNama}</strong></span>
+                  <span className="text-[10px] px-1.5 py-0.5 bg-amber-200/80 dark:bg-amber-900 text-amber-800 dark:text-amber-200 rounded font-semibold ml-0.5">Terkunci</span>
+                </div>
+              ) : (
+                <div className="w-full sm:w-48">
+                  <SearchableSelect
+                    value={rombelFilter}
+                    onValueChange={setRombelFilter}
+                    options={[
+                      { value: '', label: 'Semua Rombel' },
+                      ...availableRombelList.map((r) => ({ value: r, label: r })),
+                    ]}
+                    placeholder="Semua Rombel"
+                    searchPlaceholder="Cari rombel..."
+                    triggerClassName="h-7 text-xs rounded-lg bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
+                  />
+                </div>
+              )}
 
               {/* 2. Filter Tingkat */}
               <div className="w-full sm:w-36">
