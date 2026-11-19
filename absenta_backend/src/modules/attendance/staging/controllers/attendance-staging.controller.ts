@@ -120,6 +120,74 @@ export class AttendanceStagingController {
   }
 
   /**
+   * PUT /attendance/staging/:id/remap-class
+   * Petakan ulang kelas master untuk 1 lembar staging
+   */
+  static async remapClass(req: any, reply: any) {
+    try {
+      const tenantId = req.user?.tenant_id;
+      const { id } = req.params as { id: string };
+      const { kelas_id } = z.object({ kelas_id: z.string().min(1, 'Kelas ID wajib diisi') }).parse(req.body);
+
+      const result = await AttendanceStagingService.remapClass(tenantId, id, kelas_id);
+      return sendResponse(
+        reply,
+        200,
+        true,
+        `Berhasil memetakan lembar ke rombel ${result.namaKelas} (${result.totalMatchedSiswa}/${result.totalSiswa} siswa cocok).`,
+        result
+      );
+    } catch (err: any) {
+      return sendError(reply, 400, err.message, err);
+    }
+  }
+
+  /**
+   * POST /attendance/staging/bulk-remap-classes
+   * Petakan ulang kelas master massal
+   */
+  static async bulkRemapClasses(req: any, reply: any) {
+    try {
+      const tenantId = req.user?.tenant_id;
+      const { mappings } = z
+        .object({
+          mappings: z.array(
+            z.object({
+              id: z.string().min(1),
+              kelasId: z.string().min(1),
+            })
+          ),
+        })
+        .parse(req.body);
+
+      const result = await AttendanceStagingService.bulkRemapClasses(tenantId, mappings);
+      return sendResponse(
+        reply,
+        200,
+        true,
+        `Berhasil memperbarui ${result.length} pemetaan rombel master.`,
+        result
+      );
+    } catch (err: any) {
+      return sendError(reply, 400, err.message, err);
+    }
+  }
+
+  /**
+   * GET /attendance/staging/class-options
+   * Ambil daftar kelas aktif di tenant untuk dropdown pemetaan
+   */
+  static async getClassOptions(req: any, reply: any) {
+    try {
+      const tenantId = req.user?.tenant_id;
+      const classes = await AttendanceStagingService.getClassOptions(tenantId);
+      return sendResponse(reply, 200, true, 'Berhasil mengambil opsi kelas master', classes);
+    } catch (err: any) {
+      return sendError(reply, 500, err.message, err);
+    }
+  }
+
+  /**
    * DELETE /attendance/staging/:id
    * Hapus 1 lembar staging
    */

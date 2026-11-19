@@ -83,6 +83,21 @@ export const attendanceStagingApi = {
     return response.data;
   },
 
+  getClassOptions: async (): Promise<{ success: boolean; data: Array<{ id: string; nama_kelas: string; tingkat: number }> }> => {
+    const response = await api.get('/attendance/staging/class-options');
+    return response.data;
+  },
+
+  remapClass: async (id: string, kelas_id: string): Promise<{ success: boolean; message: string; data: any }> => {
+    const response = await api.put(`/attendance/staging/${id}/remap-class`, { kelas_id });
+    return response.data;
+  },
+
+  bulkRemapClasses: async (mappings: Array<{ id: string; kelasId: string }>): Promise<{ success: boolean; message: string; data: any }> => {
+    const response = await api.post('/attendance/staging/bulk-remap-classes', { mappings });
+    return response.data;
+  },
+
   bulkDelete: async (ids: string[]): Promise<{ success: boolean; message: string }> => {
     const response = await api.post('/attendance/staging/bulk-delete', { ids });
     return response.data;

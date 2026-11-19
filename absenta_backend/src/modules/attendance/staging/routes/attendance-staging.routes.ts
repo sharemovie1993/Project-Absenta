@@ -14,6 +14,15 @@ export default async function attendanceStagingRoutes(fastify: any) {
   // GET /attendance/staging - List seluruh lembar staging
   fastify.get('/', AttendanceStagingController.listSheets);
 
+  // GET /attendance/staging/class-options - Daftar kelas aktif di master untuk pemetaan
+  fastify.get('/class-options', AttendanceStagingController.getClassOptions);
+
+  // PUT /attendance/staging/:id/remap-class - Petakan ulang kelas master untuk 1 lembar staging
+  fastify.put('/:id/remap-class', AttendanceStagingController.remapClass);
+
+  // POST /attendance/staging/bulk-remap-classes - Petakan ulang kelas master massal
+  fastify.post('/bulk-remap-classes', AttendanceStagingController.bulkRemapClasses);
+
   // GET /attendance/staging/:id - Rincian data 1 lembar staging
   fastify.get('/:id', AttendanceStagingController.getSheetDetail);
 

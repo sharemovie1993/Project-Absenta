@@ -30,12 +30,14 @@ import {
 } from '@/api/attendance-staging.api';
 import { AttendanceStagingDetailModal } from './AttendanceStagingDetailModal';
 import { AttendanceStagingPreSyncModal } from './AttendanceStagingPreSyncModal';
+import { AttendanceStagingClassMappingModal } from './AttendanceStagingClassMappingModal';
 
 export const AttendanceStagingView: React.FC = () => {
   const [urlInput, setUrlInput] = useState('');
   const [isFetching, setIsFetching] = useState(false);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [stagingSheets, setStagingSheets] = useState<AttendanceStagingItem[]>([]);
+  const [classOptions, setClassOptions] = useState<Array<{ id: string; nama_kelas: string; tingkat: number }>>([]);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'READY' | 'SYNCED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -48,6 +50,10 @@ export const AttendanceStagingView: React.FC = () => {
   const [preSyncModalOpen, setPreSyncModalOpen] = useState(false);
   const [itemsToSync, setItemsToSync] = useState<AttendanceStagingItem[]>([]);
   const [isExecutingSync, setIsExecutingSync] = useState(false);
+
+  // Class Mapping Modal & Inline state
+  const [mappingModalOpen, setMappingModalOpen] = useState(false);
+  const [isRemappingInline, setIsRemappingInline] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch list sheets from API
@@ -69,9 +75,40 @@ export const AttendanceStagingView: React.FC = () => {
     }
   }, [statusFilter, searchQuery]);
 
+  // Fetch master class options
+  const loadClassOptions = useCallback(async () => {
+    try {
+      const res = await attendanceStagingApi.getClassOptions();
+      if (res.success) {
+        setClassOptions(res.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load class options:', err);
+    }
+  }, []);
+
   useEffect(() => {
-    loadSheets();
-  }, [loadSheets]);
+    loadClassOptions();
+  }, [loadClassOptions]);
+
+  // Handle inline remap class
+  const handleInlineRemap = async (sheetId: string, kelasId: string) => {
+    if (!kelasId) return;
+    setIsRemappingInline(sheetId);
+    try {
+      const res = await attendanceStagingApi.remapClass(sheetId, kelasId);
+      if (res.success) {
+        toast.success(res.message || 'Pemetaan rombel berhasil diperbarui.');
+        loadSheets();
+      } else {
+        toast.error(res.message || 'Gagal memetakan rombel.');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Gagal memetakan rombel.');
+    } finally {
+      setIsRemappingInline(null);
+    }
+  };
 
   // Handle URL fetch
   const handleFetchUrl = async (e: React.FormEvent) => {
@@ -425,17 +462,31 @@ export const AttendanceStagingView: React.FC = () => {
             />
           </div>
 
-          {/* Refresh button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadSheets}
-            disabled={isLoadingList}
-            className="flex items-center gap-1.5 rounded-lg text-xs"
-          >
-            <RefreshCw className={cn('w-3.5 h-3.5', isLoadingList && 'animate-spin')} />
-            Segarkan
-          </Button>
+          {/* Action Toolbar Buttons */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setMappingModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg text-xs font-semibold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50"
+              title="Petakan seluruh lembar sheet spreadsheet ke data master rombel sekolah"
+            >
+              <Layers className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Petakan Rombel Master</span>
+            </Button>
+
+            {/* Refresh button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadSheets}
+              disabled={isLoadingList}
+              className="flex items-center gap-1.5 rounded-lg text-xs"
+            >
+              <RefreshCw className={cn('w-3.5 h-3.5', isLoadingList && 'animate-spin')} />
+              Segarkan
+            </Button>
+          </div>
         </div>
 
         {/* Bulk Action Bar (when selected) */}
@@ -549,7 +600,7 @@ export const AttendanceStagingView: React.FC = () => {
                         </button>
                       </td>
 
-                      {/* Sheet Name & Class */}
+                      {/* Sheet Name & Class with Inline Master Mapping Selector */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
@@ -559,15 +610,45 @@ export const AttendanceStagingView: React.FC = () => {
                             Sheet: {item.sheet_name}
                           </span>
                         </div>
-                        {item.kelas_id ? (
-                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
-                            <CheckCircle2 className="w-3 h-3" /> Terhubung ke Rombel Resmi Sistem
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-0.5">
-                            <AlertCircle className="w-3 h-3" /> Nama rombel akan dicocokkan otomatis
-                          </span>
-                        )}
+
+                        {/* Inline Class Mapping Selector */}
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          <select
+                            value={item.kelas_id || ''}
+                            onChange={(e) => handleInlineRemap(item.id, e.target.value)}
+                            disabled={isRemappingInline === item.id}
+                            className={cn(
+                              'text-[11px] py-1 px-2 rounded-lg border font-medium transition-all max-w-[210px] truncate cursor-pointer',
+                              item.total_matched_siswa === 0
+                                ? 'bg-amber-50 border-amber-300 text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-200'
+                                : 'bg-slate-50 border-slate-200 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
+                            )}
+                            title="Ganti pemetaan rombel master untuk sheet ini"
+                          >
+                            <option value="">-- Pilih Kelas Master --</option>
+                            {classOptions.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.nama_kelas}
+                              </option>
+                            ))}
+                          </select>
+
+                          {isRemappingInline === item.id ? (
+                            <RefreshCw className="w-3 h-3 text-indigo-500 animate-spin shrink-0" />
+                          ) : item.kelas_id && item.total_matched_siswa > 0 ? (
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 font-semibold shrink-0">
+                              <CheckCircle2 className="w-3 h-3" /> Terhubung
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setMappingModalOpen(true)}
+                              className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-0.5 font-bold shrink-0"
+                            >
+                              <AlertCircle className="w-3 h-3 text-amber-500" /> Petakan Rombel
+                            </button>
+                          )}
+                        </div>
                       </td>
 
                       {/* Rentang Tanggal */}
@@ -700,6 +781,15 @@ export const AttendanceStagingView: React.FC = () => {
         items={itemsToSync}
         onConfirmSync={handleExecuteSync}
         isSyncing={isExecutingSync}
+      />
+
+      {/* Class Mapping Modal */}
+      <AttendanceStagingClassMappingModal
+        isOpen={mappingModalOpen}
+        onClose={() => setMappingModalOpen(false)}
+        sheets={stagingSheets}
+        classOptions={classOptions}
+        onMappingSaved={loadSheets}
       />
     </div>
   );

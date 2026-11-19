@@ -39,22 +39,22 @@ export class AttendanceStagingService {
     const savedRecords: any[] = [];
 
     for (const sheetData of parsedSheets) {
-      // 1. Auto-match kelas
-      const cleanTarget = sheetData.namaKelas.replace(/\s+/g, '').toUpperCase();
-      const matchedClass = tenantClasses.find((k) => {
-        const cleanK = k.nama_kelas.replace(/\s+/g, '').toUpperCase();
-        return cleanK === cleanTarget || cleanK.includes(cleanTarget) || cleanTarget.includes(cleanK);
-      });
+      // 1. Auto-match kelas secara presisi
+      const matchedClass = this.matchClassSmart(sheetData.sheetName, sheetData.namaKelas, tenantClasses);
 
       // 2. Hitung kecocokan siswa jika kelas ditemukan
       let matchedStudentCount = 0;
       if (matchedClass) {
         const studentNisList = sheetData.students.map((s) => s.nis).filter(Boolean);
+        const studentNisnList = sheetData.students.map((s) => s.nisn).filter(Boolean);
         const existingStudents = await prisma.siswa.findMany({
           where: {
             tenant_id: tenantId,
             kelas_id: matchedClass.id,
-            nis: { in: studentNisList },
+            OR: [
+              { nis: { in: studentNisList } },
+              { nisn: { in: studentNisnList } },
+            ],
           },
           select: { nis: true },
         });
@@ -392,6 +392,139 @@ export class AttendanceStagingService {
       message: `Berhasil menyinkronkan rombel ${sheetRecord.nama_kelas} (${summaryCounters.totalSesi} sesi presensi, ${summaryCounters.totalAttendanceRows} entri kehadiran).`,
       summary: summaryCounters,
     };
+  }
+
+  /**
+   * Helper pencocokan kelas cerdas (membedakan nomor rombel secara presisi)
+   */
+  static matchClassSmart(sheetName: string, namaKelas: string, tenantClasses: any[]): any {
+    const rawTarget = `${sheetName} ${namaKelas}`.toUpperCase();
+
+    // Ekstrak angka nomor rombel jika ada (misal: "2" dari "PHT 2" atau "TE 5")
+    const matchNum = rawTarget.match(/(\d+)/);
+    const targetNum = matchNum ? matchNum[1] : null;
+
+    // 1. Exact match setelah normalisasi (misal "XPHT2" === "XPHT2" atau "PHT2" === "XPHT2")
+    const normalizedTarget = rawTarget.replace(/[^A-Z0-9]/g, '');
+    let matched = tenantClasses.find((k) => {
+      const normK = k.nama_kelas.replace(/[^A-Z0-9]/g, '').toUpperCase();
+      return (
+        normK === normalizedTarget ||
+        `X${normalizedTarget}` === normK ||
+        normK.replace(/^X/, '') === normalizedTarget.replace(/^X/, '')
+      );
+    });
+
+    // 2. Jika belum ketemu, cocokkan kode jurusan dan nomor rombel yang sama
+    if (!matched && targetNum) {
+      matched = tenantClasses.find((k) => {
+        const normK = k.nama_kelas.replace(/[^A-Z0-9]/g, '').toUpperCase();
+        const numK = k.nama_kelas.match(/(\d+)/)?.[1] || null;
+        if (numK !== targetNum) return false;
+
+        // Cek apakah kode jurusan cocok (misal PHT, TE, TM, AKL, TJKT)
+        const jurusanPrefixes = ['PHT', 'TE', 'TM', 'AKL', 'TJKT', 'TKJ', 'RPL', 'TO', 'TKR', 'TSM', 'KUL'];
+        for (const pref of jurusanPrefixes) {
+          if (rawTarget.includes(pref) && normK.includes(pref)) return true;
+        }
+        return false;
+      });
+    }
+
+    // 3. Fallback jika kelas tanpa nomor (misal "KULINER" -> "X KUL")
+    if (!matched && !targetNum) {
+      matched = tenantClasses.find((k) => {
+        const normK = k.nama_kelas.replace(/[^A-Z0-9]/g, '').toUpperCase();
+        if (rawTarget.includes('KULINER') && (normK.includes('KUL') || normK.includes('KULINER'))) {
+          return normK === 'XKUL' || normK === 'KUL';
+        }
+        return false;
+      });
+    }
+
+    return matched || null;
+  }
+
+  /**
+   * Petakan ulang kelas master untuk lembar staging
+   */
+  static async remapClass(tenantId: string, sheetId: string, kelasId: string): Promise<any> {
+    const sheetRecord = await (prisma as any).attendanceStagingSheet.findFirst({
+      where: { id: sheetId, tenant_id: tenantId },
+    });
+    if (!sheetRecord) {
+      throw new Error('Data lembar staging tidak ditemukan');
+    }
+
+    const kelas = await prisma.kelas.findFirst({
+      where: { id: kelasId, tenant_id: tenantId },
+      select: { id: true, nama_kelas: true, tingkat: true },
+    });
+    if (!kelas) {
+      throw new Error('Kelas master tidak ditemukan di sistem');
+    }
+
+    // Hitung ulang kecocokan siswa dengan kelas yang baru dipilih
+    const rawData = sheetRecord.raw_sheet_data;
+    const students = rawData?.students || [];
+    const studentNisList = students.map((s: any) => s.nis).filter(Boolean);
+    const studentNisnList = students.map((s: any) => s.nisn).filter(Boolean);
+
+    const existingStudents = await prisma.siswa.findMany({
+      where: {
+        tenant_id: tenantId,
+        kelas_id: kelas.id,
+        OR: [
+          { nis: { in: studentNisList } },
+          { nisn: { in: studentNisnList } },
+        ],
+      },
+      select: { nis: true, nisn: true },
+    });
+
+    await (prisma as any).attendanceStagingSheet.update({
+      where: { id: sheetId },
+      data: {
+        kelas_id: kelas.id,
+        nama_kelas: kelas.nama_kelas,
+        total_matched_siswa: existingStudents.length,
+      },
+    });
+
+    return {
+      sheetId,
+      kelasId: kelas.id,
+      namaKelas: kelas.nama_kelas,
+      totalSiswa: sheetRecord.total_siswa,
+      totalMatchedSiswa: existingStudents.length,
+    };
+  }
+
+  /**
+   * Petakan ulang kelas master massal
+   */
+  static async bulkRemapClasses(
+    tenantId: string,
+    mappings: Array<{ id: string; kelasId: string }>
+  ): Promise<any[]> {
+    const results: any[] = [];
+    for (const m of mappings) {
+      if (!m.id || !m.kelasId) continue;
+      const res = await this.remapClass(tenantId, m.id, m.kelasId);
+      results.push(res);
+    }
+    return results;
+  }
+
+  /**
+   * Ambil opsi daftar kelas aktif di tenant untuk dropdown pemetaan
+   */
+  static async getClassOptions(tenantId: string) {
+    return prisma.kelas.findMany({
+      where: { tenant_id: tenantId },
+      select: { id: true, nama_kelas: true, tingkat: true },
+      orderBy: [{ tingkat: 'asc' }, { nama_kelas: 'asc' }],
+    });
   }
 
   /**
