@@ -16,7 +16,7 @@ import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
 import type { GuruMapel } from '@/types/academic';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import { useJenjang } from '@/hooks/useJenjang';
-import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
+import { formatTingkatRomawi, isAssignmentMatchingJurusan } from '../bank-soal/cbtAsesmenHelper';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
 import { cn } from '@/lib/utils';
 import { CbtBankSoalFormModal } from '../bank-soal/CbtBankSoalFormModal';
@@ -161,30 +161,19 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
     const mgmpSharedMap = getAllMgmpSharedMap(tenantId, bankList);
     const nudgeHistory = getNudgeHistory(tenantId);
 
-    const directBankMap = new Map<string, CbtBankSoal>();
-    const masterBanksByMapelTingkat = new Map<string, CbtBankSoal>();
+    // Kumpulkan seluruh bank soal per mapel & tingkat (mendukung varian multi-jurusan vokasi)
+    const banksByMapelTingkat = new Map<string, CbtBankSoal[]>();
 
     bankList.forEach((b) => {
       const tNum = resolveBankTingkatNumber(b) || 10;
-      const gId = b.guru_id;
       const mId = b.mapel_id;
-      const count = b.jumlah_soal || b._count?.Soal || 0;
-
-      if (gId && mId) {
-        directBankMap.set(`${gId}_${mId}_${tNum}`, b);
-      }
+      if (!mId) return;
 
       const mtKey = `${mId}_${tNum}`;
-      const existing = masterBanksByMapelTingkat.get(mtKey);
-      const isShared = Boolean(b.is_shared || b.status === 'PUBLISHED');
-
-      if (
-        !existing ||
-        (isShared && !(existing.is_shared || existing.status === 'PUBLISHED')) ||
-        count > (existing.jumlah_soal || existing._count?.Soal || 0)
-      ) {
-        masterBanksByMapelTingkat.set(mtKey, b);
+      if (!banksByMapelTingkat.has(mtKey)) {
+        banksByMapelTingkat.set(mtKey, []);
       }
+      banksByMapelTingkat.get(mtKey)!.push(b);
     });
 
     const teacherItems: AuditedTargetItem[] = [];
@@ -243,9 +232,20 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
 
         // 2a. Model Teori Paket Mapel (Mata Pelajaran x Tingkat)
         const mtKey = `${mId}_${tNum}`;
+        const candidateBanks = banksByMapelTingkat.get(mtKey) || [];
+
         if (!mapelPaketMap.has(mtKey)) {
-          const masterBank = masterBanksByMapelTingkat.get(mtKey);
-          const hasReadyMaster = Boolean(masterBank && (masterBank.jumlah_soal || masterBank._count?.Soal || 0) > 0);
+          // Cari bank master terbaik (yang siap dengan soal terbanyak atau sudah published)
+          const sortedBanks = [...candidateBanks].sort((a, b) => {
+            const countA = a.jumlah_soal || a._count?.Soal || 0;
+            const countB = b.jumlah_soal || b._count?.Soal || 0;
+            return countB - countA;
+          });
+          const bestMasterBank = sortedBanks[0];
+          const hasReadyMaster = candidateBanks.some(
+            (b) => (b.jumlah_soal || b._count?.Soal || 0) > 0
+          );
+
           mapelPaketMap.set(mtKey, {
             id: mtKey,
             mapel_id: mId,
@@ -253,9 +253,9 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             tingkat: tNum,
             assignedTeachers: [],
             isReady: hasReadyMaster,
-            bankSoal: masterBank,
-            masterAuthor: masterBank?.Guru?.nama_guru,
-            soalCount: masterBank ? masterBank.jumlah_soal || masterBank._count?.Soal || 0 : 0,
+            bankSoal: bestMasterBank,
+            masterAuthor: bestMasterBank?.Guru?.nama_guru,
+            soalCount: bestMasterBank ? bestMasterBank.jumlah_soal || bestMasterBank._count?.Soal || 0 : 0,
           });
         }
         const paket = mapelPaketMap.get(mtKey)!;
@@ -263,19 +263,46 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           paket.assignedTeachers.push({ id: gId, nama_guru: guruName });
         }
 
-        // 2b. Model Audit Guru Pengampu
+        // 2b. Model Audit Guru Pengampu (SSOT Selaras dengan Meja Guru & Kamus Vokasi)
         const teacherKey = `${gId}_${mId}_${tNum}`;
         if (processedTeacherKeys.has(teacherKey)) return;
         processedTeacherKeys.add(teacherKey);
 
-        const directBank = directBankMap.get(teacherKey);
-        const nudgeMeta = nudgeHistory[teacherKey] || (directBank ? nudgeHistory[directBank.id] : undefined);
+        // 1. Bank Soal Mandiri Milik Guru Sendiri
+        const ownBank = candidateBanks.find((b) => b.guru_id === gId);
 
-        if (directBank) {
-          const count = directBank.jumlah_soal || directBank._count?.Soal || 0;
-          const isShared = Boolean(directBank.is_shared || directBank.status === 'PUBLISHED');
+        // 2. Bank Soal MGMP / Rekan Berbagi yang Meng-cover Guru Ini:
+        // - Terdaftar eksplisit di Kontributor DB atau mgmpSharedMap
+        // - ATAU Bank Master MGMP Se-Sekolah yang mencakup jurusan / rombel penugasan guru ini via isAssignmentMatchingJurusan
+        const mgmpCoveringBank = candidateBanks.find((b) => {
+          if (b.guru_id === gId) return false;
+          const isSharedOrPublished = Boolean(b.is_shared || b.status === 'PUBLISHED');
+          const isExplicitContributor =
+            (b.Kontributor && b.Kontributor.some((c) => c.guru_id === gId && c.can_edit_soal !== false)) ||
+            (mgmpSharedMap[b.id] && mgmpSharedMap[b.id].includes(gId));
+
+          if (isExplicitContributor) return true;
+
+          if (isSharedOrPublished) {
+            const rawJur = (b.jurusan || '').toUpperCase().trim();
+            if (!rawJur || rawJur === 'SEMUA' || rawJur === 'UMUM') return true;
+            const bJurTokens = rawJur.split(/[,;/|]+/).map((s) => s.trim()).filter(Boolean);
+            return isAssignmentMatchingJurusan(gm, bJurTokens);
+          }
+
+          return false;
+        });
+
+        const effectiveBank = ownBank || mgmpCoveringBank;
+        const isCoveredByMaster = Boolean(!ownBank && mgmpCoveringBank);
+        const nudgeMeta = nudgeHistory[teacherKey] || (effectiveBank ? nudgeHistory[effectiveBank.id] : undefined);
+
+        if (effectiveBank) {
+          const count = effectiveBank.jumlah_soal || effectiveBank._count?.Soal || 0;
+          const isShared = Boolean(effectiveBank.is_shared || effectiveBank.status === 'PUBLISHED');
+
           teacherItems.push({
-            id: directBank.id,
+            id: isCoveredByMaster ? `mgmp_${gId}_${effectiveBank.id}` : effectiveBank.id,
             guru_id: gId,
             nama_guru: guruName,
             no_hp: phone,
@@ -283,59 +310,33 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             nama_mapel: mapelName,
             tingkat: tNum,
             assignedTeachers: [{ id: gId, nama_guru: guruName, no_hp: phone }],
-            bankSoal: directBank,
+            bankSoal: effectiveBank,
             soalCount: count,
             status: count > 0 ? 'READY' : 'DRAFT_EMPTY',
             isShared,
             creatorName: guruName,
-            isCoveredByMaster: false,
+            isCoveredByMaster,
+            masterAuthorName: isCoveredByMaster ? effectiveBank.Guru?.nama_guru || 'Koordinator MGMP' : undefined,
             nudgeMeta,
           });
         } else {
-          const masterBank = masterBanksByMapelTingkat.get(mtKey);
-          const masterSharedIds = masterBank ? mgmpSharedMap[masterBank.id] || [] : [];
-          // Rekan guru HANYA ter-cover jika ID-nya secara eksplisit dicentang dalam masterSharedIds
-          const isCovered = Boolean(masterBank && masterSharedIds.includes(gId));
-
-          if (isCovered && masterBank) {
-            const mCount = masterBank.jumlah_soal || masterBank._count?.Soal || 0;
-            teacherItems.push({
-              id: `mgmp_${gId}_${masterBank.id}`,
-              guru_id: gId,
-              nama_guru: guruName,
-              no_hp: phone,
-              mapel_id: mId,
-              nama_mapel: mapelName,
-              tingkat: tNum,
-              assignedTeachers: [{ id: gId, nama_guru: guruName, no_hp: phone }],
-              bankSoal: masterBank,
-              soalCount: mCount,
-              status: mCount > 0 ? 'READY' : 'DRAFT_EMPTY',
-              isShared: true,
-              creatorName: guruName,
-              isCoveredByMaster: true,
-              masterAuthorName: masterBank.Guru?.nama_guru || 'Koordinator MGMP',
-              nudgeMeta,
-            });
-          } else {
-            teacherItems.push({
-              id: teacherKey,
-              guru_id: gId,
-              nama_guru: guruName,
-              no_hp: phone,
-              mapel_id: mId,
-              nama_mapel: mapelName,
-              tingkat: tNum,
-              assignedTeachers: [{ id: gId, nama_guru: guruName, no_hp: phone }],
-              bankSoal: undefined,
-              soalCount: 0,
-              status: 'UNCREATED',
-              isShared: false,
-              creatorName: guruName,
-              isCoveredByMaster: false,
-              nudgeMeta,
-            });
-          }
+          teacherItems.push({
+            id: teacherKey,
+            guru_id: gId,
+            nama_guru: guruName,
+            no_hp: phone,
+            mapel_id: mId,
+            nama_mapel: mapelName,
+            tingkat: tNum,
+            assignedTeachers: [{ id: gId, nama_guru: guruName, no_hp: phone }],
+            bankSoal: undefined,
+            soalCount: 0,
+            status: 'UNCREATED',
+            isShared: false,
+            creatorName: guruName,
+            isCoveredByMaster: false,
+            nudgeMeta,
+          });
         }
       });
     }

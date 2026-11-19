@@ -1153,30 +1153,18 @@ export function evaluateStep1Soal(params: {
   const { rawGuruMapel = [], bankList = [], targetTingkat, tenantId = 'default' } = params;
 
   if (rawGuruMapel.length > 0) {
-    const directBankMap = new Map<string, CbtBankSoal>();
-    const masterBanksByMapelTingkat = new Map<string, CbtBankSoal>();
+    const banksByMapelTingkat = new Map<string, CbtBankSoal[]>();
 
     bankList.forEach((b) => {
       const tNum = resolveBankTingkatNumber(b) || 10;
-      const gId = b.guru_id;
       const mId = b.mapel_id;
-      const count = b.jumlah_soal || b._count?.Soal || 0;
-
-      if (gId && mId) {
-        directBankMap.set(`${gId}_${mId}_${tNum}`, b);
-      }
+      if (!mId) return;
 
       const mtKey = `${mId}_${tNum}`;
-      const existing = masterBanksByMapelTingkat.get(mtKey);
-      const isShared = Boolean(b.is_shared || b.status === 'PUBLISHED');
-
-      if (
-        !existing ||
-        (isShared && !(existing.is_shared || existing.status === 'PUBLISHED')) ||
-        count > (existing.jumlah_soal || existing._count?.Soal || 0)
-      ) {
-        masterBanksByMapelTingkat.set(mtKey, b);
+      if (!banksByMapelTingkat.has(mtKey)) {
+        banksByMapelTingkat.set(mtKey, []);
       }
+      banksByMapelTingkat.get(mtKey)!.push(b);
     });
 
     const mapelPaketMap = new Map<string, { isReady: boolean; soalCount: number }>();
@@ -1214,11 +1202,16 @@ export function evaluateStep1Soal(params: {
 
       const mtKey = `${mId}_${tNum}`;
       if (!mapelPaketMap.has(mtKey)) {
-        const masterBank = masterBanksByMapelTingkat.get(mtKey);
-        const hasReadyMaster = Boolean(masterBank && (masterBank.jumlah_soal || masterBank._count?.Soal || 0) > 0);
+        const candidateBanks = banksByMapelTingkat.get(mtKey) || [];
+        const maxSoal = candidateBanks.reduce((max, b) => {
+          const count = b.jumlah_soal || b._count?.Soal || 0;
+          return Math.max(max, count);
+        }, 0);
+        const hasReadyMaster = maxSoal > 0;
+
         mapelPaketMap.set(mtKey, {
           isReady: hasReadyMaster,
-          soalCount: masterBank ? masterBank.jumlah_soal || masterBank._count?.Soal || 0 : 0,
+          soalCount: maxSoal,
         });
       }
     });
