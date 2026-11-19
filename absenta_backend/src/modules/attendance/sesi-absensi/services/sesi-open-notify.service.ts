@@ -119,7 +119,7 @@ export class SesiOpenNotifyService {
         effectiveGuruId
           ? prisma.guru.findUnique({
               where: { id: effectiveGuruId },
-              select: { nama_guru: true, gelar_depan: true, gelar_belakang: true },
+              select: { nama_guru: true },
             }).catch(() => null)
           : null,
         sesi.kelas_id
@@ -137,11 +137,8 @@ export class SesiOpenNotifyService {
         getTenantTimezone(tenantId).catch(() => PLATFORM_TIMEZONE),
       ]);
 
-      if (guruData) {
-        namaGuru = [guruData.gelar_depan, guruData.nama_guru, guruData.gelar_belakang]
-          .filter(Boolean)
-          .join(' ')
-          .trim() || guruData.nama_guru;
+      if (guruData?.nama_guru) {
+        namaGuru = guruData.nama_guru;
       }
 
       if (kelasData?.nama_kelas) {
