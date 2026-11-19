@@ -187,19 +187,18 @@ export class SesiOpenNotifyService {
         }
       }
 
-      // Fallback: baca dari file storage lokal jika rawFoto tidak tersedia tapi finalFotoUrl ada
+      // Fallback: baca dari file storage (Local / S3 MinIO) jika rawFoto tidak berupa Base64
       if (!cleanBase64 && finalFotoUrl && typeof finalFotoUrl === 'string') {
         try {
-          const relativeKey = finalFotoUrl.replace(/^\/+/, '');
-          const storageDir = process.env.STORAGE_LOCAL_DIR
-            ? path.resolve(process.env.STORAGE_LOCAL_DIR)
-            : path.resolve(process.cwd());
-          const filePath = path.resolve(storageDir, relativeKey);
-          if (fs.existsSync(filePath)) {
-            const buf = fs.readFileSync(filePath);
+          const { storageService } = await import('../../../../infra/storage/storage.service');
+          const cleanKey = finalFotoUrl.replace(/^\/api\//, '').replace(/^\/+/, '');
+          const buf = await storageService.readFileBuffer(cleanKey);
+          if (buf && buf.length > 0) {
             cleanBase64 = buf.toString('base64');
           }
-        } catch (_) {}
+        } catch (e: any) {
+          appLogger.warn(`[SesiOpenNotify] Gagal membaca buffer foto dari storage (${finalFotoUrl}): ${e.message}`);
+        }
       }
 
       // 4. Kirim melalui WhatsApp Gateway

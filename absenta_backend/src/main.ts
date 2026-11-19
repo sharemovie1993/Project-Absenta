@@ -154,6 +154,9 @@ async function start() {
   requireEnv('DATABASE_URL');
   requireEnv('JWT_SECRET');
   requireEnv('API_URL');
+  if (!process.env.SERVICE_ROLE && !process.env.WORKER_ROLE) {
+    process.env.SERVICE_ROLE = 'api';
+  }
   const serviceRole = String(process.env.SERVICE_ROLE || process.env.WORKER_ROLE || '').trim().toLowerCase();
   const isWorkerOnly = serviceRole === 'pdf-worker' || serviceRole === 'pdf_worker' || serviceRole === 'worker' || serviceRole === 'recurring';
   const isDev = (process.env.NODE_ENV || '').toLowerCase() === 'development';

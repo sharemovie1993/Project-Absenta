@@ -1,3 +1,4 @@
+process.env.SERVICE_ROLE = 'api';
 import { prisma } from '../utils/prisma';
 import { waGatewayService } from '../services/wa-gateway.service';
 
