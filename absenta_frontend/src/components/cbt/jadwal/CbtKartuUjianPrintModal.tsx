@@ -235,6 +235,11 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
   qrPayloadMode,
 }) => {
   const [qrUrl, setQrUrl] = useState<string>('');
+  const [imgError, setImgError] = useState<boolean>(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [student.id, student.foto]);
 
   // SSoT Universal Academic Identity Normalizer
   const normIdentity = useMemo(() => {
@@ -451,10 +456,11 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
                 <span className="text-[5.5px] font-bold text-slate-400">QR KOSONG</span>
               </div>
             )
-          ) : showFoto && normIdentity.fotoUrl ? (
+          ) : showFoto && normIdentity.fotoUrl && !imgError ? (
             <img
               src={resolveProfilePhotoUrl(normIdentity.fotoUrl)}
               alt={normIdentity.nama}
+              onError={() => setImgError(true)}
               className={cn(
                 'object-cover rounded-xs border border-slate-300 shadow-2xs',
                 is6Grid ? 'w-[20mm] h-[28mm]' : 'w-[23mm] h-[31mm]'
