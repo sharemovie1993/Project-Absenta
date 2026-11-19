@@ -21,7 +21,7 @@ export class AttendanceStagingService {
 
     // Ambil daftar kelas aktif di tenant untuk auto-matching
     const tenantClasses = await prisma.kelas.findMany({
-      where: { tenant_id: tenantId },
+      where: { tenant_id: tenantId, is_active: true },
       select: { id: true, nama_kelas: true, tingkat: true },
     });
 
@@ -400,6 +400,24 @@ export class AttendanceStagingService {
   static matchClassSmart(sheetName: string, namaKelas: string, tenantClasses: any[]): any {
     const rawTarget = `${sheetName} ${namaKelas}`.toUpperCase();
 
+    // Pemetaan khusus rumpun Otomotif (TKR/TSM -> X TO 1..4)
+    if (rawTarget.includes('TSM 1') || rawTarget.includes('TSM1')) {
+      const found = tenantClasses.find((k) => k.nama_kelas.replace(/\s+/g, '') === 'XTO3' || k.nama_kelas === 'X TO 3');
+      if (found) return found;
+    }
+    if (rawTarget.includes('TSM 2') || rawTarget.includes('TSM2')) {
+      const found = tenantClasses.find((k) => k.nama_kelas.replace(/\s+/g, '') === 'XTO4' || k.nama_kelas === 'X TO 4');
+      if (found) return found;
+    }
+    if (rawTarget.includes('TKR 1') || rawTarget.includes('TKR1')) {
+      const found = tenantClasses.find((k) => k.nama_kelas.replace(/\s+/g, '') === 'XTO1' || k.nama_kelas === 'X TO 1');
+      if (found) return found;
+    }
+    if (rawTarget.includes('TKR 2') || rawTarget.includes('TKR2')) {
+      const found = tenantClasses.find((k) => k.nama_kelas.replace(/\s+/g, '') === 'XTO2' || k.nama_kelas === 'X TO 2');
+      if (found) return found;
+    }
+
     // Ekstrak angka nomor rombel jika ada (misal: "2" dari "PHT 2" atau "TE 5")
     const matchNum = rawTarget.match(/(\d+)/);
     const targetNum = matchNum ? matchNum[1] : null;
@@ -423,7 +441,7 @@ export class AttendanceStagingService {
         if (numK !== targetNum) return false;
 
         // Cek apakah kode jurusan cocok (misal PHT, TE, TM, AKL, TJKT)
-        const jurusanPrefixes = ['PHT', 'TE', 'TM', 'AKL', 'TJKT', 'TKJ', 'RPL', 'TO', 'TKR', 'TSM', 'KUL'];
+        const jurusanPrefixes = ['PHT', 'TE', 'TM', 'AKL', 'TJKT', 'TKJ', 'RPL', 'TO', 'KUL'];
         for (const pref of jurusanPrefixes) {
           if (rawTarget.includes(pref) && normK.includes(pref)) return true;
         }
@@ -521,7 +539,7 @@ export class AttendanceStagingService {
    */
   static async getClassOptions(tenantId: string) {
     return prisma.kelas.findMany({
-      where: { tenant_id: tenantId },
+      where: { tenant_id: tenantId, is_active: true },
       select: { id: true, nama_kelas: true, tingkat: true },
       orderBy: [{ tingkat: 'asc' }, { nama_kelas: 'asc' }],
     });
