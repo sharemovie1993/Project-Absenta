@@ -3,7 +3,6 @@ import {
   Calendar,
   Clock,
   Users,
-  UserCheck,
   AlertCircle,
   Plus,
   Trash2,
@@ -11,12 +10,13 @@ import {
   CheckCircle2,
   Shield,
   Layers,
-  Search,
   ArrowRight,
-  Info,
-  Check,
+  ArrowLeft,
   X,
   FileCheck,
+  Table,
+  Check,
+  Search,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -53,6 +53,9 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
   classOptions,
   onSuccess,
 }) => {
+  // ── WIZARD STEP: 1 = Konfigurasi, 2 = Input Siswa Non-Hadir, 3 = Review Matriks ──
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+
   // ── Step 1: Multi-Tanggal State ──
   const [dateRangeStart, setDateRangeStart] = useState<string>('');
   const [dateRangeEnd, setDateRangeEnd] = useState<string>('');
@@ -60,13 +63,13 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
   const [singleDateInput, setSingleDateInput] = useState<string>('');
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
 
-  // ── Step 2: Agenda & Target Kelas ──
+  // ── Step 1: Agenda & Target Kelas ──
   const [agendaMode, setAgendaMode] = useState<AgendaMode>('AUTO_SIKLUS');
   const [selectedKelasIds, setSelectedKelasIds] = useState<string[]>([]);
   const [customTitle, setCustomTitle] = useState<string>('');
   const [directSync, setDirectSync] = useState<boolean>(true);
 
-  // ── Step 3: Exception Input (Siswa Non-Hadir) ──
+  // ── Step 2: Exception Input (Siswa Non-Hadir) ──
   const [activeFilterKelasId, setActiveFilterKelasId] = useState<string>('');
   const [classStudentsMap, setClassStudentsMap] = useState<Record<string, ClassStudentOption[]>>({});
   const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
@@ -81,6 +84,10 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
   const [exceptionsList, setExceptionsList] = useState<ManualBackfillException[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  // ── Step 3: Preview State ──
+  const [previewKelasId, setPreviewKelasId] = useState<string>('');
+  const [previewSearchStudent, setPreviewSearchStudent] = useState<string>('');
+
   // Auto-select 20 Rombel Kelas X saat modal pertama dibuka
   useEffect(() => {
     if (isOpen && classOptions.length > 0 && selectedKelasIds.length === 0) {
@@ -88,34 +95,40 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
         (c) => c.tingkat === 10 || c.nama_kelas.toUpperCase().startsWith('X ')
       );
       if (kelasX.length > 0) {
-        setSelectedKelasIds(kelasX.map((c) => c.id));
-        setActiveFilterKelasId(kelasX[0].id);
+        const xIds = kelasX.map((c) => c.id);
+        setSelectedKelasIds(xIds);
+        setActiveFilterKelasId(xIds[0]);
+        setPreviewKelasId(xIds[0]);
       }
     }
   }, [isOpen, classOptions, selectedKelasIds.length]);
 
   // Fetch siswa saat kelas terpilih berubah
+  const fetchStudentsForClass = useCallback((kId: string) => {
+    if (!kId || classStudentsMap[kId]) return;
+    setLoadingStudents(true);
+    attendanceStagingApi
+      .getClassStudents(kId)
+      .then((res) => {
+        if (res.success) {
+          setClassStudentsMap((prev) => ({ ...prev, [kId]: res.data || [] }));
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch class students:', err);
+      })
+      .finally(() => {
+        setLoadingStudents(false);
+      });
+  }, [classStudentsMap]);
+
   useEffect(() => {
     if (!isOpen || selectedKelasIds.length === 0) return;
-
-    const kelasToFetch = activeFilterKelasId || selectedKelasIds[0];
-    if (kelasToFetch && !classStudentsMap[kelasToFetch]) {
-      setLoadingStudents(true);
-      attendanceStagingApi
-        .getClassStudents(kelasToFetch)
-        .then((res) => {
-          if (res.success) {
-            setClassStudentsMap((prev) => ({ ...prev, [kelasToFetch]: res.data || [] }));
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to fetch class students:', err);
-        })
-        .finally(() => {
-          setLoadingStudents(false);
-        });
+    const kelasToFetch = activeFilterKelasId || previewKelasId || selectedKelasIds[0];
+    if (kelasToFetch) {
+      fetchStudentsForClass(kelasToFetch);
     }
-  }, [isOpen, activeFilterKelasId, selectedKelasIds, classStudentsMap]);
+  }, [isOpen, activeFilterKelasId, previewKelasId, selectedKelasIds, fetchStudentsForClass]);
 
   // Handler: Generate Tanggal dari Rentang
   const handleGenerateDateRange = () => {
@@ -136,7 +149,6 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
 
     while (cur <= end) {
       const dayNum = cur.getUTCDay();
-      // Skip Minggu jika tidak dicentang
       if (includeSunday || dayNum !== 0) {
         generated.push(cur.toISOString().slice(0, 10));
       }
@@ -163,7 +175,6 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
   // Handler: Hapus Tanggal dari Chip
   const handleRemoveDate = (dStr: string) => {
     setSelectedDates(selectedDates.filter((d) => d !== dStr));
-    // Bersihkan juga dari custom dates exception jika ada
     setExceptionCustomDates((prev) => prev.filter((d) => d !== dStr));
   };
 
@@ -173,14 +184,20 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
       .filter((c) => c.tingkat === 10 || c.nama_kelas.toUpperCase().startsWith('X '))
       .map((c) => c.id);
     setSelectedKelasIds(xList);
-    if (xList.length > 0) setActiveFilterKelasId(xList[0]);
+    if (xList.length > 0) {
+      setActiveFilterKelasId(xList[0]);
+      setPreviewKelasId(xList[0]);
+    }
     toast.success(`Dipilih ${xList.length} Rombel Kelas X.`);
   };
 
   const handleSelectAllKelas = () => {
     const all = classOptions.map((c) => c.id);
     setSelectedKelasIds(all);
-    if (all.length > 0) setActiveFilterKelasId(all[0]);
+    if (all.length > 0) {
+      setActiveFilterKelasId(all[0]);
+      setPreviewKelasId(all[0]);
+    }
     toast.success(`Dipilih seluruh ${all.length} Rombel Kelas.`);
   };
 
@@ -219,7 +236,6 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
         ? undefined
         : exceptionCustomDates;
 
-    // Cek duplikasi
     const exists = exceptionsList.some(
       (e) => e.siswa_id === st.siswa_id && JSON.stringify(e.dates) === JSON.stringify(datesForThisException)
     );
@@ -242,7 +258,6 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
     setExceptionsList((prev) => [newEx, ...prev]);
     toast.success(`Siswa ${st.nama_siswa} dicatat [${exceptionStatus}]. Siswa lainnya tetap HADIR.`);
 
-    // Reset input pengecualian
     setSelectedStudentId('');
     setExceptionNotes('');
   };
@@ -252,10 +267,88 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
     setExceptionsList((prev) => prev.filter((_, idx) => idx !== index));
   };
 
-  // Perkiraan total siswa dari rombel terpilih
+  // ── Sesi yang Terbentuk Sesuai Mode Agenda & Tanggal ──
+  const generatedSessions = useMemo(() => {
+    const list: Array<{
+      dateIso: string;
+      dateFormatted: string;
+      dayName: string;
+      sessionCode: string;
+      sessionLabel: string;
+      defaultType: 'UPACARA' | 'KETARUNAAN' | 'DUHA' | 'APEL_SORE';
+    }> = [];
+
+    const sorted = [...new Set(selectedDates)].sort();
+    for (const dStr of sorted) {
+      const d = new Date(`${dStr}T00:00:00Z`);
+      const dayNum = d.getUTCDay();
+      const dayName = HARI_NAMES[dayNum];
+      const shortDate = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', timeZone: 'UTC' });
+
+      if (agendaMode === 'AUTO_SIKLUS') {
+        if (dayNum === 1) {
+          list.push({ dateIso: dStr, dateFormatted: shortDate, dayName, sessionCode: 'PAGI', sessionLabel: 'Upacara', defaultType: 'UPACARA' });
+        } else if (dayNum === 5) {
+          list.push({ dateIso: dStr, dateFormatted: shortDate, dayName, sessionCode: 'PAGI', sessionLabel: 'Dhuha', defaultType: 'DUHA' });
+        } else if (dayNum >= 2 && dayNum <= 6) {
+          list.push({ dateIso: dStr, dateFormatted: shortDate, dayName, sessionCode: 'PAGI', sessionLabel: 'Ketarunaan', defaultType: 'KETARUNAAN' });
+        }
+        if (dayNum >= 1 && dayNum <= 6) {
+          list.push({ dateIso: dStr, dateFormatted: shortDate, dayName, sessionCode: 'SORE', sessionLabel: 'Apel Sore', defaultType: 'APEL_SORE' });
+        }
+      } else if (agendaMode === 'ALL_SIKLUS') {
+        const pagiType = dayNum === 1 ? 'UPACARA' : dayNum === 5 ? 'DUHA' : 'KETARUNAAN';
+        const pagiLabel = dayNum === 1 ? 'Upacara' : dayNum === 5 ? 'Dhuha' : 'Ketarunaan';
+        list.push({ dateIso: dStr, dateFormatted: shortDate, dayName, sessionCode: 'PAGI', sessionLabel: pagiLabel, defaultType: pagiType });
+        list.push({ dateIso: dStr, dateFormatted: shortDate, dayName, sessionCode: 'SORE', sessionLabel: 'Apel Sore', defaultType: 'APEL_SORE' });
+      } else if (agendaMode === 'KETARUNAAN') {
+        list.push({ dateIso: dStr, dateFormatted: shortDate, dayName, sessionCode: 'PAGI', sessionLabel: 'Ketarunaan', defaultType: 'KETARUNAAN' });
+      } else if (agendaMode === 'UPACARA') {
+        list.push({ dateIso: dStr, dateFormatted: shortDate, dayName, sessionCode: 'PAGI', sessionLabel: 'Upacara', defaultType: 'UPACARA' });
+      } else if (agendaMode === 'DUHA') {
+        list.push({ dateIso: dStr, dateFormatted: shortDate, dayName, sessionCode: 'PAGI', sessionLabel: 'Dhuha', defaultType: 'DUHA' });
+      } else if (agendaMode === 'APEL_SORE') {
+        list.push({ dateIso: dStr, dateFormatted: shortDate, dayName, sessionCode: 'SORE', sessionLabel: 'Apel Sore', defaultType: 'APEL_SORE' });
+      }
+    }
+    return list;
+  }, [selectedDates, agendaMode]);
+
+  // Perkiraan total siswa
   const estimatedTotalStudents = useMemo(() => {
     return selectedKelasIds.length * 36;
   }, [selectedKelasIds.length]);
+
+  // Siswa kelas yang sedang dilihat matriks pratinjaunya
+  const activePreviewClassId = previewKelasId || selectedKelasIds[0] || '';
+  const previewClassStudents = useMemo(() => {
+    return classStudentsMap[activePreviewClassId] || [];
+  }, [activePreviewClassId, classStudentsMap]);
+
+  // Filter siswa dalam tabel preview
+  const filteredPreviewStudents = useMemo(() => {
+    if (!previewSearchStudent.trim()) return previewClassStudents;
+    const q = previewSearchStudent.trim().toLowerCase();
+    return previewClassStudents.filter(
+      (s) => s.nama_siswa.toLowerCase().includes(q) || s.nis.toLowerCase().includes(q)
+    );
+  }, [previewClassStudents, previewSearchStudent]);
+
+  // Helper status per cell di matriks preview
+  const getStudentSessionStatus = useCallback((siswaId: string, sess: typeof generatedSessions[0]): {
+    status: 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI' | 'TERLAMBAT';
+    isException: boolean;
+  } => {
+    const matched = exceptionsList.find((ex) => {
+      if (ex.siswa_id !== siswaId) return false;
+      if (!ex.dates || ex.dates.length === 0) return true;
+      return ex.dates.includes(sess.dateIso);
+    });
+    if (matched) {
+      return { status: matched.status, isException: true };
+    }
+    return { status: 'HADIR', isException: false };
+  }, [exceptionsList]);
 
   // Handler Submit Utama: Generate Backfill
   const handleSubmitGenerate = async () => {
@@ -294,509 +387,800 @@ export const AttendanceStagingManualBackfillModal: React.FC<AttendanceStagingMan
     }
   };
 
+  // Navigasi ke Step 2
+  const handleProceedToStep2 = () => {
+    if (selectedDates.length === 0) {
+      toast.error('Mohon tentukan minimal 1 tanggal pelaksanaan presensi.');
+      return;
+    }
+    if (selectedKelasIds.length === 0) {
+      toast.error('Mohon pilih minimal 1 rombel kelas sasaran.');
+      return;
+    }
+    setCurrentStep(2);
+  };
+
+  // Navigasi ke Step 3 (Review Matriks)
+  const handleProceedToStep3 = () => {
+    const kId = activeFilterKelasId || selectedKelasIds[0];
+    if (kId) {
+      setPreviewKelasId(kId);
+      fetchStudentsForClass(kId);
+    }
+    setCurrentStep(3);
+  };
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      size="5xl"
+      size="6xl"
       title={
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
             <h3 className="text-base font-black text-slate-800 dark:text-slate-100">
-              Backfill Presensi Cepat (Manual UI Multi-Tanggal)
+              Wizard Backfill Presensi Cepat (Manual UI Multi-Tanggal)
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Input presensi multi-tanggal berbasis pengecualian. Masukkan siswa yang tidak hadir saja, siswa lainnya otomatis tercatat HADIR.
+              {currentStep === 1 && 'Langkah 1 dari 3: Konfigurasi Tanggal, Agenda & Rombel Kelas'}
+              {currentStep === 2 && 'Langkah 2 dari 3: Input Siswa Non-Hadir (Daftar Pengecualian)'}
+              {currentStep === 3 && 'Langkah 3 dari 3: Review Matriks Kehadiran Sebelum Eksekusi'}
             </p>
           </div>
         </div>
       }
     >
       <div className="p-6 space-y-6 max-h-[78vh] overflow-y-auto">
-        {/* ── BAGIAN 1: MULTI-TANGGAL GENERATOR ── */}
-        <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-amber-600" />
-              1. Tentukan Tanggal Pelaksanaan (Bisa Multi-Tanggal / Rentang)
-            </span>
-            <Badge variant="neutral" className="text-[11px] font-bold">
-              {selectedDates.length} Tanggal Dipilih
-            </Badge>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-            <div className="md:col-span-4">
-              <label className="text-[11px] font-bold text-slate-500 block mb-1">
-                Tanggal Mulai:
-              </label>
-              <input
-                type="date"
-                value={dateRangeStart}
-                onChange={(e) => setDateRangeStart(e.target.value)}
-                className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
-              />
-            </div>
-            <div className="md:col-span-4">
-              <label className="text-[11px] font-bold text-slate-500 block mb-1">
-                Tanggal Selesai:
-              </label>
-              <input
-                type="date"
-                value={dateRangeEnd}
-                onChange={(e) => setDateRangeEnd(e.target.value)}
-                className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
-              />
-            </div>
-            <div className="md:col-span-4 flex items-center gap-2">
-              <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 font-bold select-none cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeSunday}
-                  onChange={(e) => setIncludeSunday(e.target.checked)}
-                  className="rounded text-amber-600"
-                />
-                Ikutkan Hari Minggu
-              </label>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={handleGenerateDateRange}
-                className="text-xs font-bold border-amber-300 text-amber-700 hover:bg-amber-50 ml-auto"
-              >
-                + Isi Rentang
-              </Button>
-            </div>
-          </div>
-
-          {/* Input Single Date Quick Add */}
-          <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800 flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-400">Atau tambah tanggal tunggal:</span>
-            <input
-              type="date"
-              value={singleDateInput}
-              onChange={(e) => setSingleDateInput(e.target.value)}
-              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
-            />
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={handleAddSingleDate}
-              className="text-xs font-bold h-7"
-            >
-              + Tambah
-            </Button>
-            {selectedDates.length > 0 && (
+        {/* ── STEPPER PROGRESS BAR ── */}
+        <div className="grid grid-cols-3 gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 select-none">
+          {([
+            { step: 1, title: '1. Jadwal & Rombel', desc: `${selectedDates.length} Tanggal • ${selectedKelasIds.length} Kelas` },
+            { step: 2, title: '2. Siswa Non-Hadir', desc: `${exceptionsList.length} Pengecualian` },
+            { step: 3, title: '3. Review Matriks', desc: 'Pratinjau Kehadiran' },
+          ] as const).map((s) => {
+            const isActive = currentStep === s.step;
+            const isCompleted = currentStep > s.step;
+            return (
               <button
+                key={s.step}
                 type="button"
-                onClick={() => setSelectedDates([])}
-                className="text-[11px] text-rose-600 hover:underline ml-auto font-bold"
+                onClick={() => {
+                  if (s.step === 1) setCurrentStep(1);
+                  else if (s.step === 2 && selectedDates.length > 0 && selectedKelasIds.length > 0) setCurrentStep(2);
+                  else if (s.step === 3 && selectedDates.length > 0 && selectedKelasIds.length > 0) handleProceedToStep3();
+                }}
+                className={`py-2 px-3 rounded-xl text-left transition-all ${
+                  isActive
+                    ? 'bg-white dark:bg-slate-900 shadow-sm border border-amber-300 dark:border-amber-700/60'
+                    : isCompleted
+                    ? 'hover:bg-white/50 dark:hover:bg-slate-900/50 text-slate-600 dark:text-slate-300'
+                    : 'opacity-50 cursor-not-allowed text-slate-400'
+                }`}
               >
-                Reset Semua Tanggal
-              </button>
-            )}
-          </div>
-
-          {/* Chip Tanggal Terpilih */}
-          {selectedDates.length > 0 ? (
-            <div className="flex items-center gap-1.5 flex-wrap pt-2">
-              {selectedDates.map((dStr) => (
-                <span
-                  key={dStr}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-amber-100/80 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 border border-amber-200 dark:border-amber-800/80 shadow-2xs"
-                >
-                  {formatTanggalIndo(dStr)}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveDate(dStr)}
-                    className="hover:text-rose-600 ml-1"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                <div className="flex items-center gap-1.5">
+                  {isCompleted ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <span
+                      className={`w-4 h-4 rounded-full text-[10px] font-black flex items-center justify-center shrink-0 ${
+                        isActive ? 'bg-amber-600 text-white' : 'bg-slate-300 text-slate-700'
+                      }`}
+                    >
+                      {s.step}
+                    </span>
+                  )}
+                  <span className={`text-xs font-black truncate ${isActive ? 'text-amber-800 dark:text-amber-300' : ''}`}>
+                    {s.title}
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 block pl-5 truncate font-medium">
+                  {s.desc}
                 </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-[11px] text-slate-400 italic">
-              Belum ada tanggal dipilih. Masukkan tanggal mulai &amp; selesai lalu klik &quot;+ Isi Rentang&quot;.
-            </p>
-          )}
+              </button>
+            );
+          })}
         </div>
 
-        {/* ── BAGIAN 2: AGENDA KEGIATAN & ROMBEL KELAS ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Mode Agenda */}
-          <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2.5">
-            <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-indigo-600" />
-              2. Sesi Agenda Kegiatan
-            </span>
-            <select
-              value={agendaMode}
-              onChange={(e) => setAgendaMode(e.target.value as AgendaMode)}
-              className="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
-            >
-              <option value="AUTO_SIKLUS">
-                ⚡ Siklus Lengkap Otomatis (Senin Upacara, Sel-Kam-Sab Ketarunaan, Jum Dhuha + Sore)
-              </option>
-              <option value="ALL_SIKLUS">Semua Siklus (Apel Pagi + Apel Sore)</option>
-              <option value="KETARUNAAN">Khusus Apel &amp; Latihan Ketarunaan (Pagi)</option>
-              <option value="UPACARA">Khusus Upacara Bendera (Senin Pagi)</option>
-              <option value="DUHA">Khusus Pembiasaan Dhuha (Jum&apos;at Pagi)</option>
-              <option value="APEL_SORE">Khusus Apel Sore (15:30 WIB)</option>
-            </select>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Pilihan <strong>Siklus Lengkap Otomatis</strong> memetakan apel pagi sesuai hari sekolah dan apel sore, sangat direkomendasikan untuk pembinaan Ketarunaan terpadu.
-            </p>
-          </div>
-
-          {/* Rombel Kelas Sasaran */}
-          <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-emerald-600" />
-                3. Target Rombel Kelas ({selectedKelasIds.length} Kelas)
-              </span>
-              <div className="flex items-center gap-1 text-[11px]">
-                <button
-                  type="button"
-                  onClick={handleSelectKelasX}
-                  className="text-amber-600 font-bold hover:underline"
-                >
-                  Kelas X (Taruna)
-                </button>
-                <span className="text-slate-300">|</span>
-                <button
-                  type="button"
-                  onClick={handleSelectAllKelas}
-                  className="text-slate-500 font-bold hover:underline"
-                >
-                  Semua
-                </button>
-                <span className="text-slate-300">|</span>
-                <button
-                  type="button"
-                  onClick={handleClearKelas}
-                  className="text-rose-500 font-bold hover:underline"
-                >
-                  Kosongkan
-                </button>
-              </div>
-            </div>
-
-            <div className="max-h-28 overflow-y-auto border border-slate-100 dark:border-slate-800 rounded-xl p-2 flex flex-wrap gap-1.5">
-              {classOptions.map((c) => {
-                const isSelected = selectedKelasIds.includes(c.id);
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      if (isSelected) {
-                        setSelectedKelasIds(selectedKelasIds.filter((id) => id !== c.id));
-                      } else {
-                        setSelectedKelasIds([...selectedKelasIds, c.id]);
-                      }
-                    }}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
-                      isSelected
-                        ? 'bg-emerald-600 text-white shadow-2xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
-                    }`}
-                  >
-                    {c.nama_kelas}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* ── BAGIAN 3: INPUT SISWA NON-HADIR (EXCEPTION LIST) ── */}
-        <div className="p-4 rounded-2xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-950/20 space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <span className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                <AlertCircle className="w-4 h-4 text-amber-600" />
-                4. Input Siswa Non-Hadir (Daftar Pengecualian)
-              </span>
-              <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5">
-                ⚡ <strong>Aturan Otomatis:</strong> Seluruh siswa dalam rombel terpilih otomatis dicatat <strong>HADIR TEPAT WAKTU</strong>. Anda hanya perlu memilih siswa yang <strong>Sakit, Izin, Alpa, Dispensasi, atau Terlambat</strong> di bawah.
-              </p>
-            </div>
-            <Badge variant="warning" className="text-[11px] font-black shrink-0">
-              {exceptionsList.length} Pengecualian
-            </Badge>
-          </div>
-
-          {/* Form Tambah Siswa Non-Hadir */}
-          <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/70 dark:border-amber-900/40 space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-              {/* Filter Rombel untuk Pemilih Siswa */}
-              <div className="sm:col-span-3">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
-                  Pilih Kelas Siswa:
-                </label>
-                <select
-                  value={activeFilterKelasId || selectedKelasIds[0] || ''}
-                  onChange={(e) => setActiveFilterKelasId(e.target.value)}
-                  className="w-full text-xs font-bold p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800"
-                >
-                  {selectedKelasIds.map((kId) => {
-                    const c = classOptions.find((opt) => opt.id === kId);
-                    return (
-                      <option key={kId} value={kId}>
-                        {c?.nama_kelas || kId}
-                      </option>
-                    );
-                  })}
-                </select>
+        {/* ═══════════════════════════════════════════════════════════════════════════ */}
+        {/* ── STEP 1: JADWAL PELAKSANAAN & SASARAN ROMBEL ── */}
+        {/* ═══════════════════════════════════════════════════════════════════════════ */}
+        {currentStep === 1 && (
+          <div className="space-y-5">
+            {/* Multi-Tanggal Generator */}
+            <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-amber-600" />
+                  Pilih Kumpulan Tanggal Pelaksanaan
+                </span>
+                <Badge variant="neutral" className="text-[11px] font-bold">
+                  {selectedDates.length} Tanggal Terpilih
+                </Badge>
               </div>
 
-              {/* Dropdown Siswa */}
-              <div className="sm:col-span-4">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
-                  Nama Siswa ({loadingStudents ? 'Memuat...' : `${currentAvailableStudents.length} Siswa`}):
-                </label>
-                <select
-                  value={selectedStudentId}
-                  onChange={(e) => setSelectedStudentId(e.target.value)}
-                  disabled={loadingStudents || currentAvailableStudents.length === 0}
-                  className="w-full text-xs font-bold p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
-                >
-                  <option value="">-- Pilih Siswa Non-Hadir --</option>
-                  {currentAvailableStudents.map((st) => (
-                    <option key={st.siswa_id} value={st.siswa_id}>
-                      {st.nis ? `[${st.nis}] ` : ''}{st.nama_siswa}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Status Non-Hadir */}
-              <div className="sm:col-span-3">
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
-                  Status Kehadiran:
-                </label>
-                <select
-                  value={exceptionStatus}
-                  onChange={(e) => setExceptionStatus(e.target.value as any)}
-                  className="w-full text-xs font-black p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
-                >
-                  <option value="SAKIT">SAKIT</option>
-                  <option value="IZIN">IZIN</option>
-                  <option value="ALPA">ALPA (Tanpa Keterangan)</option>
-                  <option value="DISPENSASI">DISPENSASI</option>
-                  <option value="TERLAMBAT">TERLAMBAT (Hadir Telat)</option>
-                </select>
-              </div>
-
-              {/* Tombol Tambah */}
-              <div className="sm:col-span-2">
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={handleAddException}
-                  disabled={!selectedStudentId}
-                  className="w-full h-9 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white"
-                >
-                  <Plus className="w-3.5 h-3.5 mr-1" />
-                  Tambah
-                </Button>
-              </div>
-            </div>
-
-            {/* Opsi Tambahan: Menit Keterlambatan & Catatan */}
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-1 items-center">
-              {exceptionStatus === 'TERLAMBAT' && (
-                <div className="sm:col-span-3">
-                  <label className="text-[10px] font-bold text-slate-500 block mb-0.5">
-                    Menit Terlambat:
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                <div className="md:col-span-4">
+                  <label className="text-[11px] font-bold text-slate-500 block mb-1">
+                    Tanggal Mulai:
                   </label>
                   <input
-                    type="number"
-                    min={1}
-                    max={120}
-                    value={lateMinutes}
-                    onChange={(e) => setLateMinutes(Number(e.target.value))}
-                    className="w-full text-xs font-bold p-1.5 rounded-lg border border-slate-200 dark:border-slate-800"
+                    type="date"
+                    value={dateRangeStart}
+                    onChange={(e) => setDateRangeStart(e.target.value)}
+                    className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                   />
                 </div>
-              )}
-              <div className={exceptionStatus === 'TERLAMBAT' ? 'sm:col-span-9' : 'sm:col-span-12'}>
-                <label className="text-[10px] font-bold text-slate-500 block mb-0.5">
-                  Catatan / Keterangan (Opsional):
-                </label>
+                <div className="md:col-span-4">
+                  <label className="text-[11px] font-bold text-slate-500 block mb-1">
+                    Tanggal Selesai:
+                  </label>
+                  <input
+                    type="date"
+                    value={dateRangeEnd}
+                    onChange={(e) => setDateRangeEnd(e.target.value)}
+                    className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+                <div className="md:col-span-4 flex items-center gap-2">
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 font-bold select-none cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={includeSunday}
+                      onChange={(e) => setIncludeSunday(e.target.checked)}
+                      className="rounded text-amber-600"
+                    />
+                    Ikutkan Minggu
+                  </label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleGenerateDateRange}
+                    className="text-xs font-bold border-amber-300 text-amber-700 hover:bg-amber-50 ml-auto"
+                  >
+                    + Isi Rentang
+                  </Button>
+                </div>
+              </div>
+
+              {/* Single Date Quick Add */}
+              <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800 flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-bold text-slate-400">Atau tambah tanggal tunggal:</span>
                 <input
-                  type="text"
-                  placeholder="Misal: Surat dokter dari puskesmas / izin urusan keluarga..."
-                  value={exceptionNotes}
-                  onChange={(e) => setExceptionNotes(e.target.value)}
-                  className="w-full text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800"
+                  type="date"
+                  value={singleDateInput}
+                  onChange={(e) => setSingleDateInput(e.target.value)}
+                  className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
                 />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAddSingleDate}
+                  className="text-xs font-bold h-7"
+                >
+                  + Tambah
+                </Button>
+                {selectedDates.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDates([])}
+                    className="text-[11px] text-rose-600 hover:underline ml-auto font-bold"
+                  >
+                    Reset Semua Tanggal
+                  </button>
+                )}
+              </div>
+
+              {/* Chip Tanggal Terpilih */}
+              {selectedDates.length > 0 ? (
+                <div className="flex items-center gap-1.5 flex-wrap pt-2 max-h-36 overflow-y-auto">
+                  {selectedDates.map((dStr) => (
+                    <span
+                      key={dStr}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-amber-100/80 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 border border-amber-200 dark:border-amber-800/80 shadow-2xs"
+                    >
+                      {formatTanggalIndo(dStr)}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDate(dStr)}
+                        className="hover:text-rose-600 ml-1"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-400 italic">
+                  Belum ada tanggal dipilih. Masukkan tanggal mulai &amp; selesai lalu klik &quot;+ Isi Rentang&quot;.
+                </p>
+              )}
+            </div>
+
+            {/* Sesi Agenda & Rombel Kelas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Sesi Agenda */}
+              <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2.5">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-indigo-600" />
+                  Sesi Agenda Kegiatan
+                </span>
+                <select
+                  value={agendaMode}
+                  onChange={(e) => setAgendaMode(e.target.value as AgendaMode)}
+                  className="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                >
+                  <option value="AUTO_SIKLUS">
+                    ⚡ Siklus Lengkap Otomatis (Senin Upacara, Sel-Kam-Sab Ketarunaan, Jum Dhuha + Sore)
+                  </option>
+                  <option value="ALL_SIKLUS">Semua Siklus (Apel Pagi + Apel Sore)</option>
+                  <option value="KETARUNAAN">Khusus Apel &amp; Latihan Ketarunaan (Pagi)</option>
+                  <option value="UPACARA">Khusus Upacara Bendera (Senin Pagi)</option>
+                  <option value="DUHA">Khusus Pembiasaan Dhuha (Jum&apos;at Pagi)</option>
+                  <option value="APEL_SORE">Khusus Apel Sore (15:30 WIB)</option>
+                </select>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Pilihan <strong>Siklus Lengkap Otomatis</strong> otomatis memetakan sesi pagi &amp; sore sesuai hari sekolah, sangat direkomendasikan untuk pembinaan Ketarunaan terpadu.
+                </p>
+              </div>
+
+              {/* Target Rombel */}
+              <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                    <Users className="w-4 h-4 text-emerald-600" />
+                    Target Rombel Kelas ({selectedKelasIds.length} Kelas)
+                  </span>
+                  <div className="flex items-center gap-1 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={handleSelectKelasX}
+                      className="text-amber-600 font-bold hover:underline"
+                    >
+                      Kelas X (Taruna)
+                    </button>
+                    <span className="text-slate-300">|</span>
+                    <button
+                      type="button"
+                      onClick={handleSelectAllKelas}
+                      className="text-slate-500 font-bold hover:underline"
+                    >
+                      Semua
+                    </button>
+                    <span className="text-slate-300">|</span>
+                    <button
+                      type="button"
+                      onClick={handleClearKelas}
+                      className="text-rose-500 font-bold hover:underline"
+                    >
+                      Kosongkan
+                    </button>
+                  </div>
+                </div>
+
+                <div className="max-h-36 overflow-y-auto border border-slate-100 dark:border-slate-800 rounded-xl p-2 flex flex-wrap gap-1.5">
+                  {classOptions.map((c) => {
+                    const isSelected = selectedKelasIds.includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedKelasIds(selectedKelasIds.filter((id) => id !== c.id));
+                          } else {
+                            setSelectedKelasIds([...selectedKelasIds, c.id]);
+                          }
+                        }}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white shadow-2xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
+                        }`}
+                      >
+                        {c.nama_kelas}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
+        )}
 
-          {/* Tabel Daftar Pengecualian */}
-          {exceptionsList.length > 0 ? (
-            <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th className="px-3 py-2">No</th>
-                    <th className="px-3 py-2">Siswa</th>
-                    <th className="px-3 py-2">Kelas</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2">Berlaku Tanggal</th>
-                    <th className="px-3 py-2">Catatan</th>
-                    <th className="px-3 py-2 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {exceptionsList.map((ex, idx) => (
-                    <tr key={`${ex.siswa_id}_${idx}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                      <td className="px-3 py-2 font-bold text-slate-400">{idx + 1}</td>
-                      <td className="px-3 py-2">
-                        <span className="font-extrabold text-slate-800 dark:text-slate-100 block">
-                          {ex.nama_siswa}
-                        </span>
-                        {ex.nis && <span className="text-[10px] text-slate-400">NIS: {ex.nis}</span>}
-                      </td>
-                      <td className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300">
-                        {ex.nama_kelas}
-                      </td>
-                      <td className="px-3 py-2">
-                        <Badge
-                          variant={
-                            ex.status === 'SAKIT'
-                              ? 'warning'
-                              : ex.status === 'IZIN'
-                              ? 'neutral'
-                              : ex.status === 'ALPA'
-                              ? 'error'
-                              : 'success'
-                          }
-                          className="text-[10px] font-black"
+        {/* ═══════════════════════════════════════════════════════════════════════════ */}
+        {/* ── STEP 2: INPUT SISWA NON-HADIR (EXCEPTION LIST) ── */}
+        {/* ═══════════════════════════════════════════════════════════════════════════ */}
+        {currentStep === 2 && (
+          <div className="space-y-4">
+            <div className="p-4 rounded-2xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                    Input Siswa Non-Hadir (Daftar Pengecualian)
+                  </span>
+                  <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                    ⚡ <strong>Prinsip Cepat:</strong> Seluruh siswa di {selectedKelasIds.length} rombel terpilih otomatis dianggap <strong>HADIR TEPAT WAKTU</strong>. Anda hanya perlu memasukkan siswa yang <strong>Sakit, Izin, Alpa, Dispensasi, atau Terlambat</strong> di bawah.
+                  </p>
+                </div>
+                <Badge variant="warning" className="text-[11px] font-black shrink-0">
+                  {exceptionsList.length} Pengecualian
+                </Badge>
+              </div>
+
+              {/* Form Input Pengecualian */}
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/70 dark:border-amber-900/40 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                  <div className="sm:col-span-3">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                      Pilih Rombel Siswa:
+                    </label>
+                    <select
+                      value={activeFilterKelasId || selectedKelasIds[0] || ''}
+                      onChange={(e) => setActiveFilterKelasId(e.target.value)}
+                      className="w-full text-xs font-bold p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800"
+                    >
+                      {selectedKelasIds.map((kId) => {
+                        const c = classOptions.find((opt) => opt.id === kId);
+                        return (
+                          <option key={kId} value={kId}>
+                            {c?.nama_kelas || kId}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-4">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                      Nama Siswa ({loadingStudents ? 'Memuat...' : `${currentAvailableStudents.length} Siswa`}):
+                    </label>
+                    <select
+                      value={selectedStudentId}
+                      onChange={(e) => setSelectedStudentId(e.target.value)}
+                      disabled={loadingStudents || currentAvailableStudents.length === 0}
+                      className="w-full text-xs font-bold p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                    >
+                      <option value="">-- Pilih Siswa Non-Hadir --</option>
+                      {currentAvailableStudents.map((st) => (
+                        <option key={st.siswa_id} value={st.siswa_id}>
+                          {st.nis ? `[${st.nis}] ` : ''}{st.nama_siswa}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                      Status Ketidakhadiran:
+                    </label>
+                    <select
+                      value={exceptionStatus}
+                      onChange={(e) => setExceptionStatus(e.target.value as any)}
+                      className="w-full text-xs font-black p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                    >
+                      <option value="SAKIT">SAKIT</option>
+                      <option value="IZIN">IZIN</option>
+                      <option value="ALPA">ALPA (Tanpa Keterangan)</option>
+                      <option value="DISPENSASI">DISPENSASI</option>
+                      <option value="TERLAMBAT">TERLAMBAT (Hadir Telat)</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      onClick={handleAddException}
+                      disabled={!selectedStudentId}
+                      className="w-full h-9 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" />
+                      Tambah
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-1 items-center">
+                  {exceptionStatus === 'TERLAMBAT' && (
+                    <div className="sm:col-span-3">
+                      <label className="text-[10px] font-bold text-slate-500 block mb-0.5">
+                        Menit Terlambat:
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={120}
+                        value={lateMinutes}
+                        onChange={(e) => setLateMinutes(Number(e.target.value))}
+                        className="w-full text-xs font-bold p-1.5 rounded-lg border border-slate-200 dark:border-slate-800"
+                      />
+                    </div>
+                  )}
+                  <div className={exceptionStatus === 'TERLAMBAT' ? 'sm:col-span-9' : 'sm:col-span-12'}>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-0.5">
+                      Catatan / Keterangan (Opsional):
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Misal: Surat dokter dari puskesmas / izin urusan keluarga..."
+                      value={exceptionNotes}
+                      onChange={(e) => setExceptionNotes(e.target.value)}
+                      className="w-full text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabel Daftar Pengecualian */}
+              {exceptionsList.length > 0 ? (
+                <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 max-h-56 overflow-y-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
+                      <tr>
+                        <th className="px-3 py-2">No</th>
+                        <th className="px-3 py-2">Siswa</th>
+                        <th className="px-3 py-2">Kelas</th>
+                        <th className="px-3 py-2">Status</th>
+                        <th className="px-3 py-2">Berlaku Tanggal</th>
+                        <th className="px-3 py-2">Catatan</th>
+                        <th className="px-3 py-2 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {exceptionsList.map((ex, idx) => (
+                        <tr key={`${ex.siswa_id}_${idx}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                          <td className="px-3 py-2 font-bold text-slate-400">{idx + 1}</td>
+                          <td className="px-3 py-2">
+                            <span className="font-extrabold text-slate-800 dark:text-slate-100 block">
+                              {ex.nama_siswa}
+                            </span>
+                            {ex.nis && <span className="text-[10px] text-slate-400">NIS: {ex.nis}</span>}
+                          </td>
+                          <td className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300">
+                            {ex.nama_kelas}
+                          </td>
+                          <td className="px-3 py-2">
+                            <Badge
+                              variant={
+                                ex.status === 'SAKIT'
+                                  ? 'warning'
+                                  : ex.status === 'IZIN'
+                                  ? 'neutral'
+                                  : ex.status === 'ALPA'
+                                  ? 'error'
+                                  : 'success'
+                              }
+                              className="text-[10px] font-black"
+                            >
+                              {ex.status}
+                              {ex.menit_keterlambatan ? ` (${ex.menit_keterlambatan}m)` : ''}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 text-[11px] text-slate-500">
+                            {ex.dates && ex.dates.length > 0 ? `${ex.dates.length} Tanggal Khusus` : 'Seluruh Tanggal Terpilih'}
+                          </td>
+                          <td className="px-3 py-2 text-[11px] text-slate-400 italic">
+                            {ex.catatan || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveException(idx)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-4 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-400">
+                  Belum ada siswa non-hadir ditambahkan. Jika Anda langsung melanjutkan, <strong>100% siswa di seluruh rombel akan otomatis tercatat HADIR TEPAT WAKTU</strong>.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════════════════ */}
+        {/* ── STEP 3: REVIEW MATRIKS KEHADIRAN (TRUE MATRIX PREVIEW) ── */}
+        {/* ═══════════════════════════════════════════════════════════════════════════ */}
+        {currentStep === 3 && (
+          <div className="space-y-4">
+            {/* KPI Summary Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                <span className="text-[10px] text-slate-400 block font-bold">Total Tanggal:</span>
+                <strong className="text-base font-black text-slate-800 dark:text-slate-100">
+                  {selectedDates.length} Hari
+                </strong>
+              </div>
+              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                <span className="text-[10px] text-slate-400 block font-bold">Total Sesi Rombel:</span>
+                <strong className="text-base font-black text-indigo-600 dark:text-indigo-400">
+                  {generatedSessions.length} Sesi Pertemuan
+                </strong>
+              </div>
+              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                <span className="text-[10px] text-slate-400 block font-bold">Total Kelas:</span>
+                <strong className="text-base font-black text-slate-800 dark:text-slate-100">
+                  {selectedKelasIds.length} Rombel
+                </strong>
+              </div>
+              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                <span className="text-[10px] text-slate-400 block font-bold">Non-Hadir (Pengecualian):</span>
+                <strong className="text-base font-black text-amber-600">
+                  {exceptionsList.length} Siswa
+                </strong>
+              </div>
+              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs col-span-2 sm:col-span-1">
+                <span className="text-[10px] text-slate-400 block font-bold">Otomatis HADIR:</span>
+                <strong className="text-base font-black text-emerald-600">
+                  &plusmn;{Math.max(estimatedTotalStudents - exceptionsList.length, 0)} Siswa (99%)
+                </strong>
+              </div>
+            </div>
+
+            {/* Matrix Viewer Header Controls */}
+            <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Table className="w-4 h-4 text-emerald-600" />
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                    Pratinjau Matriks Kehadiran (Preview Output Presensi)
+                  </span>
+                </div>
+
+                {/* Pilih Rombel yang ingin dipratinjau */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-bold text-slate-400">Pratinjau Kelas:</span>
+                  <select
+                    value={activePreviewClassId}
+                    onChange={(e) => {
+                      setPreviewKelasId(e.target.value);
+                      fetchStudentsForClass(e.target.value);
+                    }}
+                    className="text-xs font-black px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                  >
+                    {selectedKelasIds.map((kId) => {
+                      const c = classOptions.find((opt) => opt.id === kId);
+                      return (
+                        <option key={kId} value={kId}>
+                          {c?.nama_kelas || kId}
+                        </option>
+                      );
+                    })}
+                  </select>
+
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Cari siswa..."
+                      value={previewSearchStudent}
+                      onChange={(e) => setPreviewSearchStudent(e.target.value)}
+                      className="text-xs font-medium pl-7 pr-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800"
+                    />
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-2" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Attendance Matrix Table */}
+              <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-x-auto max-h-72 overflow-y-auto">
+                <table className="w-full text-left text-[11px] border-collapse">
+                  <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] sticky top-0 z-20 shadow-2xs">
+                    <tr>
+                      <th className="px-2.5 py-2 w-10 text-center border-r border-slate-200 dark:border-slate-700">No</th>
+                      <th className="px-3 py-2 min-w-[170px] border-r border-slate-200 dark:border-slate-700">Nama Siswa</th>
+                      {generatedSessions.map((sess, sIdx) => (
+                        <th
+                          key={`${sess.dateIso}_${sess.sessionCode}_${sIdx}`}
+                          className="px-2 py-1.5 text-center min-w-[70px] border-r border-slate-200 dark:border-slate-700"
                         >
-                          {ex.status}
-                          {ex.menit_keterlambatan ? ` (${ex.menit_keterlambatan}m)` : ''}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-2 text-[11px] text-slate-500">
-                        {ex.dates && ex.dates.length > 0 ? `${ex.dates.length} Tanggal Khusus` : 'Seluruh Tanggal Terpilih'}
-                      </td>
-                      <td className="px-3 py-2 text-[11px] text-slate-400 italic">
-                        {ex.catatan || '-'}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveException(idx)}
-                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
+                          <span className="block text-[9px] font-bold text-slate-400">{sess.dayName}</span>
+                          <span className="block font-black text-slate-800 dark:text-slate-100">{sess.dateFormatted}</span>
+                          <span className="inline-block px-1 rounded text-[8px] font-extrabold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                            {sess.sessionLabel}
+                          </span>
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-4 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-400">
-              Belum ada siswa non-hadir. Jika di-generate sekarang, <strong>100% siswa di seluruh rombel terpilih akan otomatis tercatat HADIR TEPAT WAKTU</strong>.
-            </div>
-          )}
-        </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {filteredPreviewStudents.length > 0 ? (
+                      filteredPreviewStudents.map((st, idx) => (
+                        <tr key={st.siswa_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                          <td className="px-2 py-1.5 text-center font-bold text-slate-400 border-r border-slate-100 dark:border-slate-800">
+                            {idx + 1}
+                          </td>
+                          <td className="px-3 py-1.5 border-r border-slate-100 dark:border-slate-800">
+                            <span className="font-bold text-slate-800 dark:text-slate-100 block truncate max-w-[160px]">
+                              {st.nama_siswa}
+                            </span>
+                            {st.nis && <span className="text-[9px] text-slate-400 block font-mono">{st.nis}</span>}
+                          </td>
+                          {generatedSessions.map((sess, sIdx) => {
+                            const { status, isException } = getStudentSessionStatus(st.siswa_id, sess);
+                            return (
+                              <td
+                                key={`${sess.dateIso}_${sess.sessionCode}_${sIdx}`}
+                                className="px-1.5 py-1 text-center border-r border-slate-100 dark:border-slate-800"
+                              >
+                                {status === 'HADIR' ? (
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-black text-[10px]">
+                                    H
+                                  </span>
+                                ) : status === 'SAKIT' ? (
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-black text-[10px]">
+                                    S
+                                  </span>
+                                ) : status === 'IZIN' ? (
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-black text-[10px]">
+                                    I
+                                  </span>
+                                ) : status === 'ALPA' ? (
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-black text-[10px]">
+                                    A
+                                  </span>
+                                ) : status === 'TERLAMBAT' ? (
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 font-black text-[10px]">
+                                    T
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-black text-[10px]">
+                                    D
+                                  </span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={generatedSessions.length + 2}
+                          className="px-4 py-8 text-center text-slate-400 italic text-xs"
+                        >
+                          {loadingStudents ? 'Memuat daftar siswa...' : 'Tidak ada data siswa ditemukan untuk kelas ini.'}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-        {/* ── BAGIAN 4: RINGKASAN & DIRECT SYNC TOGGLE ── */}
-        <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-              <FileCheck className="w-4 h-4 text-emerald-600" />
-              Ringkasan Evaluasi Sebelum Generate
-            </span>
-          </div>
+              {/* Legend & Information */}
+              <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 pt-1 flex-wrap gap-2">
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1">
+                    <span className="w-3.5 h-3.5 rounded bg-emerald-100 text-emerald-800 font-black flex items-center justify-center text-[9px]">H</span>
+                    Hadir (Otomatis)
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3.5 h-3.5 rounded bg-amber-100 text-amber-800 font-black flex items-center justify-center text-[9px]">S</span>
+                    Sakit
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3.5 h-3.5 rounded bg-blue-100 text-blue-800 font-black flex items-center justify-center text-[9px]">I</span>
+                    Izin
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3.5 h-3.5 rounded bg-rose-100 text-rose-800 font-black flex items-center justify-center text-[9px]">A</span>
+                    Alpa
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3.5 h-3.5 rounded bg-orange-100 text-orange-800 font-black flex items-center justify-center text-[9px]">T</span>
+                    Terlambat
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3.5 h-3.5 rounded bg-purple-100 text-purple-800 font-black flex items-center justify-center text-[9px]">D</span>
+                    Dispensasi
+                  </span>
+                </div>
+                <span className="text-slate-400">
+                  Total {previewClassStudents.length} Siswa Terdaftar di {classOptions.find(c => c.id === activePreviewClassId)?.nama_kelas}
+                </span>
+              </div>
+            </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800">
-              <span className="text-[10px] text-slate-400 block font-bold">Total Tanggal:</span>
-              <strong className="text-sm font-black text-slate-800 dark:text-slate-100">
-                {selectedDates.length} Hari Pelaksanaan
-              </strong>
-            </div>
-            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800">
-              <span className="text-[10px] text-slate-400 block font-bold">Total Rombel:</span>
-              <strong className="text-sm font-black text-slate-800 dark:text-slate-100">
-                {selectedKelasIds.length} Rombel Kelas
-              </strong>
-            </div>
-            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800">
-              <span className="text-[10px] text-slate-400 block font-bold">Pengecualian (Non-Hadir):</span>
-              <strong className="text-sm font-black text-amber-600">
-                {exceptionsList.length} Siswa
-              </strong>
-            </div>
-            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800">
-              <span className="text-[10px] text-slate-400 block font-bold">Otomatis Dicatat HADIR:</span>
-              <strong className="text-sm font-black text-emerald-600">
-                &plusmn;{Math.max(estimatedTotalStudents - exceptionsList.length, 0)} Siswa (99%)
-              </strong>
-            </div>
-          </div>
-
-          <div className="pt-2 flex items-center justify-between flex-wrap gap-2">
-            <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer">
-              <input
-                type="checkbox"
-                checked={directSync}
-                onChange={(e) => setDirectSync(e.target.checked)}
-                className="rounded text-emerald-600 w-4 h-4"
-              />
-              <span>
-                Langsung Sinkronkan ke Presensi Resmi (Direct 1-Click Sync &amp; Masuk Radar Ketarunaan)
+            {/* Direct Sync Option & Final Title */}
+            <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between flex-wrap gap-3">
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200 select-none cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={directSync}
+                  onChange={(e) => setDirectSync(e.target.checked)}
+                  className="rounded text-emerald-600 w-4 h-4"
+                />
+                <span>
+                  Langsung Sinkronkan ke Presensi Resmi (Direct 1-Click Sync &amp; Masuk Radar Ketarunaan)
+                </span>
+              </label>
+              <span className="text-[11px] text-slate-400 italic">
+                {directSync
+                  ? 'Sesi absensi resmi, kehadiran siswa & wali kelas langsung aktif.'
+                  : 'Data disimpan di penampung staging (READY) untuk ditinjau dulu.'}
               </span>
-            </label>
-            <span className="text-[11px] text-slate-400 italic">
-              {directSync
-                ? 'Data sesi resmi, kehadiran siswa & wali kelas langsung dibuat aktif.'
-                : 'Data disimpan di penampung staging (READY) untuk ditinjau dulu.'}
-            </span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* ── FOOTER ACTIONS ── */}
+      {/* ── FOOTER ACTIONS BERDASARKAN STEP ── */}
       <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-          Batal
-        </Button>
+        {currentStep === 1 && (
+          <>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Batal
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleProceedToStep2}
+              disabled={selectedDates.length === 0 || selectedKelasIds.length === 0}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-5 shadow-sm"
+            >
+              Lanjut ke Input Siswa Non-Hadir (Step 2)
+              <ArrowRight className="w-4 h-4 ml-1.5" />
+            </Button>
+          </>
+        )}
 
-        <Button
-          type="button"
-          variant="primary"
-          onClick={handleSubmitGenerate}
-          disabled={isSubmitting || selectedDates.length === 0 || selectedKelasIds.length === 0}
-          className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-5 shadow-sm"
-        >
-          {isSubmitting ? (
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 animate-spin" />
-              Memproses Backfill Presensi...
-            </span>
-          ) : (
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" />
-              {directSync ? 'Generate & Langsung Sinkronkan Presensi' : 'Generate & Simpan ke Staging'}
-            </span>
-          )}
-        </Button>
+        {currentStep === 2 && (
+          <>
+            <Button type="button" variant="outline" onClick={() => setCurrentStep(1)}>
+              <ArrowLeft className="w-4 h-4 mr-1.5" />
+              Kembali ke Jadwal &amp; Rombel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleProceedToStep3}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-5 shadow-sm"
+            >
+              Lanjut ke Review Matriks Kehadiran (Step 3)
+              <ArrowRight className="w-4 h-4 ml-1.5" />
+            </Button>
+          </>
+        )}
+
+        {currentStep === 3 && (
+          <>
+            <Button type="button" variant="outline" onClick={() => setCurrentStep(2)} disabled={isSubmitting}>
+              <ArrowLeft className="w-4 h-4 mr-1.5" />
+              Kembali ke Input Non-Hadir
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleSubmitGenerate}
+              disabled={isSubmitting || selectedDates.length === 0 || selectedKelasIds.length === 0}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-6 shadow-md"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 animate-spin" />
+                  Memproses &amp; Menyimpan Presensi...
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4" />
+                  {directSync ? '🚀 Eksekusi & Simpan Presensi Resmi' : 'Simpan ke Penampung Staging'}
+                </span>
+              )}
+            </Button>
+          </>
+        )}
       </div>
     </Modal>
   );
