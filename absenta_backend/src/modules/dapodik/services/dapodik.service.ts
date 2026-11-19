@@ -181,12 +181,25 @@ export class DapodikService {
     if (normA === normB) return true;
     if (normA.replace(/\s+/g, '') === normB.replace(/\s+/g, '')) return true;
 
-    // 3. Toleransi fleksibel jika salah satu pihak tidak mencantumkan tingkat "X/XI/XII" di awal
-    // Misal "KULINER 1" vs "X KUL 1", "TP 2" vs "XI TM 2", "TKJ 3" vs "XII TJKT 3"
-    const stripGradeA = normA.replace(/^(?:XIII|XII|XI|X)\s*/, '').replace(/\s+/g, '');
-    const stripGradeB = normB.replace(/^(?:XIII|XII|XI|X)\s*/, '').replace(/\s+/g, '');
-    if (stripGradeA && stripGradeB && stripGradeA === stripGradeB) {
-      return true;
+    // 3. Ekstrak tingkat (X, XI, XII, XIII) untuk mencegah pencocokan beda jenjang (misal X PHT 1 vs XII PHT 1)
+    const gradeMatchA = normA.match(/^(XIII|XII|XI|X)\b/);
+    const gradeMatchB = normB.match(/^(XIII|XII|XI|X)\b/);
+    const gradeA = gradeMatchA ? gradeMatchA[1] : null;
+    const gradeB = gradeMatchB ? gradeMatchB[1] : null;
+
+    // Jika KEDUA belah pihak memiliki tingkat dan tingkatnya BERBEDA -> Pasti BUKAN kelas yang sama!
+    if (gradeA && gradeB && gradeA !== gradeB) {
+      return false;
+    }
+
+    // 4. Toleransi fleksibel jika SALAH SATU pihak tidak mencantumkan tingkat "X/XI/XII" di awal
+    // Misal salah satu pihak hanya menulis "KULINER 1" vs "X KUL 1"
+    if (!gradeA || !gradeB) {
+      const stripGradeA = normA.replace(/^(?:XIII|XII|XI|X)\s*/, '').replace(/\s+/g, '');
+      const stripGradeB = normB.replace(/^(?:XIII|XII|XI|X)\s*/, '').replace(/\s+/g, '');
+      if (stripGradeA && stripGradeB && stripGradeA === stripGradeB) {
+        return true;
+      }
     }
 
     return false;
