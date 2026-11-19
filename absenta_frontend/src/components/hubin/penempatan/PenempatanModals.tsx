@@ -70,6 +70,8 @@ export const PenempatanModals: React.FC<PenempatanModalsProps> = React.memo(({
             actions.setSelectedSiswaId('');
             actions.setSelectedMitraId('');
             actions.setSelectedPembimbingId('');
+            setMitraSearch('');
+            setGuruSearch('');
           }}
           mitraOptions={mitraOptions}
           guruOptions={guruOptions}

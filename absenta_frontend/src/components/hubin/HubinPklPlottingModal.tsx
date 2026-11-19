@@ -96,9 +96,37 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
     setTanggalSelesai(result);
   };
 
+  const effectiveMitraOptions = useMemo(() => {
+    if (!editingPkl?.mitra_id) return mitraOptions;
+    const exists = mitraOptions.some(m => m.value === editingPkl.mitra_id);
+    if (exists || !editingPkl.Mitra) return mitraOptions;
+    return [
+      {
+        value: editingPkl.mitra_id,
+        label: `${editingPkl.Mitra.nama || 'Mitra Industri'}${editingPkl.Mitra.bidang ? ` (${editingPkl.Mitra.bidang})` : ''}`,
+        raw: editingPkl.Mitra,
+      },
+      ...mitraOptions,
+    ];
+  }, [mitraOptions, editingPkl]);
+
+  const effectiveGuruOptions = useMemo(() => {
+    if (!editingPkl?.pembimbing_id) return guruOptions;
+    const exists = guruOptions.some(g => g.value === editingPkl.pembimbing_id);
+    if (exists || !editingPkl.Pembimbing) return guruOptions;
+    return [
+      {
+        value: editingPkl.pembimbing_id,
+        label: editingPkl.Pembimbing.nama_guru || 'Guru Pembimbing',
+        raw: editingPkl.Pembimbing,
+      },
+      ...guruOptions,
+    ];
+  }, [guruOptions, editingPkl]);
+
   const selectedMitra = useMemo(() => {
-    return mitraOptions.find(m => m.value === selectedMitraId)?.raw as any;
-  }, [mitraOptions, selectedMitraId]);
+    return effectiveMitraOptions.find(m => m.value === selectedMitraId)?.raw as any;
+  }, [effectiveMitraOptions, selectedMitraId]);
 
   return (
     <Modal
@@ -193,7 +221,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
           <SimpleFormField htmlFor="plotting-mitra" label="Perusahaan" required>
             <SearchableSelect
               id="plotting-mitra"
-              options={mitraOptions}
+              options={effectiveMitraOptions}
               placeholder="-- Pilih perusahaan --"
               triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
               onValueChange={(val) => setSelectedMitraId(val)}
@@ -237,7 +265,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
           <SimpleFormField htmlFor="plotting-pembimbing" label="Pembimbing">
             <SearchableSelect
               id="plotting-pembimbing"
-              options={guruOptions}
+              options={effectiveGuruOptions}
               placeholder="-- Pilih pembimbing --"
               triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
               onValueChange={(val) => setSelectedPembimbingId(val)}

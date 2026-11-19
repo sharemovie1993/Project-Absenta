@@ -82,12 +82,11 @@ export function SearchableSelect({
   // Debounce search query for external search
   const debouncedSearch = useDebounce(searchQuery, searchDelay);
 
-  // Handle external search
+  const lastSentQueryRef = useRef<string | null>(null);
+  const activeSearchRef = useRef(activeSearch);
   useEffect(() => {
-    if (activeSearch && isOpen) {
-      activeSearch(debouncedSearch);
-    }
-  }, [debouncedSearch, activeSearch, isOpen]);
+    activeSearchRef.current = activeSearch;
+  });
 
   // Derived selected option
   const selectedOption = useMemo(() => {
@@ -100,17 +99,32 @@ export function SearchableSelect({
 
   const selectedLabel = selectedOption ? getSafeLabel(selectedOption) : '';
 
-  // Reset searchQuery when options change or value is cleared
+  // Handle external search
   useEffect(() => {
-    const targetVal = String(value || '').toLowerCase();
-    if (!value || (safeOptions.length > 0 && !safeOptions.some(opt => String(opt?.value).toLowerCase() === targetVal || getSafeLabel(opt).toLowerCase() === targetVal))) {
-      setSearchQuery('');
-    } else if (!isOpen) {
-      setSearchQuery(selectedLabel);
-    }
-  }, [safeOptions, value, selectedLabel, isOpen]);
+    if (!activeSearchRef.current) return;
 
-  // Sync searchQuery with selection when dropdown closes
+    if (isOpen) {
+      // If the current query exactly matches the already selected item's label,
+      // the user hasn't typed a search filter yet. Request all options (query: '')
+      // so the dropdown displays the full available list.
+      const isExactMatch = Boolean(selectedOption && debouncedSearch === selectedLabel);
+      const queryToSend = isExactMatch ? '' : debouncedSearch;
+
+      if (lastSentQueryRef.current !== queryToSend) {
+        lastSentQueryRef.current = queryToSend;
+        activeSearchRef.current(queryToSend);
+      }
+    } else {
+      // When dropdown is closed, reset external filter if it was active
+      if (lastSentQueryRef.current !== null && lastSentQueryRef.current !== '') {
+        lastSentQueryRef.current = '';
+        activeSearchRef.current('');
+      }
+    }
+  }, [debouncedSearch, isOpen, selectedOption, selectedLabel]);
+
+  // Sync searchQuery with selection ONLY when dropdown is closed.
+  // Never wipe or reset searchQuery while dropdown is open and user is typing!
   useEffect(() => {
     if (!isOpen) {
       setSearchQuery(selectedLabel);
@@ -228,12 +242,20 @@ export function SearchableSelect({
     effectiveChangeHandler(val);
     setSearchQuery(label);
     setIsOpen(false);
+    if (activeSearchRef.current && lastSentQueryRef.current !== '') {
+      lastSentQueryRef.current = '';
+      activeSearchRef.current('');
+    }
   };
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     effectiveChangeHandler('');
     setSearchQuery('');
+    if (activeSearchRef.current && lastSentQueryRef.current !== '') {
+      lastSentQueryRef.current = '';
+      activeSearchRef.current('');
+    }
     inputRef.current?.focus();
   };
 
@@ -270,7 +292,12 @@ export function SearchableSelect({
             setSearchQuery(e.target.value);
             setIsOpen(true);
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => {
+            setIsOpen(true);
+            if (selectedOption && searchQuery === selectedLabel) {
+              inputRef.current?.select();
+            }
+          }}
           placeholder={placeholder}
           title={searchQuery || placeholder}
           aria-label={placeholder || searchPlaceholder || "Pilih opsi"}
