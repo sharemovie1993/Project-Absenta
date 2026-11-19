@@ -11,11 +11,11 @@ export const waGatewayService = {
   async initTenant(tenantId: string): Promise<void> {
     return callMasterViaRpc('initTenant', tenantId);
   },
-  async sendMessage(tenantId: string, nomor: string, pesan: string): Promise<boolean> {
-    return callMasterViaRpc('sendMessage', tenantId, [nomor, pesan]);
+  async sendMessage(tenantId: string, nomor: string, pesan: string, options?: { mentions?: string[] }): Promise<boolean> {
+    return callMasterViaRpc('sendMessage', tenantId, [nomor, pesan, options]);
   },
-  async sendMessageToJid(tenantId: string, jidTarget: string, pesan: string): Promise<boolean> {
-    return callMasterViaRpc('sendMessageToJid', tenantId, [jidTarget, pesan]);
+  async sendMessageToJid(tenantId: string, jidTarget: string, pesan: string, options?: { mentions?: string[] }): Promise<boolean> {
+    return callMasterViaRpc('sendMessageToJid', tenantId, [jidTarget, pesan, options]);
   },
   async sendDocument(
     tenantId: string,
@@ -33,8 +33,9 @@ export const waGatewayService = {
     imageBase64: string,
     caption = '',
     mimetype = 'image/jpeg',
+    options?: { mentions?: string[] },
   ): Promise<boolean> {
-    return callMasterViaRpc('sendImage', tenantId, [target, imageBase64, caption, mimetype]);
+    return callMasterViaRpc('sendImage', tenantId, [target, imageBase64, caption, mimetype, options]);
   },
   async sendMessageSoft(tenantId: string, nomor: string | null | undefined, pesan: string, source?: string): Promise<void> {
     return waGatewayServiceLocal.sendMessageSoft(tenantId, nomor, pesan, source);

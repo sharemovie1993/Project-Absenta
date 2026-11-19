@@ -274,21 +274,38 @@ const WhatsappGroupsTab: React.FC<WhatsappGroupsTabProps> = ({ localStatus }) =>
         {/* Collapsible Template Editor */}
         {showTemplateConfig && (
           <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 space-y-3 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Format Teks Caption Pesan WA (Foto akan dilampirkan otomatis):
               </label>
               <span className="text-[10px] text-slate-400">
-                Variabel: {'{{nama_guru}}'}, {'{{nama_kelas}}'}, {'{{nama_mapel}}'}, {'{{waktu}}'}
+                Variabel: <code className="text-emerald-600 dark:text-emerald-400">{'{{tag_guru}}'}</code> (tag/mention @WA), <code className="text-emerald-600 dark:text-emerald-400">{'{{nama_guru}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{nama_kelas}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{nama_mapel}}'}</code>, <code className="text-emerald-600 dark:text-emerald-400">{'{{waktu}}'}</code>
               </span>
             </div>
             <textarea
               rows={3}
               value={kbmConfig.template ?? ''}
               onChange={(e) => setKbmConfig({ ...kbmConfig, template: e.target.value })}
-              placeholder="Saya *{{nama_guru}}* Telah Hadir di Kelas *{{nama_kelas}}*"
+              placeholder="Saya {{tag_guru}} Telah Hadir di Kelas *{{nama_kelas}}*"
               className="w-full p-2.5 text-xs font-mono rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
+
+            {/* Toggle Tag Guru */}
+            <div className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/50">
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Tag / Mention Nomor WA Guru di Grup (@)
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Secara otomatis me-mention (@) nomor HP guru agar guru mendapat notifikasi langsung di aplikasi WhatsApp.
+                </span>
+              </div>
+              <Switch
+                checked={kbmConfig.isTagGuru ?? true}
+                onCheckedChange={(checked) => setKbmConfig({ ...kbmConfig, isTagGuru: checked })}
+              />
+            </div>
+
             <div className="flex justify-end gap-2">
               <Button
                 type="button"

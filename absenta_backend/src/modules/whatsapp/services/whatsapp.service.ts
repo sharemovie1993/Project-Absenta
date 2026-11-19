@@ -258,7 +258,11 @@ export class WhatsappService {
     toOrJid: string,
     imageBase64: string,
     caption = '',
-    _options: { senderMode?: 'AUTO' | 'GATEWAY' | 'PLATFORM' | 'USER'; userId?: string | null } = {},
+    options: {
+      senderMode?: 'AUTO' | 'GATEWAY' | 'PLATFORM' | 'USER';
+      userId?: string | null;
+      mentions?: string[];
+    } = {},
   ) {
     if (!tenantId) {
       throw new Error('Tenant ID tidak ditemukan.');
@@ -291,7 +295,8 @@ export class WhatsappService {
         target,
         cleanBase64,
         caption || '',
-        'image/jpeg'
+        'image/jpeg',
+        { mentions: options.mentions }
       );
       return { sent: true, target, provider: 'SCHOOL_LOCAL' };
     } catch (localErr: any) {
@@ -321,7 +326,11 @@ export class WhatsappService {
     tenantId: string,
     toOrJid: string,
     message: string,
-    options: { senderMode?: 'AUTO' | 'GATEWAY' | 'PLATFORM' | 'USER'; userId?: string | null } = {},
+    options: {
+      senderMode?: 'AUTO' | 'GATEWAY' | 'PLATFORM' | 'USER';
+      userId?: string | null;
+      mentions?: string[];
+    } = {},
   ) {
     const trimmedTarget = String(toOrJid || '').trim();
     if (!trimmedTarget) {
@@ -341,12 +350,12 @@ export class WhatsappService {
     if (senderMode === 'USER' && options.userId) {
       const userSessionStatus = await waGatewayService.getStatus(`usr_${options.userId}`);
       if (userSessionStatus?.connected) {
-        return waGatewayService.sendMessage(`usr_${options.userId}`, target, message);
+        return waGatewayService.sendMessage(`usr_${options.userId}`, target, message, { mentions: options.mentions });
       }
     }
 
     // Default: Gunakan WA Gateway Sekolah
-    return waGatewayService.sendMessage(tenantId, target, message);
+    return waGatewayService.sendMessage(tenantId, target, message, { mentions: options.mentions });
   }
 
   /**

@@ -9,6 +9,7 @@ export interface KbmNotificationSetting {
   groupJid: string;
   groupSubject?: string;
   template?: string;
+  isTagGuru?: boolean;
 }
 
 export class SesiOpenNotifyService {
@@ -34,7 +35,8 @@ export class SesiOpenNotifyService {
           isEnabled: false,
           groupJid: '',
           groupSubject: '',
-          template: 'Saya *{{nama_guru}}* Telah Hadir di Kelas *{{nama_kelas}}*',
+          template: 'Saya {{tag_guru}} Telah Hadir di Kelas *{{nama_kelas}}*',
+          isTagGuru: true,
         };
       }
       const parsed = JSON.parse(config.value as string);
@@ -42,14 +44,16 @@ export class SesiOpenNotifyService {
         isEnabled: Boolean(parsed.isEnabled),
         groupJid: String(parsed.groupJid || '').trim(),
         groupSubject: String(parsed.groupSubject || '').trim(),
-        template: String(parsed.template || 'Saya *{{nama_guru}}* Telah Hadir di Kelas *{{nama_kelas}}*').trim(),
+        template: String(parsed.template || 'Saya {{tag_guru}} Telah Hadir di Kelas *{{nama_kelas}}*').trim(),
+        isTagGuru: Boolean(parsed.isTagGuru ?? true),
       };
     } catch {
       return {
         isEnabled: false,
         groupJid: '',
         groupSubject: '',
-        template: 'Saya *{{nama_guru}}* Telah Hadir di Kelas *{{nama_kelas}}*',
+        template: 'Saya {{tag_guru}} Telah Hadir di Kelas *{{nama_kelas}}*',
+        isTagGuru: true,
       };
     }
   }
@@ -64,6 +68,7 @@ export class SesiOpenNotifyService {
       groupJid: setting.groupJid !== undefined ? String(setting.groupJid).trim() : current.groupJid,
       groupSubject: setting.groupSubject !== undefined ? String(setting.groupSubject).trim() : current.groupSubject,
       template: setting.template !== undefined ? String(setting.template).trim() : current.template,
+      isTagGuru: setting.isTagGuru !== undefined ? Boolean(setting.isTagGuru) : current.isTagGuru,
     };
 
     const value = JSON.stringify(updated);
@@ -117,7 +122,11 @@ export class SesiOpenNotifyService {
         effectiveGuruId
           ? prisma.guru.findUnique({
               where: { id: effectiveGuruId },
-              select: { nama_guru: true },
+              select: {
+                nama_guru: true,
+                no_hp: true,
+                User: { select: { no_hp: true } },
+              },
             }).catch(() => null)
           : null,
         sesi.kelas_id
@@ -147,6 +156,27 @@ export class SesiOpenNotifyService {
         namaMapel = mapelData.nama_mapel;
       }
 
+      // Resolusi nomor WhatsApp guru untuk fitur tag/mention
+      let rawPhone = guruData?.no_hp || guruData?.User?.no_hp || null;
+      let cleanPhone: string | null = null;
+      let teacherJid: string | null = null;
+
+      if (rawPhone) {
+        let digits = String(rawPhone).replace(/\D/g, '');
+        if (digits.startsWith('0')) {
+          digits = '62' + digits.slice(1);
+        } else if (digits.startsWith('8')) {
+          digits = '62' + digits;
+        }
+        if (digits.length >= 10) {
+          cleanPhone = digits;
+          teacherJid = `${digits}@s.whatsapp.net`;
+        }
+      }
+
+      const isTagGuruActive = Boolean(setting.isTagGuru ?? true);
+      const tagText = cleanPhone ? `@${cleanPhone}` : `*${namaGuru}*`;
+
       // Format waktu lokal tenant
       const sessionTime = sesi.waktu_mulai ? new Date(sesi.waktu_mulai) : new Date();
       const waktuStr = sessionTime.toLocaleTimeString('id-ID', {
@@ -157,18 +187,42 @@ export class SesiOpenNotifyService {
 
       // 2. Susun teks pesan
       let caption: string;
-      if (setting.template && setting.template.trim()) {
-        caption = setting.template
-          .replace(/{{nama_guru}}/g, namaGuru)
-          .replace(/{{nama_kelas}}/g, namaKelas)
-          .replace(/{{nama_mapel}}/g, namaMapel)
-          .replace(/{{waktu}}/g, waktuStr);
+      const defaultTemplate = 'Saya {{tag_guru}} Telah Hadir di Kelas *{{nama_kelas}}*';
+      const templateToUse = setting.template && setting.template.trim() ? setting.template : defaultTemplate;
+
+      if (templateToUse.includes('{{tag_guru}}') || templateToUse.includes('{{mention_guru}}')) {
+        caption = templateToUse
+          .replace(/{{tag_guru}}/g, tagText)
+          .replace(/{{mention_guru}}/g, tagText)
+          .replace(/{{nama_guru}}/g, namaGuru);
+      } else if (isTagGuruActive && cleanPhone) {
+        // Otomatis ngetag guru jika fitur tag aktif dan guru memiliki nomor WhatsApp
+        caption = templateToUse
+          .replace(/\*{{nama_guru}}\*/g, tagText)
+          .replace(/{{nama_guru}}/g, tagText);
       } else {
-        caption = `Saya *${namaGuru}* Telah Hadir di Kelas *${namaKelas}*`;
-        if (namaMapel && namaMapel !== '-') {
-          caption += `\n\n📚 *Mata Pelajaran:* ${namaMapel}`;
+        caption = templateToUse.replace(/{{nama_guru}}/g, namaGuru);
+      }
+
+      caption = caption
+        .replace(/{{nama_kelas}}/g, namaKelas)
+        .replace(/{{nama_mapel}}/g, namaMapel)
+        .replace(/{{waktu}}/g, waktuStr);
+
+      // Kumpulkan daftar mentions JID untuk Baileys
+      const mentions: string[] = [];
+      if (teacherJid && caption.includes(`@${cleanPhone}`)) {
+        mentions.push(teacherJid);
+      }
+      const phoneMatches = caption.match(/@(\d{10,16})/g);
+      if (phoneMatches) {
+        for (const m of phoneMatches) {
+          const num = m.replace('@', '');
+          const jid = `${num}@s.whatsapp.net`;
+          if (!mentions.includes(jid)) {
+            mentions.push(jid);
+          }
         }
-        caption += `\n⏰ *Waktu:* ${waktuStr} WIB`;
       }
 
       // 3. Resolusi Base64 Gambar Foto Kehadiran
@@ -205,17 +259,19 @@ export class SesiOpenNotifyService {
           tenantId,
           setting.groupJid,
           cleanBase64,
-          caption
+          caption,
+          { mentions }
         );
-        appLogger.info(`[SesiOpenNotify] Foto & Notifikasi kehadiran ${namaGuru} di kelas ${namaKelas} berhasil dikirim ke grup ${setting.groupJid}`);
+        appLogger.info(`[SesiOpenNotify] Foto & Notifikasi kehadiran ${namaGuru} di kelas ${namaKelas} berhasil dikirim ke grup ${setting.groupJid} (mentions: ${mentions.length})`);
       } else {
         // Fallback teks jika buffer foto tidak dapat dibaca
         await whatsappService.sendTextMessage(
           tenantId,
           setting.groupJid,
-          caption
+          caption,
+          { mentions }
         );
-        appLogger.info(`[SesiOpenNotify] Notifikasi teks kehadiran ${namaGuru} di kelas ${namaKelas} berhasil dikirim ke grup ${setting.groupJid}`);
+        appLogger.info(`[SesiOpenNotify] Notifikasi teks kehadiran ${namaGuru} di kelas ${namaKelas} berhasil dikirim ke grup ${setting.groupJid} (mentions: ${mentions.length})`);
       }
     } catch (error: any) {
       appLogger.warn(`[SesiOpenNotify] Gagal mengirim notifikasi buka sesi KBM: ${error.message}`);

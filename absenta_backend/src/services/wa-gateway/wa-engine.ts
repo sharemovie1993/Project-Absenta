@@ -574,17 +574,31 @@ export const waGatewayServiceLocal = {
    * Kirim pesan WA ke nomor, hanya jika tenant sudah connected.
    * Melempar Error jika belum connected (agar caller bisa gracefully skip).
    */
-  async sendMessage(tenantId: string, nomor: string, pesan: string): Promise<boolean> {
+  async sendMessage(tenantId: string, nomor: string, pesan: string, options?: { mentions?: string[] }): Promise<boolean> {
     const jid = resolveWaTargetJid(nomor);
-    return sendBaileysPayloadWithRetry(tenantId, jid, { text: pesan }, 5000, nomor);
+    const mentions = Array.isArray(options?.mentions) ? options!.mentions : [];
+    return sendBaileysPayloadWithRetry(
+      tenantId,
+      jid,
+      { text: pesan, ...(mentions.length > 0 ? { mentions } : {}) },
+      5000,
+      nomor
+    );
   },
 
   /**
    * Kirim pesan WA langsung ke JID tertentu (bisa Nomor Individual atau WhatsApp Group JID e.g. 120363xxx@g.us).
    */
-  async sendMessageToJid(tenantId: string, jidTarget: string, pesan: string): Promise<boolean> {
+  async sendMessageToJid(tenantId: string, jidTarget: string, pesan: string, options?: { mentions?: string[] }): Promise<boolean> {
     const jid = resolveWaTargetJid(jidTarget);
-    return sendBaileysPayloadWithRetry(tenantId, jid, { text: pesan }, 8000, jid);
+    const mentions = Array.isArray(options?.mentions) ? options!.mentions : [];
+    return sendBaileysPayloadWithRetry(
+      tenantId,
+      jid,
+      { text: pesan, ...(mentions.length > 0 ? { mentions } : {}) },
+      8000,
+      jid
+    );
   },
 
   /**
@@ -634,6 +648,7 @@ export const waGatewayServiceLocal = {
     imageBase64: string,
     caption = '',
     mimetype = 'image/jpeg',
+    options?: { mentions?: string[] },
   ): Promise<boolean> {
     const jid = resolveWaTargetJid(target);
     const cleanBase64 = String(imageBase64 || '').replace(/^data:[^;]+;base64,/, '').trim();
@@ -645,6 +660,8 @@ export const waGatewayServiceLocal = {
       throw new Error('Buffer gambar tidak valid atau kosong.');
     }
 
+    const mentions = Array.isArray(options?.mentions) ? options!.mentions : [];
+
     return sendBaileysPayloadWithRetry(
       tenantId,
       jid,
@@ -652,9 +669,10 @@ export const waGatewayServiceLocal = {
         image: imageBuffer,
         mimetype: mimetype || 'image/jpeg',
         ...(caption ? { caption } : {}),
+        ...(mentions.length > 0 ? { mentions } : {}),
       },
       25000,
-      `gambar -> ${jid}`,
+      `gambar -> ${jid}${mentions.length > 0 ? ` (mentions: ${mentions.length})` : ''}`,
     );
   },
 
@@ -1005,13 +1023,13 @@ async function executeLocalMethod(method: string, tenantId: string, args: any[] 
     case 'disconnectTenant':
       return waGatewayServiceLocal.disconnectTenant(tenantId);
     case 'sendMessage':
-      return waGatewayServiceLocal.sendMessage(tenantId, args[0], args[1]);
+      return waGatewayServiceLocal.sendMessage(tenantId, args[0], args[1], args[2]);
     case 'sendMessageToJid':
-      return waGatewayServiceLocal.sendMessageToJid(tenantId, args[0], args[1]);
+      return waGatewayServiceLocal.sendMessageToJid(tenantId, args[0], args[1], args[2]);
     case 'sendDocument':
       return waGatewayServiceLocal.sendDocument(tenantId, args[0], args[1], args[2], args[3], args[4]);
     case 'sendImage':
-      return waGatewayServiceLocal.sendImage(tenantId, args[0], args[1], args[2], args[3]);
+      return waGatewayServiceLocal.sendImage(tenantId, args[0], args[1], args[2], args[3], args[4]);
     case 'getParticipatingGroups':
       return waGatewayServiceLocal.getParticipatingGroups(tenantId, args[0]);
     case 'getStatus':

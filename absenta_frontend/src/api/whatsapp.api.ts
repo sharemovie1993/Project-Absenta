@@ -301,6 +301,7 @@ export interface KbmNotificationConfig {
   groupJid: string;
   groupSubject?: string;
   template?: string;
+  isTagGuru?: boolean;
 }
 
 export const getKbmNotificationConfig = async () => {
