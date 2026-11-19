@@ -33,6 +33,7 @@ import {
   KetarunaanNilaiStudent,
 } from '@/api/kesiswaan/programKetarunaan.api';
 import { KetarunaanSkemaSettingsModal } from './KetarunaanSkemaSettingsModal';
+import { SertifikatKetarunaanModal } from './SertifikatKetarunaanModal';
 
 export interface KetarunaanPenilaianTabProps {
   tahunPelajaranId?: string;
@@ -62,6 +63,8 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
   }>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [isSyncingPresensi, setIsSyncingPresensi] = useState(false);
+  const [selectedCertStudent, setSelectedCertStudent] = useState<KetarunaanNilaiStudent | null>(null);
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false);
 
   // 1. Query Data Nilai Kelas
   const {
@@ -663,20 +666,22 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                     </Tooltip>
                   </div>
                 </th>
+
+                <th className="py-3 px-3 text-center w-28">Sertifikat</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, idx) => (
                   <tr key={idx}>
-                    <td colSpan={9} className="py-3 px-4">
+                    <td colSpan={10} className="py-3 px-4">
                       <Skeleton className="h-6 w-full" />
                     </td>
                   </tr>
                 ))
               ) : filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400 text-xs">
+                  <td colSpan={10} className="py-12 text-center text-slate-400 text-xs">
                     Tidak ada data siswa terdaftar di rombel ini.
                   </td>
                 </tr>
@@ -797,6 +802,30 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                           </span>
                         )}
                       </td>
+
+                      {/* Tombol Cetak Sertifikat */}
+                      <td className="py-2 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCertStudent({
+                              ...s,
+                              nilai_samapta: current.samapta,
+                              nilai_pbb: current.pbb,
+                              nilai_disiplin: current.disiplin,
+                              nilai_mental: current.mental,
+                              nilai_akhir: live.final,
+                              predikat: live.grade,
+                            });
+                            setIsCertModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-700 dark:bg-cyan-950/50 dark:hover:bg-cyan-900/60 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 transition-all shadow-sm cursor-pointer"
+                          title="Pratinjau & Cetak Sertifikat Ketarunaan (Depan & Belakang)"
+                        >
+                          <Award className="w-3.5 h-3.5" />
+                          <span>Sertifikat</span>
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
@@ -820,6 +849,21 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
         semesterId={semesterId || null}
         jurusanId={jurusanId || null}
         jurusanNama={jurusanNama}
+      />
+
+      {/* ── Modal Cetak Sertifikat Ketarunaan (Depan & Belakang) ────────────────── */}
+      <SertifikatKetarunaanModal
+        isOpen={isCertModalOpen}
+        onClose={() => {
+          setIsCertModalOpen(false);
+          setSelectedCertStudent(null);
+        }}
+        student={selectedCertStudent}
+        skema={skema}
+        kelasNama={kelasNama}
+        jurusanNama={jurusanNama}
+        tahunPelajaran={tahunPelajaranId}
+        semester={semesterId}
       />
     </div>
   );
