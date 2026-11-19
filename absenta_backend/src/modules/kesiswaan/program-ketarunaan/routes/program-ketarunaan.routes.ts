@@ -108,4 +108,12 @@ export async function programKetarunaanRoutes(fastify: any) {
       determineDataScope(),
     ],
   }, ketarunaanPenilaianController.unlockNilai);
+
+  // 14. Rekap Presensi 5 Siklus Ketarunaan
+  fastify.get('/presensi-sync', {
+    preHandler: [
+      requireCapability(['attendance.sessions.view.list', 'dashboard.view.kesiswaan']),
+      determineDataScope(),
+    ],
+  }, ketarunaanPenilaianController.syncPresensi5Siklus);
 }

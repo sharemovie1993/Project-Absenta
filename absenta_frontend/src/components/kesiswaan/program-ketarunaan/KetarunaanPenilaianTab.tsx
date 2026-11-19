@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Search,
   ChevronDown,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -25,6 +26,7 @@ import {
   unlockKetarunaanNilai,
   getKetarunaanSkema,
   saveKetarunaanSkema,
+  syncKetarunaanPresensi5Siklus,
   KetarunaanSkema,
   KetarunaanNilaiStudent,
 } from '@/api/kesiswaan/programKetarunaan.api';
@@ -57,6 +59,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
     mental: number;
   }>>({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [isSyncingPresensi, setIsSyncingPresensi] = useState(false);
 
   // 1. Query Data Nilai Kelas
   const {
@@ -152,6 +155,55 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
       return updated;
     });
     setHasChanges(true);
+  };
+
+  // Handler Tarik Rekomendasi Nilai dari Presensi 5 Siklus
+  const handleSyncPresensi = async () => {
+    if (!kelasId || !tahunPelajaranId || !semesterId) return;
+    const confirmed = window.confirm(
+      'Tarik nilai kehadiran 5 siklus ketarunaan (Upacara, Ketarunaan Pagi, Pembiasaan Dhuha, Apel Sore)?\n\n' +
+      'Sistem akan otomatis menghitung persentase kehadiran nyata di lapangan dan mengisi rekomendasi nilai DISIPLIN dan MENTAL untuk seluruh taruna di rombel ini.'
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsSyncingPresensi(true);
+      const res = await syncKetarunaanPresensi5Siklus({
+        kelas_id: kelasId,
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId,
+      });
+
+      const data = (res as any)?.data ?? res;
+      const rekap = data?.rekap || {};
+      let updatedCount = 0;
+
+      setLocalScores((prev) => {
+        const next = { ...prev };
+        students.forEach((s) => {
+          const r = rekap[s.siswa_id];
+          if (r) {
+            next[s.siswa_id] = {
+              samapta: next[s.siswa_id]?.samapta ?? s.nilai_samapta ?? 0,
+              pbb: next[s.siswa_id]?.pbb ?? s.nilai_pbb ?? 0,
+              disiplin: r.rekomendasi_disiplin,
+              mental: r.rekomendasi_mental,
+            };
+            updatedCount++;
+          }
+        });
+        return next;
+      });
+
+      setHasChanges(true);
+      window.alert(
+        `Berhasil menyinkronkan kehadiran 5 siklus (${data?.totalSesiTerlaksana ?? 0} sesi terlaksana) untuk ${updatedCount} taruna!\n\nNilai Disiplin & Mental telah terisi otomatis. Silakan klik 'Simpan Draf' untuk menyimpan perubahan.`
+      );
+    } catch (err: any) {
+      window.alert('Gagal menyinkronkan presensi: ' + (err?.message || 'Terjadi kendala jaringan'));
+    } finally {
+      setIsSyncingPresensi(false);
+    }
   };
 
   // Mutation: Simpan Draf
@@ -305,6 +357,20 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
               <Sliders className="w-3.5 h-3.5 text-indigo-500" />
               <span>Skema &amp; Bobot</span>
             </Button>
+
+            {!isClassLocked && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncPresensi}
+                disabled={isSyncingPresensi}
+                className="gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                title="Tarik nilai Disiplin & Mental otomatis dari presensi 5 siklus (Upacara, Ketarunaan, Dhuha, Apel Sore)"
+              >
+                <Sparkles className={`w-3.5 h-3.5 text-indigo-500 ${isSyncingPresensi ? 'animate-spin' : ''}`} />
+                <span>{isSyncingPresensi ? 'Menghitung...' : 'Tarik Nilai 5 Siklus'}</span>
+              </Button>
+            )}
 
             {!isClassLocked ? (
               <>
@@ -467,6 +533,25 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                       <td className="py-3 px-4">
                         <div className="font-bold text-slate-900 dark:text-slate-100">{s.nama_siswa}</div>
                         <div className="text-[10px] font-mono text-slate-400">NIS: {s.nis} • {s.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</div>
+                        {s.presensi && (s.presensi.total_sesi_disiplin > 0 || s.presensi.total_sesi_duha > 0) && (
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            {s.presensi.total_sesi_disiplin > 0 && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" title="Kehadiran Upacara, Ketarunaan & Apel Sore">
+                                Disiplin: {s.presensi.hadir_disiplin}/{s.presensi.total_sesi_disiplin} ({s.presensi.persen_disiplin}%)
+                              </span>
+                            )}
+                            {s.presensi.total_sesi_duha > 0 && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" title="Kehadiran Pembiasaan Dhuha Jum'at">
+                                Dhuha: {s.presensi.hadir_duha}/{s.presensi.total_sesi_duha} ({s.presensi.persen_duha}%)
+                              </span>
+                            )}
+                            {s.presensi.terlambat_count > 0 && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300" title="Total keterlambatan">
+                                {s.presensi.terlambat_count}x telat
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* Samapta Input */}

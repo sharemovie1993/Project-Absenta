@@ -204,6 +204,153 @@ export class KetarunaanPenilaianService {
   }
 
   /**
+   * Menghitung rekap kehadiran 5 siklus ketarunaan untuk seluruh siswa di kelas
+   * (Upacara, Ketarunaan Pagi, Pembiasaan Dhuha, Apel Sore, Log Keterlambatan).
+   */
+  async calculatePresensi5Siklus(
+    tenantId: string,
+    params: {
+      kelas_id: string;
+      tahun_pelajaran_id: string;
+      semester_id: string;
+    }
+  ) {
+    const { kelas_id, tahun_pelajaran_id, semester_id } = params;
+
+    const sesiList = await prisma.sesiAbsensi.findMany({
+      where: {
+        tenant_id: tenantId,
+        kelas_id,
+        tahun_pelajaran_id,
+        semester_id,
+        status: { not: 'MENDATANG' },
+        jenis_kegiatan: {
+          in: [
+            'Upacara',
+            'UPACARA',
+            'Ketarunaan',
+            'KETARUNAAN',
+            'Duha',
+            'DUHA',
+            'Dhuha',
+            'DHUHA',
+            'Apel Pulang',
+            'APEL_SORE',
+            'Apel Pulang Siswa',
+          ],
+        },
+      },
+      select: { id: true, jenis_kegiatan: true },
+    });
+
+    const classify = (j: string) => {
+      const u = String(j || '').toUpperCase();
+      if (u.includes('UPACARA')) return 'UPACARA';
+      if (u.includes('DUHA') || u.includes('DHUHA')) return 'DUHA';
+      if (u.includes('SORE') || u.includes('PULANG')) return 'APEL_SORE';
+      return 'KETARUNAAN';
+    };
+
+    const duhaSesiIds = new Set(
+      sesiList.filter((s) => classify(s.jenis_kegiatan) === 'DUHA').map((s) => s.id)
+    );
+    const disiplinSesiIds = new Set(
+      sesiList.filter((s) => classify(s.jenis_kegiatan) !== 'DUHA').map((s) => s.id)
+    );
+
+    const totalSesiDuha = duhaSesiIds.size;
+    const totalSesiDisiplin = disiplinSesiIds.size;
+    const allSesiIds = sesiList.map((s) => s.id);
+
+    const logs =
+      allSesiIds.length > 0
+        ? await prisma.absenSiswa.findMany({
+            where: {
+              tenant_id: tenantId,
+              sesi_id: { in: allSesiIds },
+              status: { in: ['HADIR', 'TERLAMBAT'] },
+            },
+            select: {
+              siswa_id: true,
+              sesi_id: true,
+              status: true,
+              is_terlambat: true,
+            },
+          })
+        : [];
+
+    const siswaMap = new Map<
+      string,
+      {
+        hadir_disiplin: number;
+        hadir_duha: number;
+        terlambat_count: number;
+      }
+    >();
+
+    for (const log of logs) {
+      if (!log.siswa_id) continue;
+      let curr = siswaMap.get(log.siswa_id);
+      if (!curr) {
+        curr = { hadir_disiplin: 0, hadir_duha: 0, terlambat_count: 0 };
+        siswaMap.set(log.siswa_id, curr);
+      }
+      if (disiplinSesiIds.has(log.sesi_id)) {
+        curr.hadir_disiplin++;
+      }
+      if (duhaSesiIds.has(log.sesi_id)) {
+        curr.hadir_duha++;
+      }
+      if (log.is_terlambat || log.status === 'TERLAMBAT') {
+        curr.terlambat_count++;
+      }
+    }
+
+    const rekapMap = new Map<
+      string,
+      {
+        hadir_disiplin: number;
+        total_sesi_disiplin: number;
+        persen_disiplin: number;
+        hadir_duha: number;
+        total_sesi_duha: number;
+        persen_duha: number;
+        terlambat_count: number;
+        rekomendasi_disiplin: number;
+        rekomendasi_mental: number;
+      }
+    >();
+
+    siswaMap.forEach((val, sId) => {
+      const persenDis = totalSesiDisiplin > 0 ? (val.hadir_disiplin / totalSesiDisiplin) * 100 : 80;
+      const penalti = Math.min(15, val.terlambat_count * 1);
+      const rekDisiplin = Math.max(0, Math.min(100, Math.round(persenDis - penalti)));
+
+      const persenDuh = totalSesiDuha > 0 ? (val.hadir_duha / totalSesiDuha) * 100 : 80;
+      const rekMental = Math.max(0, Math.min(100, Math.round(persenDuh)));
+
+      rekapMap.set(sId, {
+        hadir_disiplin: val.hadir_disiplin,
+        total_sesi_disiplin: totalSesiDisiplin,
+        persen_disiplin: Math.round(persenDis),
+        hadir_duha: val.hadir_duha,
+        total_sesi_duha: totalSesiDuha,
+        persen_duha: Math.round(persenDuh),
+        terlambat_count: val.terlambat_count,
+        rekomendasi_disiplin: rekDisiplin,
+        rekomendasi_mental: rekMental,
+      });
+    });
+
+    return {
+      totalSesiTerlaksana: allSesiIds.length,
+      totalSesiDisiplin,
+      totalSesiDuha,
+      rekapMap,
+    };
+  }
+
+  /**
    * Mengambil daftar siswa per rombel beserta nilai ketarunaan yang sudah ada.
    */
   async getNilaiKelas(
@@ -300,25 +447,45 @@ export class KetarunaanPenilaianService {
     const scoreMap = new Map<string, any>();
     savedScores.forEach((s) => scoreMap.set(s.siswa_id, s));
 
+    // 5. Ambil data presensi 5 siklus ketarunaan untuk kalkulasi rekomendasi
+    const presensi5Siklus = await this.calculatePresensi5Siklus(tenantId, {
+      kelas_id,
+      tahun_pelajaran_id,
+      semester_id,
+    });
+
     const rows = siswaList.map((sa) => {
       const existing = scoreMap.get(sa.siswa_id);
+      const p = presensi5Siklus.rekapMap.get(sa.siswa_id) || {
+        hadir_disiplin: 0,
+        total_sesi_disiplin: presensi5Siklus.totalSesiDisiplin,
+        persen_disiplin: 0,
+        hadir_duha: 0,
+        total_sesi_duha: presensi5Siklus.totalSesiDuha,
+        persen_duha: 0,
+        terlambat_count: 0,
+        rekomendasi_disiplin: 0,
+        rekomendasi_mental: 0,
+      };
+
       return {
         siswa_id: sa.siswa_id,
-        siswa_akademik_id: sa.id,
+        siswa_akademik_id: sa.id || null,
         nis: sa.siswa.nis,
         nisn: sa.siswa.nisn,
         nama_siswa: sa.siswa.nama_siswa,
         jenis_kelamin: sa.siswa.jenis_kelamin,
         nilai_samapta: existing?.nilai_samapta ?? 0,
         nilai_pbb: existing?.nilai_pbb ?? 0,
-        nilai_disiplin: existing?.nilai_disiplin ?? 0,
-        nilai_mental: existing?.nilai_mental ?? 0,
+        nilai_disiplin: existing?.nilai_disiplin ?? p.rekomendasi_disiplin,
+        nilai_mental: existing?.nilai_mental ?? p.rekomendasi_mental,
         nilai_akhir: existing?.nilai_akhir ?? 0,
         predikat: existing?.predikat ?? '-',
         deskripsi_rapor: existing?.deskripsi_rapor ?? '',
         detail_samapta: existing?.detail_samapta ?? null,
         is_locked: existing?.is_locked ?? false,
         locked_at: existing?.locked_at ?? null,
+        presensi: p,
       };
     });
 
@@ -327,6 +494,11 @@ export class KetarunaanPenilaianService {
       skema,
       total_siswa: rows.length,
       is_class_locked: rows.length > 0 && rows.every((r) => r.is_locked),
+      presensi_summary: {
+        total_sesi_terlaksana: presensi5Siklus.totalSesiTerlaksana,
+        total_sesi_disiplin: presensi5Siklus.totalSesiDisiplin,
+        total_sesi_duha: presensi5Siklus.totalSesiDuha,
+      },
       students: rows,
     };
   }

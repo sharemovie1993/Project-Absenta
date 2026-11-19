@@ -117,6 +117,18 @@ export interface KetarunaanSkema {
   is_default?: boolean;
 }
 
+export interface Presensi5SiklusInfo {
+  hadir_disiplin: number;
+  total_sesi_disiplin: number;
+  persen_disiplin: number;
+  hadir_duha: number;
+  total_sesi_duha: number;
+  persen_duha: number;
+  terlambat_count: number;
+  rekomendasi_disiplin: number;
+  rekomendasi_mental: number;
+}
+
 export interface KetarunaanNilaiStudent {
   siswa_id: string;
   siswa_akademik_id?: string | null;
@@ -134,6 +146,7 @@ export interface KetarunaanNilaiStudent {
   detail_samapta?: any;
   is_locked: boolean;
   locked_at?: string | null;
+  presensi?: Presensi5SiklusInfo;
 }
 
 export interface KetarunaanNilaiKelasResponse {
@@ -143,6 +156,11 @@ export interface KetarunaanNilaiKelasResponse {
     skema: KetarunaanSkema;
     total_siswa: number;
     is_class_locked: boolean;
+    presensi_summary?: {
+      total_sesi_terlaksana: number;
+      total_sesi_disiplin: number;
+      total_sesi_duha: number;
+    };
     students: KetarunaanNilaiStudent[];
   };
 }
@@ -224,5 +242,25 @@ export async function unlockKetarunaanNilai(payload: {
     'post',
     '/kesiswaan/program-ketarunaan/nilai/unlock',
     { data: payload, unwrapData: true }
+  );
+}
+
+export async function syncKetarunaanPresensi5Siklus(params: {
+  kelas_id: string;
+  tahun_pelajaran_id: string;
+  semester_id: string;
+}): Promise<{
+  success: boolean;
+  data: {
+    totalSesiTerlaksana: number;
+    totalSesiDisiplin: number;
+    totalSesiDuha: number;
+    rekap: Record<string, Presensi5SiklusInfo>;
+  };
+}> {
+  return requestWithFallback(
+    'get',
+    '/kesiswaan/program-ketarunaan/presensi-sync',
+    { params, unwrapData: true }
   );
 }

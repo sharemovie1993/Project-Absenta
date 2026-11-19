@@ -149,4 +149,43 @@ export const ketarunaanPenilaianController = {
       return reply.status(400).send({ success: false, message: error.message });
     }
   },
+
+  async syncPresensi5Siklus(request: any, reply: any) {
+    try {
+      const scope = request.dataScope as DataScope;
+      if (!scope?.tenantId) {
+        return reply.status(400).send({ message: 'Tenant ID required' });
+      }
+
+      const { kelas_id, tahun_pelajaran_id, semester_id } = request.query || {};
+      if (!kelas_id || !tahun_pelajaran_id || !semester_id) {
+        return reply.status(400).send({
+          message: 'kelas_id, tahun_pelajaran_id, dan semester_id wajib diisi',
+        });
+      }
+
+      const data = await ketarunaanPenilaianService.calculatePresensi5Siklus(scope.tenantId, {
+        kelas_id,
+        tahun_pelajaran_id,
+        semester_id,
+      });
+
+      const plainRekap: Record<string, any> = {};
+      data.rekapMap.forEach((v, k) => {
+        plainRekap[k] = v;
+      });
+
+      return reply.send({
+        success: true,
+        data: {
+          totalSesiTerlaksana: data.totalSesiTerlaksana,
+          totalSesiDisiplin: data.totalSesiDisiplin,
+          totalSesiDuha: data.totalSesiDuha,
+          rekap: plainRekap,
+        },
+      });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  },
 };
