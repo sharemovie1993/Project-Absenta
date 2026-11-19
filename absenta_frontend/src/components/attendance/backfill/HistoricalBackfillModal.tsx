@@ -29,6 +29,10 @@ interface HistoricalBackfillModalProps {
   mapelId?: string;
   mapelNama?: string;
   guruId?: string;
+  jenisKegiatan?: 'KBM' | 'MAPEL' | 'KETARUNAAN';
+  jadwalKegiatanId?: string;
+  kelasList?: { value: string; label: string }[];
+  onKelasChange?: (kelasId: string, kelasNama: string) => void;
   tahunPelajaranId?: string;
   semesterId?: string;
   onSuccess?: () => void;
@@ -42,10 +46,35 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
   mapelId,
   mapelNama,
   guruId,
+  jenisKegiatan = 'KBM',
+  jadwalKegiatanId,
+  kelasList,
+  onKelasChange,
   tahunPelajaranId,
   semesterId,
   onSuccess,
 }) => {
+  const [activeKelasId, setActiveKelasId] = useState(kelasId);
+  const [activeKelasNama, setActiveKelasNama] = useState(kelasNama);
+  const [selectedHari, setSelectedHari] = useState<string>('SEMUA_JADWAL');
+
+  useEffect(() => {
+    setActiveKelasId(kelasId);
+    setActiveKelasNama(kelasNama);
+  }, [kelasId, kelasNama]);
+
+  const isKetarunaan = jenisKegiatan === 'KETARUNAAN';
+
+  const handleKelasSelectChange = (newKelasId: string) => {
+    setActiveKelasId(newKelasId);
+    const found = kelasList?.find((k) => k.value === newKelasId);
+    const newName = found ? found.label : newKelasId;
+    setActiveKelasNama(newName);
+    onKelasChange?.(newKelasId, newName);
+    // Reset preview data saat ganti kelas
+    setPreviewData(null);
+    setSelectedFile(null);
+  };
   const [isDownloading, setIsDownloading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -56,18 +85,27 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
 
   // 1. Download Template Excel
   const handleDownloadTemplate = async () => {
-    if (!kelasId) {
+    if (!activeKelasId) {
       toast.error('Pilih kelas terlebih dahulu.');
       return;
     }
     try {
       setIsDownloading(true);
-      toast(`Menyiapkan template Excel untuk kelas ${kelasNama}${mapelNama ? ` - Mapel ${mapelNama}` : ''}...`, {
+      const labelDesc = isKetarunaan
+        ? `Program Ketarunaan - Rombel ${activeKelasNama}`
+        : mapelNama
+        ? `Kelas ${activeKelasNama} - Mapel ${mapelNama}`
+        : `Kelas ${activeKelasNama}`;
+
+      toast(`Menyiapkan template Excel untuk ${labelDesc}...`, {
         icon: 'ℹ️',
       });
       await historicalBackfillApi.downloadTemplate({
-        kelasId,
+        kelasId: activeKelasId,
         mapelId,
+        jenisKegiatan,
+        jadwalKegiatanId,
+        hari: isKetarunaan && selectedHari !== 'SEMUA_JADWAL' ? selectedHari : undefined,
         tahunPelajaranId,
         semesterId,
       });
@@ -92,7 +130,7 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
     setSelectedFile(file);
     try {
       setIsUploading(true);
-      const res = await historicalBackfillApi.previewExcel(kelasId, file);
+      const res = await historicalBackfillApi.previewExcel(activeKelasId, file);
       setPreviewData(res);
       toast.success('Berkas Excel berhasil divalidasi!');
     } catch (err: any) {
@@ -107,7 +145,7 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
 
   // 3. Eksekusi Backfill ke Database
   const handleExecute = async () => {
-    if (!previewData || !kelasId) {
+    if (!previewData || !activeKelasId) {
       toast.error('Data pratinjau belum siap.');
       return;
     }
@@ -115,9 +153,11 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
     try {
       setIsExecuting(true);
       const res = await historicalBackfillApi.execute({
-        kelasId,
+        kelasId: activeKelasId,
         mapelId,
         guruId,
+        jenisKegiatan,
+        jadwalKegiatanId,
         tahunPelajaranId,
         semesterId,
         dateList: previewData.dateList,
@@ -128,7 +168,11 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
         })),
       });
 
-      toast.success(res.message || 'Presensi semester ganjil berhasil disinkronkan ke sesi!');
+      const successMsg = isKetarunaan
+        ? 'Presensi kegiatan Ketarunaan berhasil disinkronkan ke sesi!'
+        : res.message || 'Presensi semester ganjil berhasil disinkronkan ke sesi!';
+
+      toast.success(successMsg);
       onSuccess?.();
       handleClose();
     } catch (err: any) {
@@ -151,24 +195,36 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
         <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
-                <Calendar className="w-5 h-5" />
+              <span className={`p-2 rounded-xl ${isKetarunaan ? 'bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400' : 'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'}`}>
+                {isKetarunaan ? <Shield className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
               </span>
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  {mapelNama ? 'Backfill Presensi Mata Pelajaran' : 'Backfill Presensi Semester Ganjil'}
-                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
-                    {mapelNama ? 'Terhubung ke Sesi Mapel' : 'Terhubung ke Sesi KBM'}
+                  {isKetarunaan
+                    ? 'Backfill Rekap Presensi Ketarunaan'
+                    : mapelNama
+                    ? 'Backfill Presensi Mata Pelajaran'
+                    : 'Backfill Presensi Semester Ganjil'}
+                  <Badge variant="outline" className={`text-[10px] ${isKetarunaan ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                    {isKetarunaan
+                      ? 'Sesi Ketarunaan (06:30 - 07:30)'
+                      : mapelNama
+                      ? 'Terhubung ke Sesi Mapel'
+                      : 'Terhubung ke Sesi KBM'}
                   </Badge>
                 </h2>
                 <p className="text-xs text-slate-500">
-                  {mapelNama ? (
+                  {isKetarunaan ? (
                     <>
-                      Impor data presensi historis Semester Ganjil — Kelas <span className="font-semibold text-slate-700 dark:text-slate-300">{kelasNama}</span> &bull; Mapel <span className="font-semibold text-indigo-600 dark:text-indigo-400">{mapelNama}</span>
+                      Impor data presensi rekonsiliasi Program Ketarunaan — Peleton / Rombel <span className="font-semibold text-slate-700 dark:text-slate-300">{activeKelasNama}</span> &bull; Semester Ganjil
+                    </>
+                  ) : mapelNama ? (
+                    <>
+                      Impor data presensi historis Semester Ganjil — Kelas <span className="font-semibold text-slate-700 dark:text-slate-300">{activeKelasNama}</span> &bull; Mapel <span className="font-semibold text-indigo-600 dark:text-indigo-400">{mapelNama}</span>
                     </>
                   ) : (
                     <>
-                      Impor data presensi historis untuk kebutuhan analitik dan rekap rapor — Kelas <span className="font-semibold text-slate-700 dark:text-slate-300">{kelasNama}</span>
+                      Impor data presensi historis untuk kebutuhan analitik dan rekap rapor — Kelas <span className="font-semibold text-slate-700 dark:text-slate-300">{activeKelasNama}</span>
                     </>
                   )}
                 </p>
@@ -177,11 +233,34 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
           </div>
         </div>
 
+        {/* Pemilih Kelas / Peleton jika disediakan opsi */}
+        {kelasList && kelasList.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-slate-500" />
+              <span className="font-bold text-slate-700 dark:text-slate-300">
+                Pilih {isKetarunaan ? 'Peleton / Rombel' : 'Kelas'}:
+              </span>
+            </div>
+            <select
+              value={activeKelasId}
+              onChange={(e) => handleKelasSelectChange(e.target.value)}
+              className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              {kelasList.map((k) => (
+                <option key={k.value} value={k.value}>
+                  {k.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Step 1: Download Template */}
-        <div className="rounded-xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20 p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-bold text-indigo-900 dark:text-indigo-300 uppercase tracking-wider">
-              <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">1</span>
+        <div className={`rounded-xl border p-4 space-y-3 ${isKetarunaan ? 'border-amber-200/80 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20' : 'border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20'}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+              <span className={`w-5 h-5 rounded-full text-white flex items-center justify-center text-[10px] ${isKetarunaan ? 'bg-amber-600' : 'bg-indigo-600'}`}>1</span>
               <span>Unduh Template Format Excel Resmi</span>
             </div>
             <Button
@@ -189,8 +268,8 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
               variant="primary"
               size="sm"
               onClick={handleDownloadTemplate}
-              disabled={isDownloading || !kelasId}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 h-8 px-3 rounded-lg"
+              disabled={isDownloading || !activeKelasId}
+              className={`${isKetarunaan ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'} text-xs gap-1.5 h-8 px-3 rounded-lg`}
             >
               {isDownloading ? (
                 <>
@@ -205,16 +284,39 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
               )}
             </Button>
           </div>
+
+          {/* Opsi Filter Hari jika Kegiatan Ketarunaan */}
+          {isKetarunaan && (
+            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Pilihan Hari Sesi:</span>
+              <select
+                value={selectedHari}
+                onChange={(e) => setSelectedHari(e.target.value)}
+                className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1 text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-amber-500 font-medium"
+              >
+                <option value="SEMUA_JADWAL">Sesuai Jadwal Resmi (Selasa, Rabu, Kamis)</option>
+                <option value="SELASA">Selasa Saja</option>
+                <option value="RABU">Rabu Saja</option>
+                <option value="KAMIS">Kamis Saja</option>
+                <option value="SEMUA">Semua Hari Sekolah (Senin - Sabtu)</option>
+              </select>
+            </div>
+          )}
+
           <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-            Berkas Excel sudah otomatis terisi <span className="font-semibold">seluruh nama siswa di kelas {kelasNama}</span>
-            {mapelNama ? (
-              <> untuk mata pelajaran <span className="font-semibold text-indigo-600 dark:text-indigo-400">{mapelNama}</span></>
-            ) : null} dan kolom tanggal hari sekolah aktif selama semester ganjil.
+            Berkas Excel sudah otomatis terisi <span className="font-semibold">seluruh nama siswa di {isKetarunaan ? 'peleton/rombel' : 'kelas'} {activeKelasNama}</span>
+            {isKetarunaan ? (
+              <> sesuai jadwal resmi kegiatan Ketarunaan (pukul 06:30 - 07:30) selama semester ganjil.</>
+            ) : mapelNama ? (
+              <> untuk mata pelajaran <span className="font-semibold text-indigo-600 dark:text-indigo-400">{mapelNama}</span> dan kolom tanggal hari sekolah aktif selama semester ganjil.</>
+            ) : (
+              <> dan kolom tanggal hari sekolah aktif selama semester ganjil.</>
+            )}
           </p>
           <div className="flex items-center gap-2 text-[10px] text-emerald-800 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-950/40 p-2 rounded-lg border border-emerald-200/60 dark:border-emerald-900/40 font-mono">
             <Sparkles className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
             <span>
-              <strong>Tip Praktis:</strong> Cukup ketik <strong>S</strong> (Sakit), <strong>I</strong> (Izin), atau <strong>A</strong> (Alpa) pada tanggal siswa tidak masuk. Sel yang kosong otomatis dihitung <strong>HADIR</strong>.
+              <strong>Tip Praktis:</strong> Cukup ketik <strong>S</strong> (Sakit), <strong>I</strong> (Izin), atau <strong>A</strong> (Alpa) pada tanggal siswa tidak hadir. Sel yang kosong otomatis dihitung <strong>HADIR</strong>.
             </span>
           </div>
         </div>
@@ -357,16 +459,28 @@ export const HistoricalBackfillModal: React.FC<HistoricalBackfillModalProps> = (
             size="sm"
             onClick={handleExecute}
             disabled={!previewData || isExecuting}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1.5 h-9 px-4 rounded-lg shadow-sm"
+            className={`${isKetarunaan ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white text-xs gap-1.5 h-9 px-4 rounded-lg shadow-sm`}
           >
             {isExecuting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Menyinkronkan ke Sesi KBM...</span>
+                <span>
+                  {isKetarunaan
+                    ? 'Menyinkronkan ke Sesi Ketarunaan...'
+                    : mapelNama
+                    ? 'Menyinkronkan ke Sesi Mapel...'
+                    : 'Menyinkronkan ke Sesi KBM...'}
+                </span>
               </>
             ) : (
               <>
-                <span>Terapkan & Sinkronkan ke Sesi KBM</span>
+                <span>
+                  {isKetarunaan
+                    ? 'Terapkan & Sinkronkan ke Sesi Ketarunaan'
+                    : mapelNama
+                    ? 'Terapkan & Sinkronkan ke Sesi Mapel'
+                    : 'Terapkan & Sinkronkan ke Sesi KBM'}
+                </span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </>
             )}

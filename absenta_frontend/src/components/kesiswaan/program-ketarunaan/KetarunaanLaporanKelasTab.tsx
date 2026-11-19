@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { LayoutList, Printer, ChevronUp, ChevronDown, BookOpen } from 'lucide-react';
+import { LayoutList, Printer, ChevronUp, ChevronDown, BookOpen, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { getKetarunaanLaporanKelas } from '@/api/kesiswaan/programKetarunaan.api';
+import { HistoricalBackfillModal } from '@/components/attendance/backfill/HistoricalBackfillModal';
 
 interface KetarunaanLaporanKelasTabProps {
   jadwalKegiatanId: string | null;
@@ -46,7 +47,12 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [expandedKelas, setExpandedKelas] = useState<Set<string>>(new Set());
 
-  const { data, isLoading } = useQuery({
+  // Backfill Rekap Modal State
+  const [isBackfillModalOpen, setIsBackfillModalOpen] = useState(false);
+  const [selectedBackfillKelasId, setSelectedBackfillKelasId] = useState<string>('');
+  const [selectedBackfillKelasNama, setSelectedBackfillKelasNama] = useState<string>('');
+
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['ketarunaan-laporan-kelas', selectedDate, jadwalKegiatanId],
     queryFn: () => getKetarunaanLaporanKelas({
       tanggal: selectedDate,
@@ -57,6 +63,21 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
   });
 
   const rows = useMemo(() => data?.data ?? [], [data?.data]);
+
+  const kelasList = useMemo(() => {
+    return rows.map((r) => ({
+      value: r.kelas_id,
+      label: r.kelas_nama,
+    }));
+  }, [rows]);
+
+  const handleOpenBackfill = (kelasId?: string, kelasNama?: string) => {
+    const targetId = kelasId || (kelasList[0]?.value ?? '');
+    const targetName = kelasNama || (kelasList[0]?.label ?? 'Kelas');
+    setSelectedBackfillKelasId(targetId);
+    setSelectedBackfillKelasNama(targetName);
+    setIsBackfillModalOpen(true);
+  };
 
   const toggleKelas = useCallback((kelasId: string) => {
     setExpandedKelas(prev => {
@@ -85,7 +106,7 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
           <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">Laporan Per Rombongan Belajar (Kelas)</h4>
           <p className="text-xs text-slate-500 dark:text-slate-400">Kehadiran siswa per rombel pada sesi program Ketarunaan</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <input
             type="date"
             value={selectedDate}
@@ -94,6 +115,15 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
           />
           <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs">
             <Printer className="w-3.5 h-3.5" /> Cetak
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => handleOpenBackfill()}
+            className="gap-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold border-none shadow-sm"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" /> Backfill Rekap Ketarunaan
           </Button>
         </div>
       </div>
@@ -119,22 +149,36 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
             return (
               <div key={kelas.kelas_id} className="rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
                 {/* Header kelas */}
-                <button
-                  onClick={() => toggleKelas(kelas.kelas_id)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <BookOpen className="w-4 h-4 text-amber-500" />
-                    <span className="text-sm font-black text-slate-800 dark:text-slate-100">{kelas.kelas_nama}</span>
-                    <Badge
-                      variant={persen >= 80 ? "success" : persen >= 60 ? "warning" : "error"}
-                      className="text-[10px]"
-                    >
-                      {persen}% ({kelas.rekap.hadir}/{kelas.rekap.total})
-                    </Badge>
-                  </div>
-                  {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                </button>
+                <div className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <button
+                    onClick={() => toggleKelas(kelas.kelas_id)}
+                    className="flex-1 flex items-center justify-between text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="w-4 h-4 text-amber-500" />
+                      <span className="text-sm font-black text-slate-800 dark:text-slate-100">{kelas.kelas_nama}</span>
+                      <Badge
+                        variant={persen >= 80 ? "success" : persen >= 60 ? "warning" : "error"}
+                        className="text-[10px]"
+                      >
+                        {persen}% ({kelas.rekap.hadir}/{kelas.rekap.total})
+                      </Badge>
+                    </div>
+                    {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                  </button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenBackfill(kelas.kelas_id, kelas.kelas_nama);
+                    }}
+                    className="ml-3 h-7 text-[10px] gap-1 font-bold border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 shrink-0"
+                  >
+                    <FileSpreadsheet className="w-3 h-3" /> Backfill Rombel Ini
+                  </Button>
+                </div>
 
                 {/* Daftar siswa */}
                 {isExpanded && (
@@ -206,6 +250,25 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
             );
           })}
         </div>
+      )}
+
+      {isBackfillModalOpen && (
+        <HistoricalBackfillModal
+          isOpen={isBackfillModalOpen}
+          onClose={() => setIsBackfillModalOpen(false)}
+          kelasId={selectedBackfillKelasId}
+          kelasNama={selectedBackfillKelasNama}
+          jenisKegiatan="KETARUNAAN"
+          jadwalKegiatanId={jadwalKegiatanId || undefined}
+          kelasList={kelasList}
+          onKelasChange={(kId, kNama) => {
+            setSelectedBackfillKelasId(kId);
+            setSelectedBackfillKelasNama(kNama);
+          }}
+          onSuccess={() => {
+            refetch();
+          }}
+        />
       )}
     </div>
   );
