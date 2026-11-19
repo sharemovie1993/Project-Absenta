@@ -670,194 +670,124 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
             );
             const canManageSoal = !readOnly && (!isFromColleague || isContributor);
             const questionCount = item.jumlah_soal || item._count?.Soal || 0;
+            const cleanJudul = formatDisplayJudulBankSoal(item.judul, item.kode_bank, item.tingkat);
+            const romanTingkat = getTingkatRoman(item.tingkat);
+            const isMgmp =
+              Boolean(item.kolaborasi_badge) ||
+              Boolean(item.is_shared) ||
+              Boolean(item.Kontributor && item.Kontributor.length > 0) ||
+              isFromColleague;
 
             return (
               <div
                 key={item.id}
                 className="p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-2.5"
               >
-                {/* Header: Kode, Tingkat & Status */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-900/40">
-                        {item.kode_bank}
-                      </span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                        Tingkat {getTingkatRoman(item.tingkat)}
-                      </span>
-                      {item.kolaborasi_badge && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                          {item.kolaborasi_badge}
-                        </span>
-                      )}
-                      {item.UnitPengajaran && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
-                          Unit: {item.UnitPengajaran.nama_unit}
-                        </span>
-                      )}
-                    </div>
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mt-1 leading-tight line-clamp-2" title={item.judul}>
-                      {formatDisplayJudulBankSoal(item.judul, item.kode_bank, item.tingkat)}
-                    </h4>
-                  </div>
+                {/* 1. Header: Judul Utama di Atas (Sesuai Hirarki Desktop) */}
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm leading-snug line-clamp-2" title={item.judul}>
+                    {cleanJudul}
+                  </h4>
+                  {/* Metadata Chips: Kode Bank, MGMP badge, Mapel */}
+                  <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                    <span className="font-mono text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200/80 dark:border-indigo-800/60">
+                      {item.kode_bank}
+                    </span>
 
-                  <span
-                    className={cn(
-                      "px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 border flex items-center gap-1",
-                      isFromColleague
-                        ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800"
-                        : isSharedBank
-                        ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800"
-                        : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
-                    )}
-                  >
-                    {isFromColleague ? (
-                      <>
+                    {/* Badge MGMP ringkas */}
+                    {isMgmp && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                         <Users size={10} />
-                        <span>Paket MGMP</span>
-                      </>
-                    ) : isSharedBank ? (
-                      'Penyusun Utama'
-                    ) : (
-                      'Draft'
-                    )}
-                  </span>
-                </div>
-
-                {/* Strip Detail: Mapel, Durasi & Jumlah Soal */}
-                <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs">
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
-                      {isFromColleague ? `Penyusun: ${item.Guru?.nama_guru || 'Koordinator MGMP'}` : 'Mata Pelajaran'}
-                    </span>
-                    <p className="font-semibold text-slate-800 dark:text-slate-200 truncate mt-0.5">
-                      {item.display_mapel || item.Mapel?.nama_mapel || '-'}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0 pl-2.5 border-l border-slate-200 dark:border-slate-700">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Butir Soal
-                    </span>
-                    <span className="font-black text-indigo-600 dark:text-indigo-400">
-                      {questionCount} Soal
-                    </span>
-                    <span className="text-[10px] text-slate-400 ml-1">({item.alokasi_menit}m)</span>
-                  </div>
-                </div>
-
-                {/* Tombol Aksi: Jika Master dari Rekan -> Pratinjau & Aktifkan; Jika Milik Sendiri -> Kelola & Aktifkan */}
-                {isFromColleague && !readOnly ? (
-                  <div className="space-y-1.5 pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedBankSoal(item);
-                        setIsDetailModalOpen(true);
-                      }}
-                      className={cn(
-                        "w-full py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1.5",
-                        questionCount > 0
-                          ? "border border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100"
-                          : "border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
-                      )}
-                    >
-                      {canManageSoal ? <FileEdit size={14} /> : <Eye size={14} />}
-                      <span>
-                        {canManageSoal ? 'Kontribusi & Kelola Soal' : `Lihat Butir Soal (${questionCount} Soal)`}
+                        <span>MGMP</span>
                       </span>
-                    </button>
-
-                    {canSchedule && questionCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenJadwalModal(item)}
-                        className="w-full py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
-                      >
-                        <Rocket size={14} />
-                        <span>Aktifkan Ujian untuk Kelas Binaan</span>
-                      </button>
                     )}
 
-                    {questionCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setMultiRemedialBank(item)}
-                        className="w-full py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-200 border border-amber-300/80 dark:border-amber-700/80 flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
-                      >
-                        <RotateCw size={13} className="text-amber-600 dark:text-amber-400" />
-                        <span>Sesi Remedial Terpadu (Multi-Rombel)</span>
-                      </button>
+                    {/* Tingkat hanya jika tidak ada di judul */}
+                    {!cleanJudul.toLowerCase().includes(`tingkat ${romanTingkat}`.toLowerCase()) && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        Tingkat {romanTingkat}
+                      </span>
+                    )}
+
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                    <span className="text-xs text-slate-600 dark:text-slate-400 font-semibold truncate max-w-[140px]">
+                      {item.display_mapel || item.Mapel?.nama_mapel || '-'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 2. Detail Row: Penyusun, Butir Soal, Durasi */}
+                <div className="px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                  <div className="truncate text-slate-500 dark:text-slate-400">
+                    {isFromColleague ? (
+                      <span>Oleh: <strong className="text-slate-800 dark:text-slate-200">{(item.Guru?.nama_guru || 'Rekan').split(',')[0]}</strong></span>
+                    ) : (
+                      <strong className="text-emerald-700 dark:text-emerald-400">Mandiri (Anda)</strong>
                     )}
                   </div>
-                ) : (
-                  <div className="space-y-1.5 pt-0.5">
-                    <div className="flex items-center gap-1.5">
+                  <div className="shrink-0 font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <span className="text-indigo-600 dark:text-indigo-400 font-black">{questionCount} Soal</span>
+                    <span className="text-slate-400 font-normal">({item.alokasi_menit}m)</span>
+                  </div>
+                </div>
+
+                {/* 3. Aksi Kompak */}
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedBankSoal(item);
+                      setIsDetailModalOpen(true);
+                    }}
+                    className="flex-1 text-xs h-8 rounded-xl font-bold flex items-center justify-center gap-1 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50"
+                  >
+                    {canManageSoal ? (isFromColleague ? <Users size={12} /> : <FileEdit size={12} />) : <Eye size={12} />}
+                    <span>{isFromColleague ? 'Kontribusi Soal' : (questionCount > 0 ? 'Kelola Soal' : 'Mulai Buat')}</span>
+                  </Button>
+
+                  {!isFromColleague && !readOnly && (
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => {
                           setSelectedBankSoal(item);
-                          setIsDetailModalOpen(true);
+                          setIsFormModalOpen(true);
                         }}
-                        className={cn(
-                          "flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center justify-center gap-1.5",
-                          questionCount > 0 && !readOnly
-                            ? "border border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100"
-                            : "bg-indigo-600 hover:bg-indigo-700 text-white"
-                        )}
+                        className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 hover:text-slate-900 dark:text-slate-300 transition-colors cursor-pointer"
+                        title="Edit Bank Soal"
                       >
-                        <BookOpen size={14} />
-                        <span>{readOnly ? 'Lihat Soal' : (questionCount > 0 ? 'Susun & Kelola Soal' : 'Mulai Susun Soal')}</span>
+                        <Edit2 size={13} />
                       </button>
-
-                      {!readOnly && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedBankSoal(item);
-                              setIsFormModalOpen(true);
-                            }}
-                            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition-colors cursor-pointer"
-                            title="Edit Informasi Bank Soal"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(item)}
-                            className="p-2 rounded-xl border border-rose-200 dark:border-rose-900/50 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-                            title="Hapus Bank Soal"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item)}
+                        className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                        title="Hapus Bank Soal"
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
+                  )}
 
-                    {canSchedule && questionCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenJadwalModal(item)}
-                        className="w-full py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
-                      >
-                        <Rocket size={14} />
-                        <span>Aktifkan Ujian untuk Kelas Binaan</span>
-                      </button>
-                    )}
-
-                    {questionCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setMultiRemedialBank(item)}
-                        className="w-full py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-200 border border-amber-300/80 dark:border-amber-700/80 flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition-all"
-                      >
-                        <RotateCw size={13} className="text-amber-600 dark:text-amber-400" />
-                        <span>Sesi Remedial Terpadu (Multi-Rombel)</span>
-                      </button>
-                    )}
-                  </div>
-                )}
+                  {questionCount > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMultiRemedialBank(item)}
+                      className="text-xs h-8 px-2.5 rounded-xl font-bold border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 shrink-0 flex items-center gap-1"
+                      title="Sesi Remedial Akbar (Multi-Rombel)"
+                    >
+                      <RotateCw size={11} className="text-amber-600" />
+                      <span>Remedial Akbar</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          }}
               </div>
             );
           }}

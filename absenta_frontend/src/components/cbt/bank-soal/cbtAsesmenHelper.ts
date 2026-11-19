@@ -514,6 +514,70 @@ export function formatDisplayJudulBankSoal(rawJudul?: string | null, kodeBank?: 
 }
 
 /**
+ * SSOT: Resolusi Prefix Kanonikal Event Asesmen CBT (PSAS, PSAT, PSTS, PSAJ, UKK, TRYOUT)
+ * Menerima sembarang input (teks panjang event, kode event, dsb) dan mengembalikan singkatan baku resmi.
+ */
+export function resolveCbtEventPrefix(rawEventName?: string | null, rawEventCode?: string | null): string {
+  const combined = `${rawEventCode || ''} ${rawEventName || ''}`.toUpperCase().trim();
+  if (!combined) return 'PSAS';
+
+  if (combined.includes('AKHIR TAHUN') || combined.includes('KENAIKAN') || /\b(PSAT|SAT|PAT)\b/i.test(combined)) {
+    return 'PSAT';
+  }
+  if (combined.includes('TENGAH') || /\b(PSTS|STS|PTS|UTS)\b/i.test(combined)) {
+    return 'PSTS';
+  }
+  if (combined.includes('AKHIR JENJANG') || combined.includes('KELULUSAN') || /\b(PSAJ|AM|US|USBN)\b/i.test(combined)) {
+    return 'PSAJ';
+  }
+  if (combined.includes('KEJURUAN') || /\bUKK\b/i.test(combined)) {
+    return 'UKK';
+  }
+  if (combined.includes('SIMULASI') || combined.includes('TRYOUT') || /\b(TRY OUT|TRYOUT)\b/i.test(combined)) {
+    return 'TRYOUT';
+  }
+  // Default Semester 1 / Ganjil / Akhir Semester
+  return 'PSAS';
+}
+
+/**
+ * SSOT: Label Ringkas Event untuk Badge / Pill di UI (misal: 'PSAS Ganjil', 'PSAT Genap')
+ */
+export function resolveCbtEventShortPill(rawEventName?: string | null, rawEventCode?: string | null): string {
+  const prefix = resolveCbtEventPrefix(rawEventName, rawEventCode);
+  const combined = `${rawEventCode || ''} ${rawEventName || ''}`.toUpperCase().trim();
+  const isGenap = combined.includes('GENAP') || combined.includes('SEM. 2') || combined.includes('SEMESTER 2');
+
+  if (prefix === 'PSAS') return isGenap ? 'PSAS Genap' : 'PSAS Ganjil';
+  if (prefix === 'PSAT') return 'PSAT Genap';
+  if (prefix === 'PSTS') return isGenap ? 'PSTS Genap' : 'PSTS Ganjil';
+  return prefix;
+}
+
+/**
+ * SSOT: Generator Nama Sesi Ujian Standar Terpusat Panitia
+ * Format Baku: {PREFIX} - {MAPEL} [({JURUSAN})] ({KELAS} - {RUANG})
+ * Contoh: 'PSAS - MP-KODING AI (TOI) (X TJKT 2 - R.06)'
+ */
+export function formatCanonicalSesiUjian(params: {
+  eventPrefix?: string | null;
+  eventName?: string | null;
+  eventCode?: string | null;
+  mapelName: string;
+  targetJurusan?: string | null;
+  namaKelas: string;
+  slotRuang: string;
+}): string {
+  const { eventPrefix, eventName, eventCode, mapelName, targetJurusan, namaKelas, slotRuang } = params;
+  const cleanPrefix = resolveCbtEventPrefix(eventPrefix || eventName, eventCode);
+  const cleanJurusan = (targetJurusan || '').trim().toUpperCase();
+  const jurTag = cleanJurusan && cleanJurusan !== 'SEMUA' && cleanJurusan !== 'UMUM' ? ` (${cleanJurusan})` : '';
+  const cleanMapel = mapelName.trim();
+
+  return `${cleanPrefix} - ${cleanMapel}${jurTag} (${namaKelas} - ${slotRuang})`;
+}
+
+/**
  * Menghitung daftar tingkat kelas yang sah untuk asesmen tertentu secara dinamis
  * berdasarkan jenjang sekolah (SD: 1-6, SMP: 7-9, SMA: 10-12, SMK: 10-12/13).
  */

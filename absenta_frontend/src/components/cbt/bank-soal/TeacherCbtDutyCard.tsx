@@ -18,7 +18,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
 import { resolveBankTingkatNumber } from '../jadwal/cbtJadwalHelper';
-import { formatTingkatRomawi, isAssignmentMatchingJurusan } from './cbtAsesmenHelper';
+import { formatTingkatRomawi, isAssignmentMatchingJurusan, resolveCbtEventShortPill, formatDisplayJudulBankSoal } from './cbtAsesmenHelper';
 import { useTeacherCbtDutyStatus, type TeacherDutyItem } from './useTeacherCbtDutyStatus';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import { useAuthStore } from '@/store/authStore';
@@ -323,125 +323,126 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
       )}
     >
       {/* ── 1. Header Banner Humanis, Personal & Kompak ── */}
-      <div className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            className={cn(
-              'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs',
-              isFullyExempt
-                ? 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-none'
-                : uncreatedDuties === 0
-                ? 'bg-amber-500 text-white shadow-amber-200 dark:shadow-none'
-                : 'bg-rose-500 text-white shadow-rose-200 dark:shadow-none'
-            )}
-          >
-            {isFullyExempt ? (
-              <CheckCircle2 size={20} />
-            ) : uncreatedDuties === 0 ? (
-              <AlertTriangle size={20} />
-            ) : (
-              <AlertCircle size={20} />
-            )}
-          </div>
-
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-xs sm:text-sm font-black tracking-tight text-slate-900 dark:text-slate-100">
-                {isFullyExempt
-                  ? `Bagus sekali, ${teacherShortName}! Anda Bebas Tugas CBT 🎉`
-                  : uncreatedDuties > 0
-                  ? `Halo ${teacherShortName}, Ada ${uncreatedDuties} Bank Soal Belum Dibuat`
-                  : `Halo ${teacherShortName}, Ada ${draftDuties} Bank Soal Masih Draf (0 Soal)`}
-              </h3>
-
-              <span
-                className={cn(
-                  'text-[9.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider',
-                  isFullyExempt
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
-                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
-                )}
-              >
-                {isFullyExempt ? 'Bebas Tugas' : `${coveredDuties}/${totalDuties} Siap (${completionPercentage}%)`}
-              </span>
-
-              {activeEventName && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                  {activeEventName}
-                </span>
+      <div className="p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-2.5">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <div
+              className={cn(
+                'w-7 h-7 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs mt-0.5',
+                isFullyExempt
+                  ? 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-none'
+                  : uncreatedDuties === 0
+                  ? 'bg-amber-500 text-white shadow-amber-200 dark:shadow-none'
+                  : 'bg-rose-500 text-white shadow-rose-200 dark:shadow-none'
+              )}
+            >
+              {isFullyExempt ? (
+                <CheckCircle2 size={16} />
+              ) : uncreatedDuties === 0 ? (
+                <AlertTriangle size={16} />
+              ) : (
+                <AlertCircle size={16} />
               )}
             </div>
 
-            {isFullyExempt ? (
-              <p className="text-[11px] text-emerald-700/90 dark:text-emerald-300/80 mt-0.5 leading-relaxed">
-                Seluruh rombel binaan Anda ({items.length} mata pelajaran, {totalRombelCount} kelas) telah memiliki naskah bank soal siap pakai.
-              </p>
-            ) : uncreatedDuties > 0 && onCreateBankSoal ? (
-              <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-300">
-                  Aksi Cepat:
-                </span>
-                {items
-                  .filter((it) => it.status === 'PENDING')
-                  .map((it) => (
-                    <button
-                      key={it.key}
-                      type="button"
-                      onClick={() => onCreateBankSoal(it.mapelId, it.tingkatRoman, it.targetJurusan)}
-                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/60 shadow-2xs transition-all cursor-pointer group"
-                      title={`Klik untuk buat bank soal ${it.mapelName} ${it.targetJurusan ? `Jurusan ${it.targetJurusan}` : `Tingkat ${it.tingkatRoman}`}`}
-                    >
-                      <Plus size={11} className="text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform" />
-                      <span>
-                        Buat {it.mapelName} {it.targetJurusan && it.targetJurusan !== 'UMUM' ? `(${it.targetJurusan})` : `(${it.tingkatRoman})`}
-                      </span>
-                    </button>
-                  ))}
-              </div>
-            ) : uncreatedDuties === 0 && draftDuties > 0 && onPreviewBankSoal ? (
-              <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-                  Perlu Diisi:
-                </span>
-                {items
-                  .filter((it) => (it.status === 'DRAFT_OWN' || it.status === 'DRAFT_MGMP') && it.bankSoal)
-                  .map((it) => (
-                    <button
-                      key={it.key}
-                      type="button"
-                      onClick={() => onPreviewBankSoal(it.bankSoal!)}
-                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/60 shadow-2xs transition-all cursor-pointer group"
-                      title={`Klik untuk kelola butir soal ${it.mapelName}`}
-                    >
-                      <FileEdit size={11} className="text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
-                      <span>
-                        Kelola Soal {it.mapelName} {it.targetJurusan && it.targetJurusan !== 'UMUM' ? `(${it.targetJurusan})` : `(${it.tingkatRoman})`}
-                      </span>
-                    </button>
-                  ))}
-              </div>
-            ) : (
-              <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed truncate">
-                {pendingJurusanSummary
-                  ? `Perlu perhatian: ${pendingJurusanSummary}.`
-                  : 'Terdapat kelas binaan yang belum memiliki bank soal siap pakai.'}
-              </p>
-            )}
-          </div>
-        </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h3 className="text-xs sm:text-sm font-black tracking-tight text-slate-900 dark:text-slate-100">
+                  {isFullyExempt
+                    ? `Bagus sekali, ${teacherShortName}! Anda Bebas Tugas CBT 🎉`
+                    : uncreatedDuties > 0
+                    ? `Halo ${teacherShortName}, Ada ${uncreatedDuties} Bank Soal Belum Dibuat`
+                    : `Halo ${teacherShortName}, Ada ${draftDuties} Bank Soal Masih Draf (0 Soal)`}
+                </h3>
 
-        {/* Toggle Compact Button */}
-        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <span
+                  className={cn(
+                    'text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-wider',
+                    isFullyExempt
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                  )}
+                >
+                  {isFullyExempt ? 'Bebas Tugas' : `${coveredDuties}/${totalDuties} Siap (${completionPercentage}%)`}
+                </span>
+
+                {activeEventName && (
+                  <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                    {resolveCbtEventShortPill(activeEventName)}
+                  </span>
+                )}
+              </div>
+
+              {isFullyExempt ? (
+                <p className="text-[11px] text-emerald-700/90 dark:text-emerald-300/80 mt-1 leading-relaxed">
+                  Seluruh rombel binaan Anda ({items.length} mata pelajaran, {totalRombelCount} kelas) telah memiliki naskah bank soal siap pakai.
+                </p>
+              ) : uncreatedDuties > 0 && onCreateBankSoal ? (
+                <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                  <span className="text-[10.5px] font-semibold text-rose-700 dark:text-rose-300">
+                    Aksi Cepat:
+                  </span>
+                  {items
+                    .filter((it) => it.status === 'PENDING')
+                    .map((it) => (
+                      <button
+                        key={it.key}
+                        type="button"
+                        onClick={() => onCreateBankSoal(it.mapelId, it.tingkatRoman, it.targetJurusan)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/60 shadow-2xs transition-all cursor-pointer group"
+                        title={`Klik untuk buat bank soal ${it.mapelName} ${it.targetJurusan ? `Jurusan ${it.targetJurusan}` : `Tingkat ${it.tingkatRoman}`}`}
+                      >
+                        <Plus size={11} className="text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform" />
+                        <span>
+                          Buat {it.mapelName} {it.targetJurusan && it.targetJurusan !== 'UMUM' ? `(${it.targetJurusan})` : `(${it.tingkatRoman})`}
+                        </span>
+                      </button>
+                    ))}
+                </div>
+              ) : uncreatedDuties === 0 && draftDuties > 0 && onPreviewBankSoal ? (
+                <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                  <span className="text-[10.5px] font-semibold text-amber-700 dark:text-amber-300">
+                    Perlu Diisi:
+                  </span>
+                  {items
+                    .filter((it) => (it.status === 'DRAFT_OWN' || it.status === 'DRAFT_MGMP') && it.bankSoal)
+                    .map((it) => (
+                      <button
+                        key={it.key}
+                        type="button"
+                        onClick={() => onPreviewBankSoal(it.bankSoal!)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/60 shadow-2xs transition-all cursor-pointer group"
+                        title={`Klik untuk kelola butir soal ${it.mapelName}`}
+                      >
+                        <FileEdit size={11} className="text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
+                        <span>
+                          Kelola Soal {it.mapelName} {it.targetJurusan && it.targetJurusan !== 'UMUM' ? `(${it.targetJurusan})` : `(${it.tingkatRoman})`}
+                        </span>
+                      </button>
+                    ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-relaxed truncate">
+                  {pendingJurusanSummary
+                    ? `Perlu perhatian: ${pendingJurusanSummary}.`
+                    : 'Terdapat kelas binaan yang belum memiliki bank soal siap pakai.'}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Toggle Compact Button */}
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-xs h-7 px-2.5 rounded-lg border-slate-300 dark:border-slate-700 font-bold flex items-center gap-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="text-[11px] h-7 px-2 sm:px-2.5 rounded-lg border-slate-300 dark:border-slate-700 font-bold flex items-center gap-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
           >
-            <Layers size={12} className="text-slate-500" />
-            <span>{isExpanded ? 'Sembunyikan Rincian' : `Lihat Rincian (${items.length} Mapel)`}</span>
-            {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            <Layers size={11} className="text-slate-500" />
+            <span className="hidden sm:inline">{isExpanded ? 'Sembunyikan Rincian' : `Lihat Rincian (${items.length} Mapel)`}</span>
+            <span className="sm:hidden">{isExpanded ? 'Tutup' : 'Rincian'}</span>
+            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
           </Button>
         </div>
       </div>
@@ -717,45 +718,44 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                 <div
                   key={item.key}
                   className={cn(
-                    'p-3 rounded-xl border text-xs space-y-2 transition-all',
+                    'p-3 rounded-xl border text-xs space-y-2 transition-all shadow-2xs',
                     isCovered
-                      ? 'bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-900/60'
+                      ? 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800'
                       : isDraft
-                      ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-300/80 dark:border-amber-800/60'
-                      : 'bg-rose-50/40 dark:bg-rose-950/20 border-rose-300/80 dark:border-rose-900/60'
+                      ? 'bg-amber-50/30 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60'
+                      : 'bg-rose-50/30 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/60'
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-bold text-slate-900 dark:text-slate-100 text-xs">
+                  {/* Row 1: Header Mapel, Tingkat, Jurusan & Status Badge */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                      <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">
                         {item.mapelName}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                          Tingkat {item.tingkatRoman}
+                      </span>
+                      <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        {item.tingkatRoman}
+                      </span>
+                      {item.targetJurusan && item.targetJurusan !== 'UMUM' && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-mono">
+                          {item.targetJurusan}
                         </span>
-                        {item.targetJurusan && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300">
-                            Jurusan {item.targetJurusan}
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
 
                     {/* Status Badge */}
-                    <div>
+                    <div className="shrink-0">
                       {isCovered ? (
-                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-100/80 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full">
                           <CheckCircle2 size={10} />
                           <span>Siap Diuji</span>
                         </span>
                       ) : isDraft ? (
-                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/80 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-amber-800 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-950/80 px-2 py-0.5 rounded-full">
                           <AlertTriangle size={10} />
                           <span>Draf (0 Soal)</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-rose-800 dark:text-rose-200 bg-rose-100 dark:bg-rose-950/80 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-rose-800 dark:text-rose-200 bg-rose-100/80 dark:bg-rose-950/80 px-2 py-0.5 rounded-full">
                           <AlertCircle size={10} />
                           <span>Belum Dibuat</span>
                         </span>
@@ -763,39 +763,37 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                     </div>
                   </div>
 
-                  {/* Rombel Binaan */}
-                  <div className="text-[10.5px]">
-                    <span className="text-slate-400">Kelas Binaan: </span>
-                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                  {/* Row 2: Kelas Binaan */}
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                    <span>Kelas: </span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">
                       {item.rombelNames?.join(', ') || `Semua Rombel Tingkat ${item.tingkatRoman}`}
                     </span>
                   </div>
 
-                  {/* Naskah Info */}
-                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between gap-2">
-                    <div className="text-[10.5px]">
+                  {/* Row 3: Naskah Bank Soal & Tombol Aksi */}
+                  <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                    <div className="text-[11px] min-w-0 flex-1">
                       {activeBank ? (
-                        <div className="space-y-0.5">
-                          <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">
-                            {activeBank.judul}
+                        <div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200 truncate" title={activeBank.judul}>
+                            {formatDisplayJudulBankSoal(activeBank.judul, activeBank.kode_bank, activeBank.tingkat)}
                           </div>
-                          <div className="flex items-center gap-1 text-[9.5px] text-slate-500">
-                            <span>{count} Soal</span>
+                          <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            <span className="font-bold text-indigo-600 dark:text-indigo-400">{count} Soal</span>
                             <span>•</span>
-                            {isOwn ? (
-                              <span>Mandiri (Anda)</span>
-                            ) : (
-                              <span>Oleh: {item.masterAuthorName || activeBank.Guru?.nama_guru || 'Rekan'}</span>
-                            )}
+                            <span>{isOwn ? 'Mandiri (Anda)' : `Oleh: ${(item.masterAuthorName || activeBank.Guru?.nama_guru || 'Rekan').split(',')[0]}`}</span>
                           </div>
                         </div>
                       ) : (
-                        <span className="text-slate-400 italic">Belum ada bank soal</span>
+                        <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">
+                          Belum ada naskah bank soal
+                        </span>
                       )}
                     </div>
 
                     {/* Action Button */}
-                    <div>
+                    <div className="shrink-0">
                       {item.status === 'PENDING' && onCreateBankSoal && (
                         <Button
                           type="button"
@@ -803,9 +801,9 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                           onClick={() =>
                             onCreateBankSoal(item.mapelId, item.tingkatRoman, item.targetJurusan)
                           }
-                          className="text-[11px] h-6 px-2.5 rounded bg-indigo-600 text-white font-bold"
+                          className="text-[11px] h-6 px-2.5 rounded-lg bg-indigo-600 text-white font-bold flex items-center gap-1"
                         >
-                          <Plus size={10} className="mr-0.5" />
+                          <Plus size={10} />
                           <span>Buat</span>
                         </Button>
                       )}
@@ -815,9 +813,9 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                           type="button"
                           size="sm"
                           onClick={() => onPreviewBankSoal(item.bankSoal!)}
-                          className="text-[11px] h-6 px-2.5 rounded bg-amber-500 text-white font-bold"
+                          className="text-[11px] h-6 px-2.5 rounded-lg bg-amber-500 text-white font-bold flex items-center gap-1"
                         >
-                          <FileEdit size={10} className="mr-0.5" />
+                          <FileEdit size={10} />
                           <span>Kelola</span>
                         </Button>
                       )}
@@ -828,40 +826,34 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
                           variant="ghost"
                           size="sm"
                           onClick={() => onPreviewBankSoal(item.bankSoal!)}
-                          className="text-[11px] h-6 px-2 text-slate-600 dark:text-slate-300"
+                          className="text-[11px] h-6 px-2 rounded-lg text-slate-600 dark:text-slate-300 font-bold flex items-center gap-1"
                         >
-                          <Eye size={10} className="mr-0.5" />
+                          <Eye size={10} />
                           <span>Lihat</span>
                         </Button>
                       )}
                     </div>
                   </div>
 
-                  {/* Dibagikan Kepada (Mobile) */}
-                  {recipients.length > 0 ? (
-                    <div className="text-[10.5px] pt-1.5 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                      <div className="text-slate-400 font-medium text-[10px]">Dibagikan Kepada:</div>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {recipients.map((r) => (
-                          <span
-                            key={r.id}
-                            className={cn(
-                              'text-[9.5px] font-semibold px-1.5 py-0.2 rounded border',
-                              r.isSelf
-                                ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                            )}
-                          >
-                            {r.nama} {r.isSelf && '(Anda)'}
-                          </span>
-                        ))}
-                      </div>
+                  {/* Row 4: Dibagikan Kepada (Clean Inline Text / Chips) */}
+                  {recipients.length > 0 && (
+                    <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-1 flex-wrap text-[10px]">
+                      <span className="text-slate-400 shrink-0 font-medium">Dibagikan ke:</span>
+                      {recipients.map((r, rIdx) => (
+                        <span
+                          key={r.id}
+                          className={cn(
+                            'font-semibold',
+                            r.isSelf
+                              ? 'text-indigo-600 dark:text-indigo-400 font-bold'
+                              : 'text-slate-600 dark:text-slate-300'
+                          )}
+                        >
+                          {r.nama.split(',')[0]}{r.isSelf ? ' (Anda)' : ''}{rIdx < recipients.length - 1 ? ',' : ''}
+                        </span>
+                      ))}
                     </div>
-                  ) : activeBank && !isSharedMgmp ? (
-                    <div className="text-[10px] text-slate-400 italic pt-1 border-t border-slate-100 dark:border-slate-800">
-                      Mandiri (Hanya Anda)
-                    </div>
-                  ) : null}
+                  )}
                 </div>
               );
             })}

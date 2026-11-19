@@ -99,6 +99,18 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
     else if (preset === '11') setTargetTingkat([11]);
   };
 
+  const applyEventTemplate = (
+    nama: string,
+    kode: string,
+    sem: 'GANJIL' | 'GENAP',
+    tingkat: number[]
+  ) => {
+    setNamaEvent(nama);
+    setKodeEvent(kode);
+    setSemester(sem);
+    setTargetTingkat(tingkat);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!namaEvent.trim()) {
@@ -184,6 +196,41 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Preset Standar SSOT Kurikulum / Asesmen */}
+        <div className="space-y-1.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <span>🎯</span>
+              <span>Template Standar Ujian (SSOT)</span>
+            </span>
+            <span className="text-[10px] text-slate-500">Klik untuk auto-fill nama & kode</span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+            {[
+              { label: 'PSAS Ganjil', nama: 'Penilaian Sumatif Akhir Semester (PSAS) Ganjil', kode: 'PSAS-GANJIL', sem: 'GANJIL' as const, tingkat: [10, 11, 12] },
+              { label: 'PSAT Genap', nama: 'Penilaian Sumatif Akhir Tahun (PSAT) Genap', kode: 'PSAT-GENAP', sem: 'GENAP' as const, tingkat: [10, 11] },
+              { label: 'PSTS Ganjil', nama: 'Penilaian Sumatif Tengah Semester (PSTS) Ganjil', kode: 'PSTS-GANJIL', sem: 'GANJIL' as const, tingkat: [10, 11, 12] },
+              { label: 'PSTS Genap', nama: 'Penilaian Sumatif Tengah Semester (PSTS) Genap', kode: 'PSTS-GENAP', sem: 'GENAP' as const, tingkat: [10, 11, 12] },
+              { label: 'PSAJ (Kls XII)', nama: 'Penilaian Sumatif Akhir Jenjang (PSAJ)', kode: 'PSAJ', sem: 'GENAP' as const, tingkat: [12] },
+              { label: 'UKK', nama: 'Uji Kompetensi Keahlian (UKK)', kode: 'UKK', sem: 'GENAP' as const, tingkat: [12] },
+            ].map((tmpl) => (
+              <button
+                key={tmpl.label}
+                type="button"
+                onClick={() => applyEventTemplate(tmpl.nama, tmpl.kode, tmpl.sem, tmpl.tingkat)}
+                className={cn(
+                  'text-[10.5px] font-bold px-2 py-1 rounded-lg border transition-all cursor-pointer',
+                  namaEvent === tmpl.nama
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600'
+                )}
+              >
+                {tmpl.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Nama & Kode Event */}

@@ -2,6 +2,7 @@ import type { CbtBankSoal, CbtJadwalUjian } from '@/types/cbt.types';
 import { localDateTimeInputToISO } from '@/utils/attendance/time';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
 import { detectNodeTingkat } from '@/components/spasial/denahTingkatHelper';
+import { resolveCbtEventPrefix, formatCanonicalSesiUjian, formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 
 // ==========================================
 // 1. DATA STRUCTURES & INTERFACES
@@ -578,12 +579,8 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
   const roomMapByKelasId = new Map(roomMappings.map((m) => [m.kelas_id, m]));
   const groupedRoomsByTingkat = groupMappingsByTingkat(roomMappings);
 
-  // Standardisasi Nomenklatur: Ganti SAS/SAT/STS menjadi PSAS/PSAT/PSTS sesuai regulasi asesmen sumatif
-  const rawPrefix = (eventPrefix || 'PSAS Ganjil').trim();
-  const normalizedPrefix = rawPrefix
-    .replace(/^SAS\b/i, 'PSAS')
-    .replace(/^SAT\b/i, 'PSAT')
-    .replace(/^STS\b/i, 'PSTS');
+  // Standardisasi Nomenklatur SSOT: Gunakan prefix kanonikal (PSAS, PSAT, PSTS, PSAJ, UKK, TRYOUT)
+  const canonicalEventPrefix = resolveCbtEventPrefix(eventPrefix);
 
   const payloads: any[] = [];
 
@@ -644,7 +641,13 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
               bank_soal_id: bank.id,
               tahun_pelajaran_id: activeTpId,
               semester_id: activeSemId,
-              nama_sesi: `${normalizedPrefix} - ${mapelName} (${cls.nama_kelas} - ${slotRuang})`,
+              nama_sesi: formatCanonicalSesiUjian({
+                eventPrefix: canonicalEventPrefix,
+                mapelName,
+                targetJurusan: bank.jurusan,
+                namaKelas: cls.nama_kelas,
+                slotRuang,
+              }),
               tanggal_mulai: startIso,
               tanggal_selesai: endIso,
               durasi_menit: session.durasi_menit || bank.alokasi_menit || 60,
@@ -737,7 +740,13 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
                 bank_soal_id: effectiveBank.id,
                 tahun_pelajaran_id: activeTpId,
                 semester_id: activeSemId,
-                nama_sesi: `${normalizedPrefix} - ${mapelName}${jurTag} (${cls.nama_kelas} - ${slotRuang})`,
+                nama_sesi: formatCanonicalSesiUjian({
+                  eventPrefix: canonicalEventPrefix,
+                  mapelName,
+                  targetJurusan: effectiveBank.jurusan,
+                  namaKelas: cls.nama_kelas,
+                  slotRuang,
+                }),
                 tanggal_mulai: startIso,
                 tanggal_selesai: endIso,
                 durasi_menit: session.durasi_menit || effectiveBank.alokasi_menit || 60,
@@ -785,14 +794,14 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
                 }
               });
 
-              const mapelName = effectiveBank.Mapel?.nama_mapel || effectiveBank.MataPelajaran?.nama_mapel || effectiveBank.judul;
-              const jurTag = effectiveBank.jurusan ? ` [${effectiveBank.jurusan}]` : '';
+              const cleanJur = (effectiveBank.jurusan || '').trim().toUpperCase();
+              const jurTag = cleanJur && cleanJur !== 'SEMUA' && cleanJur !== 'UMUM' ? ` (${cleanJur})` : '';
 
               payloads.push({
                 bank_soal_id: effectiveBank.id,
                 tahun_pelajaran_id: activeTpId,
                 semester_id: activeSemId,
-                nama_sesi: `${normalizedPrefix} - ${mapelName}${jurTag} (Tingkat ${tingkat} - ${session.nama_sesi})`,
+                nama_sesi: `${canonicalEventPrefix} - ${mapelName}${jurTag} (Tingkat ${formatTingkatRomawi(tingkat)} - ${session.nama_sesi})`,
                 tanggal_mulai: startIso,
                 tanggal_selesai: endIso,
                 durasi_menit: session.durasi_menit || effectiveBank.alokasi_menit || 60,
