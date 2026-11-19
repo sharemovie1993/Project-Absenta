@@ -173,11 +173,13 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
     ].filter((d) => d.value > 0);
   }, [statusBreakdown]);
 
-  // Sorting rombel kelas (Top 3 & Attention 3)
+  // Sorting rombel kelas (Top 3 & Attention 3) — Hanya rombel yang memiliki jadwal/kuota sesi aktif
   const sortedKelas = useMemo(() => {
     if (!kelasList.length) return { top: [], attention: [], hasData: false };
-    const hasData = kelasList.some((k) => (k.hadir || 0) > 0);
-    const sorted = [...kelasList].sort((a, b) => b.persen - a.persen);
+    const activeKelas = kelasList.filter((k) => (k.total || 0) > 0);
+    const pool = activeKelas.length > 0 ? activeKelas : kelasList;
+    const hasData = pool.some((k) => (k.hadir || 0) > 0);
+    const sorted = [...pool].sort((a, b) => b.persen - a.persen);
     return {
       top: sorted.slice(0, 3),
       attention: sorted.slice(-3).reverse(),
@@ -408,14 +410,8 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
               </div>
 
               <div className="h-64 sm:h-72 w-full pt-2">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minWidth={0} width="100%" height="100%">
                   <AreaChart data={chartTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorKehadiran" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.6} />
                     <XAxis
                       dataKey="name"
@@ -464,8 +460,11 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                       dataKey="kehadiran"
                       stroke="#f59e0b"
                       strokeWidth={2.5}
-                      fillOpacity={1}
-                      fill="url(#colorKehadiran)"
+                      fill="#f59e0b"
+                      fillOpacity={0.22}
+                      dot={{ r: 3, fill: '#f59e0b', strokeWidth: 0 }}
+                      activeDot={{ r: 5 }}
+                      isAnimationActive={false}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -489,7 +488,7 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
               ) : (
                 <>
                   <div className="h-44 w-full relative flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer minWidth={0} width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={donutData}
@@ -497,6 +496,7 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                           outerRadius={68}
                           paddingAngle={3}
                           dataKey="value"
+                          isAnimationActive={false}
                         >
                           {donutData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />

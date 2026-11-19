@@ -151,20 +151,22 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
     staleTime: 30 * 1000,
   });
 
-  const sesiId = sesiData?.sesi?.id;
+  const sesiId = sesiData?.data?.id ?? (sesiData as any)?.sesi?.id ?? null;
 
   // 3. Stats Agregat
-  const { data: stats, isLoading: isStatsLoading, refetch: refetchStats } = useQuery({
+  const { data: statsData, isLoading: isStatsLoading, refetch: refetchStats } = useQuery({
     queryKey: ['ketarunaan-stats', jadwalKegiatanId, selectedTpId, selectedSemId],
     queryFn: () =>
       getKetarunaanStats({
-        jadwal_kegiatan_id: jadwalKegiatanId,
+        jadwal_kegiatan_id: jadwalKegiatanId ?? undefined,
         tahun_pelajaran_id: selectedTpId || undefined,
         semester_id: selectedSemId || undefined,
       }),
-    enabled: Boolean(guard?.is_active && jadwalKegiatanId),
+    enabled: Boolean(guard?.is_active),
     staleTime: 60 * 1000,
   });
+
+  const stats = statsData?.data ?? (statsData as any);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -173,9 +175,10 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
   };
 
   const hariAktifLabel = useMemo(() => {
-    if (!guard?.jadwal_hari || guard.jadwal_hari.length === 0) return null;
-    return guard.jadwal_hari.map((h: string) => HARI_LABEL[h] || h).join(', ');
-  }, [guard?.jadwal_hari]);
+    const list = guard?.hari_aktif || (guard as any)?.jadwal_hari || [];
+    if (!list.length) return null;
+    return list.map((h: string) => HARI_LABEL[h] || h).join(', ');
+  }, [guard]);
 
   // Stat cards
   const statCards = useMemo(() => {

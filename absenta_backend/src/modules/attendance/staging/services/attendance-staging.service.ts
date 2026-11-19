@@ -307,6 +307,17 @@ export class AttendanceStagingService {
       }
     });
 
+    // 4b. Ambil Wali Kelas / Pendamping Rombel ini untuk pencatatan kepatuhan pembina
+    const waliAssign = await prisma.organizationalAssign.findFirst({
+      where: {
+        kelas_id: targetKelasId,
+        is_active: true,
+        OrganizationalPosition: { tenant_id: tenantId, code: 'WALIKELAS', is_active: true },
+      },
+      include: { User: { include: { Guru: { select: { id: true } } } } },
+    });
+    const waliGuruId = waliAssign?.User?.Guru?.id || null;
+
     // 5. Eksekusi Sinkronisasi per Sesi dalam Transaksi Atomik
     const summaryCounters = {
       totalSesi: rawData.sessions.length,
@@ -376,6 +387,32 @@ export class AttendanceStagingService {
         else if (sessionType === 'KETARUNAAN') summaryCounters.ketarunaanSessions++;
         else if (sessionType === 'DUHA') summaryCounters.duhaSessions++;
         else if (sessionType === 'APEL_SORE') summaryCounters.apelSoreSessions++;
+
+        // Masukkan / Upsert AbsenGuru untuk Wali Kelas / Pendamping Rombel
+        if (waliGuruId) {
+          await tx.absenGuru.upsert({
+            where: {
+              sesi_id_guru_id: {
+                sesi_id: sesi.id,
+                guru_id: waliGuruId,
+              },
+            },
+            update: {
+              status: 'HADIR',
+              waktu_tap: sesi.waktu_mulai || sessionDate,
+            },
+            create: {
+              tenant_id: tenantId,
+              sesi_id: sesi.id,
+              guru_id: waliGuruId,
+              status: 'HADIR',
+              waktu_tap: sesi.waktu_mulai || sessionDate,
+              tahun_pelajaran_id: tp.id,
+              semester_id: sem.id,
+              catatan: `Pendamping Rombel / Wali Kelas (${sheetRecord.nama_kelas})`,
+            },
+          });
+        }
 
         // Masukkan / Upsert AbsenSiswa
         for (const student of rawData.students) {

@@ -886,7 +886,7 @@ export class UnifiedKegiatanService {
       }
     }
 
-    const sesiList = await prisma.sesiAbsensi.findMany({
+    const sesiListRaw = await prisma.sesiAbsensi.findMany({
       where: sesiWhere,
       include: {
         _count: {
@@ -898,6 +898,12 @@ export class UnifiedKegiatanService {
       },
       orderBy: { tanggal: 'asc' },
     });
+
+    // Saring keluar sesi placeholder/template MENDATANG yang belum pernah dieksekusi (0 AbsenSiswa & 0 AbsenGuru)
+    const executedSesiList = sesiListRaw.filter(
+      (s) => !(s.status === 'MENDATANG' && s._count.AbsenSiswa === 0 && s._count.AbsenGuru === 0)
+    );
+    const sesiList = executedSesiList.length > 0 ? executedSesiList : sesiListRaw;
 
     const totalSiswaMaster = await prisma.siswaAkademik.count({
       where: {
@@ -1262,13 +1268,40 @@ export class UnifiedKegiatanService {
       };
     });
 
-    // ── ANALITIK TAMBAHAN 5: Barometer Kelulusan & Kesiapan Sertifikat Ketarunaan ──
-    const totalStudentsTarget = totalSiswaMaster;
-    const avgDisiplin = avgPersenSiswa;
-    const siapSertifikasi = Math.round((totalStudentsTarget * Math.min(avgDisiplin, 100)) / 100);
-    const butuhPendampingan = Math.max(totalStudentsTarget - siapSertifikasi, 0);
+    // ── ANALITIK TAMBAHAN 5: Barometer Kelulusan & Kesiapan Sertifikat Ketarunaan (Per-Taruna SSOT) ──
+    const studentTotalRaw = await prisma.absenSiswa.groupBy({
+      by: ['siswa_id'],
+      where: {
+        sesi_id: { in: sesiIds },
+        tenant_id: tenantId,
+      },
+      _count: { id: true },
+    });
+    const studentHadirRaw = await prisma.absenSiswa.groupBy({
+      by: ['siswa_id'],
+      where: {
+        sesi_id: { in: sesiIds },
+        tenant_id: tenantId,
+        status: { in: ['HADIR', 'DISPENSASI'] },
+      },
+      _count: { id: true },
+    });
+    const studentHadirMap = new Map(studentHadirRaw.map(r => [r.siswa_id, r._count.id]));
+
+    let siapSertifikasi = 0;
+    let butuhPendampingan = 0;
+    for (const st of studentTotalRaw) {
+      if (!st.siswa_id) continue;
+      const hCount = studentHadirMap.get(st.siswa_id) || 0;
+      const pct = st._count.id > 0 ? (hCount / st._count.id) * 100 : 0;
+      if (pct >= 80) siapSertifikasi++;
+      else butuhPendampingan++;
+    }
+
+    const totalTarunaPartisipan = siapSertifikasi + butuhPendampingan;
+    const totalStudentsTarget = totalTarunaPartisipan > 0 ? totalTarunaPartisipan : totalSiswaMaster;
     const barometer_sertifikasi = {
-      indeks_disiplin: avgDisiplin,
+      indeks_disiplin: avgPersenSiswa,
       total_taruna: totalStudentsTarget,
       siap_sertifikasi: siapSertifikasi,
       butuh_pembinaan: butuhPendampingan,
