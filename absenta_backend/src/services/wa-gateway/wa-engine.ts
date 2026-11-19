@@ -624,6 +624,40 @@ export const waGatewayServiceLocal = {
     );
   },
 
+  /**
+   * Kirim berkas foto/gambar via WA ke nomor individual maupun Group JID.
+   * Menerima imageBase64 (aman untuk Redis cluster RPC antar worker PM2).
+   */
+  async sendImage(
+    tenantId: string,
+    target: string,
+    imageBase64: string,
+    caption = '',
+    mimetype = 'image/jpeg',
+  ): Promise<boolean> {
+    const jid = resolveWaTargetJid(target);
+    const cleanBase64 = String(imageBase64 || '').replace(/^data:[^;]+;base64,/, '').trim();
+    if (!cleanBase64) {
+      throw new Error('Payload gambar (imageBase64) kosong.');
+    }
+    const imageBuffer = Buffer.from(cleanBase64, 'base64');
+    if (!imageBuffer.length) {
+      throw new Error('Buffer gambar tidak valid atau kosong.');
+    }
+
+    return sendBaileysPayloadWithRetry(
+      tenantId,
+      jid,
+      {
+        image: imageBuffer,
+        mimetype: mimetype || 'image/jpeg',
+        ...(caption ? { caption } : {}),
+      },
+      25000,
+      `gambar -> ${jid}`,
+    );
+  },
+
   async sendMessageSoft(tenantId: string, nomor: string | null | undefined, pesan: string, source?: string): Promise<void> {
     if (!nomor) return;
     try {
@@ -976,6 +1010,8 @@ async function executeLocalMethod(method: string, tenantId: string, args: any[] 
       return waGatewayServiceLocal.sendMessageToJid(tenantId, args[0], args[1]);
     case 'sendDocument':
       return waGatewayServiceLocal.sendDocument(tenantId, args[0], args[1], args[2], args[3], args[4]);
+    case 'sendImage':
+      return waGatewayServiceLocal.sendImage(tenantId, args[0], args[1], args[2], args[3]);
     case 'getParticipatingGroups':
       return waGatewayServiceLocal.getParticipatingGroups(tenantId, args[0]);
     case 'getStatus':
@@ -1005,7 +1041,7 @@ export async function callMasterViaRpc(method: string, tenantId: string, args: a
 
   const reqId = randomUUID();
   const resChannel = `wa:cluster:rpc:res:${reqId}`;
-  const rpcTimeoutMs = method === 'sendDocument' ? 35000 : 15000;
+  const rpcTimeoutMs = (method === 'sendDocument' || method === 'sendImage') ? 35000 : 15000;
 
   return new Promise(async (resolve, reject) => {
     let sub: any = null;

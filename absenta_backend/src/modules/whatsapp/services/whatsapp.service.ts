@@ -251,6 +251,70 @@ export class WhatsappService {
   }
 
   /**
+   * Mengirim berkas foto/gambar langsung ke nomor personal atau Grup (@g.us).
+   */
+  async sendImage(
+    tenantId: string,
+    toOrJid: string,
+    imageBase64: string,
+    caption = '',
+    options: { senderMode?: 'AUTO' | 'GATEWAY' | 'PLATFORM' | 'USER'; userId?: string | null } = {},
+  ) {
+    if (!tenantId) {
+      throw new Error('Tenant ID tidak ditemukan.');
+    }
+    const trimmedTarget = String(toOrJid || '').trim();
+    if (!trimmedTarget) {
+      throw new Error('Nomor tujuan atau Grup WhatsApp wajib diisi.');
+    }
+
+    const target = trimmedTarget.includes('@')
+      ? trimmedTarget
+      : normalizeToWaNumber(trimmedTarget);
+
+    const cleanBase64 = String(imageBase64 || '').replace(/^data:[^;]+;base64,/, '').trim();
+    if (!cleanBase64) {
+      throw new Error('Payload gambar (base64) kosong.');
+    }
+
+    const buffer = Buffer.from(cleanBase64, 'base64');
+    if (buffer.length === 0) {
+      throw new Error('Data gambar tidak valid.');
+    }
+
+    const { waGatewayService } = await import('../../../services/wa-gateway.service');
+
+    // 1. Coba kirim via Local Baileys
+    try {
+      await waGatewayService.sendImage(
+        tenantId,
+        target,
+        cleanBase64,
+        caption || '',
+        'image/jpeg'
+      );
+      return { sent: true, target, provider: 'SCHOOL_LOCAL' };
+    } catch (localErr: any) {
+      // 2. Fallback via Fonnte / Gateway Config jika dikonfigurasi
+      const config = await this.getConfig(tenantId);
+      if (config?.api_url && config?.api_token && config?.is_active) {
+        const form = new FormData();
+        form.append('target', target);
+        form.append('message', caption || '');
+        form.append('countryCode', '62');
+        form.append('file', new Blob([buffer], { type: 'image/jpeg' }), 'kbm-kehadiran.jpg');
+
+        const response = await axios.post(config.api_url, form, {
+          headers: { Authorization: config.api_token },
+          timeout: 30000,
+        });
+        return { sent: true, target, provider: `SCHOOL_${config.provider_name}`, raw: response.data };
+      }
+      throw localErr;
+    }
+  }
+
+  /**
    * Mengirim pesan teks universal via WA Gateway ke nomor personal atau Grup (@g.us).
    */
   async sendTextMessage(

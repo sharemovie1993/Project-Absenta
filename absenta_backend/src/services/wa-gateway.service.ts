@@ -27,6 +27,15 @@ export const waGatewayService = {
   ): Promise<boolean> {
     return callMasterViaRpc('sendDocument', tenantId, [target, fileBase64, fileName, mimetype, caption]);
   },
+  async sendImage(
+    tenantId: string,
+    target: string,
+    imageBase64: string,
+    caption = '',
+    mimetype = 'image/jpeg',
+  ): Promise<boolean> {
+    return callMasterViaRpc('sendImage', tenantId, [target, imageBase64, caption, mimetype]);
+  },
   async sendMessageSoft(tenantId: string, nomor: string | null | undefined, pesan: string, source?: string): Promise<void> {
     return waGatewayServiceLocal.sendMessageSoft(tenantId, nomor, pesan, source);
   },

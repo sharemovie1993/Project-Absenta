@@ -131,6 +131,43 @@ export class WhatsappController {
   }
 
   /**
+   * GET /whatsapp/kbm-notification
+   * Mengambil pengaturan notifikasi kehadiran pembukaan sesi KBM ke grup WA.
+   */
+  async getKbmNotificationConfig(request: any, reply: any) {
+    const tenantId = request.dataScope?.tenantId ?? request.user?.tenant_id ?? request.user?.tenantId;
+    if (!tenantId) {
+      return reply.status(400).send({ success: false, message: 'Tenant konteks tidak ditemukan.' });
+    }
+    try {
+      const { sesiOpenNotifyService } = await import('../../attendance/sesi-absensi/services/sesi-open-notify.service');
+      const data = await sesiOpenNotifyService.getKbmNotificationConfig(tenantId);
+      return reply.send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * POST /whatsapp/kbm-notification
+   * Menyimpan grup WA tujuan dan status aktif untuk notifikasi pembukaan sesi KBM.
+   */
+  async saveKbmNotificationConfig(request: any, reply: any) {
+    const tenantId = request.dataScope?.tenantId ?? request.user?.tenant_id ?? request.user?.tenantId;
+    if (!tenantId) {
+      return reply.status(400).send({ success: false, message: 'Tenant konteks tidak ditemukan.' });
+    }
+    try {
+      const { sesiOpenNotifyService } = await import('../../attendance/sesi-absensi/services/sesi-open-notify.service');
+      await sesiOpenNotifyService.saveKbmNotificationConfig(tenantId, request.body || {});
+      const data = await sesiOpenNotifyService.getKbmNotificationConfig(tenantId);
+      return reply.send({ success: true, message: 'Pengaturan notifikasi grup KBM berhasil disimpan.', data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  /**
    * GET /whatsapp/document-targets
    * Mengambil status koneksi WA Sekolah/Gateway DAN sesi WA User yang Login beserta daftar grup WA.
    */

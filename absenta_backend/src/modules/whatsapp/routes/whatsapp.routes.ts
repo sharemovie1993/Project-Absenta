@@ -127,6 +127,18 @@ export async function whatsappRoutes(fastify: any) {
     handler: whatsappController.invalidateGroupsCache.bind(whatsappController),
   });
 
+  // GET /whatsapp/kbm-notification - Pengaturan notifikasi pembukaan sesi KBM ke grup WA
+  fastify.get('/kbm-notification', {
+    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    handler: whatsappController.getKbmNotificationConfig.bind(whatsappController),
+  });
+
+  // POST /whatsapp/kbm-notification - Simpan grup WA tujuan & konfigurasi notifikasi KBM
+  fastify.post('/kbm-notification', {
+    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    handler: whatsappController.saveKbmNotificationConfig.bind(whatsappController),
+  });
+
   // GET /whatsapp/document-targets - Status WA & daftar grup untuk modal kirim dokumen Universal Printing
   fastify.get('/document-targets', {
     preHandler: [requireStaffDocumentSender, determineDataScope()],

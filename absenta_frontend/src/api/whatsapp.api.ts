@@ -294,3 +294,30 @@ export const sendWaMessage = async (payload: SendWaMessagePayload) => {
   };
 };
 
+// ── KBM Attendance WA Notification Config ──────────────────────────────────────────
+
+export interface KbmNotificationConfig {
+  isEnabled: boolean;
+  groupJid: string;
+  groupSubject?: string;
+  template?: string;
+}
+
+export const getKbmNotificationConfig = async () => {
+  const response = await axiosInstance.get('/whatsapp/kbm-notification');
+  return response.data as {
+    success: boolean;
+    data: KbmNotificationConfig;
+  };
+};
+
+export const saveKbmNotificationConfig = async (data: Partial<KbmNotificationConfig>) => {
+  const response = await axiosInstance.post('/whatsapp/kbm-notification', data);
+  return response.data as {
+    success: boolean;
+    message: string;
+    data: KbmNotificationConfig;
+  };
+};
+
+

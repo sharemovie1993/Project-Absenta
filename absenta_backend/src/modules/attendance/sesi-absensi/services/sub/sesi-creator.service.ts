@@ -8,6 +8,7 @@ import { PLATFORM_TIMEZONE } from '@/infra/jobEngine';
 import { parseSafeDate } from '../sesi-absensi.schema';
 import { sesiReminderService } from '../sesi-reminder.service';
 import { sesiCloseNotifyService } from '../sesi-close-notify.service';
+import { sesiOpenNotifyService } from '../sesi-open-notify.service';
 import { sesiHelperService } from '../sesi-helper.service';
 import { propagateGateAbsencesForNewSessionCommand } from '../commands/propagate-gate-absences-batch.command';
 
@@ -351,6 +352,13 @@ export class SesiCreatorService {
             existingSesi.kelas_id
           );
         }
+
+        if (finalFotoUrl) {
+          setImmediate(() => {
+            sesiOpenNotifyService.notifyKbmSessionOpened(tenantId, updatedSesi, rawFoto, finalFotoUrl)
+              .catch(err => appLogger.warn(`[sesiOpenNotify] existingSesi error: ${err.message}`));
+          });
+        }
         return updatedSesi;
       }
       return existingSesi;
@@ -490,6 +498,18 @@ export class SesiCreatorService {
         }).catch(err => {
           console.warn('[createSesi] Failed to propagate gate non-attendance:', err);
         });
+      });
+    }
+
+    // 📲 NOTIFIKASI WHATSAPP BUKA SESI KBM:
+    // Kirim notifikasi foto kehadiran guru ke grup WhatsApp yang sudah ditentukan
+    // ⚡ Asynchronous Background Execution agar response HTTP 201 kembali instan (<100ms)
+    if (finalFotoUrl) {
+      setImmediate(() => {
+        sesiOpenNotifyService.notifyKbmSessionOpened(tenantId, sesi, rawFoto, finalFotoUrl)
+          .catch(err => {
+            appLogger.warn(`[sesiOpenNotify] newSesi error: ${err.message}`);
+          });
       });
     }
 

@@ -8,6 +8,7 @@ import { PLATFORM_TIMEZONE } from '@/infra/jobEngine';
 import { parseSafeDate } from '../sesi-absensi.schema';
 import { sesiReminderService } from '../sesi-reminder.service';
 import { sesiCloseNotifyService } from '../sesi-close-notify.service';
+import { sesiOpenNotifyService } from '../sesi-open-notify.service';
 import { sesiHelperService } from '../sesi-helper.service';
 
 /**
@@ -222,6 +223,14 @@ export class SesiMutatorService {
         updated_at: new Date()
       }
     });
+
+    const rawFoto = data.foto_kegiatan || data.foto_bukti_url;
+    if (rawFoto) {
+      setImmediate(() => {
+        sesiOpenNotifyService.notifyKbmSessionOpened(tenantId, updated, rawFoto, updated.foto_kegiatan)
+          .catch(err => appLogger.warn(`[sesiOpenNotify] update error: ${err.message}`));
+      });
+    }
 
     return updated;
   }
