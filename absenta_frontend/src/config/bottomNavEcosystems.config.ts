@@ -92,6 +92,8 @@ export type EcosystemType =
   | 'tu' 
   | 'kurikulum' 
   | 'kesiswaan' 
+  | 'ketarunaan'
+  | 'dhuha'
   | 'hubin' 
   | 'bpbk' 
   | 'bkk' 
@@ -126,6 +128,8 @@ export function getEcosystemLabel(ecosystem: EcosystemType): string {
     case 'pembimbing_pkl': return 'Hubin • PKL';
     case 'bkk': return 'Hubin • BKK';
     case 'kesiswaan': return 'Kesiswaan';
+    case 'ketarunaan': return 'Kesiswaan • Ketarunaan';
+    case 'dhuha': return 'Kesiswaan • Pembiasaan Dhuha';
     case 'ekskul': return 'Kesiswaan • Ekskul';
     case 'satpam': return 'Kesiswaan • Keamanan';
     case 'piket': return 'Kesiswaan • Piket';
@@ -167,6 +171,7 @@ export interface EcosystemColorTokens {
 export function getEcosystemTokens(ecosystem: EcosystemType): EcosystemColorTokens {
   switch (ecosystem) {
     case 'kurikulum':
+    case 'dhuha':
       return {
         primaryColor: 'emerald-600',
         primaryButtonClass: 'bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-bold border-none shadow-xs transition-all active:scale-95',
@@ -201,6 +206,7 @@ export function getEcosystemTokens(ecosystem: EcosystemType): EcosystemColorToke
         accentClass: 'accent-orange-600 text-orange-600',
       };
     case 'kesiswaan':
+    case 'ketarunaan':
     case 'ekskul':
     case 'satpam':
     case 'piket':
@@ -382,6 +388,7 @@ export function getEcosystemGradientClass(ecosystem: EcosystemType): string {
     case 'bkk':
       return 'bg-gradient-to-r from-orange-600 via-orange-600 to-amber-700 text-white border-orange-400/40 shadow-xs shadow-orange-950/20';
     case 'kesiswaan':
+    case 'ketarunaan':
     case 'ekskul':
     case 'piket':
     case 'satpam':
@@ -479,6 +486,7 @@ export function getRoleEcosystemStyles(ecosystem: EcosystemType): RoleEcosystemS
         glowShadow: 'shadow-xs shadow-indigo-500/30',
       };
     case 'kurikulum':
+    case 'dhuha':
       return {
         pillBg: 'bg-emerald-100 dark:bg-emerald-900/60',
         iconColor: 'text-emerald-700 dark:text-emerald-300',
@@ -489,6 +497,7 @@ export function getRoleEcosystemStyles(ecosystem: EcosystemType): RoleEcosystemS
         glowShadow: 'shadow-xs shadow-emerald-500/30',
       };
     case 'kesiswaan':
+    case 'ketarunaan':
     case 'ekskul':
     case 'satpam':
       return {
@@ -663,6 +672,7 @@ export function getEcosystemTheme(
 
     // 🟩 WAKA KURIKULUM (Akademik, KBM, Penjadwalan & CBT)
     case 'kurikulum':
+    case 'dhuha':
       return {
         isLayer2: true,
         navBarClass: 'bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-700 text-white border-t-2 border-emerald-300 shadow-2xl shadow-emerald-950/40',
@@ -675,6 +685,7 @@ export function getEcosystemTheme(
 
     // 🟥 WAKA KESISWAAN (Induk: Kesiswaan, Ekskul, Piket, Satpam/Gerbang)
     case 'kesiswaan':
+    case 'ketarunaan':
     case 'ekskul':
     case 'piket':
     case 'satpam':

@@ -14,7 +14,9 @@ import {
   Compass, 
   PiggyBank, 
   ShieldCheck, 
-  ScanLine 
+  ScanLine,
+  Medal,
+  Moon 
 } from 'lucide-react';
 import { useAuth } from './useAuth';
 import { useCapabilities } from './useCapabilities';
@@ -61,6 +63,8 @@ export function useUserRoleDashboards() {
     isToolman,
     isKabeng,
     isPembinaEskul,
+    isKetarunaan,
+    isPembinaDhuha,
     isKoperasi,
     isGerbang,
     isPiketGuru,
@@ -317,6 +321,40 @@ export function useUserRoleDashboards() {
       });
     }
 
+    // 12B. Tim Ketarunaan
+    if ((isKetarunaan || isKesiswaan || isAdminRole) && !isKepsek) {
+      list.push({
+        id: 'dash-ketarunaan',
+        code: 'KETARUNAAN',
+        tabKey: 'ketarunaan',
+        label: 'Dashboard Ketarunaan',
+        shortLabel: 'Ketarunaan',
+        description: 'Disiplin Taruna, Peleton & Korps Pembina',
+        icon: Medal,
+        targetPath: '/dashboard?tab=ketarunaan',
+        color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400',
+        roleEcosystem: 'ketarunaan',
+        category: 'kesiswaan',
+      });
+    }
+
+    // 12C. Pembiasaan Dhuha
+    if ((isPembinaDhuha || isKesiswaan || isAdminRole) && !isKepsek) {
+      list.push({
+        id: 'dash-dhuha',
+        code: 'DHUHA',
+        tabKey: 'dhuha',
+        label: 'Dashboard Dhuha',
+        shortLabel: 'Dhuha',
+        description: 'Pembiasaan Sholat Dhuha & Jamaah Rombel',
+        icon: Moon,
+        targetPath: '/dashboard?tab=dhuha',
+        color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400',
+        roleEcosystem: 'dhuha',
+        category: 'kesiswaan',
+      });
+    }
+
     // 13. Pembimbing PKL
     if (isPembimbingPkl && !isKepsek) {
       list.push({
@@ -424,6 +462,8 @@ export function useUserRoleDashboards() {
     isKabeng,
     isToolman,
     isPembinaEskul,
+    isKetarunaan,
+    isPembinaDhuha,
     isKoperasi,
     hasGerbangDuty,
     isGerbang,

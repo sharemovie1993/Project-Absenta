@@ -1108,6 +1108,41 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.events.view.list',
     'attendance.events.create',
     'attendance.events.delete',
+  ],
+
+  // Koordinator Pembiasaan Dhuha (Koordinator Ibadah & Rohis — dinaungi di bawah Kesiswaan)
+  [STRUKTUR_CODES.KOORDINATOR_DHUHA]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.kesiswaan',
+    // Data Referensi
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'academic.students.view.history',
+    'academic.teachers.view.list',
+    'academic.structures.view.list',
+    // Jadwal & Sesi Kegiatan
+    'attendance.schedules.view.list',
+    'attendance.schedules.manage',
+    'attendance.schedules.create',
+    'attendance.schedules.update',
+    'attendance.schedules.delete',
+    // Presensi & Terminal Dhuha
+    'attendance.sessions.view.list',
+    'attendance.sessions.view.detail',
+    'attendance.sessions.create',
+    'attendance.sessions.update',
+    'attendance.sessions.tap',
+    'attendance.sessions.update.attendance',
+    'attendance.sessions.close',
+    // Rekap & Laporan
+    'attendance.reports.view',
+    'attendance.recap.view.daily',
+    'attendance.recap.view.monthly',
+    'attendance.student.view.stats',
+    // Events Kegiatan
+    'attendance.events.view.list',
+    'attendance.events.create',
+    'attendance.events.delete',
   ]
 };
 

@@ -51,7 +51,9 @@ import {
   Zap,
   CheckSquare,
   Wrench,
-  Compass
+  Compass,
+  Medal,
+  Moon
 } from 'lucide-react';
 
 // Components
@@ -105,6 +107,10 @@ const BkkDashboard = React.lazy(() => import('./BkkDashboard').then(m => ({ defa
 const ToolmanDashboard = React.lazy(() => import('./ToolmanDashboard').then(m => ({ default: m.ToolmanDashboard })));
 // Ekskul Dashboard — clean role-patterned architecture
 const EkskulDashboard = React.lazy(() => import('./EkskulDashboard').then(m => ({ default: m.EkskulDashboard })));
+// Ketarunaan Dashboard — clean role-patterned architecture
+const KetarunaanDashboard = React.lazy(() => import('./KetarunaanDashboard').then(m => ({ default: m.KetarunaanDashboard })));
+// Dhuha Dashboard — clean role-patterned architecture
+const DhuhaDashboard = React.lazy(() => import('./DhuhaDashboard').then(m => ({ default: m.DhuhaDashboard })));
 // Pembimbing PKL Dashboard — clean role-patterned architecture
 const PembimbingPklDashboard = React.lazy(() => import('./PembimbingPklDashboard').then(m => ({ default: m.PembimbingPklDashboard })));
 // Satpam / Gerbang Dashboard — clean role-patterned architecture
@@ -162,6 +168,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isWaliKelas: isWaliKelasFromCaps,
     isKesiswaan,
     isPembinaEskul,
+    isKetarunaan,
+    isPembinaDhuha,
     isKoperasi,
     isKoperasiHead,
     isKoperasiFinance,
@@ -1108,6 +1116,24 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
+    // 4.10b Tim Ketarunaan (Pembina Taruna, Kesiswaan & Admin)
+    if ((isKetarunaan || isKesiswaan || (isAdminRole && !isKepsek) || can('dashboard.view.kesiswaan')) && !isKepsek) {
+      list.push({
+        id: 'ketarunaan',
+        label: 'Dashboard Ketarunaan',
+        icon: Medal,
+      });
+    }
+
+    // 4.10c Pembiasaan Dhuha (Pembina Rohis, Kesiswaan & Admin)
+    if ((isPembinaDhuha || isKesiswaan || (isAdminRole && !isKepsek) || can('dashboard.view.kesiswaan')) && !isKepsek) {
+      list.push({
+        id: 'dhuha',
+        label: 'Dashboard Dhuha',
+        icon: Moon,
+      });
+    }
+
     // 4.11 Pembimbing PKL: Murni hanya untuk guru yang terdaftar di plotting PKL
     if (isPembimbingPkl && !isKepsek) {
       list.push({ 
@@ -1193,6 +1219,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isToolman,
     isKabeng,
     isPembinaEskul,
+    isKetarunaan,
+    isPembinaDhuha,
     isSosialisasiActive,
     isMyAttendanceDone,
   ]);
@@ -2053,6 +2081,56 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <EkskulDashboard user={user} />
             </Suspense>
           </div>
+          </EcosystemProvider>
+        )}
+
+        {/* 🎖️ TAB KETARUNAAN: DASHBOARD TIM PEMBINA TARUNA */}
+        {visitedTabs.has('ketarunaan') && (
+          <EcosystemProvider ecosystem='ketarunaan' as={React.Fragment}>
+            <div 
+              key="tab-ketarunaan"
+              role="tabpanel"
+              aria-hidden={activeTab !== 'ketarunaan'}
+              className={cn("w-full min-w-0", activeTab === 'ketarunaan' ? "block" : "hidden")}
+            >
+              <Suspense fallback={
+                <div className="w-full space-y-4 py-4">
+                  <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                    ))}
+                  </div>
+                </div>
+              }>
+                <KetarunaanDashboard user={user} />
+              </Suspense>
+            </div>
+          </EcosystemProvider>
+        )}
+
+        {/* 🕌 TAB DHUHA: DASHBOARD PEMBIASAAN SHOLAT DHUHA & ROHIS */}
+        {visitedTabs.has('dhuha') && (
+          <EcosystemProvider ecosystem='dhuha' as={React.Fragment}>
+            <div 
+              key="tab-dhuha"
+              role="tabpanel"
+              aria-hidden={activeTab !== 'dhuha'}
+              className={cn("w-full min-w-0", activeTab === 'dhuha' ? "block" : "hidden")}
+            >
+              <Suspense fallback={
+                <div className="w-full space-y-4 py-4">
+                  <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                    ))}
+                  </div>
+                </div>
+              }>
+                <DhuhaDashboard user={user} />
+              </Suspense>
+            </div>
           </EcosystemProvider>
         )}
 

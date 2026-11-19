@@ -103,6 +103,16 @@ export function useCapabilities() {
     const isPembinaEskul =
       userPositions.includes('PEMBINA_ESKUL');
 
+    const isKetarunaan =
+      userPositions.includes('KETUA_PEMBINA_TARUNA') ||
+      userPositions.includes('PEMBINA_TARUNA') ||
+      userPositions.includes('KETARUNAAN');
+
+    const isPembinaDhuha =
+      userPositions.includes('KOORDINATOR_DHUHA') ||
+      userPositions.includes('PEMBINA_DHUHA') ||
+      userPositions.includes('ROHIS');
+
     const isKaprog =
       userPositions.includes('KAPROG');
 
@@ -200,6 +210,8 @@ export function useCapabilities() {
       isPembimbingPkl,
       isBpbk,
       isPembinaEskul,
+      isKetarunaan,
+      isPembinaDhuha,
       isKaprog,
       kaprogJurusan: user?.kaprog_jurusan || null,
       kaprogUnitIds: user?.unit_ids || [],
