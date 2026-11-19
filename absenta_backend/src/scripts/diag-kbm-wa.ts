@@ -31,14 +31,14 @@ async function main() {
   const recentSesis = await prisma.sesiAbsensi.findMany({
     where: { tenant_id: tenantId },
     orderBy: { updated_at: 'desc' },
-    take: 5,
-    include: { Guru: true, Kelas: true, MataPelajaran: true }
+    take: 5
   });
   console.log('5 Sesi Terakhir:', JSON.stringify(recentSesis.map(s => ({
     id: s.id,
-    guru: s.Guru?.nama_guru,
-    kelas: s.Kelas?.nama_kelas,
-    mapel: s.MataPelajaran?.nama_mapel,
+    guru_id: s.guru_id,
+    guru_pelaksana_id: s.guru_pelaksana_id,
+    kelas_id: s.kelas_id,
+    mapel_id: s.mapel_id,
     status: s.status,
     has_foto: Boolean(s.foto_kegiatan),
     foto_preview: s.foto_kegiatan ? s.foto_kegiatan.substring(0, 50) + '...' : null,
