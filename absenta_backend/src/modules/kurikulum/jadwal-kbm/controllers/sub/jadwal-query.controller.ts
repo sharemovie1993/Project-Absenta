@@ -390,8 +390,9 @@ export class JadwalQueryController {
       });
     }
 
-    // 3c. Fallback: Case-insensitive / Enum-mode Hari matching if 0
-    if (jadwal.length === 0 && ctx.kelasId) {
+    // 3c. Fallback: Case-insensitive / Enum-mode Hari matching if 0 (Khusus Role SISWA - Siswa butuh jadwal kelasnya)
+    // Untuk Role GURU, DILARANG fallback ke jadwal kelas wali karena akan mengotori jadwal pribadi guru dengan jadwal guru lain.
+    if (jadwal.length === 0 && ctx.kelasId && roleName === RoleName.SISWA) {
       console.log(`[DEBUG listMySchedule] Querying all class schedules for kelas_id: ${ctx.kelasId}`);
       const allClassSchedules = await jadwalKBMDb.jadwalKBM.findMany({
         where: { tenant_id: ctx.tenantId, kelas_id: ctx.kelasId },

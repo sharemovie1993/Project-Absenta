@@ -111,8 +111,15 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
   }, [assignedMapelsRes]);
 
   const rawJadwalList: JadwalKBM[] = useMemo(() => {
-    return Array.isArray(jadwalKBMRes) ? jadwalKBMRes : (jadwalKBMRes as any)?.data || [];
-  }, [jadwalKBMRes]);
+    const list = Array.isArray(jadwalKBMRes) ? jadwalKBMRes : (jadwalKBMRes as any)?.data || [];
+    if (!guruId) return list;
+    // Strict safety filter: Pastikan jadwal benar-benar diampu oleh guruId target (bukan jadwal kelas binaan walas yang diampu guru lain)
+    return list.filter((j: any) => {
+      const directGuruId = j.guru_id || j.guru_pelaksana_id;
+      const unitGuruId = j.UnitPengajaran?.guru_id;
+      return (directGuruId && directGuruId === guruId) || (unitGuruId && unitGuruId === guruId);
+    });
+  }, [jadwalKBMRes, guruId]);
 
   const rawBankList: CbtBankSoal[] = useMemo(() => {
     return bankListRes?.items || (bankListRes as any)?.data?.items || [];
@@ -694,12 +701,12 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
   }, [guruId, rawAssignedList, rawJadwalList, rawBankList, targetTingkat]);
 
   const detectedTeacherName = useMemo(() => {
-    const fromGm = rawAssignedList.find((gm) => gm.Guru?.nama_guru)?.Guru?.nama_guru;
+    const fromGm = rawAssignedList.find((gm) => (!guruId || gm.guru_id === guruId) && gm.Guru?.nama_guru)?.Guru?.nama_guru;
     if (fromGm) return fromGm;
-    const fromJk = rawJadwalList.find((j) => (j as any)?.Guru?.nama_guru)?.Guru?.nama_guru;
+    const fromJk = rawJadwalList.find((j) => (!guruId || j.guru_id === guruId || (j as any).guru_pelaksana_id === guruId) && (j as any)?.Guru?.nama_guru)?.Guru?.nama_guru;
     if (fromJk) return fromJk;
     return undefined;
-  }, [rawAssignedList, rawJadwalList]);
+  }, [rawAssignedList, rawJadwalList, guruId]);
 
   return {
     isLoading: isMapelLoading || isJadwalLoading || isBankLoading,

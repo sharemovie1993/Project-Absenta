@@ -63,7 +63,9 @@ export const TeacherCbtDutyCard: React.FC<TeacherCbtDutyCardProps> = ({
   } = useTeacherCbtDutyStatus(guruId);
 
   // Ambil nama lengkap guru yang login/ditugaskan
+  const isCurrentUser = Boolean(!guruId || guruId === user?.guru_profile?.id || guruId === user?.id);
   const teacherFullName =
+    (isCurrentUser && (user?.full_name || (user as any)?.nama_guru)) ||
     teacherName ||
     user?.full_name ||
     (user as any)?.nama_guru ||
