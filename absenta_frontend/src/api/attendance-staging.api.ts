@@ -1,4 +1,4 @@
-import api from './axios';
+import api from '../lib/axiosInstance';
 
 export interface AttendanceStagingItem {
   id: string;
