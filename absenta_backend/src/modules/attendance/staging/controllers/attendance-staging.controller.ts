@@ -87,7 +87,7 @@ export class AttendanceStagingController {
         reply,
         200,
         true,
-        `Sinkronisasi presensi ${result.className} berhasil (${result.summary.totalAttendanceRows} baris absensi disimpan)`,
+        result.message || 'Sinkronisasi presensi berhasil',
         result
       );
     } catch (err: any) {
@@ -111,7 +111,7 @@ export class AttendanceStagingController {
         reply,
         200,
         true,
-        `Sinkronisasi massal selesai. ${result.successful} berhasil, ${result.failed} gagal.`,
+        `Sinkronisasi massal selesai. ${result.syncedCount} berhasil, ${result.failedCount} gagal.`,
         result
       );
     } catch (err: any) {
