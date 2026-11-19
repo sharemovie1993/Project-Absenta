@@ -420,7 +420,7 @@ export const BiodataPrintModal: React.FC<BiodataPrintModalProps> = React.memo(({
                   mode="print"
                   showPhoto={true}
                   photoSizeMm={{ width: 28, height: 36 }}
-                  variant="print_kv"
+                  variant="photo_only"
                   fields={[]}
                 />
               </div>

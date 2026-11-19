@@ -417,7 +417,7 @@ export const SertifikatPklPrintModal: React.FC<SertifikatPklPrintModalProps> = R
                   mode="print"
                   showPhoto={true}
                   photoSizeMm={{ width: 28, height: 36 }}
-                  variant="print_kv"
+                  variant="photo_only"
                   fields={[]}
                 />
               </div>

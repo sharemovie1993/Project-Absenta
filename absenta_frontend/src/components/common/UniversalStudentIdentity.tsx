@@ -17,7 +17,8 @@ export type StudentIdentityVariant =
   | 'card'
   | 'detail'
   | 'print_kv'
-  | 'print_table';
+  | 'print_table'
+  | 'photo_only';
 
 export interface UniversalStudentIdentityProps {
   id?: string | null;
@@ -75,6 +76,10 @@ export const UniversalStudentIdentity: React.FC<UniversalStudentIdentityProps> =
   }, [baseIdentity, identityOverride]);
 
   const [imageError, setImageError] = useState(false);
+
+  React.useEffect(() => {
+    setImageError(false);
+  }, [identity.id, identity.fotoUrl]);
 
   // ─── SUBSISTEM FOTO PROFIL (DUAL-MODE) ─────────────────────────
   const renderPhoto = () => {
@@ -148,6 +153,17 @@ export const UniversalStudentIdentity: React.FC<UniversalStudentIdentityProps> =
           <div className="h-3.5 bg-slate-200 dark:bg-slate-800 rounded w-1/3" />
           <div className="h-2.5 bg-slate-200 dark:bg-slate-800 rounded w-1/4" />
         </div>
+      </div>
+    );
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // MODE PRINT 0: STANDALONE PHOTO (Kotak Pas Foto 3x4 Resmi)
+  // ═════════════════════════════════════════════════════════════
+  if (variant === 'photo_only' || (mode === 'print' && showPhoto && fields && fields.length === 0)) {
+    return (
+      <div className={className}>
+        {renderPhoto()}
       </div>
     );
   }

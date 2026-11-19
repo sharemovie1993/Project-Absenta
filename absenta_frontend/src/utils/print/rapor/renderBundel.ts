@@ -1,4 +1,6 @@
 import { jsPDF } from 'jspdf';
+import { normalizeStudentIdentity } from '../../academic/academicIdentityNormalizer';
+import { resolveProfilePhotoUrl } from '../../../lib/utils';
 import { raporApi } from '../../../api/rapor.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { siswaApi } from '../../../api/academic.api';
@@ -94,8 +96,12 @@ export const generateBundelRaporKelasBatchPdf = async (options: PrintRaporBatchO
       });
 
       // 2. Biodata
+      const identity = normalizeStudentIdentity(siswa);
+      const photoUrl = identity.hasFoto ? resolveProfilePhotoUrl(identity.fotoUrl) : null;
+      const photoBase64 = photoUrl ? await resolveCoverImageBase64(photoUrl) : null;
+
       doc.addPage();
-      renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily, raporSettings);
+      renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily, raporSettings, photoBase64);
 
       // 3. Rapor Semester (CK1-CK2)
       if (data) {

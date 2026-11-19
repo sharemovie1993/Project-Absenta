@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { normalizeStudentIdentity } from '../../academic/academicIdentityNormalizer';
+import { resolveProfilePhotoUrl } from '../../../lib/utils';
 import { raporApi } from '../../../api/rapor.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { siswaApi } from '../../../api/academic.api';
@@ -28,7 +29,8 @@ export const renderOfficialBiodataPage = (
   tenantInfo: any,
   kota: string,
   fontFamily: string,
-  settingsData?: any
+  settingsData?: any,
+  photoBase64?: string | null
 ) => {
   const pageWidth = 210;
 
@@ -137,11 +139,24 @@ export const renderOfficialBiodataPage = (
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.4);
   doc.rect(photoX, photoY, photoW, photoH);
-  doc.setFont(fontFamily, 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(0, 0, 0);
-  doc.text('Pas Foto', photoX + photoW / 2, photoY + 16, { align: 'center' });
-  doc.text('3x4', photoX + photoW / 2, photoY + 22, { align: 'center' });
+
+  let photoRendered = false;
+  if (photoBase64) {
+    try {
+      doc.addImage(photoBase64, 'JPEG', photoX + 0.3, photoY + 0.3, photoW - 0.6, photoH - 0.6);
+      photoRendered = true;
+    } catch (e) {
+      console.warn('[renderOfficialBiodataPage] Gagal menyematkan foto siswa ke PDF:', e);
+    }
+  }
+
+  if (!photoRendered) {
+    doc.setFont(fontFamily, 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Pas Foto', photoX + photoW / 2, photoY + 16, { align: 'center' });
+    doc.text('3x4', photoX + photoW / 2, photoY + 22, { align: 'center' });
+  }
 
   // Tanda Tangan Kepala Sekolah (Right, matching Gambar 2)
   const rightX = 125;
@@ -245,9 +260,13 @@ export const generateBiodataSiswaPdf = async (options: {
   const logoDaerahUrl = tenantInfo?.logo_daerah_url || (sekolah as any)?.logo_daerah_url || (sekolah as any)?.logo_daerah || DEFAULT_JABAR_LOGO_SVG;
   const logoSekolahUrl = tenantInfo?.logo_url || sekolah?.logo_url || null;
 
-  const [topLogoBase64, midLogoBase64] = await Promise.all([
+  const identity = normalizeStudentIdentity(siswa);
+  const photoUrl = identity.hasFoto ? resolveProfilePhotoUrl(identity.fotoUrl) : null;
+
+  const [topLogoBase64, midLogoBase64, photoBase64] = await Promise.all([
     resolveCoverImageBase64(logoDaerahUrl),
     resolveCoverImageBase64(logoSekolahUrl),
+    photoUrl ? resolveCoverImageBase64(photoUrl) : Promise.resolve(null),
   ]);
 
   const namaSiswa = (siswa.nama_siswa || siswa.nama || siswaDirect?.nama_siswa || siswaDirect?.nama || '-').toUpperCase();
@@ -267,7 +286,7 @@ export const generateBiodataSiswaPdf = async (options: {
 
   // ── HALAMAN 2: BIODATA SISWA 17 BUTIR RESMI ──
   doc.addPage();
-  renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily, settingsData);
+  renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily, settingsData, photoBase64);
 
   const filename = `Biodata_Siswa_${namaSiswa.replace(/\s+/g, '_')}.pdf`;
   const blobUrl = URL.createObjectURL(doc.output('blob'));
@@ -355,9 +374,13 @@ export const generateBiodataKelasBatchPdf = async (options: PrintRaporBatchOptio
         fontFamily,
       });
 
+      const identity = normalizeStudentIdentity(siswa);
+      const photoUrl = identity.hasFoto ? resolveProfilePhotoUrl(identity.fotoUrl) : null;
+      const photoBase64 = photoUrl ? await resolveCoverImageBase64(photoUrl) : null;
+
       // Halaman 2: Biodata
       doc.addPage();
-      renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily, settingsData);
+      renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily, settingsData, photoBase64);
       renderedCount++;
     } catch (err: any) {
       console.warn(`Gagal memuat biodata untuk ${student.nama_siswa}:`, err);
