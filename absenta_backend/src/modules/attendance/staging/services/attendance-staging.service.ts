@@ -58,36 +58,9 @@ export class AttendanceStagingService {
             },
           });
 
-          // Cocokkan setiap siswa di sheet (berdasarkan siswa_id, NIS, NISN, atau Nama Siswa)
-          const matchedSet = new Set<string>();
-          for (const st of sheetData.students as any[]) {
-            const stNis = st.nis?.trim();
-            const stNisn = st.nisn?.trim();
-            const stNormName = st.nama ? st.nama.toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
-
-            const found = saStudents.find((sa) => {
-              if (st.siswa_id && sa.siswa_id === st.siswa_id) return true;
-              if (stNis && sa.siswa?.nis?.trim() === stNis) return true;
-              if (stNisn && sa.siswa?.nisn?.trim() === stNisn) return true;
-              if (stNormName && sa.siswa?.nama_siswa) {
-                const dbNormName = sa.siswa.nama_siswa.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                return dbNormName === stNormName;
-              }
-              return false;
-            });
-
-            if (found) {
-              matchedSet.add(found.siswa_id);
-              st.siswa_id = found.siswa_id;
-              if (!st.nis && found.siswa?.nis) st.nis = found.siswa.nis;
-              if (!st.nisn && found.siswa?.nisn) st.nisn = found.siswa.nisn;
-              st.is_matched = true;
-              st.matched_db_name = found.siswa?.nama_siswa;
-            } else {
-              st.is_matched = false;
-            }
-          }
-          matchedStudentCount = matchedSet.size;
+          // Cocokkan setiap siswa di sheet menggunakan Bijective 1-to-1 Priority Matching
+          const bijectiveResult = this.matchStudentsBijective(sheetData.students, saStudents);
+          matchedStudentCount = bijectiveResult.matchedCount;
         } else {
           const studentNisList = sheetData.students.map((s) => s.nis).filter(Boolean);
           const studentNisnList = sheetData.students.map((s) => s.nisn).filter(Boolean);
@@ -451,6 +424,104 @@ export class AttendanceStagingService {
   }
 
   /**
+   * Helper pencocokan 1-to-1 presisi per siswa (Bijective Priority Matching)
+   * Mengatasi kasus duplikasi NISN di database master sekolah.
+   * Prioritas:
+   * 1. Manual mapping (siswa_id)
+   * 2. NIS sekolah (SSOT unik siswa di sekolah)
+   * 3. Nama siswa normalisasi (huruf kapital tanpa spasi/tanda baca)
+   * 4. NISN (hanya jika belum terpakai)
+   */
+  static matchStudentsBijective(
+    sheetStudents: any[],
+    classStudents: any[]
+  ): {
+    matchedCount: number;
+    mappedSheetStudents: any[];
+  } {
+    const usedDbIds = new Set<string>();
+
+    // Pass 1: Prioritas 1 & 2 (Manual siswa_id dan NIS resmi sekolah)
+    for (const st of sheetStudents) {
+      const stNis = st.nis?.trim();
+      let found: any = null;
+
+      if (st.siswa_id) {
+        found = classStudents.find((sa) => !usedDbIds.has(sa.siswa_id) && sa.siswa_id === st.siswa_id);
+      }
+      if (!found && stNis) {
+        found = classStudents.find((sa) => !usedDbIds.has(sa.siswa_id) && sa.siswa?.nis?.trim() === stNis);
+      }
+
+      if (found) {
+        usedDbIds.add(found.siswa_id);
+        st.siswa_id = found.siswa_id;
+        st.nis = found.siswa?.nis || st.nis;
+        st.nisn = found.siswa?.nisn || st.nisn;
+        st.is_matched = true;
+        st.matched_db_name = found.siswa?.nama_siswa;
+      } else {
+        st.is_matched = false;
+        st.matched_db_name = null;
+      }
+    }
+
+    // Pass 2: Prioritas 3 (Nama Siswa) untuk yang belum cocok di Pass 1
+    for (const st of sheetStudents) {
+      if (st.is_matched && usedDbIds.has(st.siswa_id)) continue;
+
+      const stNormName = st.nama ? st.nama.toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+      let found: any = null;
+
+      if (stNormName) {
+        found = classStudents.find((sa) => {
+          if (usedDbIds.has(sa.siswa_id)) return false;
+          const dbNormName = sa.siswa?.nama_siswa ? sa.siswa.nama_siswa.toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+          return dbNormName === stNormName;
+        });
+      }
+
+      if (found) {
+        usedDbIds.add(found.siswa_id);
+        st.siswa_id = found.siswa_id;
+        st.nis = found.siswa?.nis || st.nis;
+        st.nisn = found.siswa?.nisn || st.nisn;
+        st.is_matched = true;
+        st.matched_db_name = found.siswa?.nama_siswa;
+      }
+    }
+
+    // Pass 3: Prioritas 4 (NISN) untuk yang belum cocok di Pass 1 & 2
+    for (const st of sheetStudents) {
+      if (st.is_matched && usedDbIds.has(st.siswa_id)) continue;
+
+      const stNisn = st.nisn?.trim();
+      let found: any = null;
+
+      if (stNisn) {
+        found = classStudents.find((sa) => !usedDbIds.has(sa.siswa_id) && sa.siswa?.nisn?.trim() === stNisn);
+      }
+
+      if (found) {
+        usedDbIds.add(found.siswa_id);
+        st.siswa_id = found.siswa_id;
+        st.nis = found.siswa?.nis || st.nis;
+        st.nisn = found.siswa?.nisn || st.nisn;
+        st.is_matched = true;
+        st.matched_db_name = found.siswa?.nama_siswa;
+      } else {
+        st.is_matched = false;
+        st.matched_db_name = null;
+      }
+    }
+
+    return {
+      matchedCount: usedDbIds.size,
+      mappedSheetStudents: sheetStudents,
+    };
+  }
+
+  /**
    * Helper pencocokan kelas cerdas (membedakan nomor rombel secara presisi)
    */
   static matchClassSmart(sheetName: string, namaKelas: string, tenantClasses: any[]): any {
@@ -557,35 +628,8 @@ export class AttendanceStagingService {
         },
       });
 
-      const matchedSet = new Set<string>();
-      for (const st of students as any[]) {
-        const stNis = st.nis?.trim();
-        const stNisn = st.nisn?.trim();
-        const stNormName = st.nama ? st.nama.toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
-
-        const found = saStudents.find((sa) => {
-          if (st.siswa_id && sa.siswa_id === st.siswa_id) return true;
-          if (stNis && sa.siswa?.nis?.trim() === stNis) return true;
-          if (stNisn && sa.siswa?.nisn?.trim() === stNisn) return true;
-          if (stNormName && sa.siswa?.nama_siswa) {
-            const dbNormName = sa.siswa.nama_siswa.toUpperCase().replace(/[^A-Z0-9]/g, '');
-            return dbNormName === stNormName;
-          }
-          return false;
-        });
-
-        if (found) {
-          matchedSet.add(found.siswa_id);
-          st.siswa_id = found.siswa_id;
-          if (!st.nis && found.siswa?.nis) st.nis = found.siswa.nis;
-          if (!st.nisn && found.siswa?.nisn) st.nisn = found.siswa.nisn;
-          st.is_matched = true;
-          st.matched_db_name = found.siswa?.nama_siswa;
-        } else {
-          st.is_matched = false;
-        }
-      }
-      matchedCount = matchedSet.size;
+      const bijectiveResult = this.matchStudentsBijective(students, saStudents);
+      matchedCount = bijectiveResult.matchedCount;
     } else {
       const studentNisList = students.map((s: any) => s.nis).filter(Boolean);
       const studentNisnList = students.map((s: any) => s.nisn).filter(Boolean);
@@ -638,8 +682,9 @@ export class AttendanceStagingService {
 
     // Ambil daftar seluruh siswa di kelas master via SiswaAkademik
     let classStudents: any[] = [];
+    let saStudents: any[] = [];
     if (sheetRecord.kelas_id && sheetRecord.tahun_pelajaran_id) {
-      const sa = await prisma.siswaAkademik.findMany({
+      saStudents = await prisma.siswaAkademik.findMany({
         where: {
           kelas_id: sheetRecord.kelas_id,
           tahun_pelajaran_id: sheetRecord.tahun_pelajaran_id,
@@ -651,7 +696,7 @@ export class AttendanceStagingService {
         },
         orderBy: { siswa: { nama_siswa: 'asc' } },
       });
-      classStudents = sa.map((item) => ({
+      classStudents = saStudents.map((item) => ({
         siswaId: item.siswa_id,
         siswaAkademikId: item.id,
         nis: item.siswa?.nis || '',
@@ -660,39 +705,30 @@ export class AttendanceStagingService {
       }));
     }
 
-    const saMapById = new Map<string, any>(classStudents.map((s) => [s.siswaId, s]));
-    const saMapByNis = new Map<string, any>(classStudents.filter((s) => Boolean(s.nis)).map((s) => [s.nis.trim(), s]));
-    const saMapByName = new Map<string, any>(classStudents.map((s) => [s.nama.toUpperCase().replace(/[^A-Z0-9]/g, ''), s]));
+    // Jalankan pencocokan presisi 1-to-1 Bijective
+    const bijectiveResult = this.matchStudentsBijective(sheetStudents, saStudents);
 
-    const mappedStudents = sheetStudents.map((st: any) => {
-      const stNormName = st.nama ? st.nama.toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
-      const matched =
-        (st.siswa_id ? saMapById.get(st.siswa_id) : undefined) ||
-        (st.nis ? saMapByNis.get(st.nis.trim()) : undefined) ||
-        (stNormName ? saMapByName.get(stNormName) : undefined);
-
-      return {
-        no: st.no,
-        nama: st.nama,
-        nis: st.nis || '',
-        nisn: st.nisn || '',
-        isMatched: Boolean(matched),
-        matchedStudent: matched
-          ? {
-              siswaId: matched.siswaId,
-              nama: matched.nama,
-              nis: matched.nis,
-            }
-          : null,
-      };
-    });
+    const mappedStudents = sheetStudents.map((st: any) => ({
+      no: st.no,
+      nama: st.nama,
+      nis: st.nis || '',
+      nisn: st.nisn || '',
+      isMatched: Boolean(st.is_matched),
+      matchedStudent: st.is_matched
+        ? {
+            siswaId: st.siswa_id,
+            nama: st.matched_db_name || st.nama,
+            nis: st.nis,
+          }
+        : null,
+    }));
 
     return {
       sheetId: sheetRecord.id,
       sheetName: sheetRecord.sheet_name,
       namaKelas: sheetRecord.nama_kelas,
       totalSiswa: sheetRecord.total_siswa,
-      totalMatchedSiswa: mappedStudents.filter((s: any) => s.isMatched).length,
+      totalMatchedSiswa: bijectiveResult.matchedCount,
       sheetStudents: mappedStudents,
       classStudents,
     };
@@ -744,28 +780,16 @@ export class AttendanceStagingService {
       }
     }
 
-    // Hitung ulang total kecocokan
+    // Hitung ulang total kecocokan menggunakan Bijective 1-to-1
     let matchedCount = 0;
     const tpId = sheetRecord.tahun_pelajaran_id;
     if (tpId && sheetRecord.kelas_id) {
       const saStudents = await prisma.siswaAkademik.findMany({
         where: { kelas_id: sheetRecord.kelas_id, tahun_pelajaran_id: tpId },
-        include: { siswa: { select: { id: true, nis: true, nama_siswa: true } } },
+        include: { siswa: { select: { id: true, nis: true, nisn: true, nama_siswa: true } } },
       });
-      const matchedSet = new Set<string>();
-      for (const st of rawData.students) {
-        const stNormName = st.nama ? st.nama.toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
-        const found = saStudents.find((sa) => {
-          if (st.siswa_id && sa.siswa_id === st.siswa_id) return true;
-          if (st.nis && sa.siswa?.nis?.trim() === st.nis.trim()) return true;
-          if (stNormName && sa.siswa?.nama_siswa) {
-            return sa.siswa.nama_siswa.toUpperCase().replace(/[^A-Z0-9]/g, '') === stNormName;
-          }
-          return false;
-        });
-        if (found) matchedSet.add(found.siswa_id);
-      }
-      matchedCount = matchedSet.size;
+      const result = this.matchStudentsBijective(rawData.students, saStudents);
+      matchedCount = result.matchedCount;
     }
 
     await (prisma as any).attendanceStagingSheet.update({
