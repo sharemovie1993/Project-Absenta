@@ -260,7 +260,7 @@ export const AttendanceStagingDetailModal: React.FC<AttendanceStagingDetailModal
               <thead className="bg-slate-50 dark:bg-slate-800/80 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700">
                 <tr>
                   <th className="p-2.5 font-bold text-slate-700 dark:text-slate-300 w-10 text-center">No</th>
-                  <th className="p-2.5 font-bold text-slate-700 dark:text-slate-300 w-24">NIS</th>
+                  <th className="p-2.5 font-bold text-slate-700 dark:text-slate-300 w-28">NIS / NISN</th>
                   <th className="p-2.5 font-bold text-slate-700 dark:text-slate-300 min-w-[200px]">Nama Siswa & Status DB</th>
                   {sessions.map((sess, sIdx) => (
                     <th key={sIdx} className="p-2 font-bold text-center border-l border-slate-200 dark:border-slate-700 whitespace-nowrap min-w-[48px]">
@@ -291,7 +291,12 @@ export const AttendanceStagingDetailModal: React.FC<AttendanceStagingDetailModal
                       <tr key={st.no} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="p-2 text-center text-slate-400 font-mono text-[10px]">{st.no}</td>
                         <td className="p-2 font-mono text-[10px] text-slate-600 dark:text-slate-300">
-                          {st.nis || matchInfo?.matchedStudent?.nis || '-'}
+                          <div className="font-semibold text-slate-700 dark:text-slate-200">
+                            {st.nisn || matchInfo?.matchedStudent?.nisn || '-'}
+                          </div>
+                          <div className="text-[9px] text-slate-400">
+                            NIS: {st.nis || matchInfo?.matchedStudent?.nis || '-'}
+                          </div>
                         </td>
                         <td className="p-2 max-w-[220px]">
                           <div className="font-semibold text-slate-900 dark:text-white truncate" title={st.nama}>
@@ -376,8 +381,10 @@ export const AttendanceStagingDetailModal: React.FC<AttendanceStagingDetailModal
               <div className="text-sm font-bold text-slate-800 dark:text-slate-100">
                 {mappingTargetStudent.no}. {mappingTargetStudent.nama}
               </div>
-              <div className="text-xs font-mono text-slate-500">
-                NIS: {mappingTargetStudent.nis || '(Kosong di Sheet)'}
+              <div className="text-xs font-mono text-slate-500 flex items-center gap-2 flex-wrap">
+                <span>NISN: {mappingTargetStudent.nisn || '(Kosong di Sheet)'}</span>
+                <span>•</span>
+                <span>NIS: {mappingTargetStudent.nis || '(Kosong di Sheet)'}</span>
               </div>
             </div>
 
@@ -393,7 +400,7 @@ export const AttendanceStagingDetailModal: React.FC<AttendanceStagingDetailModal
                 <option value="">-- Pilih Siswa Master di Rombel Ini --</option>
                 {(mappingData?.classStudents || []).map((cs: any) => (
                   <option key={cs.siswaId} value={cs.siswaId}>
-                    {cs.nama} {cs.nis ? `(NIS: ${cs.nis})` : ''}
+                    {cs.nama} {cs.nisn ? `(NISN: ${cs.nisn})` : ''} {cs.nis ? `[NIS: ${cs.nis}]` : ''}
                   </option>
                 ))}
               </select>

@@ -258,7 +258,7 @@ export const AttendanceStagingClassMappingModal: React.FC<AttendanceStagingClass
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-800">
           <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>Kecocokan NIS siswa akan dihitung ulang secara otomatis begitu pemetaan disimpan.</span>
+            <span>Kecocokan NISN & NIS siswa akan dihitung ulang secara otomatis (Prioritas Utama: NISN Dapodik) begitu pemetaan disimpan.</span>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">

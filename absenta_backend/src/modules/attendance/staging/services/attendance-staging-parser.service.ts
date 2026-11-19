@@ -247,8 +247,22 @@ export class AttendanceStagingParserService {
         }
 
         const no = Number(row[0]) || students.length + 1;
-        const nis = String(row[1] || '').trim();
-        const nisn = String(row[2] || '').trim();
+        let nis = String(row[1] || '').trim();
+        let nisn = String(row[2] || '').trim();
+
+        // Smart Swap / Detection: Prioritaskan NISN 10 digit Dapodik
+        const cleanNisDigits = nis.replace(/[^0-9]/g, '');
+        const cleanNisnDigits = nisn.replace(/[^0-9]/g, '');
+
+        if (!cleanNisnDigits && cleanNisDigits.length === 10) {
+          nisn = nis;
+          nis = '';
+        } else if (cleanNisDigits.length === 10 && cleanNisnDigits.length > 0 && cleanNisnDigits.length <= 6) {
+          // Tertukar: kolom 1 adalah NISN (10 digit), kolom 2 adalah NIS lokal (4-6 digit)
+          const temp = nis;
+          nis = nisn;
+          nisn = temp;
+        }
 
         const attendance: Record<string, 'HADIR' | 'TERLAMBAT' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPENSASI'> = {};
         for (const sess of sessions) {
