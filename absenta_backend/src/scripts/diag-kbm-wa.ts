@@ -21,24 +21,27 @@ async function main() {
 
   const tenantId = gurus[0]?.tenant_id || '8535b49c-d3fc-4598-922a-7774b49ee7c5';
 
-  // 2. Cek Config kbm_wa_notification
-  const kbmConfig = await prisma.config.findFirst({
-    where: { tenant_id: tenantId, key: 'kbm_wa_notification' }
+  // 2. Cek Config kbm_wa_notification di semua tenant
+  const allKbmConfigs = await prisma.config.findMany({
+    where: { key: 'kbm_wa_notification' }
   });
-  console.log('Config kbm_wa_notification:', kbmConfig?.value || 'BELUM DIKONFIGURASI (NULL)');
+  console.log('All Config kbm_wa_notification:', JSON.stringify(allKbmConfigs, null, 2));
 
-  // 3. Sesi terakhir
-  const recentSesis = await prisma.sesiAbsensi.findMany({
-    where: { tenant_id: tenantId },
+  // 3. Sesi DADAN HAMDAN
+  const dadanIds = gurus.map(g => g.id);
+  const dadanSesis = await prisma.sesiAbsensi.findMany({
+    where: {
+      OR: [
+        { guru_id: { in: dadanIds } },
+        { guru_pelaksana_id: { in: dadanIds } }
+      ]
+    },
     orderBy: { updated_at: 'desc' },
     take: 5
   });
-  console.log('5 Sesi Terakhir:', JSON.stringify(recentSesis.map(s => ({
+  console.log('Sesi DADAN HAMDAN:', JSON.stringify(dadanSesis.map(s => ({
     id: s.id,
-    guru_id: s.guru_id,
-    guru_pelaksana_id: s.guru_pelaksana_id,
-    kelas_id: s.kelas_id,
-    mapel_id: s.mapel_id,
+    tenant_id: s.tenant_id,
     status: s.status,
     has_foto: Boolean(s.foto_kegiatan),
     foto_preview: s.foto_kegiatan ? s.foto_kegiatan.substring(0, 50) + '...' : null,
