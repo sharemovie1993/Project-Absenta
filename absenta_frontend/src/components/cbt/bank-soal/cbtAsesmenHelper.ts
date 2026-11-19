@@ -561,3 +561,102 @@ export const cbtBankSoalPayloadSchema = z.object({
   jurusan: z.string().optional().nullable(),
   alokasi_menit: z.number().int().min(10, 'Alokasi durasi minimal 10 menit').max(300),
 });
+
+// ==========================================
+// 6. VOCATIONAL JURUSAN SYNONYMS & MATCHING
+// ==========================================
+
+export const VOCATIONAL_SYNONYMS: Record<string, string[]> = {
+  TKJ: ['TJKT', 'TKJ', 'KOMPUTER', 'JARINGAN'],
+  TKR: ['TO', 'TKR', 'OTOMOTIF', 'KENDARAAN'],
+  TSM: ['TO', 'TSM', 'SEPEDA', 'MOTOR', 'TBSM'],
+  TOI: ['TE', 'TOI', 'OTOMASI', 'INDUSTRI'],
+  TAV: ['TE', 'TAV', 'AUDIO', 'VIDEO'],
+  TP: ['TM', 'TP', 'MESIN', 'PEMESINAN'],
+  AKL: ['AKL', 'AK', 'AKUNTANSI'],
+  PHT: ['PHT', 'AP', 'HOTEL', 'PERHOTELAN'],
+  KUL: ['KUL', 'TB', 'KULINER', 'BOGA', 'TATA BOGA'],
+};
+
+/**
+ * Memeriksa apakah penugasan mengajar (GuruMapel) cocok dengan target jurusan tertentu.
+ * Mendukung pencocokan presisi via:
+ * 1. Kode / Singkatan Jurusan resmi (Kelas.Jurusan atau GM.Jurusan)
+ * 2. ID Jurusan resmi
+ * 3. Nama resmi Jurusan
+ * 4. Sinonim Rombel Kurikulum Merdeka (misal 'X TJKT 2' <-> 'TKJ', 'X TM 1' <-> 'TP', 'X TE 3' <-> 'TOI')
+ */
+export function isAssignmentMatchingJurusan(
+  gm: any,
+  targetJurusanTokens: string[]
+): boolean {
+  if (
+    targetJurusanTokens.length === 0 ||
+    targetJurusanTokens.includes('SEMUA') ||
+    targetJurusanTokens.includes('UMUM')
+  ) {
+    return true;
+  }
+
+  const kName = String(gm.Kelas?.nama_kelas || '').toUpperCase().trim();
+  const jurObj = gm.Kelas?.Jurusan || gm.Jurusan;
+
+  const candidateCodes = [
+    jurObj?.kode,
+    jurObj?.singkatan,
+    jurObj?.kode_jurusan,
+    gm.Jurusan?.kode,
+    gm.Jurusan?.singkatan,
+    gm.Kelas?.Jurusan?.kode,
+    gm.Kelas?.Jurusan?.singkatan,
+  ]
+    .filter(Boolean)
+    .map((s) => String(s).toUpperCase().trim());
+
+  const candidateNames = [
+    jurObj?.nama,
+    gm.Jurusan?.nama,
+    gm.Kelas?.Jurusan?.nama,
+  ]
+    .filter(Boolean)
+    .map((s) => String(s).toUpperCase().trim())
+    .filter((s) => s.length >= 3);
+
+  const candidateIds = [
+    jurObj?.id,
+    gm.jurusan_id,
+    gm.Kelas?.jurusan_id,
+  ]
+    .filter(Boolean)
+    .map((s) => String(s).trim());
+
+  return targetJurusanTokens.some((rawTok) => {
+    const tok = rawTok.toUpperCase().trim();
+    if (!tok) return false;
+
+    // 1. Cocok persis dengan kode/singkatan jurusan (misal 'TKJ', 'TP', 'TOI', 'AKL')
+    if (candidateCodes.includes(tok)) return true;
+
+    // 2. Cocok dengan ID jurusan
+    if (candidateIds.includes(rawTok.trim())) return true;
+
+    // 3. Cocok dengan nama panjang jurusan (misal 'TEKNIK KOMPUTER DAN JARINGAN')
+    if (candidateNames.some((name) => name.includes(tok))) return true;
+
+    // 4. Fallback regex kata pada nama kelas (misal 'X AKL 1' -> match 'AKL')
+    if (kName && new RegExp(`\\b${tok}\\b`, 'i').test(kName)) return true;
+
+    // 5. Cocok via kamus sinonim vokasi Kurikulum Merdeka (misal target 'TKJ' mencocokkan rombel 'X TJKT 2')
+    const synonyms = VOCATIONAL_SYNONYMS[tok];
+    if (synonyms) {
+      const matchSynOnClass = synonyms.some((syn) => kName && new RegExp(`\\b${syn}\\b`, 'i').test(kName));
+      // Jika nama kelas memakai generic rombel (misal TO/TE/TM), verifikasi dengan candidateCodes
+      if (matchSynOnClass && candidateCodes.length > 0) {
+        return candidateCodes.includes(tok);
+      }
+      if (matchSynOnClass) return true;
+    }
+
+    return false;
+  });
+}

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
 import type { GuruMapel } from '@/types/academic';
 import { cn } from '@/lib/utils';
-import { formatTingkatRomawi } from './cbtAsesmenHelper';
+import { formatTingkatRomawi, isAssignmentMatchingJurusan } from './cbtAsesmenHelper';
 
 interface CbtMgmpColleaguePickerProps {
   mapelId: string;
@@ -78,18 +78,9 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
 
       // Filter ketat 2: Jika sasaran jurusan diisi (misal KUL / PHT / TSM atau multi-jurusan),
       // hanya sertakan guru jika mengajar rombel di salah satu jurusan tersebut!
+      // Menggunakan engine pencocokan resmi isAssignmentMatchingJurusan (mendukung singkatan, kode, dan sinonim kurikulum merdeka)
       const kName = gm.Kelas?.nama_kelas || '';
-      const jName = (gm.Jurusan?.nama || '').toUpperCase();
-      const isMatchJurusan =
-        targetJurusanTokens.length === 0 ||
-        targetJurusanTokens.includes('SEMUA') ||
-        targetJurusanTokens.includes('UMUM') ||
-        targetJurusanTokens.some((tok) => {
-          return (
-            (kName && new RegExp(`\\b${tok}\\b`, 'i').test(kName)) ||
-            (jName && jName.includes(tok))
-          );
-        });
+      const isMatchJurusan = isAssignmentMatchingJurusan(gm, targetJurusanTokens);
 
       // Jika target jurusan spesifik dipilih dan guru ini sama sekali tidak mengajar di jurusan tersebut, lewati!
       if (targetJurusanTokens.length > 0 && !isMatchJurusan) {
@@ -114,6 +105,7 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
 
   // Otomatis sinkronkan centang rekan guru saat tingkat, mapel, atau sasaran jurusan berubah
   // PENTING: Pada mode edit, JANGAN otomatis memilih semua agar penarikan share (uncheck) tidak tertimpa!
+  // Namun, bersihkan id guru yang sudah tidak lagi lolos filter jurusan target.
   const autoSelectedKeyRef = useRef<string>('');
   useEffect(() => {
     const currentKey = `${mapelId}_${tingkat}_${targetJurusanTokens.join('-')}`;
@@ -122,9 +114,16 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
       if (!isEditMode) {
         // Centang hanya rekan guru yang lolos filter jurusan & tingkat pada saat pembuatan baru
         onChangeSelectedIds(parallelColleagues.map((c) => c.id));
+      } else {
+        // Pada mode edit: jika ada guru terpilih yang sudah tidak lagi mengajar jurusan target, bersihkan
+        const validIds = new Set(parallelColleagues.map((c) => c.id));
+        const filtered = selectedIds.filter((id) => validIds.has(id));
+        if (filtered.length !== selectedIds.length) {
+          onChangeSelectedIds(filtered);
+        }
       }
     }
-  }, [parallelColleagues, mapelId, tingkat, targetJurusanTokens, onChangeSelectedIds, isEditMode]);
+  }, [parallelColleagues, mapelId, tingkat, targetJurusanTokens, onChangeSelectedIds, isEditMode, selectedIds]);
 
   if (!mapelId) {
     return (
@@ -242,7 +241,11 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
                   />
                   <div className="min-w-0 flex-1">
                     <span className="font-bold block truncate">{colleague.name}</span>
-                    {colleague.kelasNames.length > 0 ? (
+                    {colleague.matchedJurusanKelas.length > 0 ? (
+                      <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium truncate block">
+                        Mengajar: {colleague.matchedJurusanKelas.join(', ')}
+                      </span>
+                    ) : colleague.kelasNames.length > 0 ? (
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate block">
                         Mengajar: {colleague.kelasNames.join(', ')}
                       </span>

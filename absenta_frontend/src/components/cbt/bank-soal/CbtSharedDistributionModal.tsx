@@ -17,7 +17,7 @@ import type { CbtBankSoal } from '@/types/cbt.types';
 import { useAuthStore } from '@/store/authStore';
 import { getMgmpSharedTeacherIds } from '../jadwal/cbtMgmpHelper';
 import { resolveBankTingkatNumber } from '../jadwal/cbtJadwalHelper';
-import { formatTingkatRomawi } from './cbtAsesmenHelper';
+import { formatTingkatRomawi, isAssignmentMatchingJurusan } from './cbtAsesmenHelper';
 import { cn } from '@/lib/utils';
 
 export interface CbtSharedDistributionModalProps {
@@ -109,18 +109,9 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
       }
 
       // Filter jurusan jika bank soal spesifik untuk jurusan tertentu (mendukung multi-jurusan)
+      // Menggunakan engine pencocokan resmi isAssignmentMatchingJurusan
       const kName = gm.Kelas?.nama_kelas || '';
-      const jName = (gm.Jurusan?.nama || '').toUpperCase();
-      const isMatchJurusan =
-        targetJurusanTokens.length === 0 ||
-        targetJurusanTokens.includes('SEMUA') ||
-        targetJurusanTokens.includes('UMUM') ||
-        targetJurusanTokens.some((tok) => {
-          return (
-            (kName && new RegExp(`\\b${tok}\\b`, 'i').test(kName)) ||
-            (jName && jName.includes(tok))
-          );
-        });
+      const isMatchJurusan = isAssignmentMatchingJurusan(gm, targetJurusanTokens);
 
       if (targetJurusanTokens.length > 0 && !targetJurusanTokens.includes('SEMUA') && !targetJurusanTokens.includes('UMUM') && !isMatchJurusan) {
         return;
@@ -136,6 +127,7 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
           nip: gm.Guru?.nip,
           tingkatNum: gmTingkatNum,
           kelasNames: [],
+          matchedJurusanKelas: [],
           isAuthor,
           isExplicitRecipient,
         });
@@ -144,6 +136,9 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
       const entry = map.get(gId)!;
       if (kName && !entry.kelasNames.includes(kName)) {
         entry.kelasNames.push(kName);
+        if (isMatchJurusan) {
+          entry.matchedJurusanKelas.push(kName);
+        }
       }
     });
 
@@ -293,11 +288,17 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
                       {/* Rombel ajar rekan */}
                       <div className="flex items-center gap-1 flex-wrap mt-1">
                         <span className="text-[10px] text-slate-500">Kelas Ajar:</span>
-                        {teacher.kelasNames.length > 0 ? (
-                          teacher.kelasNames.map((k, kIdx) => (
+                        {((teacher as any).matchedJurusanKelas?.length > 0
+                          ? (teacher as any).matchedJurusanKelas
+                          : teacher.kelasNames
+                        ).length > 0 ? (
+                          ((teacher as any).matchedJurusanKelas?.length > 0
+                            ? (teacher as any).matchedJurusanKelas
+                            : teacher.kelasNames
+                          ).map((k: string, kIdx: number) => (
                             <span
                               key={kIdx}
-                              className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700"
+                              className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800"
                             >
                               {k}
                             </span>
