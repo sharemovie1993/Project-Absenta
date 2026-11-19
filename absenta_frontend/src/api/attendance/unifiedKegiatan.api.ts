@@ -165,6 +165,17 @@ export interface UnifiedStatsResponse {
       DISPENSASI: number;
       total: number;
     };
+    agenda_breakdown?: Array<{
+      kode: 'UPACARA' | 'KETARUNAAN' | 'DUHA' | 'APEL_SORE';
+      nama: string;
+      hari_label: string;
+      deskripsi: string;
+      total_pertemuan: number;
+      total_sesi_kelas: number;
+      hadir: number;
+      total_target: number;
+      persen_hadir: number;
+    }>;
     by_jurusan?: Array<{
       jurusan_id: string;
       nama_jurusan: string;
@@ -393,6 +404,7 @@ export async function getUnifiedStats(params?: {
   tanggal_selesai?: string;
   scope_periode?: '1_tahun' | '1_semester' | '1_bulan' | 'kustom';
   bulan_ym?: string;
+  mode_agenda?: 'SEMUA_SIKLUS' | 'APEL_PAGI' | 'LATIHAN_KETARUNAAN' | 'APEL_SORE';
   limit?: number;
 }): Promise<UnifiedStatsResponse> {
   return requestWithFallback<UnifiedStatsResponse>(

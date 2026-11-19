@@ -855,16 +855,11 @@ export class UnifiedKegiatanService {
     tanggal_selesai?: string;
     scope_periode?: '1_tahun' | '1_semester' | '1_bulan' | 'kustom';
     bulan_ym?: string;
+    mode_agenda?: 'SEMUA_SIKLUS' | 'APEL_PAGI' | 'LATIHAN_KETARUNAAN' | 'APEL_SORE';
   }) {
     const jenis = params?.jenis_kegiatan || 'KETARUNAAN';
-
-    const baseSesiWhere: any = {
-      tenant_id: tenantId,
-      OR: [
-        { jenis_kegiatan: { contains: jenis, mode: 'insensitive' } },
-        { JadwalKegiatan: { nama: { contains: jenis, mode: 'insensitive' } } },
-      ],
-    };
+    const isKetarunaanRadar = jenis.toUpperCase().includes('KETARUNAAN');
+    const modeAgenda = params?.mode_agenda || 'SEMUA_SIKLUS';
 
     const activeTp = params?.tahun_pelajaran_id
       ? { id: params.tahun_pelajaran_id }
@@ -872,11 +867,48 @@ export class UnifiedKegiatanService {
           where: { tenant_id: tenantId, is_active: true },
         });
 
-    if (activeTp?.id) {
-      baseSesiWhere.tahun_pelajaran_id = activeTp.id;
+    // Jika radar KETARUNAAN, ambil daftar kelas peserta ketarunaan (misal 20 Rombel Kelas X)
+    // dan libatkan seluruh siklus apel disiplin taruna: Upacara (Senin), Ketarunaan (Sel,Rab,Kam,Sab), Dhuha (Jum'at), & Apel Sore
+    let ketarunaanTargetKelasIds: string[] = [];
+    if (isKetarunaanRadar) {
+      const ketJadwal = params?.jadwal_kegiatan_id
+        ? await prisma.jadwalKegiatan.findUnique({ where: { id: params.jadwal_kegiatan_id } })
+        : await prisma.jadwalKegiatan.findFirst({
+            where: {
+              tenant_id: tenantId,
+              OR: [
+                { nama: { contains: 'KETARUNAAN', mode: 'insensitive' } },
+                { jenis_kegiatan: { contains: 'KETARUNAAN', mode: 'insensitive' } },
+              ],
+            },
+          });
+
+      if (ketJadwal && !ketJadwal.target_semua_kelas && Array.isArray(ketJadwal.target_kelas_ids)) {
+        ketarunaanTargetKelasIds = (ketJadwal.target_kelas_ids as any[]).map(String).filter(Boolean);
+      }
     }
-    if (params?.jadwal_kegiatan_id) {
-      baseSesiWhere.jadwal_kegiatan_id = params.jadwal_kegiatan_id;
+
+    const baseSesiWhere: any = {
+      tenant_id: tenantId,
+      ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
+    };
+
+    if (isKetarunaanRadar) {
+      if (ketarunaanTargetKelasIds.length > 0) {
+        baseSesiWhere.kelas_id = { in: ketarunaanTargetKelasIds };
+      }
+      baseSesiWhere.OR = [
+        { jenis_kegiatan: { in: ['UPACARA', 'Upacara', 'KETARUNAAN', 'Ketarunaan', 'DUHA', 'Duha', 'APEL_SORE', 'Apel Pulang', 'Apel Pulang Siswa'] } },
+        { JadwalKegiatan: { nama: { in: ['Upacara', 'Ketarunaan', 'Duha', 'Apel Pulang'] } } },
+      ];
+    } else {
+      baseSesiWhere.OR = [
+        { jenis_kegiatan: { contains: jenis, mode: 'insensitive' } },
+        { JadwalKegiatan: { nama: { contains: jenis, mode: 'insensitive' } } },
+      ];
+      if (params?.jadwal_kegiatan_id) {
+        baseSesiWhere.jadwal_kegiatan_id = params.jadwal_kegiatan_id;
+      }
     }
 
     const allYearSesiRaw = await prisma.sesiAbsensi.findMany({
@@ -906,7 +938,7 @@ export class UnifiedKegiatanService {
     const available_months = Array.from(availableMonthsSet).sort().reverse();
 
     // Terapkan filter Scope Periode (1 Tahun / 1 Semester / 1 Bulan / Kustom)
-    let sesiList = [...basePool];
+    let periodFilteredPool = [...basePool];
     const scope = params?.scope_periode;
 
     if (scope === '1_semester') {
@@ -914,16 +946,16 @@ export class UnifiedKegiatanService {
         ? params.semester_id
         : (await prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }))?.id;
       if (targetSemId) {
-        const semFiltered = sesiList.filter((s) => s.semester_id === targetSemId);
-        if (semFiltered.length > 0) sesiList = semFiltered;
+        const semFiltered = periodFilteredPool.filter((s) => s.semester_id === targetSemId);
+        if (semFiltered.length > 0) periodFilteredPool = semFiltered;
       }
     } else if (scope === '1_bulan') {
       if (params?.bulan_ym && params.bulan_ym !== 'latest_30d') {
-        sesiList = sesiList.filter((s) => s.tanggal.toISOString().slice(0, 7) === params.bulan_ym);
-      } else if (sesiList.length > 0) {
-        const maxDateMs = sesiList[sesiList.length - 1].tanggal.getTime();
+        periodFilteredPool = periodFilteredPool.filter((s) => s.tanggal.toISOString().slice(0, 7) === params.bulan_ym);
+      } else if (periodFilteredPool.length > 0) {
+        const maxDateMs = periodFilteredPool[periodFilteredPool.length - 1].tanggal.getTime();
         const minDateMs = maxDateMs - 30 * 24 * 3600 * 1000;
-        sesiList = sesiList.filter((s) => {
+        periodFilteredPool = periodFilteredPool.filter((s) => {
           const t = s.tanggal.getTime();
           return t >= minDateMs && t <= maxDateMs;
         });
@@ -931,18 +963,38 @@ export class UnifiedKegiatanService {
     } else if (params?.tanggal_mulai || params?.tanggal_selesai) {
       const gteMs = params.tanggal_mulai ? new Date(`${params.tanggal_mulai}T00:00:00.000Z`).getTime() : 0;
       const lteMs = params.tanggal_selesai ? new Date(`${params.tanggal_selesai}T23:59:59.999Z`).getTime() : Number.MAX_SAFE_INTEGER;
-      const dateFiltered = sesiList.filter((s) => {
+      const dateFiltered = periodFilteredPool.filter((s) => {
         const t = s.tanggal.getTime();
         return t >= gteMs && t <= lteMs;
       });
       if (dateFiltered.length > 0 || scope === 'kustom') {
-        sesiList = dateFiltered;
-      } else if (sesiList.length > 0) {
-        // Fallback cerdas: jika preset 30 hari dari jam sistem kosong karena sesi terakhir >30 hari lalu, ambil 30 hari dari sesi terakhir
-        const maxDateMs = sesiList[sesiList.length - 1].tanggal.getTime();
+        periodFilteredPool = dateFiltered;
+      } else if (periodFilteredPool.length > 0) {
+        const maxDateMs = periodFilteredPool[periodFilteredPool.length - 1].tanggal.getTime();
         const minDateMs = maxDateMs - 30 * 24 * 3600 * 1000;
-        sesiList = sesiList.filter((s) => s.tanggal.getTime() >= minDateMs && s.tanggal.getTime() <= maxDateMs);
+        periodFilteredPool = periodFilteredPool.filter((s) => s.tanggal.getTime() >= minDateMs && s.tanggal.getTime() <= maxDateMs);
       }
+    }
+
+    // Helper klasifikasi 4 pilar agenda siklus taruna
+    const classifyAgenda = (jenisStr: string): 'UPACARA' | 'KETARUNAAN' | 'DUHA' | 'APEL_SORE' => {
+      const u = String(jenisStr || '').toUpperCase();
+      if (u.includes('UPACARA')) return 'UPACARA';
+      if (u.includes('DUHA') || u.includes('DHUHA')) return 'DUHA';
+      if (u.includes('SORE') || u.includes('PULANG')) return 'APEL_SORE';
+      return 'KETARUNAAN';
+    };
+
+    // Terapkan filter Mode Agenda (SEMUA_SIKLUS / APEL_PAGI / LATIHAN_KETARUNAAN / APEL_SORE)
+    let sesiList = [...periodFilteredPool];
+    if (isKetarunaanRadar && modeAgenda !== 'SEMUA_SIKLUS') {
+      sesiList = periodFilteredPool.filter((s) => {
+        const cat = classifyAgenda(s.jenis_kegiatan);
+        if (modeAgenda === 'APEL_PAGI') return cat === 'UPACARA' || cat === 'KETARUNAAN' || cat === 'DUHA';
+        if (modeAgenda === 'LATIHAN_KETARUNAAN') return cat === 'KETARUNAAN';
+        if (modeAgenda === 'APEL_SORE') return cat === 'APEL_SORE';
+        return true;
+      });
     }
 
     const totalSiswaMaster = await prisma.siswaAkademik.count({
@@ -1002,12 +1054,13 @@ export class UnifiedKegiatanService {
     }
 
     const sesiIds = sesiList.map(s => s.id);
+    const periodPoolIds = periodFilteredPool.map(s => s.id);
 
-    // Ambil rekap kehadiran nyata dari AbsenSiswa untuk seluruh sesi kegiatan ini (SSOT)
+    // Ambil rekap kehadiran nyata dari AbsenSiswa untuk seluruh sesi periode ini (SSOT)
     const hadirPerSesiList = await prisma.absenSiswa.groupBy({
       by: ['sesi_id'],
       where: {
-        sesi_id: { in: sesiIds },
+        sesi_id: { in: periodPoolIds },
         tenant_id: tenantId,
         status: 'HADIR',
       },
@@ -1017,6 +1070,62 @@ export class UnifiedKegiatanService {
     for (const item of hadirPerSesiList) {
       hadirPerSesiMap.set(item.sesi_id, item._count.id);
     }
+
+    // Hitung Breakdown 4 Pilar Siklus Agenda Taruna (Upacara Senin, Ketarunaan Sel-Kam-Sab, Dhuha Jum'at, Apel Sore)
+    const AGENDA_META: Record<'UPACARA' | 'KETARUNAAN' | 'DUHA' | 'APEL_SORE', { nama: string; hari_label: string; deskripsi: string }> = {
+      UPACARA: {
+        nama: 'Upacara Bendera + Makan Lapangan',
+        hari_label: 'Senin Pagi (06:30)',
+        deskripsi: 'Apel upacara bendera dilanjutkan makan pagi bersama taruna di lapangan',
+      },
+      KETARUNAAN: {
+        nama: 'Apel & Latihan Fisik Ketarunaan',
+        hari_label: 'Selasa, Rabu, Kamis, Sabtu Pagi',
+        deskripsi: 'Pembinaan fisik/mental taruna & makan pagi bersama di lapangan',
+      },
+      DUHA: {
+        nama: 'Pembiasaan Dhuha + Pembinaan Taruna',
+        hari_label: "Jum'at Pagi (06:30)",
+        deskripsi: 'Ibadah Dhuha bersama dilanjutkan makan pagi taruna di lapangan',
+      },
+      APEL_SORE: {
+        nama: 'Apel Sore / Apel Pulang Taruna',
+        hari_label: 'Senin s/d Sabtu Sore (15:30)',
+        deskripsi: 'Apel pengecekan akhir hari sebelum taruna kembali ke rumah',
+      },
+    };
+
+    const agendaBuckets: Record<'UPACARA' | 'KETARUNAAN' | 'DUHA' | 'APEL_SORE', { dates: Set<string>; sesiCount: number; hadir: number; target: number }> = {
+      UPACARA: { dates: new Set(), sesiCount: 0, hadir: 0, target: 0 },
+      KETARUNAAN: { dates: new Set(), sesiCount: 0, hadir: 0, target: 0 },
+      DUHA: { dates: new Set(), sesiCount: 0, hadir: 0, target: 0 },
+      APEL_SORE: { dates: new Set(), sesiCount: 0, hadir: 0, target: 0 },
+    };
+
+    for (const s of periodFilteredPool) {
+      const cat = classifyAgenda(s.jenis_kegiatan);
+      const b = agendaBuckets[cat];
+      b.dates.add(s.tanggal.toISOString().slice(0, 10));
+      b.sesiCount += 1;
+      b.hadir += hadirPerSesiMap.get(s.id) || 0;
+      b.target += s._count.AbsenSiswa > 0 ? s._count.AbsenSiswa : 36;
+    }
+
+    const agenda_breakdown = (['UPACARA', 'KETARUNAAN', 'DUHA', 'APEL_SORE'] as const).map((kode) => {
+      const b = agendaBuckets[kode];
+      const meta = AGENDA_META[kode];
+      return {
+        kode,
+        nama: meta.nama,
+        hari_label: meta.hari_label,
+        deskripsi: meta.deskripsi,
+        total_pertemuan: b.dates.size,
+        total_sesi_kelas: b.sesiCount,
+        hadir: b.hadir,
+        total_target: b.target,
+        persen_hadir: b.target > 0 ? Math.min(100, Math.round((b.hadir / b.target) * 100)) : 0,
+      };
+    });
 
     // Ambil rekap kehadiran nyata dari AbsenGuru untuk seluruh sesi kegiatan ini (SSOT)
     const hadirGuruPerSesiList = await prisma.absenGuru.groupBy({
@@ -1764,6 +1873,7 @@ export class UnifiedKegiatanService {
       by_tingkat: byTingkat,
       by_kelas: byKelas,
       status_breakdown,
+      agenda_breakdown,
       by_jurusan,
       pola_hari,
       at_risk_students,

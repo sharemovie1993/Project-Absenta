@@ -26,6 +26,7 @@ import {
   ToggleRight,
   Users,
   UserCheck,
+  Shield,
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Button, SectionCard, TabSwitcher } from '@/components/ui';
@@ -275,6 +276,38 @@ export default React.memo(function JadwalKegiatanPage() {
     { id: 'ESKUL', label: 'Ekstrakurikuler' },
   ], []);
 
+  const formatTargetKelasSummary = useCallback((item: JadwalKegiatanItem | null | undefined, namaKegiatan: string) => {
+    if (!item) return 'Target: Belum diatur';
+    if (item.target_semua_kelas) {
+      return 'Seluruh Kelas (Kelas X masuk Radar Ketarunaan)';
+    }
+    const targetIds = parseArrayField(item.target_kelas_ids);
+    if (targetIds.length === 0) return '0 Kelas';
+    const classList = Array.isArray(classes) ? classes : [];
+    if (classList.length > 0) {
+      const matched = classList.filter((c: any) => targetIds.includes(c.id));
+      if (matched.length > 0) {
+        const countX = matched.filter((c: any) => c.tingkat === 10 || String(c.nama || '').toUpperCase().startsWith('X ')).length;
+        const countXI = matched.filter((c: any) => c.tingkat === 11 || String(c.nama || '').toUpperCase().startsWith('XI ')).length;
+        const countXII = matched.filter((c: any) => c.tingkat === 12 || String(c.nama || '').toUpperCase().startsWith('XII ')).length;
+        if (countX === matched.length) {
+          return `Khusus Kelas X (${countX} Rombel Taruna — Apel + Makan Lapangan)`;
+        }
+        const parts: string[] = [];
+        if (countX > 0) parts.push(`Kelas X: ${countX}`);
+        if (countXI > 0) parts.push(`Kelas XI: ${countXI}`);
+        if (countXII > 0) parts.push(`Kelas XII: ${countXII}`);
+        if (parts.length > 0) {
+          return `${targetIds.length} Kelas (${parts.join(', ')})`;
+        }
+      }
+    }
+    if (namaKegiatan.toLowerCase().includes('ketarunaan')) {
+      return `Khusus Kelas X (${targetIds.length} Rombel Taruna)`;
+    }
+    return `${targetIds.length} Kelas`;
+  }, [classes]);
+
   return (
     <AcademicPageLayout
       title="Jadwal Kegiatan & Eskul"
@@ -345,6 +378,56 @@ export default React.memo(function JadwalKegiatanPage() {
               onChange={(id) => setActiveTab(id as 'PEMBIASAAN' | 'ESKUL')}
             />
           </div>
+
+          {activeTab === 'PEMBIASAAN' && (
+            <div className="mx-6 mt-5 p-4 rounded-2xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 space-y-3">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                <div className="flex items-start gap-2.5">
+                  <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5">
+                    <Shield size={16} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                      Aturan Siklus Mingguan Pembiasaan &amp; Radar Perhitungan Ketarunaan (Senin – Sabtu)
+                    </h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                      Meskipun jadwal <strong>Ketarunaan</strong> diatur pada hari <strong>Selasa, Rabu, Kamis, Sabtu</strong>, sistem secara otomatis menggabungkan <strong>Upacara (Senin)</strong>, <strong>Dhuha (Jum&apos;at)</strong>, dan <strong>Apel Pulang (Senin–Sabtu)</strong> ke dalam <strong>Radar Perhitungan Ketarunaan khusus Kelas X (Peserta Taruna)</strong>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-amber-200/70 dark:border-amber-900/40">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-black text-amber-700 dark:text-amber-400">
+                      1. Peserta Ketarunaan (Khusus Kelas X — 20 Rombel)
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                      Apel + Makan Pagi di Lapangan
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Mengikuti apel pagi penuh Senin–Sabtu (<strong>Senin: Upacara</strong>, <strong>Selasa–Kamis &amp; Sabtu: Apel Ketarunaan</strong>, <strong>Jum&apos;at: Pembiasaan Dhuha</strong>) yang dilanjutkan <strong>Makan Pagi Bersama di Lapangan</strong> sebelum masuk KBM, serta <strong>Apel Sore</strong>. Ke-4 agenda ini dihitung menyatu di Dashboard &amp; Ranking Ketarunaan.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-black text-indigo-700 dark:text-indigo-400">
+                      2. Non-Ketarunaan (Kelas XI &amp; XII)
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                      Apel Langsung Masuk Kelas
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Mengikuti jadwal <strong>Upacara (Senin)</strong>, <strong>Dhuha (Jum&apos;at)</strong>, dan <strong>Apel Pulang</strong>. Setelah apel pagi selesai, siswa Kelas XI/XII <strong>langsung masuk ke ruang kelas untuk KBM</strong> (tidak ada sesi makan lapangan dan tidak dijadwalkan pada sesi Ketarunaan Selasa, Rabu, Kamis, Sabtu).
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="flex justify-center items-center py-20">
               <Loader size="lg" />
@@ -391,7 +474,7 @@ export default React.memo(function JadwalKegiatanPage() {
                     {/* Activity Info */}
                     <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between px-0 md:px-6 w-full gap-3 md:gap-4 mb-3 md:mb-0">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black tracking-wider uppercase ${
                             !isConfigured
                               ? 'bg-slate-100 dark:bg-slate-900 text-slate-500'
@@ -401,6 +484,13 @@ export default React.memo(function JadwalKegiatanPage() {
                           }`}>
                             {card.jenis_kegiatan}
                           </span>
+                          {activeTab === 'PEMBIASAAN' && ['upacara', 'ketarunaan', 'duha', 'dhuha', 'apel'].some(k => card.nama.toLowerCase().includes(k)) && (
+                            <span className="px-2 py-0.5 rounded-lg text-[9px] font-black tracking-wider uppercase bg-amber-100/80 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300">
+                              {card.nama.toLowerCase().includes('ketarunaan')
+                                ? 'Inti Ketarunaan Kelas X (Apel + Makan Lapangan)'
+                                : 'Masuk Radar Siklus Ketarunaan (Kelas X)'}
+                            </span>
+                          )}
                           {isConfigured && (
                             <span className="text-[10px] text-slate-400 font-semibold font-mono">
                               Mulai: {formatDate(item?.berlaku_mulai ?? '')}
@@ -412,7 +502,7 @@ export default React.memo(function JadwalKegiatanPage() {
                         </h3>
                       </div>
 
-                      <div className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400 sm:min-w-[200px]">
+                      <div className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400 sm:min-w-[230px]">
                         <div className="flex items-center gap-1.5">
                           <Calendar size={13} className="text-slate-400 shrink-0" />
                           <span className="truncate font-semibold">
@@ -425,7 +515,7 @@ export default React.memo(function JadwalKegiatanPage() {
                           <Users size={13} className="text-slate-400 shrink-0" />
                           <span className="truncate font-semibold">
                             {isConfigured
-                              ? (item?.target_semua_kelas ? 'Seluruh Kelas' : `${parseArrayField(item?.target_kelas_ids).length} Kelas`)
+                              ? formatTargetKelasSummary(item, card.nama)
                               : 'Target: Belum diatur'}
                           </span>
                         </div>

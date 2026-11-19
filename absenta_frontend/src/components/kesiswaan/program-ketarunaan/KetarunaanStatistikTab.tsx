@@ -56,6 +56,7 @@ interface KetarunaanStatistikTabProps {
 
 type ScopePeriode = '1_tahun' | '1_semester' | '1_bulan';
 type RankingTabMode = 'global' | 'jurusan' | 'kelas';
+type ModeAgenda = 'SEMUA_SIKLUS' | 'APEL_PAGI' | 'LATIHAN_KETARUNAAN' | 'APEL_SORE';
 
 function formatBulanYm(ym: string) {
   if (!ym || ym === 'latest_30d') return '30 Hari Aktif Terakhir';
@@ -112,6 +113,7 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
 }) => {
   const [scopePeriode, setScopePeriode] = useState<ScopePeriode>('1_tahun');
   const [selectedBulanYm, setSelectedBulanYm] = useState<string>('latest_30d');
+  const [modeAgenda, setModeAgenda] = useState<ModeAgenda>('SEMUA_SIKLUS');
   const [showAllMeetings, setShowAllMeetings] = useState<boolean>(false);
 
   // State Hall of Fame & Peringkat Taruna Terbaik
@@ -128,11 +130,12 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
   }, [scopePeriode, selectedBulanYm]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['ketarunaan-stats', jadwalKegiatanId, scopePeriode, selectedBulanYm, tahunPelajaranId, semesterId],
+    queryKey: ['ketarunaan-stats', jadwalKegiatanId, scopePeriode, selectedBulanYm, modeAgenda, tahunPelajaranId, semesterId],
     queryFn: () => getKetarunaanStats({
       jadwal_kegiatan_id: jadwalKegiatanId ?? undefined,
       scope_periode: scopePeriode,
       bulan_ym: scopePeriode === '1_bulan' ? selectedBulanYm : undefined,
+      mode_agenda: modeAgenda,
       tahun_pelajaran_id: tahunPelajaranId || undefined,
       semester_id: semesterId || undefined,
     }),
@@ -140,6 +143,7 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
   });
 
   const stats = data?.data;
+  const agendaBreakdown = useMemo(() => stats?.agenda_breakdown ?? [], [stats?.agenda_breakdown]);
   const trendList = useMemo(() => stats?.trend ?? [], [stats?.trend]);
   const kelasList = useMemo(() => stats?.by_kelas ?? [], [stats?.by_kelas]);
   const tingkatList = useMemo(() => stats?.by_tingkat ?? [], [stats?.by_tingkat]);
@@ -319,6 +323,82 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
             </div>
           </div>
         )}
+
+        {/* Filter Mode Radar Agenda Siklus Mingguan Ketarunaan (Upacara + Ketarunaan + Dhuha + Apel Sore) */}
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <div>
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-amber-600" />
+                Radar Siklus Mingguan Taruna Kelas X (Apel Pagi + Makan Bersama Lapangan &amp; Apel Sore)
+              </span>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Seluruh apel pagi peserta Ketarunaan (Senin Upacara, Sel-Kam-Sab Latihan Ketarunaan, Jum&apos;at Dhuha) dilanjutkan makan pagi di lapangan serta Apel Sore masuk ke dalam radar perhitungan.
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {([
+                { id: 'SEMUA_SIKLUS', label: 'Semua Siklus (4 Agenda)' },
+                { id: 'APEL_PAGI', label: 'Apel Pagi + Makan Lapangan' },
+                { id: 'LATIHAN_KETARUNAAN', label: 'Khusus Apel Ketarunaan' },
+                { id: 'APEL_SORE', label: 'Khusus Apel Sore' },
+              ] as Array<{ id: ModeAgenda; label: string }>).map((m) => {
+                const active = modeAgenda === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setModeAgenda(m.id)}
+                    className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all ${
+                      active
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {agendaBreakdown.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+              {agendaBreakdown.map((ag) => (
+                <div
+                  key={ag.jenis_kegiatan}
+                  className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex flex-col justify-between gap-1.5"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-black text-slate-800 dark:text-slate-100 block">
+                        {ag.label}
+                      </span>
+                      <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                        {ag.jadwal_hari}
+                      </span>
+                    </div>
+                    <Badge
+                      variant={ag.persen_hadir >= 85 ? 'success' : ag.persen_hadir >= 75 ? 'warning' : 'error'}
+                      className="text-[10px] font-black shrink-0"
+                    >
+                      {ag.persen_hadir}% Hadir
+                    </Badge>
+                  </div>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                    {ag.keterangan_ketarunaan}
+                  </p>
+                  <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <span>{ag.total_pertemuan_hari} Hari ({ag.total_sesi_kelas} Sesi Kelas)</span>
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      {ag.hadir_siswa.toLocaleString('id-ID')}/{ag.total_siswa.toLocaleString('id-ID')} Taruna
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
