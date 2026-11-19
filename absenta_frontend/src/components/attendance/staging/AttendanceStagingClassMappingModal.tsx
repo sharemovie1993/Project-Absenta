@@ -25,7 +25,7 @@ export interface AttendanceStagingClassMappingModalProps {
   isOpen: boolean;
   onClose: () => void;
   sheets: AttendanceStagingItem[];
-  classOptions: Array<{ id: string; nama_kelas: string; tingkat: number }>;
+  classOptions: Array<{ id: string; nama_kelas: string; tingkat: number; jurusan_nama?: string }>;
   onMappingSaved: () => void;
 }
 
@@ -54,7 +54,7 @@ export const AttendanceStagingClassMappingModal: React.FC<AttendanceStagingClass
 
   // Kelompokkan kelas options per tingkat
   const groupedClasses = useMemo(() => {
-    const map: Record<number, Array<{ id: string; nama_kelas: string }>> = {};
+    const map: Record<number, Array<{ id: string; nama_kelas: string; tingkat: number; jurusan_nama?: string }>> = {};
     classOptions.forEach((c) => {
       const t = c.tingkat || 10;
       if (!map[t]) map[t] = [];
@@ -193,6 +193,11 @@ export const AttendanceStagingClassMappingModal: React.FC<AttendanceStagingClass
                       <div className="text-[10px] text-slate-400">
                         Label Awal: {sheet.nama_kelas}
                       </div>
+                      {sheet.raw_sheet_data?.programKeahlian && (
+                        <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium truncate max-w-[200px]" title={sheet.raw_sheet_data.programKeahlian}>
+                          Program: {sheet.raw_sheet_data.programKeahlian}
+                        </div>
+                      )}
                     </td>
 
                     {/* Total Siswa */}
@@ -217,7 +222,7 @@ export const AttendanceStagingClassMappingModal: React.FC<AttendanceStagingClass
                           <optgroup key={tingkat} label={`Tingkat ${tingkat === '10' ? 'X' : tingkat === '11' ? 'XI' : 'XII'}`}>
                             {classes.map((c) => (
                               <option key={c.id} value={c.id}>
-                                {c.nama_kelas}
+                                {c.nama_kelas} {c.jurusan_nama ? `(${c.jurusan_nama})` : ''}
                               </option>
                             ))}
                           </optgroup>
@@ -230,7 +235,10 @@ export const AttendanceStagingClassMappingModal: React.FC<AttendanceStagingClass
                       {isMatched ? (
                         <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                           <CheckCircle2 size={11} />
-                          <span>{selectedClass?.nama_kelas || 'Terpetakan'}</span>
+                          <span>
+                            {selectedClass?.nama_kelas || 'Terpetakan'}
+                            {selectedClass?.jurusan_nama ? ` • ${selectedClass.jurusan_nama}` : ''}
+                          </span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">

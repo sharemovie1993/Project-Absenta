@@ -83,7 +83,7 @@ export const attendanceStagingApi = {
     return response.data;
   },
 
-  getClassOptions: async (): Promise<{ success: boolean; data: Array<{ id: string; nama_kelas: string; tingkat: number }> }> => {
+  getClassOptions: async (): Promise<{ success: boolean; data: Array<{ id: string; nama_kelas: string; tingkat: number; jurusan_nama?: string }> }> => {
     const response = await api.get('/attendance/staging/class-options');
     return response.data;
   },

@@ -18,6 +18,7 @@ import {
   AlertCircle,
   HelpCircle,
   ArrowRight,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -37,7 +38,7 @@ export const AttendanceStagingView: React.FC = () => {
   const [isFetching, setIsFetching] = useState(false);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [stagingSheets, setStagingSheets] = useState<AttendanceStagingItem[]>([]);
-  const [classOptions, setClassOptions] = useState<Array<{ id: string; nama_kelas: string; tingkat: number }>>([]);
+  const [classOptions, setClassOptions] = useState<Array<{ id: string; nama_kelas: string; tingkat: number; jurusan_nama?: string }>>([]);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'READY' | 'SYNCED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -285,6 +286,11 @@ export const AttendanceStagingView: React.FC = () => {
           </p>
 
           <div className="pt-2 flex flex-wrap gap-3 text-xs text-white/80">
+            {stagingSheets[0]?.tahun_pelajaran_nama && (
+              <span className="flex items-center gap-1.5 bg-black/30 border border-white/20 px-3 py-1 rounded-lg font-bold text-amber-300">
+                <Calendar className="w-3.5 h-3.5 text-amber-400" /> Konteks Akademik: TP {stagingSheets[0].tahun_pelajaran_nama} (Aktif)
+              </span>
+            )}
             <span className="flex items-center gap-1 bg-black/20 px-2.5 py-1 rounded-lg">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Smart Agenda Dispatcher
             </span>
@@ -628,7 +634,7 @@ export const AttendanceStagingView: React.FC = () => {
                             <option value="">-- Pilih Kelas Master --</option>
                             {classOptions.map((c) => (
                               <option key={c.id} value={c.id}>
-                                {c.nama_kelas}
+                                {c.nama_kelas} {c.jurusan_nama ? `(${c.jurusan_nama})` : ''}
                               </option>
                             ))}
                           </select>

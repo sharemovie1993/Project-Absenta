@@ -42,23 +42,42 @@ export class AttendanceStagingService {
       // 1. Auto-match kelas secara presisi
       const matchedClass = this.matchClassSmart(sheetData.sheetName, sheetData.namaKelas, tenantClasses);
 
-      // 2. Hitung kecocokan siswa jika kelas ditemukan
+      // 2. Hitung kecocokan siswa jika kelas ditemukan berdasarkan Konteks Akademik (SiswaAkademik)
       let matchedStudentCount = 0;
       if (matchedClass) {
         const studentNisList = sheetData.students.map((s) => s.nis).filter(Boolean);
         const studentNisnList = sheetData.students.map((s) => s.nisn).filter(Boolean);
-        const existingStudents = await prisma.siswa.findMany({
-          where: {
-            tenant_id: tenantId,
-            kelas_id: matchedClass.id,
-            OR: [
-              { nis: { in: studentNisList } },
-              { nisn: { in: studentNisnList } },
-            ],
-          },
-          select: { nis: true },
-        });
-        matchedStudentCount = existingStudents.length;
+
+        if (activeTp?.id) {
+          const saStudents = await prisma.siswaAkademik.findMany({
+            where: {
+              kelas_id: matchedClass.id,
+              tahun_pelajaran_id: activeTp.id,
+              siswa: {
+                tenant_id: tenantId,
+                OR: [
+                  { nis: { in: studentNisList } },
+                  { nisn: { in: studentNisnList } },
+                ],
+              },
+            },
+            select: { id: true },
+          });
+          matchedStudentCount = saStudents.length;
+        } else {
+          const existingStudents = await prisma.siswa.findMany({
+            where: {
+              tenant_id: tenantId,
+              kelas_id: matchedClass.id,
+              OR: [
+                { nis: { in: studentNisList } },
+                { nisn: { in: studentNisnList } },
+              ],
+            },
+            select: { nis: true },
+          });
+          matchedStudentCount = existingStudents.length;
+        }
       }
 
       // 3. Upsert ke tabel penampung staging
@@ -482,30 +501,51 @@ export class AttendanceStagingService {
       throw new Error('Kelas master tidak ditemukan di sistem');
     }
 
-    // Hitung ulang kecocokan siswa dengan kelas yang baru dipilih
+    // Hitung ulang kecocokan siswa dengan kelas yang baru dipilih berdasarkan konteks akademik (SiswaAkademik)
     const rawData = sheetRecord.raw_sheet_data;
     const students = rawData?.students || [];
     const studentNisList = students.map((s: any) => s.nis).filter(Boolean);
     const studentNisnList = students.map((s: any) => s.nisn).filter(Boolean);
+    const tpId = sheetRecord.tahun_pelajaran_id;
 
-    const existingStudents = await prisma.siswa.findMany({
-      where: {
-        tenant_id: tenantId,
-        kelas_id: kelas.id,
-        OR: [
-          { nis: { in: studentNisList } },
-          { nisn: { in: studentNisnList } },
-        ],
-      },
-      select: { nis: true, nisn: true },
-    });
+    let matchedCount = 0;
+    if (tpId) {
+      const saStudents = await prisma.siswaAkademik.findMany({
+        where: {
+          kelas_id: kelas.id,
+          tahun_pelajaran_id: tpId,
+          siswa: {
+            tenant_id: tenantId,
+            OR: [
+              { nis: { in: studentNisList } },
+              { nisn: { in: studentNisnList } },
+            ],
+          },
+        },
+        select: { id: true },
+      });
+      matchedCount = saStudents.length;
+    } else {
+      const existingStudents = await prisma.siswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: kelas.id,
+          OR: [
+            { nis: { in: studentNisList } },
+            { nisn: { in: studentNisnList } },
+          ],
+        },
+        select: { nis: true },
+      });
+      matchedCount = existingStudents.length;
+    }
 
     await (prisma as any).attendanceStagingSheet.update({
       where: { id: sheetId },
       data: {
         kelas_id: kelas.id,
         nama_kelas: kelas.nama_kelas,
-        total_matched_siswa: existingStudents.length,
+        total_matched_siswa: matchedCount,
       },
     });
 
@@ -514,7 +554,7 @@ export class AttendanceStagingService {
       kelasId: kelas.id,
       namaKelas: kelas.nama_kelas,
       totalSiswa: sheetRecord.total_siswa,
-      totalMatchedSiswa: existingStudents.length,
+      totalMatchedSiswa: matchedCount,
     };
   }
 
@@ -535,14 +575,32 @@ export class AttendanceStagingService {
   }
 
   /**
-   * Ambil opsi daftar kelas aktif di tenant untuk dropdown pemetaan
+   * Ambil opsi daftar kelas aktif di tenant untuk dropdown pemetaan lengkap dengan nama kejuruan
    */
   static async getClassOptions(tenantId: string) {
-    return prisma.kelas.findMany({
+    const classes = await prisma.kelas.findMany({
       where: { tenant_id: tenantId, is_active: true },
-      select: { id: true, nama_kelas: true, tingkat: true },
+      select: {
+        id: true,
+        nama_kelas: true,
+        tingkat: true,
+        Jurusan: {
+          select: {
+            nama: true,
+            singkatan: true,
+            kode: true,
+          },
+        },
+      },
       orderBy: [{ tingkat: 'asc' }, { nama_kelas: 'asc' }],
     });
+
+    return classes.map((c) => ({
+      id: c.id,
+      nama_kelas: c.nama_kelas,
+      tingkat: c.tingkat,
+      jurusan_nama: c.Jurusan?.nama || c.Jurusan?.singkatan || c.Jurusan?.kode || '',
+    }));
   }
 
   /**
