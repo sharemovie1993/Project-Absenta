@@ -366,16 +366,16 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
               {agendaBreakdown.map((ag) => (
                 <div
-                  key={ag.jenis_kegiatan}
+                  key={ag.kode}
                   className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex flex-col justify-between gap-1.5"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <span className="text-xs font-black text-slate-800 dark:text-slate-100 block">
-                        {ag.label}
+                        {ag.nama}
                       </span>
                       <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                        {ag.jadwal_hari}
+                        {ag.hari_label}
                       </span>
                     </div>
                     <Badge
@@ -386,12 +386,12 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
                     </Badge>
                   </div>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                    {ag.keterangan_ketarunaan}
+                    {ag.deskripsi}
                   </p>
                   <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                    <span>{ag.total_pertemuan_hari} Hari ({ag.total_sesi_kelas} Sesi Kelas)</span>
+                    <span>{ag.total_pertemuan ?? 0} Hari ({ag.total_sesi_kelas ?? 0} Sesi Kelas)</span>
                     <span className="text-emerald-600 dark:text-emerald-400">
-                      {ag.hadir_siswa.toLocaleString('id-ID')}/{ag.total_siswa.toLocaleString('id-ID')} Taruna
+                      {(ag.hadir ?? 0).toLocaleString('id-ID')}/{(ag.total_target ?? 0).toLocaleString('id-ID')} Kehadiran
                     </span>
                   </div>
                 </div>
