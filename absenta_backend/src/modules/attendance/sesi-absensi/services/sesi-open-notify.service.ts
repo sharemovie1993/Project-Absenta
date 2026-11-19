@@ -3,8 +3,6 @@ import { appLogger } from '../../../../utils/app-logger';
 import { whatsappService } from '../../../whatsapp/services/whatsapp.service';
 import { getTenantTimezone } from '../../../../utils/timezone.utils';
 import { PLATFORM_TIMEZONE } from '../../../../infra/jobEngine';
-import fs from 'fs';
-import path from 'path';
 
 export interface KbmNotificationSetting {
   isEnabled: boolean;
