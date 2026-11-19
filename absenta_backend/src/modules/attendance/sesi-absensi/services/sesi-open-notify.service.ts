@@ -119,7 +119,7 @@ export class SesiOpenNotifyService {
         effectiveGuruId
           ? prisma.guru.findUnique({
               where: { id: effectiveGuruId },
-              select: { nama_lengkap: true, gelar_depan: true, gelar_belakang: true },
+              select: { nama_guru: true, gelar_depan: true, gelar_belakang: true },
             }).catch(() => null)
           : null,
         sesi.kelas_id
@@ -129,7 +129,7 @@ export class SesiOpenNotifyService {
             }).catch(() => null)
           : null,
         sesi.mapel_id
-          ? prisma.mataPelajaran.findUnique({
+          ? prisma.mapel.findUnique({
               where: { id: sesi.mapel_id },
               select: { nama_mapel: true },
             }).catch(() => null)
@@ -138,10 +138,10 @@ export class SesiOpenNotifyService {
       ]);
 
       if (guruData) {
-        namaGuru = [guruData.gelar_depan, guruData.nama_lengkap, guruData.gelar_belakang]
+        namaGuru = [guruData.gelar_depan, guruData.nama_guru, guruData.gelar_belakang]
           .filter(Boolean)
           .join(' ')
-          .trim() || guruData.nama_lengkap;
+          .trim() || guruData.nama_guru;
       }
 
       if (kelasData?.nama_kelas) {

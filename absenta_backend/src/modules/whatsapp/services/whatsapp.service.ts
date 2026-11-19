@@ -258,7 +258,7 @@ export class WhatsappService {
     toOrJid: string,
     imageBase64: string,
     caption = '',
-    options: { senderMode?: 'AUTO' | 'GATEWAY' | 'PLATFORM' | 'USER'; userId?: string | null } = {},
+    _options: { senderMode?: 'AUTO' | 'GATEWAY' | 'PLATFORM' | 'USER'; userId?: string | null } = {},
   ) {
     if (!tenantId) {
       throw new Error('Tenant ID tidak ditemukan.');
@@ -703,3 +703,5 @@ export class WhatsappService {
     return this.sendMessage(config, parentNumber, message);
   }
 }
+
+export const whatsappService = new WhatsappService();
