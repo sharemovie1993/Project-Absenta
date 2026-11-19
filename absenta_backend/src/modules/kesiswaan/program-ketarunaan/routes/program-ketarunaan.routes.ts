@@ -1,4 +1,5 @@
 import { programKetarunaanController } from '../controllers/program-ketarunaan.controller';
+import { ketarunaanPenilaianController } from '../controllers/ketarunaan-penilaian.controller';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
 
@@ -58,4 +59,53 @@ export async function programKetarunaanRoutes(fastify: any) {
       determineDataScope(),
     ],
   }, programKetarunaanController.getLaporanKelas);
+
+  // ─── PENILAIAN & SKEMA BOBOT KETARUNAAN ──────────────────────────────────
+  // 8. Ambil Skema Konfigurasi
+  fastify.get('/skema', {
+    preHandler: [
+      requireCapability(['attendance.sessions.view.list', 'dashboard.view.kesiswaan']),
+      determineDataScope(),
+    ],
+  }, ketarunaanPenilaianController.getSkema);
+
+  // 9. Simpan Skema Konfigurasi (Bobot & Mode Murni/Semi)
+  fastify.post('/skema', {
+    preHandler: [
+      requireCapability(['dashboard.view.kesiswaan', 'academic.classes.manage']),
+      determineDataScope(),
+    ],
+  }, ketarunaanPenilaianController.saveSkema);
+
+  // 10. Ambil Nilai Kelas
+  fastify.get('/nilai', {
+    preHandler: [
+      requireCapability(['attendance.sessions.view.list', 'dashboard.view.kesiswaan']),
+      determineDataScope(),
+    ],
+  }, ketarunaanPenilaianController.getNilaiKelas);
+
+  // 11. Simpan Nilai Bulk
+  fastify.post('/nilai/bulk', {
+    preHandler: [
+      requireCapability(['attendance.sessions.create', 'dashboard.view.kesiswaan']),
+      determineDataScope(),
+    ],
+  }, ketarunaanPenilaianController.saveNilaiBulk);
+
+  // 12. Kunci & Kirim ke Rapor Kokurikuler
+  fastify.post('/nilai/lock', {
+    preHandler: [
+      requireCapability(['dashboard.view.kesiswaan', 'academic.classes.manage']),
+      determineDataScope(),
+    ],
+  }, ketarunaanPenilaianController.lockNilaiKeRapor);
+
+  // 13. Buka Kunci Nilai
+  fastify.post('/nilai/unlock', {
+    preHandler: [
+      requireCapability(['dashboard.view.kesiswaan', 'academic.classes.manage']),
+      determineDataScope(),
+    ],
+  }, ketarunaanPenilaianController.unlockNilai);
 }

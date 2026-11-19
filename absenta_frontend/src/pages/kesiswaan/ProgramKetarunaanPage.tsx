@@ -32,6 +32,7 @@ import { KetarunaanKepanitiaanTab } from '../../components/kesiswaan/program-ket
 import { KetarunaanStatistikTab } from '../../components/kesiswaan/program-ketarunaan/KetarunaanStatistikTab';
 import { KetarunaanLaporanTimTab } from '../../components/kesiswaan/program-ketarunaan/KetarunaanLaporanTimTab';
 import { KetarunaanLaporanKelasTab } from '../../components/kesiswaan/program-ketarunaan/KetarunaanLaporanKelasTab';
+import { KetarunaanPenilaianTab } from '../../components/kesiswaan/program-ketarunaan/KetarunaanPenilaianTab';
 
 const HARI_LABEL: Record<string, string> = {
   SENIN: 'Senin',
@@ -85,10 +86,11 @@ const GuardState: React.FC<{ navigate: ReturnType<typeof useNavigate> }> = ({ na
 // ─── TAB CONFIG ────────────────────────────────────────────────────────────────
 
 const TAB_OPTIONS = [
-  { id: 'statistik',   label: 'Performa Perkembangan', icon: BarChart2 },
-  { id: 'laporan_kelas', label: 'Laporan Per Rombel',   icon: LayoutList },
-  { id: 'laporan_tim', label: 'Laporan Pendamping',    icon: FileText },
-  { id: 'kepanitiaan', label: 'Terminal Presensi & POS', icon: Users },
+  { id: 'penilaian',     label: 'Penilaian & Samapta',   icon: Medal },
+  { id: 'statistik',     label: 'Performa Perkembangan', icon: BarChart2 },
+  { id: 'laporan_kelas', label: 'Laporan Per Rombel',     icon: LayoutList },
+  { id: 'laporan_tim',   label: 'Laporan Pendamping',    icon: FileText },
+  { id: 'kepanitiaan',   label: 'Terminal Presensi & POS', icon: Users },
 ];
 
 // ─── PAGE COMPONENT ────────────────────────────────────────────────────────────
@@ -106,6 +108,7 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
   const academicFilter = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
+    enableKelas: true,
   });
 
   const selectedTpId = academicFilter.values.tahunPelajaranId;
@@ -297,6 +300,15 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
                   </div>
                 }
               >
+                {activeTab === 'penilaian' && (
+                  <KetarunaanPenilaianTab
+                    tahunPelajaranId={selectedTpId}
+                    semesterId={selectedSemId}
+                    kelasId={academicFilter.values.kelasId}
+                    kelasNama={academicFilter.selectedNames?.kelasNama}
+                    jurusanId={academicFilter.values.jurusanId}
+                  />
+                )}
                 {activeTab === 'kepanitiaan' && (
                   !guard?.is_active ? (
                     <GuardState navigate={navigate} />

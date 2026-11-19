@@ -34,6 +34,7 @@ import { KetarunaanKepanitiaanTab } from '@/components/kesiswaan/program-ketarun
 import { KetarunaanStatistikTab } from '@/components/kesiswaan/program-ketarunaan/KetarunaanStatistikTab';
 import { KetarunaanLaporanTimTab } from '@/components/kesiswaan/program-ketarunaan/KetarunaanLaporanTimTab';
 import { KetarunaanLaporanKelasTab } from '@/components/kesiswaan/program-ketarunaan/KetarunaanLaporanKelasTab';
+import { KetarunaanPenilaianTab } from '@/components/kesiswaan/program-ketarunaan/KetarunaanPenilaianTab';
 
 const HARI_LABEL: Record<string, string> = {
   SENIN: 'Senin',
@@ -51,9 +52,10 @@ function formatWaktu(w?: string | null) {
   return w.length === 5 ? w : w.slice(0, 5);
 }
 
-export type KetarunaanSubtabId = 'statistik' | 'laporan_kelas' | 'laporan_tim' | 'kepanitiaan';
+export type KetarunaanSubtabId = 'penilaian' | 'statistik' | 'laporan_kelas' | 'laporan_tim' | 'kepanitiaan';
 
 const TAB_OPTIONS = [
+  { id: 'penilaian', label: 'Penilaian & Samapta', icon: Medal },
   { id: 'statistik', label: 'Performa & Tren', icon: BarChart2 },
   { id: 'laporan_kelas', label: 'Laporan Per Rombel', icon: LayoutList },
   { id: 'laporan_tim', label: 'Laporan Pendamping', icon: FileText },
@@ -125,6 +127,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
   const academicFilter = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
+    enableKelas: true,
   });
 
   const selectedTpId = academicFilter.values.tahunPelajaranId;
@@ -376,6 +379,18 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                 </div>
               }
             >
+              {activeTab === 'penilaian' && (
+                <div className="p-4 sm:p-6">
+                  <KetarunaanPenilaianTab
+                    tahunPelajaranId={selectedTpId}
+                    semesterId={selectedSemId}
+                    kelasId={academicFilter.values.kelasId}
+                    kelasNama={academicFilter.selectedNames?.kelasNama}
+                    jurusanId={academicFilter.values.jurusanId}
+                  />
+                </div>
+              )}
+
               {activeTab === 'statistik' && (
                 <div className="p-4 sm:p-6">
                   <KetarunaanStatistikTab

@@ -191,6 +191,8 @@ model Tenant {
   CbtBankSoalKontributor   CbtBankSoalKontributor[]
   RapatMaster              RapatMaster[]
   RapatPeserta             RapatPeserta[]
+  KetarunaanSkemaConfig    KetarunaanSkemaConfig[]
+  KetarunaanNilaiSiswa     KetarunaanNilaiSiswa[]
 }
 
 enum BackupStatus {
@@ -801,6 +803,7 @@ model Jurusan {
   GuruMapel             GuruMapel[]
   UnitPengajaran        UnitPengajaran[]
   SettingDeskripsiPkl   SettingDeskripsiPkl[]
+  KetarunaanSkemaConfig KetarunaanSkemaConfig[]
 
   @@unique([tenant_id, kode])
   @@index([tenant_id])
@@ -862,6 +865,7 @@ model Kelas {
   P5FasilitatorKelas        P5FasilitatorKelas[]
   JadwalPembinaUpacara      JadwalPembinaUpacara[]
   AcademicPlenoRombel       AcademicPlenoRombel[]
+  KetarunaanNilaiSiswa      KetarunaanNilaiSiswa[]
 
   @@index([tenant_id])
 }
@@ -1008,6 +1012,8 @@ model TahunPelajaran {
   AcademicPlenoSession   AcademicPlenoSession[]
   SettingDeskripsiPkl    SettingDeskripsiPkl[]
   OrganizationalAssignments OrganizationalAssignment[]
+  KetarunaanSkemaConfig  KetarunaanSkemaConfig[]
+  KetarunaanNilaiSiswa   KetarunaanNilaiSiswa[]
 
   @@unique([tenant_id, tahun])
   @@index([tenant_id])
@@ -1047,6 +1053,8 @@ model Semester {
   CbtBankSoal            CbtBankSoal[]
   UnitPengajaran         UnitPengajaran[]
   AcademicPlenoSession   AcademicPlenoSession[]
+  KetarunaanSkemaConfig  KetarunaanSkemaConfig[]
+  KetarunaanNilaiSiswa   KetarunaanNilaiSiswa[]
 
   @@index([tenant_id])
 }
@@ -1168,6 +1176,7 @@ model Siswa {
   BkKonsultasiBooking BkKonsultasiBooking[]
   AcademicPlenoDecision AcademicPlenoDecision[]
   CbtPesertaUjian     CbtPesertaUjian[]
+  KetarunaanNilaiSiswa KetarunaanNilaiSiswa[]
 
   @@unique([tenant_id, nis])
   @@index([tenant_id])
@@ -1287,6 +1296,7 @@ model SiswaAkademik {
   KelulusanSiswa       KelulusanSiswa[]
   P5NilaiSiswa         P5NilaiSiswa[]
   NilaiEskul           NilaiEskul[]
+  KetarunaanNilaiSiswa KetarunaanNilaiSiswa[]
 
   @@unique([siswa_id, tahun_pelajaran_id, semester_id])
   @@index([kelas_id, tahun_pelajaran_id, semester_id])
@@ -5075,6 +5085,85 @@ model NilaiEskul {
   @@index([tenant_id, siswa_id, tahun_pelajaran_id, semester_id])
   @@index([tenant_id, siswa_akademik_id])
   @@map("nilai_eskul")
+}
+
+// --- MODUL KESISWAAN: PROGRAM KETARUNAAN (SKEMA & PENILAIAN) ---
+model KetarunaanSkemaConfig {
+  id                 String          @id @default(uuid())
+  tenant_id          String
+  tahun_pelajaran_id String
+  semester_id        String?
+  jurusan_id         String?
+
+  mode_pelatihan     String          @default("SEMI_TARUNA") // "FULL_TARUNA" | "SEMI_TARUNA"
+
+  // Bobot 4 Pilar (Total wajib 100%)
+  bobot_samapta      Int             @default(25)
+  bobot_pbb          Int             @default(20)
+  bobot_disiplin     Int             @default(30)
+  bobot_mental       Int             @default(25)
+
+  // Sub-aspek aktif (JSON konfigurasi item tes yang diaktifkan/dinonaktifkan)
+  active_sub_aspects Json?
+
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
+
+  Tenant             Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran     TahunPelajaran  @relation(fields: [tahun_pelajaran_id], references: [id])
+  Semester           Semester?       @relation(fields: [semester_id], references: [id])
+  Jurusan            Jurusan?        @relation(fields: [jurusan_id], references: [id])
+
+  @@unique([tenant_id, tahun_pelajaran_id, semester_id, jurusan_id], name: "unique_ketarunaan_skema_scope")
+  @@index([tenant_id])
+  @@index([tenant_id, tahun_pelajaran_id])
+  @@map("ketarunaan_skema_configs")
+}
+
+model KetarunaanNilaiSiswa {
+  id                 String          @id @default(uuid())
+  tenant_id          String
+  siswa_id           String
+  siswa_akademik_id  String?
+  kelas_id           String
+  tahun_pelajaran_id String
+  semester_id        String
+
+  // Nilai 4 Pilar (0 - 100)
+  nilai_samapta      Float           @default(0)
+  nilai_pbb          Float           @default(0)
+  nilai_disiplin     Float           @default(0)
+  nilai_mental       Float           @default(0)
+
+  // Rincian data mentah tes fisik (push-up, sit-up, lari 12m, dll)
+  detail_samapta     Json?
+
+  // Hasil Kalkulasi Terbobot
+  nilai_akhir        Float           @default(0)
+  predikat           String          @default("B") // A, B, C, D
+  deskripsi_rapor    String?         @db.Text
+
+  // Status sinkronisasi ke Rapor
+  is_locked          Boolean         @default(false)
+  locked_at          DateTime?
+  locked_by          String?
+
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
+
+  Tenant             Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa              Siswa           @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  SiswaAkademik      SiswaAkademik?  @relation(fields: [siswa_akademik_id], references: [id], onDelete: Cascade)
+  Kelas              Kelas           @relation(fields: [kelas_id], references: [id])
+  TahunPelajaran     TahunPelajaran  @relation(fields: [tahun_pelajaran_id], references: [id])
+  Semester           Semester        @relation(fields: [semester_id], references: [id])
+
+  @@unique([tenant_id, siswa_id, tahun_pelajaran_id, semester_id], name: "unique_ketarunaan_nilai_semester")
+  @@index([tenant_id])
+  @@index([tenant_id, kelas_id, tahun_pelajaran_id, semester_id])
+  @@index([tenant_id, siswa_id, tahun_pelajaran_id, semester_id])
+  @@index([tenant_id, siswa_akademik_id])
+  @@map("ketarunaan_nilai_siswa")
 }
 
 model PerangkatAjar {

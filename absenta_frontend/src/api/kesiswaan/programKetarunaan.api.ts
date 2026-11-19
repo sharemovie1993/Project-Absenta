@@ -1,3 +1,4 @@
+import { requestWithFallback } from '../apiUtils';
 import {
   getUnifiedGuardStatus,
   getUnifiedSesiHariIni,
@@ -97,4 +98,131 @@ export async function getKetarunaanLaporanKelas(params: {
   semester_id?: string;
 }): Promise<{ success: boolean; data: KetarunaanLaporanKelasRow[] }> {
   return getUnifiedLaporanKelas({ ...params, jenis_kegiatan: 'Ketarunaan' });
+}
+
+// ─── Modul Penilaian & Skema Bobot Ketarunaan ─────────────────────────────────
+
+export interface KetarunaanSkema {
+  id?: string;
+  tenant_id?: string;
+  tahun_pelajaran_id: string;
+  semester_id?: string | null;
+  jurusan_id?: string | null;
+  mode_pelatihan: 'FULL_TARUNA' | 'SEMI_TARUNA';
+  bobot_samapta: number;
+  bobot_pbb: number;
+  bobot_disiplin: number;
+  bobot_mental: number;
+  active_sub_aspects?: any;
+  is_default?: boolean;
+}
+
+export interface KetarunaanNilaiStudent {
+  siswa_id: string;
+  siswa_akademik_id?: string | null;
+  nis: string;
+  nisn?: string | null;
+  nama_siswa: string;
+  jenis_kelamin: string;
+  nilai_samapta: number;
+  nilai_pbb: number;
+  nilai_disiplin: number;
+  nilai_mental: number;
+  nilai_akhir: number;
+  predikat: string;
+  deskripsi_rapor: string;
+  detail_samapta?: any;
+  is_locked: boolean;
+  locked_at?: string | null;
+}
+
+export interface KetarunaanNilaiKelasResponse {
+  success: boolean;
+  data: {
+    kelas: { id: string; nama_kelas: string; jurusan_id?: string | null };
+    skema: KetarunaanSkema;
+    total_siswa: number;
+    is_class_locked: boolean;
+    students: KetarunaanNilaiStudent[];
+  };
+}
+
+export async function getKetarunaanSkema(params: {
+  tahun_pelajaran_id: string;
+  semester_id?: string | null;
+  jurusan_id?: string | null;
+}): Promise<{ success: boolean; data: KetarunaanSkema }> {
+  return requestWithFallback<{ success: boolean; data: KetarunaanSkema }>(
+    'get',
+    '/kesiswaan/program-ketarunaan/skema',
+    { params, unwrapData: true }
+  );
+}
+
+export async function saveKetarunaanSkema(
+  payload: KetarunaanSkema
+): Promise<{ success: boolean; data: KetarunaanSkema; message: string }> {
+  return requestWithFallback(
+    'post',
+    '/kesiswaan/program-ketarunaan/skema',
+    { data: payload, unwrapData: true }
+  );
+}
+
+export async function getKetarunaanNilaiKelas(params: {
+  kelas_id: string;
+  tahun_pelajaran_id: string;
+  semester_id: string;
+}): Promise<KetarunaanNilaiKelasResponse> {
+  return requestWithFallback<KetarunaanNilaiKelasResponse>(
+    'get',
+    '/kesiswaan/program-ketarunaan/nilai',
+    { params, unwrapData: true }
+  );
+}
+
+export async function saveKetarunaanNilaiBulk(payload: {
+  kelas_id: string;
+  tahun_pelajaran_id: string;
+  semester_id: string;
+  items: Array<{
+    siswa_id: string;
+    siswa_akademik_id?: string | null;
+    nilai_samapta: number;
+    nilai_pbb: number;
+    nilai_disiplin: number;
+    nilai_mental: number;
+    detail_samapta?: any;
+    custom_deskripsi?: string | null;
+  }>;
+}): Promise<{ success: boolean; message: string }> {
+  return requestWithFallback(
+    'post',
+    '/kesiswaan/program-ketarunaan/nilai/bulk',
+    { data: payload, unwrapData: true }
+  );
+}
+
+export async function lockKetarunaanNilai(payload: {
+  kelas_id: string;
+  tahun_pelajaran_id: string;
+  semester_id: string;
+}): Promise<{ success: boolean; message: string }> {
+  return requestWithFallback(
+    'post',
+    '/kesiswaan/program-ketarunaan/nilai/lock',
+    { data: payload, unwrapData: true }
+  );
+}
+
+export async function unlockKetarunaanNilai(payload: {
+  kelas_id: string;
+  tahun_pelajaran_id: string;
+  semester_id: string;
+}): Promise<{ success: boolean; message: string }> {
+  return requestWithFallback(
+    'post',
+    '/kesiswaan/program-ketarunaan/nilai/unlock',
+    { data: payload, unwrapData: true }
+  );
 }
