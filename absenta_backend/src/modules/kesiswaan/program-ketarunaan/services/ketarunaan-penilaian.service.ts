@@ -868,6 +868,30 @@ export class KetarunaanPenilaianService {
       await cacheInvalidationService.invalidateRaporCache(tenantId);
     } catch (e) {}
 
+    if (!period.is_active_period || is_archive_correction) {
+      try {
+        await prisma.activityLog.create({
+          data: {
+            tenant_id: tenantId,
+            user_id: userId || null,
+            action: 'ARCHIVE_LOCK_KETARUNAAN',
+            entity: 'KetarunaanNilaiSiswa',
+            entity_id: kelas_id,
+            metadata: JSON.stringify({
+              kelas_id,
+              nama_kelas: kelas.nama_kelas,
+              tahun_pelajaran_id,
+              tahun: period.tahun,
+              semester_id,
+              semester: period.nama_semester,
+              locked_count: scores.length,
+              reason: (correction_reason || '').trim() || 'Kunci ulang dari Dapur Koreksi Arsip',
+            }),
+          },
+        });
+      } catch (e) {}
+    }
+
     return {
       success: true,
       locked_count: scores.length,
