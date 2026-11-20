@@ -20,14 +20,19 @@ import {
   Save,
   Loader2,
   RotateCcw,
+  MessageCircle,
+  MessageSquare,
 } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Button, Input, SearchableSelect } from '@/components/ui';
 import { HubCard } from '@/components/ui/hub';
 import { ScoreRow } from './types';
 import { PklDudiCetakModal, PklDudiDocType } from './PklDudiCetakModal';
 import { useJurusanOptions } from '@/hooks/useJurusanOptions';
+import { useAuthStore } from '@/store/authStore';
+import { UniversalSendWaModal } from '@/components/ui/UniversalSendWaModal';
+import { getWaDocumentRecipients } from '@/api/whatsapp.api';
 import { hubinApi } from '@/api/hubin.api';
 import { cn } from '@/lib/utils';
 
@@ -300,6 +305,154 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
     }
     return opts;
   }, [pembimbingSummaryList]);
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 2B. DIREKTORI NOMOR WA GURU & ENGINE COLEK WHATSAPP (KAPROG)
+  // ───────────────────────────────────────────────────────────────────────────
+  const { user } = useAuthStore();
+
+  const { data: guruRecipients = [] } = useQuery({
+    queryKey: ['wa-document-recipients-guru'],
+    queryFn: () => getWaDocumentRecipients({ type: 'GURU', limit: 300 }),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const guruPhoneMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const g of guruRecipients) {
+      const phone = (g as any).normalizedPhone || (g.phone ? g.phone.replace(/\D/g, '') : '');
+      if (phone) {
+        if (g.name) map.set(g.name.trim().toLowerCase(), phone);
+        if (g.id) map.set(g.id, phone);
+      }
+    }
+    return map;
+  }, [guruRecipients]);
+
+  const [waModalConfig, setWaModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    subtitle: string;
+    defaultMessage: string;
+    defaultRecipientType: 'GROUP' | 'GURU' | 'MANUAL';
+    defaultRecipientTarget?: string;
+    defaultRecipientLabel?: string;
+  }>({
+    isOpen: false,
+    title: 'Colek WhatsApp Guru Pembimbing',
+    subtitle: 'Kirim pesan pengingat pengisian nilai sidang & PKL',
+    defaultMessage: '',
+    defaultRecipientType: 'GURU',
+  });
+
+  // Handler: Colek Single Pembimbing PKL
+  const handleColekPembimbing = useCallback((pembimbing: {
+    nama: string;
+    id?: string | null;
+    totalSiswa: number;
+    sudahDinilai: number;
+    belumDinilai: number;
+  }) => {
+    const rawTargetPhone = pembimbing.id ? guruPhoneMap.get(pembimbing.id) : undefined;
+    const phone = rawTargetPhone || guruPhoneMap.get(pembimbing.nama.trim().toLowerCase()) || '';
+    const senderName = user?.full_name || 'Ketua Program Keahlian';
+    const deptName = activeJurusanNama || 'Kejuruan';
+
+    const message = `Yth. Bapak/Ibu *${pembimbing.nama}*,
+
+Mengingatkan perihal penginputan *Nilai Sidang & Capaian PKL* peserta didik Jurusan *${deptName}*.
+Saat ini tercatat masih ada *${pembimbing.belumDinilai} dari ${pembimbing.totalSiswa} siswa* bimbingan Anda yang belum tuntas dinilai.
+
+Mohon kesediaannya untuk segera melengkapi penilaian melalui Meja Bimbingan / Menu Penilaian PKL pada aplikasi Absenta:
+${window.location.origin}/dashboard?tab=pembimbing_pkl
+
+Atas perhatian dan kerjasamanya, kami sampaikan terima kasih.
+— _Ketua Program Keahlian ${deptName} (${senderName})_`;
+
+    setWaModalConfig({
+      isOpen: true,
+      title: `Colek WhatsApp: ${pembimbing.nama}`,
+      subtitle: `Kirim pengingat nilai PKL (${pembimbing.belumDinilai} siswa belum dinilai)`,
+      defaultMessage: message,
+      defaultRecipientType: phone ? 'GURU' : 'MANUAL',
+      defaultRecipientTarget: phone,
+      defaultRecipientLabel: pembimbing.nama,
+    });
+  }, [guruPhoneMap, user, activeJurusanNama]);
+
+  // Handler: Colek Semua Pembimbing via Grup WA
+  const handleColekSemuaPembimbingGrup = useCallback(() => {
+    const belumLengkapList = pembimbingSummaryList.filter(
+      (p) => p.nama !== 'Belum Diploting' && p.belumDinilai > 0
+    );
+
+    if (belumLengkapList.length === 0) {
+      toast.success('Luar biasa! Seluruh guru pembimbing sudah menyelesaikan penilaian PKL.');
+      return;
+    }
+
+    const senderName = user?.full_name || 'Ketua Program Keahlian';
+    const deptName = activeJurusanNama || 'Kejuruan';
+
+    const listText = belumLengkapList
+      .map((p, idx) => `${idx + 1}. *${p.nama}* (${p.belumDinilai} dari ${p.totalSiswa} siswa belum dinilai)`)
+      .join('\n');
+
+    const message = `*PENGINGAT PENILAIAN & SIDANG PKL*
+Jurusan: *${deptName}*
+
+Yth. Bapak/Ibu Guru Pembimbing PKL,
+Mengingatkan rekapitulasi progres penilaian sidang & PKL yang saat ini masih perlu dilengkapi:
+
+${listText}
+
+Mohon kesediaan Bapak/Ibu untuk segera menginput nilai melalui sistem Absenta:
+${window.location.origin}/dashboard?tab=pembimbing_pkl
+
+Terima kasih atas dedikasi dan kerjasamanya.
+— _Ketua Program Keahlian ${deptName} (${senderName})_`;
+
+    setWaModalConfig({
+      isOpen: true,
+      title: 'Colek Seluruh Pembimbing PKL (Grup WhatsApp)',
+      subtitle: `Pilih grup sekolah / grup jurusan untuk menyiarkan rekapitulasi ${belumLengkapList.length} pembimbing belum tuntas`,
+      defaultMessage: message,
+      defaultRecipientType: 'GROUP',
+      defaultRecipientTarget: '',
+      defaultRecipientLabel: 'Grup WhatsApp Guru / PKL',
+    });
+  }, [pembimbingSummaryList, user, activeJurusanNama]);
+
+  // Handler: Colek Single Student (Row Table)
+  const handleColekSingleStudent = useCallback((score: ScoreRow) => {
+    const pembimbingNama = score.pembimbing_nama || 'Guru Pembimbing';
+    const phone = (score.pembimbing_id ? guruPhoneMap.get(score.pembimbing_id) : undefined) || guruPhoneMap.get(pembimbingNama.trim().toLowerCase()) || '';
+    const senderName = user?.full_name || 'Ketua Program Keahlian';
+    const deptName = activeJurusanNama || score.nama_jurusan || 'Kejuruan';
+
+    const message = `Yth. Bapak/Ibu *${pembimbingNama}*,
+
+Mengingatkan penginputan *Nilai Sidang & Capaian PKL* untuk siswa:
+• *Nama*: ${score.nama_siswa} (NIS: ${score.nis || '-'})
+• *Kelas*: ${score.nama_kelas || '-'}
+• *Mitra DUDI*: ${score.mitra_nama || '-'}
+
+Nilai untuk siswa tersebut saat ini belum terinput di sistem Absenta. Mohon kesediaannya untuk mengisi nilai pada menu Meja Bimbingan PKL:
+${window.location.origin}/dashboard?tab=pembimbing_pkl
+
+Terima kasih.
+— _Ketua Program Keahlian ${deptName} (${senderName})_`;
+
+    setWaModalConfig({
+      isOpen: true,
+      title: `Colek WhatsApp: ${pembimbingNama}`,
+      subtitle: `Kirim pengingat nilai PKL khusus siswa: ${score.nama_siswa}`,
+      defaultMessage: message,
+      defaultRecipientType: phone ? 'GURU' : 'MANUAL',
+      defaultRecipientTarget: phone,
+      defaultRecipientLabel: pembimbingNama,
+    });
+  }, [guruPhoneMap, user, activeJurusanNama]);
 
   // Filter Lengkap
   const fullyFilteredScores = useMemo(() => {
@@ -614,7 +767,7 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
       {/* ── Matriks Pembimbing Bersih (Klik Kartu Untuk Filter Pembimbing) ── */}
       <HubCard
         title={
-          <div className="flex items-center justify-between w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full">
             <div className="flex items-center gap-2">
               <Users size={15} className="text-emerald-600 dark:text-emerald-400" />
               <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-slate-100">
@@ -627,16 +780,31 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
               </span>
             </div>
 
-            {selectedPembimbing !== 'ALL' && (
-              <button
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
                 type="button"
-                onClick={() => setSelectedPembimbing('ALL')}
-                className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                variant="outline"
+                size="sm"
+                onClick={handleColekSemuaPembimbingGrup}
+                className="h-7 px-2.5 text-[11px] font-bold gap-1.5 border-emerald-300 text-emerald-700 bg-emerald-50/60 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 shadow-2xs cursor-pointer"
+                title="Kirim pengingat input nilai sidang & PKL ke seluruh pembimbing via Grup WhatsApp"
               >
-                <span>Tampilkan Semua Siswa</span>
-                <X size={12} />
-              </button>
-            )}
+                <MessageSquare size={13} className="text-emerald-600 dark:text-emerald-400" />
+                <span className="hidden sm:inline">Colek Semua Pembimbing (Grup WA)</span>
+                <span className="sm:hidden">Colek Grup</span>
+              </Button>
+
+              {selectedPembimbing !== 'ALL' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedPembimbing('ALL')}
+                  className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Tampilkan Semua Siswa</span>
+                  <X size={12} />
+                </button>
+              )}
+            </div>
           </div>
         }
         noPadding
@@ -694,11 +862,27 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
 
                   <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 pt-1 border-t border-slate-100 dark:border-slate-750">
                     <span>Avg Nilai: <strong className="text-slate-700 dark:text-slate-200">{pembimbing.avgNilai}</strong></span>
-                    {isSelected && (
-                      <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
-                        ✓ Terpilih
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {pembimbing.nama !== 'Belum Diploting' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleColekPembimbing(pembimbing);
+                          }}
+                          className="px-1.5 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[9.5px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                          title={`Colek WhatsApp ${pembimbing.nama} untuk pengingat nilai sidang & PKL`}
+                        >
+                          <MessageCircle size={10} className="text-emerald-600 dark:text-emerald-400" />
+                          <span>Colek WA</span>
+                        </button>
+                      )}
+                      {isSelected && (
+                        <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                          ✓ Terpilih
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -1018,8 +1202,20 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
 
                       {/* Pembimbing */}
                       <td className="py-2 px-3">
-                        <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[160px]" title={score.pembimbing_nama}>
-                          {score.pembimbing_nama || <span className="text-amber-500 italic">Belum Diploting</span>}
+                        <div className="flex items-center justify-between gap-1.5">
+                          <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[140px]" title={score.pembimbing_nama}>
+                            {score.pembimbing_nama || <span className="text-amber-500 italic">Belum Diploting</span>}
+                          </div>
+                          {score.pembimbing_nama && !hasDudiScore && (
+                            <button
+                              type="button"
+                              onClick={() => handleColekSingleStudent(score)}
+                              className="p-1 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shrink-0 transition-colors cursor-pointer"
+                              title={`Colek Pembimbing (${score.pembimbing_nama}) via WhatsApp untuk ${score.nama_siswa}`}
+                            >
+                              <MessageCircle size={13} />
+                            </button>
+                          )}
                         </div>
                       </td>
 
@@ -1136,6 +1332,23 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
           selectedSemesterNama={selectedSemesterNama}
           activePembimbingNama={targetPembimbingNama || (selectedPembimbing !== 'ALL' ? selectedPembimbing : '')}
           isKaprog={isKaprog}
+        />
+      )}
+
+      {/* ── Modal Colek WhatsApp Kaprog ── */}
+      {waModalConfig.isOpen && (
+        <UniversalSendWaModal
+          isOpen={waModalConfig.isOpen}
+          onClose={() => setWaModalConfig((prev) => ({ ...prev, isOpen: false }))}
+          title={waModalConfig.title}
+          subtitle={waModalConfig.subtitle}
+          defaultMessage={waModalConfig.defaultMessage}
+          defaultRecipientType={waModalConfig.defaultRecipientType}
+          defaultRecipientTarget={waModalConfig.defaultRecipientTarget}
+          defaultRecipientLabel={waModalConfig.defaultRecipientLabel}
+          onSuccess={(details) => {
+            toast.success(`Colek WhatsApp berhasil dikirim ke ${details.targetLabel}!`);
+          }}
         />
       )}
     </div>
