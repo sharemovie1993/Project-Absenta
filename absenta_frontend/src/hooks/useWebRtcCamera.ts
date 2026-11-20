@@ -29,15 +29,26 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const startRequestIdRef = useRef<number>(0);
+  const currentFacingModeRef = useRef<'environment' | 'user'>(facingMode);
 
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isPermissionDenied, setIsPermissionDenied] = useState<boolean>(false);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [activeDeviceId, setActiveDeviceId] = useState<string>('');
-  const [currentFacingMode, setCurrentFacingMode] = useState<'environment' | 'user'>(facingMode);
+  const [currentFacingMode, setCurrentFacingModeState] = useState<'environment' | 'user'>(facingMode);
+
+  const setCurrentFacingMode = useCallback((mode: 'environment' | 'user') => {
+    currentFacingModeRef.current = mode;
+    setCurrentFacingModeState(mode);
+  }, []);
 
   // Cleanly stop stream tracks & detach video element
   const stopCamera = useCallback(() => {
+    // Invalidate any in-flight startCamera request
+    startRequestIdRef.current += 1;
+
     if (streamRef.current) {
       const tracks = streamRef.current.getTracks();
       tracks.forEach((track) => {
@@ -59,7 +70,7 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
   // Enumerate available camera devices
   const refreshDevices = useCallback(async () => {
     try {
-      if (!navigator.mediaDevices?.enumerateDevices) return;
+      if (!navigator.mediaDevices?.enumerateDevices) return [];
       const allDevices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = allDevices.filter((dev) => dev.kind === 'videoinput');
       console.log('[AbsentaCamera] 📹 Enumerated video devices:', videoDevices.map((d, idx) => ({
@@ -75,28 +86,69 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
     }
   }, []);
 
+  // Detect if an error is strictly a permission denial
+  const checkIsPermissionDeniedError = (err: any): boolean => {
+    if (!err) return false;
+    const name = String(err.name || '');
+    const msg = String(err.message || '').toLowerCase();
+    return (
+      name === 'NotAllowedError' ||
+      name === 'PermissionDeniedError' ||
+      name === 'SecurityError' ||
+      msg.includes('permission denied') ||
+      msg.includes('permission dismissed') ||
+      msg.includes('not allowed')
+    );
+  };
+
   // Start camera with requested deviceId or facingMode constraints
   const startCamera = useCallback(async (deviceId?: string, targetFacingMode?: 'environment' | 'user') => {
     setCameraError(null);
+    setIsPermissionDenied(false);
 
-    const modeToUse = targetFacingMode || currentFacingMode;
+    const modeToUse = targetFacingMode || currentFacingModeRef.current;
+    if (targetFacingMode) {
+      currentFacingModeRef.current = targetFacingMode;
+      setCurrentFacingModeState(targetFacingMode);
+    }
+
     console.log('[AbsentaCamera] 🎬 startCamera called. Target mode:', modeToUse, 'Target deviceId:', deviceId || '(none)');
+
+    if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      console.error('[AbsentaCamera] ❌ Insecure context (HTTP). Camera requires HTTPS.');
+      setCameraError('Akses kamera membutuhkan koneksi aman (HTTPS). Pastikan Anda mengakses alamat situs dengan https://');
+      return;
+    }
 
     if (!navigator.mediaDevices?.getUserMedia) {
       console.error('[AbsentaCamera] ❌ navigator.mediaDevices.getUserMedia is not supported on this browser/context.');
-      setCameraError('Fitur kamera tidak didukung pada peramban web ini.');
+      setCameraError('Fitur kamera live tidak didukung pada peramban ini. Silakan gunakan tombol "Buka Kamera Sistem" di bawah.');
       return;
     }
 
     try {
       // 1. Cleanly stop old stream tracks and detach video element first so hardware sensor is released
-      stopCamera();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => {
+          try { track.stop(); } catch (_) {}
+        });
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        try { videoRef.current.pause(); } catch (_) {}
+        videoRef.current.srcObject = null;
+      }
+      setIsCameraActive(false);
+
+      const requestId = ++startRequestIdRef.current;
 
       // Pause to ensure mobile OS releases the hardware camera sensor
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 120));
+      if (requestId !== startRequestIdRef.current) return;
 
       let stream: MediaStream | null = null;
       let usedStrategy = '';
+      let lastError: any = null;
 
       // Strategy 1: Targeted deviceId (Direct physical sensor selection)
       if (deviceId) {
@@ -110,25 +162,39 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
           });
           usedStrategy = `Strategy 1 (exact deviceId)`;
         } catch (err1: any) {
+          lastError = err1;
           console.warn('[AbsentaCamera] ⚠️ Strategy 1 (deviceId) failed:', err1.name, err1.message);
+          if (checkIsPermissionDeniedError(err1)) {
+            throw err1;
+          }
+          if (err1?.name === 'NotReadableError' || err1?.name === 'TrackStartError') {
+            await new Promise((r) => setTimeout(r, 350));
+          }
         }
       }
 
-      // Strategy 2: Standard facingMode string (Most compatible with modern Chrome & Safari)
+      // Strategy 2: Standard facingMode string (Most compatible with modern Chrome, Safari & Capacitor WebView)
       if (!stream) {
         try {
           console.log('[AbsentaCamera] 🔍 Attempting Strategy 2: facingMode:', modeToUse);
           stream = await navigator.mediaDevices.getUserMedia({
             video: {
-              facingMode: modeToUse,
+              facingMode: { ideal: modeToUse },
               width: { ideal: idealWidth },
               height: { ideal: idealHeight },
             },
             audio: false,
           });
-          usedStrategy = `Strategy 2 (facingMode: ${modeToUse})`;
+          usedStrategy = `Strategy 2 (facingMode ideal: ${modeToUse})`;
         } catch (err2: any) {
+          lastError = err2;
           console.warn('[AbsentaCamera] ⚠️ Strategy 2 (facingMode) failed:', err2.name, err2.message);
+          if (checkIsPermissionDeniedError(err2)) {
+            throw err2;
+          }
+          if (err2?.name === 'NotReadableError' || err2?.name === 'TrackStartError') {
+            await new Promise((r) => setTimeout(r, 350));
+          }
         }
       }
 
@@ -144,7 +210,14 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
           });
           usedStrategy = `Strategy 3 (basic facingMode: ${modeToUse})`;
         } catch (err3: any) {
+          lastError = err3;
           console.warn('[AbsentaCamera] ⚠️ Strategy 3 failed:', err3.name, err3.message);
+          if (checkIsPermissionDeniedError(err3)) {
+            throw err3;
+          }
+          if (err3?.name === 'NotReadableError' || err3?.name === 'TrackStartError') {
+            await new Promise((r) => setTimeout(r, 350));
+          }
         }
       }
 
@@ -156,6 +229,14 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
           audio: false,
         });
         usedStrategy = 'Strategy 4 (generic video: true)';
+      }
+
+      // Check if modal closed or another startCamera superseded this request while waiting for user permission
+      if (requestId !== startRequestIdRef.current) {
+        stream.getTracks().forEach((t) => {
+          try { t.stop(); } catch (_) {}
+        });
+        return;
       }
 
       console.log('[AbsentaCamera] ✅ Stream successfully acquired via', usedStrategy);
@@ -177,27 +258,90 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
       streamRef.current = stream;
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch((playErr) => {
+        const videoEl = videoRef.current;
+        videoEl.muted = true;
+        videoEl.playsInline = true;
+        videoEl.setAttribute('playsinline', 'true');
+        videoEl.setAttribute('webkit-playsinline', 'true');
+        videoEl.srcObject = stream;
+        await videoEl.play().catch((playErr) => {
           console.warn('[AbsentaCamera] ⚠️ video.play() warning:', playErr);
         });
       }
 
       setIsCameraActive(true);
-      if (targetFacingMode) setCurrentFacingMode(targetFacingMode);
+      setCameraError(null);
+      setIsPermissionDenied(false);
 
       refreshDevices();
     } catch (err: any) {
-      console.error('[AbsentaCamera] ❌ ALL camera acquisition strategies failed:', err.name, err.message, err);
+      console.error('[AbsentaCamera] ❌ ALL camera acquisition strategies failed:', err?.name, err?.message, err);
       setIsCameraActive(false);
-      setCameraError(`Akses kamera ditolak atau gagal dibuka (${err.name || 'Error'}: ${err.message || 'unknown'}).`);
+
+      const denied = checkIsPermissionDeniedError(err);
+      setIsPermissionDenied(denied);
+
+      const isCapacitorNative =
+        typeof window !== 'undefined' &&
+        Boolean((window as any).Capacitor?.isNativePlatform?.() || (window as any).Capacitor?.isNative);
+
+      if (denied) {
+        if (isCapacitorNative) {
+          setCameraError(
+            'Izin kamera belum aktif di aplikasi. Buka Pengaturan HP ➔ Aplikasi ➔ Absenta ➔ Izin ➔ Kamera ➔ pilih "Izinkan", atau gunakan tombol "Buka Kamera Sistem" di bawah.'
+          );
+        } else {
+          setCameraError(
+            'Izin akses kamera ditolak oleh browser. Klik ikon Gembok / Pengaturan Situs di sebelah kiri alamat URL atas, ubah Kamera menjadi "Izinkan (Allow)", atau gunakan tombol "Buka Kamera Sistem" di bawah.'
+          );
+        }
+      } else if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
+        setCameraError('Perangkat kamera tidak ditemukan pada perangkat Anda. Gunakan tombol "Buka Kamera Sistem" di bawah.');
+      } else if (err?.name === 'NotReadableError' || err?.name === 'TrackStartError') {
+        setCameraError('Kamera sedang digunakan oleh aplikasi lain atau tab browser lain. Tutup aplikasi kamera lain lalu klik "Coba Akses Lagi", atau gunakan "Buka Kamera Sistem".');
+      } else {
+        setCameraError(`Gagal mengaktifkan kamera live (${err?.name || 'Error'}). Silakan klik "Coba Akses Lagi" atau gunakan "Buka Kamera Sistem" di bawah.`);
+      }
     }
-  }, [currentFacingMode, idealWidth, idealHeight, stopCamera, refreshDevices]);
+  }, [idealWidth, idealHeight, refreshDevices]);
+
+  // Listen for browser camera permission state changes so granting permission auto-starts camera
+  useEffect(() => {
+    let permStatus: PermissionStatus | null = null;
+    let isMounted = true;
+
+    if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+      navigator.permissions
+        .query({ name: 'camera' as PermissionName })
+        .then((status) => {
+          if (!isMounted) return;
+          permStatus = status;
+          status.onchange = () => {
+            if (!isMounted) return;
+            if (status.state === 'granted' && !streamRef.current) {
+              console.log('[AbsentaCamera] 🔓 Camera permission granted via browser settings, auto-starting camera...');
+              startCamera();
+            }
+          };
+        })
+        .catch(() => {
+          // Ignore on browsers that don't support querying 'camera' permission
+        });
+    }
+
+    return () => {
+      isMounted = false;
+      if (permStatus) {
+        permStatus.onchange = null;
+      }
+    };
+  }, [startCamera]);
 
   // Switch smoothly between front (selfie) and rear (classroom) cameras
   const switchCamera = useCallback(async () => {
-    const nextMode = currentFacingMode === 'environment' ? 'user' : 'environment';
-    console.log('[AbsentaCamera] 🔄 switchCamera clicked! Switching from', currentFacingMode, '➔', nextMode);
+    const prevMode = currentFacingModeRef.current;
+    const nextMode = prevMode === 'environment' ? 'user' : 'environment';
+    console.log('[AbsentaCamera] 🔄 switchCamera clicked! Switching from', prevMode, '➔', nextMode);
     setCurrentFacingMode(nextMode);
 
     let latestDevices = devices;
@@ -231,7 +375,7 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
     }
 
     await startCamera(targetDeviceId, nextMode);
-  }, [currentFacingMode, devices, activeDeviceId, refreshDevices, startCamera]);
+  }, [devices, activeDeviceId, refreshDevices, startCamera, setCurrentFacingMode]);
 
   // Helper to draw text that dynamically shrinks and truncates with ellipsis if it exceeds maxWidth
   const drawFittedText = (
@@ -517,6 +661,66 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
     return dataUrl;
   }, [idealWidth, idealHeight, applyStampToCanvas]);
 
+  // Process external image file (e.g. from native system camera capture input fallback) with the exact same KBM stamp
+  const processExternalImageFile = useCallback((
+    file: File,
+    stampDetails?: CameraStampDetails,
+    quality = 0.75
+  ): Promise<string | null> => {
+    return new Promise((resolve) => {
+      if (!file) {
+        resolve(null);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const resultUrl = e.target?.result as string;
+        if (!resultUrl) {
+          resolve(null);
+          return;
+        }
+
+        const img = new Image();
+        img.onload = () => {
+          const canvas = canvasRef.current || document.createElement('canvas');
+          const rawW = img.naturalWidth || img.width || 1280;
+          const rawH = img.naturalHeight || img.height || 720;
+          const maxDim = 960;
+          let finalW = rawW;
+          let finalH = rawH;
+
+          if (Math.max(rawW, rawH) > maxDim) {
+            const scale = maxDim / Math.max(rawW, rawH);
+            finalW = Math.round(rawW * scale);
+            finalH = Math.round(rawH * scale);
+          }
+
+          canvas.width = finalW;
+          canvas.height = finalH;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(null);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, finalW, finalH);
+
+          if (stampDetails) {
+            applyStampToCanvas(ctx, canvas.width, canvas.height, stampDetails);
+          }
+
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(null);
+        img.src = resultUrl;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  }, [applyStampToCanvas]);
+
   useEffect(() => {
     if (autoStart) {
       startCamera();
@@ -531,6 +735,7 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
     canvasRef,
     isCameraActive,
     cameraError,
+    isPermissionDenied,
     devices,
     activeDeviceId,
     currentFacingMode,
@@ -538,6 +743,7 @@ export function useWebRtcCamera(options: UseWebRtcCameraOptions = {}) {
     stopCamera,
     switchCamera,
     capturePhoto,
+    processExternalImageFile,
     applyStampToCanvas,
   };
 }

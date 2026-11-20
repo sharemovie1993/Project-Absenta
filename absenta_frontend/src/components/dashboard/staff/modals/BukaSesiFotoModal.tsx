@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, X, RefreshCw, AlertCircle, Sparkles, ShieldCheck, SwitchCamera, Check } from 'lucide-react';
 import { Button } from '../../../ui';
@@ -30,6 +30,7 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
+  const nativeCameraInputRef = useRef<HTMLInputElement | null>(null);
 
   const { angle, isLandscape, uiRotationStyle } = useCameraOrientation();
 
@@ -43,11 +44,42 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
     stopCamera,
     switchCamera,
     capturePhoto,
+    processExternalImageFile,
   } = useWebRtcCamera({
     facingMode: 'environment',
     idealWidth: 1280,
     idealHeight: 720,
   });
+
+  // Handle native OS camera fallback capture with verified KBM stamp
+  const handleNativeCameraFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const stampedPhoto = await processExternalImageFile(
+        file,
+        {
+          kelasNama,
+          mapelNama,
+          guruNama,
+          badgeTitle: '✓ ABSENTA VERIFIED KBM STAMP',
+        },
+        0.75
+      );
+      if (stampedPhoto) {
+        setCapturedImage(stampedPhoto);
+        stopCamera();
+      } else {
+        toast.error('Gagal memproses foto kamera sistem');
+      }
+    } catch {
+      toast.error('Gagal memproses foto dari kamera');
+    } finally {
+      if (nativeCameraInputRef.current) {
+        nativeCameraInputRef.current.value = '';
+      }
+    }
+  };
 
   // Update live clock for preview
   useEffect(() => {
@@ -205,36 +237,63 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
                   )}
                 />
                 <canvas ref={canvasRef} className="hidden" />
+                <input
+                  ref={nativeCameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleNativeCameraFileChange}
+                  className="hidden"
+                />
 
                 {/* Connecting State */}
                 {!isCameraActive && !cameraError && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/95 z-20">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/95 z-20 p-4 text-center">
                     <RefreshCw className="animate-spin text-emerald-400" size={32} />
-                    <span className="text-xs font-bold text-slate-300 tracking-wide">Menghubungkan Kamera...</span>
+                    <span className="text-xs font-bold text-slate-300 tracking-wide">Menghubungkan &amp; Meminta Izin Kamera...</span>
+                    <button
+                      type="button"
+                      onClick={() => nativeCameraInputRef.current?.click()}
+                      className="mt-2 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-bold border border-slate-700 flex items-center gap-1.5 cursor-pointer transition-colors"
+                    >
+                      <Camera size={12} className="text-emerald-400" />
+                      <span>Gunakan Kamera Sistem HP</span>
+                    </button>
                   </div>
                 )}
 
                 {/* Camera Error State */}
                 {cameraError && (
-                  <div className="p-6 text-center space-y-3 bg-black/95 inset-0 absolute flex flex-col items-center justify-center z-30">
+                  <div className="p-6 text-center space-y-3.5 bg-black/95 inset-0 absolute flex flex-col items-center justify-center z-30">
                     <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto border border-rose-500/30">
                       <AlertCircle size={26} />
                     </div>
-                    <div className="space-y-1 max-w-sm">
-                      <h5 className="text-sm font-black text-white">Akses Kamera Diperlukan</h5>
-                      <p className="text-xs text-slate-400 leading-relaxed">
-                        Harap izinkan akses kamera di browser Anda untuk verifikasi kehadiran KBM di kelas.
+                    <div className="space-y-1.5 max-w-md">
+                      <h5 className="text-sm font-black text-white">Akses Kamera Live Belum Aktif</h5>
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        {cameraError}
                       </p>
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => startCamera()}
-                      className="text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none flex items-center gap-1.5"
-                    >
-                      <RefreshCw size={13} />
-                      <span>Coba Akses Lagi</span>
-                    </Button>
+                    <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => startCamera()}
+                        className="text-xs font-black bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <RefreshCw size={13} />
+                        <span>Coba Akses Lagi</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => nativeCameraInputRef.current?.click()}
+                        className="text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none flex items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/20"
+                      >
+                        <Camera size={13} />
+                        <span>Buka Kamera Sistem</span>
+                      </Button>
+                    </div>
                   </div>
                 )}
 
