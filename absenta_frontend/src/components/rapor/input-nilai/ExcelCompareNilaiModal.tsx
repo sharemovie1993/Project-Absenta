@@ -38,6 +38,16 @@ interface ExcelCompareNilaiModalProps {
   className?: string;
   kkmThreshold: number;
   onApplyGrades: (updatedScores: StudentScoreItem[]) => void;
+  columnLabels?: {
+    s1?: string;
+    s2?: string;
+    s3?: string;
+    s4?: string;
+    sAkhir?: string;
+    hideSAkhir?: boolean;
+    cp?: string;
+    placeholder?: string;
+  };
 }
 
 type FilterTab = 'ALL' | CompareGradeStatus;
@@ -51,6 +61,7 @@ export const ExcelCompareNilaiModal: React.FC<ExcelCompareNilaiModalProps> = ({
   className: rombelName,
   kkmThreshold,
   onApplyGrades,
+  columnLabels,
 }) => {
   const [rawText, setRawText] = useState('');
   const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
@@ -333,9 +344,10 @@ export const ExcelCompareNilaiModal: React.FC<ExcelCompareNilaiModalProps> = ({
             onChange={(e) => setRawText(e.target.value)}
             rows={5}
             placeholder={
-              entryMode === 'sumatif'
+              columnLabels?.placeholder ||
+              (entryMode === 'sumatif'
                 ? "Blok kolom dari Excel (NIS, Nama, Sumatif 1, 2, 3, 4, Sum Akhir, CP) -> Copy (Ctrl+C) -> Paste di sini (Ctrl+V).\nContoh:\n26271001\tACHMAD SULTON\t85\t90\t88\t92\t90\tCapaian sangat baik\n26271002\tALIFA AKBAR\t75\t80\t85\t80\t85\tTuntas materi"
-                : "Blok kolom dari Excel (NIS, Nama, Nilai, Deskripsi) -> Copy (Ctrl+C) -> Paste di sini (Ctrl+V).\nContoh:\n26271001\tACHMAD SULTON\t85\tSangat aktif dan tuntas\n26271002\tALIFA AKBAR\t78\tCukup baik"
+                : "Blok kolom dari Excel (NIS, Nama, Nilai, Deskripsi) -> Copy (Ctrl+C) -> Paste di sini (Ctrl+V).\nContoh:\n26271001\tACHMAD SULTON\t85\tSangat aktif dan tuntas\n26271002\tALIFA AKBAR\t78\tCukup baik")
             }
             className="font-mono text-xs rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 leading-relaxed"
           />
@@ -529,12 +541,14 @@ export const ExcelCompareNilaiModal: React.FC<ExcelCompareNilaiModalProps> = ({
                       <th className="px-3 py-2.5 min-w-[180px]">Siswa (Nama & NIS)</th>
                       {entryMode === 'sumatif' ? (
                         <>
-                          <th className="px-2 py-2.5 text-center w-16">Sum 1</th>
-                          <th className="px-2 py-2.5 text-center w-16">Sum 2</th>
-                          <th className="px-2 py-2.5 text-center w-16">Sum 3</th>
-                          <th className="px-2 py-2.5 text-center w-16">Sum 4</th>
-                          <th className="px-2 py-2.5 text-center w-20">Sum Akhir</th>
-                          <th className="px-3 py-2.5 min-w-[200px]">Capaian Kompetensi (CP)</th>
+                          <th className="px-2 py-2.5 text-center w-16">{columnLabels?.s1 || 'Sum 1'}</th>
+                          <th className="px-2 py-2.5 text-center w-16">{columnLabels?.s2 || 'Sum 2'}</th>
+                          <th className="px-2 py-2.5 text-center w-16">{columnLabels?.s3 || 'Sum 3'}</th>
+                          <th className="px-2 py-2.5 text-center w-16">{columnLabels?.s4 || 'Sum 4'}</th>
+                          {!columnLabels?.hideSAkhir && (
+                            <th className="px-2 py-2.5 text-center w-20">{columnLabels?.sAkhir || 'Sum Akhir'}</th>
+                          )}
+                          <th className="px-3 py-2.5 min-w-[200px]">{columnLabels?.cp || 'Capaian Kompetensi (CP)'}</th>
                         </>
                       ) : (
                         <>
@@ -646,13 +660,15 @@ export const ExcelCompareNilaiModal: React.FC<ExcelCompareNilaiModalProps> = ({
                                 </td>
 
                                 {/* Sumatif Akhir */}
-                                <td className="px-2 py-2 text-center font-mono text-xs align-top">
-                                  {renderScoreCell(
-                                    row.systemStudent?.sumatif_akhir,
-                                    row.excelRow?.sumatif_akhir,
-                                    row.diffs.sumatif_akhir
-                                  )}
-                                </td>
+                                {!columnLabels?.hideSAkhir && (
+                                  <td className="px-2 py-2 text-center font-mono text-xs align-top">
+                                    {renderScoreCell(
+                                      row.systemStudent?.sumatif_akhir,
+                                      row.excelRow?.sumatif_akhir,
+                                      row.diffs.sumatif_akhir
+                                    )}
+                                  </td>
+                                )}
 
                                 {/* Capaian Kompetensi */}
                                 <td className="px-3 py-2 text-xs align-top leading-relaxed">

@@ -182,19 +182,57 @@ function classifyColumnHeader(headerText: string, entryMode: 'sumatif' | 'katego
   if (h.includes('nama') || h.includes('siswa') || h.includes('peserta')) return 'NAMA';
 
   if (entryMode === 'sumatif') {
-    if (h.includes('sumatif 1') || h === 's1' || h.includes('sum 1') || h.includes('uh 1') || h.includes('tp 1') || h.includes('tugas 1')) {
+    if (
+      h.includes('sumatif 1') ||
+      h === 's1' ||
+      h.includes('sum 1') ||
+      h.includes('uh 1') ||
+      h.includes('tp 1') ||
+      h.includes('tugas 1') ||
+      h.includes('samapta') ||
+      h.includes('jasmani') ||
+      h.includes('fisik')
+    ) {
       return 'SUMATIF_1';
     }
-    if (h.includes('sumatif 2') || h === 's2' || h.includes('sum 2') || h.includes('uh 2') || h.includes('tp 2') || h.includes('tugas 2')) {
+    if (
+      h.includes('sumatif 2') ||
+      h === 's2' ||
+      h.includes('sum 2') ||
+      h.includes('uh 2') ||
+      h.includes('tp 2') ||
+      h.includes('tugas 2') ||
+      h.includes('pbb') ||
+      h.includes('baris')
+    ) {
       return 'SUMATIF_2';
     }
-    if (h.includes('sumatif 3') || h === 's3' || h.includes('sum 3') || h.includes('uh 3') || h.includes('tp 3') || h.includes('tugas 3')) {
+    if (
+      h.includes('sumatif 3') ||
+      h === 's3' ||
+      h.includes('sum 3') ||
+      h.includes('uh 3') ||
+      h.includes('tp 3') ||
+      h.includes('tugas 3') ||
+      h.includes('disiplin') ||
+      h.includes('kedisiplinan')
+    ) {
       return 'SUMATIF_3';
     }
-    if (h.includes('sumatif 4') || h === 's4' || h.includes('sum 4') || h.includes('uh 4') || h.includes('tp 4') || h.includes('tugas 4')) {
+    if (
+      h.includes('sumatif 4') ||
+      h === 's4' ||
+      h.includes('sum 4') ||
+      h.includes('uh 4') ||
+      h.includes('tp 4') ||
+      h.includes('tugas 4') ||
+      h.includes('mental') ||
+      h.includes('karakter') ||
+      h.includes('spiritual')
+    ) {
       return 'SUMATIF_4';
     }
-    if (h.includes('rata') || h.includes('avg') || h.includes('rerata')) return 'RATA2';
+    if (h.includes('rata') || h.includes('avg') || h.includes('rerata') || h.includes('predikat')) return 'RATA2';
     if (
       h.includes('sumatif akhir') ||
       h.includes('sas') ||
@@ -253,7 +291,30 @@ export function parsePastedExcelGrades(
 
   // Detect header row
   const firstLine = parsedLines[0];
-  const headerKeywords = ['nama', 'nis', 'sumatif', 'sum', 'uh', 'tugas', 'tp', 'nilai', 'capaian', 'cp', 'akhir', 'sas', 'asat', 'pas', 'no', 'siswa'];
+  const headerKeywords = [
+    'nama',
+    'nis',
+    'sumatif',
+    'sum',
+    'uh',
+    'tugas',
+    'tp',
+    'nilai',
+    'capaian',
+    'cp',
+    'akhir',
+    'sas',
+    'asat',
+    'pas',
+    'no',
+    'siswa',
+    'taruna',
+    'samapta',
+    'pbb',
+    'disiplin',
+    'mental',
+    'predikat',
+  ];
   const matchesHeaderKeywords = firstLine.filter((cell) =>
     headerKeywords.some((kw) => cell.toLowerCase().includes(kw))
   ).length;
