@@ -66,19 +66,27 @@ export function enrichGuruWithUser(guru: any, filterTpId?: string): any {
         ? guru.User.organizationalAssignments.filter((oa: any) => !oa.tahun_pelajaran_id || oa.tahun_pelajaran_id === filterTpId)
         : guru.User.organizationalAssignments;
 
-      guru.active_positions = relevantAssigns.map((oa: any) => {
+      const seenBadges = new Set<string>();
+      const positionLabels: string[] = [];
+
+      relevantAssigns.forEach((oa: any) => {
         const posName = oa.Position?.name || oa.Position?.code || 'Jabatan';
+        let label = posName;
         if (oa.Kelas?.nama_kelas) {
-          return `${posName} ${oa.Kelas.nama_kelas}`;
+          label = `${posName} ${oa.Kelas.nama_kelas}`;
+        } else if (oa.Unit?.nama || oa.Unit?.kode) {
+          label = `${posName} ${oa.Unit.kode || oa.Unit.nama}`;
+        } else if (oa.custom_title) {
+          label = oa.custom_title;
         }
-        if (oa.Unit?.nama || oa.Unit?.kode) {
-          return `${posName} ${oa.Unit.kode || oa.Unit.nama}`;
+
+        if (!seenBadges.has(label)) {
+          seenBadges.add(label);
+          positionLabels.push(label);
         }
-        if (oa.custom_title) {
-          return oa.custom_title;
-        }
-        return posName;
       });
+
+      guru.active_positions = positionLabels;
     } else {
       guru.organizational_assignments = [];
       guru.active_positions = [];

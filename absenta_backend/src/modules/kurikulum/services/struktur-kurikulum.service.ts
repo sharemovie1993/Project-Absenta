@@ -410,16 +410,26 @@ export class StrukturKurikulumService {
       const currentKbmJp = countMap.get(t.id) || 0;
       const maxJp = t.max_jp ?? 24;
 
-      const positions = (t.User?.organizationalAssignments || []).map((oa: any) => {
-        const eqJp = calculatePositionEquivalency(oa.Position?.code, oa.Position?.name);
-        const kelasLabel = oa.Kelas?.nama_kelas ? ` (${oa.Kelas.nama_kelas})` : '';
-        return {
-          id: oa.Position?.id,
-          code: oa.Position?.code,
-          name: `${oa.Position?.name || ''}${kelasLabel}`.trim(),
-          ekuivalen_jp: eqJp
-        };
-      }).filter((p: any) => p.ekuivalen_jp > 0);
+      const seenPosKeys = new Set<string>();
+      const positions = (t.User?.organizationalAssignments || [])
+        .map((oa: any) => {
+          const eqJp = calculatePositionEquivalency(oa.Position?.code, oa.Position?.name);
+          const kelasLabel = oa.Kelas?.nama_kelas ? ` (${oa.Kelas.nama_kelas})` : '';
+          const key = `${oa.Position?.code || ''}_${oa.Kelas?.id || oa.kelas_id || ''}_${oa.Unit?.id || oa.unit_id || ''}`;
+          return {
+            id: oa.Position?.id,
+            code: oa.Position?.code,
+            name: `${oa.Position?.name || ''}${kelasLabel}`.trim(),
+            ekuivalen_jp: eqJp,
+            dedupKey: key
+          };
+        })
+        .filter((p: any) => {
+          if (p.ekuivalen_jp <= 0) return false;
+          if (seenPosKeys.has(p.dedupKey)) return false;
+          seenPosKeys.add(p.dedupKey);
+          return true;
+        });
 
       const ekuivalenPositionJp = positions.reduce((acc: number, p: any) => acc + p.ekuivalen_jp, 0);
       const totalCalculatedJp = currentKbmJp + ekuivalenPositionJp;
