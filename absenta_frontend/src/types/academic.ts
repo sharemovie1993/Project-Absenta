@@ -120,6 +120,13 @@ export interface Siswa {
   no_rfid?: string;
   email?: string;
   foto?: string;
+  is_app_installed?: boolean | null;
+  app_version?: string | null;
+  ota_version?: string | null;
+  device_model?: string | null;
+  device_os?: string | null;
+  device_uuid?: string | null;
+  last_app_seen_at?: string | Date | null;
   created_at: Date;
   updated_at: Date;
   

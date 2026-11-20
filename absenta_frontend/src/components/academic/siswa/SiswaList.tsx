@@ -30,7 +30,20 @@ import { ExpressPhotoStudioModal } from '../shared/ExpressPhotoStudioModal';
 import { ToolsModal, type ToolKey } from '../../shared/ToolsModal';
 import { WaNormalizationModal } from '../../shared/WaNormalizationModal';
 import { getStatusBadgeClass, getStatusLabel } from '../../../utils/layoutUtils';
-import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess, bulkUpdateStatus, generateNisMassal, updateSiswa, siswaQueryKeys, normalizeSiswaWaPhones } from '../../../api/academic/siswa.api';
+import { 
+  getSiswaList, 
+  deleteSiswa, 
+  deleteAllSiswa, 
+  getSiswaDetail, 
+  sendParentAccess, 
+  bulkUpdateStatus, 
+  generateNisMassal, 
+  updateSiswa, 
+  siswaQueryKeys, 
+  normalizeSiswaWaPhones,
+  getStudentAppTelemetryStats,
+} from '../../../api/academic/siswa.api';
+import { UniversalSendWaModal } from '@/components/ui/UniversalSendWaModal';
 import { NisGenerateWizard } from './NisGenerateWizard';
 import { getKelasList } from '../../../api/academic/kelas.api';
 import { UniversalStudentIdentity } from '@/components/common/UniversalStudentIdentity';
@@ -292,8 +305,52 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [filterKelas, setFilterKelas] = useState(initialKelasId || '');
   const [filterStatus, setFilterStatus] = useState(initialStatus || 'AKTIF');
   const [filterGender, setFilterGender] = useState('');
+  const [filterAppInstalled, setFilterAppInstalled] = useState<string>('ALL'); // 'ALL' | 'INSTALLED' | 'NOT_INSTALLED'
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
+
+  // Modal Colek WA Unduh APK
+  const [waModalConfig, setWaModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    subtitle: string;
+    defaultMessage: string;
+    defaultRecipientType: 'STUDENT' | 'PARENT' | 'MANUAL';
+    defaultRecipientTarget?: string;
+    defaultRecipientLabel?: string;
+  }>({
+    isOpen: false,
+    title: 'Colek WhatsApp Unduh Aplikasi Absenta',
+    subtitle: 'Kirim pesan pengingat instalasi aplikasi mobile',
+    defaultMessage: '',
+    defaultRecipientType: 'STUDENT',
+  });
+
+  const handleColekDownloadApk = useCallback((siswa: Siswa) => {
+    const phone = siswa.no_hp || (siswa as any).no_hp_ortu || (siswa.OrangTua && siswa.OrangTua[0]?.no_hp) || '';
+    const apkDownloadUrl = `${window.location.origin}/download-app`;
+
+    const message = `Halo *${siswa.nama_siswa}*,
+
+Mengingatkan untuk segera mengunduh dan memasang aplikasi resmi *Absenta Mobile* di smartphone Anda untuk kemudahan absensi kehadiran, KBM, dan pemantauan akademik:
+
+📥 *Link Unduh Aplikasi*:
+${apkDownloadUrl}
+
+Pastikan login menggunakan akun siswa Anda setelah instalasi selesai.
+Terima kasih.
+— _Pihak Sekolah_`;
+
+    setWaModalConfig({
+      isOpen: true,
+      title: `Colek Unduh APK: ${siswa.nama_siswa}`,
+      subtitle: `Kirim pengingat instalasi aplikasi mobile ke ${siswa.nama_siswa}`,
+      defaultMessage: message,
+      defaultRecipientType: phone ? 'STUDENT' : 'MANUAL',
+      defaultRecipientTarget: phone,
+      defaultRecipientLabel: siswa.nama_siswa,
+    });
+  }, []);
 
   const activeMobileFilterCount = useMemo(() => {
     let count = 0;
@@ -301,8 +358,9 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     if (filterKelas && !isKelasDisabled) count++;
     if (filterStatus && filterStatus !== 'AKTIF') count++;
     if (filterGender) count++;
+    if (filterAppInstalled !== 'ALL') count++;
     return count;
-  }, [filterTingkat, filterKelas, isKelasDisabled, filterStatus, filterGender]);
+  }, [filterTingkat, filterKelas, isKelasDisabled, filterStatus, filterGender, filterAppInstalled]);
 
   useEffect(() => {
     if (initialKelasId !== undefined) {
@@ -454,7 +512,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       tingkat: filterTingkat,
       jurusan_id: jurusanId || '',
       tahun_pelajaran_id: tahunPelajaranId || '',
-      semester_id: semesterId || ''
+      semester_id: semesterId || '',
+      is_app_installed: filterAppInstalled !== 'ALL' ? (filterAppInstalled === 'INSTALLED') : ''
     }),
     queryFn: () => getSiswaList(
       currentPage, 
@@ -467,10 +526,19 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       filterTingkat,
       jurusanId || '',
       tahunPelajaranId || '',
-      semesterId || ''
+      semesterId || '',
+      filterAppInstalled !== 'ALL' ? (filterAppInstalled === 'INSTALLED') : undefined
     ),
     staleTime: 5 * 60 * 1000,
   });
+
+  // Query Telemetry Adopsi Aplikasi Mobile
+  const { data: telemetryStatsRes } = useQuery({
+    queryKey: ['siswa-telemetry-stats', { kelas_id: filterKelas, jurusan_id: jurusanId }],
+    queryFn: () => getStudentAppTelemetryStats({ kelas_id: filterKelas || undefined, jurusan_id: jurusanId || undefined }),
+    staleTime: 2 * 60 * 1000,
+  });
+  const telemetryStats = telemetryStatsRes?.data;
 
   const siswas = useMemo(() => listRes?.data || [], [listRes]);
   const totalPages = listRes?.pagination?.totalPages || 1;
@@ -1043,6 +1111,47 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         />
       )
     },
+    {
+      key: 'app_telemetry',
+      label: 'Aplikasi Mobile',
+      sortable: false,
+      render: (_: unknown, siswa: Siswa) => {
+        const isInstalled = Boolean(siswa.is_app_installed);
+        const appVer = siswa.app_version || '1.0.3';
+        const otaVer = siswa.ota_version || '-';
+        const model = siswa.device_model || 'Android Mobile';
+
+        if (isInstalled) {
+          return (
+            <div className="flex flex-col gap-0.5">
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-2xs w-fit">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Terpasang (v{appVer} • OTA: {otaVer})</span>
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate max-w-[170px]" title={`${model} (${siswa.device_os || 'Android'})`}>
+                📱 {model}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+              <span>Belum Pasang</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => handleColekDownloadApk(siswa)}
+              className="p-1 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors shadow-2xs cursor-pointer"
+              title={`Colek WhatsApp ${siswa.nama_siswa} untuk unduh aplikasi mobile Absenta`}
+            >
+              <MessageSquare size={13} />
+            </button>
+          </div>
+        );
+      }
+    },
     { 
       key: 'actions', 
       label: 'Aksi', 
@@ -1222,7 +1331,20 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
           data={siswa}
           variant="chip"
           showPhoto
-          subtitle={`${siswa.Kelas?.nama_kelas || 'Tanpa Kelas'} • NIS: ${siswa.nis || '-'}`}
+          subtitle={
+            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+              <span>{siswa.Kelas?.nama_kelas || 'Tanpa Kelas'} • NIS: {siswa.nis || '-'}</span>
+              {siswa.is_app_installed ? (
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                  📱 Terpasang
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  🌐 Web Only
+                </span>
+              )}
+            </div>
+          }
           className="bg-transparent border-0 shadow-none p-0"
         />
       </div>
@@ -1573,6 +1695,26 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                     </div>
                   )}
 
+                  {/* Ringkasan Adopsi Aplikasi Mobile Absenta */}
+                  {telemetryStats && (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 px-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/20 rounded-xl text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">📱</span>
+                        <div>
+                          <span className="font-bold text-slate-800 dark:text-slate-100">
+                            Adopsi Aplikasi Mobile Absenta:
+                          </span>
+                          <span className="ml-1.5 font-extrabold text-emerald-600 dark:text-emerald-400">
+                            {telemetryStats.total_installed} dari {telemetryStats.total_siswa} Siswa Terpasang ({telemetryStats.percentage}%)
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                        <span>Belum pasang APK: <strong className="text-amber-600 font-bold">{telemetryStats.total_not_installed}</strong> siswa</span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Row 1: Search & Filters */}
                   <div className="flex flex-col md:flex-row gap-4 items-center">
                     <div className="flex-1 w-full">
@@ -1638,7 +1780,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                         />
                       </div>
 
-                      <div className="w-full md:w-44">
+                      <div className="w-full md:w-40">
                         <SearchableSelect
                           value={filterGender}
                           onValueChange={setFilterGender}
@@ -1649,6 +1791,22 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                           ]}
                           placeholder="Semua Gender"
                           searchPlaceholder="Cari Gender..."
+                          className="w-full"
+                          triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                        />
+                      </div>
+
+                      <div className="w-full md:w-44">
+                        <SearchableSelect
+                          value={filterAppInstalled}
+                          onValueChange={setFilterAppInstalled}
+                          options={[
+                            { label: 'Semua Aplikasi', value: 'ALL' },
+                            { label: '📱 Terpasang APK', value: 'INSTALLED' },
+                            { label: '🌐 Belum Pasang (Web)', value: 'NOT_INSTALLED' }
+                          ]}
+                          placeholder="Aplikasi Mobile"
+                          searchPlaceholder="Filter Aplikasi..."
                           className="w-full"
                           triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                         />
@@ -2651,6 +2809,23 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         data={parentAccessModalData}
         onClose={() => setParentAccessModalData(null)}
       />
+
+      {/* ── Modal Colek WhatsApp Unduh APK ── */}
+      {waModalConfig.isOpen && (
+        <UniversalSendWaModal
+          isOpen={waModalConfig.isOpen}
+          onClose={() => setWaModalConfig((prev) => ({ ...prev, isOpen: false }))}
+          title={waModalConfig.title}
+          subtitle={waModalConfig.subtitle}
+          defaultMessage={waModalConfig.defaultMessage}
+          defaultRecipientType={waModalConfig.defaultRecipientType as any}
+          defaultRecipientTarget={waModalConfig.defaultRecipientTarget}
+          defaultRecipientLabel={waModalConfig.defaultRecipientLabel}
+          onSuccess={(details) => {
+            toast.success(`Pesan pengingat berhasil dikirim ke ${details.targetLabel}!`);
+          }}
+        />
+      )}
     </div>
   );
 });

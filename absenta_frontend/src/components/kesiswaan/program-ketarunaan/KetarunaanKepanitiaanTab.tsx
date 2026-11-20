@@ -10,24 +10,26 @@ import {
   Zap,
   Clock,
   BookOpen,
-  Info,
-  CalendarCheck,
   Building2,
-  GraduationCap,
-  Scan,
   ChevronDown,
   ChevronRight,
+  ClipboardList,
+  Search,
+  Sparkles,
+  ExternalLink,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Modal } from '@/components/ui/Modal';
 import toast from 'react-hot-toast';
 import {
   getKetarunaanPendamping,
   tapKetarunaanPendamping,
   type KetarunaanPendamping,
 } from '@/api/kesiswaan/programKetarunaan.api';
-import { UnifiedKegiatanRfidScanModal } from '@/components/attendance/unified-kegiatan/UnifiedKegiatanRfidScanModal';
+import { UnifiedKegiatanTerminalPanel } from '@/components/attendance/unified-kegiatan/UnifiedKegiatanTerminalPanel';
 
 interface KetarunaanKepanitiaanTabProps {
   jadwalKegiatanId: string | null;
@@ -64,7 +66,9 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
   guard,
 }) => {
   const qc = useQueryClient();
-  const [rfidModalOpen, setRfidModalOpen] = useState(false);
+  const [panitiaModalOpen, setPanitiaModalOpen] = useState(false);
+  const [modalSearch, setModalSearch] = useState('');
+  const [modalFilterCategory, setModalFilterCategory] = useState<'SEMUA' | 'MAPEL' | 'PEMBINA' | 'WALIKELAS'>('SEMUA');
   const [forceIncidentalMode, setForceIncidentalMode] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
@@ -119,14 +123,6 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
     refetchSesi();
   }, [refetch, refetchSesi]);
 
-  const handleOpenRfid = useCallback(() => {
-    if (!isScheduledDay && !forceIncidentalMode) {
-      toast.error('Hari ini di luar jadwal reguler Ketarunaan. Klik "Buka Sesi Khusus / Insidental" terlebih dahulu jika ingin merekam absensi hari ini.');
-      return;
-    }
-    setRfidModalOpen(true);
-  }, [isScheduledDay, forceIncidentalMode]);
-
   const handleTap = useCallback((guruId: string, status: 'HADIR' | 'IZIN' | 'SAKIT' | 'DINAS_LUAR' | 'ALPA' = 'HADIR') => {
     if (!isScheduledDay && !forceIncidentalMode) {
       toast.error('Hari ini di luar jadwal reguler Ketarunaan. Aktifkan Mode Sesi Khusus / Insidental terlebih dahulu.');
@@ -135,14 +131,14 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
     tapMutation.mutate({ guru_id: guruId, status });
   }, [tapMutation, isScheduledDay, forceIncidentalMode]);
 
-  // Pisahkan Guru Mapel Beririsan dengan Unsur Pembina/Struktural
+  // Akordeon & filter
   const [expandedTingkat, setExpandedTingkat] = useState<Record<string, boolean>>({});
 
   const toggleTingkat = useCallback((tingkat: string) => {
     setExpandedTingkat(prev => ({ ...prev, [tingkat]: !prev[tingkat] }));
   }, []);
 
-  // Pisahkan Guru Mapel Beririsan, Pembina & Kajur, serta Wali Kelas
+  // Pisahkan kategori pendamping
   const guruMapelList = useMemo(() => {
     return pendamping.filter(p => p.jabatan_kode === 'GURU_MAPEL');
   }, [pendamping]);
@@ -185,44 +181,64 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
     return Object.entries(map).filter(([_, list]) => list.length > 0);
   }, [waliKelasList]);
 
+  // Statistik Utama
+  const totalCount = pendamping.length;
   const hadirCount = useMemo(() => pendamping.filter(p => p.status === 'HADIR').length, [pendamping]);
+  const belumHadirCount = Math.max(0, totalCount - hadirCount);
+  const persenHadir = totalCount > 0 ? Math.round((hadirCount / totalCount) * 100) : 0;
   const guruMapelHadirCount = useMemo(() => guruMapelList.filter(p => p.status === 'HADIR').length, [guruMapelList]);
+
+  // Filter list untuk di dalam Modal
+  const filteredModalList = useMemo(() => {
+    let list = pendamping;
+    if (modalFilterCategory === 'MAPEL') {
+      list = guruMapelList;
+    } else if (modalFilterCategory === 'PEMBINA') {
+      list = pendamping.filter(p => p.jabatan_kode !== 'GURU_MAPEL' && p.jabatan_kode !== 'WALIKELAS');
+    } else if (modalFilterCategory === 'WALIKELAS') {
+      list = waliKelasList;
+    }
+
+    if (modalSearch.trim()) {
+      const q = modalSearch.toLowerCase().trim();
+      list = list.filter(p =>
+        (p.nama_guru || '').toLowerCase().includes(q) ||
+        (p.mapel_nama || '').toLowerCase().includes(q) ||
+        (p.kelas_nama || '').toLowerCase().includes(q) ||
+        (p.jabatan || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [pendamping, modalFilterCategory, modalSearch, guruMapelList, waliKelasList]);
 
   if (isLoading) {
     return (
-      <div className="space-y-2.5 p-2.5 sm:p-4">
-        {[1, 2, 3, 4].map((itemKey) => (
-          <Skeleton key={itemKey} className="h-12 rounded-xl" />
-        ))}
-      </div>
-    );
-  }
-
-  if (!realSesiId && pendamping.length === 0) {
-    return (
-      <div className="text-center py-8 px-4 text-slate-400 dark:text-slate-500">
-        <Shield className="w-8 h-8 mx-auto mb-2 opacity-30" />
-        <p className="text-xs sm:text-sm font-bold">Belum ada sesi Ketarunaan aktif hari ini</p>
-        <p className="text-[11px] mt-0.5">Sesi otomatis aktif saat rentang jam kegiatan berlangsung</p>
+      <div className="space-y-3 p-3 sm:p-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map(k => (
+            <Skeleton key={k} className="h-24 rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-96 rounded-3xl" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-3 p-2.5 sm:p-4">
-      {/* Header Info & Ringkasan (Compact) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0 border border-amber-200/50 dark:border-amber-700/30">
-            <Users className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+    <div className="space-y-4 p-2 sm:p-4">
+      {/* Header Info & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+            <Users className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100">
-                Presensi Kepanitiaan &amp; Pendamping ({activeJadwalNama})
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100">
+                Presensi Kepanitiaan &amp; Pendamping
               </h3>
               <Badge variant="outline" className="text-[10px] font-bold border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300">
-                Unified 5-Siklus Engine
+                Unified Engine
               </Badge>
               <Badge
                 variant="outline"
@@ -241,44 +257,119 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
                   : '🎖️ Siklus Ketarunaan / Apel Pagi'}
               </Badge>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Total {hadirCount} dari {pendamping.length} pendamping telah hadir • {activePilarLabel}
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {activeJadwalNama} • {activePilarLabel}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             variant="default"
             size="sm"
-            onClick={handleOpenRfid}
-            className={`h-8 px-3 gap-1.5 text-xs font-bold text-white shadow-2xs ${
-              !isScheduledDay && !forceIncidentalMode
-                ? 'bg-slate-600 hover:bg-slate-700 opacity-90'
-                : 'bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-700 hover:to-indigo-700'
-            }`}
+            onClick={() => setPanitiaModalOpen(true)}
+            className="h-9 px-3.5 gap-2 text-xs font-bold text-white shadow-sm bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 rounded-xl"
           >
-            <Scan className="w-3.5 h-3.5" /> Mode Scan RFID (POS)
-            {!isScheduledDay && !forceIncidentalMode && (
-              <span className="text-[10px] bg-slate-800/80 px-1.5 py-0.5 rounded font-mono ml-0.5">Siaga</span>
-            )}
+            <ClipboardList className="w-4 h-4 text-indigo-200" />
+            <span>Lihat Kehadiran Panitia</span>
+            <Badge variant="neutral" className="bg-white/20 text-white font-mono text-[10px] py-0 px-1.5 ml-0.5">
+              {hadirCount}/{totalCount}
+            </Badge>
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleRefresh} className="h-8 px-2.5 gap-1 text-xs font-bold">
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            className="h-9 px-3 gap-1.5 text-xs font-bold rounded-xl"
+            title="Refresh Data Presensi"
+          >
             <RefreshCw className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
       </div>
 
-      {/* Status Strip Terpadu (Tunggal & Ramping — Tanpa Duplikasi Kotak Siaga) */}
-      <div className={`p-3 rounded-xl border ${
+      {/* Ringkasan Statistik Kartu (Stats Cards) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* Card 1: Total Pendamping */}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-100 dark:border-amber-900/40">
+            <Users className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Total Pendamping</p>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100">{totalCount}</span>
+              <span className="text-xs text-slate-400">Guru/Panitia</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Sudah Hadir */}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-900/40">
+            <UserCheck className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Telah Hadir</p>
+              <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                {persenHadir}%
+              </span>
+            </div>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400">{hadirCount}</span>
+              <span className="text-xs text-slate-400">di Lapangan</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Belum Hadir */}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Menunggu Tap</p>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-lg sm:text-xl font-black text-slate-700 dark:text-slate-200">{belumHadirCount}</span>
+              <span className="text-xs text-slate-400">Belum Presensi</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: KBM Terbuka (1 Tap 2 Record) */}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900/40">
+            <Zap className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">KBM Terbuka</p>
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                1-Tap-2-Record
+              </span>
+            </div>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-lg sm:text-xl font-black text-indigo-600 dark:text-indigo-400">
+                {guruMapelHadirCount}
+              </span>
+              <span className="text-xs text-slate-400">/ {guruMapelList.length} Sesi KBM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Status Jadwal Strip */}
+      <div className={`p-3 rounded-2xl border ${
         !isScheduledDay
           ? 'bg-gradient-to-r from-amber-50/90 via-slate-50 to-indigo-50/40 border-amber-200/90 dark:from-amber-950/20 dark:via-slate-900 dark:to-indigo-950/20 dark:border-amber-900/40'
           : 'bg-gradient-to-r from-amber-50/70 via-indigo-50/40 to-slate-50 border-amber-100 dark:from-amber-950/20 dark:via-indigo-950/10 dark:to-slate-900 dark:border-amber-900/40'
       }`}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
           <div className="flex items-start gap-2.5">
-            <div className={`p-2 rounded-lg text-white shrink-0 shadow-2xs ${
+            <div className={`p-2 rounded-xl text-white shrink-0 shadow-2xs ${
               !isScheduledDay ? 'bg-amber-600' : 'bg-indigo-600'
             }`}>
               {!isScheduledDay ? <Clock className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
@@ -286,7 +377,7 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
             <div className="space-y-0.5">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                  {!isScheduledDay ? 'Mode Siaga (Standby) — Di Luar Hari Pelaksanaan' : 'Mekanisme Dual-Presence Program Ketarunaan'}
+                  {!isScheduledDay ? 'Mode Siaga (Standby) — Di Luar Hari Pelaksanaan' : 'Terminal Siap: Dual-Presence Program Ketarunaan'}
                 </h4>
                 {!isScheduledDay && (
                   <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-100/50 dark:bg-amber-950/40">
@@ -297,16 +388,11 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
               <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
                 {!isScheduledDay ? (
                   <>
-                    Hari ini bukan jadwal reguler Program Ketarunaan ({guard?.hari_aktif?.join(', ') || "Rabu"}). Daftar kartu presensi guru disembunyikan dan terminal RFID dikunci siaga untuk menjaga integritas data KBM reguler.
-                    {forceIncidentalMode && (
-                      <span className="block font-bold text-amber-600 dark:text-amber-400 mt-0.5">
-                        ● Mode Sesi Khusus / Insidental Aktif — Terminal RFID dan daftar presensi dibuka untuk sesi hari ini.
-                      </span>
-                    )}
+                    Hari ini bukan jadwal reguler ({guard?.hari_aktif?.join(', ') || "Rabu"}). Jika ada kegiatan insidental/khusus hari ini, klik tombol di sebelah kanan untuk mengaktifkan terminal.
                   </>
                 ) : (
                   <>
-                    Siklus aktif hari ini: <strong>{activeJadwalNama}</strong> ({activePilarLabel}). Guru mapel yang jadwal KBM-nya beririsan jam otomatis: <strong>(1) Tercatat hadir pada sesi {activeJadwalNama}</strong> dan <strong>(2) Sesi KBM regulernya dibuka berstatus Berlangsung</strong> (1 Tap 2 Record).
+                    Siklus aktif: <strong>{activeJadwalNama}</strong>. Presensi guru mapel otomatis membuka sesi KBM reguler di kelasnya (1-Tap 2-Record).
                   </>
                 )}
               </p>
@@ -319,7 +405,7 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
                 variant={forceIncidentalMode ? "default" : "outline"}
                 size="sm"
                 onClick={() => setForceIncidentalMode(prev => !prev)}
-                className={`h-8 px-3 text-xs font-bold gap-1.5 ${
+                className={`h-8 px-3 text-xs font-bold gap-1.5 rounded-xl ${
                   forceIncidentalMode
                     ? 'bg-amber-600 hover:bg-amber-700 text-white'
                     : 'border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300'
@@ -333,309 +419,204 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
         </div>
       </div>
 
-      {(isScheduledDay || forceIncidentalMode) && (
-        <>
-          {/* SECTION 1: GURU MAPEL KBM BERIRISAN (1 TAP 2 RECORD) */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-                  Guru Mapel KBM yang Beririsan Jam
-                </h4>
-                <Badge variant="neutral" className="text-[10px]">
-                  {guruMapelHadirCount}/{guruMapelList.length} Hadir
-                </Badge>
-              </div>
-            </div>
-
-        {guruMapelList.length === 0 ? (
-          <div className="p-4 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
-            <p className="text-xs text-slate-400 font-medium">Tidak ada jadwal KBM guru mapel yang beririsan waktu dengan sesi kegiatan hari ini.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            {guruMapelList.map((p) => {
-              const isKbmActive = p.kbm_status === 'BERLANGSUNG';
-              const isHadir = p.status === 'HADIR';
-
-              return (
-                <div
-                  key={p.guru_id}
-                  className={`p-4 rounded-2xl border transition-all duration-200 bg-white dark:bg-slate-900 shadow-sm flex flex-col justify-between gap-4 ${
-                    isHadir
-                      ? 'border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/10'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
-                        isHadir ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600' : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600'
-                      }`}>
-                        <UserCheck className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-black text-slate-800 dark:text-slate-100 truncate">
-                          {p.nama_guru}
-                        </p>
-                        <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">
-                          {p.mapel_nama || 'Mapel KBM'} • {p.kelas_nama || 'Kelas'}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Jam KBM: {p.jam_kbm || '07:15 - 11:05'}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="shrink-0 flex flex-col items-end gap-1.5">
-                      {statusBadge(p.status)}
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        isKbmActive
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300'
-                          : 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300'
-                      }`}>
-                        {isKbmActive ? '● Sesi KBM Berlangsung' : '○ Sesi KBM Menunggu'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {p.catatan && (
-                    <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300 italic">
-                      {p.catatan}
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <span className="text-[11px] text-slate-400 font-medium">
-                      {p.waktu_tap ? `Tap: ${p.waktu_tap.slice(11, 16)} WIB` : 'Belum presensi'}
-                    </span>
-
-                    {p.status === 'BELUM_TAP' ? (
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 px-2 text-[11px] text-slate-500 hover:text-slate-800"
-                          disabled={tapMutation.isPending || (!isScheduledDay && !forceIncidentalMode)}
-                          onClick={() => handleTap(p.guru_id, 'IZIN')}
-                        >
-                          Izin
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="default"
-                          className={`h-8 px-3 text-xs font-bold gap-1.5 shadow-sm ${
-                            !isScheduledDay && !forceIncidentalMode
-                              ? 'bg-slate-300 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed'
-                              : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                          }`}
-                          disabled={tapMutation.isPending || (!isScheduledDay && !forceIncidentalMode)}
-                          onClick={() => handleTap(p.guru_id, 'HADIR')}
-                        >
-                          {tapMutation.isPending ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Zap className="w-3.5 h-3.5 text-amber-300" />
-                          )}
-                          {!isScheduledDay && !forceIncidentalMode ? 'Siaga' : 'Tap Hadir & Buka KBM'}
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4" /> 1 Tap 2 Record Aktif
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+      {/* TERMINAL MULTI-INPUT LANGSUNG DI TAMPILKAN (INLINE POS) */}
+      <div className="space-y-2">
+        <UnifiedKegiatanTerminalPanel
+          jenisKegiatan="KETARUNAAN"
+          title={`Terminal Presensi — ${activeJadwalNama}`}
+          subtitle={`Multi-Input Siaga: Tempel Kartu RFID, Barcode Gun HID, Scan QR Kamera atau Cari Nama Guru`}
+          sesiId={realSesiId}
+          jadwalKegiatanId={effectiveJadwalId}
+          onSuccessTap={() => {
+            handleRefresh();
+            qc.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
+            qc.invalidateQueries({ queryKey: ['unified-kbm-sessions'] });
+            qc.invalidateQueries({ queryKey: ['attendance-dashboard-live'] });
+          }}
+        />
       </div>
 
-      {/* SECTION 2: TIM PEMBINA & PIMPINAN JURUSAN (KAJUR/KAPROG) */}
-      <div className="space-y-2.5 pt-1">
-        <div className="flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-          <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
-            Pimpinan Jurusan (Kajur/Kaprog), Wali Kelas &amp; Tim Pembina
-          </h4>
-        </div>
+      {/* MODAL LIHAT KEHADIRAN KEPANITIAAN & PENDAMPING */}
+      <Modal
+        isOpen={panitiaModalOpen}
+        onClose={() => setPanitiaModalOpen(false)}
+        maxWidth="5xl"
+        title={
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <ClipboardList className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">
+                Daftar Kehadiran Kepanitiaan &amp; Pendamping
+              </h3>
+              <p className="text-xs text-slate-400 font-normal">
+                Total {hadirCount} dari {totalCount} telah hadir ({activeJadwalNama})
+              </p>
+            </div>
+          </div>
+        }
+      >
+        <div className="p-4 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+          {/* Filter Bar & Search */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setModalFilterCategory('SEMUA')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  modalFilterCategory === 'SEMUA'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                Semua ({totalCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalFilterCategory('MAPEL')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  modalFilterCategory === 'MAPEL'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                Guru Mapel ({guruMapelList.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalFilterCategory('PEMBINA')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  modalFilterCategory === 'PEMBINA'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                Pembina &amp; Kajur
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalFilterCategory('WALIKELAS')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  modalFilterCategory === 'WALIKELAS'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                Wali Kelas ({waliKelasList.length})
+              </button>
+            </div>
 
-        {/* Unsur Pembina & Kajur */}
-        {pembinaAndKajurGroups.length > 0 && (
-          <div className="space-y-2.5">
-            {pembinaAndKajurGroups.map(([kode, list]) => (
-              <div key={kode} className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-2xs">
-                <div className="px-3.5 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                    {jabatanLabel(kode)}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    {list.filter(x => x.status === 'HADIR').length}/{list.length} Hadir
-                  </span>
-                </div>
+            {/* Search Input */}
+            <div className="relative w-full sm:w-64">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={modalSearch}
+                onChange={(e) => setModalSearch(e.target.value)}
+                placeholder="Cari nama guru, mapel, kelas..."
+                className="w-full text-xs pl-8 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
 
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {list.map(p => (
-                    <div key={p.guru_id} className="flex items-center justify-between px-3.5 py-2.5 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-7 h-7 rounded-lg bg-amber-100/70 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                          <UserCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+          {/* List Panitia / Pendamping */}
+          {filteredModalList.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 text-xs">
+              Tidak ada data pendamping yang cocok dengan filter.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {filteredModalList.map((p) => {
+                const isHadir = p.status === 'HADIR';
+                const isGuruMapel = p.jabatan_kode === 'GURU_MAPEL';
+                const isKbmActive = p.kbm_status === 'BERLANGSUNG';
+
+                return (
+                  <div
+                    key={p.guru_id}
+                    className={`p-3.5 rounded-2xl border transition-all bg-white dark:bg-slate-900 shadow-2xs flex flex-col justify-between gap-3 ${
+                      isHadir
+                        ? 'border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/15'
+                        : 'border-slate-200 dark:border-slate-800 hover:border-indigo-200'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                          isHadir ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          <UserCheck className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{p.nama_guru}</p>
-                          {p.kelas_nama && <p className="text-[11px] text-slate-400 font-medium">Binaan: {p.kelas_nama}</p>}
-                          {p.catatan && (
-                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 italic truncate mt-0.5">
-                              {p.catatan}
+                          <p className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 truncate">
+                            {p.nama_guru}
+                          </p>
+                          <p className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                            {jabatanLabel(p.jabatan_kode)}
+                            {p.kelas_nama ? ` • ${p.kelas_nama}` : ''}
+                          </p>
+                          {p.mapel_nama && (
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                              Mapel: {p.mapel_nama} {p.jam_kbm ? `(${p.jam_kbm})` : ''}
                             </p>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="shrink-0 flex flex-col items-end gap-1">
                         {statusBadge(p.status)}
-                        {p.status === 'BELUM_TAP' && (
+                        {isGuruMapel && (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                            isKbmActive ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {isKbmActive ? '● KBM Aktif' : '○ Menunggu'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+                      <span className="text-slate-400">
+                        {p.waktu_tap ? `Tap: ${p.waktu_tap.slice(11, 16)} WIB` : 'Belum presensi'}
+                      </span>
+
+                      {p.status === 'BELUM_TAP' ? (
+                        <div className="flex items-center gap-1.5">
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-7 px-2.5 text-[11px] font-bold border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400"
+                            className="h-7 px-2 text-[10px] text-slate-500"
+                            disabled={tapMutation.isPending || (!isScheduledDay && !forceIncidentalMode)}
+                            onClick={() => handleTap(p.guru_id, 'IZIN')}
+                          >
+                            Izin
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-7 px-2.5 text-[11px] font-bold gap-1 bg-indigo-600 hover:bg-indigo-700 text-white"
                             disabled={tapMutation.isPending || (!isScheduledDay && !forceIncidentalMode)}
                             onClick={() => handleTap(p.guru_id, 'HADIR')}
                           >
                             {tapMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                            Tap Hadir
                           </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Sub-Section: Wali Kelas Pendamping (Akordeon Per Tingkat) */}
-        {waliKelasList.length > 0 && (
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Wali Kelas Pendamping ({waliKelasList.length} Rombel)
-                </h5>
-              </div>
-              <span className="text-[11px] font-bold text-slate-500">
-                {waliKelasList.filter(w => w.status === 'HADIR').length}/{waliKelasList.length} Hadir
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              {waliKelasByTingkat.map(([tingkatName, list]) => {
-                const isOpen = expandedTingkat[tingkatName] ?? isScheduledDay;
-                const hadirTingkat = list.filter(w => w.status === 'HADIR').length;
-
-                return (
-                  <div
-                    key={tingkatName}
-                    className="rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm transition-all"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggleTingkat(tingkatName)}
-                      className="w-full px-4 py-3 bg-slate-50/80 hover:bg-slate-100/80 dark:bg-slate-800/50 dark:hover:bg-slate-800/80 flex items-center justify-between transition-colors text-left"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center font-black text-xs">
-                          {tingkatName.replace('Kelas ', '')}
                         </div>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                          {tingkatName}
+                      ) : (
+                        <span className="font-bold text-emerald-600 flex items-center gap-1 text-[11px]">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Hadir Tercatat
                         </span>
-                        <Badge variant="neutral" className="text-[10px] font-semibold">
-                          {list.length} Rombel
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <span className={`text-[11px] font-bold ${
-                          hadirTingkat > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'
-                        }`}>
-                          {hadirTingkat}/{list.length} Hadir
-                        </span>
-                        {isOpen ? (
-                          <ChevronDown className="w-4 h-4 text-slate-400" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-slate-400" />
-                        )}
-                      </div>
-                    </button>
-
-                    {isOpen && (
-                      <div className="divide-y divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800">
-                        {list.map(p => (
-                          <div key={p.guru_id} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                                <UserCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{p.nama_guru}</p>
-                                {p.kelas_nama && (
-                                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
-                                    Wali Kelas: {p.kelas_nama}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              {statusBadge(p.status)}
-                              {p.status === 'BELUM_TAP' && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-6 px-2 text-[10px] font-bold border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400"
-                                  disabled={tapMutation.isPending || (!isScheduledDay && !forceIncidentalMode)}
-                                  onClick={() => handleTap(p.guru_id, 'HADIR')}
-                                >
-                                  {tapMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </div>
-          </div>
-        )}
-      </div>
-      </>
-      )}
-
-      {/* Reusable Universal RFID Scanner Modal */}
-      <UnifiedKegiatanRfidScanModal
-        isOpen={rfidModalOpen}
-        onClose={() => setRfidModalOpen(false)}
-        jenisKegiatan="KETARUNAAN"
-        title={`Terminal RFID — ${activeJadwalNama}`}
-        subtitle={`Tempelkan kartu RFID Pembina, Wali Kelas, Kajur, atau Guru Mapel (${activePilarLabel})`}
-        sesiId={realSesiId}
-        jadwalKegiatanId={effectiveJadwalId}
-        onSuccessTap={() => {
-          handleRefresh();
-          qc.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
-          qc.invalidateQueries({ queryKey: ['unified-kbm-sessions'] });
-          qc.invalidateQueries({ queryKey: ['attendance-dashboard-live'] });
-        }}
-      />
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

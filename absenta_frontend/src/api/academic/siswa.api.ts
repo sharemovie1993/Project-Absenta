@@ -60,7 +60,8 @@ export const getSiswaList = async (
   tingkat = '',
   jurusan_id = '',
   tahun_pelajaran_id = '',
-  semester_id = ''
+  semester_id = '',
+  is_app_installed?: boolean | string
 ): Promise<PaginatedResponse<Siswa>> => {
   const params: any = { page, limit };
   if (search) params.search = search;
@@ -72,8 +73,37 @@ export const getSiswaList = async (
   if (jurusan_id) params.jurusan_id = jurusan_id;
   if (tahun_pelajaran_id) params.tahun_pelajaran_id = tahun_pelajaran_id;
   if (semester_id) params.semester_id = semester_id;
+  if (is_app_installed !== undefined && is_app_installed !== '') {
+    params.is_app_installed = is_app_installed;
+  }
 
   return requestWithFallback<PaginatedResponse<Siswa>>('get', '/academic/siswa', { params });
+};
+
+export interface AppTelemetryPayload {
+  is_installed: boolean;
+  platform?: string;
+  app_version?: string;
+  ota_version?: string;
+  device_model?: string;
+  device_os?: string;
+  device_uuid?: string;
+}
+
+export const syncStudentAppTelemetryApi = async (data: AppTelemetryPayload): Promise<{ success: boolean; data?: any }> => {
+  return requestWithFallback<{ success: boolean; data?: any }>('post', '/academic/siswa/telemetry', { data });
+};
+
+export const getStudentAppTelemetryStats = async (params?: { kelas_id?: string; jurusan_id?: string }): Promise<{
+  success: boolean;
+  data: {
+    total_siswa: number;
+    total_installed: number;
+    total_not_installed: number;
+    percentage: number;
+  };
+}> => {
+  return requestWithFallback<{ success: boolean; data: any }>('get', '/academic/siswa/telemetry/stats', { params });
 };
 
 export const getSiswaMe = async (): Promise<Siswa | null> => {

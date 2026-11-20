@@ -29,6 +29,7 @@ import { calculateProfileCompleteness, type SectionEditType } from '@/components
 import { useGerbangAttendanceData } from '@/hooks/attendance/useGerbangAttendanceData';
 import { sosialisasiApi, sosialisasiQueryKeys } from '@/api/academic/sosialisasi.api';
 import { isSosialisasiInSchedule } from '@/helpers/sosialisasiHelper';
+import { sendStudentAppTelemetryPing } from '@/services/appTelemetryService';
 
 // Types & Skeletons
 import type { SiswaTabId, SiswaNavTabItem } from './siswa/types';
@@ -96,6 +97,11 @@ export const SiswaDashboard: React.FC = () => {
       return next;
     });
   }, [activeTab]);
+
+  // Telemetry: Laporkan status aplikasi mobile siswa secara otomatis
+  useEffect(() => {
+    sendStudentAppTelemetryPing();
+  }, []);
 
   const handleTabChange = useCallback(
     (newTab: SiswaTabId | string) => {
