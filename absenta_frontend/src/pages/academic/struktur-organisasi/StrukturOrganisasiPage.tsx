@@ -71,14 +71,6 @@ export const StrukturOrganisasiPage: React.FC = () => {
     enableSearch: false,
   });
 
-  // Pre-warm data cache & loading guard (Pillar 9 & 31)
-  const { isLoading } = useQuery({
-    queryKey: ['strukturTree', filter.values.tahunPelajaranId],
-    queryFn: () => getStrukturTree(filter.values.tahunPelajaranId ? { tahun_pelajaran_id: filter.values.tahunPelajaranId } : undefined),
-    enabled: canManageAcademic && Boolean(filter.values.tahunPelajaranId),
-    staleTime: 5 * 60 * 1000
-  });
-
   const rawJenjang = useMemo(() => (jenjang || 'SMA').toUpperCase(), [jenjang]);
 
   const visibleTabs = useMemo(() => {
