@@ -986,24 +986,24 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
   if (!kelasId) {
     return (
       <>
-        <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
-          <Shield className="w-12 h-12 text-slate-400 mb-3" />
-          <h3 className="font-bold text-slate-800 dark:text-slate-200 text-base">
+        <div className="flex flex-col items-center justify-center py-6 sm:py-8 px-4 text-center bg-slate-50/70 dark:bg-slate-900/50 m-2.5 sm:m-3.5 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+          <Shield className="w-8 h-8 text-slate-400 mb-2" />
+          <h3 className="font-bold text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
             Pilih Rombel / Kelas Terlebih Dahulu
           </h3>
-          <p className="text-xs text-slate-500 max-w-sm mt-1">
-            Gunakan filter toolbar di bagian atas untuk memilih kelas yang ingin dinilai kesamaptaan &amp; ketarunaannya.
+          <p className="text-[11px] text-slate-500 max-w-sm mt-0.5">
+            Gunakan filter toolbar untuk memilih kelas yang ingin dinilai kesamaptaan &amp; ketarunaannya.
           </p>
 
-          <div className="mt-5">
+          <div className="mt-3">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsExportModalOpen(true)}
-              className="gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shadow-sm"
+              className="h-8 gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shadow-2xs"
               title="Ekspor Seluruh Nilai Ketarunaan Satu Sekolah ke Excel untuk Mail Merge"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Ekspor Nilai Ketarunaan (Semua Rombel)</span>
             </Button>
           </div>
@@ -1028,13 +1028,13 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
   }
 
   return (
-    <Card className="w-full p-3 sm:p-5 border-none shadow-sm dark:bg-slate-900/40 space-y-3">
+    <Card className="w-full p-2.5 sm:p-4 border-none shadow-none dark:bg-slate-900/40 space-y-2.5">
       {/* ── Sleek Header Bar (Mengadopsi Standar Lembar Input Nilai e-Rapor) ──── */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 gap-3">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5 gap-2.5">
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
-              KETARUNAAN &amp; KESAMAPTAAN
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-xs sm:text-sm">
+              Ketarunaan &amp; Kesamaptaan
               {effectiveKelasNama && (
                 <span className="text-slate-400 font-normal"> • {effectiveKelasNama}</span>
               )}

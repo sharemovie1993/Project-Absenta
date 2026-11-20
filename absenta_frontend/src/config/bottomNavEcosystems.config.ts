@@ -1248,6 +1248,58 @@ export function getEkskulTabs(currentSubtab?: string): MobileBottomTabItem[] {
   ];
 }
 
+export function getKetarunaanTabs(currentSubtab?: string): MobileBottomTabItem[] {
+  return [
+    {
+      id: 'portal_back',
+      label: 'Kembali ke Portal',
+      shortLabel: 'Kembali',
+      icon: ArrowLeft,
+      targetPath: '/dashboard?tab=ringkasan',
+      isActive: () => false,
+    },
+    {
+      id: 'ketarunaan_penilaian',
+      label: 'Nilai & Sertifikat',
+      shortLabel: 'Penilaian',
+      icon: Award,
+      targetPath: '/dashboard?tab=ketarunaan&subtab=penilaian',
+      isActive: (p, t) => t === 'ketarunaan' && (!currentSubtab || currentSubtab === 'penilaian'),
+    },
+    {
+      id: 'ketarunaan_menu',
+      label: 'Menu Ketarunaan',
+      shortLabel: 'Menu Taruna',
+      icon: LayoutGrid,
+      targetPath: '/dashboard?tab=ketarunaan',
+      isActive: (p, t) => t === 'ketarunaan' && Boolean(currentSubtab && !['penilaian', 'kepanitiaan', 'statistik'].includes(currentSubtab)),
+      children: [
+        { id: 'kepanitiaan', label: 'Pos & Presensi', icon: Users, targetPath: '/dashboard?tab=ketarunaan&subtab=kepanitiaan', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
+        { id: 'laporan_kelas', label: 'Rekap Rombel', icon: BookOpen, targetPath: '/dashboard?tab=ketarunaan&subtab=laporan_kelas', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
+        { id: 'laporan_tim', label: 'Pembina & Walas', icon: FileText, targetPath: '/dashboard?tab=ketarunaan&subtab=laporan_tim', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
+        { id: 'penilaian', label: 'Nilai & Sertifikat', icon: Award, targetPath: '/dashboard?tab=ketarunaan&subtab=penilaian', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
+        { id: 'statistik', label: 'Monitoring & Tren', icon: Activity, targetPath: '/dashboard?tab=ketarunaan&subtab=statistik', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },
+      ],
+    },
+    {
+      id: 'ketarunaan_kepanitiaan',
+      label: 'Pos & Presensi',
+      shortLabel: 'Presensi',
+      icon: Users,
+      targetPath: '/dashboard?tab=ketarunaan&subtab=kepanitiaan',
+      isActive: (p, t) => t === 'ketarunaan' && currentSubtab === 'kepanitiaan',
+    },
+    {
+      id: 'ketarunaan_statistik',
+      label: 'Monitoring & Tren',
+      shortLabel: 'Monitoring',
+      icon: Activity,
+      targetPath: '/dashboard?tab=ketarunaan&subtab=statistik',
+      isActive: (p, t) => t === 'ketarunaan' && currentSubtab === 'statistik',
+    },
+  ];
+}
+
 export function getPklPembimbingTabs(currentSubtab?: string): MobileBottomTabItem[] {
   return [
     {

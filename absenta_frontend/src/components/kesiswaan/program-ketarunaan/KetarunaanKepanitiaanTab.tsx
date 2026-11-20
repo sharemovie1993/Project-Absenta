@@ -190,9 +190,9 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
 
   if (isLoading) {
     return (
-      <div className="space-y-3 p-4">
-        {[1, 2, 3, 4, 5].map((itemKey) => (
-          <Skeleton key={itemKey} className="h-16 rounded-2xl" />
+      <div className="space-y-2.5 p-2.5 sm:p-4">
+        {[1, 2, 3, 4].map((itemKey) => (
+          <Skeleton key={itemKey} className="h-12 rounded-xl" />
         ))}
       </div>
     );
@@ -200,25 +200,25 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
 
   if (!realSesiId && pendamping.length === 0) {
     return (
-      <div className="text-center py-16 text-slate-400 dark:text-slate-500">
-        <Shield className="w-10 h-10 mx-auto mb-3 opacity-30" />
-        <p className="text-sm font-bold">Belum ada sesi Ketarunaan aktif hari ini</p>
-        <p className="text-xs mt-1">Sesi otomatis aktif saat rentang jam kegiatan berlangsung</p>
+      <div className="text-center py-8 px-4 text-slate-400 dark:text-slate-500">
+        <Shield className="w-8 h-8 mx-auto mb-2 opacity-30" />
+        <p className="text-xs sm:text-sm font-bold">Belum ada sesi Ketarunaan aktif hari ini</p>
+        <p className="text-[11px] mt-0.5">Sesi otomatis aktif saat rentang jam kegiatan berlangsung</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      {/* Header Info & Ringkasan */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0 shadow-sm border border-amber-200/50 dark:border-amber-700/30">
-            <Users className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+    <div className="space-y-3 p-2.5 sm:p-4">
+      {/* Header Info & Ringkasan (Compact) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0 border border-amber-200/50 dark:border-amber-700/30">
+            <Users className="w-4 h-4 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100">
                 Presensi Kepanitiaan &amp; Pendamping ({activeJadwalNama})
               </h3>
               <Badge variant="outline" className="text-[10px] font-bold border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300">
@@ -233,58 +233,59 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
                 }
               >
                 {activeSiklus === 'DUHA'
-                  ? '🕌 Siklus Dhuha (1 Sesi Bersama Terminal Dhuha)'
+                  ? '🕌 Siklus Dhuha'
                   : activeSiklus === 'UPACARA'
-                  ? '🇮🇩 Siklus Upacara Bendera'
+                  ? '🇮🇩 Siklus Upacara'
                   : activeSiklus === 'APEL_SORE'
                   ? '🌇 Siklus Apel Sore'
                   : '🎖️ Siklus Ketarunaan / Apel Pagi'}
               </Badge>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
               Total {hadirCount} dari {pendamping.length} pendamping telah hadir • {activePilarLabel}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <Button
             variant="default"
             size="sm"
             onClick={handleOpenRfid}
-            className={`gap-2 text-xs font-black text-white shadow-sm ${
+            className={`h-8 px-3 gap-1.5 text-xs font-bold text-white shadow-2xs ${
               !isScheduledDay && !forceIncidentalMode
                 ? 'bg-slate-600 hover:bg-slate-700 opacity-90'
                 : 'bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-700 hover:to-indigo-700'
             }`}
           >
-            <Scan className="w-4 h-4" /> Mode Scan RFID (POS)
+            <Scan className="w-3.5 h-3.5" /> Mode Scan RFID (POS)
             {!isScheduledDay && !forceIncidentalMode && (
-              <span className="text-[10px] bg-slate-800/80 px-1.5 py-0.5 rounded font-mono ml-1">Siaga</span>
+              <span className="text-[10px] bg-slate-800/80 px-1.5 py-0.5 rounded font-mono ml-0.5">Siaga</span>
             )}
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleRefresh} className="gap-1.5 text-xs font-bold">
-            <RefreshCw className="w-3.5 h-3.5" /> Refresh Status
+          <Button variant="ghost" size="sm" onClick={handleRefresh} className="h-8 px-2.5 gap-1 text-xs font-bold">
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
       </div>
 
-      {/* Status Card Terpadu: Standby Context & Dual-Presence Mechanism */}
-      <div className={`p-4 rounded-2xl border shadow-sm ${
+      {/* Status Strip Terpadu (Tunggal & Ramping — Tanpa Duplikasi Kotak Siaga) */}
+      <div className={`p-3 rounded-xl border ${
         !isScheduledDay
           ? 'bg-gradient-to-r from-amber-50/90 via-slate-50 to-indigo-50/40 border-amber-200/90 dark:from-amber-950/20 dark:via-slate-900 dark:to-indigo-950/20 dark:border-amber-900/40'
           : 'bg-gradient-to-r from-amber-50/70 via-indigo-50/40 to-slate-50 border-amber-100 dark:from-amber-950/20 dark:via-indigo-950/10 dark:to-slate-900 dark:border-amber-900/40'
       }`}>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className={`p-2.5 rounded-xl text-white shrink-0 shadow-sm ${
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+          <div className="flex items-start gap-2.5">
+            <div className={`p-2 rounded-lg text-white shrink-0 shadow-2xs ${
               !isScheduledDay ? 'bg-amber-600' : 'bg-indigo-600'
             }`}>
-              {!isScheduledDay ? <Clock className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+              {!isScheduledDay ? <Clock className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
             </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">
                   {!isScheduledDay ? 'Mode Siaga (Standby) — Di Luar Hari Pelaksanaan' : 'Mekanisme Dual-Presence Program Ketarunaan'}
                 </h4>
                 {!isScheduledDay && (
@@ -293,13 +294,13 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
                 {!isScheduledDay ? (
                   <>
-                    Hari ini bukan jadwal reguler Ketarunaan. Kartu di bawah menampilkan <strong>pratinjau guru mapel yang terjadwal pada hari {guard?.hari_aktif?.join(', ') || "Rabu"}</strong>. Terminal RFID dan tombol presensi terkunci siaga untuk menjaga integritas KBM hari ini.
+                    Hari ini bukan jadwal reguler Program Ketarunaan ({guard?.hari_aktif?.join(', ') || "Rabu"}). Daftar kartu presensi guru disembunyikan dan terminal RFID dikunci siaga untuk menjaga integritas data KBM reguler.
                     {forceIncidentalMode && (
                       <span className="block font-bold text-amber-600 dark:text-amber-400 mt-0.5">
-                        ● Mode Sesi Khusus / Insidental Aktif — Terminal RFID dan tombol presensi dibuka untuk sesi hari ini.
+                        ● Mode Sesi Khusus / Insidental Aktif — Terminal RFID dan daftar presensi dibuka untuk sesi hari ini.
                       </span>
                     )}
                   </>
@@ -318,12 +319,13 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
                 variant={forceIncidentalMode ? "default" : "outline"}
                 size="sm"
                 onClick={() => setForceIncidentalMode(prev => !prev)}
-                className={`text-xs font-bold gap-1.5 ${
+                className={`h-8 px-3 text-xs font-bold gap-1.5 ${
                   forceIncidentalMode
                     ? 'bg-amber-600 hover:bg-amber-700 text-white'
                     : 'border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300'
                 }`}
               >
+                <Zap className="w-3.5 h-3.5" />
                 {forceIncidentalMode ? 'Kunci Kembali Siaga' : 'Buka Sesi Khusus / Insidental'}
               </Button>
             </div>
@@ -331,38 +333,14 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
         </div>
       </div>
 
-      {!isScheduledDay && !forceIncidentalMode ? (
-        <div className="p-8 text-center rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
-            <Clock className="w-6 h-6 opacity-70" />
-          </div>
-          <div className="space-y-1 max-w-md mx-auto">
-            <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">
-              Terminal Presensi Berada Dalam Mode Siaga
-            </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              Hari ini bukan jadwal reguler Program Ketarunaan ({guard?.hari_aktif?.join(', ') || "Rabu"}). Daftar kartu presensi guru disembunyikan untuk menjaga kebersihan visual dan integritas data KBM reguler.
-            </p>
-          </div>
-          <div className="pt-2 flex items-center justify-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setForceIncidentalMode(true)}
-              className="text-xs font-bold gap-1.5 border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300"
-            >
-              <Zap className="w-3.5 h-3.5 text-amber-600" /> Buka Sesi Khusus / Insidental Hari Ini
-            </Button>
-          </div>
-        </div>
-      ) : (
+      {(isScheduledDay || forceIncidentalMode) && (
         <>
           {/* SECTION 1: GURU MAPEL KBM BERIRISAN (1 TAP 2 RECORD) */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
+                <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
                   Guru Mapel KBM yang Beririsan Jam
                 </h4>
                 <Badge variant="neutral" className="text-[10px]">
@@ -372,11 +350,11 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
             </div>
 
         {guruMapelList.length === 0 ? (
-          <div className="p-6 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+          <div className="p-4 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
             <p className="text-xs text-slate-400 font-medium">Tidak ada jadwal KBM guru mapel yang beririsan waktu dengan sesi kegiatan hari ini.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {guruMapelList.map((p) => {
               const isKbmActive = p.kbm_status === 'BERLANGSUNG';
               const isHadir = p.status === 'HADIR';
@@ -478,21 +456,21 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
       </div>
 
       {/* SECTION 2: TIM PEMBINA & PIMPINAN JURUSAN (KAJUR/KAPROG) */}
-      <div className="space-y-4 pt-2">
+      <div className="space-y-2.5 pt-1">
         <div className="flex items-center gap-2">
           <Building2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-          <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
-            Pimpinan Jurusan (Kajur/Kaprog), Wali Kelas & Tim Pembina
+          <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
+            Pimpinan Jurusan (Kajur/Kaprog), Wali Kelas &amp; Tim Pembina
           </h4>
         </div>
 
         {/* Unsur Pembina & Kajur */}
         {pembinaAndKajurGroups.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-2.5">
             {pembinaAndKajurGroups.map(([kode, list]) => (
-              <div key={kode} className="rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-                <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+              <div key={kode} className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-2xs">
+                <div className="px-3.5 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
                     {jabatanLabel(kode)}
                   </span>
                   <span className="text-[10px] font-bold text-slate-400">
@@ -502,13 +480,13 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
 
                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {list.map(p => (
-                    <div key={p.guru_id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-xl bg-amber-100/70 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                          <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <div key={p.guru_id} className="flex items-center justify-between px-3.5 py-2.5 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-amber-100/70 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                          <UserCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{p.nama_guru}</p>
+                          <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{p.nama_guru}</p>
                           {p.kelas_nama && <p className="text-[11px] text-slate-400 font-medium">Binaan: {p.kelas_nama}</p>}
                           {p.catatan && (
                             <p className="text-[10px] text-emerald-600 dark:text-emerald-400 italic truncate mt-0.5">
@@ -542,11 +520,11 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
 
         {/* Sub-Section: Wali Kelas Pendamping (Akordeon Per Tingkat) */}
         {waliKelasList.length > 0 && (
-          <div className="space-y-3 pt-2">
+          <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <h5 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Wali Kelas Pendamping ({waliKelasList.length} Rombel)
                 </h5>
               </div>
@@ -555,7 +533,7 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
               </span>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {waliKelasByTingkat.map(([tingkatName, list]) => {
                 const isOpen = expandedTingkat[tingkatName] ?? isScheduledDay;
                 const hadirTingkat = list.filter(w => w.status === 'HADIR').length;

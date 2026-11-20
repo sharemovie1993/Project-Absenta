@@ -37,6 +37,7 @@ import {
   getSarprasTabs,
   getToolmanTabs,
   getEkskulTabs,
+  getKetarunaanTabs,
   getPklPembimbingTabs,
   getSatpamTabs,
   getKoperasiTabs,
@@ -176,6 +177,7 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
       if (currentTab === 'sarpras') return 'sarpras';
       if (currentTab === 'toolman') return 'toolman';
       if (currentTab === 'ekskul') return 'ekskul';
+      if (currentTab === 'ketarunaan') return 'ketarunaan';
       if (currentTab === 'pembimbing_pkl') return 'pembimbing_pkl';
       if (currentTab === 'satpam' || currentTab === 'gerbang') return 'satpam';
       if (currentTab === 'koperasi') return 'koperasi';
@@ -213,6 +215,8 @@ export function useBottomNavTabs(): UseBottomNavTabsReturn {
         return getToolmanTabs(currentSubtab);
       case 'ekskul':
         return getEkskulTabs(currentSubtab);
+      case 'ketarunaan':
+        return getKetarunaanTabs(currentSubtab);
       case 'pembimbing_pkl':
         return getPklPembimbingTabs(currentSubtab);
       case 'satpam':

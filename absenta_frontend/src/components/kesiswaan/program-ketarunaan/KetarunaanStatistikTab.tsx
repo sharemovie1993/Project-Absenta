@@ -239,16 +239,16 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({
   }, [trendList, showAllMeetings]);
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
+    <div className="space-y-3.5 p-2.5 sm:p-4">
       {/* FILTER BAR SCOPE DATA KETARUNAAN: 1 Tahun, 1 Semester, 1 Bulan */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 shadow-2xs space-y-2.5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
               <Calendar className="w-4 h-4" />
             </div>
             <div>
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">
                 Scope Data &amp; Periode Evaluasi Ketarunaan
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400">

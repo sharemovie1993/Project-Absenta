@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, Suspense } from 'react';
+import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -9,6 +9,7 @@ import {
   Lock,
   ExternalLink,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -22,16 +23,33 @@ import {
   getKetarunaanSesiHariIni,
 } from '../../api/kesiswaan/programKetarunaan.api';
 
-// Subkomponen Modular
-import { KetarunaanKepanitiaanTab } from '../../components/kesiswaan/program-ketarunaan/KetarunaanKepanitiaanTab';
-import { KetarunaanStatistikTab } from '../../components/kesiswaan/program-ketarunaan/KetarunaanStatistikTab';
-import { KetarunaanLaporanTimTab } from '../../components/kesiswaan/program-ketarunaan/KetarunaanLaporanTimTab';
-import { KetarunaanLaporanKelasTab } from '../../components/kesiswaan/program-ketarunaan/KetarunaanLaporanKelasTab';
+// Subkomponen Modular (Keep-Alive + Lazy-Mount)
 import { KetarunaanPenilaianTab } from '../../components/kesiswaan/program-ketarunaan/KetarunaanPenilaianTab';
 import {
   KetarunaanWorkdeskFlightDeck,
   KetarunaanWorkflowStepId,
 } from '../../components/kesiswaan/program-ketarunaan/KetarunaanWorkdeskFlightDeck';
+
+const KetarunaanKepanitiaanTab = lazy(() =>
+  import('../../components/kesiswaan/program-ketarunaan/KetarunaanKepanitiaanTab').then((m) => ({
+    default: m.KetarunaanKepanitiaanTab,
+  }))
+);
+const KetarunaanStatistikTab = lazy(() =>
+  import('../../components/kesiswaan/program-ketarunaan/KetarunaanStatistikTab').then((m) => ({
+    default: m.KetarunaanStatistikTab,
+  }))
+);
+const KetarunaanLaporanTimTab = lazy(() =>
+  import('../../components/kesiswaan/program-ketarunaan/KetarunaanLaporanTimTab').then((m) => ({
+    default: m.KetarunaanLaporanTimTab,
+  }))
+);
+const KetarunaanLaporanKelasTab = lazy(() =>
+  import('../../components/kesiswaan/program-ketarunaan/KetarunaanLaporanKelasTab').then((m) => ({
+    default: m.KetarunaanLaporanKelasTab,
+  }))
+);
 
 const HARI_LABEL: Record<string, string> = {
   SENIN: 'Senin',
@@ -52,25 +70,26 @@ const GuardState: React.FC<{ navigate: ReturnType<typeof useNavigate> }> = ({ na
   }, [navigate]);
 
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-      <div className="w-20 h-20 rounded-3xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-center mb-5 shadow-sm">
-        <Lock className="w-10 h-10 text-amber-500" />
+    <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+      <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-center mb-2.5 shadow-2xs">
+        <Lock className="w-6 h-6 text-amber-500" />
       </div>
-      <div className="space-y-2 max-w-md mb-6">
-        <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">
+      <div className="space-y-1 max-w-md mb-4">
+        <h2 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100">
           Program Ketarunaan Belum Aktif
         </h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           Jadwal Kegiatan Ketarunaan belum dikonfigurasi atau belum diaktifkan.
           Aktifkan terlebih dahulu di menu <strong>Agenda Kesiswaan</strong> untuk membuka terminal presensi dan pemantauan.
         </p>
       </div>
       <Button
         variant="default"
+        size="sm"
         onClick={handleNavAgenda}
-        className="gap-2 shadow-sm font-bold"
+        className="h-8 gap-1.5 shadow-2xs text-xs font-bold"
       >
-        <ExternalLink className="w-4 h-4" />
+        <ExternalLink className="w-3.5 h-3.5" />
         Buka Agenda Kesiswaan
       </Button>
     </div>
@@ -85,7 +104,8 @@ export interface ProgramKetarunaanPageProps {
 
 const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayout = false }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('penilaian');
+  const [activeTab, setActiveTab] = useState<string>('penilaian');
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set(['penilaian']));
   const { isKesiswaan, isAdmin, can } = useCapabilities();
 
   // Konteks Akademik Terpadu (Single Source of Truth)
@@ -144,9 +164,10 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
   const sesiId = sesiData?.data?.id ?? null;
   const stats = statsData?.data;
 
-  // Memoized handlers mencegah DOM churn
+  // Memoized handlers mencegah DOM churn (Keep-Alive Cache)
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
+    setVisitedTabs((prev) => (prev.has(tab) ? prev : new Set(prev).add(tab)));
   }, []);
 
   const handleRefresh = useCallback(() => {
@@ -215,7 +236,7 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
   const canView = isAdmin || isKesiswaan || can('attendance.sessions.view.list') || can('dashboard.view.kesiswaan');
 
   const mainContent = (
-    <div className="space-y-4">
+    <div className="space-y-2.5 sm:space-y-3">
       {/* ── Meja Kerja Ketarunaan (Workflow Stepper 5 Tahap ala Meja Kerja Panitia CBT) ── */}
       <KetarunaanWorkdeskFlightDeck
         activeStep={activeTab as KetarunaanWorkflowStepId}
@@ -233,19 +254,11 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
         isRefreshing={isGuardLoading || isSesiLoading}
       />
 
-      {/* ── Area Kerja Aktif Sesuai Tahap Terpilih ── */}
+      {/* ── Area Kerja Aktif Sesuai Tahap Terpilih (Keep-Alive Cache) ── */}
       <SectionCard fullWidth noPadding className="overflow-hidden border border-slate-100 dark:border-slate-800">
         <div className="bg-white dark:bg-slate-900">
-          <Suspense
-            fallback={
-              <div className="p-6 space-y-3">
-                {[1, 2, 3, 4]?.map((itemKey) => (
-                  <Skeleton key={itemKey} className="h-12 rounded-2xl" />
-                ))}
-              </div>
-            }
-          >
-            {activeTab === 'penilaian' && (
+          {visitedTabs.has('penilaian') && (
+            <div className={cn('w-full min-w-0', activeTab === 'penilaian' ? 'block animate-in fade-in duration-100' : 'hidden')}>
               <KetarunaanPenilaianTab
                 tahunPelajaranId={selectedTpId}
                 tahunPelajaranNama={academicFilter.selectedTahunPelajaranNama}
@@ -255,43 +268,95 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
                 kelasNama={academicFilter.selectedKelasLabel}
                 jurusanId={academicFilter.values.jurusanId}
               />
-            )}
-            {activeTab === 'kepanitiaan' && (
-              !guard?.is_active ? (
-                <GuardState navigate={navigate} />
-              ) : (
-                <KetarunaanKepanitiaanTab
+            </div>
+          )}
+
+          {visitedTabs.has('kepanitiaan') && (
+            <div className={cn('w-full min-w-0', activeTab === 'kepanitiaan' ? 'block animate-in fade-in duration-100' : 'hidden')}>
+              <Suspense
+                fallback={
+                  <div className="p-4 space-y-2.5">
+                    {[1, 2, 3].map((itemKey) => (
+                      <Skeleton key={itemKey} className="h-12 rounded-xl" />
+                    ))}
+                  </div>
+                }
+              >
+                {!guard?.is_active ? (
+                  <GuardState navigate={navigate} />
+                ) : (
+                  <KetarunaanKepanitiaanTab
+                    jadwalKegiatanId={jadwalKegiatanId}
+                    sesiId={sesiId}
+                    refetchSesi={refetchSesi}
+                    guard={guard}
+                  />
+                )}
+              </Suspense>
+            </div>
+          )}
+
+          {visitedTabs.has('statistik') && (
+            <div className={cn('w-full min-w-0', activeTab === 'statistik' ? 'block animate-in fade-in duration-100' : 'hidden')}>
+              <Suspense
+                fallback={
+                  <div className="p-4 space-y-2.5">
+                    {[1, 2, 3].map((itemKey) => (
+                      <Skeleton key={itemKey} className="h-12 rounded-xl" />
+                    ))}
+                  </div>
+                }
+              >
+                <KetarunaanStatistikTab
+                  jadwalKegiatanId={jadwalKegiatanId}
+                  tahunPelajaranId={selectedTpId}
+                  semesterId={selectedSemId}
+                />
+              </Suspense>
+            </div>
+          )}
+
+          {visitedTabs.has('laporan_tim') && (
+            <div className={cn('w-full min-w-0', activeTab === 'laporan_tim' ? 'block animate-in fade-in duration-100' : 'hidden')}>
+              <Suspense
+                fallback={
+                  <div className="p-4 space-y-2.5">
+                    {[1, 2, 3].map((itemKey) => (
+                      <Skeleton key={itemKey} className="h-12 rounded-xl" />
+                    ))}
+                  </div>
+                }
+              >
+                <KetarunaanLaporanTimTab
                   jadwalKegiatanId={jadwalKegiatanId}
                   sesiId={sesiId}
-                  refetchSesi={refetchSesi}
-                  guard={guard}
+                  tahunPelajaranId={selectedTpId}
+                  semesterId={selectedSemId}
                 />
-              )
-            )}
-            {activeTab === 'statistik' && (
-              <KetarunaanStatistikTab
-                jadwalKegiatanId={jadwalKegiatanId}
-                tahunPelajaranId={selectedTpId}
-                semesterId={selectedSemId}
-              />
-            )}
-            {activeTab === 'laporan_tim' && (
-              <KetarunaanLaporanTimTab
-                jadwalKegiatanId={jadwalKegiatanId}
-                sesiId={sesiId}
-                tahunPelajaranId={selectedTpId}
-                semesterId={selectedSemId}
-              />
-            )}
-            {activeTab === 'laporan_kelas' && (
-              <KetarunaanLaporanKelasTab
-                jadwalKegiatanId={jadwalKegiatanId}
-                sesiId={sesiId}
-                tahunPelajaranId={selectedTpId}
-                semesterId={selectedSemId}
-              />
-            )}
-          </Suspense>
+              </Suspense>
+            </div>
+          )}
+
+          {visitedTabs.has('laporan_kelas') && (
+            <div className={cn('w-full min-w-0', activeTab === 'laporan_kelas' ? 'block animate-in fade-in duration-100' : 'hidden')}>
+              <Suspense
+                fallback={
+                  <div className="p-4 space-y-2.5">
+                    {[1, 2, 3].map((itemKey) => (
+                      <Skeleton key={itemKey} className="h-12 rounded-xl" />
+                    ))}
+                  </div>
+                }
+              >
+                <KetarunaanLaporanKelasTab
+                  jadwalKegiatanId={jadwalKegiatanId}
+                  sesiId={sesiId}
+                  tahunPelajaranId={selectedTpId}
+                  semesterId={selectedSemId}
+                />
+              </Suspense>
+            </div>
+          )}
         </div>
       </SectionCard>
     </div>
@@ -300,7 +365,7 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
   if (hideLayout) {
     return (
       <InfraErrorBoundary>
-        <div className="space-y-4">
+        <div className="space-y-2.5 sm:space-y-3">
           <AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />
           {mainContent}
         </div>

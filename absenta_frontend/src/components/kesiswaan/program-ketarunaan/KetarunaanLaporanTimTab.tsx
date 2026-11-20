@@ -78,20 +78,20 @@ export const KetarunaanLaporanTimTab: React.FC<KetarunaanLaporanTimTabProps> = (
   }, []);
 
   return (
-    <div className="space-y-5 p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+    <div className="space-y-3 p-2.5 sm:p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
         <div>
-          <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">Laporan Tim Ketarunaan</h4>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Daftar hadir fisik & tanda tangan pendamping sekolah</p>
+          <h4 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100">Laporan Tim Ketarunaan</h4>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">Daftar hadir fisik &amp; tanda tangan pendamping sekolah</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <input
             type="date"
             value={selectedDate}
             onChange={handleDateChange}
-            className="text-xs border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-amber-400 outline-none"
+            className="text-xs border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-amber-400 outline-none"
           />
-          <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs">
+          <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 gap-1.5 text-xs">
             <Printer className="w-3.5 h-3.5" /> Cetak
           </Button>
         </div>
@@ -99,17 +99,17 @@ export const KetarunaanLaporanTimTab: React.FC<KetarunaanLaporanTimTabProps> = (
 
       {isLoading ? (
         <div className="space-y-2">
-          {[1, 2, 3, 4, 5, 6]?.map((itemKey) => (
-            <Skeleton key={itemKey} className="h-12 rounded-2xl" />
+          {[1, 2, 3, 4]?.map((itemKey) => (
+            <Skeleton key={itemKey} className="h-12 rounded-xl" />
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="text-center py-16 text-slate-400">
-          <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm font-bold">Tidak ada data untuk tanggal ini</p>
+        <div className="text-center py-8 text-slate-400">
+          <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          <p className="text-xs sm:text-sm font-bold">Tidak ada data untuk tanggal ini</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
             <table className="w-full text-sm">
               <thead>
