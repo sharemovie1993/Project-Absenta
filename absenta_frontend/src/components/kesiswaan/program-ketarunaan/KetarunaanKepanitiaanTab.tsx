@@ -67,8 +67,6 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
   const [rfidModalOpen, setRfidModalOpen] = useState(false);
   const [forceIncidentalMode, setForceIncidentalMode] = useState(false);
 
-  const isScheduledDay = guard?.is_today_scheduled_day ?? true;
-
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['ketarunaan-pendamping', sesiId, jadwalKegiatanId],
     queryFn: () => getKetarunaanPendamping({
@@ -80,15 +78,27 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
 
   const pendamping = useMemo(() => data?.data ?? [], [data?.data]);
   const realSesiId = data?.sesi_id ?? sesiId;
+  const effectiveJadwalId = (data as any)?.jadwal_kegiatan_id ?? jadwalKegiatanId;
+  const activeSiklus = (data as any)?.siklus_aktif || guard?.siklus_aktif || 'KETARUNAAN';
+  const activePilarLabel =
+    (data as any)?.siklus_pilar_label ||
+    guard?.siklus_pilar_label ||
+    'Pembinaan Ketarunaan & Apel Pagi • Pilar Kedisiplinan Taruna';
+  const activeJadwalNama = (data as any)?.jadwal_nama || guard?.jadwal_nama || 'Program Ketarunaan';
+  const isScheduledDay = (data as any)?.is_today_scheduled_day ?? guard?.is_today_scheduled_day ?? true;
 
   const tapMutation = useMutation({
     mutationFn: (payload: { guru_id: string; status: 'HADIR' | 'IZIN' | 'SAKIT' | 'DINAS_LUAR' | 'ALPA' }) =>
       tapKetarunaanPendamping({
         guru_id: payload.guru_id,
-        sesi_id: realSesiId!,
+        sesi_id: realSesiId || undefined,
+        jadwal_kegiatan_id: effectiveJadwalId || undefined,
         status: payload.status,
-        catatan: payload.status === 'HADIR' ? 'Hadir via Terminal Khusus Ketarunaan' : undefined,
-      }),
+        catatan:
+          payload.status === 'HADIR'
+            ? `Hadir via Terminal Terpadu (${activeJadwalNama})`
+            : undefined,
+      } as any),
     onSuccess: (res) => {
       toast.success(res?.message || 'Presensi dicatat');
       if (res?.synced_kbm) {
@@ -207,14 +217,32 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
             <Users className="w-5 h-5 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">Presensi Kepanitiaan & Pendamping</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">
+                Presensi Kepanitiaan &amp; Pendamping ({activeJadwalNama})
+              </h3>
               <Badge variant="outline" className="text-[10px] font-bold border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300">
-                Unified Engine
+                Unified 5-Siklus Engine
+              </Badge>
+              <Badge
+                variant="outline"
+                className={
+                  activeSiklus === 'DUHA'
+                    ? 'text-[10px] font-bold bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800'
+                    : 'text-[10px] font-bold bg-indigo-50 text-indigo-700 border-indigo-300 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800'
+                }
+              >
+                {activeSiklus === 'DUHA'
+                  ? '🕌 Siklus Dhuha (1 Sesi Bersama Terminal Dhuha)'
+                  : activeSiklus === 'UPACARA'
+                  ? '🇮🇩 Siklus Upacara Bendera'
+                  : activeSiklus === 'APEL_SORE'
+                  ? '🌇 Siklus Apel Sore'
+                  : '🎖️ Siklus Ketarunaan / Apel Pagi'}
               </Badge>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Total {hadirCount} dari {pendamping.length} pendamping telah hadir di lapangan hari ini
+              Total {hadirCount} dari {pendamping.length} pendamping telah hadir • {activePilarLabel}
             </p>
           </div>
         </div>
@@ -277,7 +305,7 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
                   </>
                 ) : (
                   <>
-                    Guru mapel yang jadwal KBM-nya beririsan jam dengan Program Ketarunaan otomatis: <strong>(1) Hadir mendampingi Ketarunaan</strong> dan <strong>(2) Sesi KBM regulernya dibuka berstatus Berlangsung</strong> dengan catatan resmi pendampingan.
+                    Siklus aktif hari ini: <strong>{activeJadwalNama}</strong> ({activePilarLabel}). Guru mapel yang jadwal KBM-nya beririsan jam otomatis: <strong>(1) Tercatat hadir pada sesi {activeJadwalNama}</strong> dan <strong>(2) Sesi KBM regulernya dibuka berstatus Berlangsung</strong> (1 Tap 2 Record).
                   </>
                 )}
               </p>
@@ -619,10 +647,10 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
         isOpen={rfidModalOpen}
         onClose={() => setRfidModalOpen(false)}
         jenisKegiatan="KETARUNAAN"
-        title="Terminal RFID — Program Ketarunaan"
-        subtitle="Tempelkan kartu RFID Pembina, Wali Kelas, Kajur, atau Guru Mapel"
+        title={`Terminal RFID — ${activeJadwalNama}`}
+        subtitle={`Tempelkan kartu RFID Pembina, Wali Kelas, Kajur, atau Guru Mapel (${activePilarLabel})`}
         sesiId={realSesiId}
-        jadwalKegiatanId={jadwalKegiatanId}
+        jadwalKegiatanId={effectiveJadwalId}
         onSuccessTap={() => {
           handleRefresh();
           qc.invalidateQueries({ queryKey: ['ketarunaan-stats'] });

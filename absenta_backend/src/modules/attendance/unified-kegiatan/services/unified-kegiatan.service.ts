@@ -68,27 +68,43 @@ export class UnifiedKegiatanService {
   }
 
   /**
-   * 1. Guard Status: Cek ketersediaan Jadwal Kegiatan aktif sesuai jenisnya (default: KETARUNAAN)
+   * Klasifikasi jenis siklus dari nama / jenis_kegiatan JadwalKegiatan
    */
-  async getGuardStatus(tenantId: string, jenisKegiatan: string = 'KETARUNAAN') {
-    // 1. Prioritaskan jadwal yang berstatus aktif
-    let jadwal = await prisma.jadwalKegiatan.findFirst({
-      where: {
-        tenant_id: tenantId,
-        aktif: true,
-        OR: [
-          { nama: { contains: jenisKegiatan, mode: 'insensitive' } },
-          { jenis_kegiatan: { contains: jenisKegiatan, mode: 'insensitive' } },
-        ],
-      },
-      orderBy: { updated_at: 'desc' },
-    });
+  private classifySiklusType(namaOrJenis?: string | null): 'UPACARA' | 'KETARUNAAN' | 'DUHA' | 'APEL_SORE' {
+    const u = String(namaOrJenis || '').toUpperCase();
+    if (u.includes('UPACARA')) return 'UPACARA';
+    if (u.includes('DUHA') || u.includes('DHUHA')) return 'DUHA';
+    if (u.includes('SORE') || u.includes('PULANG')) return 'APEL_SORE';
+    return 'KETARUNAAN';
+  }
 
-    // 2. Jika tidak ada yang aktif, cari record terakhir yang pernah dibuat untuk tenant ini
-    if (!jadwal) {
-      jadwal = await prisma.jadwalKegiatan.findFirst({
+  private getSiklusPilarLabel(siklus: 'UPACARA' | 'KETARUNAAN' | 'DUHA' | 'APEL_SORE'): string {
+    if (siklus === 'DUHA') return 'Pembiasaan Dhuha • Pilar Mental & Spiritual (1 Sesi Bersama Terminal Dhuha)';
+    if (siklus === 'UPACARA') return 'Upacara Bendera • Pilar Kedisiplinan Taruna';
+    if (siklus === 'APEL_SORE') return 'Apel Sore / Pulang • Pilar Kedisiplinan Taruna';
+    return 'Pembinaan Ketarunaan & Apel Pagi • Pilar Kedisiplinan Taruna';
+  }
+
+  /**
+   * Resolusi Cerdas Multi-Siklus untuk Ranah KETARUNAAN (5 Siklus: Upacara, Ketarunaan, Dhuha, Apel Pagi/Sore)
+   * - Menghormati jadwal ketat per hari (Senin=Upacara, Sel/Rab/Kam/Sab=Ketarunaan, Jumat=Dhuha).
+   * - Pada hari Jumat, otomatis mengarah ke JadwalKegiatan & SesiAbsensi DUHA yang sama persis dengan Terminal Dhuha.
+   */
+  public async resolveSiklusJadwal(tenantId: string, jenisKegiatan: string = 'KETARUNAAN', targetHari?: Hari) {
+    const hariToMatch = targetHari || this.getHariEnum();
+    const isMultiCycleKetarunaan = jenisKegiatan.toUpperCase() === 'KETARUNAAN';
+
+    const now = new Date();
+    const wibNow = new Date(now.getTime() + 7 * 3600 * 1000);
+    const currentHours = String(wibNow.getUTCHours()).padStart(2, '0');
+    const currentMinutes = String(wibNow.getUTCMinutes()).padStart(2, '0');
+    const currentTimeStr = `${currentHours}:${currentMinutes}`;
+
+    if (!isMultiCycleKetarunaan) {
+      let jadwal = await prisma.jadwalKegiatan.findFirst({
         where: {
           tenant_id: tenantId,
+          aktif: true,
           OR: [
             { nama: { contains: jenisKegiatan, mode: 'insensitive' } },
             { jenis_kegiatan: { contains: jenisKegiatan, mode: 'insensitive' } },
@@ -96,7 +112,126 @@ export class UnifiedKegiatanService {
         },
         orderBy: { updated_at: 'desc' },
       });
+
+      if (!jadwal) {
+        jadwal = await prisma.jadwalKegiatan.findFirst({
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { nama: { contains: jenisKegiatan, mode: 'insensitive' } },
+              { jenis_kegiatan: { contains: jenisKegiatan, mode: 'insensitive' } },
+            ],
+          },
+          orderBy: { updated_at: 'desc' },
+        });
+      }
+
+      const hariAktif = Array.isArray(jadwal?.hari) ? (jadwal!.hari as string[]) : [];
+      const isScheduled = Boolean(jadwal?.aktif) && (hariAktif.length > 0 ? hariAktif.includes(hariToMatch) : true);
+      const siklusType = this.classifySiklusType(jadwal?.nama || jadwal?.jenis_kegiatan || jenisKegiatan);
+
+      return {
+        jadwal,
+        allActiveSchedules: jadwal && jadwal.aktif ? [jadwal] : [],
+        hariAktif,
+        unionHariAktif: hariAktif,
+        isScheduledOnTargetDay: isScheduled,
+        siklusType,
+        siklusPilarLabel: this.getSiklusPilarLabel(siklusType),
+        currentTimeStr,
+      };
     }
+
+    // Multi-Cycle 5 Siklus Ketarunaan
+    const cycleKeywords = ['UPACARA', 'KETARUNAAN', 'DUHA', 'DHUHA', 'APEL'];
+    const allCycleSchedules = await prisma.jadwalKegiatan.findMany({
+      where: {
+        tenant_id: tenantId,
+        OR: cycleKeywords.flatMap((kw) => [
+          { nama: { contains: kw, mode: 'insensitive' as const } },
+          { jenis_kegiatan: { contains: kw, mode: 'insensitive' as const } },
+        ]),
+      },
+      orderBy: { updated_at: 'desc' },
+    });
+
+    const activeSchedules = allCycleSchedules.filter((j) => j.aktif);
+    const dayOrder: Hari[] = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
+    const unionSet = new Set<string>();
+    activeSchedules.forEach((j) => {
+      if (Array.isArray(j.hari)) {
+        (j.hari as string[]).forEach((h) => unionSet.add(h));
+      }
+    });
+    const unionHariAktif = dayOrder.filter((d) => unionSet.has(d));
+
+    // Cari jadwal aktif yang jatuh pada hariToMatch
+    const matchingToday = activeSchedules.filter(
+      (j) => Array.isArray(j.hari) && (j.hari as string[]).includes(hariToMatch)
+    );
+
+    let selectedJadwal = null;
+    if (matchingToday.length === 1) {
+      selectedJadwal = matchingToday[0];
+    } else if (matchingToday.length > 1) {
+      // Jika ada jadwal pagi (Upacara/Ketarunaan/Dhuha) & sore (Apel Pulang) di hari yang sama:
+      // Pilih yang sedang berada di rentang jam saat ini; jika tidak sedang di rentang jam, utamakan siklus pagi sebelum jam 13:00 WIB
+      const inWindow = matchingToday.find((j) => {
+        if (!j.waktu_mulai || !j.waktu_selesai) return false;
+        return currentTimeStr >= j.waktu_mulai.slice(0, 5) && currentTimeStr <= j.waktu_selesai.slice(0, 5);
+      });
+      if (inWindow) {
+        selectedJadwal = inWindow;
+      } else {
+        const morning = matchingToday.find((j) => this.classifySiklusType(j.nama || j.jenis_kegiatan) !== 'APEL_SORE');
+        const afternoon = matchingToday.find((j) => this.classifySiklusType(j.nama || j.jenis_kegiatan) === 'APEL_SORE');
+        selectedJadwal = currentTimeStr >= '13:00' && afternoon ? afternoon : (morning || matchingToday[0]);
+      }
+    }
+
+    const isScheduledOnTargetDay = matchingToday.length > 0;
+
+    if (!selectedJadwal) {
+      // Fallback ke jadwal utama KETARUNAAN (aktif maupun nonaktif) untuk metadata pratinjau saat hari libur/Minggu
+      selectedJadwal =
+        activeSchedules.find((j) => this.classifySiklusType(j.nama || j.jenis_kegiatan) === 'KETARUNAAN') ||
+        activeSchedules[0] ||
+        allCycleSchedules.find((j) => this.classifySiklusType(j.nama || j.jenis_kegiatan) === 'KETARUNAAN') ||
+        allCycleSchedules[0] ||
+        null;
+    }
+
+    const jadwalHariAktif = Array.isArray(selectedJadwal?.hari) ? (selectedJadwal!.hari as string[]) : [];
+    const siklusType = this.classifySiklusType(selectedJadwal?.nama || selectedJadwal?.jenis_kegiatan);
+
+    return {
+      jadwal: selectedJadwal,
+      allActiveSchedules: activeSchedules,
+      hariAktif: jadwalHariAktif,
+      unionHariAktif: unionHariAktif.length > 0 ? unionHariAktif : jadwalHariAktif,
+      isScheduledOnTargetDay,
+      siklusType,
+      siklusPilarLabel: this.getSiklusPilarLabel(siklusType),
+      currentTimeStr,
+    };
+  }
+
+  /**
+   * 1. Guard Status: Cek ketersediaan Jadwal Kegiatan aktif sesuai jenisnya (default: KETARUNAAN 5 Siklus)
+   */
+  async getGuardStatus(tenantId: string, jenisKegiatan: string = 'KETARUNAAN') {
+    const todayHari = this.getHariEnum();
+    const resolved = await this.resolveSiklusJadwal(tenantId, jenisKegiatan, todayHari);
+    const {
+      jadwal,
+      allActiveSchedules,
+      hariAktif,
+      unionHariAktif,
+      isScheduledOnTargetDay,
+      siklusType,
+      siklusPilarLabel,
+      currentTimeStr,
+    } = resolved;
 
     if (!jadwal) {
       return {
@@ -106,19 +241,12 @@ export class UnifiedKegiatanService {
         jadwal_waktu_mulai: null,
         jadwal_waktu_selesai: null,
         hari_aktif: [],
+        siklus_hari_aktif: [],
+        siklus_aktif: null,
+        siklus_pilar_label: null,
+        siklus_schedules: [],
       };
     }
-
-    const hariAktifList = Array.isArray(jadwal.hari) ? (jadwal.hari as string[]) : [];
-    const todayHari = this.getHariEnum();
-    const isTodayScheduledDay = hariAktifList.length > 0 ? hariAktifList.includes(todayHari) : true;
-
-    // Hitung waktu sekarang WIB (HH:mm)
-    const now = new Date();
-    const wibNow = new Date(now.getTime() + 7 * 3600 * 1000);
-    const currentHours = String(wibNow.getUTCHours()).padStart(2, '0');
-    const currentMinutes = String(wibNow.getUTCMinutes()).padStart(2, '0');
-    const currentTimeStr = `${currentHours}:${currentMinutes}`;
 
     let isWithinTimeWindow = false;
     if (jadwal.waktu_mulai && jadwal.waktu_selesai) {
@@ -128,14 +256,26 @@ export class UnifiedKegiatanService {
     }
 
     return {
-      is_active: Boolean(jadwal.aktif),
+      is_active: Boolean(jadwal.aktif) || allActiveSchedules.length > 0,
       jadwal_kegiatan_id: jadwal.id,
       jadwal_nama: jadwal.nama,
       jadwal_waktu_mulai: jadwal.waktu_mulai,
       jadwal_waktu_selesai: jadwal.waktu_selesai,
-      hari_aktif: hariAktifList,
+      hari_aktif: unionHariAktif.length > 0 ? unionHariAktif : hariAktif,
+      jadwal_hari_spesifik: hariAktif,
+      siklus_hari_aktif: unionHariAktif,
+      siklus_aktif: siklusType,
+      siklus_pilar_label: siklusPilarLabel,
+      siklus_schedules: allActiveSchedules.map((s) => ({
+        id: s.id,
+        nama: s.nama,
+        siklus: this.classifySiklusType(s.nama || s.jenis_kegiatan),
+        hari: Array.isArray(s.hari) ? s.hari : [],
+        waktu_mulai: s.waktu_mulai,
+        waktu_selesai: s.waktu_selesai,
+      })),
       today_hari: todayHari,
-      is_today_scheduled_day: isTodayScheduledDay,
+      is_today_scheduled_day: isScheduledOnTargetDay,
       is_within_time_window: isWithinTimeWindow,
       current_time: currentTimeStr,
     };
@@ -153,41 +293,73 @@ export class UnifiedKegiatanService {
   }
 
   /**
-   * 2. Sesi Hari Ini: Ambil SesiAbsensi kegiatan pada tanggal tertentu
+   * 2. Sesi Hari Ini: Ambil SesiAbsensi kegiatan pada tanggal tertentu (mendukung resolusi 5 Siklus Ketarunaan)
    */
   async getSesiHariIni(tenantId: string, params?: { tanggal?: string; jadwal_kegiatan_id?: string; jenis_kegiatan?: string }) {
     const dateRange = this.getDateRange(params?.tanggal);
+    const targetHari = this.getHariEnum(params?.tanggal);
     const jenis = params?.jenis_kegiatan || 'KETARUNAAN';
 
-    let whereClause: any = {
-      tenant_id: tenantId,
-      tanggal: {
-        gte: dateRange.gte,
-        lte: dateRange.lte,
+    let targetJadwalId = params?.jadwal_kegiatan_id;
+    let resolvedSiklus: Awaited<ReturnType<typeof this.resolveSiklusJadwal>> | null = null;
+
+    if (!targetJadwalId && jenis.toUpperCase() === 'KETARUNAAN') {
+      resolvedSiklus = await this.resolveSiklusJadwal(tenantId, jenis, targetHari);
+      if (resolvedSiklus.jadwal?.id) {
+        targetJadwalId = resolvedSiklus.jadwal.id;
+      }
+    }
+
+    const includeCount = {
+      _count: {
+        select: {
+          AbsenSiswa: true,
+          AbsenGuru: true,
+        },
       },
     };
 
-    if (params?.jadwal_kegiatan_id) {
-      whereClause.jadwal_kegiatan_id = params.jadwal_kegiatan_id;
-    } else {
-      whereClause.OR = [
-        { jenis_kegiatan: { contains: jenis, mode: 'insensitive' } },
-        { JadwalKegiatan: { nama: { contains: jenis, mode: 'insensitive' } } },
-      ];
+    let sesi = null;
+
+    if (targetJadwalId) {
+      sesi = await prisma.sesiAbsensi.findFirst({
+        where: {
+          tenant_id: tenantId,
+          tanggal: { gte: dateRange.gte, lte: dateRange.lte },
+          jadwal_kegiatan_id: targetJadwalId,
+        },
+        include: includeCount,
+        orderBy: { waktu_mulai: 'asc' },
+      });
     }
 
-    const sesi = await prisma.sesiAbsensi.findFirst({
-      where: whereClause,
-      include: {
-        _count: {
-          select: {
-            AbsenSiswa: true,
-            AbsenGuru: true,
-          },
+    // Fallback pencarian lintas nama siklus pada tanggal tersebut (misal sesi Duha/Upacara dibuat tanpa jadwal_kegiatan_id)
+    if (!sesi) {
+      const searchTerms =
+        jenis.toUpperCase() === 'KETARUNAAN'
+          ? [
+              resolvedSiklus?.jadwal?.nama,
+              'KETARUNAAN',
+              'UPACARA',
+              'DUHA',
+              'DHUHA',
+              'APEL',
+            ].filter(Boolean) as string[]
+          : [jenis];
+
+      sesi = await prisma.sesiAbsensi.findFirst({
+        where: {
+          tenant_id: tenantId,
+          tanggal: { gte: dateRange.gte, lte: dateRange.lte },
+          OR: searchTerms.flatMap((term) => [
+            { jenis_kegiatan: { contains: term, mode: 'insensitive' as const } },
+            { JadwalKegiatan: { nama: { contains: term, mode: 'insensitive' as const } } },
+          ]),
         },
-      },
-      orderBy: { waktu_mulai: 'asc' },
-    });
+        include: includeCount,
+        orderBy: { waktu_mulai: 'asc' },
+      });
+    }
 
     if (!sesi) return null;
 
@@ -204,6 +376,7 @@ export class UnifiedKegiatanService {
       tanggal: sesi.tanggal.toISOString().split('T')[0],
       jenis_kegiatan: sesi.jenis_kegiatan,
       jadwal_kegiatan_id: sesi.jadwal_kegiatan_id,
+      siklus_aktif: this.classifySiklusType(sesi.jenis_kegiatan),
       waktu_mulai: sesi.waktu_mulai ? sesi.waktu_mulai.toTimeString().slice(0, 5) : '07:00',
       waktu_selesai: sesi.waktu_selesai ? sesi.waktu_selesai.toTimeString().slice(0, 5) : null,
       status: sesi.status,
@@ -222,52 +395,57 @@ export class UnifiedKegiatanService {
     const hariEnum = this.getHariEnum(targetDateStr);
     const jenis = params.jenis_kegiatan || 'KETARUNAAN';
 
-    // Ambil jadwalKegiatan untuk tahu hari dan jam resmi
+    // Resolusi jadwal siklus hari target (Senin=Upacara, Sel/Rab/Kam/Sab=Ketarunaan, Jumat=Dhuha)
+    const resolvedSiklus = await this.resolveSiklusJadwal(tenantId, jenis, hariEnum);
     let jadwalKegiatan = null;
     if (params.jadwal_kegiatan_id) {
       jadwalKegiatan = await prisma.jadwalKegiatan.findUnique({
         where: { id: params.jadwal_kegiatan_id },
       });
     }
+    // Jika jadwal yang dikirim bukan jadwal hari ini sedangkan pada hari ini ada jadwal siklus sah (misal Jumat=Dhuha), gunakan jadwal siklus hari ini
+    if (
+      jenis.toUpperCase() === 'KETARUNAAN' &&
+      resolvedSiklus.isScheduledOnTargetDay &&
+      resolvedSiklus.jadwal &&
+      (!jadwalKegiatan ||
+        !(Array.isArray(jadwalKegiatan.hari) && (jadwalKegiatan.hari as string[]).includes(hariEnum)))
+    ) {
+      jadwalKegiatan = resolvedSiklus.jadwal;
+    }
     if (!jadwalKegiatan) {
-      jadwalKegiatan = await prisma.jadwalKegiatan.findFirst({
-        where: {
-          tenant_id: tenantId,
-          aktif: true,
-          OR: [
-            { nama: { contains: jenis, mode: 'insensitive' } },
-            { jenis_kegiatan: { contains: jenis, mode: 'insensitive' } },
-          ],
-        },
-      });
+      jadwalKegiatan = resolvedSiklus.jadwal;
     }
 
-    const hariAktifList = Array.isArray(jadwalKegiatan?.hari) ? (jadwalKegiatan.hari as string[]) : [];
+    const hariAktifList = resolvedSiklus.unionHariAktif;
     const todayHari = this.getHariEnum();
-    const isTodayScheduledDay = hariAktifList.length > 0 ? hariAktifList.includes(todayHari) : true;
+    const isTodayScheduledDay = resolvedSiklus.isScheduledOnTargetDay;
+    const activeSiklusType = this.classifySiklusType(jadwalKegiatan?.nama || jadwalKegiatan?.jenis_kegiatan || jenis);
 
     // Tentukan hari query KBM:
-    // Jika params.tanggal diberikan (melihat tanggal spesifik), gunakan hari dari tanggal itu.
-    // Jika tidak diberikan dan hari ini bukan hari jadwal, gunakan hari jadwal utama (misal JUMAT) sebagai preview!
     let kbmHariQuery: Hari = hariEnum;
     if (!params.tanggal && !isTodayScheduledDay && hariAktifList.length > 0) {
       kbmHariQuery = hariAktifList[0] as Hari;
     }
 
-    // Cari atau pastikan sesi kegiatan
+    // Cari atau pastikan sesi kegiatan (menggunakan jadwalKegiatan.id siklus hari ini agar 1 sesi bersama dengan Dhuha/Upacara)
     let sesiId = params.sesi_id;
     let kegiatanWaktuMulai = jadwalKegiatan?.waktu_mulai || '06:30';
     let kegiatanWaktuSelesai = jadwalKegiatan?.waktu_selesai || '08:00';
 
     if (!sesiId) {
-      const sesi = await this.getSesiHariIni(tenantId, { tanggal: targetDateStr, jadwal_kegiatan_id: params.jadwal_kegiatan_id, jenis_kegiatan: jenis });
+      const sesi = await this.getSesiHariIni(tenantId, {
+        tanggal: targetDateStr,
+        jadwal_kegiatan_id: jadwalKegiatan?.id || params.jadwal_kegiatan_id,
+        jenis_kegiatan: jenis,
+      });
       sesiId = sesi?.id;
       if (sesi?.waktu_mulai) kegiatanWaktuMulai = sesi.waktu_mulai;
       if (sesi?.waktu_selesai) kegiatanWaktuSelesai = sesi.waktu_selesai;
     } else {
       const existingSesi = await prisma.sesiAbsensi.findUnique({
         where: { id: sesiId },
-        include: { JadwalKegiatan: true }
+        include: { JadwalKegiatan: true },
       });
       if (existingSesi?.JadwalKegiatan) {
         kegiatanWaktuMulai = existingSesi.JadwalKegiatan.waktu_mulai || kegiatanWaktuMulai;
@@ -321,7 +499,7 @@ export class UnifiedKegiatanService {
 
     const seenGuruIds = new Set<string>();
 
-    // 1. Pembina Khusus (Taruna / Rohis)
+    // 1. Pembina Khusus (Taruna & Rohis terintegrasi)
     const tarunaPos = positions.find(p => p.code === 'KETUA_PEMBINA_TARUNA');
     if (tarunaPos && tarunaPos.organizationalAssigns.length > 0) {
       tarunaPos.organizationalAssigns.forEach((a, idx) => {
@@ -332,7 +510,28 @@ export class UnifiedKegiatanService {
           result.push({
             guru_id: g.id,
             nama_guru: g.nama_guru,
-            jabatan: idx === 0 ? '🎖️ Ketua Pembina Taruna' : `Staf Pembina ${idx}`,
+            jabatan: idx === 0 ? '🎖️ Ketua Pembina Taruna' : `Staf Pembina Taruna ${idx}`,
+            jabatan_kode: 'KETUA_PEMBINA_TARUNA',
+            status: (rec?.status as any) || 'BELUM_TAP',
+            waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
+            catatan: rec?.catatan || null,
+            sesi_id: sesiId || null,
+          });
+        }
+      });
+    }
+
+    const rohisPos = positions.find(p => p.code === 'PEMBINA_ROHIS');
+    if (rohisPos && rohisPos.organizationalAssigns.length > 0 && (activeSiklusType === 'DUHA' || jenis.toUpperCase().includes('DUHA'))) {
+      rohisPos.organizationalAssigns.forEach((a, idx) => {
+        const g = a.User?.Guru;
+        if (g && !seenGuruIds.has(g.id)) {
+          seenGuruIds.add(g.id);
+          const rec = absenMap.get(g.id);
+          result.push({
+            guru_id: g.id,
+            nama_guru: g.nama_guru,
+            jabatan: idx === 0 ? '🕌 Koordinator Pembina Dhuha / Rohis' : `Pembina Rohis ${idx}`,
             jabatan_kode: 'KETUA_PEMBINA_TARUNA',
             status: (rec?.status as any) || 'BELUM_TAP',
             waktu_tap: rec?.waktu_tap ? rec.waktu_tap.toISOString() : null,
@@ -451,6 +650,10 @@ export class UnifiedKegiatanService {
     return {
       data: result,
       sesi_id: sesiId || null,
+      jadwal_kegiatan_id: jadwalKegiatan?.id || null,
+      jadwal_nama: jadwalKegiatan?.nama || null,
+      siklus_aktif: activeSiklusType,
+      siklus_pilar_label: this.getSiklusPilarLabel(activeSiklusType),
       is_today_scheduled_day: isTodayScheduledDay,
       schedule_day_used: kbmHariQuery,
       today_hari: todayHari,
@@ -481,7 +684,7 @@ export class UnifiedKegiatanService {
     }
 
     if (!parentSesi) {
-      // Cari sesi kegiatan yang aktif hari ini (dinamis sesuai jenis kegiatan)
+      // Cari sesi kegiatan yang aktif hari ini (dinamis sesuai siklus 5 kegiatan hari ini)
       const jenisTarget = payload.jenis_kegiatan || 'KETARUNAAN';
       const sesiToday = await this.getSesiHariIni(tenantId, {
         tanggal: todayStr,
@@ -492,6 +695,43 @@ export class UnifiedKegiatanService {
         payload.sesi_id = sesiToday.id;
         parentSesi = await prisma.sesiAbsensi.findUnique({
           where: { id: sesiToday.id },
+          include: {
+            JadwalKegiatan: true,
+          },
+        });
+      }
+    }
+
+    // Jika sesi hari ini belum ter-generate oleh cron, materialisasi otomatis dari JadwalKegiatan siklus hari ini
+    if (!parentSesi) {
+      const jenisTarget = payload.jenis_kegiatan || 'KETARUNAAN';
+      const resolvedSiklus = await this.resolveSiklusJadwal(tenantId, jenisTarget, hariEnum);
+      const activeJadwal = resolvedSiklus.jadwal;
+      const [activeTp, activeSem, sampleKelas] = await Promise.all([
+        prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+        prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+        prisma.kelas.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+      ]);
+
+      if (activeJadwal && activeTp && activeSem && sampleKelas) {
+        const tz = await getTenantTimezone(tenantId);
+        const tzOffset = getTenantOffsetString(tz);
+        const startStr = (activeJadwal.waktu_mulai || '06:30').slice(0, 5);
+        const endStr = (activeJadwal.waktu_selesai || '08:00').slice(0, 5);
+        parentSesi = await prisma.sesiAbsensi.create({
+          data: {
+            tenant_id: tenantId,
+            kelas_id: sampleKelas.id,
+            tahun_pelajaran_id: activeTp.id,
+            semester_id: activeSem.id,
+            tanggal: new Date(`${todayStr}T00:00:00.000${tzOffset}`),
+            waktu_mulai: new Date(`${todayStr}T${startStr}:00.000${tzOffset}`),
+            waktu_selesai: new Date(`${todayStr}T${endStr}:00.000${tzOffset}`),
+            jenis_kegiatan: activeJadwal.nama || jenisTarget,
+            jadwal_kegiatan_id: activeJadwal.id,
+            status: 'BERLANGSUNG',
+            sumber_sesi: 'TEMPLATE',
+          },
           include: {
             JadwalKegiatan: true,
           },
@@ -1942,6 +2182,12 @@ export class UnifiedKegiatanService {
     }
     if (params.jadwal_kegiatan_id) {
       sesiWhere.jadwal_kegiatan_id = params.jadwal_kegiatan_id;
+    } else if (jenis.toUpperCase() === 'KETARUNAAN') {
+      const cycleTerms = ['KETARUNAAN', 'UPACARA', 'DUHA', 'DHUHA', 'APEL'];
+      sesiWhere.OR = cycleTerms.flatMap((term) => [
+        { jenis_kegiatan: { contains: term, mode: 'insensitive' as const } },
+        { JadwalKegiatan: { nama: { contains: term, mode: 'insensitive' as const } } },
+      ]);
     } else {
       sesiWhere.OR = [
         { jenis_kegiatan: { contains: jenis, mode: 'insensitive' } },
