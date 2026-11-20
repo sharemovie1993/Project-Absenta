@@ -702,7 +702,7 @@ export class MigrationBundleService {
           source_slug: sourceSubdomain,
           target_slug: effectiveSubdomain,
           target_name: effectiveName,
-          duration_days: 365,
+          duration_days: 14, // Standar Trial 14 Hari (mencegah kerugian komersial 1 tahun)
           deploy_scenario: targetScenario as any
         });
 
