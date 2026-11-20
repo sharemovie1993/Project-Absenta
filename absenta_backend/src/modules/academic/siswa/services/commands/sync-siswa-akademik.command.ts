@@ -7,15 +7,25 @@ export async function syncSiswaAkademikCommand(
   semesterId: string,
   kelasId?: string,
   userId?: string,
+  siswaId?: string,
+  siswaIdsInput?: string[],
 ): Promise<any> {
   const errors: Array<{ siswa_id: string; reason: string }> = [];
 
+  const whereSiswa: any = {
+    tenant_id: tenantId,
+    status: 'AKTIF',
+    ...(kelasId ? { kelas_id: String(kelasId) } : {}),
+  };
+
+  if (siswaId) {
+    whereSiswa.id = String(siswaId);
+  } else if (siswaIdsInput && siswaIdsInput.length > 0) {
+    whereSiswa.id = { in: siswaIdsInput.map(String) };
+  }
+
   const siswaList = await siswaDb.siswa.findMany({
-    where: {
-      tenant_id: tenantId,
-      status: 'AKTIF',
-      ...(kelasId ? { kelas_id: String(kelasId) } : {}),
-    } as any,
+    where: whereSiswa as any,
     select: { id: true, kelas_id: true } as any,
   });
 

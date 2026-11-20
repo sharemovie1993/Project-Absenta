@@ -105,6 +105,7 @@ const BukuIndukPage = lazy(() => import('./pages/academic/BukuIndukPage').then(m
 // Named exports handled via lazy
 const GuruPage = lazy(() => import('./pages/academic/GuruPage').then(module => ({ default: module.GuruPage })));
 const SiswaPage = lazy(() => import('./pages/academic/SiswaPage'));
+const RegistrasiSiswaPage = lazy(() => import('./pages/academic/RegistrasiSiswaPage'));
 const DapodikIntegrationPage = lazy(() => import('./pages/academic/DapodikIntegrationPage'));
 const KelasPage = lazy(() => import('./pages/academic/KelasPage').then(module => ({ default: module.KelasPage })));
 const MapelPage = lazy(() => import('./pages/academic/MapelPage'));
@@ -617,6 +618,16 @@ function App() {
                     <Route path="/academic/siswa" element={
                       <ProtectedRoute requiredCapability="academic.students.view.list">
                         <SiswaPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/academic/registrasi-siswa" element={
+                      <ProtectedRoute requiredCapability="academic.students.view.list">
+                        <RegistrasiSiswaPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/academic/siswa-akademik" element={
+                      <ProtectedRoute requiredCapability="academic.students.view.list">
+                        <RegistrasiSiswaPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/academic/ppdb-mapping" element={

@@ -110,7 +110,7 @@ export class SiswaService {
     studentIds: string[],
     yearId: string,
     semesterId: string,
-  ): Promise<Record<string, string | null>> {
+  ): Promise<Record<string, any>> {
     return checkAcademicStatusQuery(tenantId, studentIds, yearId, semesterId);
   }
 
@@ -134,6 +134,8 @@ export class SiswaService {
     tahun_pelajaran_id?: string;
     semester_id?: string;
     kelas_id?: string;
+    siswa_id?: string;
+    siswa_ids?: string[];
     userId?: string;
   }): Promise<any> {
     const res = await syncSiswaAkademikWithDefaultsCommand(input);

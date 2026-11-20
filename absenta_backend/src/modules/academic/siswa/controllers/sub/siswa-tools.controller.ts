@@ -168,11 +168,15 @@ async syncSiswaAkademik(request: any, reply: any) {
       const tahun_pelajaran_id = body.tahun_pelajaran_id ? String(body.tahun_pelajaran_id) : undefined;
       const semester_id = body.semester_id ? String(body.semester_id) : undefined;
       const kelas_id = body.kelas_id ? String(body.kelas_id) : undefined;
+      const siswa_id = body.siswa_id ? String(body.siswa_id) : undefined;
+      const siswa_ids = Array.isArray(body.siswa_ids) ? body.siswa_ids.map(String) : undefined;
       const result = await siswaService.syncSiswaAkademikWithDefaults({
         tenantId: String(tenantId),
         tahun_pelajaran_id,
         semester_id,
         kelas_id,
+        siswa_id,
+        siswa_ids,
         userId: request.user?.id
       });
       return reply.status(200).send({ success: true, message: 'Sinkronisasi SiswaAkademik berhasil', data: result });

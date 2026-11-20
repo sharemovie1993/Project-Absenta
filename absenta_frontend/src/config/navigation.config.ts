@@ -280,6 +280,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     crossModulePaths: [
       '/dashboard',
       '/academic/siswa',
+      '/academic/registrasi-siswa',
       '/kurikulum/jadwal',
       '/hubin/pkl'
     ]
@@ -476,6 +477,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     targetGroupKeywords: ['PERSURATAN'],
     crossModulePaths: [
       '/academic/siswa',
+      '/academic/registrasi-siswa',
       '/academic/guru',
       '/billing/invoices',
       '/sarpras/inventory',
@@ -539,6 +541,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/academic',
       '/kurikulum/dashboard',
       '/academic/siswa',
+      '/academic/registrasi-siswa',
       '/academic/guru',
       '/documents/member-docs',
       '/academic/ppdb-mapping',

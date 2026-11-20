@@ -6,6 +6,8 @@ export async function syncSiswaAkademikWithDefaultsCommand(input: {
   tahun_pelajaran_id?: string;
   semester_id?: string;
   kelas_id?: string;
+  siswa_id?: string;
+  siswa_ids?: string[];
   userId?: string;
 }) {
   const tenantId = input.tenantId;
@@ -51,5 +53,5 @@ export async function syncSiswaAkademikWithDefaultsCommand(input: {
     semId = String((activeSem as any).id);
   }
 
-  return syncSiswaAkademikCommand(tenantId, yearId, semId, kelasId, input.userId);
+  return syncSiswaAkademikCommand(tenantId, yearId, semId, kelasId, input.userId, input.siswa_id, input.siswa_ids);
 }

@@ -23,11 +23,8 @@ export async function getAcademicRegistrationStatsQuery(
     where: {
       tahun_pelajaran_id: String(yearId),
       semester_id: String(semesterId),
-      siswa: {
-        ...siswaWhere,
-        tahun_pelajaran_id: String(yearId),
-        semester_id: String(semesterId),
-      },
+      status: 'AKTIF',
+      siswa: siswaWhere,
     } as any,
   });
 

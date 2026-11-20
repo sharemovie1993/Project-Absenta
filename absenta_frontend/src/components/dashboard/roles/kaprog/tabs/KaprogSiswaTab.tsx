@@ -22,12 +22,15 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
   tahunPelajaranId,
   semesterId,
 }) => {
+  const safeJurusanId = jurusanId && jurusanId !== 'jurusan-default' ? jurusanId : undefined;
+
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
       <Suspense fallback={<div className="p-12 flex justify-center"><Loader size="lg" /></div>}>
         <SiswaView
           hideLayout
-          jurusanId={jurusanId}
+          roleScope="kaprog"
+          jurusanId={safeJurusanId}
           jurusanNama={jurusanNama}
           tahunPelajaranId={tahunPelajaranId}
           semesterId={semesterId}

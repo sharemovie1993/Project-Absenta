@@ -53,6 +53,7 @@ const SiswaHistory = lazy(() => import('./SiswaHistory').then(module => ({ defau
 
 export interface UniversalSiswaViewProps {
   // Universal Scoping Props (Role-Ready)
+  roleScope?: 'kaprog' | 'walas' | 'admin' | 'global';
   jurusanId?: string;
   jurusanNama?: string;
   kelasId?: string;
@@ -98,6 +99,7 @@ interface ImportConfig {
 }
 
 export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
+  roleScope,
   jurusanId: propJurusanId,
   jurusanNama: propJurusanNama,
   kelasId: propKelasId,
@@ -133,12 +135,58 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
     can 
   } = useCapabilities();
 
-  // Scope Resolution (Explicit prop overrides capability)
-  const effectiveJurusanId = propJurusanId || (isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined);
-  const effectiveJurusanNama = propJurusanNama || kaprogJurusan?.nama || 'Kejuruan';
-  const effectiveKelasId = propKelasId || (isWaliKelas && walikelasKelas?.id ? walikelasKelas.id : undefined);
-  const effectiveKelasNama = propKelasNama || walikelasKelas?.nama_kelas || '';
-  const isKelasRestricted = Boolean(effectiveKelasId);
+  // Scope Resolution (Explicit prop overrides capability and roleScope strictly enforces domain boundary)
+  let effectiveJurusanId: string | undefined;
+  let effectiveJurusanNama: string = propJurusanNama || 'Kejuruan';
+  let effectiveKelasId: string | undefined;
+  let effectiveKelasNama: string = propKelasNama || '';
+  let isKelasRestricted: boolean = false;
+
+  const isExplicitKaprog = roleScope === 'kaprog' || Boolean(propJurusanId && !propKelasId);
+  const isExplicitWalas = roleScope === 'walas' || Boolean(propKelasId);
+
+  if (isExplicitKaprog) {
+    // 🏆 KAPROG DOMAIN SCOPE: Strictly scoped to Jurusan, spanning ALL classes in that department
+    effectiveJurusanId = propJurusanId || (isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined);
+    effectiveJurusanNama = propJurusanNama || kaprogJurusan?.nama || 'Kejuruan';
+    effectiveKelasId = propKelasId || undefined; // NEVER fallback to walikelasKelas.id!
+    effectiveKelasNama = propKelasNama || '';
+    isKelasRestricted = Boolean(propKelasId); // Only restrict if explicitly requested by caller
+  } else if (isExplicitWalas) {
+    // 🏫 WALI KELAS DOMAIN SCOPE: Strictly scoped to single Rombel Binaan
+    effectiveJurusanId = propJurusanId || undefined; // NEVER fallback to kaprogJurusan.id!
+    effectiveJurusanNama = propJurusanNama || '';
+    effectiveKelasId = propKelasId || (isWaliKelas && walikelasKelas?.id ? walikelasKelas.id : undefined);
+    effectiveKelasNama = propKelasNama || walikelasKelas?.nama_kelas || '';
+    isKelasRestricted = Boolean(effectiveKelasId);
+  } else {
+    // 🌐 STANDALONE / GLOBAL SCOPE: Hierarchy resolution
+    if (isAdmin || isKurikulum || isKesiswaan) {
+      effectiveJurusanId = propJurusanId;
+      effectiveJurusanNama = propJurusanNama || 'Kejuruan';
+      effectiveKelasId = propKelasId;
+      effectiveKelasNama = propKelasNama || '';
+      isKelasRestricted = Boolean(propKelasId);
+    } else if (isKaprog && kaprogJurusan?.id) {
+      effectiveJurusanId = kaprogJurusan.id;
+      effectiveJurusanNama = kaprogJurusan.nama || 'Kejuruan';
+      effectiveKelasId = propKelasId;
+      effectiveKelasNama = propKelasNama || '';
+      isKelasRestricted = Boolean(propKelasId);
+    } else if (isWaliKelas && walikelasKelas?.id) {
+      effectiveJurusanId = propJurusanId;
+      effectiveJurusanNama = propJurusanNama || '';
+      effectiveKelasId = walikelasKelas.id;
+      effectiveKelasNama = walikelasKelas.nama_kelas || '';
+      isKelasRestricted = true;
+    } else {
+      effectiveJurusanId = propJurusanId;
+      effectiveJurusanNama = propJurusanNama || 'Kejuruan';
+      effectiveKelasId = propKelasId;
+      effectiveKelasNama = propKelasNama || '';
+      isKelasRestricted = Boolean(propKelasId);
+    }
+  }
 
   // States
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });

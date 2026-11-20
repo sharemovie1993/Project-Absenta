@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, Suspense, lazy, useEffec
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, LogIn, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera, Wrench, Copy, ExternalLink, MessageSquare, SlidersHorizontal } from 'lucide-react';
+import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, UserCheck, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, LogIn, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera, Wrench, Copy, ExternalLink, MessageSquare, SlidersHorizontal } from 'lucide-react';
 import { 
   Button, 
   Input, 
@@ -1483,6 +1483,15 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                         Export
                       </Button>
                     )}
+                    <Button
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={() => navigate('/academic/registrasi-siswa')}
+                      className="rounded-xl flex-1 h-8 text-xs border-emerald-200 text-emerald-700 dark:text-emerald-400"
+                    >
+                      <UserCheck className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                      Siswa Akademik
+                    </Button>
                   </div>
                 </div>
               )}
@@ -1692,6 +1701,16 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                         )}
                       </Button>
                     )}
+
+                    <Button
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={() => navigate('/academic/registrasi-siswa')}
+                      className="rounded-xl border-emerald-200 hover:bg-emerald-50 dark:border-emerald-900/40 dark:hover:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-bold"
+                    >
+                      <UserCheck className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+                      Cek Siswa Akademik
+                    </Button>
         
                     <Button
                       variant="toolbarOutline"

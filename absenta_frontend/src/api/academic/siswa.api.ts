@@ -162,13 +162,39 @@ export const generateRfidBulk = async (ids: string[]): Promise<{ success: boolea
   return requestWithFallback<{ success: boolean; message: string; data?: any }>('post', `/academic/siswa/rfid/generate-bulk`, { data: { ids } });
 };
 
+export interface AcademicStatusResult {
+  status: string;
+  kelas_id: string;
+  nama_kelas: string | null;
+}
+
 // Create missing SiswaAkademik snapshots for active year/semester
-export const syncSiswaAkademik = async (kelas_id?: string): Promise<{ success: boolean; message: string; data?: any }> => {
-  return requestWithFallback<{ success: boolean; message: string; data?: any }>('post', '/academic/siswa/akademik/sync', { data: { kelas_id } });
+export const syncSiswaAkademik = async (
+  kelas_id?: string,
+  options?: {
+    tahun_pelajaran_id?: string;
+    semester_id?: string;
+    siswa_id?: string;
+    siswa_ids?: string[];
+  }
+): Promise<{ success: boolean; message: string; data?: any }> => {
+  return requestWithFallback<{ success: boolean; message: string; data?: any }>('post', '/academic/siswa/akademik/sync', { 
+    data: { 
+      kelas_id,
+      tahun_pelajaran_id: options?.tahun_pelajaran_id,
+      semester_id: options?.semester_id,
+      siswa_id: options?.siswa_id,
+      siswa_ids: options?.siswa_ids,
+    } 
+  });
 };
 
-export const checkAcademicStatus = async (ids: string[], yearId?: string, semesterId?: string): Promise<Record<string, string | null>> => {
-  const res = await requestWithFallback<{ success: boolean; data: Record<string, string | null> }>('post', '/academic/siswa/akademik/check-status', { data: { ids, year_id: yearId, semester_id: semesterId } });
+export const checkAcademicStatus = async (
+  ids: string[], 
+  yearId?: string, 
+  semesterId?: string
+): Promise<Record<string, AcademicStatusResult | string | null>> => {
+  const res = await requestWithFallback<{ success: boolean; data: Record<string, any> }>('post', '/academic/siswa/akademik/check-status', { data: { ids, year_id: yearId, semester_id: semesterId } });
   return res.data || {};
 };
 
