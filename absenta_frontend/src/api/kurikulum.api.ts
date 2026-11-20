@@ -235,6 +235,17 @@ export const kurikulumApi = {
     const response = await api.post('/kurikulum/perangkat/bulk-delete', { ids });
     return response.data;
   },
+  rolloverPerangkatAjar: async (data: {
+    source_tahun_pelajaran_id: string;
+    target_tahun_pelajaran_id: string;
+    source_semester_id?: string;
+    target_semester_id?: string;
+    guru_id?: string;
+    mode?: 'skip_existing' | 'overwrite';
+  }) => {
+    const response = await api.post('/kurikulum/perangkat/rollover', data);
+    return response.data;
+  },
 
   downloadPerangkatAjarFile: async (id: string): Promise<{ blob: Blob; filename: string }> => {
     const response = await api.get(`/kurikulum/perangkat/${id}/download`, {

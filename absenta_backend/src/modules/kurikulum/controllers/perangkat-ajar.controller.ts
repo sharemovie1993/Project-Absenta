@@ -12,6 +12,7 @@ export class PerangkatAjarController {
   static async delete(...args: any[]) { return PerangkatCrudController.delete(...args); }
   static async bulkDelete(...args: any[]) { return PerangkatCrudController.bulkDelete(...args); }
   static async saveEditor(...args: any[]) { return PerangkatCrudController.saveEditor(...args); }
+  static async rollover(...args: any[]) { return PerangkatCrudController.rollover(...args); }
 
   static async generateAI(...args: any[]) { return PerangkatAiController.generateAI(...args); }
 

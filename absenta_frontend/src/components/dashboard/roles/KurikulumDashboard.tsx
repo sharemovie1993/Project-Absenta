@@ -768,6 +768,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
                   activeEducators={activeEducators}
                   perangkatList={safeArr(perangkatR)}
                   loading={lPerangkat}
+                  currentTargetTpId={resolvedTahunPelajaranId}
                 />
               </Suspense>
             </div>

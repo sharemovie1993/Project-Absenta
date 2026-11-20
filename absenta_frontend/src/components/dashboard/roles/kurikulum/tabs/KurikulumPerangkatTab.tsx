@@ -13,11 +13,13 @@ import {
   Sparkles,
   AlertCircle,
   MessageSquare,
+  Copy,
 } from 'lucide-react';
 import { cn, resolveMediaUrl } from '@/lib/utils';
 import { safeArr } from '@/components/kurikulum/dashboard/DashboardComponents';
 import { kurikulumApi } from '@/api/kurikulum.api';
 import toast from 'react-hot-toast';
+import { PerangkatAjarRolloverModal } from '@/components/kurikulum/perangkat-ajar/PerangkatAjarRolloverModal';
 
 const PerangkatAjarReviewModal = lazy(() => import('@/components/kurikulum/perangkat-ajar/PerangkatAjarReviewModal'));
 
@@ -33,6 +35,7 @@ export interface KurikulumPerangkatTabProps {
   activeEducators: { id: string; nama_guru: string; nip?: string }[];
   perangkatList: any[];
   loading?: boolean;
+  currentTargetTpId?: string;
 }
 
 export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
@@ -40,11 +43,17 @@ export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
   activeEducators,
   perangkatList,
   loading = false,
+  currentTargetTpId,
 }) => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'approved' | 'pending' | 'unsubmitted'>('all');
   const [expandedGuruId, setExpandedGuruId] = useState<string | null>(null);
+
+  // Rollover Modal States
+  const [isRolloverModalOpen, setIsRolloverModalOpen] = useState(false);
+  const [rolloverTargetGuruId, setRolloverTargetGuruId] = useState<string | undefined>();
+  const [rolloverTargetGuruNama, setRolloverTargetGuruNama] = useState<string | undefined>();
 
   // Modal Review State (In-place Approval)
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -163,7 +172,21 @@ export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              setRolloverTargetGuruId(undefined);
+              setRolloverTargetGuruNama(undefined);
+              setIsRolloverModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-xs font-bold transition-all shadow-xs cursor-pointer"
+            title="Salin Perangkat Ajar dari Tahun Sebelumnya (Massal / Per-Guru)"
+          >
+            <Copy size={13} className="text-emerald-600 dark:text-emerald-400" />
+            <span>Salin dari Tahun Lalu</span>
+          </button>
+
           {perangkatStats.pending > 0 ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-bold shadow-xs animate-pulse">
               <Clock size={14} />
@@ -321,13 +344,44 @@ export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
                 {isExpanded && (
                   <div className="bg-slate-50/70 dark:bg-slate-950/40 px-4 py-3 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5">
                     {t.docs.length === 0 ? (
-                      <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500 italic">
-                        Belum ada dokumen perangkat ajar yang diunggah oleh guru ini.
+                      <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500 italic space-y-2">
+                        <div>Belum ada dokumen perangkat ajar yang diunggah oleh guru ini pada tahun ajaran aktif.</div>
+                        <div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRolloverTargetGuruId(t.id);
+                              setRolloverTargetGuruNama(t.nama);
+                              setIsRolloverModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                          >
+                            <Copy size={13} className="text-emerald-600 dark:text-emerald-400" />
+                            <span>Salin dari Tahun Lalu untuk Guru Ini</span>
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider px-1">
-                          Daftar Dokumen ({t.docs.length})
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Daftar Dokumen ({t.docs.length})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRolloverTargetGuruId(t.id);
+                              setRolloverTargetGuruNama(t.nama);
+                              setIsRolloverModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 text-[10px] font-bold transition-all cursor-pointer"
+                            title={`Salin perangkat tahun lalu khusus untuk ${t.nama}`}
+                          >
+                            <Copy size={11} />
+                            <span>Salin Tahun Lalu</span>
+                          </button>
                         </div>
                         {t.docs.map((doc: any) => {
                           const docStatus = String(doc.status || 'PENDING').toUpperCase();
@@ -423,6 +477,21 @@ export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
           />
         )}
       </Suspense>
+
+      {/* Rollover Salin dari Tahun Lalu Modal */}
+      <PerangkatAjarRolloverModal
+        isOpen={isRolloverModalOpen}
+        onClose={() => setIsRolloverModalOpen(false)}
+        currentTargetTpId={currentTargetTpId}
+        currentGuruId={rolloverTargetGuruId}
+        currentGuruNama={rolloverTargetGuruNama}
+        isGuruContext={Boolean(rolloverTargetGuruId)}
+        activeEducators={activeEducators}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['kurikulum', 'perangkat-dash'] });
+          queryClient.invalidateQueries({ queryKey: ['perangkat-ajar'] });
+        }}
+      />
     </div>
   );
 };

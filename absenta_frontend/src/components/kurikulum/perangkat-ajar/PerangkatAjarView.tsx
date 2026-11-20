@@ -17,6 +17,7 @@ import {
   Search,
   AlertCircle,
   ChevronDown,
+  Copy,
 } from 'lucide-react';
 
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
@@ -28,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useAuthStore } from '@/store/authStore';
 import useConfirm from '@/hooks/useConfirm';
+import { PerangkatAjarRolloverModal } from './PerangkatAjarRolloverModal';
 import { useJenjang } from '@/hooks/useJenjang';
 import { useMapelOptions, useGuruOptions } from '@/components/common';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -100,6 +102,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isWizardModalOpen, setIsWizardModalOpen] = useState(false);
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
+  const [isRolloverModalOpen, setIsRolloverModalOpen] = useState(false);
   const [selectedPerangkatId, setSelectedPerangkatId] = useState<string | null>(null);
 
   // Word Editor Modal States
@@ -718,7 +721,20 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
                   <span className="hidden sm:inline">Studio Modul</span>
                 </Button>
 
-                {/* 3. Menu Alat Bantu & AI Generator (Clean Ergonomic Dropdown) */}
+                {/* 3. Salin dari Tahun Lalu (Rollover) */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsRolloverModalOpen(true)}
+                  className="rounded-xl text-xs font-bold gap-1.5 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 h-9 cursor-pointer"
+                  title="Salin Perangkat Ajar dari Tahun Lalu (1-Klik Rollover)"
+                >
+                  <Copy className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="hidden sm:inline">Salin Tahun Lalu</span>
+                </Button>
+
+                {/* 4. Menu Alat Bantu & AI Generator (Clean Ergonomic Dropdown) */}
                 <div className="relative">
                   <Button
                     type="button"
@@ -781,6 +797,21 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
                           <div>
                             <div className="font-bold">Wizard (Bulk)</div>
                             <div className="text-[10px] text-slate-400 font-normal">Generate perangkat massal</div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsToolsMenuOpen(false);
+                            setIsRolloverModalOpen(true);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-600 transition-colors text-left cursor-pointer"
+                        >
+                          <Copy size={15} className="text-emerald-600 shrink-0" />
+                          <div>
+                            <div className="font-bold">Salin dari Tahun Lalu</div>
+                            <div className="text-[10px] text-slate-400 font-normal">Rollover perangkat tahun sebelumnya</div>
                           </div>
                         </button>
                       </div>
@@ -929,6 +960,21 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
         activeSemester={academicFilter.activeSemester}
         JENIS_LABELS={JENIS_LABELS}
         aiPresetsData={aiPresetsData}
+      />
+
+      {/* 6. Rollover Modal (Salin dari Tahun Lalu) */}
+      <PerangkatAjarRolloverModal
+        isOpen={isRolloverModalOpen}
+        onClose={() => setIsRolloverModalOpen(false)}
+        currentTargetTpId={activeTpId}
+        currentGuruId={isGuruContext ? (activeGuruId || currentGuru?.id) : undefined}
+        currentGuruNama={isGuruContext ? (currentGuru?.nama_guru || user?.name) : undefined}
+        isGuruContext={isGuruContext}
+        activeEducators={guruRawList as any || []}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
+          queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
+        }}
       />
     </div>
   );

@@ -473,6 +473,59 @@ export class PerangkatCrudController {
       return sendError(reply, 500, `Gagal menghapus masal perangkat ajar: ${error.message}`, error);
     }
   }
+
+  static async rollover(req: any, reply: any) {
+    try {
+      const { tenant_id, id: userId } = req.user!;
+      const {
+        source_tahun_pelajaran_id,
+        target_tahun_pelajaran_id,
+        source_semester_id,
+        target_semester_id,
+        guru_id,
+        mode = 'skip_existing',
+      } = req.body || {};
+
+      if (!source_tahun_pelajaran_id || !target_tahun_pelajaran_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'source_tahun_pelajaran_id dan target_tahun_pelajaran_id wajib diisi',
+        });
+      }
+
+      const hasFullManage =
+        req.user?.roleName === RoleName.SUPERADMIN ||
+        (await authorizationService.hasUserPermission(userId, 'academic.manage.academic'));
+
+      let effectiveGuruId = guru_id;
+      if (!hasFullManage) {
+        const guru = await prisma.guru.findFirst({
+          where: { user_id: userId, tenant_id },
+          select: { id: true },
+        });
+        if (!guru) {
+          return reply.status(403).send({
+            success: false,
+            message: 'Anda tidak memiliki hak akses untuk menyalin perangkat ajar',
+          });
+        }
+        effectiveGuruId = guru.id;
+      }
+
+      const result = await PerangkatAjarService.rolloverPerangkat(tenant_id, {
+        source_tahun_pelajaran_id,
+        target_tahun_pelajaran_id,
+        source_semester_id,
+        target_semester_id,
+        guru_id: effectiveGuruId,
+        mode,
+      });
+
+      return sendResponse(reply, 200, true, result.message, result);
+    } catch (error: any) {
+      return sendError(reply, 400, `Gagal menyalin perangkat ajar dari tahun sebelumnya: ${error.message}`, error);
+    }
+  }
 }
 
 function generateOfficialKurikulumHtml(perangkat: any, tenant: any, sekolah: any): string {

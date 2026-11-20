@@ -139,10 +139,17 @@ export class PerangkatAjarService {
       throw new Error('Perangkat ajar tidak ditemukan atau bukan milik tenant Anda');
     }
 
-    try {
-      await storageService.delete(existing.file_url);
-    } catch (err) {
-      console.error(`Failed to delete physical file: ${existing.file_url}`, err);
+    if (existing.file_url) {
+      const refCount = await prisma.perangkatAjar.count({
+        where: { file_url: existing.file_url }
+      });
+      if (refCount <= 1) {
+        try {
+          await storageService.delete(existing.file_url);
+        } catch (err) {
+          console.error(`Failed to delete physical file: ${existing.file_url}`, err);
+        }
+      }
     }
 
     const deleted = await prisma.perangkatAjar.delete({
@@ -162,10 +169,15 @@ export class PerangkatAjarService {
 
     for (const item of items) {
       if (item.file_url) {
-        try {
-          await storageService.delete(item.file_url);
-        } catch (err) {
-          console.error(`Failed to delete physical file: ${item.file_url}`, err);
+        const refCount = await prisma.perangkatAjar.count({
+          where: { file_url: item.file_url, id: { notIn: ids } }
+        });
+        if (refCount === 0) {
+          try {
+            await storageService.delete(item.file_url);
+          } catch (err) {
+            console.error(`Failed to delete physical file: ${item.file_url}`, err);
+          }
         }
       }
     }
@@ -176,6 +188,161 @@ export class PerangkatAjarService {
 
     await cacheInvalidationService.invalidateAcademicCache(tenantId);
     return res;
+  }
+
+  static async rolloverPerangkat(
+    tenantId: string,
+    params: {
+      source_tahun_pelajaran_id: string;
+      target_tahun_pelajaran_id: string;
+      source_semester_id?: string;
+      target_semester_id?: string;
+      guru_id?: string;
+      mode?: 'skip_existing' | 'overwrite';
+    }
+  ): Promise<{
+    success: boolean;
+    message: string;
+    copiedCount: number;
+    skippedCount: number;
+    totalSourceCount: number;
+  }> {
+    const {
+      source_tahun_pelajaran_id,
+      target_tahun_pelajaran_id,
+      source_semester_id,
+      target_semester_id,
+      guru_id,
+      mode = 'skip_existing',
+    } = params;
+
+    if (!tenantId || !source_tahun_pelajaran_id || !target_tahun_pelajaran_id) {
+      throw new Error('Tenant ID, Tahun Pelajaran Sumber, dan Tahun Pelajaran Target wajib diisi');
+    }
+
+    if (source_tahun_pelajaran_id === target_tahun_pelajaran_id) {
+      throw new Error('Tahun pelajaran sumber dan target tidak boleh sama');
+    }
+
+    const targetTp = await prisma.tahunPelajaran.findFirst({
+      where: { id: target_tahun_pelajaran_id, tenant_id: tenantId },
+      include: { Semester: true },
+    });
+
+    if (!targetTp) {
+      throw new Error('Tahun pelajaran target tidak ditemukan');
+    }
+
+    const targetSemesters = targetTp.Semester || [];
+    if (targetSemesters.length === 0) {
+      throw new Error('Tahun pelajaran target belum memiliki data semester');
+    }
+
+    const sourceItems = await prisma.perangkatAjar.findMany({
+      where: {
+        tenant_id: tenantId,
+        tahun_pelajaran_id: source_tahun_pelajaran_id,
+        ...(guru_id ? { guru_id } : {}),
+        ...(source_semester_id ? { semester_id: source_semester_id } : {}),
+      },
+      include: {
+        Semester: true,
+      },
+    });
+
+    if (sourceItems.length === 0) {
+      return {
+        success: true,
+        message: 'Tidak ada dokumen perangkat ajar pada tahun pelajaran sumber untuk disalin',
+        copiedCount: 0,
+        skippedCount: 0,
+        totalSourceCount: 0,
+      };
+    }
+
+    let copiedCount = 0;
+    let skippedCount = 0;
+
+    for (const item of sourceItems) {
+      let resolvedTargetSemId = target_semester_id;
+      if (!resolvedTargetSemId) {
+        const srcSemName = (item.Semester?.nama_semester || '').toLowerCase();
+        const matched = targetSemesters.find((ts) => {
+          const tName = ts.nama_semester.toLowerCase();
+          if (srcSemName.includes('ganjil') && tName.includes('ganjil')) return true;
+          if (srcSemName.includes('genap') && tName.includes('genap')) return true;
+          if (srcSemName.includes('1') && tName.includes('1')) return true;
+          if (srcSemName.includes('2') && tName.includes('2')) return true;
+          return false;
+        });
+        resolvedTargetSemId = matched?.id || targetSemesters.find((ts) => ts.is_active)?.id || targetSemesters[0].id;
+      }
+
+      const existing = await prisma.perangkatAjar.findFirst({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: target_tahun_pelajaran_id,
+          semester_id: resolvedTargetSemId,
+          guru_id: item.guru_id,
+          mapel_id: item.mapel_id,
+          jenis: item.jenis,
+        },
+      });
+
+      if (existing) {
+        if (mode === 'overwrite') {
+          await prisma.perangkatAjar.update({
+            where: { id: existing.id },
+            data: {
+              judul: item.judul,
+              file_url: item.file_url,
+              fase: item.fase,
+              tingkat: item.tingkat,
+              total_alokasi_jp: item.total_alokasi_jp,
+              konten_struktur_json: item.konten_struktur_json as any,
+              preset_ref_id: item.preset_ref_id,
+              status: 'PENDING',
+              catatan_reviewer: null,
+              reviewer_id: null,
+              reviewed_at: null,
+            },
+          });
+          copiedCount++;
+        } else {
+          skippedCount++;
+        }
+      } else {
+        await prisma.perangkatAjar.create({
+          data: {
+            tenant_id: tenantId,
+            guru_id: item.guru_id,
+            mapel_id: item.mapel_id,
+            tahun_pelajaran_id: target_tahun_pelajaran_id,
+            semester_id: resolvedTargetSemId,
+            judul: item.judul,
+            jenis: item.jenis,
+            file_url: item.file_url,
+            fase: item.fase,
+            tingkat: item.tingkat,
+            total_alokasi_jp: item.total_alokasi_jp,
+            konten_struktur_json: item.konten_struktur_json as any,
+            preset_ref_id: item.preset_ref_id,
+            status: 'PENDING',
+          },
+        });
+        copiedCount++;
+      }
+    }
+
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
+
+    return {
+      success: true,
+      message: `Berhasil menyalin ${copiedCount} perangkat ajar ke tahun pelajaran target${skippedCount > 0 ? ` (${skippedCount} dilewati karena sudah ada)` : ''}`,
+      copiedCount,
+      skippedCount,
+      totalSourceCount: sourceItems.length,
+    };
   }
 }
 

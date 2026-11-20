@@ -23,6 +23,9 @@ export default async function perangkatAjarRoutes(fastify: any) {
   fastify.delete('/perangkat/:id', { preHandler: [requireCapability('academic.schedules.manage', guruExempt), determineDataScope()]}, PerangkatAjarController.delete);
   fastify.post('/perangkat/bulk-delete', { preHandler: [requireCapability('academic.schedules.manage', guruExempt), determineDataScope()]}, PerangkatAjarController.bulkDelete);
 
+  // Rollover / Salin Perangkat Ajar dari Tahun Pelajaran Sebelumnya
+  fastify.post('/perangkat/rollover', { preHandler: [requireCapability('academic.schedules.manage', guruExempt), determineDataScope()]}, PerangkatAjarController.rollover);
+
 
   // Bank Perangkat Ajar Platform (Global Library & Claim)
   fastify.get('/perangkat/library', { preHandler: [requireCapability('academic.teaching.view', guruExempt), determineDataScope()]}, PerangkatAjarController.getLibraryTemplates);
