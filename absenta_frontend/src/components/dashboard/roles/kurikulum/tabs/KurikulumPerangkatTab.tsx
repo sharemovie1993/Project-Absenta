@@ -14,7 +14,7 @@ import {
   AlertCircle,
   MessageSquare,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, resolveMediaUrl } from '@/lib/utils';
 import { safeArr } from '@/components/kurikulum/dashboard/DashboardComponents';
 import { kurikulumApi } from '@/api/kurikulum.api';
 import toast from 'react-hot-toast';
@@ -375,7 +375,7 @@ export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
 
                                 {doc.file_url && (
                                   <a
-                                    href={doc.file_url}
+                                    href={resolveMediaUrl(doc.file_url)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"

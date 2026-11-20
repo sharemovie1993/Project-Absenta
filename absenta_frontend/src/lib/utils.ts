@@ -74,7 +74,13 @@ export function resolveProfilePhotoUrl(url?: string | null): string {
   // Case 1: MinIO S3 object storage path (/absenta-storage/...)
   if (targetPath.includes('/absenta-storage/') || targetPath.startsWith('absenta-storage/')) {
     const cleanStoragePath = targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
-    return `${host}${cleanStoragePath}`;
+    return `${host}${encodeURI(cleanStoragePath)}`;
+  }
+
+  // Case 1b: Unified storage engine documents path (storage/... or /storage/...)
+  if (targetPath.startsWith('/storage/') || targetPath.startsWith('storage/')) {
+    const cleanStorage = targetPath.replace(/^\/+/, '');
+    return `${host}/absenta-storage/${encodeURI(cleanStorage)}`;
   }
 
   // Case 2: Academic document download route (/academic/... or /api/academic/...)

@@ -3,6 +3,7 @@ import { sendResponse, sendError } from '@/utils/response';
 import { PerangkatAjarService } from '../../services/perangkat-ajar.service';
 import { perangkatAjarUploadSchema, perangkatAjarReviewSchema } from '../../services/perangkat-ajar.schema';
 import { DocumentStorageService } from '@/modules/document-center/services/document-storage.service';
+import { storageService } from '@/infra/storage/storage.service';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
 import { RoleName } from '@/constants/enums';
 import { prisma } from '@/utils/prisma';
@@ -124,17 +125,55 @@ export class PerangkatCrudController {
         return reply.status(404).send({ success: false, message: 'Perangkat ajar tidak ditemukan' });
       }
 
-      // Fetch Tenant & Sekolah Info for PrintHeader Logos & Address
+      const safeTitle = (perangkat.judul || 'perangkat-ajar').replace(/[^\w.\- ]+/g, '_').replace(/\s+/g, '_');
+
+      // 1. Jika berkas fisik tersimpan di Storage Engine, alirkan berkas asli
+      if (perangkat.file_url) {
+        const key = String(perangkat.file_url).replace(/^\/+/, '');
+        const exists = (await storageService.exists(key)) || (await storageService.exists(`storage/${key}`));
+        if (exists) {
+          const targetKey = (await storageService.exists(key)) ? key : `storage/${key}`;
+          const ext = targetKey.includes('.') ? targetKey.split('.').pop()!.toLowerCase() : 'pdf';
+          const mimeMap: Record<string, string> = {
+            pdf: 'application/pdf',
+            doc: 'application/msword',
+            docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            xls: 'application/vnd.ms-excel',
+            xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          };
+          const contentType = mimeMap[ext] || 'application/octet-stream';
+          const cleanFilename = `${safeTitle}.${ext}`;
+
+          if (
+            String(process.env.STORAGE_USE_DIRECT_URL || '').trim().toLowerCase() === 'true' &&
+            storageService.getDriverName() === 's3'
+          ) {
+            try {
+              const directUrl = await storageService.getSignedDownloadUrl(targetKey);
+              if (directUrl) {
+                return reply.redirect(302, directUrl);
+              }
+            } catch (err) {
+              console.warn(`[PerangkatAjar] Failed direct URL for: ${targetKey}`, err);
+            }
+          }
+
+          const stream = storageService.createReadStream(targetKey);
+          reply.type(contentType);
+          reply.header('Content-Disposition', `inline; filename="${cleanFilename}"`);
+          reply.header('Access-Control-Allow-Origin', '*');
+          reply.header('Cross-Origin-Resource-Policy', 'cross-origin');
+          reply.header('Cache-Control', 'public, max-age=31536000, immutable');
+          return reply.send(stream);
+        }
+      }
+
+      // 2. Fallback untuk perangkat non-fisik (AI / Editor): Generate Full Official 5-Page HTML with PrintHeader Logos
       const tenant = await prisma.tenant.findUnique({ where: { id: tenant_id } });
       const sekolah = await prisma.sekolah.findFirst({ where: { tenant_id } });
-
-      const safeTitle = (perangkat.judul || 'perangkat-ajar').replace(/[^\w.\- ]+/g, '_').replace(/\s+/g, '_');
       const cleanFilename = `${safeTitle}.pdf`;
 
-      // Generate Full Official 5-Page HTML with PrintHeader Logos
       const fullHtml = generateOfficialKurikulumHtml(perangkat, tenant, sekolah);
-
-      // Render to PDF using Puppeteer / PdfGeneratorService
       const pdfBuffer = await PdfGeneratorService.renderHtmlToPdf(fullHtml, 'portrait');
 
       reply.header('Content-Type', 'application/pdf');
