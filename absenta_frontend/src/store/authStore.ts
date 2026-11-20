@@ -531,6 +531,8 @@ export const useAuthStore = create<AuthState>()(
               email: currentUser.email,
               role: currentUser.role?.name
             },
+            impersonatedType: 'guru',
+            returnUrl: '/dashboard?tab=admin&subtab=guru',
             impersonatedAt: new Date().toISOString()
           };
           localStorage.setItem('absenta_original_admin_session', JSON.stringify(adminSessionBackup));
@@ -612,6 +614,8 @@ export const useAuthStore = create<AuthState>()(
                 email: currentUser.email,
                 role: currentUser.role?.name
               },
+              impersonatedType: 'siswa',
+              returnUrl: '/dashboard?tab=admin&subtab=siswa',
               impersonatedAt: new Date().toISOString()
             };
             localStorage.setItem('absenta_original_admin_session', JSON.stringify(adminSessionBackup));
@@ -671,6 +675,28 @@ export const useAuthStore = create<AuthState>()(
           const backup = JSON.parse(rawBackup);
           const { token, refreshToken: refToken, user: adminUser, tenantId } = backup;
 
+          // Deteksi tipe impersonasi untuk rute pengembalian ke dashboard admin
+          // Prioritas:
+          // 1. backup.returnUrl jika tersedia
+          // 2. backup.impersonatedType ('siswa' => /dashboard?tab=admin&subtab=siswa, 'guru' => /dashboard?tab=admin&subtab=guru)
+          // 3. Fallback deteksi state user saat ini (role SISWA / profil siswa)
+          const currentUserState = get().user;
+          const currentRoleName = String(currentUserState?.role?.name || (currentUserState as any)?.roleName || '').toUpperCase();
+          const isCurrentSiswa =
+            currentRoleName === 'SISWA' ||
+            currentRoleName === 'STUDENT' ||
+            Boolean((currentUserState as any)?.siswa_id) ||
+            Boolean((currentUserState as any)?.siswa_profile);
+
+          let targetUrl = '/dashboard?tab=admin&subtab=guru';
+          if (backup.returnUrl) {
+            targetUrl = backup.returnUrl;
+          } else if (backup.impersonatedType === 'siswa' || isCurrentSiswa) {
+            targetUrl = '/dashboard?tab=admin&subtab=siswa';
+          } else if (backup.impersonatedType === 'guru') {
+            targetUrl = '/dashboard?tab=admin&subtab=guru';
+          }
+
           localStorage.removeItem('absenta_original_admin_session');
 
           if (token) {
@@ -714,7 +740,7 @@ export const useAuthStore = create<AuthState>()(
             console.warn('Failed to loadUser after reverting impersonation:', e);
           }
 
-          window.location.href = '/academic/guru';
+          window.location.href = targetUrl;
         } catch (err) {
           console.error('Error reverting impersonation:', err);
           localStorage.removeItem('absenta_original_admin_session');
