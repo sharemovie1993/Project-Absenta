@@ -176,20 +176,31 @@ export class WaliKelasService {
       };
     }
 
-    const whereClause: any = {
-      tenant_id: tenantId,
-      position_id: position.id,
-    };
+    const andConditions: any[] = [
+      { tenant_id: tenantId },
+      { position_id: position.id },
+    ];
 
-    if (!params?.include_inactive) whereClause.is_active = true;
-    if (params?.kelas_id) whereClause.kelas_id = params.kelas_id;
+    if (!params?.include_inactive) {
+      andConditions.push({ is_active: true });
+    }
+    if (params?.kelas_id) {
+      andConditions.push({ kelas_id: params.kelas_id });
+    }
     if (params?.tahun_pelajaran_id) {
-      whereClause.tahun_pelajaran_id = params.tahun_pelajaran_id;
+      andConditions.push({
+        OR: [
+          { tahun_pelajaran_id: params.tahun_pelajaran_id },
+          { tahun_pelajaran_id: null },
+        ],
+      });
     } else if (!params?.include_inactive) {
-      whereClause.OR = [
-        { tahun_pelajaran_id: null },
-        { TahunPelajaran: { is_active: true } },
-      ];
+      andConditions.push({
+        OR: [
+          { tahun_pelajaran_id: null },
+          { TahunPelajaran: { is_active: true } },
+        ],
+      });
     }
 
     if (params?.guru_id) {
@@ -203,16 +214,20 @@ export class WaliKelasService {
           pagination: { page: params?.page || 1, limit: params?.limit || 10, total: 0, totalPages: 0 },
         };
       }
-      whereClause.user_id = guru.user_id;
+      andConditions.push({ user_id: guru.user_id });
     }
 
     if (params?.search) {
-      whereClause.OR = [
-        { User: { Guru: { nama_guru: { contains: params.search, mode: 'insensitive' } } } },
-        { User: { Guru: { nip: { contains: params.search, mode: 'insensitive' } } } },
-        { Kelas: { nama_kelas: { contains: params.search, mode: 'insensitive' } } },
-      ];
+      andConditions.push({
+        OR: [
+          { User: { Guru: { nama_guru: { contains: params.search, mode: 'insensitive' } } } },
+          { User: { Guru: { nip: { contains: params.search, mode: 'insensitive' } } } },
+          { Kelas: { nama_kelas: { contains: params.search, mode: 'insensitive' } } },
+        ],
+      });
     }
+
+    const whereClause: any = { AND: andConditions };
 
     const page = params?.page || 1;
     const limit = params?.limit || 10;
