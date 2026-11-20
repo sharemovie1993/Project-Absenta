@@ -101,7 +101,14 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
   const effectiveKelasNama = payloadData?.kelas?.nama_kelas || kelasNama || '';
   const effectiveJurusanNama = payloadData?.kelas?.Jurusan?.nama || jurusanNama || '';
 
-  // Initialize local score state when data loads
+  // Konteks periode dari backend (SSOT) untuk mencegah salah input lintas tahun pelajaran
+  const period = payloadData?.period || null;
+  const rosterSource: string = payloadData?.roster_source || '';
+  const periodTahun: string = period?.tahun || tahunPelajaranNama || '';
+  const periodSemester: string = period?.nama_semester || semesterNama || '';
+  const isArchivePeriod = Boolean(period && !period.is_active_period);
+
+  // Initialize local score state when data loads (reset juga saat roster kosong agar tidak ada sisa nilai kelas lain)
   useEffect(() => {
     if (students.length > 0) {
       const initial: Record<string, any> = {};
@@ -114,6 +121,9 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
         };
       });
       setLocalScores(initial);
+      setHasChanges(false);
+    } else {
+      setLocalScores({});
       setHasChanges(false);
     }
   }, [students]);
@@ -247,6 +257,9 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
       setHasChanges(false);
       queryClient.invalidateQueries({ queryKey: ['ketarunaan-nilai-kelas'] });
     },
+    onError: (err: any) => {
+      window.alert('Gagal menyimpan nilai: ' + (err?.response?.data?.message || err?.message || 'Terjadi kendala'));
+    },
   });
 
   // Mutation: Kunci Nilai & Kirim ke Rapor
@@ -282,6 +295,9 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
       setHasChanges(false);
       queryClient.invalidateQueries({ queryKey: ['ketarunaan-nilai-kelas'] });
       alert('Nilai berhasil dikunci dan narasi capaian telah dikirimkan ke Rapor Kokurikuler Wali Kelas!');
+    },
+    onError: (err: any) => {
+      window.alert('Gagal mengunci nilai: ' + (err?.response?.data?.message || err?.message || 'Terjadi kendala'));
     },
   });
 
@@ -410,6 +426,22 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                     <Info className="w-3.5 h-3.5" />
                   </span>
                 </Tooltip>
+              </div>
+              {/* Konteks Periode Aktif Form (mencegah salah input lintas TP) */}
+              <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                  {effectiveKelasNama || '-'} • TP {periodTahun || '-'} • {periodSemester || '-'} • {students.length} taruna
+                </span>
+                {isArchivePeriod && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                    Periode Lampau / Arsip — pastikan memang ingin mengubah nilai tahun tersebut
+                  </span>
+                )}
+                {rosterSource === 'MASTER_SISWA_FALLBACK' && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
+                    Roster semester ini belum di-generate — memakai data kelas siswa saat ini
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -733,7 +765,20 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
               ) : filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="py-12 text-center text-slate-400 text-xs">
-                    Tidak ada data siswa terdaftar di rombel ini.
+                    {searchQuery.trim() ? (
+                      'Tidak ada taruna yang cocok dengan pencarian.'
+                    ) : (
+                      <div className="flex flex-col items-center gap-1.5 max-w-md mx-auto">
+                        <AlertCircle className="w-6 h-6 text-amber-500" />
+                        <p className="font-bold text-slate-600 dark:text-slate-300">
+                          Rombel {effectiveKelasNama || 'ini'} tidak memiliki taruna pada TP {periodTahun || '-'} Semester {periodSemester || '-'}.
+                        </p>
+                        <p className="text-[11px] leading-relaxed">
+                          Daftar taruna diambil dari data rombel per tahun pelajaran (riwayat akademik), bukan dari kelas siswa saat ini.
+                          Jika angkatan ini berada di rombel lain pada tahun tersebut, gunakan tombol linimasa angkatan di bawah filter Kelas.
+                        </p>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ) : (

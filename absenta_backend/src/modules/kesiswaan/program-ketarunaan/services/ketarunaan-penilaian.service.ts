@@ -414,8 +414,15 @@ export class KetarunaanPenilaianService {
       },
     });
 
-    // Fallback: Jika SiswaAkademik belum di-generate untuk semester ini, ambil langsung dari tabel Siswa
-    if (siswaList.length === 0) {
+    // Konteks periode: fallback ke master Siswa HANYA sah untuk TP & Semester yang sedang aktif.
+    // Siswa.kelas_id hanya merepresentasikan rombel SAAT INI, sehingga memakainya untuk periode
+    // lampau akan "menarik" taruna angkatan sekarang ke tahun pelajaran yang salah.
+    const period = await this.resolvePeriodContext(tenantId, tahun_pelajaran_id, semester_id);
+    let rosterSource: 'SISWA_AKADEMIK' | 'MASTER_SISWA_FALLBACK' | 'EMPTY' =
+      siswaList.length > 0 ? 'SISWA_AKADEMIK' : 'EMPTY';
+
+    if (siswaList.length === 0 && period.is_active_period) {
+      rosterSource = 'MASTER_SISWA_FALLBACK';
       const directSiswa = await prisma.siswa.findMany({
         where: {
           tenant_id: tenantId,
@@ -508,9 +515,13 @@ export class KetarunaanPenilaianService {
       };
     });
 
+    if (rosterSource === 'MASTER_SISWA_FALLBACK' && rows.length === 0) rosterSource = 'EMPTY';
+
     return {
       kelas,
       skema,
+      period,
+      roster_source: rosterSource,
       total_siswa: rows.length,
       is_class_locked: rows.length > 0 && rows.every((r) => r.is_locked),
       presensi_summary: {
@@ -520,6 +531,58 @@ export class KetarunaanPenilaianService {
       },
       students: rows,
     };
+  }
+
+  /**
+   * Konteks periode akademik (TP + Semester) untuk mencegah salah input lintas tahun.
+   */
+  private async resolvePeriodContext(tenantId: string, tahunPelajaranId: string, semesterId: string) {
+    const [tp, sem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({
+        where: { id: tahunPelajaranId, tenant_id: tenantId },
+        select: { id: true, tahun: true, is_active: true },
+      }),
+      prisma.semester.findFirst({
+        where: { id: semesterId, tenant_id: tenantId },
+        select: { id: true, nama_semester: true, is_active: true, tahun_pelajaran_id: true },
+      }),
+    ]);
+
+    const semesterMatchesTp = Boolean(sem && sem.tahun_pelajaran_id === tahunPelajaranId);
+    return {
+      tahun_pelajaran_id: tahunPelajaranId,
+      tahun: tp?.tahun || '',
+      semester_id: semesterId,
+      nama_semester: sem?.nama_semester || '',
+      is_tp_active: Boolean(tp?.is_active),
+      is_semester_active: Boolean(sem?.is_active),
+      semester_matches_tp: semesterMatchesTp,
+      is_active_period: Boolean(tp?.is_active && sem?.is_active && semesterMatchesTp),
+    };
+  }
+
+  /**
+   * Daftar siswa_id yang sah sebagai anggota rombel pada periode tertentu.
+   */
+  private async getAllowedSiswaIds(
+    tenantId: string,
+    kelasId: string,
+    tahunPelajaranId: string,
+    semesterId: string,
+    isActivePeriod: boolean
+  ): Promise<Set<string>> {
+    const roster = await prisma.siswaAkademik.findMany({
+      where: { kelas_id: kelasId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId },
+      select: { siswa_id: true },
+    });
+    if (roster.length > 0 || !isActivePeriod) {
+      return new Set(roster.map((r) => r.siswa_id));
+    }
+    const direct = await prisma.siswa.findMany({
+      where: { tenant_id: tenantId, kelas_id: kelasId, status: 'AKTIF' },
+      select: { id: true },
+    });
+    return new Set(direct.map((s) => s.id));
   }
 
   /**
@@ -535,6 +598,25 @@ export class KetarunaanPenilaianService {
     }
   ) {
     const { kelas_id, tahun_pelajaran_id, semester_id, items } = payload;
+
+    // Guard: semester harus milik TP terpilih & siswa harus anggota rombel pada periode tsb
+    const period = await this.resolvePeriodContext(tenantId, tahun_pelajaran_id, semester_id);
+    if (!period.semester_matches_tp) {
+      throw new Error('Semester tidak sesuai dengan Tahun Pelajaran terpilih. Muat ulang filter lalu coba lagi.');
+    }
+    const allowed = await this.getAllowedSiswaIds(
+      tenantId,
+      kelas_id,
+      tahun_pelajaran_id,
+      semester_id,
+      period.is_active_period
+    );
+    const invalid = (items || []).filter((it) => !allowed.has(it.siswa_id));
+    if (invalid.length > 0) {
+      throw new Error(
+        `${invalid.length} taruna bukan anggota rombel ini pada TP ${period.tahun} ${period.nama_semester}. Penyimpanan dibatalkan untuk mencegah salah input.`
+      );
+    }
 
     const kelas = await prisma.kelas.findUnique({
       where: { id: kelas_id },
@@ -867,8 +949,9 @@ export class KetarunaanPenilaianService {
       ],
     });
 
-    // Fallback jika belum di-generate di siswaAkademik
-    if (siswaList.length === 0) {
+    // Fallback jika belum di-generate di siswaAkademik — hanya untuk periode aktif
+    const exportPeriod = await this.resolvePeriodContext(tenantId, tahun_pelajaran_id, semester_id);
+    if (siswaList.length === 0 && exportPeriod.is_active_period) {
       const directSiswa = await prisma.siswa.findMany({
         where: {
           tenant_id: tenantId,
