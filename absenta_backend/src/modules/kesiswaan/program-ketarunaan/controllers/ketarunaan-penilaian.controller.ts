@@ -188,4 +188,30 @@ export const ketarunaanPenilaianController = {
       return reply.status(500).send({ success: false, message: error.message });
     }
   },
+
+  async getNilaiExport(request: any, reply: any) {
+    try {
+      const scope = request.dataScope as DataScope;
+      if (!scope?.tenantId) {
+        return reply.status(400).send({ message: 'Tenant ID required' });
+      }
+
+      const { tahun_pelajaran_id, semester_id, kelas_id } = request.query || {};
+      if (!tahun_pelajaran_id || !semester_id) {
+        return reply.status(400).send({
+          message: 'tahun_pelajaran_id dan semester_id wajib diisi',
+        });
+      }
+
+      const data = await ketarunaanPenilaianService.getNilaiExport(scope.tenantId, {
+        tahun_pelajaran_id,
+        semester_id,
+        kelas_id: kelas_id && kelas_id !== 'ALL' ? kelas_id : undefined,
+      });
+
+      return reply.send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  },
 };

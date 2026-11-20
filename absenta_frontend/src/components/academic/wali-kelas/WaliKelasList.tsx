@@ -130,12 +130,12 @@ const WaliKelasList = React.memo<Props>(({
   }, [itemsPerPage, selectedTpId]);
 
   useEffect(() => {
-    fetchData(1, debouncedSearchTerm, includeInactive, selectedTpId);
-  }, [debouncedSearchTerm, includeInactive, selectedTpId, fetchData]);
+    setCurrentPage(1);
+  }, [selectedTpId, debouncedSearchTerm, includeInactive]);
 
   useEffect(() => {
     fetchData(currentPage, debouncedSearchTerm, includeInactive, selectedTpId);
-  }, [refreshTrigger, currentPage, selectedTpId, fetchData]);
+  }, [currentPage, debouncedSearchTerm, includeInactive, selectedTpId, refreshTrigger, fetchData]);
 
   const handleRollOver = async () => {
     if (!sourceTpId || !selectedTpId) {

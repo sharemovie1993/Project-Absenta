@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Sparkles,
   Info,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -34,10 +35,13 @@ import {
 } from '@/api/kesiswaan/programKetarunaan.api';
 import { KetarunaanSkemaSettingsModal } from './KetarunaanSkemaSettingsModal';
 import { SertifikatKetarunaanModal } from './SertifikatKetarunaanModal';
+import { KetarunaanExportModal } from './KetarunaanExportModal';
 
 export interface KetarunaanPenilaianTabProps {
   tahunPelajaranId?: string;
+  tahunPelajaranNama?: string;
   semesterId?: string;
+  semesterNama?: string;
   kelasId?: string;
   kelasNama?: string;
   jurusanId?: string;
@@ -46,7 +50,9 @@ export interface KetarunaanPenilaianTabProps {
 
 export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
   tahunPelajaranId,
+  tahunPelajaranNama,
   semesterId,
+  semesterNama,
   kelasId,
   kelasNama,
   jurusanId,
@@ -54,6 +60,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const [isSkemaModalOpen, setIsSkemaModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [localScores, setLocalScores] = useState<Record<string, {
     samapta: number;
@@ -303,15 +310,45 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
 
   if (!kelasId) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
-        <Shield className="w-12 h-12 text-slate-400 mb-3" />
-        <h3 className="font-bold text-slate-800 dark:text-slate-200 text-base">
-          Pilih Rombel / Kelas Terlebih Dahulu
-        </h3>
-        <p className="text-xs text-slate-500 max-w-sm mt-1">
-          Gunakan filter toolbar di bagian atas untuk memilih kelas yang ingin dinilai kesamaptaan &amp; ketarunaannya.
-        </p>
-      </div>
+      <>
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
+          <Shield className="w-12 h-12 text-slate-400 mb-3" />
+          <h3 className="font-bold text-slate-800 dark:text-slate-200 text-base">
+            Pilih Rombel / Kelas Terlebih Dahulu
+          </h3>
+          <p className="text-xs text-slate-500 max-w-sm mt-1">
+            Gunakan filter toolbar di bagian atas untuk memilih kelas yang ingin dinilai kesamaptaan &amp; ketarunaannya.
+          </p>
+
+          <div className="mt-5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsExportModalOpen(true)}
+              className="gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shadow-sm"
+              title="Ekspor Seluruh Nilai Ketarunaan Satu Sekolah ke Excel untuk Mail Merge"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Ekspor Nilai Ketarunaan (Semua Rombel)</span>
+            </Button>
+          </div>
+        </div>
+
+        <KetarunaanExportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          currentStudents={[]}
+          currentScores={{}}
+          skema={null}
+          kelasId={undefined}
+          kelasNama={undefined}
+          jurusanNama={undefined}
+          tahunPelajaranId={tahunPelajaranId}
+          tahunPelajaranNama={tahunPelajaranNama}
+          semesterId={semesterId}
+          semesterNama={semesterNama}
+        />
+      </>
     );
   }
 
@@ -444,6 +481,17 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                 <span>Buka Kunci Nilai</span>
               </Button>
             )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsExportModalOpen(true)}
+              className="gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+              title="Ekspor Nilai Ketarunaan ke Excel untuk Microsoft Word Mail Merge"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Ekspor Excel</span>
+            </Button>
 
             <Button
               variant="outline"
@@ -864,6 +912,23 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
         jurusanNama={jurusanNama}
         tahunPelajaran={tahunPelajaranId}
         semester={semesterId}
+      />
+
+      {/* ── Modal Ekspor Nilai Ketarunaan ke Excel (Mail Merge) ───────────────── */}
+      <KetarunaanExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        currentStudents={students}
+        currentScores={localScores}
+        skema={skema}
+        calculateLiveFinal={calculateLiveFinal}
+        kelasId={kelasId}
+        kelasNama={kelasNama}
+        jurusanNama={jurusanNama}
+        tahunPelajaranId={tahunPelajaranId}
+        tahunPelajaranNama={tahunPelajaranNama}
+        semesterId={semesterId}
+        semesterNama={semesterNama}
       />
     </div>
   );

@@ -36,6 +36,8 @@ export const WaliKelasView: React.FC<UniversalWaliKelasViewProps> = React.memo((
     initialTpId: tahunPelajaranId,
   });
 
+  const effectiveTpId = hideLayout ? tahunPelajaranId : (academicFilter.values.tahunPelajaranId || tahunPelajaranId);
+
   const canView = useMemo(
     () => isAdmin || isKurikulum || isWaliKelas || can('academic.homeroom.manage') || can('academic.manage.academic'),
     [isAdmin, isKurikulum, isWaliKelas, can]
@@ -69,7 +71,7 @@ export const WaliKelasView: React.FC<UniversalWaliKelasViewProps> = React.memo((
       )}
       <SectionCard fullWidth className="p-0 border-none shadow-none bg-transparent">
         <WaliKelasList
-          selectedTpId={academicFilter.values.tahunPelajaranId || tahunPelajaranId}
+          selectedTpId={effectiveTpId}
           searchQuery={academicFilter.searchQuery}
         />
       </SectionCard>

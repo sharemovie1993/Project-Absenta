@@ -264,3 +264,74 @@ export async function syncKetarunaanPresensi5Siklus(params: {
     { params, unwrapData: true }
   );
 }
+
+export interface KetarunaanNilaiExportRow {
+  no: number;
+  siswa_id: string;
+  nis: string;
+  nisn: string;
+  nama_taruna: string;
+  nama_lengkap: string;
+  nama_siswa: string;
+  jenis_kelamin: string;
+  jk: string;
+  jk_label: string;
+  kelas_id: string;
+  kelas: string;
+  rombel: string;
+  tingkat: string;
+  jurusan_id: string;
+  jurusan: string;
+  kode_jurusan: string;
+  tahun_pelajaran: string;
+  semester: string;
+  mode_pelatihan: string;
+  nilai_samapta: number;
+  nilai_pbb: number;
+  nilai_disiplin: number;
+  nilai_mental: number;
+  bobot_samapta: number;
+  bobot_pbb: number;
+  bobot_disiplin: number;
+  bobot_mental: number;
+  nilai_akhir: number;
+  predikat: string;
+  predikat_label: string;
+  keterangan: string;
+  deskripsi_capaian: string;
+  deskripsi_rapor: string;
+  nomor_sertifikat: string;
+  tempat_terbit: string;
+  tanggal_terbit: string;
+  tanggal_cetak: string;
+  nama_sekolah: string;
+  npsn: string;
+  alamat_sekolah: string;
+  kota_sekolah: string;
+  kepala_sekolah: string;
+  nip_kepala_sekolah: string;
+  is_locked: boolean;
+}
+
+export interface KetarunaanNilaiExportResponse {
+  sekolah: any;
+  tenant: any;
+  tahun_pelajaran: any;
+  semester: any;
+  total_siswa: number;
+  classes: Array<{ id: string; nama: string }>;
+  students: KetarunaanNilaiExportRow[];
+}
+
+export async function getKetarunaanNilaiExport(params: {
+  tahun_pelajaran_id: string;
+  semester_id: string;
+  kelas_id?: string;
+}): Promise<{ success: boolean; data: KetarunaanNilaiExportResponse }> {
+  return requestWithFallback(
+    'get',
+    '/kesiswaan/program-ketarunaan/nilai/export',
+    { params, unwrapData: true }
+  );
+}
+

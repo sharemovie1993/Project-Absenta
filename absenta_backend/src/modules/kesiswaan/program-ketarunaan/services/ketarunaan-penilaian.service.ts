@@ -712,6 +712,298 @@ export class KetarunaanPenilaianService {
 
     return { success: true, message: 'Kunci nilai berhasil dibuka' };
   }
+
+  /**
+   * Mengambil data lengkap nilai ketarunaan (per rombel atau seluruh rombel sekolah)
+   * untuk keperluan ekspor spreadsheet dan mail merge pencetakan sertifikat/rapor.
+   */
+  async getNilaiExport(
+    tenantId: string,
+    params: {
+      tahun_pelajaran_id: string;
+      semester_id: string;
+      kelas_id?: string;
+    }
+  ) {
+    const { tahun_pelajaran_id, semester_id, kelas_id } = params;
+
+    // 1. Ambil info sekolah, tenant, tahun pelajaran, dan semester
+    const [sekolah, tenant, tahunPelajaran, semester] = await Promise.all([
+      prisma.sekolah.findFirst({
+        where: { tenant_id: tenantId },
+        select: {
+          nama: true,
+          npsn: true,
+          alamat: true,
+          kota: true,
+          kecamatan: true,
+          provinsi: true,
+          kode_pos: true,
+          telepon: true,
+          email: true,
+          website: true,
+          kepala_sekolah: true,
+          nip_kepala: true,
+        },
+      }),
+      prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { name: true, subdomain: true },
+      }),
+      prisma.tahunPelajaran.findUnique({
+        where: { id: tahun_pelajaran_id },
+        select: { id: true, tahun: true },
+      }),
+      prisma.semester.findUnique({
+        where: { id: semester_id },
+        select: { id: true, nama_semester: true },
+      }),
+    ]);
+
+    // 2. Tentukan rombel yang ditargetkan
+    const whereKelas: any = { tenant_id: tenantId };
+    if (kelas_id && kelas_id !== 'ALL') {
+      whereKelas.id = kelas_id;
+    }
+
+    const classes = await prisma.kelas.findMany({
+      where: whereKelas,
+      include: {
+        Jurusan: {
+          select: { id: true, nama: true, kode: true, singkatan: true },
+        },
+      },
+      orderBy: [
+        { tingkat: 'asc' },
+        { nama_kelas: 'asc' },
+      ],
+    });
+
+    if (classes.length === 0) {
+      return {
+        sekolah,
+        tenant,
+        tahun_pelajaran: tahunPelajaran,
+        semester,
+        total_siswa: 0,
+        classes: [],
+        students: [],
+      };
+    }
+
+    const classIds = classes.map((c) => c.id);
+    const classMap = new Map<string, any>();
+    classes.forEach((c) => classMap.set(c.id, c));
+
+    // 3. Ambil data skema per jurusan & global
+    const allSkemas = await prisma.ketarunaanSkemaConfig.findMany({
+      where: {
+        tenant_id: tenantId,
+        tahun_pelajaran_id,
+      },
+    });
+    const skemaByJurusan = new Map<string, any>();
+    let defaultSkema = allSkemas.find((s) => !s.jurusan_id);
+    allSkemas.forEach((s) => {
+      if (s.jurusan_id) skemaByJurusan.set(s.jurusan_id, s);
+    });
+
+    if (!defaultSkema) {
+      defaultSkema = {
+        tenant_id: tenantId,
+        tahun_pelajaran_id,
+        semester_id,
+        jurusan_id: null,
+        mode_pelatihan: 'SEMI_TARUNA',
+        bobot_samapta: 25,
+        bobot_pbb: 20,
+        bobot_disiplin: 30,
+        bobot_mental: 25,
+        active_sub_aspects: null,
+      } as any;
+    }
+
+    // 4. Ambil seluruh siswa aktif di rombel terpilih
+    let siswaList = await prisma.siswaAkademik.findMany({
+      where: {
+        kelas_id: { in: classIds },
+        tahun_pelajaran_id,
+        semester_id,
+      },
+      include: {
+        siswa: {
+          select: {
+            id: true,
+            nis: true,
+            nisn: true,
+            nama_siswa: true,
+            jenis_kelamin: true,
+            tempat_lahir: true,
+            tanggal_lahir: true,
+          },
+        },
+      },
+      orderBy: [
+        { siswa: { nama_siswa: 'asc' } },
+      ],
+    });
+
+    // Fallback jika belum di-generate di siswaAkademik
+    if (siswaList.length === 0) {
+      const directSiswa = await prisma.siswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: { in: classIds },
+          status: 'AKTIF',
+        },
+        select: {
+          id: true,
+          nis: true,
+          nisn: true,
+          nama_siswa: true,
+          jenis_kelamin: true,
+          tempat_lahir: true,
+          tanggal_lahir: true,
+          kelas_id: true,
+        },
+        orderBy: {
+          nama_siswa: 'asc',
+        },
+      });
+
+      siswaList = directSiswa.map((s) => ({
+        id: '',
+        siswa_id: s.id,
+        kelas_id: s.kelas_id,
+        tahun_pelajaran_id,
+        semester_id,
+        status: 'AKTIF',
+        created_at: new Date(),
+        updated_at: new Date(),
+        siswa: s,
+      })) as any;
+    }
+
+    // 5. Ambil nilai tersimpan
+    const savedScores = await prisma.ketarunaanNilaiSiswa.findMany({
+      where: {
+        tenant_id: tenantId,
+        kelas_id: { in: classIds },
+        tahun_pelajaran_id,
+        semester_id,
+      },
+    });
+    const scoreMap = new Map<string, any>();
+    savedScores.forEach((s) => scoreMap.set(s.siswa_id, s));
+
+    // Sort siswa berdasarkan Kelas (tingkat, nama_kelas) lalu nama_siswa
+    siswaList.sort((a, b) => {
+      const kelasA = classMap.get(a.kelas_id);
+      const kelasB = classMap.get(b.kelas_id);
+      const kA = `${String(kelasA?.tingkat || 0).padStart(2, '0')}_${kelasA?.nama_kelas || ''}`;
+      const kB = `${String(kelasB?.tingkat || 0).padStart(2, '0')}_${kelasB?.nama_kelas || ''}`;
+      if (kA !== kB) return kA.localeCompare(kB);
+      return (a.siswa?.nama_siswa || '').localeCompare(b.siswa?.nama_siswa || '');
+    });
+
+    const exportRows = siswaList.map((sa, idx) => {
+      const s = sa.siswa;
+      const k = classMap.get(sa.kelas_id);
+      const existing = scoreMap.get(sa.siswa_id);
+      const sk = (k?.jurusan_id && skemaByJurusan.get(k.jurusan_id)) || defaultSkema;
+
+      const samapta = existing?.nilai_samapta ?? 0;
+      const pbb = existing?.nilai_pbb ?? 0;
+      const disiplin = existing?.nilai_disiplin ?? 0;
+      const mental = existing?.nilai_mental ?? 0;
+
+      const weights = {
+        samapta: sk.bobot_samapta ?? 25,
+        pbb: sk.bobot_pbb ?? 20,
+        disiplin: sk.bobot_disiplin ?? 30,
+        mental: sk.bobot_mental ?? 25,
+      };
+
+      const calc = this.calculateScore(
+        { samapta, pbb, disiplin, mental },
+        weights,
+        sk.mode_pelatihan as 'FULL_TARUNA' | 'SEMI_TARUNA'
+      );
+
+      const nilaiAkhir = existing?.nilai_akhir != null && existing.nilai_akhir > 0 ? existing.nilai_akhir : calc.nilaiAkhir;
+      const predikat = existing?.predikat && existing.predikat !== '-' ? existing.predikat : calc.predikat;
+      const deskripsi = existing?.deskripsi_rapor || calc.narasi;
+
+      let predikatLabel = 'Kurang';
+      if (predikat === 'A') predikatLabel = 'Sangat Baik (Amat Baik)';
+      else if (predikat === 'B') predikatLabel = 'Baik';
+      else if (predikat === 'C') predikatLabel = 'Cukup';
+
+      const keterangan = (predikat === 'A' || predikat === 'B' || predikat === 'C') ? 'KOMPETEN / LULUS' : 'BELUM MEMENUHI';
+
+      const kotaSekolah = sekolah?.kota || sekolah?.kecamatan || 'Purwakarta';
+      const yearNow = new Date().getFullYear();
+      const noSertifikat = `421.5/KETARUNAAN/${yearNow}/${s?.nis || String(idx + 1).padStart(3, '0')}`;
+
+      return {
+        no: idx + 1,
+        siswa_id: sa.siswa_id,
+        nis: s?.nis || '',
+        nisn: s?.nisn || '',
+        nama_taruna: s?.nama_siswa || '',
+        nama_lengkap: s?.nama_siswa || '',
+        nama_siswa: s?.nama_siswa || '',
+        jenis_kelamin: s?.jenis_kelamin || 'L',
+        jk: s?.jenis_kelamin || 'L',
+        jk_label: s?.jenis_kelamin === 'P' ? 'Perempuan' : 'Laki-laki',
+        kelas_id: sa.kelas_id,
+        kelas: k?.nama_kelas || '',
+        rombel: k?.nama_kelas || '',
+        tingkat: k?.tingkat ? String(k.tingkat) : '',
+        jurusan_id: k?.jurusan_id || '',
+        jurusan: k?.Jurusan?.nama || '',
+        kode_jurusan: k?.Jurusan?.kode || '',
+        tahun_pelajaran: tahunPelajaran?.tahun || '',
+        semester: semester?.nama_semester || '',
+        mode_pelatihan: sk.mode_pelatihan === 'FULL_TARUNA' ? 'Murni Ketarunaan' : 'Semi Ketarunaan',
+        nilai_samapta: samapta,
+        nilai_pbb: pbb,
+        nilai_disiplin: disiplin,
+        nilai_mental: mental,
+        bobot_samapta: weights.samapta,
+        bobot_pbb: weights.pbb,
+        bobot_disiplin: weights.disiplin,
+        bobot_mental: weights.mental,
+        nilai_akhir: nilaiAkhir,
+        predikat,
+        predikat_label: predikatLabel,
+        keterangan,
+        deskripsi_capaian: deskripsi,
+        deskripsi_rapor: deskripsi,
+        nomor_sertifikat: noSertifikat,
+        tempat_terbit: kotaSekolah,
+        tanggal_terbit: `${kotaSekolah}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+        tanggal_cetak: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+        nama_sekolah: sekolah?.nama || tenant?.name || 'SMK NEGERI 1 PLERED',
+        npsn: sekolah?.npsn || '',
+        alamat_sekolah: sekolah?.alamat || '',
+        kota_sekolah: kotaSekolah,
+        kepala_sekolah: sekolah?.kepala_sekolah || '',
+        nip_kepala_sekolah: sekolah?.nip_kepala || '',
+        is_locked: existing?.is_locked ?? false,
+      };
+    });
+
+    return {
+      sekolah,
+      tenant,
+      tahun_pelajaran: tahunPelajaran,
+      semester,
+      total_siswa: exportRows.length,
+      classes: classes.map((c) => ({ id: c.id, nama: c.nama_kelas })),
+      students: exportRows,
+    };
+  }
 }
 
 export const ketarunaanPenilaianService = new KetarunaanPenilaianService();

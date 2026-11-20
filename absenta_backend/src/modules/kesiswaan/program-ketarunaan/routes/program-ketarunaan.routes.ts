@@ -85,6 +85,14 @@ export async function programKetarunaanRoutes(fastify: any) {
     ],
   }, ketarunaanPenilaianController.getNilaiKelas);
 
+  // 10b. Ambil Data Lengkap Nilai Ketarunaan untuk Ekspor Excel / Mail Merge
+  fastify.get('/nilai/export', {
+    preHandler: [
+      requireCapability(['attendance.sessions.view.list', 'dashboard.view.kesiswaan']),
+      determineDataScope(),
+    ],
+  }, ketarunaanPenilaianController.getNilaiExport);
+
   // 11. Simpan Nilai Bulk
   fastify.post('/nilai/bulk', {
     preHandler: [

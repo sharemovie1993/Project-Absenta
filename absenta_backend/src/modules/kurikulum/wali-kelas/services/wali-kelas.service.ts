@@ -377,6 +377,7 @@ export class WaliKelasService {
           tenant_id: tenantId,
           position_id: position.id,
           kelas_id: input.kelas_id,
+          ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {}),
           is_active: true,
         },
         data: { is_active: false, end_date: new Date(), updated_at: new Date() },

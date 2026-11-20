@@ -303,7 +303,9 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
                 {activeTab === 'penilaian' && (
                   <KetarunaanPenilaianTab
                     tahunPelajaranId={selectedTpId}
+                    tahunPelajaranNama={academicFilter.selectedNames?.tahunPelajaranNama}
                     semesterId={selectedSemId}
+                    semesterNama={academicFilter.selectedNames?.semesterNama}
                     kelasId={academicFilter.values.kelasId}
                     kelasNama={academicFilter.selectedNames?.kelasNama}
                     jurusanId={academicFilter.values.jurusanId}
