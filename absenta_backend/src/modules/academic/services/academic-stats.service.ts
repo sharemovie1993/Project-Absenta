@@ -35,6 +35,7 @@ export class AcademicStatsService {
       totalJurusan,
       totalKelas,
       totalSiswa,
+      totalSiswaInaktif,
       totalGuru,
       totalMapel,
       totalSemester,
@@ -56,6 +57,14 @@ export class AcademicStatsService {
         where: {
           ...siswaWhereClause,
           status: 'AKTIF'
+        }
+      }),
+
+      // Total Siswa Inaktif (LULUS, KELUAR, PINDAH)
+      prisma.siswa.count({
+        where: {
+          ...siswaWhereClause,
+          status: { not: 'AKTIF' }
         }
       }),
       
@@ -162,6 +171,7 @@ export class AcademicStatsService {
       total_jurusan: totalJurusan,
       total_kelas: totalKelas,
       total_siswa: totalSiswa,
+      total_siswa_inaktif: totalSiswaInaktif,
       total_guru: totalGuru,
       total_mapel: totalMapel,
       total_semester: totalSemester,

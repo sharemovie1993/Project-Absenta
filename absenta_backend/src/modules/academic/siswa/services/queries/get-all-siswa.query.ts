@@ -82,7 +82,11 @@ export async function getAllSiswaQuery(
   const safeKelasId = typeof params?.kelas_id === 'string' && params.kelas_id.trim() !== '' ? params.kelas_id.trim() : undefined;
   const safeStatus = typeof params?.status === 'string' && params.status.trim() !== '' ? params.status.trim() : undefined;
   if (safeStatus) {
-    whereClause.status = safeStatus;
+    if (safeStatus === 'NON_AKTIF' || safeStatus === 'INAKTIF' || safeStatus === 'TIDAK_AKTIF') {
+      whereClause.status = { not: 'AKTIF' };
+    } else {
+      whereClause.status = safeStatus;
+    }
   }
 
   const safeGender = typeof params?.gender === 'string' && params.gender.trim() !== '' ? params.gender.trim() : undefined;

@@ -259,6 +259,13 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
   });
   const alumniCount = alumniRes?.pagination?.total ?? 0;
 
+  const { data: nonActiveSiswaRes, isLoading: isLoadingNonActive } = useQuery({
+    queryKey: ['siswa', 'list', { status: 'NON_AKTIF', jurusan_id: effectiveJurusanId, kelas_id: effectiveKelasId, page: 1, limit: 1 }],
+    queryFn: () => getSiswaList(1, 1, '', effectiveKelasId || '', 'NON_AKTIF', '', '', '', effectiveJurusanId || ''),
+    staleTime: 5 * 60 * 1000,
+  });
+  const nonActiveSiswaCount = nonActiveSiswaRes?.pagination?.total ?? ((stats as any)?.total_siswa_inaktif ?? 0);
+
   const { data: kelasJurusanRes } = useQuery({
     queryKey: ['kelas-list', { jurusan_id: effectiveJurusanId, limit: 100 }],
     queryFn: () => getKelasList(1, 100, '', '', effectiveJurusanId || ''),
@@ -277,7 +284,7 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
 
   const isLoadingStats = effectiveJurusanId 
     ? (isLoadingActive || isLoadingCalon || isLoadingAlumni)
-    : (isLoadingAcStats || isLoadingActive || isLoadingCalon || isLoadingReg);
+    : (isLoadingAcStats || isLoadingActive || isLoadingCalon || isLoadingReg || isLoadingNonActive);
 
   // Stat Cards: Scoped to Jurusan, Kelas, or Global
   const statCards = useMemo(() => {
@@ -354,7 +361,7 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
       },
       {
         title: "Siswa Tidak Aktif",
-        value: stats.total_siswa ? (stats.total_siswa - activeSiswaCount) : 0,
+        value: nonActiveSiswaCount,
         icon: <UserX size={14} />,
         gradient: "from-slate-400 to-slate-600",
         subtitle: "Lulus / Mutasi / Keluar"
@@ -374,6 +381,7 @@ export const SiswaView: React.FC<UniversalSiswaViewProps> = React.memo(({
     effectiveJurusanId, 
     effectiveJurusanNama, 
     activeSiswaCount, 
+    nonActiveSiswaCount,
     rombelJurusanCount, 
     alumniCount, 
     calonSiswaCount, 
