@@ -24,6 +24,31 @@ export interface ImportBundleOptions {
   cloneMode?: boolean;
 }
 
+export interface BackupJobProgress {
+  id: string;
+  type: 'EXPORT' | 'RESTORE';
+  tenantId?: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  progress: number;
+  stage: string;
+  message: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  error?: string;
+  result?: {
+    filepath?: string;
+    filename?: string;
+    size?: number;
+    checksum_sha256?: string;
+    manifest?: any;
+    restoredTables?: Record<string, number>;
+    targetSubdomain?: string;
+    targetTenantId?: string;
+    isCloned?: boolean;
+  };
+}
+
 export const backupApi = {
   list: async () => {
     return requestWithFallback<StandardApiResponse<Backup[]>>('get', '/admin/backups', {});
@@ -83,6 +108,65 @@ export const backupApi = {
       timeout: 600000 // 10 menit untuk dataset ribuan siswa & guru
     });
     return res.data;
+  },
+  // Asynchronous Background Job APIs (Mitigasi Timeout Skala Besar)
+  startExportJob: async (tenantId?: string, options?: { includeAttendance?: boolean; includeMedia?: boolean }) => {
+    const res = await axios.post('/academic/backup/export-async', {
+      tenantId: tenantId || undefined,
+      includeAttendance: options?.includeAttendance !== false,
+      includeMedia: options?.includeMedia !== false,
+    });
+    return res.data;
+  },
+  startRestoreJob: async (file: File, options?: string | ImportBundleOptions) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const opts: ImportBundleOptions = typeof options === 'string'
+      ? { targetTenantId: options }
+      : (options || {});
+
+    const params: Record<string, any> = {};
+    if (opts.targetTenantId) params.targetTenantId = opts.targetTenantId;
+    if (opts.targetSubdomain) params.targetSubdomain = opts.targetSubdomain;
+    if (opts.targetName) params.targetName = opts.targetName;
+    if (opts.cloneMode !== undefined) params.cloneMode = opts.cloneMode;
+
+    const res = await axios.post('/academic/backup/import-async', formData, {
+      params,
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 600000
+    });
+    return res.data;
+  },
+  getJobStatus: async (jobId: string): Promise<BackupJobProgress> => {
+    const res = await axios.get(`/academic/backup/jobs/${jobId}/status`);
+    return res.data?.data;
+  },
+  downloadJobResult: async (jobId: string): Promise<Blob> => {
+    const res = await axios.get(`/academic/backup/jobs/${jobId}/download`, {
+      responseType: 'blob'
+    });
+    return res.data as Blob;
+  },
+  pollJobUntilDone: async (jobId: string, onProgress?: (job: BackupJobProgress) => void): Promise<BackupJobProgress> => {
+    const startTime = Date.now();
+    const maxWaitMs = 30 * 60 * 1000; // 30 menit
+
+    while (Date.now() - startTime < maxWaitMs) {
+      const job = await backupApi.getJobStatus(jobId);
+      if (onProgress) {
+        onProgress(job);
+      }
+      if (job.status === 'COMPLETED') {
+        return job;
+      }
+      if (job.status === 'FAILED') {
+        throw new Error(job.error || job.message || 'Pekerjaan background gagal.');
+      }
+      await new Promise(r => setTimeout(r, 1500));
+    }
+    throw new Error('Pekerjaan memakan waktu terlalu lama (melebihi batas 30 menit).');
   },
   getReplicationConfig: async () => {
     return requestWithFallback<StandardApiResponse<ReplicationConfig>>('get', '/admin/backups/replication/config', {});

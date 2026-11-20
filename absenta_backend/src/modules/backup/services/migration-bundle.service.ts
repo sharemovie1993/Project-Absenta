@@ -67,6 +67,14 @@ export interface ExportBundleResult {
   size: number;
 }
 
+export interface ExportProgressUpdate {
+  stage: 'init' | 'database' | 'media' | 'packaging' | 'finalizing';
+  processed: number;
+  total: number;
+  percentage: number;
+  message: string;
+}
+
 export interface RestoreBundleOptions {
   targetTenantId?: string;
   targetSubdomain?: string;
@@ -332,9 +340,27 @@ export class MigrationBundleService {
   /**
    * Mengemas seluruh data tenant, master, dan berkas media ke dalam file sementara .absenta di disk (streaming-friendly)
    */
-  async createExportBundleFile(tenantId: string, options: ExportBundleOptions = {}): Promise<ExportBundleResult> {
+  async createExportBundleFile(
+    tenantId: string, 
+    options: ExportBundleOptions = {},
+    progressCallback?: (progress: ExportProgressUpdate) => void
+  ): Promise<ExportBundleResult> {
+    const reportProgress = (p: ExportProgressUpdate) => {
+      if (progressCallback) {
+        try { progressCallback(p); } catch (_) {}
+      }
+    };
+
     const includeAttendance = options.includeAttendance !== false;
     const includeMedia = options.includeMedia !== false;
+
+    reportProgress({
+      stage: 'init',
+      processed: 0,
+      total: 100,
+      percentage: 5,
+      message: 'Menyiapkan metadata tenant...'
+    });
 
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId }
@@ -378,7 +404,22 @@ export class MigrationBundleService {
     }
     dataTables['Tenant'] = [cleanTenant];
 
+    let modelIdx = 0;
+    const totalModels = models.length;
+
     for (const modelName of models) {
+      modelIdx++;
+      if (modelIdx % 4 === 0 || modelIdx === totalModels) {
+        const pct = 5 + Math.round((modelIdx / Math.max(totalModels, 1)) * 30);
+        reportProgress({
+          stage: 'database',
+          processed: modelIdx,
+          total: totalModels,
+          percentage: pct,
+          message: `Mengekstrak data tabel ${modelName} (${modelIdx}/${totalModels})...`
+        });
+      }
+
       if (!includeAttendance && attendanceModels.has(modelName)) {
         continue;
       }
@@ -449,7 +490,22 @@ export class MigrationBundleService {
 
     if (includeMedia && mediaKeysToCollect.size > 0) {
       console.log(`[MigrationBundle] Mengemas ${mediaKeysToCollect.size} berkas media untuk tenant ${tenant.name}...`);
+      let mediaProcessed = 0;
+      const totalMedia = mediaKeysToCollect.size;
+
       for (const storageKey of mediaKeysToCollect) {
+        mediaProcessed++;
+        if (mediaProcessed % 15 === 0 || mediaProcessed === totalMedia) {
+          const pct = 35 + Math.round((mediaProcessed / Math.max(totalMedia, 1)) * 45);
+          reportProgress({
+            stage: 'media',
+            processed: mediaProcessed,
+            total: totalMedia,
+            percentage: Math.min(pct, 80),
+            message: `Mengemas berkas media ${mediaProcessed}/${totalMedia} (${(mediaSizeBytes / 1024 / 1024).toFixed(1)} MB)...`
+          });
+        }
+
         try {
           const fileBuf = await storageService.readFileBuffer(storageKey);
           if (fileBuf && fileBuf.length > 0) {
@@ -550,8 +606,24 @@ export class MigrationBundleService {
     const filename = `absenta_backup_${safeSubdomain}_${timestamp}.absenta`;
     const tempFilePath = path.join(os.tmpdir(), `${filename}_${crypto.randomBytes(4).toString('hex')}.tmp`);
 
+    reportProgress({
+      stage: 'packaging',
+      processed: 85,
+      total: 100,
+      percentage: 85,
+      message: 'Menulis arsip ZIP cadangan ke disk server...'
+    });
+
     console.log(`[MigrationBundle] Menulis arsip ZIP ke berkas sementara di disk: ${tempFilePath}...`);
     await zip.writeZipPromise(tempFilePath);
+
+    reportProgress({
+      stage: 'packaging',
+      processed: 95,
+      total: 100,
+      percentage: 95,
+      message: 'Menghitung checksum SHA-256 integritas berkas...'
+    });
 
     // Hitung SHA-256 via stream baca berkas di disk tanpa memuat seluruh berkas ke RAM
     const hash = crypto.createHash('sha256');
@@ -564,6 +636,14 @@ export class MigrationBundleService {
 
     const stat = await fs.promises.stat(tempFilePath);
     console.log(`[MigrationBundle] Sukses mengemas ${filename} (${(stat.size / 1024 / 1024).toFixed(2)} MB), SHA-256: ${sha256}`);
+
+    reportProgress({
+      stage: 'finalizing',
+      processed: 100,
+      total: 100,
+      percentage: 100,
+      message: 'Paket cadangan selesai dikemas dan siap diunduh!'
+    });
 
     return {
       filepath: tempFilePath,

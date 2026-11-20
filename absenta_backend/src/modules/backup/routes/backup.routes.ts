@@ -34,6 +34,22 @@ export async function backupRoutes(fastify: any) {
     fastify.post('/admin/backups/inspect-bundle', { bodyLimit: 2147483648, preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.inspectBundle);
     fastify.post('/admin/backups/import-bundle', { bodyLimit: 2147483648, preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.importBundle);
 
+    // Asynchronous Background Job Endpoints (Mitigasi Timeout & Skala Enterprise)
+    fastify.post('/academic/backup/export-async', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.startExportJob);
+    fastify.post('/academic/backup/import-async', { bodyLimit: 2147483648, preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.startRestoreJob);
+    fastify.get('/academic/backup/jobs/:id/status', { preHandler: [determineDataScope()] }, BackupController.getJobStatus);
+    fastify.get('/academic/backup/jobs/:id/download', { preHandler: [determineDataScope()] }, BackupController.downloadJobResult);
+    fastify.get('/academic/backup/jobs/:id/stream', { preHandler: [determineDataScope()] }, BackupController.streamJobProgress);
+
+    fastify.post('/settings/backup/export-async', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.startExportJob);
+    fastify.post('/settings/backup/import-async', { bodyLimit: 2147483648, preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.startRestoreJob);
+
+    fastify.post('/admin/backups/export-async', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.startExportJob);
+    fastify.post('/admin/backups/import-async', { bodyLimit: 2147483648, preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.startRestoreJob);
+    fastify.get('/admin/backups/jobs/:id/status', { preHandler: [determineDataScope()] }, BackupController.getJobStatus);
+    fastify.get('/admin/backups/jobs/:id/download', { preHandler: [determineDataScope()] }, BackupController.downloadJobResult);
+    fastify.get('/admin/backups/jobs/:id/stream', { preHandler: [determineDataScope()] }, BackupController.streamJobProgress);
+
     // Replication & Storage Mirroring Endpoints (SuperAdmin)
     fastify.get('/admin/backups/replication/config', { preHandler: [requireCapability("academic.backups.view.list"), determineDataScope()] }, BackupController.getReplicationConfig);
     fastify.post('/admin/backups/replication/config', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.saveReplicationConfig);

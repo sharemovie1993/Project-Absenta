@@ -68,21 +68,33 @@ const BackupPage: React.FC = React.memo(() => {
     }
 
     setIsExporting(true);
-    const toastId = toast.loading('Sedang mengemas database dan file media...');
+    const toastId = toast.loading('Memulai pekerjaan pencadangan di latar belakang...');
 
     try {
-      const blob = await backupApi.exportBundle(tenantId, {
+      // 1. Kirim job ke backend (instan < 100ms)
+      const jobRes = await backupApi.startExportJob(tenantId, {
         includeAttendance,
         includeMedia
       });
 
+      const jobId = jobRes?.data?.id;
+      if (!jobId) {
+        throw new Error('Gagal mendapatkan ID Pekerjaan Pencadangan.');
+      }
+
+      // 2. Pantau progres realtime dari server
+      const completedJob = await backupApi.pollJobUntilDone(jobId, (j) => {
+        toast.loading(`${j.message || 'Mengemas data...'} (${j.progress}%)`, { id: toastId });
+      });
+
+      // 3. Unduh berkas hasil jadi langsung dari server
+      const blob = await backupApi.downloadJobResult(jobId);
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const timestamp = new Date().toISOString().slice(0, 10);
-      const rawName = user?.tenant?.name || 'sekolah';
-      const cleanName = rawName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-      a.download = `absenta_backup_${cleanName}_${timestamp}.absenta`;
+      const downloadFilename = completedJob.result?.filename || `absenta_backup_${new Date().toISOString().slice(0, 10)}.absenta`;
+      a.download = downloadFilename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -135,9 +147,12 @@ const BackupPage: React.FC = React.memo(() => {
   const executeImport = useCallback(async () => {
     if (!importFile || !manifest) return;
 
+    const totalRecords = manifest.stats?.total_records || (manifest.stats as any)?.total_db_records || 0;
+    const totalMedia = manifest.stats?.total_media_files || 0;
+
     const ok = await confirm({
       title: 'Mulai Pemulihan Data Sekolah?',
-      description: `Sistem akan memulihkan data sekolah "${manifest.source_tenant.name}" (${manifest.stats.total_db_records} data database, ${manifest.stats.total_media_files} file media). Data duplikat akan otomatis dilewati secara aman.`,
+      description: `Sistem akan memulihkan data sekolah "${manifest.source_tenant.name}" (${totalRecords} data database, ${totalMedia} file media). Data duplikat akan otomatis dilewati secara aman.`,
       confirmText: 'Mulai Pemulihan',
       cancelText: 'Batalkan',
       style: 'primary'
@@ -147,43 +162,39 @@ const BackupPage: React.FC = React.memo(() => {
 
     try {
       setLoadingImport(true);
-      setImportProgress(15);
-      setRestoreMessage('Mengunggah & mengekstrak berkas .absenta...');
+      setImportProgress(5);
+      setRestoreMessage('Mengunggah berkas cadangan ke server...');
 
-      progressIntervalRef.current = setInterval(() => {
-        setImportProgress(prev => (prev < 90 ? prev + 8 : prev));
-      }, 350);
+      // 1. Kirim file ke backend (streamed langsung ke disk sementara di server)
+      const jobRes = await backupApi.startRestoreJob(importFile, user?.tenant_id);
+      const jobId = jobRes?.data?.id;
 
-      const res = await backupApi.importBundle(importFile, user?.tenant_id);
-
-      if (progressIntervalRef.current !== null) {
-        clearInterval(progressIntervalRef.current);
-        progressIntervalRef.current = null;
+      if (!jobId) {
+        throw new Error('Gagal mendapatkan ID Pekerjaan Pemulihan.');
       }
+
+      // 2. Pantau progres pemulihan realtime dari background worker
+      const completedJob = await backupApi.pollJobUntilDone(jobId, (j) => {
+        setImportProgress(j.progress);
+        setRestoreMessage(j.message);
+      });
+
       setImportProgress(100);
-      setRestoreMessage('Pemulihan data dan berkas media selesai!');
+      setRestoreMessage(completedJob.message || 'Pemulihan data dan berkas media selesai!');
 
-      if (res.success) {
-        toast.success(res.message || 'Sistem sekolah berhasil dipulihkan!');
-        setImportFile(null);
-        setManifest(null);
-        loadHistory();
-        queryClient.invalidateQueries();
-      } else {
-        toast.error(res.message || 'Pemulihan data gagal');
-      }
+      toast.success(completedJob.message || 'Sistem sekolah berhasil dipulihkan!');
+      setImportFile(null);
+      setManifest(null);
+      loadHistory();
+      queryClient.invalidateQueries();
     } catch (err: any) {
-      if (progressIntervalRef.current !== null) {
-        clearInterval(progressIntervalRef.current);
-        progressIntervalRef.current = null;
-      }
       console.error('Import bundle failed:', err);
       toast.error(err?.response?.data?.message || err.message || 'Gagal memulihkan sistem');
     } finally {
       setTimeout(() => {
         setLoadingImport(false);
         setImportProgress(0);
-      }, 1200);
+      }, 1500);
     }
   }, [importFile, manifest, confirm, user?.tenant_id, loadHistory, queryClient]);
 

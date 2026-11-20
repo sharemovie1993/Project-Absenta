@@ -1,11 +1,15 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
+import crypto from 'crypto';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { LocalDiskStorage } from '@/infra/storage/LocalDiskStorage';
 import { getRestoreQueue } from '../restore.queue';
 import { backupService } from '../services/backup.service';
 import { migrationBundleService } from '../services/migration-bundle.service';
+import { backupJobService } from '../services/backup-job.service';
 import { backupReplicationService } from '../services/backup-replication.service';
+import { RedisSubscriber } from '@/infra/redis/redis-subscriber';
 import { Prisma, BackupStatus } from '@prisma/client';
 import { prisma } from '@/utils/prisma';
 import { getDynamicTenantModels } from '@/constants/backup.constants';
@@ -853,6 +857,215 @@ export class BackupController {
         message: 'Gagal melakukan reset pabrik: ' + (err?.message || 'Internal Server Error')
       });
     }
+  }
+
+  // ==========================================
+  // ASYNCHRONOUS BACKGROUND JOB CONTROLLERS
+  // (Mitigasi Timeout untuk Dataset Besar)
+  // ==========================================
+
+  static async startExportJob(req: any, reply: any) {
+    try {
+      const tenantId = req.query?.tenantId || req.body?.tenantId || req.tenantId || req.dataScope?.tenantId || req.user?.tenantId || req.user?.tenant_id;
+      if (!tenantId) {
+        return reply.status(400).send({ success: false, message: 'Tenant ID wajib ditentukan' });
+      }
+
+      const includeAttendance = req.query?.includeAttendance !== 'false' && req.body?.includeAttendance !== false;
+      const includeMedia = req.query?.includeMedia !== 'false' && req.body?.includeMedia !== false;
+
+      const job = await backupJobService.startExportJob(tenantId, {
+        includeAttendance,
+        includeMedia
+      });
+
+      return reply.status(202).send({
+        success: true,
+        data: job,
+        message: 'Pekerjaan pencadangan dimulai di latar belakang.'
+      });
+    } catch (error: any) {
+      console.error('Error starting export job:', error);
+      return reply.status(500).send({
+        success: false,
+        message: 'Gagal memulai pekerjaan pencadangan: ' + (error?.message || 'Error')
+      });
+    }
+  }
+
+  static async startRestoreJob(req: any, reply: any) {
+    let tempFilePath: string | null = null;
+    try {
+      const filePart = await req.file();
+      if (!filePart) {
+        return reply.status(400).send({ success: false, message: 'Berkas .absenta wajib diunggah' });
+      }
+
+      const fields: Record<string, any> = filePart.fields || {};
+      const readField = (key: string): any => {
+        const f = fields[key];
+        if (f && typeof f === 'object' && 'value' in f) return f.value;
+        return undefined;
+      };
+
+      const cloneModeRaw = req.query?.cloneMode ?? readField('cloneMode') ?? req.body?.cloneMode;
+      const cloneMode = cloneModeRaw === true || cloneModeRaw === 'true' || cloneModeRaw === '1' || cloneModeRaw === 1;
+
+      const targetSubdomain = (
+        req.query?.targetSubdomain ||
+        readField('targetSubdomain') ||
+        req.body?.targetSubdomain
+      )?.toString().trim();
+
+      const targetName = (
+        req.query?.targetName ||
+        readField('targetName') ||
+        req.body?.targetName
+      )?.toString().trim();
+
+      const rawTargetTenantId = req.query?.targetTenantId || readField('targetTenantId') || req.body?.targetTenantId;
+      const fallbackTenantId = (cloneMode || targetSubdomain)
+        ? undefined
+        : (req.tenantId || req.dataScope?.tenantId || req.user?.tenantId || req.user?.tenant_id);
+      const targetTenantId = rawTargetTenantId || fallbackTenantId;
+
+      // Stream file unggahan langsung ke disk sementara (bukan buffer RAM)
+      tempFilePath = path.join(os.tmpdir(), `upload_restore_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.absenta`);
+      const writeStream = fs.createWriteStream(tempFilePath);
+      await new Promise<void>((resolve, reject) => {
+        filePart.file.pipe(writeStream);
+        filePart.file.on('end', () => resolve());
+        filePart.file.on('error', (err: any) => reject(err));
+        writeStream.on('error', (err: any) => reject(err));
+      });
+
+      const job = await backupJobService.startRestoreJob(tempFilePath, {
+        targetTenantId,
+        targetSubdomain,
+        targetName,
+        cloneMode,
+        isInitialFreshSetup: false,
+        clearExisting: false
+      });
+
+      return reply.status(202).send({
+        success: true,
+        data: job,
+        message: 'Pekerjaan pemulihan dimulai di latar belakang.'
+      });
+    } catch (error: any) {
+      if (tempFilePath && fs.existsSync(tempFilePath)) {
+        fs.unlink(tempFilePath, () => {});
+      }
+      console.error('Error starting restore job:', error);
+      return reply.status(500).send({
+        success: false,
+        message: 'Gagal memulai pekerjaan pemulihan: ' + (error?.message || 'Error')
+      });
+    }
+  }
+
+  static async getJobStatus(req: any, reply: any) {
+    try {
+      const { id } = req.params;
+      const job = await backupJobService.getJob(id);
+      if (!job) {
+        return reply.status(404).send({ success: false, message: 'Pekerjaan tidak ditemukan' });
+      }
+      return reply.send({ success: true, data: job });
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, message: err?.message || 'Error' });
+    }
+  }
+
+  static async downloadJobResult(req: any, reply: any) {
+    try {
+      const { id } = req.params;
+      const job = await backupJobService.getJob(id);
+      if (!job) {
+        return reply.status(404).send({ success: false, message: 'Pekerjaan tidak ditemukan' });
+      }
+
+      if (job.status !== 'COMPLETED' || !job.result?.filepath) {
+        return reply.status(400).send({
+          success: false,
+          message: `Berkas belum siap diunduh (Status saat ini: ${job.status})`
+        });
+      }
+
+      const { filepath, filename, size, manifest } = job.result;
+      if (!fs.existsSync(filepath)) {
+        return reply.status(404).send({
+          success: false,
+          message: 'Berkas arsip fisik telah kedaluwarsa atau dibersihkan dari server.'
+        });
+      }
+
+      reply.header('Content-Type', 'application/octet-stream');
+      reply.header('Content-Disposition', `attachment; filename="${filename || 'absenta_backup.absenta'}"`);
+      if (size) reply.header('Content-Length', size.toString());
+      if (manifest) reply.header('X-Absenta-Manifest', encodeURIComponent(JSON.stringify(manifest)));
+
+      return reply.send(fs.createReadStream(filepath));
+    } catch (err: any) {
+      console.error('Error downloading job result:', err);
+      return reply.status(500).send({ success: false, message: 'Gagal mengunduh berkas: ' + (err?.message || 'Error') });
+    }
+  }
+
+  static async streamJobProgress(req: any, reply: any) {
+    const { id } = req.params;
+    const job = await backupJobService.getJob(id);
+    if (!job) {
+      return reply.status(404).send({ success: false, message: 'Pekerjaan tidak ditemukan' });
+    }
+
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*'
+    });
+
+    // Kirim status awal seketika
+    reply.raw.write(`data: ${JSON.stringify(job)}\n\n`);
+
+    if (job.status === 'COMPLETED' || job.status === 'FAILED') {
+      reply.raw.end();
+      return;
+    }
+
+    const subscriber = new RedisSubscriber();
+    const channel = `backup:job:stream:${id}`;
+
+    try {
+      await subscriber.subscribe(channel, (message: string) => {
+        try {
+          reply.raw.write(`data: ${message}\n\n`);
+          const parsed = JSON.parse(message);
+          if (parsed.status === 'COMPLETED' || parsed.status === 'FAILED') {
+            setTimeout(() => {
+              try { reply.raw.end(); } catch (_) {}
+            }, 1000);
+          }
+        } catch (_) {}
+      });
+    } catch (subErr) {
+      console.warn('[streamJobProgress] Redis subscriber fallback active:', subErr);
+    }
+
+    const heartbeat = setInterval(() => {
+      try {
+        reply.raw.write(`: heartbeat\n\n`);
+      } catch (_) {
+        clearInterval(heartbeat);
+      }
+    }, 15000);
+
+    req.raw.on('close', async () => {
+      clearInterval(heartbeat);
+      await subscriber.unsubscribe(channel).catch(() => {});
+    });
   }
 }
 
