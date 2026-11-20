@@ -1807,6 +1807,13 @@ export class RaporStagingService {
       );
     }
 
+    // Ambil info status aktif dari target Tahun Pelajaran untuk integritas SSOT penugasan
+    const targetTp = await prisma.tahunPelajaran.findUnique({
+      where: { id: targetTpId },
+      select: { id: true, is_active: true },
+    });
+    const isTargetTpActive = Boolean(targetTp?.is_active);
+
     // 2. Backfill Penugasan Wali Kelas ke OrganizationalAssignment
     let assignedWalasCount = 0;
     const affectedUserIds: string[] = [];
@@ -1990,7 +1997,8 @@ export class RaporStagingService {
             where: { id: existingClassAssignment.id },
             data: {
               user_id: guruUserId,
-              is_active: true,
+              is_active: isTargetTpActive,
+              end_date: isTargetTpActive ? null : new Date(),
               updated_at: new Date(),
             },
           });
@@ -2012,7 +2020,8 @@ export class RaporStagingService {
             await prisma.organizationalAssignment.update({
               where: { id: existingUserAssignment.id },
               data: {
-                is_active: true,
+                is_active: isTargetTpActive,
+                end_date: isTargetTpActive ? null : new Date(),
                 updated_at: new Date(),
               },
             });
@@ -2025,7 +2034,8 @@ export class RaporStagingService {
                 user_id: guruUserId,
                 kelas_id: kelasId,
                 tahun_pelajaran_id: targetTpId,
-                is_active: true,
+                is_active: isTargetTpActive,
+                end_date: isTargetTpActive ? null : new Date(),
                 is_leader: false,
                 custom_title: `Wali Kelas ${item.kelasNama || ''}`.trim(),
               },

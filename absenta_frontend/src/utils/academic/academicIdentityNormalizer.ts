@@ -596,7 +596,7 @@ export function normalizeTeacherIdentity(raw: any): TeacherIdentity {
   );
 
   // 4. Wali Kelas Resolution (Ketat: Hanya true jika terdaftar resmi & ada objek/nama kelas)
-  const rawWaliKelasObj = raw.walikelas_kelas || raw.wali_kelas_di;
+  const rawWaliKelasObj = raw.wali_kelas_di || raw.walikelas_kelas;
   const waliKelasDi = rawWaliKelasObj?.nama_kelas || rawWaliKelasObj?.nama || (typeof rawWaliKelasObj === 'string' ? rawWaliKelasObj : null);
   const waliKelasId = rawWaliKelasObj?.id || null;
   const isWaliKelas = Boolean(

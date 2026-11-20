@@ -901,6 +901,20 @@ export class AuthService {
     response.unit_ids = orgCtx.unit_ids;
     response.kelas_ids = orgCtx.kelas_ids;
 
+    // Fetch active Tahun Pelajaran for strict academic context enforcement
+    let activeTpId: string | null = null;
+    try {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: user.tenant_id, is_active: true },
+        select: { id: true },
+      });
+      activeTpId = activeTp?.id || null;
+    } catch {
+      activeTpId = null;
+    }
+
+    const now = new Date();
+
     // Attach kaprog_jurusan if user has KAPROG position
     if (response.position_codes.includes('KAPROG')) {
       try {
@@ -910,11 +924,28 @@ export class AuthService {
             tenant_id: user.tenant_id,
             is_active: true,
             Position: { code: 'KAPROG' },
-            unit_id: { not: null }
+            unit_id: { not: null },
+            AND: [
+              {
+                OR: [
+                  { end_date: null },
+                  { end_date: { gte: now } },
+                ],
+              },
+              activeTpId
+                ? {
+                    OR: [
+                      { tahun_pelajaran_id: activeTpId },
+                      { tahun_pelajaran_id: null },
+                    ],
+                  }
+                : {},
+            ],
           },
           include: {
             Unit: { select: { id: true, nama: true, singkatan: true, kode: true, logo_url: true } }
-          }
+          },
+          orderBy: [{ created_at: 'desc' }]
         });
         if (kaprogAssignment?.Unit) {
           response.kaprog_jurusan = {
@@ -944,6 +975,22 @@ export class AuthService {
               code: { in: ['WALIKELAS', 'WALI_KELAS', 'WALI'] }
             },
             kelas_id: { not: null },
+            AND: [
+              {
+                OR: [
+                  { end_date: null },
+                  { end_date: { gte: now } },
+                ],
+              },
+              activeTpId
+                ? {
+                    OR: [
+                      { tahun_pelajaran_id: activeTpId },
+                      { tahun_pelajaran_id: null },
+                    ],
+                  }
+                : {},
+            ],
           },
           include: {
             Kelas: {
@@ -954,6 +1001,7 @@ export class AuthService {
               },
             },
           },
+          orderBy: [{ created_at: 'desc' }],
         });
         if (waliAssignment?.Kelas) {
           response.walikelas_kelas = waliAssignment.Kelas;

@@ -397,20 +397,24 @@ export const UnifiedStaffDashboard: React.FC = () => {
   }, [user, waliKelasAssignments, guruProfile]);
 
   const waliKelasId = useMemo(() => {
-    if ((user as any)?.walikelas_kelas?.id) return (user as any).walikelas_kelas.id;
     if (waliKelasStrukturItem?.Kelas?.id) return waliKelasStrukturItem.Kelas.id;
     if (waliKelasStrukturItem?.StrukturOrganisasi?.Kelas?.id) return waliKelasStrukturItem.StrukturOrganisasi.Kelas.id;
     if (waliKelasStrukturItem?.StrukturOrganisasi?.kelas_id) return waliKelasStrukturItem.StrukturOrganisasi.kelas_id;
     if (waliKelasStrukturItem?.kelas_id) return waliKelasStrukturItem.kelas_id;
-    return teacherIdentity.waliKelasId || guruProfile?.wali_kelas_di?.id || null;
+    if (teacherIdentity.waliKelasId) return teacherIdentity.waliKelasId;
+    if (guruProfile?.wali_kelas_di?.id) return guruProfile.wali_kelas_di.id;
+    if ((user as any)?.walikelas_kelas?.id) return (user as any).walikelas_kelas.id;
+    return null;
   }, [waliKelasStrukturItem, teacherIdentity.waliKelasId, guruProfile, user]);
 
   const waliKelasNama = useMemo(() => {
     if (!isWaliKelas && !waliKelasStrukturItem && !waliKelasId) return null;
-    if ((user as any)?.walikelas_kelas?.nama_kelas) return (user as any).walikelas_kelas.nama_kelas;
     if (waliKelasStrukturItem?.Kelas?.nama_kelas) return waliKelasStrukturItem.Kelas.nama_kelas;
     if (waliKelasStrukturItem?.StrukturOrganisasi?.Kelas?.nama_kelas) return waliKelasStrukturItem.StrukturOrganisasi.Kelas.nama_kelas;
-    return teacherIdentity.waliKelasDi || guruProfile?.wali_kelas_di?.nama_kelas || null;
+    if (teacherIdentity.waliKelasDi) return teacherIdentity.waliKelasDi;
+    if (guruProfile?.wali_kelas_di?.nama_kelas) return guruProfile.wali_kelas_di.nama_kelas;
+    if ((user as any)?.walikelas_kelas?.nama_kelas) return (user as any).walikelas_kelas.nama_kelas;
+    return null;
   }, [isWaliKelas, waliKelasStrukturItem, waliKelasId, teacherIdentity.waliKelasDi, guruProfile, user]);
 
   const handleTabChange = React.useCallback((newTab: string) => {

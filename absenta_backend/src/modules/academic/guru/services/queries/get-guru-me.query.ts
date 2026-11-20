@@ -98,7 +98,7 @@ export async function getGuruMeQuery(userId: string, tenantId: string): Promise<
         },
       },
     },
-    orderBy: { created_at: 'asc' },
+    orderBy: { created_at: 'desc' },
   });
 
   // 3. Ekstrak data jabatan
