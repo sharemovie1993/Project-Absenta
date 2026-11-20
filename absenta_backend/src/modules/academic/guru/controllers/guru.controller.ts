@@ -101,6 +101,7 @@ export class GuruController {
       const jenis_ptk = request.query.jenis_ptk || undefined;
       const tahun_pelajaran_id = request.query.tahun_pelajaran_id || undefined;
       const position_code = request.query.position_code || undefined;
+      const is_app_installed = request.query.is_app_installed || undefined;
 
       const result = await guruService.getAllGuru(scope, {
         page,
@@ -112,6 +113,7 @@ export class GuruController {
         jenis_ptk,
         tahun_pelajaran_id,
         position_code,
+        is_app_installed,
       });
 
       reply.status(200);
@@ -773,6 +775,111 @@ export class GuruController {
       return reply.status(500).send({
         success: false,
         message: error?.message || 'Gagal melakukan normalisasi nomor WhatsApp guru',
+      });
+    }
+  }
+
+  async recordAppTelemetry(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId || request.dataScope?.tenantId;
+      const userId = request.user?.id || request.user?.userId;
+
+      if (!tenantId || !userId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: Missing credentials' });
+      }
+
+      const {
+        is_installed = true,
+        app_version,
+        ota_version,
+        device_model,
+        device_os,
+        device_uuid,
+      } = request.body || {};
+
+      const guru = await prisma.guru.findFirst({
+        where: {
+          tenant_id: tenantId,
+          user_id: userId,
+        },
+        select: { id: true },
+      });
+
+      if (!guru) {
+        return reply.status(404).send({
+          success: false,
+          message: 'Profil guru tidak ditemukan',
+        });
+      }
+
+      const updated = await prisma.guru.update({
+        where: { id: guru.id },
+        data: {
+          is_app_installed: Boolean(is_installed),
+          app_version: app_version ? String(app_version) : undefined,
+          ota_version: ota_version ? String(ota_version) : undefined,
+          device_model: device_model ? String(device_model) : undefined,
+          device_os: device_os ? String(device_os) : undefined,
+          device_uuid: device_uuid ? String(device_uuid) : undefined,
+          last_app_seen_at: new Date(),
+        },
+        select: {
+          id: true,
+          is_app_installed: true,
+          app_version: true,
+          ota_version: true,
+          device_model: true,
+          device_os: true,
+          last_app_seen_at: true,
+        },
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Telemetry aplikasi guru berhasil diperbarui',
+        data: updated,
+      });
+    } catch (error: any) {
+      console.error('Error in recordAppTelemetry (Guru):', error);
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Internal server error',
+      });
+    }
+  }
+
+  async getAppTelemetryStats(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId || request.dataScope?.tenantId;
+      if (!tenantId) {
+        return reply.status(400).send({ success: false, message: 'Context Tenant tidak ditemukan' });
+      }
+
+      const whereClause: any = {
+        tenant_id: tenantId,
+      };
+
+      const [totalGuru, totalInstalled] = await Promise.all([
+        prisma.guru.count({ where: whereClause }),
+        prisma.guru.count({ where: { ...whereClause, is_app_installed: true } }),
+      ]);
+
+      const percentage = totalGuru > 0 ? Math.round((totalInstalled / totalGuru) * 100) : 0;
+
+      return reply.status(200).send({
+        success: true,
+        data: {
+          total_guru: totalGuru,
+          total_installed: totalInstalled,
+          total_not_installed: Math.max(0, totalGuru - totalInstalled),
+          percentage,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error in getAppTelemetryStats (Guru):', error);
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Internal server error',
       });
     }
   }

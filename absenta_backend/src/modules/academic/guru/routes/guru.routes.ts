@@ -37,6 +37,26 @@ export default async function guruRoutes(fastify: any) {
     return guruController.updateGuruMe(request, reply);
   });
 
+  // POST /guru/telemetry - Record guru mobile app installation and telemetry
+  fastify.post('/telemetry', {
+    preHandler: [
+      organizationalScopeMiddleware,
+      determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return guruController.recordAppTelemetry(request, reply);
+  });
+
+  // GET /guru/telemetry/stats - Get telemetry install statistics for guru
+  fastify.get('/telemetry/stats', {
+    preHandler: [
+      organizationalScopeMiddleware,
+      determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return guruController.getAppTelemetryStats(request, reply);
+  });
+
   // POST /guru/normalize-wa-phones - Normalize WA phone numbers mass
   fastify.post('/normalize-wa-phones', {
     preHandler: [

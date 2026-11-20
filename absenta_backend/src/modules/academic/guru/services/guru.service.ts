@@ -103,6 +103,13 @@ export interface GuruResponse {
   pendidikan_terakhir?: string | null;
   jenis_ptk: string | null;
   max_jp?: number | null;
+  is_app_installed?: boolean | null;
+  app_version?: string | null;
+  ota_version?: string | null;
+  device_model?: string | null;
+  device_os?: string | null;
+  device_uuid?: string | null;
+  last_app_seen_at?: Date | null;
   created_at: Date;
   updated_at: Date;
   User?: {
@@ -122,6 +129,7 @@ export interface PaginationParams {
   jenis_ptk?: string;
   tahun_pelajaran_id?: string;
   position_code?: string;
+  is_app_installed?: boolean | string;
 }
 
 export interface PaginatedGuruResponse {

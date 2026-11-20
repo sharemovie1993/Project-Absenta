@@ -37,6 +37,13 @@ export interface Guru {
   jabatan?: string;
   tmt_guru?: string;
   jenis_ptk?: string;
+  is_app_installed?: boolean | null;
+  app_version?: string | null;
+  ota_version?: string | null;
+  device_model?: string | null;
+  device_os?: string | null;
+  device_uuid?: string | null;
+  last_app_seen_at?: string | Date | null;
   wali_kelas_di?: { id: string; nama_kelas: string };
   active_positions?: string[];
   organizational_assignments?: any[];

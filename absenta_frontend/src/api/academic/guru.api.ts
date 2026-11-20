@@ -122,7 +122,8 @@ export const getGuruList = async (
   jenis_kelamin = "",
   jenis_ptk = "",
   tahun_pelajaran_id = "",
-  position_code = ""
+  position_code = "",
+  is_app_installed: boolean | string = ""
 ): Promise<PaginatedGuruResponse> => {
   const params = new URLSearchParams({
     page: String(page),
@@ -134,10 +135,39 @@ export const getGuruList = async (
   if (jenis_ptk && jenis_ptk !== 'ALL') params.append('jenis_ptk', jenis_ptk);
   if (tahun_pelajaran_id && tahun_pelajaran_id !== 'ALL') params.append('tahun_pelajaran_id', tahun_pelajaran_id);
   if (position_code && position_code !== 'ALL') params.append('position_code', position_code);
+  if (is_app_installed !== undefined && is_app_installed !== '' && is_app_installed !== 'ALL') {
+    params.append('is_app_installed', String(is_app_installed));
+  }
 
   return requestWithFallback<PaginatedGuruResponse>('get', `/academic/guru?${params.toString()}`, {
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
+};
+
+export interface GuruAppTelemetryPayload {
+  is_installed: boolean;
+  platform?: string;
+  app_version?: string;
+  ota_version?: string;
+  device_model?: string;
+  device_os?: string;
+  device_uuid?: string;
+}
+
+export const syncGuruAppTelemetryApi = async (data: GuruAppTelemetryPayload): Promise<{ success: boolean; data?: any }> => {
+  return requestWithFallback<{ success: boolean; data?: any }>('post', '/academic/guru/telemetry', { data });
+};
+
+export const getGuruAppTelemetryStats = async (): Promise<{
+  success: boolean;
+  data: {
+    total_guru: number;
+    total_installed: number;
+    total_not_installed: number;
+    percentage: number;
+  };
+}> => {
+  return requestWithFallback<{ success: boolean; data: any }>('get', '/academic/guru/telemetry/stats');
 };
 
 // Get Guru Detail - GET /api/academic/guru/:id

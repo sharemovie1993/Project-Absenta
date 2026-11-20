@@ -906,6 +906,13 @@ model Guru {
   max_jp                Int?                       @default(24)
   foto                  String?
   asc_id                String?
+  is_app_installed      Boolean?                   @default(false)
+  app_version           String?
+  ota_version           String?
+  device_model          String?
+  device_os             String?
+  device_uuid           String?
+  last_app_seen_at      DateTime?                  @db.Timestamptz
   created_at            DateTime                   @default(now())
   updated_at            DateTime                   @updatedAt
   AbsenGuru             AbsenGuru[]
@@ -943,6 +950,7 @@ model Guru {
   CbtBankSoalKontributor  CbtBankSoalKontributor[]
 
   @@index([tenant_id])
+  @@index([tenant_id, is_app_installed])
   @@index([tenant_id, no_rfid])
 }
 

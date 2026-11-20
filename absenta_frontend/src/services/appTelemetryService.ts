@@ -3,6 +3,7 @@ import { App } from '@capacitor/app';
 import { Preferences } from '@capacitor/preferences';
 import { getActiveOtaVersion } from './otaUpdateService';
 import { syncStudentAppTelemetryApi } from '@/api/academic/siswa.api';
+import { syncGuruAppTelemetryApi } from '@/api/academic/guru.api';
 
 const DEVICE_UUID_KEY = 'absenta_device_uuid';
 const LAST_TELEMETRY_PING_KEY = 'absenta_last_telemetry_ping';
@@ -147,4 +148,74 @@ export async function sendStudentAppTelemetryPing(force = false): Promise<boolea
     console.warn('[Telemetry] Telemetry sync skipped or network unavailable:', err);
     return false;
   }
+}
+
+/**
+ * Kirim telemetry status instalasi aplikasi guru ke Backend Absenta
+ * Otomatis berjalan saat guru login atau membuka aplikasi di platform native (Capacitor/APK)
+ */
+export async function sendGuruAppTelemetryPing(force = false): Promise<boolean> {
+  const isNative = Capacitor.isNativePlatform();
+  if (!isNative && !force) {
+    return false;
+  }
+
+  // Cek cooldown
+  try {
+    const lastPingStr = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(LAST_TELEMETRY_PING_KEY + '_guru') : null;
+    if (lastPingStr && !force) {
+      const lastPing = Number(lastPingStr);
+      if (Date.now() - lastPing < PING_COOLDOWN_MS) {
+        return false;
+      }
+    }
+  } catch {}
+
+  try {
+    let appVersion = '1.0.3';
+    try {
+      const info = await App.getInfo();
+      if (info && info.version) appVersion = info.version;
+    } catch {}
+
+    const otaVersion = await getActiveOtaVersion();
+    const { model: deviceModel, os: deviceOs } = parseDeviceModelAndOs();
+    const deviceUuid = await getOrCreateDeviceUuid();
+
+    await syncGuruAppTelemetryApi({
+      is_installed: isNative,
+      platform: Capacitor.getPlatform(),
+      app_version: appVersion,
+      ota_version: otaVersion,
+      device_model: deviceModel,
+      device_os: deviceOs,
+      device_uuid: deviceUuid,
+    });
+
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(LAST_TELEMETRY_PING_KEY + '_guru', String(Date.now()));
+      }
+    } catch {}
+
+    return true;
+  } catch (err) {
+    console.warn('[Telemetry] Guru telemetry sync skipped or network unavailable:', err);
+    return false;
+  }
+}
+
+/**
+ * Universal telemetry dispatcher berdasarkan user role / profil
+ */
+export async function sendUniversalAppTelemetryPing(user: any, force = false): Promise<boolean> {
+  if (!user) return false;
+  const roleName = user?.role?.name || user?.Role?.name || user?.role || '';
+  if (roleName === 'SISWA') {
+    return sendStudentAppTelemetryPing(force);
+  }
+  if (roleName === 'GURU' || user?.guru_profile || user?.guru_id || user?.Guru) {
+    return sendGuruAppTelemetryPing(force);
+  }
+  return false;
 }

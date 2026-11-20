@@ -6,6 +6,7 @@ import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { sendGuruAppTelemetryPing } from '@/services/appTelemetryService';
 
 import { useSessionWindowAlert } from '../../../hooks/attendance/useSessionWindowAlert';
 import { 
@@ -223,6 +224,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
       }
     } catch {}
   };
+
+  useEffect(() => {
+    sendGuruAppTelemetryPing();
+  }, []);
 
   useEffect(() => {
     if (sosialisasiData?.session?.id) {

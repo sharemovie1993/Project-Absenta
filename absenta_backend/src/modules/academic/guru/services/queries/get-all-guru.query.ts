@@ -30,6 +30,10 @@ export async function getAllGuruQuery(
     whereClause.jenis_ptk = params.jenis_ptk;
   }
 
+  if (params?.is_app_installed !== undefined && params?.is_app_installed !== null && params?.is_app_installed !== 'ALL') {
+    whereClause.is_app_installed = params.is_app_installed === 'true' || params.is_app_installed === true;
+  }
+
   // Filter by organizational position and academic year
   if (params?.position_code && params.position_code !== 'ALL') {
     const assignWhere: any = { is_active: true };

@@ -26,7 +26,8 @@ import {
   Zap,
   Camera,
   Wrench,
-  LogIn
+  LogIn,
+  MessageSquare
 } from 'lucide-react';
 import { 
   Button, 
@@ -51,7 +52,8 @@ import { ExpressPhotoStudioModal } from '../shared/ExpressPhotoStudioModal';
 import { ToolsModal, type ToolKey } from '../../shared/ToolsModal';
 import { WaNormalizationModal } from '../../shared/WaNormalizationModal';
 import { GuruBulkPasswordModal } from './GuruBulkPasswordModal';
-import { getGuruList, deleteGuru, updateGuru, guruQueryKeys, normalizeGuruWaPhones, getGuruPositions } from '../../../api/academic/guru.api';
+import { UniversalSendWaModal } from '@/components/ui/UniversalSendWaModal';
+import { getGuruList, deleteGuru, updateGuru, guruQueryKeys, normalizeGuruWaPhones, getGuruPositions, getGuruAppTelemetryStats } from '../../../api/academic/guru.api';
 import type { Guru } from '../../../types/academic';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
@@ -102,9 +104,55 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   const [filterStatusKepegawaian, setFilterStatusKepegawaian] = useState<string>('ALL');
   const [filterGender, setFilterGender] = useState<string>('ALL');
   const [filterJenisPtk, setFilterJenisPtk] = useState<string>('ALL');
+  const [filterAppInstalled, setFilterAppInstalled] = useState<string>('ALL'); // 'ALL' | 'INSTALLED' | 'NOT_INSTALLED'
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState('1');
   const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  // Modal Colek WA Unduh APK
+  const [waModalConfig, setWaModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    subtitle: string;
+    defaultMessage: string;
+    defaultRecipientType: 'TEACHER' | 'MANUAL';
+    defaultRecipientTarget?: string;
+    defaultRecipientLabel?: string;
+  }>({
+    isOpen: false,
+    title: 'Colek WhatsApp Unduh Aplikasi Absenta',
+    subtitle: 'Kirim pesan pengingat instalasi aplikasi mobile',
+    defaultMessage: '',
+    defaultRecipientType: 'TEACHER',
+  });
+
+  const handleColekDownloadApk = useCallback((guru: Guru) => {
+    const phone = guru.no_hp || (guru.User as any)?.no_hp || '';
+    const apkDownloadUrl = `${window.location.origin}/download/absenta.apk`;
+    const message = `Yth. Bapak/Ibu *${guru.nama_guru}*,
+
+Mengingatkan untuk mengunduh dan memasang Aplikasi Mobile Absenta pada perangkat Android Bapak/Ibu:
+📱 *Link Unduh APK*: ${apkDownloadUrl}
+
+Fitur pada aplikasi mobile:
+• Presensi kehadiran harian & tap gerbang
+• Notifikasi real-time jadwal & aktivitas akademik
+• Penilaian bimbingan PKL & sidang (khusus pembimbing & penguji)
+• Pengisian jurnal & pantauan kelas binaan
+
+Terima kasih atas kerja samanya.
+— _Admin Absenta_`;
+
+    setWaModalConfig({
+      isOpen: true,
+      title: `Colek Unduh APK: ${guru.nama_guru}`,
+      subtitle: `Kirim pengingat instalasi aplikasi mobile ke ${guru.nama_guru}`,
+      defaultMessage: message,
+      defaultRecipientType: phone ? 'TEACHER' : 'MANUAL',
+      defaultRecipientTarget: phone,
+      defaultRecipientLabel: guru.nama_guru,
+    });
+  }, []);
 
   // Ambil daftar jabatan organisasi aktif untuk filter
   const { data: positionsData } = useQuery({
@@ -216,9 +264,10 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       filterPosition !== 'ALL' ||
       filterStatusKepegawaian !== 'ALL' ||
       filterGender !== 'ALL' ||
-      filterJenisPtk !== 'ALL'
+      filterJenisPtk !== 'ALL' ||
+      filterAppInstalled !== 'ALL'
     );
-  }, [academicFilter.values.searchQuery, filterPosition, filterStatusKepegawaian, filterGender, filterJenisPtk]);
+  }, [academicFilter.values.searchQuery, filterPosition, filterStatusKepegawaian, filterGender, filterJenisPtk, filterAppInstalled]);
 
   const handleResetFilter = useCallback(() => {
     academicFilter.setSearchQuery('');
@@ -226,6 +275,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     setFilterStatusKepegawaian('ALL');
     setFilterGender('ALL');
     setFilterJenisPtk('ALL');
+    setFilterAppInstalled('ALL');
     setCurrentPage(1);
     setPageInput('1');
   }, [academicFilter]);
@@ -240,7 +290,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     filterPosition,
     filterStatusKepegawaian,
     filterGender,
-    filterJenisPtk
+    filterJenisPtk,
+    filterAppInstalled
   ]);
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -256,6 +307,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       jenis_ptk: filterJenisPtk,
       tahun_pelajaran_id: academicFilter.values.tahunPelajaranId,
       position_code: filterPosition,
+      is_app_installed: filterAppInstalled !== 'ALL' ? (filterAppInstalled === 'INSTALLED') : ''
     }),
     queryFn: () => getGuruList(
       currentPage, 
@@ -266,9 +318,18 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       filterJenisPtk,
       academicFilter.values.tahunPelajaranId,
       filterPosition,
+      filterAppInstalled !== 'ALL' ? (filterAppInstalled === 'INSTALLED') : ''
     ),
     staleTime: 5 * 60 * 1000,
   });
+
+  // Query Telemetry Adopsi Aplikasi Mobile Guru
+  const { data: telemetryStatsRes } = useQuery({
+    queryKey: ['guru-telemetry-stats'],
+    queryFn: () => getGuruAppTelemetryStats(),
+    staleTime: 2 * 60 * 1000,
+  });
+  const telemetryStats = telemetryStatsRes?.data;
 
   const gurus = useMemo(() => listRes?.data || [], [listRes]);
   const totalPages = listRes?.pagination?.totalPages || 1;
@@ -698,6 +759,57 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         );
       }
     },
+    {
+      key: 'app_telemetry',
+      label: 'Aplikasi Mobile',
+      sortable: false,
+      render: (_: unknown, guru: Guru) => {
+        const isInstalled = Boolean(guru.is_app_installed);
+        const appVer = guru.app_version || '1.0.3';
+        const otaVer = guru.ota_version || '-';
+        const model = guru.device_model || 'Android Mobile';
+        const os = guru.device_os || 'Android';
+
+        if (isInstalled) {
+          return (
+            <div className="flex flex-col gap-0.5" title={`Model: ${model} (${os})\nAPK: v${appVer} • OTA: v${otaVer}`}>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Terpasang</span>
+                </span>
+                <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                  v{appVer}
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[140px]">
+                {model}
+              </span>
+            </div>
+          );
+        }
+
+        return (
+          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+              <span>Belum Pasang</span>
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleColekDownloadApk(guru);
+              }}
+              className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+              title={`Colek ${guru.nama_guru} via WhatsApp untuk unduh APK`}
+            >
+              <MessageSquare size={11} className="text-emerald-600 dark:text-emerald-400" />
+              <span>Colek WA</span>
+            </button>
+          </div>
+        );
+      }
+    },
     { 
       key: 'actions', 
       label: 'Aksi', 
@@ -745,7 +857,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         </div>
       )
     },
-  ].filter(Boolean) as any, [canManage, canImpersonate, handleImpersonate, impersonatingId, onEdit, onView, selectedIds, gurus, allVisibleSelected, confirm, handleDelete, handleToggleJenisPtk, togglingJenisPtkId, invalidateGuruCache, queryClient, refetch, onRefresh]);
+  ].filter(Boolean) as any, [canManage, canImpersonate, handleImpersonate, impersonatingId, onEdit, onView, selectedIds, gurus, allVisibleSelected, confirm, handleDelete, handleToggleJenisPtk, togglingJenisPtkId, invalidateGuruCache, queryClient, refetch, onRefresh, handleColekDownloadApk]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
@@ -813,7 +925,18 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
           showPhoto
           subtitle={
             <div className="flex flex-col gap-0.5">
-              <span>{guru.nip ? `NIP: ${guru.nip}` : (guru.status_kepegawaian || 'Guru')}</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span>{guru.nip ? `NIP: ${guru.nip}` : (guru.status_kepegawaian || 'Guru')}</span>
+                {guru.is_app_installed ? (
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                    📱 Terpasang
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                    🌐 Web Only
+                  </span>
+                )}
+              </div>
               {guru.active_positions && guru.active_positions.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {guru.active_positions.map((pos: string, idx: number) => (
@@ -874,6 +997,25 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     <div className="flex flex-col">
       {/* Unified Academic Filter Toolbar (Tahun Pelajaran SSOT, Search, Jabatan Organisasi, Status, Jenis PTK, Gender) */}
       <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10">
+        {telemetryStats && (
+          <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-indigo-50/40 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-indigo-950/20 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl text-xs text-slate-700 dark:text-slate-300 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <div>
+                <span className="font-bold text-slate-800 dark:text-slate-100">
+                  Adopsi Aplikasi Mobile Guru:
+                </span>
+                <span className="ml-1.5 font-extrabold text-emerald-600 dark:text-emerald-400">
+                  {telemetryStats.total_installed} dari {telemetryStats.total_guru} Guru Terpasang ({telemetryStats.percentage}%)
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-slate-500">
+              <span>Belum pasang APK: <strong className="text-amber-600 font-bold">{telemetryStats.total_not_installed}</strong> guru</span>
+            </div>
+          </div>
+        )}
+
         <AcademicFilterToolbar
           {...academicFilter.toolbarProps}
           variant="card"
@@ -928,6 +1070,20 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                 { label: 'Perempuan', value: 'P' }
               ]}
               placeholder="Filter Gender"
+              triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+            />
+          </div>
+          <div className="w-full sm:w-44">
+            <SearchableSelect
+              value={filterAppInstalled}
+              onValueChange={setFilterAppInstalled}
+              options={[
+                { label: 'Semua Aplikasi', value: 'ALL' },
+                { label: '📱 Terpasang APK', value: 'INSTALLED' },
+                { label: '🌐 Belum Pasang (Web)', value: 'NOT_INSTALLED' }
+              ]}
+              placeholder="Aplikasi Mobile"
+              searchPlaceholder="Filter Aplikasi..."
               triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
             />
           </div>
@@ -1413,6 +1569,23 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
           refetch();
         }}
       />
+
+      {/* Modal Colek WhatsApp Unduh APK */}
+      {waModalConfig.isOpen && (
+        <UniversalSendWaModal
+          isOpen={waModalConfig.isOpen}
+          onClose={() => setWaModalConfig(prev => ({ ...prev, isOpen: false }))}
+          title={waModalConfig.title}
+          subtitle={waModalConfig.subtitle}
+          defaultMessage={waModalConfig.defaultMessage}
+          defaultRecipientType={waModalConfig.defaultRecipientType as any}
+          defaultRecipientTarget={waModalConfig.defaultRecipientTarget}
+          defaultRecipientLabel={waModalConfig.defaultRecipientLabel}
+          onSuccess={() => {
+            toast.success('Pesan pengingat instalasi berhasil dikirim!');
+          }}
+        />
+      )}
     </div>
   );
 });

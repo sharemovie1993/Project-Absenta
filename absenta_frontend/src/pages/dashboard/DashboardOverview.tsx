@@ -25,6 +25,7 @@ import { useInstruction } from "../../contexts/InstructionContext";
 import { MyJobdeskWidget } from "../../components/dashboard/MyJobdeskWidget";
 
 import { Loader } from "../../components/ui/Loader";
+import { sendUniversalAppTelemetryPing } from '@/services/appTelemetryService';
 
 interface TrendData {
   value: number;
@@ -508,6 +509,12 @@ export default function DashboardOverview() {
 
   // Ensure one-time capability fetch if missing
   const capsFetchRef = useRef(false);
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      sendUniversalAppTelemetryPing(user);
+    }
+  }, [isAuthenticated, user]);
+
   useEffect(() => {
     // Only for GURU/SISWA who need caps
     const roleName = user?.role?.name;
