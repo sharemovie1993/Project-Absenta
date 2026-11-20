@@ -331,7 +331,20 @@ export class DashboardExecutiveService {
 
         const sessionList = Array.isArray(lifecycleRes.data) ? lifecycleRes.data : [];
 
-        const activeClasses = sessionList.filter((s: any) => s.status === 'BERLANGSUNG' || s.isLive || s._summary?.isLive).length;
+        // 🛡️ Isolasi KBM Murni: Pisahkan sesi pembelajaran kelas dari kegiatan pembiasaan/non-KBM
+        const isKbmSession = (s: any) =>
+          !s.jadwal_kegiatan_id &&
+          (!s.jenis_kegiatan || String(s.jenis_kegiatan).toUpperCase() === 'KBM') &&
+          !String(s.mapel_nama || s.kegiatan || '').toUpperCase().includes('KETARUNAAN') &&
+          !String(s.mapel_nama || s.kegiatan || '').toUpperCase().includes('DUHA') &&
+          !String(s.mapel_nama || s.kegiatan || '').toUpperCase().includes('DHUHA') &&
+          !String(s.mapel_nama || s.kegiatan || '').toUpperCase().includes('UPACARA') &&
+          !String(s.mapel_nama || s.kegiatan || '').toUpperCase().includes('APEL');
+
+        const kbmSessionList = sessionList.filter(isKbmSession);
+        const nonKbmSessionList = sessionList.filter((s: any) => !isKbmSession(s));
+
+        const activeClasses = kbmSessionList.filter((s: any) => s.status === 'BERLANGSUNG' || s.isLive || s._summary?.isLive).length;
 
         // 2. Teacher Presence & Supervision
         const [totalTeachers, teacherPresent, supervisionCount] = await Promise.all([
@@ -351,8 +364,9 @@ export class DashboardExecutiveService {
           })
         ]);
 
-        // 3. Consolidated SSOT Session Stats for Monitoring Page
-        const sessionStats = SesiLifecycleService.aggregateSessionStats(sessionList);
+        // 3. Consolidated SSOT Session Stats for Monitoring Page (Murni KBM)
+        const sessionStats = SesiLifecycleService.aggregateSessionStats(kbmSessionList);
+        const activitySessionStats = SesiLifecycleService.aggregateSessionStats(nonKbmSessionList);
 
         // 4. Calculate Health Score
         const ka = activeClasses;
@@ -368,6 +382,10 @@ export class DashboardExecutiveService {
           teacherPresent,
           totalTeachers,
           supervisionCount,
+          sessionStats,
+          activitySessionStats,
+          totalKbmSessions: kbmSessionList.length,
+          totalActivitySessions: nonKbmSessionList.length,
           sessionStats,
           timestamp: new Date().toISOString()
         };

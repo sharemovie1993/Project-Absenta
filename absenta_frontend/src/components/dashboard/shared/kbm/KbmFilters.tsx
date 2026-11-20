@@ -15,6 +15,8 @@ interface KbmFiltersProps {
   setSelectedJurusanId: (id: string) => void;
   selectedKelasId: string;
   setSelectedKelasId: (id: string) => void;
+  sessionCategoryFilter?: string;
+  setSessionCategoryFilter?: (cat: string) => void;
   jurusanOptions: Array<{ value: string; label: string }>;
   kelasOptions: Array<{ value: string; label: string }>;
   viewMode: 'LIST' | 'GRID' | 'TABLE';
@@ -34,6 +36,8 @@ export const KbmFilters = React.memo<KbmFiltersProps>(({
   setSelectedJurusanId,
   selectedKelasId,
   setSelectedKelasId,
+  sessionCategoryFilter = 'KBM',
+  setSessionCategoryFilter,
   jurusanOptions,
   kelasOptions,
   viewMode,
@@ -96,6 +100,25 @@ export const KbmFilters = React.memo<KbmFiltersProps>(({
                 ))}
               </select>
             </div>
+
+            {setSessionCategoryFilter && (
+              <div className="relative flex-1 min-w-[110px]">
+                <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-indigo-500" />
+                <select
+                  className="w-full pl-7 pr-7 py-1.5 bg-indigo-50/70 dark:bg-indigo-950/40 border-none shadow-sm rounded-sm text-[9px] font-black uppercase text-indigo-800 dark:text-indigo-300 focus:ring-1 focus:ring-indigo-500 appearance-none cursor-pointer"
+                  value={sessionCategoryFilter}
+                  onChange={(e) => setSessionCategoryFilter(e.target.value)}
+                  title="Filter Kategori Sesi / Kegiatan"
+                >
+                  <option value="KBM">📚 Hanya KBM</option>
+                  <option value="ALL">✨ Semua Sesi</option>
+                  <option value="KETARUNAAN">🛡️ Ketarunaan</option>
+                  <option value="DUHA">🕌 Shalat Dhuha</option>
+                  <option value="UPACARA">🇮🇩 Upacara / Apel</option>
+                  <option value="NON_KBM">🎯 Semua Non-KBM</option>
+                </select>
+              </div>
+            )}
           </div>
         </div>
 

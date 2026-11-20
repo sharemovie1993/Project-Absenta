@@ -8,7 +8,7 @@ import { useSocket } from '../../../hooks/useSocket';
 import { Button } from '../../ui';
 import Card from '../../ui/Card';
 import { Modal, ModalFooter } from '../../ui/Modal';
-import { BookOpen, ShieldAlert, ArrowRight, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock, UserCheck, MessageSquare, Send, UserX, Printer } from 'lucide-react';
+import { BookOpen, ShieldAlert, ArrowRight, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock, UserCheck, MessageSquare, Send, UserX, Printer, LayoutGrid } from 'lucide-react';
 import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
 import { RekapSesiKbmPrintModal } from '../../kurikulum/rekap-kbm/RekapSesiKbmPrintModal';
 import { useAuthStore } from '../../../store/authStore';
@@ -26,6 +26,23 @@ import { KbmFilters } from './kbm/KbmFilters';
 import { KbmSessionTable } from './kbm/KbmSessionTable';
 import { KbmSessionCard } from './kbm/KbmSessionCard';
 import { KbmDetailModal } from './kbm/KbmDetailModal';
+
+export type SesiCategoryType = 'KBM' | 'DUHA' | 'KETARUNAAN' | 'UPACARA' | 'APEL' | 'NON_KBM' | 'ALL';
+
+export const classifySesiCategory = (s: any): 'KBM' | 'DUHA' | 'KETARUNAAN' | 'UPACARA' | 'APEL' | 'NON_KBM' => {
+  const jk = String(s.jenis_kegiatan || s._raw?.jenis_kegiatan || s.kegiatan_raw || '').toUpperCase();
+  const mn = String(s.mapel_nama || s.Mapel?.nama_mapel || s.kegiatan || s.title || '').toUpperCase();
+  const kn = String(s.JadwalKegiatan?.nama || s._raw?.JadwalKegiatan?.nama || '').toUpperCase();
+  const combined = `${jk} ${mn} ${kn}`;
+
+  if (combined.includes('TARUNA')) return 'KETARUNAAN';
+  if (combined.includes('DUHA') || combined.includes('DHUHA')) return 'DUHA';
+  if (combined.includes('UPACARA')) return 'UPACARA';
+  if (combined.includes('APEL')) return 'APEL';
+  if (s.jadwal_kegiatan_id || s._raw?.jadwal_kegiatan_id || (jk && jk !== 'KBM')) return 'NON_KBM';
+
+  return 'KBM';
+};
 
 export interface MonitoringKbmWidgetProps {
   /**
@@ -53,6 +70,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
   const { isConnected, subscribe, unsubscribe } = useSocket();
   const { tenantMode, user } = useAuthStore();
   const [targetDate, setTargetDate] = useState(toLocalDate());
+  const [sessionCategoryFilter, setSessionCategoryFilter] = useState<SesiCategoryType>('KBM');
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Real-time cache invalidation via Socket.io (Debounced Anti-Stampede Guard)
@@ -259,9 +277,57 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
     return items.map((s: any) => normalizeFromSesiAbsensi(s));
   }, [sesiData]);
 
+  // ── Hitung Metrik Agregat per Kategori Kegiatan ──
+  const categoryCounts = useMemo(() => {
+    let kbm = 0;
+    let duha = 0;
+    let ketarunaan = 0;
+    let upacara = 0;
+    let apel = 0;
+    let otherNonKbm = 0;
+
+    enrichedSessions.forEach((s) => {
+      const cat = classifySesiCategory(s);
+      if (cat === 'KBM') kbm++;
+      else if (cat === 'DUHA') duha++;
+      else if (cat === 'KETARUNAAN') ketarunaan++;
+      else if (cat === 'UPACARA') upacara++;
+      else if (cat === 'APEL') apel++;
+      else otherNonKbm++;
+    });
+
+    return {
+      kbm,
+      duha,
+      ketarunaan,
+      upacara,
+      apel,
+      upacaraApel: upacara + apel,
+      nonKbmTotal: duha + ketarunaan + upacara + apel + otherNonKbm,
+      all: enrichedSessions.length,
+    };
+  }, [enrichedSessions]);
+
+  // ── Filter Sesi Berdasarkan Kategori (Default: KBM Murni) ──
+  const categorizedSessions = useMemo(() => {
+    if (sessionCategoryFilter === 'ALL') {
+      return enrichedSessions;
+    }
+    if (sessionCategoryFilter === 'NON_KBM') {
+      return enrichedSessions.filter((s) => classifySesiCategory(s) !== 'KBM');
+    }
+    return enrichedSessions.filter((s) => {
+      const cat = classifySesiCategory(s);
+      if (sessionCategoryFilter === 'UPACARA') {
+        return cat === 'UPACARA' || cat === 'APEL';
+      }
+      return cat === sessionCategoryFilter;
+    });
+  }, [enrichedSessions, sessionCategoryFilter]);
+
   // Komputasi SSOT seluruh 14 metrik siklus KBM & kehadiran guru
   const stats = useMemo(() => {
-    let total = enrichedSessions.length;
+    let total = categorizedSessions.length;
     let live = 0;
     let withJournal = 0;
     let finished = 0;
@@ -277,7 +343,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
     let teacherNotArrived = 0;
     let teacherAlpa = 0;
 
-    enrichedSessions.forEach((s) => {
+    categorizedSessions.forEach((s) => {
       if (s.status.isLive) live++;
       if (s.status.isFinished) finished++;
       if (s.status.isOverdue) overdue++;
@@ -322,7 +388,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
       teacherNotArrived,
       teacherAlpa,
     };
-  }, [enrichedSessions]);
+  }, [categorizedSessions]);
 
   // Dynamic Health Score & Progress Rates
   const healthScore = useMemo(() => {
@@ -356,7 +422,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
   }, []);
 
   const processedSessions = useMemo(() => {
-    return enrichedSessions.filter((s: any) => {
+    return categorizedSessions.filter((s: any) => {
       const matchSearch = 
         String(s.Mapel?.nama_mapel || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
         String(s.Guru?.nama_guru || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
@@ -386,7 +452,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
 
       return matchSearch && matchKelas && matchJurusan && matchTeacherStatus && statusMatch;
     });
-  }, [enrichedSessions, debouncedSearchTerm, statusFilter, selectedKelasId, selectedJurusanId, teacherStatusFilter]);
+  }, [categorizedSessions, debouncedSearchTerm, statusFilter, selectedKelasId, selectedJurusanId, teacherStatusFilter]);
 
   const handleExport = useCallback(() => {
     if (!processedSessions.length) return toast.error('Tidak ada data untuk diekspor');
@@ -426,11 +492,153 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
     setSearchTerm('');
   }, []);
 
+  const renderCategoryFilterBar = () => (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 overflow-x-auto pb-1 select-none">
+      <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-2xs overflow-x-auto max-w-full">
+        <button
+          type="button"
+          onClick={() => setSessionCategoryFilter('KBM')}
+          className={cn(
+            "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
+            sessionCategoryFilter === 'KBM'
+              ? "bg-indigo-600 text-white shadow-xs"
+              : "text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-700/50"
+          )}
+        >
+          <BookOpen size={14} className={sessionCategoryFilter === 'KBM' ? "text-white" : "text-indigo-600 dark:text-indigo-400"} />
+          <span>Hanya Sesi KBM</span>
+          <span className={cn(
+            "px-1.5 py-0.5 rounded-md text-[10px] font-black",
+            sessionCategoryFilter === 'KBM' ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+          )}>
+            {categoryCounts.kbm}
+          </span>
+        </button>
+
+        {categoryCounts.ketarunaan > 0 && (
+          <button
+            type="button"
+            onClick={() => setSessionCategoryFilter('KETARUNAAN')}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
+              sessionCategoryFilter === 'KETARUNAAN'
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-700/50"
+            )}
+          >
+            <ShieldAlert size={14} className={sessionCategoryFilter === 'KETARUNAAN' ? "text-white" : "text-emerald-600 dark:text-emerald-400"} />
+            <span>Ketarunaan</span>
+            <span className={cn(
+              "px-1.5 py-0.5 rounded-md text-[10px] font-black",
+              sessionCategoryFilter === 'KETARUNAAN' ? "bg-white/20 text-white" : "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300"
+            )}>
+              {categoryCounts.ketarunaan}
+            </span>
+          </button>
+        )}
+
+        {categoryCounts.duha > 0 && (
+          <button
+            type="button"
+            onClick={() => setSessionCategoryFilter('DUHA')}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
+              sessionCategoryFilter === 'DUHA'
+                ? "bg-amber-600 text-white shadow-xs"
+                : "text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-700/50"
+            )}
+          >
+            <HeartPulse size={14} className={sessionCategoryFilter === 'DUHA' ? "text-white" : "text-amber-600 dark:text-amber-400"} />
+            <span>Shalat Dhuha</span>
+            <span className={cn(
+              "px-1.5 py-0.5 rounded-md text-[10px] font-black",
+              sessionCategoryFilter === 'DUHA' ? "bg-white/20 text-white" : "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300"
+            )}>
+              {categoryCounts.duha}
+            </span>
+          </button>
+        )}
+
+        {(categoryCounts.upacara > 0 || categoryCounts.apel > 0) && (
+          <button
+            type="button"
+            onClick={() => setSessionCategoryFilter('UPACARA')}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
+              sessionCategoryFilter === 'UPACARA'
+                ? "bg-rose-600 text-white shadow-xs"
+                : "text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-700/50"
+            )}
+          >
+            <Sparkles size={14} className={sessionCategoryFilter === 'UPACARA' ? "text-white" : "text-rose-600 dark:text-rose-400"} />
+            <span>Upacara &amp; Apel</span>
+            <span className={cn(
+              "px-1.5 py-0.5 rounded-md text-[10px] font-black",
+              sessionCategoryFilter === 'UPACARA' ? "bg-white/20 text-white" : "bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300"
+            )}>
+              {categoryCounts.upacaraApel}
+            </span>
+          </button>
+        )}
+
+        {categoryCounts.nonKbmTotal > 0 && (
+          <button
+            type="button"
+            onClick={() => setSessionCategoryFilter('NON_KBM')}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
+              sessionCategoryFilter === 'NON_KBM'
+                ? "bg-purple-600 text-white shadow-xs"
+                : "text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-700/50"
+            )}
+          >
+            <Activity size={14} className={sessionCategoryFilter === 'NON_KBM' ? "text-white" : "text-purple-600 dark:text-purple-400"} />
+            <span>Semua Kegiatan Khusus</span>
+            <span className={cn(
+              "px-1.5 py-0.5 rounded-md text-[10px] font-black",
+              sessionCategoryFilter === 'NON_KBM' ? "bg-white/20 text-white" : "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300"
+            )}>
+              {categoryCounts.nonKbmTotal}
+            </span>
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setSessionCategoryFilter('ALL')}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
+            sessionCategoryFilter === 'ALL'
+              ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-xs"
+              : "text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-700/50"
+          )}
+        >
+          <LayoutGrid size={14} />
+          <span>Semua Sesi</span>
+          <span className={cn(
+            "px-1.5 py-0.5 rounded-md text-[10px] font-black",
+            sessionCategoryFilter === 'ALL' ? "bg-white/20 text-white dark:bg-slate-800 dark:text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+          )}>
+            {categoryCounts.all}
+          </span>
+        </button>
+      </div>
+
+      {categoryCounts.nonKbmTotal > 0 && sessionCategoryFilter === 'KBM' && (
+        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/60 text-[11px] text-indigo-700 dark:text-indigo-300 font-medium shrink-0">
+          <Sparkles size={13} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+          <span>{categoryCounts.nonKbmTotal} sesi kegiatan (Duha/Ketarunaan/Apel) dipisahkan dari KBM</span>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6 relative rounded-2xl overflow-hidden min-h-[300px]">
       {/* ── LEVEL 1: EXECUTIVE KBM DIRECT STAT CARDS ── */}
       {isExecutive ? (
         <div className="space-y-4">
+          {renderCategoryFilterBar()}
           {/* Header Bar */}
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
@@ -648,6 +856,8 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
         </div>
       ) : (
         <>
+          {renderCategoryFilterBar()}
+
           {/* 1. Analytic Overview Cards (Level 2) */}
           <KbmStatCards
             stats={stats}
@@ -668,6 +878,8 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
             setSelectedJurusanId={setSelectedJurusanId}
             selectedKelasId={selectedKelasId}
             setSelectedKelasId={setSelectedKelasId}
+            sessionCategoryFilter={sessionCategoryFilter}
+            setSessionCategoryFilter={(cat) => setSessionCategoryFilter(cat as any)}
             jurusanOptions={jurusanOptions}
             kelasOptions={kelasOptions}
             viewMode={viewMode}
