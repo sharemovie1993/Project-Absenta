@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Wand2, Plus, Search, MapPin, Navigation } from 'lucide-react';
+import { Wand2, Plus, Search, MapPin, Navigation, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { DenahNodeCard } from './DenahNodeCard';
 import { DenahPaletteSidebar, UnassignedRoomItem } from './DenahPaletteSidebar';
@@ -177,7 +177,12 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isLightMode, setIsLightMode] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // Default tutup sidebar pada mode baca-saja (Siswa CBT), saat ada highlight ruang, atau di layar mobile agar fokus 100% ke peta/kanvas
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    if (isReadOnly || Boolean(highlightRoomCode)) return false;
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return false;
+    return true;
+  });
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [dirSearch, setDirSearch] = useState('');
   const [dirTingkatFilter, setDirTingkatFilter] = useState<number | 'ALL'>('ALL');
@@ -824,7 +829,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         isReadOnly={isReadOnly}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => {
-          if (typeof window !== 'undefined' && window.innerWidth < 640) {
+          if (!isReadOnly && typeof window !== 'undefined' && window.innerWidth < 640) {
             setIsMobileDrawerOpen((prev) => !prev);
           } else {
             setIsSidebarOpen((prev) => !prev);
@@ -853,7 +858,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         ) : (
           isSidebarOpen && (
             <aside
-              className={`w-64 sm:w-72 shrink-0 border-r flex flex-col z-20 transition-colors ${
+              className={`absolute sm:static left-0 top-0 bottom-0 w-64 sm:w-72 shrink-0 border-r flex flex-col z-30 shadow-2xl sm:shadow-none transition-colors ${
                 isLightMode
                   ? 'bg-white border-slate-200 text-slate-800'
                   : 'bg-slate-900 border-slate-800 text-slate-100'
@@ -861,7 +866,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             >
               {/* Header Direktori Ruangan Publik */}
               <div className="p-3.5 border-b border-slate-200/80 dark:border-slate-800 space-y-2.5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                       <MapPin className="w-4 h-4" />
@@ -875,9 +880,19 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
                       </p>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    {nodes.length} Ruang
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {nodes.length} Ruang
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsSidebarOpen(false)}
+                      title="Tutup Direktori Ruangan"
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Search Input */}
@@ -957,6 +972,9 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
                         type="button"
                         onClick={() => {
                           setSelectedNodeIds([room.id]);
+                          if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                            setIsSidebarOpen(false);
+                          }
                           if (canvasRef.current) {
                             const w = canvasRef.current.clientWidth || 800;
                             const h = canvasRef.current.clientHeight || 600;
