@@ -98,6 +98,9 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
   const students: KetarunaanNilaiStudent[] = payloadData?.students || [];
   const isClassLocked = Boolean(payloadData?.is_class_locked);
 
+  const effectiveKelasNama = payloadData?.kelas?.nama_kelas || kelasNama || '';
+  const effectiveJurusanNama = payloadData?.kelas?.Jurusan?.nama || jurusanNama || '';
+
   // Initialize local score state when data loads
   useEffect(() => {
     if (students.length > 0) {
@@ -364,7 +367,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
-                  Penilaian Ketarunaan {kelasNama || ''}
+                  Penilaian Ketarunaan {effectiveKelasNama || ''}
                 </h3>
                 <Badge
                   variant={skema?.mode_pelatihan === 'FULL_TARUNA' ? 'default' : 'outline'}
@@ -908,8 +911,8 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
         }}
         student={selectedCertStudent}
         skema={skema}
-        kelasNama={kelasNama}
-        jurusanNama={jurusanNama}
+        kelasNama={effectiveKelasNama}
+        jurusanNama={effectiveJurusanNama}
         tahunPelajaran={tahunPelajaranId}
         semester={semesterId}
       />
@@ -923,8 +926,8 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
         skema={skema}
         calculateLiveFinal={calculateLiveFinal}
         kelasId={kelasId}
-        kelasNama={kelasNama}
-        jurusanNama={jurusanNama}
+        kelasNama={effectiveKelasNama}
+        jurusanNama={effectiveJurusanNama}
         tahunPelajaranId={tahunPelajaranId}
         tahunPelajaranNama={tahunPelajaranNama}
         semesterId={semesterId}

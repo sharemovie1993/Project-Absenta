@@ -136,6 +136,12 @@ export interface KetarunaanNilaiStudent {
   nisn?: string | null;
   nama_siswa: string;
   jenis_kelamin: string;
+  kelas_id?: string;
+  nama_kelas?: string;
+  tingkat?: string;
+  jurusan_id?: string;
+  jurusan_nama?: string;
+  kode_jurusan?: string;
   nilai_samapta: number;
   nilai_pbb: number;
   nilai_disiplin: number;
@@ -152,7 +158,13 @@ export interface KetarunaanNilaiStudent {
 export interface KetarunaanNilaiKelasResponse {
   success: boolean;
   data: {
-    kelas: { id: string; nama_kelas: string; jurusan_id?: string | null };
+    kelas: {
+      id: string;
+      nama_kelas: string;
+      tingkat?: number;
+      jurusan_id?: string | null;
+      Jurusan?: { id: string; nama: string; kode?: string; singkatan?: string };
+    };
     skema: KetarunaanSkema;
     total_siswa: number;
     is_class_locked: boolean;

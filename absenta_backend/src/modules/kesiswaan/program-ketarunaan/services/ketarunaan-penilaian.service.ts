@@ -366,7 +366,20 @@ export class KetarunaanPenilaianService {
     // 1. Ambil data kelas untuk mengetahui jurusannya
     const kelas = await prisma.kelas.findUnique({
       where: { id: kelas_id },
-      select: { id: true, nama_kelas: true, jurusan_id: true },
+      select: {
+        id: true,
+        nama_kelas: true,
+        tingkat: true,
+        jurusan_id: true,
+        Jurusan: {
+          select: {
+            id: true,
+            nama: true,
+            kode: true,
+            singkatan: true,
+          },
+        },
+      },
     });
 
     // 2. Ambil skema konfigurasi yang relevan
@@ -475,6 +488,12 @@ export class KetarunaanPenilaianService {
         nisn: sa.siswa.nisn,
         nama_siswa: sa.siswa.nama_siswa,
         jenis_kelamin: sa.siswa.jenis_kelamin,
+        kelas_id: sa.kelas_id || kelas_id,
+        nama_kelas: kelas?.nama_kelas || '',
+        tingkat: kelas?.tingkat ? String(kelas.tingkat) : '',
+        jurusan_id: kelas?.jurusan_id || '',
+        jurusan_nama: kelas?.Jurusan?.nama || '',
+        kode_jurusan: kelas?.Jurusan?.kode || '',
         nilai_samapta: existing?.nilai_samapta ?? 0,
         nilai_pbb: existing?.nilai_pbb ?? 0,
         nilai_disiplin: existing?.nilai_disiplin ?? p.rekomendasi_disiplin,
@@ -956,13 +975,13 @@ export class KetarunaanPenilaianService {
         jenis_kelamin: s?.jenis_kelamin || 'L',
         jk: s?.jenis_kelamin || 'L',
         jk_label: s?.jenis_kelamin === 'P' ? 'Perempuan' : 'Laki-laki',
-        kelas_id: sa.kelas_id,
+        kelas_id: sa.kelas_id || k?.id || '',
         kelas: k?.nama_kelas || '',
         rombel: k?.nama_kelas || '',
-        tingkat: k?.tingkat ? String(k.tingkat) : '',
+        tingkat: k?.tingkat ? String(k.tingkat) : (k?.nama_kelas?.split(' ')[0] || ''),
         jurusan_id: k?.jurusan_id || '',
-        jurusan: k?.Jurusan?.nama || '',
-        kode_jurusan: k?.Jurusan?.kode || '',
+        jurusan: k?.Jurusan?.nama || k?.nama_kelas?.split(' ')[1] || 'Umum',
+        kode_jurusan: k?.Jurusan?.kode || k?.nama_kelas?.split(' ')[1] || '',
         tahun_pelajaran: tahunPelajaran?.tahun || '',
         semester: semester?.nama_semester || '',
         mode_pelatihan: sk.mode_pelatihan === 'FULL_TARUNA' ? 'Murni Ketarunaan' : 'Semi Ketarunaan',

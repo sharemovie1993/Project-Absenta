@@ -77,44 +77,53 @@ export const KetarunaanExportModal: React.FC<KetarunaanExportModalProps> = ({
     try {
       setIsExporting(true);
 
-      const sekolahNama = tenantData?.name || 'SMK NEGERI 1 PLERED';
-      const sekolahNpsn = tenantData?.npsn || '';
-      const sekolahAlamat = tenantData?.address || '';
-      const kotaSekolah = tenantData?.city || tenantData?.kabupaten || 'Purwakarta';
-      const kepsekNama = tenantData?.headmaster_name || 'Wahyu Tamimbarkah, S.Pd.';
-      const kepsekNip = tenantData?.headmaster_nip || '197111022008011001';
-      const yearNow = new Date().getFullYear();
       const tpLabel = tahunPelajaranNama || '2026/2027';
       const semLabel = semesterNama || 'Ganjil';
 
-      if (exportScope === 'CLASS') {
-        if (!currentStudents || currentStudents.length === 0) {
-          toast.error('Tidak ada data siswa pada rombel ini untuk diekspor.');
-          return;
-        }
+      if (!tahunPelajaranId || !semesterId) {
+        toast.error('Tahun pelajaran dan semester wajib dipilih pada toolbar.');
+        return;
+      }
 
-        toast.info('Menyiapkan data mail merge rombel...');
+      toast.info(exportScope === 'CLASS' ? 'Mengambil data nilai rombel...' : 'Mengambil data nilai seluruh rombel...');
 
-        const rows: KetarunaanNilaiExportRow[] = currentStudents.map((s, idx) => {
+      // Panggil backend API getKetarunaanNilaiExport yang sudah terhubung langsung ke relasi Kelas & Jurusan di DB
+      const targetKelasId = exportScope === 'CLASS' ? kelasId : undefined;
+      const res = await getKetarunaanNilaiExport({
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId,
+        kelas_id: targetKelasId,
+      });
+
+      const exportData = (res as any)?.data ?? res;
+      let students: KetarunaanNilaiExportRow[] = exportData?.students || [];
+
+      // Fallback defensif jika backend mengembalikan array kosong namun currentStudents ada di memory
+      if (students.length === 0 && exportScope === 'CLASS' && currentStudents.length > 0) {
+        const sekolahNama = tenantData?.name || 'SMK NEGERI 1 PLERED';
+        const sekolahNpsn = tenantData?.npsn || '';
+        const sekolahAlamat = tenantData?.address || '';
+        const kotaSekolah = tenantData?.city || tenantData?.kabupaten || 'Purwakarta';
+        const kepsekNama = tenantData?.headmaster_name || 'Wahyu Tamimbarkah, S.Pd.';
+        const kepsekNip = tenantData?.headmaster_nip || '197111022008011001';
+        const yearNow = new Date().getFullYear();
+
+        students = currentStudents.map((s, idx) => {
           const sc = currentScores[s.siswa_id] || {
             samapta: s.nilai_samapta ?? 0,
             pbb: s.nilai_pbb ?? 0,
             disiplin: s.nilai_disiplin ?? 0,
             mental: s.nilai_mental ?? 0,
           };
-
-          const live = calculateLiveFinal
-            ? calculateLiveFinal(sc)
-            : {
-                final: s.nilai_akhir || 0,
-                grade: s.predikat || 'B',
-              };
-
+          const live = calculateLiveFinal ? calculateLiveFinal(sc) : { final: s.nilai_akhir || 0, grade: s.predikat || 'B' };
           const predikat = live.grade && live.grade !== '-' ? live.grade : 'B';
           const predikatLabel = getPredikatLabel(predikat);
           const keterangan = (predikat === 'A' || predikat === 'B' || predikat === 'C') ? 'KOMPETEN / LULUS' : 'BELUM MEMENUHI';
 
-          const noSertifikat = `421.5/KETARUNAAN/${yearNow}/${s.nis || String(idx + 1).padStart(3, '0')}`;
+          const resolvedKelas = s.nama_kelas || kelasNama || '';
+          const resolvedJurusan = s.jurusan_nama || jurusanNama || resolvedKelas.split(' ')[1] || 'Umum';
+          const resolvedTingkat = s.tingkat || resolvedKelas.split(' ')[0] || '10';
+          const resolvedKodeJurusan = s.kode_jurusan || resolvedKelas.split(' ')[1] || '';
 
           return {
             no: idx + 1,
@@ -127,13 +136,13 @@ export const KetarunaanExportModal: React.FC<KetarunaanExportModalProps> = ({
             jenis_kelamin: s.jenis_kelamin || 'L',
             jk: s.jenis_kelamin || 'L',
             jk_label: s.jenis_kelamin === 'P' ? 'Perempuan' : 'Laki-laki',
-            kelas_id: kelasId || '',
-            kelas: kelasNama || '',
-            rombel: kelasNama || '',
-            tingkat: kelasNama?.split(' ')[0] || '',
-            jurusan_id: '',
-            jurusan: jurusanNama || '',
-            kode_jurusan: kelasNama?.split(' ')[1] || '',
+            kelas_id: s.kelas_id || kelasId || '',
+            kelas: resolvedKelas,
+            rombel: resolvedKelas,
+            tingkat: resolvedTingkat,
+            jurusan_id: s.jurusan_id || '',
+            jurusan: resolvedJurusan,
+            kode_jurusan: resolvedKodeJurusan,
             tahun_pelajaran: tpLabel,
             semester: semLabel,
             mode_pelatihan: skema?.mode_pelatihan === 'FULL_TARUNA' ? 'Murni Ketarunaan' : 'Semi Ketarunaan',
@@ -151,7 +160,7 @@ export const KetarunaanExportModal: React.FC<KetarunaanExportModalProps> = ({
             keterangan,
             deskripsi_capaian: s.deskripsi_rapor || '',
             deskripsi_rapor: s.deskripsi_rapor || '',
-            nomor_sertifikat: noSertifikat,
+            nomor_sertifikat: `421.5/KETARUNAAN/${yearNow}/${s.nis || String(idx + 1).padStart(3, '0')}`,
             tempat_terbit: kotaSekolah,
             tanggal_terbit: `${kotaSekolah}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
             tanggal_cetak: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
@@ -164,52 +173,60 @@ export const KetarunaanExportModal: React.FC<KetarunaanExportModalProps> = ({
             is_locked: s.is_locked,
           };
         });
-
-        const safeKelas = (kelasNama || 'Kelas').replace(/[^a-zA-Z0-9]/g, '_');
-        const filename = `Nilai_Ketarunaan_MailMerge_${safeKelas}_${tpLabel.replace('/', '-')}`;
-
-        await exportKetarunaanMailMerge(rows, {
-          filename,
-          kelasNama,
-          tahunPelajaran: tpLabel,
-          semester: semLabel,
-        });
-
-        toast.success(`Berhasil mengunduh data nilai ketarunaan rombel ${kelasNama} (${rows.length} taruna)!`);
-        onClose();
-      } else {
-        // EXPORT ALL CLASSES
-        if (!tahunPelajaranId || !semesterId) {
-          toast.error('Tahun pelajaran dan semester wajib dipilih pada toolbar.');
-          return;
-        }
-
-        toast.info('Mengambil data seluruh rombel dari server...');
-
-        const res = await getKetarunaanNilaiExport({
-          tahun_pelajaran_id: tahunPelajaranId,
-          semester_id: semesterId,
-        });
-
-        const exportData = (res as any)?.data ?? res;
-        const students = exportData?.students || [];
-
-        if (students.length === 0) {
-          toast.warning('Tidak ada data nilai siswa ditemukan untuk seluruh rombel.');
-          return;
-        }
-
-        const filename = `Nilai_Ketarunaan_MailMerge_Semua_Rombel_${tpLabel.replace('/', '-')}`;
-
-        await exportKetarunaanMailMerge(students, {
-          filename,
-          tahunPelajaran: tpLabel,
-          semester: semLabel,
-        });
-
-        toast.success(`Berhasil mengunduh data nilai ketarunaan semua rombel (${students.length} taruna)!`);
-        onClose();
       }
+
+      if (students.length === 0) {
+        toast.warning('Tidak ada data nilai siswa ditemukan untuk diekspor.');
+        return;
+      }
+
+      // Jika exportScope === 'CLASS' dan ada skor lokal yang baru diedit di layar, overlay nilai tersebut
+      if (exportScope === 'CLASS' && currentScores && Object.keys(currentScores).length > 0) {
+        students = students.map((s) => {
+          const sc = currentScores[s.siswa_id];
+          if (!sc) return s;
+
+          const live = calculateLiveFinal
+            ? calculateLiveFinal(sc)
+            : { final: s.nilai_akhir, grade: s.predikat };
+
+          const predikat = live.grade && live.grade !== '-' ? live.grade : s.predikat;
+          const predikatLabel = getPredikatLabel(predikat);
+          const keterangan = (predikat === 'A' || predikat === 'B' || predikat === 'C') ? 'KOMPETEN / LULUS' : 'BELUM MEMENUHI';
+
+          return {
+            ...s,
+            nilai_samapta: sc.samapta,
+            nilai_pbb: sc.pbb,
+            nilai_disiplin: sc.disiplin,
+            nilai_mental: sc.mental,
+            nilai_akhir: live.final,
+            predikat,
+            predikat_label: predikatLabel,
+            keterangan,
+          };
+        });
+      }
+
+      const activeKelasName = kelasNama || exportData?.classes?.[0]?.nama || students[0]?.kelas || 'Rombel';
+      const safeKelas = activeKelasName.replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = exportScope === 'CLASS'
+        ? `Nilai_Ketarunaan_MailMerge_${safeKelas}_${tpLabel.replace('/', '-')}`
+        : `Nilai_Ketarunaan_MailMerge_Semua_Rombel_${tpLabel.replace('/', '-')}`;
+
+      await exportKetarunaanMailMerge(students, {
+        filename,
+        kelasNama: exportScope === 'CLASS' ? activeKelasName : undefined,
+        tahunPelajaran: tpLabel,
+        semester: semLabel,
+      });
+
+      toast.success(
+        exportScope === 'CLASS'
+          ? `Berhasil mengunduh data nilai rombel ${activeKelasName} (${students.length} taruna)!`
+          : `Berhasil mengunduh data nilai semua rombel (${students.length} taruna)!`
+      );
+      onClose();
     } catch (err: any) {
       console.error('Export Ketarunaan Error:', err);
       toast.error('Gagal mengekspor data: ' + (err?.message || 'Terjadi kesalahan sistem'));

@@ -383,11 +383,11 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                 <div className="p-4 sm:p-6">
                   <KetarunaanPenilaianTab
                     tahunPelajaranId={selectedTpId}
-                    tahunPelajaranNama={academicFilter.selectedNames?.tahunPelajaranNama}
+                    tahunPelajaranNama={academicFilter.selectedTahunPelajaranNama}
                     semesterId={selectedSemId}
-                    semesterNama={academicFilter.selectedNames?.semesterNama}
+                    semesterNama={academicFilter.selectedSemesterNama}
                     kelasId={academicFilter.values.kelasId}
-                    kelasNama={academicFilter.selectedNames?.kelasNama}
+                    kelasNama={academicFilter.selectedKelasLabel}
                     jurusanId={academicFilter.values.jurusanId}
                   />
                 </div>
