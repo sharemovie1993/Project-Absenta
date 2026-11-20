@@ -85,7 +85,7 @@ module.exports = {
         ...backendEnv
       },
       watch: false,
-      max_memory_restart: '2500M'
+      max_memory_restart: '3500M'
     },
     {
       name: 'absenta-wa-service',
