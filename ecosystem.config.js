@@ -75,6 +75,7 @@ module.exports = {
       listen_timeout: 20000, // Wait up to 20s for NestJS/Fastify to boot
       restart_delay: 5000,
       max_restarts: 10,
+      node_args: '--max-old-space-size=4096',
       env: {
         NODE_ENV: 'production',
         PORT: backendPort,
@@ -84,7 +85,7 @@ module.exports = {
         ...backendEnv
       },
       watch: false,
-      max_memory_restart: '1G'
+      max_memory_restart: '2500M'
     },
     {
       name: 'absenta-wa-service',
@@ -95,13 +96,14 @@ module.exports = {
       windowsHide: true,
       restart_delay: 5000,
       max_restarts: 10,
+      node_args: '--max-old-space-size=2048',
       env: {
         NODE_ENV: 'production',
         SERVICE_ROLE: 'wa-worker',
         ...backendEnv
       },
       watch: false,
-      max_memory_restart: '1G'
+      max_memory_restart: '1500M'
     },
     {
       name: `absenta-web:${frontendPort}`,

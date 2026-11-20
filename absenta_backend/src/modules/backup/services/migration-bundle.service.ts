@@ -4,6 +4,8 @@ import { storageService } from '@/infra/storage/storage.service';
 import { getDynamicTenantModels } from '@/constants/backup.constants';
 import { getDeployScenario } from '@/utils/deployScenario';
 import { fetchTenantProducts, rebindTenantEntitlements, provisionCloneTenantOnLicenseServer, checkLicenseServerConnection } from '@/services/licenseClient';
+import fs from 'fs';
+import os from 'os';
 // @ts-ignore
 import AdmZip from 'adm-zip';
 import crypto from 'crypto';
@@ -56,6 +58,13 @@ export interface MigrationManifest {
 export interface ExportBundleOptions {
   includeAttendance?: boolean;
   includeMedia?: boolean;
+}
+
+export interface ExportBundleResult {
+  filepath: string;
+  manifest: MigrationManifest;
+  filename: string;
+  size: number;
 }
 
 export interface RestoreBundleOptions {
@@ -321,9 +330,9 @@ export class MigrationBundleService {
   }
 
   /**
-   * Mengemas seluruh data tenant, master, dan berkas media ke dalam buffer file .absenta
+   * Mengemas seluruh data tenant, master, dan berkas media ke dalam file sementara .absenta di disk (streaming-friendly)
    */
-  async createExportBundle(tenantId: string, options: ExportBundleOptions = {}): Promise<{ buffer: Buffer; manifest: MigrationManifest; filename: string }> {
+  async createExportBundleFile(tenantId: string, options: ExportBundleOptions = {}): Promise<ExportBundleResult> {
     const includeAttendance = options.includeAttendance !== false;
     const includeMedia = options.includeMedia !== false;
 
@@ -444,6 +453,11 @@ export class MigrationBundleService {
         try {
           const fileBuf = await storageService.readFileBuffer(storageKey);
           if (fileBuf && fileBuf.length > 0) {
+            // Guard: Lewati file rusak / over-limit (> 25MB) agar memori V8 tetap stabil
+            if (fileBuf.length > 25 * 1024 * 1024) {
+              console.warn(`[MigrationBundle] Berkas media dilewati karena melebihi batas 25MB: ${storageKey} (${(fileBuf.length / 1024 / 1024).toFixed(2)} MB)`);
+              continue;
+            }
             const relativeZipPath = path.posix.join('storage', storageKey);
             zip.addFile(relativeZipPath, fileBuf);
             totalMediaFiles++;
@@ -462,8 +476,8 @@ export class MigrationBundleService {
     const totalTeachers = (dataTables['Guru'] || []).length;
     const totalClasses = (dataTables['Kelas'] || []).length;
 
-    // Simpan database.json
-    const dbJsonBuffer = Buffer.from(JSON.stringify(dataTables, null, 2), 'utf8');
+    // Simpan database.json (compact JSON untuk menghemat memori V8 heap secara drastis)
+    const dbJsonBuffer = Buffer.from(JSON.stringify(dataTables), 'utf8');
     zip.addFile('database.json', dbJsonBuffer);
 
     // 3.5. Kumpulkan lisensi produk / entitlements milik tenant dari server lisensi
@@ -477,7 +491,7 @@ export class MigrationBundleService {
         deploy_scenario: getDeployScenario()
       });
       if (Array.isArray(entitlements) && entitlements.length > 0) {
-        zip.addFile('entitlements.json', Buffer.from(JSON.stringify(entitlements, null, 2), 'utf8'));
+        zip.addFile('entitlements.json', Buffer.from(JSON.stringify(entitlements), 'utf8'));
         console.log(`[MigrationBundle] Mengemas ${entitlements.length} lisensi produk ke entitlements.json.`);
       }
     } catch (entErr: any) {
@@ -528,22 +542,53 @@ export class MigrationBundleService {
       }
     };
 
-    const manifestBuf = Buffer.from(JSON.stringify(manifest, null, 2), 'utf8');
+    const manifestBuf = Buffer.from(JSON.stringify(manifest), 'utf8');
     zip.addFile('manifest.json', manifestBuf);
-
-    const fullZipBuffer = zip.toBuffer();
-    const sha256 = crypto.createHash('sha256').update(fullZipBuffer).digest('hex');
-    manifest.checksum_sha256 = sha256;
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const safeSubdomain = tenant.subdomain || tenant.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
     const filename = `absenta_backup_${safeSubdomain}_${timestamp}.absenta`;
+    const tempFilePath = path.join(os.tmpdir(), `${filename}_${crypto.randomBytes(4).toString('hex')}.tmp`);
+
+    console.log(`[MigrationBundle] Menulis arsip ZIP ke berkas sementara di disk: ${tempFilePath}...`);
+    await zip.writeZipPromise(tempFilePath);
+
+    // Hitung SHA-256 via stream baca berkas di disk tanpa memuat seluruh berkas ke RAM
+    const hash = crypto.createHash('sha256');
+    const fileStream = fs.createReadStream(tempFilePath);
+    for await (const chunk of fileStream) {
+      hash.update(chunk);
+    }
+    const sha256 = hash.digest('hex');
+    manifest.checksum_sha256 = sha256;
+
+    const stat = await fs.promises.stat(tempFilePath);
+    console.log(`[MigrationBundle] Sukses mengemas ${filename} (${(stat.size / 1024 / 1024).toFixed(2)} MB), SHA-256: ${sha256}`);
 
     return {
-      buffer: fullZipBuffer,
+      filepath: tempFilePath,
       manifest,
-      filename
+      filename,
+      size: stat.size
     };
+  }
+
+  /**
+   * Mengemas seluruh data tenant, master, dan berkas media ke dalam buffer file .absenta
+   * (Dipertahankan untuk kompatibilitas ke belakang)
+   */
+  async createExportBundle(tenantId: string, options: ExportBundleOptions = {}): Promise<{ buffer: Buffer; manifest: MigrationManifest; filename: string }> {
+    const res = await this.createExportBundleFile(tenantId, options);
+    try {
+      const buffer = await fs.promises.readFile(res.filepath);
+      return {
+        buffer,
+        manifest: res.manifest,
+        filename: res.filename
+      };
+    } finally {
+      await fs.promises.unlink(res.filepath).catch(() => {});
+    }
   }
 
   /**

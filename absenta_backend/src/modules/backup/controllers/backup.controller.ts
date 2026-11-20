@@ -422,6 +422,7 @@ export class BackupController {
   }
 
   static async exportBundle(req: any, reply: any) {
+    let tempFilePath: string | null = null;
     try {
       const tenantId = req.query?.tenantId || req.body?.tenantId || req.tenantId || req.dataScope?.tenantId || req.user?.tenantId || req.user?.tenant_id;
       if (!tenantId) {
@@ -431,16 +432,35 @@ export class BackupController {
       const includeAttendance = req.query?.includeAttendance !== 'false' && req.body?.includeAttendance !== false;
       const includeMedia = req.query?.includeMedia !== 'false' && req.body?.includeMedia !== false;
 
-      const { buffer, filename, manifest } = await migrationBundleService.createExportBundle(tenantId, {
+      const { filepath, filename, manifest, size } = await migrationBundleService.createExportBundleFile(tenantId, {
         includeAttendance,
         includeMedia
       });
+      tempFilePath = filepath;
 
       reply.header('Content-Type', 'application/octet-stream');
       reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+      reply.header('Content-Length', size.toString());
       reply.header('X-Absenta-Manifest', encodeURIComponent(JSON.stringify(manifest)));
-      return reply.send(buffer);
+
+      const readStream = fs.createReadStream(filepath);
+      const cleanup = () => {
+        if (tempFilePath && fs.existsSync(tempFilePath)) {
+          fs.unlink(tempFilePath, () => {});
+          tempFilePath = null;
+        }
+      };
+      readStream.on('close', cleanup);
+      readStream.on('error', (err) => {
+        console.error('[BackupController] ReadStream error:', err);
+        cleanup();
+      });
+
+      return reply.send(readStream);
     } catch (error: any) {
+      if (tempFilePath && fs.existsSync(tempFilePath)) {
+        fs.unlink(tempFilePath, () => {});
+      }
       console.error('Error exporting migration bundle:', error);
       return reply.status(500).send({ success: false, message: 'Gagal mengekspor berkas .absenta: ' + (error?.message || 'Error') });
     }
@@ -598,7 +618,7 @@ export class BackupController {
     const snapshotKey = `${folderName}/${snapshotFilename}`;
     const latestKey = `${folderName}/latest.absenta`;
 
-    const { buffer, manifest } = await migrationBundleService.createExportBundle(tenant.id, {
+    const { filepath, manifest, size } = await migrationBundleService.createExportBundleFile(tenant.id, {
       includeAttendance: true,
       includeMedia: true
     });
@@ -615,34 +635,40 @@ export class BackupController {
       forcePathStyle: true
     });
 
-    // Upload snapshot bertanggal ke S3/MinIO
-    await s3.send(new PutObjectCommand({
-      Bucket: BACKUP_BUCKET,
-      Key: snapshotKey,
-      Body: buffer,
-      ContentType: 'application/octet-stream',
-      Metadata: {
-        'tenant-id': tenant.id,
-        'tenant-name': encodeURIComponent(tenant.name),
-        'snapshot-date': now.toISOString(),
-        'checksum-sha256': manifest.checksum_sha256 || ''
-      }
-    }));
+    try {
+      // Upload snapshot bertanggal ke S3/MinIO via streaming
+      await s3.send(new PutObjectCommand({
+        Bucket: BACKUP_BUCKET,
+        Key: snapshotKey,
+        Body: fs.createReadStream(filepath),
+        ContentLength: size,
+        ContentType: 'application/octet-stream',
+        Metadata: {
+          'tenant-id': tenant.id,
+          'tenant-name': encodeURIComponent(tenant.name),
+          'snapshot-date': now.toISOString(),
+          'checksum-sha256': manifest.checksum_sha256 || ''
+        }
+      }));
 
-    // Upload penunjuk cepat latest.absenta
-    await s3.send(new PutObjectCommand({
-      Bucket: BACKUP_BUCKET,
-      Key: latestKey,
-      Body: buffer,
-      ContentType: 'application/octet-stream',
-      Metadata: {
-        'tenant-id': tenant.id,
-        'tenant-name': encodeURIComponent(tenant.name),
-        'is-latest': 'true',
-        'source-file': snapshotFilename,
-        'checksum-sha256': manifest.checksum_sha256 || ''
-      }
-    }));
+      // Upload penunjuk cepat latest.absenta via streaming
+      await s3.send(new PutObjectCommand({
+        Bucket: BACKUP_BUCKET,
+        Key: latestKey,
+        Body: fs.createReadStream(filepath),
+        ContentLength: size,
+        ContentType: 'application/octet-stream',
+        Metadata: {
+          'tenant-id': tenant.id,
+          'tenant-name': encodeURIComponent(tenant.name),
+          'is-latest': 'true',
+          'source-file': snapshotFilename,
+          'checksum-sha256': manifest.checksum_sha256 || ''
+        }
+      }));
+    } finally {
+      await fs.promises.unlink(filepath).catch(() => {});
+    }
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 365);
@@ -651,7 +677,7 @@ export class BackupController {
       data: {
         Tenant: { connect: { id: tenant.id } },
         file_path: `s3://${BACKUP_BUCKET}/${snapshotKey}`,
-        file_size_bytes: BigInt(buffer.length),
+        file_size_bytes: BigInt(size),
         checksum_sha256: manifest.checksum_sha256 || 'none',
         status: BackupStatus.READY,
         expires_at: expiresAt,
