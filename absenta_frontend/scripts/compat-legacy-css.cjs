@@ -3,12 +3,13 @@ const path = require('path');
 
 /**
  * Konversi matematis OKLCH ke sRGB (0-255)
+ * Mendukung nilai numerik maupun keyword 'none' untuk warna akromatik (abu-abu netral)
  */
 function oklchToRgb(lStr, cStr, hStr, alphaStr) {
   try {
     const L = lStr.includes('%') ? parseFloat(lStr) / 100.0 : parseFloat(lStr);
-    const C = parseFloat(cStr);
-    const h = parseFloat(hStr);
+    const C = (cStr === 'none' || !cStr) ? 0 : parseFloat(cStr);
+    const h = (hStr === 'none' || !hStr) ? 0 : parseFloat(hStr);
 
     const hRad = (h * Math.PI) / 180.0;
     const aCoord = C * Math.cos(hRad);
@@ -51,8 +52,8 @@ function oklchToRgb(lStr, cStr, hStr, alphaStr) {
 function oklabToRgb(lStr, aStr, bStr, alphaStr) {
   try {
     const L = lStr.includes('%') ? parseFloat(lStr) / 100.0 : parseFloat(lStr);
-    const aCoord = parseFloat(aStr);
-    const bCoord = parseFloat(bStr);
+    const aCoord = (aStr === 'none' || !aStr) ? 0 : parseFloat(aStr);
+    const bCoord = (bStr === 'none' || !bStr) ? 0 : parseFloat(bStr);
 
     const l_ = L + 0.3963377774 * aCoord + 0.2158037573 * bCoord;
     const m_ = L - 0.1055613458 * aCoord - 0.0638541728 * bCoord;
@@ -91,7 +92,7 @@ if (!fs.existsSync(assetsDir)) {
   process.exit(0);
 }
 
-const cssFiles = fs.readdirSync(assetsDir).filter(f => f.endsWith('.css'));
+const cssFiles = fs.readdirSync(assetsDir).filter(f => f.endsWith('.css') && !f.includes('.fixed') && !f.includes('.broken'));
 if (cssFiles.length === 0) {
   console.log('[compat-legacy-css] Tidak ada file CSS ditemukan di dist/assets.');
   process.exit(0);
@@ -101,8 +102,8 @@ for (const file of cssFiles) {
   const filePath = path.join(assetsDir, file);
   let css = fs.readFileSync(filePath, 'utf-8');
 
-  // 1. Ekstrak seluruh definisi variabel warna OKLCH di :root / @layer theme
-  const oklchVarRegex = /(--color-[a-zA-Z0-9_\-]+)\s*:\s*oklch\(\s*([0-9.]+%?)\s+([0-9.]+)\s+([0-9.]+)(?:\s*\/\s*([0-9.]+%?))?\s*\);?/g;
+  // 1. Ekstrak seluruh definisi variabel warna OKLCH di :root / @layer theme (termasuk yang menggunakan 'none')
+  const oklchVarRegex = /(--color-[a-zA-Z0-9_\-]+)\s*:\s*oklch\(\s*([0-9.]+%?)\s+([0-9.]+|none)\s+([0-9.]+|none)(?:\s*\/\s*([0-9.]+%?))?\s*\);?/g;
   const oklchDefs = [];
   let varCount = 0;
 
@@ -115,29 +116,44 @@ for (const file of cssFiles) {
 
   // 2. Konversi sisa deklarasi oklch(...) yang digunakan secara langsung (misal --tw-shadow-color)
   let directOklchCount = 0;
-  css = css.replace(/oklch\(\s*([0-9.]+%?)\s+([0-9.]+)\s+([0-9.]+)(?:\s*\/\s*([0-9.]+%?))?\s*\)/g, (fullMatch, l, c, h, alpha) => {
+  css = css.replace(/oklch\(\s*([0-9.]+%?)\s+([0-9.]+|none)\s+([0-9.]+|none)(?:\s*\/\s*([0-9.]+%?))?\s*\)/g, (fullMatch, l, c, h, alpha) => {
     directOklchCount++;
     return oklchToRgb(l, c, h, alpha);
   });
 
   // 3. Konversi seluruh deklarasi oklab(...) ke rgb/rgba
   let directOklabCount = 0;
-  css = css.replace(/oklab\(\s*([0-9.]+%?)\s+([\-0-9.]+)\s+([\-0-9.]+)(?:\s*\/\s*([0-9.]+%?))?\s*\)/g, (fullMatch, l, a, b, alpha) => {
+  css = css.replace(/oklab\(\s*([0-9.]+%?)\s+([\-0-9.]+|none)\s+([\-0-9.]+|none)(?:\s*\/\s*([0-9.]+%?))?\s*\)/g, (fullMatch, l, a, b, alpha) => {
     directOklabCount++;
     return oklabToRgb(l, a, b, alpha);
   });
 
-  // 4. Berikan progressive enhancement @supports untuk browser modern agar tetap mendapatkan wide-gamut OKLCH
+  // 4. Perbaiki gradien Tailwind v4 (--tw-gradient-position: ... in oklab;) untuk Chrome 109
+  let gradCount = 0;
+  const gradDefs = [];
+  css = css.replace(/([.a-zA-Z0-9_\-:\\/]+)\s*\{([^}]*--tw-gradient-position:\s*([^;]+)\s+in\s+oklab[^}]*)\}/g, (fullMatch, selector, body, pos) => {
+    gradCount++;
+    gradDefs.push(`${selector}{--tw-gradient-position:${pos} in oklab}`);
+    const updatedBody = body.replace(/--tw-gradient-position:\s*([^;]+)\s+in\s+oklab/g, '--tw-gradient-position:$1');
+    return `${selector}{${updatedBody}}`;
+  });
+
+  // 5. Berikan progressive enhancement @supports untuk browser modern (OKLCH & wide-gamut gradients)
+  let extraSupports = '';
   if (oklchDefs.length > 0) {
-    const supportsBlock = `\n@supports (color: oklch(0% 0 0)) {\n  :root {\n    ${oklchDefs.join('\n    ')}\n  }\n}\n`;
-    css += supportsBlock;
+    extraSupports += `\n@supports (color: oklch(0% 0 0)) {\n  :root {\n    ${oklchDefs.join('\n    ')}\n  }\n}\n`;
   }
+  if (gradDefs.length > 0) {
+    extraSupports += `\n@supports (background-image: linear-gradient(in oklab, red, red)) {\n  ${gradDefs.join('\n  ')}\n}\n`;
+  }
+  css += extraSupports;
 
   fs.writeFileSync(filePath, css, 'utf-8');
   console.log(`[compat-legacy-css] Berhasil mengoptimasi ${file}:`);
-  console.log(` - ${varCount} variabel warna dikonversi ke sRGB (dengan @supports OKLCH modern)`);
+  console.log(` - ${varCount} variabel warna dikonversi ke sRGB`);
   console.log(` - ${directOklchCount} deklarasi oklch langsung dikonversi ke sRGB`);
   console.log(` - ${directOklabCount} deklarasi oklab dikonversi ke sRGB/RGBA`);
+  console.log(` - ${gradCount} utilitas gradien diperbaiki (fallback CSS3 linear-gradient)`);
 }
 
-console.log('[compat-legacy-css] Selesai! CSS kini kompatibel 100% dengan Chrome 109 / Windows 7 & 8.');
+console.log('[compat-legacy-css] Selesai! CSS kini 100% kompatibel penuh (warna & gradien) dengan Chrome 109 / Windows 7 & 8.');
