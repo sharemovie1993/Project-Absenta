@@ -33,6 +33,96 @@ interface DenahImageGuideFloatingBarProps {
   isLightMode: boolean;
 }
 
+/**
+ * Kompresi pintar di browser untuk gambar berukuran besar (misal 17MB)
+ * Merampingkan dimensi maksimal ke 4096px dan format WebP/JPEG tanpa kehilangan detail garis arsitektur.
+ */
+async function compressImageForCanvas(
+  file: File,
+  maxDimension: number = 4096,
+  quality: number = 0.88
+): Promise<{ file: File; originalSize: number; compressedSize: number; ratio: number }> {
+  const originalSize = file.size;
+
+  // Jika SVG, jangan dikompresi (vektor asli)
+  if (file.type === 'image/svg+xml') {
+    return { file, originalSize, compressedSize: originalSize, ratio: 0 };
+  }
+
+  // Jika file sudah kecil (<= 1.5 MB), tidak perlu kompresi
+  if (originalSize <= 1.5 * 1024 * 1024) {
+    return { file, originalSize, compressedSize: originalSize, ratio: 0 };
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
+      let { width, height } = img;
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        resolve({ file, originalSize, compressedSize: originalSize, ratio: 0 });
+        return;
+      }
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Gunakan WebP berkualitas tinggi untuk mempertahankan garis denah
+      const targetMime = 'image/webp';
+      canvas.toBlob(
+        (blob) => {
+          if (!blob || blob.size >= originalSize) {
+            resolve({ file, originalSize, compressedSize: originalSize, ratio: 0 });
+            return;
+          }
+
+          const baseName = file.name.replace(/\.[^.]+$/, '');
+          const compressedFile = new File([blob], `${baseName}.webp`, {
+            type: targetMime,
+            lastModified: Date.now(),
+          });
+
+          const ratio = Math.round(((originalSize - blob.size) / originalSize) * 100);
+          resolve({
+            file: compressedFile,
+            originalSize,
+            compressedSize: blob.size,
+            ratio,
+          });
+        },
+        targetMime,
+        quality
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve({ file, originalSize, compressedSize: originalSize, ratio: 0 });
+    };
+
+    img.src = objectUrl;
+  });
+}
+
 export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProps> = ({
   config,
   onUpdateConfig,
@@ -43,11 +133,13 @@ export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProp
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatusText, setUploadStatusText] = useState('Mengunggah gambar...');
+  const [compressionRatio, setCompressionRatio] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'UPLOAD' | 'URL'>('UPLOAD');
   const [urlInput, setUrlInput] = useState(config.url || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle upload file
+  // Handle upload file dengan Automatic Client-Side Smart Compression
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -59,27 +151,49 @@ export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProp
       return;
     }
 
-    // Validasi ukuran berkas (maks 15MB)
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error('Ukuran berkas terlalu besar (Maksimal 15 MB).');
+    // Validasi batas ukuran awal sebelum kompresi (maks 50 MB)
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('Ukuran berkas terlalu besar (Maksimal 50 MB).');
       return;
     }
 
     setIsUploading(true);
+    setCompressionRatio(null);
+
     try {
-      // 1. Coba upload ke server absenta backend
-      const uploadedUrl = await uploadDenahImage(file);
+      let fileToUpload = file;
+      const originalSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+
+      // Jalankan kompresi otomatis jika file > 1.5 MB
+      if (file.size > 1.5 * 1024 * 1024 && file.type !== 'image/svg+xml') {
+        setUploadStatusText(`Mengompresi gambar denah (${originalSizeMB} MB)...`);
+        const result = await compressImageForCanvas(file, 4096, 0.88);
+        if (result.ratio > 0) {
+          fileToUpload = result.file;
+          const compressedSizeMB = (result.compressedSize / (1024 * 1024)).toFixed(1);
+          setCompressionRatio(result.ratio);
+          toast.success(
+            `Gambar dioptimasi: ${originalSizeMB} MB ➔ ${compressedSizeMB} MB (Hemat ${result.ratio}%)`,
+            { duration: 4000 }
+          );
+        }
+      }
+
+      setUploadStatusText('Menyimpan ke Storage Engine Absenta...');
+
+      // 1. Simpan ke Storage Engine backend
+      const uploadedUrl = await uploadDenahImage(fileToUpload);
       onUpdateConfig({
         enabled: true,
         url: uploadedUrl,
-        file_name: file.name,
+        file_name: fileToUpload.name,
         is_locked: false, // Default unlock agar user bisa langsung memposisikan
       });
       setUrlInput(uploadedUrl);
-      toast.success('Gambar denah berhasil diunggah!');
+      toast.success('Gambar denah berhasil disimpan di Storage Engine!');
     } catch (err: any) {
-      console.warn('Gagal upload ke server, fallback ke local base64/dataURL:', err);
-      // 2. Fallback aman: konversi ke Data URL lokal agar tetap bisa dipakai offline
+      console.warn('Gagal upload ke server, fallback ke local dataURL:', err);
+      // 2. Fallback aman jika offline: konversi ke Data URL lokal
       const reader = new FileReader();
       reader.onload = (event) => {
         const localDataUrl = event.target?.result as string;
@@ -90,11 +204,12 @@ export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProp
           is_locked: false,
         });
         setUrlInput(localDataUrl);
-        toast.success('Gambar denah siap digunakan!');
+        toast.success('Gambar denah siap digunakan (Mode Lokal)!');
       };
       reader.readAsDataURL(file);
     } finally {
       setIsUploading(false);
+      setUploadStatusText('Mengunggah gambar...');
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -253,8 +368,8 @@ export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProp
                     {isUploading ? (
                       <div className="flex flex-col items-center py-2">
                         <Loader2 className="w-7 h-7 text-emerald-500 animate-spin mb-1.5" />
-                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                          Mengunggah gambar...
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs">
+                          {uploadStatusText}
                         </span>
                       </div>
                     ) : (
@@ -266,7 +381,10 @@ export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProp
                           Klik untuk Pilih Gambar Denah
                         </span>
                         <span className="text-[10px] text-slate-400 mt-0.5">
-                          Format PNG, JPG, WEBP, atau SVG (Maks 15 MB)
+                          Format PNG, JPG, WEBP, atau SVG (Maks 50 MB)
+                        </span>
+                        <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
+                          ⚡ Otomatis Dikompresi & Disimpan di Storage Engine
                         </span>
                       </>
                     )}
@@ -310,6 +428,14 @@ export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProp
                     <p className="text-[10px] text-slate-400 truncate">
                       Skala {(config.scale || 1).toFixed(2)}x • Rotasi {config.rotation || 0}°
                     </p>
+                    <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                      {compressionRatio !== null && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          Hemat {compressionRatio}%
+                        </span>
+                      )}
+                      <span className="text-[9px] text-slate-400">Storage Engine ✓</span>
+                    </div>
                   </div>
                 </div>
 
