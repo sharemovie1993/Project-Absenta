@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import {
   FileSpreadsheet,
   DownloadCloud,
@@ -7,7 +7,6 @@ import {
   Layers,
   Sparkles,
   Search,
-  Filter,
   Trash2,
   Eye,
   RefreshCw,
@@ -16,25 +15,51 @@ import {
   CheckSquare,
   Square,
   AlertCircle,
-  HelpCircle,
-  ArrowRight,
   Calendar,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
+import { HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 import { toast } from 'react-hot-toast';
 import {
   attendanceStagingApi,
   type AttendanceStagingItem,
 } from '@/api/attendance-staging.api';
-import { AttendanceStagingDetailModal } from './AttendanceStagingDetailModal';
-import { AttendanceStagingPreSyncModal } from './AttendanceStagingPreSyncModal';
-import { AttendanceStagingClassMappingModal } from './AttendanceStagingClassMappingModal';
-import { AttendanceStagingManualBackfillModal } from './AttendanceStagingManualBackfillModal';
 
-export const AttendanceStagingView: React.FC = () => {
+const AttendanceStagingDetailModal = lazy(() =>
+  import('./AttendanceStagingDetailModal').then((m) => ({ default: m.AttendanceStagingDetailModal }))
+);
+const AttendanceStagingPreSyncModal = lazy(() =>
+  import('./AttendanceStagingPreSyncModal').then((m) => ({ default: m.AttendanceStagingPreSyncModal }))
+);
+const AttendanceStagingClassMappingModal = lazy(() =>
+  import('./AttendanceStagingClassMappingModal').then((m) => ({ default: m.AttendanceStagingClassMappingModal }))
+);
+const AttendanceStagingManualBackfillModal = lazy(() =>
+  import('./AttendanceStagingManualBackfillModal').then((m) => ({ default: m.AttendanceStagingManualBackfillModal }))
+);
+
+export interface UniversalAttendanceStagingViewProps {
+  tahunPelajaranId?: string;
+  semesterId?: string;
+  kelasId?: string;
+  isModal?: boolean;
+  hideLayout?: boolean;
+  readOnly?: boolean;
+  onClose?: () => void;
+  onSyncSuccess?: () => void;
+}
+
+export const AttendanceStagingView: React.FC<UniversalAttendanceStagingViewProps> = React.memo(({
+  isModal = false,
+  hideLayout = false,
+  readOnly = false,
+  onClose,
+  onSyncSuccess,
+}) => {
   const [urlInput, setUrlInput] = useState('');
   const [isFetching, setIsFetching] = useState(false);
   const [isLoadingList, setIsLoadingList] = useState(false);
@@ -93,6 +118,10 @@ export const AttendanceStagingView: React.FC = () => {
   useEffect(() => {
     loadClassOptions();
   }, [loadClassOptions]);
+
+  useEffect(() => {
+    loadSheets();
+  }, [loadSheets]);
 
   // Handle inline remap class
   const handleInlineRemap = async (sheetId: string, kelasId: string) => {
@@ -162,6 +191,7 @@ export const AttendanceStagingView: React.FC = () => {
         if (res.success) {
           toast.success(res.message || 'Berhasil menyinkronkan data presensi.');
           loadSheets();
+          onSyncSuccess?.();
           if (selectedSheet?.id === ids[0]) {
             const updatedDetail = await attendanceStagingApi.getSheetDetail(ids[0]);
             if (updatedDetail.success) setSelectedSheet(updatedDetail.data);
@@ -175,6 +205,7 @@ export const AttendanceStagingView: React.FC = () => {
           toast.success(res.message || `Berhasil menyinkronkan ${ids.length} rombel.`);
           setSelectedIds([]);
           loadSheets();
+          onSyncSuccess?.();
         } else {
           toast.error(res.message || 'Gagal melakukan sinkronisasi massal.');
         }
@@ -270,167 +301,163 @@ export const AttendanceStagingView: React.FC = () => {
     return { total, ready, synced, totalStudents };
   }, [stagingSheets]);
 
-  return (
-    <div className="space-y-6">
-      {/* Top Banner & Info */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 max-w-4xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold tracking-wide uppercase text-emerald-100">
-            <ShieldCheck className="w-4 h-4 text-emerald-200" />
-            Superadmin & Kesiswaan Staging Protocol
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Wadah Penampung Presensi (Attendance Staging Hub)
-          </h1>
-          <p className="text-sm sm:text-base text-emerald-100/90 leading-relaxed">
-            Modul penampung data presensi multi-sheet mingguan dari Google Spreadsheet. Seluruh rombel diinspeksi secara terisolasi sebelum didistribusikan secara presisi (Smart Dispatcher) ke modul Upacara, Ketarunaan, Duha, dan Apel Pulang.
-          </p>
+  // Shopee-Grade Mobile Hub Bento Cells (Strictly Max 2 Lines, Hairline 1px Dividers)
+  const bentoCells: HubBentoCell[] = useMemo(
+    () => [
+      {
+        id: 'totalSheets',
+        title: 'Total Lembar Rombel',
+        value: `${stats.total} Rombel`,
+        icon: Layers,
+        iconColorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60',
+        onClick: () => setStatusFilter('ALL'),
+      },
+      {
+        id: 'readySheets',
+        title: 'Siap Sinkron',
+        value: `${stats.ready} Rombel`,
+        icon: Clock,
+        iconColorClass: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60',
+        onClick: () => setStatusFilter('READY'),
+      },
+      {
+        id: 'syncedSheets',
+        title: 'Tersinkronkan',
+        value: `${stats.synced} Rombel`,
+        icon: CheckCircle2,
+        iconColorClass: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60',
+        onClick: () => setStatusFilter('SYNCED'),
+      },
+      {
+        id: 'totalStudents',
+        title: 'Total Baris Siswa',
+        value: `${stats.totalStudents.toLocaleString()} Siswa`,
+        icon: FileSpreadsheet,
+        iconColorClass: 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60',
+      },
+    ],
+    [stats]
+  );
 
-          <div className="pt-2 flex flex-wrap gap-3 text-xs text-white/80">
-            {stagingSheets[0]?.tahun_pelajaran_nama && (
-              <span className="flex items-center gap-1.5 bg-black/30 border border-white/20 px-3 py-1 rounded-lg font-bold text-amber-300">
-                <Calendar className="w-3.5 h-3.5 text-amber-400" /> Konteks Akademik: TP {stagingSheets[0].tahun_pelajaran_nama} (Aktif)
+  return (
+    <div className={cn('space-y-3 w-full max-w-full min-w-0', isModal && 'p-1 sm:p-2')}>
+      {/* Top Banner & Info (Compact Mode when inside Modal/Tab) */}
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 rounded-2xl p-3.5 sm:p-5 text-white shadow-md relative overflow-hidden">
+        <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-1.5 max-w-4xl">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/20 backdrop-blur-md rounded-full text-[11px] font-bold text-emerald-100">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-200" />
+                Smart Dispatcher 5 Siklus Presensi
               </span>
+              {stagingSheets[0]?.tahun_pelajaran_nama && (
+                <span className="inline-flex items-center gap-1 bg-black/30 border border-white/20 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-amber-300">
+                  <Calendar className="w-3 h-3 text-amber-400" /> TP {stagingSheets[0].tahun_pelajaran_nama}
+                </span>
+              )}
+            </div>
+            <h1 className="text-base sm:text-xl font-black tracking-tight">
+              Wadah Penampung Presensi (Attendance Staging Hub)
+            </h1>
+            {!hideLayout && (
+              <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
+                Penampung data presensi multi-sheet mingguan dari Google Spreadsheet atau input manual untuk didistribusikan ke Upacara, Ketarunaan, Dhuha, dan Apel Sore.
+              </p>
             )}
-            <span className="flex items-center gap-1 bg-black/20 px-2.5 py-1 rounded-lg">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Smart Agenda Dispatcher
-            </span>
-            <span className="flex items-center gap-1 bg-black/20 px-2.5 py-1 rounded-lg">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" /> Validasi NIS/NISN Otomatis
-            </span>
-            <span className="flex items-center gap-1 bg-black/20 px-2.5 py-1 rounded-lg">
-              <Layers className="w-3.5 h-3.5 text-cyan-300" /> Multi-Sheet 20+ Rombel
-            </span>
           </div>
+
+          {isModal && onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="self-end sm:self-start p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/25 transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 text-xs font-bold"
+              title="Tutup Modal Staging Presensi"
+            >
+              <X className="w-4 h-4" />
+              <span>Tutup</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* URL Ingestion Form Card */}
-      <Card className="p-5 sm:p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl">
-        <form onSubmit={handleFetchUrl} className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                Tarik Data dari Google Spreadsheet
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Pastikan tautan Google Spreadsheet berstatus <strong>&quot;Siapa saja yang memiliki link dapat melihat (Viewer)&quot;</strong>.
-              </p>
-            </div>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <Button
-                type="button"
-                variant="primary"
-                onClick={() => setManualBackfillOpen(true)}
-                className="bg-amber-600 hover:bg-amber-700 text-white font-black text-xs px-3.5 py-2 rounded-xl shadow-sm flex items-center gap-1.5"
-              >
-                <Sparkles className="w-4 h-4 text-amber-200" />
-                Input Backfill Cepat (Manual UI)
-              </Button>
-              <a
-                href="https://docs.google.com/spreadsheets/d/1FHKzAAVEEcRz3uzEptsgRk09z7mqmQ1ZwFCIwF1Iwe0/edit?gid=1255049954#gid=1255049954"
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 font-medium"
-              >
-                <ExternalLink className="w-3.5 h-3.5" /> Sampel Spreadsheet
-              </a>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <input
-                type="url"
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="https://docs.google.com/spreadsheets/d/1FHKzAAVEEcRz3uzEptsgRk09z7mqmQ1ZwFCIwF1Iwe0/edit#gid=0"
-                className="w-full px-4 py-2.5 pl-10 text-sm bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-800 dark:text-slate-100 transition-all font-mono"
-                disabled={isFetching}
-              />
-              <FileSpreadsheet className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-            </div>
-
-            <Button
-              type="submit"
-              disabled={isFetching || !urlInput.trim()}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 shrink-0"
-            >
-              {isFetching ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Mengekstrak 20+ Sheet...
-                </>
-              ) : (
-                <>
-                  <DownloadCloud className="w-4 h-4" />
-                  Tarik Data Lembar
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
-      </Card>
-
-      {/* KPI Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Lembar Rombel</p>
-              <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{stats.total}</p>
-            </div>
-            <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-xl">
-              <Layers className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-2">Seluruh kelas tertampung di staging</p>
-        </Card>
-
-        <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-amber-600 dark:text-amber-400">Siap Sinkron</p>
-              <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">{stats.ready}</p>
-            </div>
-            <div className="p-2.5 bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 rounded-xl">
-              <Clock className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-2">Menunggu eksekusi dispatcher</p>
-        </Card>
-
-        <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Tersinkronkan</p>
-              <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{stats.synced}</p>
-            </div>
-            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-xl">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-2">Telah masuk database presensi</p>
-        </Card>
-
-        <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Baris Siswa</p>
-              <p className="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">{stats.totalStudents}</p>
-            </div>
-            <div className="p-2.5 bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 rounded-xl">
-              <FileSpreadsheet className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-2">Total siswa terdata di lembar</p>
-        </Card>
+      {/* Shopee-Grade Hairline Bento Grid Metrics (1 Card Container, 2 Lines Max) */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs">
+        <HubBentoGrid cells={bentoCells} columns={4} />
       </div>
 
+      {/* URL Ingestion Form Card (Compact) */}
+      {!readOnly && (
+        <Card className="p-3.5 sm:p-4 shadow-2xs border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl">
+          <form onSubmit={handleFetchUrl} className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div>
+                <h2 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  Tarik Data dari Google Spreadsheet atau Input Backfill
+                </h2>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Pastikan tautan Google Spreadsheet berstatus <strong>&quot;Siapa saja yang memiliki link dapat melihat (Viewer)&quot;</strong>.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => setManualBackfillOpen(true)}
+                  className="h-8 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3 rounded-xl shadow-2xs flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                  Input Backfill Cepat (Manual UI)
+                </Button>
+                <a
+                  href="https://docs.google.com/spreadsheets/d/1FHKzAAVEEcRz3uzEptsgRk09z7mqmQ1ZwFCIwF1Iwe0/edit?gid=1255049954#gid=1255049954"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 font-medium"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Sampel Sheet
+                </a>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <div className="relative flex-1">
+                <input
+                  type="url"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  placeholder="https://docs.google.com/spreadsheets/d/1FHKzAAVEEcRz3uzEptsgRk09z7mqmQ1ZwFCIwF1Iwe0/edit#gid=0"
+                  className="w-full px-3.5 py-2 pl-9 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-800 dark:text-slate-100 transition-all font-mono"
+                  disabled={isFetching}
+                />
+                <FileSpreadsheet className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isFetching || !urlInput.trim()}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 shrink-0"
+              >
+                {isFetching ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    Mengekstrak Sheet...
+                  </>
+                ) : (
+                  <>
+                    <DownloadCloud className="w-3.5 h-3.5" />
+                    Tarik Data Lembar
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
       {/* Table Toolbar & Search */}
-      <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl">
+      <Card className="p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Status Tabs */}
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-medium">
@@ -779,49 +806,70 @@ export const AttendanceStagingView: React.FC = () => {
       </Card>
 
       {/* Detail Modal */}
-      <AttendanceStagingDetailModal
-        isOpen={detailModalOpen}
-        onClose={() => {
-          setDetailModalOpen(false);
-          setSelectedSheet(null);
-        }}
-        item={selectedSheet}
-        onSync={(id) => {
-          const target = stagingSheets.find((s) => s.id === id) || selectedSheet;
-          if (target) openSinglePreSync(target);
-        }}
-        isSyncing={isExecutingSync}
-        onMappingSaved={loadSheets}
-      />
+      {detailModalOpen && (
+        <Suspense fallback={null}>
+          <AttendanceStagingDetailModal
+            isOpen={detailModalOpen}
+            onClose={() => {
+              setDetailModalOpen(false);
+              setSelectedSheet(null);
+            }}
+            item={selectedSheet}
+            onSync={(id) => {
+              const target = stagingSheets.find((s) => s.id === id) || selectedSheet;
+              if (target) openSinglePreSync(target);
+            }}
+            isSyncing={isExecutingSync}
+            onMappingSaved={loadSheets}
+          />
+        </Suspense>
+      )}
 
       {/* Pre-Sync Confirmation Modal */}
-      <AttendanceStagingPreSyncModal
-        isOpen={preSyncModalOpen}
-        onClose={() => {
-          setPreSyncModalOpen(false);
-          setItemsToSync([]);
-        }}
-        items={itemsToSync}
-        onConfirmSync={handleExecuteSync}
-        isSyncing={isExecutingSync}
-      />
+      {preSyncModalOpen && (
+        <Suspense fallback={null}>
+          <AttendanceStagingPreSyncModal
+            isOpen={preSyncModalOpen}
+            onClose={() => {
+              setPreSyncModalOpen(false);
+              setItemsToSync([]);
+            }}
+            items={itemsToSync}
+            onConfirmSync={handleExecuteSync}
+            isSyncing={isExecutingSync}
+          />
+        </Suspense>
+      )}
 
       {/* Class Mapping Modal */}
-      <AttendanceStagingClassMappingModal
-        isOpen={mappingModalOpen}
-        onClose={() => setMappingModalOpen(false)}
-        sheets={stagingSheets}
-        classOptions={classOptions}
-        onMappingSaved={loadSheets}
-      />
+      {mappingModalOpen && (
+        <Suspense fallback={null}>
+          <AttendanceStagingClassMappingModal
+            isOpen={mappingModalOpen}
+            onClose={() => setMappingModalOpen(false)}
+            sheets={stagingSheets}
+            classOptions={classOptions}
+            onMappingSaved={loadSheets}
+          />
+        </Suspense>
+      )}
 
       {/* Manual Multi-Date Backfill Modal */}
-      <AttendanceStagingManualBackfillModal
-        isOpen={manualBackfillOpen}
-        onClose={() => setManualBackfillOpen(false)}
-        classOptions={classOptions}
-        onSuccess={loadSheets}
-      />
+      {manualBackfillOpen && (
+        <Suspense fallback={null}>
+          <AttendanceStagingManualBackfillModal
+            isOpen={manualBackfillOpen}
+            onClose={() => setManualBackfillOpen(false)}
+            classOptions={classOptions}
+            onSuccess={() => {
+              loadSheets();
+              onSyncSuccess?.();
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
-};
+});
+
+AttendanceStagingView.displayName = 'AttendanceStagingView';

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, Suspense, lazy } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Medal,
   Shield,
@@ -11,8 +11,10 @@ import {
   FileText,
   Activity,
   SlidersHorizontal,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
@@ -53,6 +55,11 @@ const KetarunaanLaporanTimTab = lazy(() =>
 const KetarunaanLaporanKelasTab = lazy(() =>
   import('@/components/kesiswaan/program-ketarunaan/KetarunaanLaporanKelasTab').then((m) => ({
     default: m.KetarunaanLaporanKelasTab,
+  }))
+);
+const AttendanceStagingModal = lazy(() =>
+  import('@/components/attendance/staging/AttendanceStagingModal').then((m) => ({
+    default: m.AttendanceStagingModal,
   }))
 );
 
@@ -97,7 +104,9 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
   );
 
   // Mobile Filter Collapsible State & Mobile Subtab Sidebar
+  const queryClient = useQueryClient();
   const [showMobileFilter, setShowMobileFilter] = useState(false);
+  const [isStagingModalOpen, setIsStagingModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isMobileSidebarOpen, setIsMobileSidebarOpen } = useMobileSubtabSidebar('ketarunaan');
 
@@ -299,8 +308,19 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
           actions={
-            <div className="flex items-center gap-2">
-              <span className="hidden sm:inline-flex text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/20 text-white backdrop-blur-xs border border-white/30">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setIsStagingModalOpen(true)}
+                className="h-7 sm:h-8 px-2 sm:px-2.5 text-[11px] font-bold bg-white/20 hover:bg-white/30 text-white border-white/30 gap-1.5 cursor-pointer shadow-2xs"
+                title="Buka Wadah Penampung Presensi (Attendance Staging Hub)"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-300" />
+                <span className="hidden sm:inline">Staging Presensi</span>
+              </Button>
+              <span className="hidden md:inline-flex text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/20 text-white backdrop-blur-xs border border-white/30">
                 🎖️ Tim Pembina Taruna
               </span>
               <button
@@ -364,6 +384,7 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
           selectedSemesterNama={academicFilter.selectedSemesterNama}
           selectedKelasLabel={academicFilter.selectedKelasLabel}
           onOpenSettings={() => navigate('/kesiswaan/jadwal-kegiatan')}
+          onOpenStaging={() => setIsStagingModalOpen(true)}
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing || isGuardLoading || isSesiLoading}
           filterToolbarNode={<AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />}
@@ -504,6 +525,25 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
             )}
           </div>
         </SectionCard>
+
+        {/* Universal Attendance Staging Modal (Hub Penampung Presensi Spreadsheet) */}
+        {isStagingModalOpen && (
+          <Suspense fallback={null}>
+            <AttendanceStagingModal
+              isOpen={isStagingModalOpen}
+              onClose={() => setIsStagingModalOpen(false)}
+              tahunPelajaranId={selectedTpId}
+              semesterId={selectedSemId}
+              kelasId={academicFilter.values.kelasId}
+              onSyncSuccess={() => {
+                handleRefresh();
+                queryClient.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
+                queryClient.invalidateQueries({ queryKey: ['ketarunaan-sesi-hari-ini'] });
+                queryClient.invalidateQueries({ queryKey: ['ketarunaan-penilaian'] });
+              }}
+            />
+          </Suspense>
+        )}
       </div>
     </InfraErrorBoundary>
   );

@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
   RefreshCw,
   Clock,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
@@ -42,6 +43,7 @@ export interface KetarunaanWorkdeskFlightDeckProps {
   selectedSemesterNama?: string;
   selectedKelasLabel?: string;
   onOpenSettings?: () => void;
+  onOpenStaging?: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
   filterToolbarNode?: React.ReactNode;
@@ -64,6 +66,7 @@ export const KetarunaanWorkdeskFlightDeck: React.FC<KetarunaanWorkdeskFlightDeck
   selectedSemesterNama,
   selectedKelasLabel,
   onOpenSettings,
+  onOpenStaging,
   onRefresh,
   isRefreshing = false,
   filterToolbarNode,
@@ -226,8 +229,20 @@ export const KetarunaanWorkdeskFlightDeck: React.FC<KetarunaanWorkdeskFlightDeck
             ) : null}
           </div>
 
-          {/* Right: Pengaturan & Refresh */}
-          <div className="flex items-center gap-1.5 shrink-0 text-xs">
+          {/* Right: Shortcut Staging Presensi, Pengaturan & Refresh */}
+          <div className="flex items-center gap-1.5 shrink-0 text-xs flex-wrap">
+            {onOpenStaging && (
+              <button
+                type="button"
+                onClick={onOpenStaging}
+                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                title="Buka Wadah Penampung Presensi (Attendance Staging Hub)"
+              >
+                <FileSpreadsheet size={12} className="text-emerald-100 shrink-0" />
+                <span>Staging Presensi</span>
+              </button>
+            )}
+
             {onRefresh && (
               <button
                 type="button"
