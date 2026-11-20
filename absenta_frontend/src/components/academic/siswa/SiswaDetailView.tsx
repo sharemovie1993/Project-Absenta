@@ -517,26 +517,6 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
     const f = e.target.files?.[0]; if (f) handleUploadPhoto(f); e.target.value = '';
   }, [handleUploadPhoto]);
 
-  if (isLoading) {
-    return (
-      <div className="p-16 flex flex-col items-center justify-center space-y-4">
-        <Loader size="lg" />
-        <p className="text-xs font-bold text-slate-500 animate-pulse">Memuat profil lengkap siswa...</p>
-      </div>
-    );
-  }
-
-  if (!siswa) {
-    return (
-      <div className="p-8 text-center space-y-4">
-        <p className="text-sm font-bold text-red-500">Data siswa tidak ditemukan.</p>
-        <Button variant="outline" onClick={onBack}>
-          <ArrowLeft size={14} className="mr-1.5" /> Kembali ke Daftar
-        </Button>
-      </div>
-    );
-  }
-
   const studentIdentity = normalizeStudentIdentity(siswa);
   const rawSiswaPhoto = studentIdentity.fotoUrl;
   const resolvedPhotoUrl = rawSiswaPhoto ? resolveProfilePhotoUrl(rawSiswaPhoto) : null;
@@ -586,6 +566,26 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
       setIsImpersonatingThis(false);
     }
   }, [confirm, impersonateSiswaAction, navigate, siswa, namaKelas]);
+
+  if (isLoading) {
+    return (
+      <div className="p-16 flex flex-col items-center justify-center space-y-4">
+        <Loader size="lg" />
+        <p className="text-xs font-bold text-slate-500 animate-pulse">Memuat profil lengkap siswa...</p>
+      </div>
+    );
+  }
+
+  if (!siswa) {
+    return (
+      <div className="p-8 text-center space-y-4">
+        <p className="text-sm font-bold text-red-500">Data siswa tidak ditemukan.</p>
+        <Button variant="outline" onClick={onBack}>
+          <ArrowLeft size={14} className="mr-1.5" /> Kembali ke Daftar
+        </Button>
+      </div>
+    );
+  }
 
   const alamatLengkapFormatted = formatAlamatLengkap({
     alamat: editAlamat,
