@@ -9,11 +9,7 @@ import {
   UserCheck, 
   UserX, 
   AlertTriangle, 
-  Sparkles,
-  Download,
-  Filter,
-  Layers,
-  ArrowRight
+  Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -117,12 +113,34 @@ export const RegistrasiSiswaPage: React.FC = () => {
         getActiveSemester()
       ]);
 
-      setYearOptions(years.map(y => ({ value: y.id, label: y.tahun })));
+      // getTahunPelajaranForDropdown returns DropdownOption[] ({ value, label })
+      const normalizedYears = Array.isArray(years) ? years.map((y: any) => ({
+        value: String(y.value || y.id || ''),
+        label: String(y.label || y.tahun || '')
+      })).filter(y => Boolean(y.value)) : [];
+
+      setYearOptions(normalizedYears);
       setActiveYear(activeY);
       setActiveSemester(activeS);
 
-      if (activeY) setSelectedYearId(activeY.id);
-      if (activeS) setSelectedSemesterId(activeS.id);
+      const targetYearId = activeY?.id || (normalizedYears.length > 0 ? normalizedYears[0].value : '');
+      const targetSemId = activeS?.id || '';
+
+      if (targetYearId) {
+        setSelectedYearId(targetYearId);
+        const sems = await getSemesterByTahunPelajaranForDropdown(targetYearId);
+        const normalizedSems = Array.isArray(sems) ? sems.map((s: any) => ({
+          value: String(s.value || s.id || ''),
+          label: String(s.label || s.nama_semester || '')
+        })).filter(s => Boolean(s.value)) : [];
+        setSemesterOptions(normalizedSems);
+
+        if (targetSemId && normalizedSems.some(s => s.value === targetSemId)) {
+          setSelectedSemesterId(targetSemId);
+        } else if (normalizedSems.length > 0) {
+          setSelectedSemesterId(normalizedSems[0].value);
+        }
+      }
     } catch (e: unknown) {
       console.error('Failed to load period references:', e);
       toast.error('Gagal memuat referensi periode akademik.');
@@ -130,17 +148,23 @@ export const RegistrasiSiswaPage: React.FC = () => {
   }, []);
 
   // Update semester options when year changes
-  useEffect(() => {
-    if (!selectedYearId) return;
-    getSemesterByTahunPelajaranForDropdown(selectedYearId)
-      .then(sems => {
-        setSemesterOptions(sems.map(s => ({ value: s.id, label: s.nama_semester })));
-        if (!sems.some(s => s.id === selectedSemesterId) && sems.length > 0) {
-          setSelectedSemesterId(sems[0].id);
-        }
-      })
-      .catch(console.error);
-  }, [selectedYearId, selectedSemesterId]);
+  const handleYearChange = useCallback(async (yearId: string) => {
+    setSelectedYearId(yearId);
+    if (!yearId) return;
+    try {
+      const sems = await getSemesterByTahunPelajaranForDropdown(yearId);
+      const normalizedSems = Array.isArray(sems) ? sems.map((s: any) => ({
+        value: String(s.value || s.id || ''),
+        label: String(s.label || s.nama_semester || '')
+      })).filter(s => Boolean(s.value)) : [];
+      setSemesterOptions(normalizedSems);
+      if (normalizedSems.length > 0) {
+        setSelectedSemesterId(normalizedSems[0].value);
+      }
+    } catch (err) {
+      console.error('Failed to load semesters for year:', err);
+    }
+  }, []);
 
   // Fetch Class Options
   useEffect(() => {
@@ -149,7 +173,10 @@ export const RegistrasiSiswaPage: React.FC = () => {
         const list = Array.isArray(data) ? data : (data?.data || []);
         setKelasOptions([
           { value: '', label: 'Semua Kelas (Seluruh Rombel)' },
-          ...list.map((k: Kelas) => ({ value: k.id, label: k.nama_kelas }))
+          ...list.map((k: any) => ({
+            value: String(k.value || k.id || ''),
+            label: String(k.label || k.nama_kelas || '')
+          })).filter(k => Boolean(k.value))
         ]);
       })
       .catch(console.error);
@@ -369,21 +396,21 @@ export const RegistrasiSiswaPage: React.FC = () => {
     }
   ], [totalActiveMaster, totalRegistered, totalUnregistered, completionPercentage, selectedYearId]);
 
-  // Table Columns Definition
-  const columns: Column<Siswa>[] = [
+  // Table Columns Definition conforming to Table.tsx Column interface (key, label, render)
+  const columns = useMemo<Column[]>(() => [
     {
-      header: 'No.',
-      accessor: 'id',
+      key: 'no',
+      label: 'No.',
       className: 'w-12 text-center text-xs font-bold text-slate-400',
-      cell: (_item, index) => (
+      render: (_val: any, _row: any, index: number) => (
         <span>{(currentPage - 1) * itemsPerPage + index + 1}</span>
       )
     },
     {
-      header: 'Identitas Siswa',
-      accessor: 'nama_siswa',
+      key: 'nama_siswa',
+      label: 'Identitas Siswa',
       className: 'min-w-[240px]',
-      cell: (siswa) => (
+      render: (_val: any, siswa: Siswa) => (
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center font-black text-xs shrink-0 border border-slate-200/60 dark:border-slate-700">
             {siswa.nama_siswa?.charAt(0) || 'S'}
@@ -408,10 +435,10 @@ export const RegistrasiSiswaPage: React.FC = () => {
       )
     },
     {
-      header: 'Kelas Master',
-      accessor: 'Kelas',
+      key: 'kelas',
+      label: 'Kelas Master',
       className: 'w-36',
-      cell: (siswa) => (
+      render: (_val: any, siswa: Siswa) => (
         <div className="flex items-center gap-1.5">
           <Badge variant="outline" className="font-bold text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
             {siswa.Kelas?.nama_kelas || 'Tanpa Kelas'}
@@ -420,10 +447,10 @@ export const RegistrasiSiswaPage: React.FC = () => {
       )
     },
     {
-      header: 'Status Siswa Akademik',
-      accessor: 'id',
+      key: 'status_akademik',
+      label: 'Status Siswa Akademik',
       className: 'min-w-[220px]',
-      cell: (siswa) => {
+      render: (_val: any, siswa: Siswa) => {
         if (checkingLoading) {
           return (
             <div className="flex items-center gap-2 text-slate-400 text-xs">
@@ -477,20 +504,20 @@ export const RegistrasiSiswaPage: React.FC = () => {
       }
     },
     {
-      header: 'Status Biodata',
-      accessor: 'status',
+      key: 'status',
+      label: 'Status Biodata',
       className: 'w-28 text-center',
-      cell: (siswa) => (
+      render: (_val: any, siswa: Siswa) => (
         <Badge variant={siswa.status === 'AKTIF' ? 'default' : 'secondary'} className="text-[10px] font-black">
           {siswa.status || 'AKTIF'}
         </Badge>
       )
     },
     {
-      header: 'Aksi & Tindakan',
-      accessor: 'id',
+      key: 'actions',
+      label: 'Aksi & Tindakan',
       className: 'w-44 text-right',
-      cell: (siswa) => {
+      render: (_val: any, siswa: Siswa) => {
         const entry = checkingMap[siswa.id];
         const isRegistered = Boolean(entry);
         const isThisSyncing = syncSingleLoading[siswa.id] || false;
@@ -524,7 +551,7 @@ export const RegistrasiSiswaPage: React.FC = () => {
         );
       }
     }
-  ];
+  ], [currentPage, itemsPerPage, checkingLoading, checkingMap, canManage, syncSingleLoading]);
 
   // Toolbar Component for Table Left (Status filter tabs)
   const toolbarLeft = (
@@ -678,7 +705,7 @@ export const RegistrasiSiswaPage: React.FC = () => {
         {/* Period Control Bar */}
         <RegistrationPeriodControl
           selectedYearId={selectedYearId}
-          setSelectedYearId={setSelectedYearId}
+          setSelectedYearId={handleYearChange}
           yearOptions={yearOptions}
           selectedSemesterId={selectedSemesterId}
           setSelectedSemesterId={setSelectedSemesterId}
