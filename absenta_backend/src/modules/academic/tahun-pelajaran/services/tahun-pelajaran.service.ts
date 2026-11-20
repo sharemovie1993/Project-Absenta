@@ -446,6 +446,35 @@ export class TahunPelajaranService {
       },
     });
 
+    // Otomatis nonaktifkan seluruh penugasan struktural tahun lampau agar tidak bocor ke tahun ajaran baru
+    await prisma.organizationalAssignment.updateMany({
+      where: {
+        tenant_id: existingTahunPelajaran.tenant_id,
+        tahun_pelajaran_id: { not: tahunPelajaranId },
+        is_active: true,
+      },
+      data: {
+        is_active: false,
+      },
+    });
+
+    // Otomatis aktifkan penugasan struktural tahun yang baru diaktifkan (jika end_date masih berlaku atau null)
+    await prisma.organizationalAssignment.updateMany({
+      where: {
+        tenant_id: existingTahunPelajaran.tenant_id,
+        tahun_pelajaran_id: tahunPelajaranId,
+        OR: [
+          { end_date: null },
+          { end_date: { gte: new Date() } },
+        ],
+      },
+      data: {
+        is_active: true,
+      },
+    });
+
+    await cacheInvalidationService.invalidateStrukturTree(existingTahunPelajaran.tenant_id);
+
     // Activate the selected tahun pelajaran
     const tahunPelajaran = await prisma.tahunPelajaran.update({
       where: { id: tahunPelajaranId },
