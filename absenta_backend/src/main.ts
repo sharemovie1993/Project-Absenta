@@ -125,12 +125,20 @@ const pinoTransport = {
 const fastify = Fastify({
   disableRequestLogging: true,
   ignoreTrailingSlash: true,
+  connectionTimeout: 0,
+  keepAliveTimeout: 120000,
   logger: {
     level: 'info',
     transport: pinoTransport,
   },
-  bodyLimit: 314572800 // 300 MB limit for large tenant backup JSON imports
+  bodyLimit: 2147483648 // 2 GB limit untuk paket cadangan (.absenta) skala enterprise
 });
+
+// Nonaktifkan batas requestTimeout default Node.js (5 menit) agar backup/restore besar tidak putus
+if (fastify.server) {
+  fastify.server.requestTimeout = 0;
+  fastify.server.headersTimeout = 125000;
+}
 
 // Add prisma to fastify instance
 fastify.decorate('prisma', prisma);

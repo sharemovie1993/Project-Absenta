@@ -270,7 +270,7 @@ export async function registerPlugins(fastify: any) {
 
 
   await fastify.register(require('@fastify/multipart'), {
-    limits: { fileSize: 300 * 1024 * 1024 } // 300 MB untuk menampung paket cadangan & migrasi .absenta
+    limits: { fileSize: 2048 * 1024 * 1024 } // 2 GB untuk menampung paket cadangan & migrasi .absenta skala enterprise
   });
 
   fastify.setNotFoundHandler(function (request: any, reply: any) {
