@@ -3,7 +3,7 @@ import { prisma } from '@/utils/prisma';
 import { storageService } from '@/infra/storage/storage.service';
 import { getDynamicTenantModels } from '@/constants/backup.constants';
 import { getDeployScenario } from '@/utils/deployScenario';
-import { fetchTenantProducts, rebindTenantEntitlements } from '@/services/licenseClient';
+import { fetchTenantProducts, rebindTenantEntitlements, provisionCloneTenantOnLicenseServer } from '@/services/licenseClient';
 // @ts-ignore
 import AdmZip from 'adm-zip';
 import crypto from 'crypto';
@@ -1013,8 +1013,10 @@ export class MigrationBundleService {
       message: 'Pemulihan data berhasil diselesaikan!'
     });
 
-    // 1. 🔄 Re-bind Lisensi Produk / Entitlements secara otomatis ke Server Tujuan (Hanya untuk Disaster Recovery / non-clone)
+    // 1. 🔄 Re-bind / Provision Lisensi Produk / Entitlements secara otomatis ke Server Lisensi
     let bundledEntitlements: any[] = [];
+    let liveEntitlements: any[] = [];
+
     if (!isCloning) {
       try {
         const entEntry = zip.getEntry('entitlements.json');
@@ -1045,25 +1047,44 @@ export class MigrationBundleService {
         console.warn('[MigrationBundle] Re-binding lisensi produk pasca-restore notice:', rebindErr.message);
       }
     } else {
-      console.log(`[MigrationBundle] Clone mode: melewati re-bind entitlements asal agar lisensi tenant produksi (${sourceSubdomain}) tetap aman.`);
+      console.log(`[MigrationBundle] 🧬 Clone mode: Menerbitkan lisensi mandiri baru untuk tenant kloning "${effectiveSubdomain}" di Server Lisensi...`);
+      try {
+        const targetHostKey = process.env.LICENSE_KEY || '';
+        const targetScenario = getDeployScenario();
+        const cloneRes = await provisionCloneTenantOnLicenseServer({
+          server_license_key: targetHostKey,
+          source_slug: sourceSubdomain,
+          target_slug: effectiveSubdomain,
+          target_name: effectiveName,
+          duration_days: 365,
+          deploy_scenario: targetScenario as any
+        });
+        console.log(`[MigrationBundle] ✅ Sukses menerbitkan lisensi clone di Server Lisensi:`, cloneRes.message);
+        if (Array.isArray(cloneRes.data) && cloneRes.data.length > 0) {
+          liveEntitlements = cloneRes.data;
+        }
+      } catch (cloneLicErr: any) {
+        console.warn(`[MigrationBundle] Notice menerbitkan lisensi clone di Server Lisensi:`, cloneLicErr?.message || cloneLicErr);
+      }
     }
 
     // 2. 🛡️ Sinkronisasi Subscription Patuh Model Komersial (Tanpa Bypass 2030)
     try {
-      // Ambil data lisensi terkini langsung dari Server Lisensi berdasarkan subdomain efektif
-      let liveEntitlements: any[] = [];
-      try {
-        const targetHostKey = process.env.LICENSE_KEY || '';
-        const tenantSlug = effectiveSubdomain || effectiveName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-        const npsn = isCloning ? undefined : (manifest.source_tenant.npsn || undefined);
-        liveEntitlements = await fetchTenantProducts({
-          server_license_key: targetHostKey,
-          tenant_slug: tenantSlug,
-          npsn,
-          deploy_scenario: getDeployScenario()
-        });
-      } catch (liveErr: any) {
-        console.warn('[MigrationBundle] Gagal fetchTenantProducts live saat pemulihan:', liveErr.message);
+      // Ambil data lisensi terkini langsung dari Server Lisensi jika belum didapat saat clone provisioning
+      if (liveEntitlements.length === 0) {
+        try {
+          const targetHostKey = process.env.LICENSE_KEY || '';
+          const tenantSlug = effectiveSubdomain || effectiveName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+          const npsn = isCloning ? undefined : (manifest.source_tenant.npsn || undefined);
+          liveEntitlements = await fetchTenantProducts({
+            server_license_key: targetHostKey,
+            tenant_slug: tenantSlug,
+            npsn,
+            deploy_scenario: getDeployScenario()
+          });
+        } catch (liveErr: any) {
+          console.warn('[MigrationBundle] Gagal fetchTenantProducts live saat pemulihan:', liveErr.message);
+        }
       }
 
       const allEntitlements = isCloning ? liveEntitlements : [...bundledEntitlements, ...liveEntitlements];
@@ -1203,6 +1224,33 @@ export class MigrationBundleService {
                 status: status as any,
                 start_date: new Date(),
                 end_date: targetEndDate
+              }
+            });
+          }
+        } else if (isCloning) {
+          // Mode Kloning: Berikan subscription aktif default (365 hari) agar platform dapat diakses
+          const defaultEndDate = new Date(Date.now() + 365 * 24 * 3600 * 1000);
+          const planForPaid = await this.prisma.plan.findFirst({
+            where: { service_code: mod.code }
+          }) || defaultPlan;
+
+          if (existingSub) {
+            await this.prisma.subscription.update({
+              where: { id: existingSub.id },
+              data: {
+                status: 'ACTIVE',
+                end_date: defaultEndDate
+              }
+            });
+          } else if (planForPaid) {
+            await this.prisma.subscription.create({
+              data: {
+                tenant_id: effectiveTenantId,
+                plan_id: planForPaid.id,
+                service_code: mod.code,
+                status: 'ACTIVE',
+                start_date: new Date(),
+                end_date: defaultEndDate
               }
             });
           }

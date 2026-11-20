@@ -422,6 +422,39 @@ export async function rebindTenantEntitlements(params: RebindTenantParams): Prom
   return data;
 }
 
+export interface ProvisionCloneTenantParams {
+  server_license_key: string;
+  source_slug: string;
+  target_slug: string;
+  target_name?: string;
+  duration_days?: number;
+  deploy_scenario?: string;
+}
+
+/**
+ * Mendaftarkan & menerbitkan lisensi baru untuk tenant hasil kloning di Server Lisensi (Master Authority).
+ * Memastikan Caddy On-Demand TLS langsung menyetujui SSL subdomain baru dan produk lisensi aktif.
+ */
+export async function provisionCloneTenantOnLicenseServer(
+  params: ProvisionCloneTenantParams
+): Promise<{ success: boolean; message: string; caddy_synced?: boolean; data?: TenantProductLicense[] }> {
+  const url = `${LICENSE_SERVER_URL}/api/license/tenant/provision-clone`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+      signal: AbortSignal.timeout(15000)
+    });
+    const data = await res.json() as any;
+    if (!data.success) throw new Error(data.message || 'Gagal menerbitkan lisensi tenant kloning.');
+    return data;
+  } catch (err: any) {
+    console.error('[LicenseClient] provisionCloneTenant error:', err?.message || err);
+    throw err;
+  }
+}
+
 export interface SyncTenantMetadataParams {
   server_license_key: string;
   deploy_scenario?: string;
