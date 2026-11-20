@@ -3,7 +3,7 @@ import { prisma } from '@/utils/prisma';
 import { storageService } from '@/infra/storage/storage.service';
 import { getDynamicTenantModels } from '@/constants/backup.constants';
 import { getDeployScenario } from '@/utils/deployScenario';
-import { fetchTenantProducts, rebindTenantEntitlements, provisionCloneTenantOnLicenseServer } from '@/services/licenseClient';
+import { fetchTenantProducts, rebindTenantEntitlements, provisionCloneTenantOnLicenseServer, checkLicenseServerConnection } from '@/services/licenseClient';
 // @ts-ignore
 import AdmZip from 'adm-zip';
 import crypto from 'crypto';
@@ -659,6 +659,68 @@ export class MigrationBundleService {
       ? (requestedName || (sourceTenant.name ? `${sourceTenant.name} (Demo)` : 'Tenant Demo'))
       : (requestedName || sourceTenant.name || tenantTableRecord.name || 'Tenant Pulih');
 
+    // 🛡️ STRICT PRE-FLIGHT: Validasi koneksi & terbitkan lisensi di Server Lisensi SEBELUM eksekusi database
+    let preProvisionedEntitlements: any[] | null = null;
+    if (isCloning) {
+      reportProgress({
+        stage: 'manifest',
+        processed: 8,
+        total: 100,
+        percentage: 10,
+        message: `[Strict Mode] Menguji konektivitas ke Server Lisensi...`
+      });
+
+      console.log(`[MigrationBundle] 🛡️ [Strict Mode] Menguji koneksi pre-flight ke Server Lisensi...`);
+      try {
+        await checkLicenseServerConnection(8000);
+      } catch (connErr: any) {
+        const err: any = new Error(`Kloning dibatalkan: Server Lisensi tidak dapat dihubungi (${connErr.message}). Kloning tenant wajib terhubung dengan Server Lisensi untuk penerbitan TLS & hak akses.`);
+        err.statusCode = 503;
+        throw err;
+      }
+
+      reportProgress({
+        stage: 'manifest',
+        processed: 12,
+        total: 100,
+        percentage: 12,
+        message: `[Strict Mode] Menerbitkan lisensi kloning "${effectiveSubdomain}" di Server Lisensi...`
+      });
+
+      const targetHostKey = process.env.LICENSE_KEY || '';
+      if (!targetHostKey) {
+        const err: any = new Error('LICENSE_KEY server tidak ditemukan pada konfigurasi environment. Kloning dibatalkan.');
+        err.statusCode = 500;
+        throw err;
+      }
+
+      console.log(`[MigrationBundle] 🧬 [Strict Mode] Menerbitkan lisensi mandiri baru untuk tenant kloning "${effectiveSubdomain}" di Server Lisensi...`);
+      try {
+        const targetScenario = getDeployScenario();
+        const cloneRes = await provisionCloneTenantOnLicenseServer({
+          server_license_key: targetHostKey,
+          source_slug: sourceSubdomain,
+          target_slug: effectiveSubdomain,
+          target_name: effectiveName,
+          duration_days: 365,
+          deploy_scenario: targetScenario as any
+        });
+
+        if (!cloneRes.success || !Array.isArray(cloneRes.data) || cloneRes.data.length === 0) {
+          const err: any = new Error(`Server Lisensi menolak penerbitan lisensi kloning: ${cloneRes.message || 'Tidak ada hak produk yang diberikan.'}`);
+          err.statusCode = 502;
+          throw err;
+        }
+
+        preProvisionedEntitlements = cloneRes.data;
+        console.log(`[MigrationBundle] ✅ Pre-flight Provisioning Berhasil (${preProvisionedEntitlements.length} produk resmi):`, cloneRes.message);
+      } catch (provErr: any) {
+        const err: any = new Error(`Kloning dibatalkan: Gagal menerbitkan lisensi di Server Lisensi (${provErr.message}).`);
+        err.statusCode = provErr.statusCode || 502;
+        throw err;
+      }
+    }
+
     reportProgress({
       stage: 'manifest',
       processed: 10,
@@ -1047,24 +1109,10 @@ export class MigrationBundleService {
         console.warn('[MigrationBundle] Re-binding lisensi produk pasca-restore notice:', rebindErr.message);
       }
     } else {
-      console.log(`[MigrationBundle] 🧬 Clone mode: Menerbitkan lisensi mandiri baru untuk tenant kloning "${effectiveSubdomain}" di Server Lisensi...`);
-      try {
-        const targetHostKey = process.env.LICENSE_KEY || '';
-        const targetScenario = getDeployScenario();
-        const cloneRes = await provisionCloneTenantOnLicenseServer({
-          server_license_key: targetHostKey,
-          source_slug: sourceSubdomain,
-          target_slug: effectiveSubdomain,
-          target_name: effectiveName,
-          duration_days: 365,
-          deploy_scenario: targetScenario as any
-        });
-        console.log(`[MigrationBundle] ✅ Sukses menerbitkan lisensi clone di Server Lisensi:`, cloneRes.message);
-        if (Array.isArray(cloneRes.data) && cloneRes.data.length > 0) {
-          liveEntitlements = cloneRes.data;
-        }
-      } catch (cloneLicErr: any) {
-        console.warn(`[MigrationBundle] Notice menerbitkan lisensi clone di Server Lisensi:`, cloneLicErr?.message || cloneLicErr);
+      // Clone mode: entitlements diambil langsung dari preProvisionedEntitlements hasil pre-flight Server Lisensi
+      if (preProvisionedEntitlements && preProvisionedEntitlements.length > 0) {
+        liveEntitlements = preProvisionedEntitlements;
+        console.log(`[MigrationBundle] 🧬 [Strict Mode] Menggunakan ${liveEntitlements.length} entitlement resmi dari Server Lisensi.`);
       }
     }
 
@@ -1227,43 +1275,17 @@ export class MigrationBundleService {
               }
             });
           }
-        } else if (isCloning) {
-          // Mode Kloning: Berikan subscription aktif default (365 hari) agar platform dapat diakses
-          const defaultEndDate = new Date(Date.now() + 365 * 24 * 3600 * 1000);
-          const planForPaid = await this.prisma.plan.findFirst({
-            where: { service_code: mod.code }
-          }) || defaultPlan;
-
-          if (existingSub) {
-            await this.prisma.subscription.update({
-              where: { id: existingSub.id },
-              data: {
-                status: 'ACTIVE',
-                end_date: defaultEndDate
-              }
-            });
-          } else if (planForPaid) {
-            await this.prisma.subscription.create({
-              data: {
-                tenant_id: effectiveTenantId,
-                plan_id: planForPaid.id,
-                service_code: mod.code,
-                status: 'ACTIVE',
-                start_date: new Date(),
-                end_date: defaultEndDate
-              }
-            });
-          }
         } else if (existingSub) {
-          // Tidak ada lisensi baru di Server Lisensi, tapi ada record dari data backup asli
-          // Hormati tanggal aslinya; tandai EXPIRED jika masa aktifnya sudah lewat
-          if (existingSub.end_date && new Date(existingSub.end_date).getTime() <= now.getTime()) {
+          // Tidak ada lisensi resmi di Server Lisensi, tapi ada record dari data backup asli
+          // Hormati status asli; tandai EXPIRED jika masa aktifnya sudah lewat atau lisensi tidak ada di Server Lisensi
+          if (isCloning || (existingSub.end_date && new Date(existingSub.end_date).getTime() <= now.getTime())) {
             await this.prisma.subscription.update({
               where: { id: existingSub.id },
               data: { status: 'EXPIRED' }
             });
           }
         }
+        // [Strict Mode] Jika tidak ada lisensi di Server Lisensi, modul TIDAK diinisiasi/diaktifkan secara lokal. Modul tetap terkunci.
         // Jika tidak ada lisensi di Server Lisensi dan tidak ada di backup, modul tetap LOCKED (tanpa subscription).
       }
 

@@ -432,6 +432,30 @@ export interface ProvisionCloneTenantParams {
 }
 
 /**
+ * Uji koneksi pre-flight ke Server Lisensi (Master Authority).
+ * Wajib mengembalikan true; jika timeout atau offline, melempar Error jelas.
+ */
+export async function checkLicenseServerConnection(timeoutMs: number = 8000): Promise<boolean> {
+  const url = `${LICENSE_SERVER_URL}/api/license/ping`;
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+    if (!res.ok) {
+      throw new Error(`Server Lisensi merespons status ${res.status}: ${res.statusText}`);
+    }
+    const data = await res.json() as any;
+    return data?.success === true;
+  } catch (err: any) {
+    const reason = err?.name === 'TimeoutError' || err?.message?.includes('aborted')
+      ? `Koneksi timeout setelah ${timeoutMs}ms.`
+      : (err?.message || 'Server Lisensi tidak dapat dihubungi.');
+    throw new Error(`Tidak dapat terhubung ke Server Lisensi (${LICENSE_SERVER_URL}): ${reason}`);
+  }
+}
+
+/**
  * Mendaftarkan & menerbitkan lisensi baru untuk tenant hasil kloning di Server Lisensi (Master Authority).
  * Memastikan Caddy On-Demand TLS langsung menyetujui SSL subdomain baru dan produk lisensi aktif.
  */
