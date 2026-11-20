@@ -595,15 +595,66 @@ export class KetarunaanPenilaianService {
       tahun_pelajaran_id: string;
       semester_id: string;
       items: NilaiItemPayload[];
+      is_archive_correction?: boolean;
+      correction_reason?: string;
+      userId?: string;
     }
   ) {
-    const { kelas_id, tahun_pelajaran_id, semester_id, items } = payload;
+    const {
+      kelas_id,
+      tahun_pelajaran_id,
+      semester_id,
+      items,
+      is_archive_correction,
+      correction_reason,
+      userId,
+    } = payload;
 
-    // Guard: semester harus milik TP terpilih & siswa harus anggota rombel pada periode tsb
+    // 1. Guard kelas milik tenant
+    const kelas = await prisma.kelas.findFirst({
+      where: { id: kelas_id, tenant_id: tenantId },
+      select: { id: true, nama_kelas: true, jurusan_id: true },
+    });
+    if (!kelas) {
+      throw new Error('Rombel / Kelas tidak ditemukan pada institusi ini.');
+    }
+
+    // 2. Guard: semester harus milik TP terpilih
     const period = await this.resolvePeriodContext(tenantId, tahun_pelajaran_id, semester_id);
     if (!period.semester_matches_tp) {
       throw new Error('Semester tidak sesuai dengan Tahun Pelajaran terpilih. Muat ulang filter lalu coba lagi.');
     }
+
+    // 3. Guard Periode Lampau / Arsip: wajib melalui Dapur Koreksi Arsip dengan alasan jelas
+    const cleanReason = (correction_reason || '').trim();
+    if (!period.is_active_period) {
+      if (!is_archive_correction) {
+        throw new Error(
+          `Periode TP ${period.tahun} (${period.nama_semester}) adalah Periode Lampau / Arsip. Penilaian reguler ditutup; gunakan Dapur Koreksi Arsip untuk melakukan perubahan.`
+        );
+      }
+      if (cleanReason.length < 5) {
+        throw new Error('Alasan koreksi nilai arsip wajib diisi (minimal 5 karakter) untuk pencatatan log audit.');
+      }
+    }
+
+    // 4. Guard Nilai Terkunci: tidak boleh menimpa nilai yang sudah dikunci tanpa buka kunci dulu
+    const lockedCount = await prisma.ketarunaanNilaiSiswa.count({
+      where: {
+        tenant_id: tenantId,
+        kelas_id,
+        tahun_pelajaran_id,
+        semester_id,
+        is_locked: true,
+      },
+    });
+    if (lockedCount > 0 && !is_archive_correction) {
+      throw new Error(
+        'Nilai rombel ini sudah terkunci di Rapor. Silakan klik "Buka Kunci Nilai" terlebih dahulu sebelum menyimpan perubahan.'
+      );
+    }
+
+    // 5. Guard keanggotaan taruna di rombel pada periode tersebut
     const allowed = await this.getAllowedSiswaIds(
       tenantId,
       kelas_id,
@@ -614,14 +665,9 @@ export class KetarunaanPenilaianService {
     const invalid = (items || []).filter((it) => !allowed.has(it.siswa_id));
     if (invalid.length > 0) {
       throw new Error(
-        `${invalid.length} taruna bukan anggota rombel ini pada TP ${period.tahun} ${period.nama_semester}. Penyimpanan dibatalkan untuk mencegah salah input.`
+        `${invalid.length} taruna bukan anggota rombel ${kelas.nama_kelas} pada TP ${period.tahun} ${period.nama_semester}. Penyimpanan dibatalkan untuk mencegah salah input.`
       );
     }
-
-    const kelas = await prisma.kelas.findUnique({
-      where: { id: kelas_id },
-      select: { jurusan_id: true },
-    });
 
     const skema = await this.getSkemaConfig(tenantId, {
       tahun_pelajaran_id,
@@ -696,6 +742,31 @@ export class KetarunaanPenilaianService {
       results.push(record);
     }
 
+    // Catat ke ActivityLog jika melalui Dapur Koreksi Arsip
+    if (!period.is_active_period || is_archive_correction) {
+      try {
+        await prisma.activityLog.create({
+          data: {
+            tenant_id: tenantId,
+            user_id: userId || null,
+            action: 'ARCHIVE_CORRECTION_KETARUNAAN',
+            entity: 'KetarunaanNilaiSiswa',
+            entity_id: kelas_id,
+            metadata: JSON.stringify({
+              kelas_id,
+              nama_kelas: kelas.nama_kelas,
+              tahun_pelajaran_id,
+              tahun: period.tahun,
+              semester_id,
+              semester: period.nama_semester,
+              saved_count: results.length,
+              reason: cleanReason || 'Koreksi Dapur Arsip',
+            }),
+          },
+        });
+      } catch (e) {}
+    }
+
     return {
       success: true,
       saved_count: results.length,
@@ -712,9 +783,29 @@ export class KetarunaanPenilaianService {
       tahun_pelajaran_id: string;
       semester_id: string;
       userId?: string;
+      is_archive_correction?: boolean;
+      correction_reason?: string;
     }
   ) {
-    const { kelas_id, tahun_pelajaran_id, semester_id, userId } = payload;
+    const { kelas_id, tahun_pelajaran_id, semester_id, userId, is_archive_correction, correction_reason } = payload;
+
+    const kelas = await prisma.kelas.findFirst({
+      where: { id: kelas_id, tenant_id: tenantId },
+      select: { id: true, nama_kelas: true },
+    });
+    if (!kelas) {
+      throw new Error('Rombel / Kelas tidak ditemukan pada institusi ini.');
+    }
+
+    const period = await this.resolvePeriodContext(tenantId, tahun_pelajaran_id, semester_id);
+    if (!period.semester_matches_tp) {
+      throw new Error('Semester tidak sesuai dengan Tahun Pelajaran terpilih.');
+    }
+    if (!period.is_active_period && !is_archive_correction) {
+      throw new Error(
+        `Periode TP ${period.tahun} (${period.nama_semester}) adalah Periode Lampau / Arsip. Penguncian ulang hanya dapat dilakukan dari Dapur Koreksi Arsip.`
+      );
+    }
 
     // 1. Ambil seluruh nilai siswa yang sudah tersimpan di kelas ini
     const scores = await prisma.ketarunaanNilaiSiswa.findMany({
@@ -793,9 +884,30 @@ export class KetarunaanPenilaianService {
       kelas_id: string;
       tahun_pelajaran_id: string;
       semester_id: string;
+      userId?: string;
+      is_archive_correction?: boolean;
+      correction_reason?: string;
     }
   ) {
-    const { kelas_id, tahun_pelajaran_id, semester_id } = payload;
+    const { kelas_id, tahun_pelajaran_id, semester_id, userId, is_archive_correction, correction_reason } = payload;
+
+    const kelas = await prisma.kelas.findFirst({
+      where: { id: kelas_id, tenant_id: tenantId },
+      select: { id: true, nama_kelas: true },
+    });
+    if (!kelas) {
+      throw new Error('Rombel / Kelas tidak ditemukan pada institusi ini.');
+    }
+
+    const period = await this.resolvePeriodContext(tenantId, tahun_pelajaran_id, semester_id);
+    if (!period.semester_matches_tp) {
+      throw new Error('Semester tidak sesuai dengan Tahun Pelajaran terpilih.');
+    }
+    if (!period.is_active_period && !is_archive_correction) {
+      throw new Error(
+        `Periode TP ${period.tahun} (${period.nama_semester}) adalah Periode Lampau / Arsip. Buka kunci arsip hanya dapat dilakukan melalui Dapur Koreksi Arsip.`
+      );
+    }
 
     await prisma.ketarunaanNilaiSiswa.updateMany({
       where: {
@@ -810,6 +922,29 @@ export class KetarunaanPenilaianService {
         locked_by: null,
       },
     });
+
+    if (!period.is_active_period || is_archive_correction) {
+      try {
+        await prisma.activityLog.create({
+          data: {
+            tenant_id: tenantId,
+            user_id: userId || null,
+            action: 'ARCHIVE_UNLOCK_KETARUNAAN',
+            entity: 'KetarunaanNilaiSiswa',
+            entity_id: kelas_id,
+            metadata: JSON.stringify({
+              kelas_id,
+              nama_kelas: kelas.nama_kelas,
+              tahun_pelajaran_id,
+              tahun: period.tahun,
+              semester_id,
+              semester: period.nama_semester,
+              reason: (correction_reason || '').trim() || 'Buka kunci dari Dapur Koreksi Arsip',
+            }),
+          },
+        });
+      } catch (e) {}
+    }
 
     return { success: true, message: 'Kunci nilai berhasil dibuka' };
   }

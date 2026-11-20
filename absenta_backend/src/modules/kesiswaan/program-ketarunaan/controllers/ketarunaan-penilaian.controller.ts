@@ -85,10 +85,14 @@ export const ketarunaanPenilaianController = {
         });
       }
 
-      const data = await ketarunaanPenilaianService.saveNilaiBulk(scope.tenantId, payload);
+      const userId = request.user?.id;
+      const data = await ketarunaanPenilaianService.saveNilaiBulk(scope.tenantId, {
+        ...payload,
+        userId,
+      });
       return reply.send({ success: true, data, message: 'Nilai ketarunaan berhasil disimpan' });
     } catch (error: any) {
-      return reply.status(500).send({ success: false, message: error.message });
+      return reply.status(400).send({ success: false, message: error.message });
     }
   },
 
@@ -99,7 +103,7 @@ export const ketarunaanPenilaianController = {
         return reply.status(400).send({ message: 'Tenant ID required' });
       }
 
-      const { kelas_id, tahun_pelajaran_id, semester_id } = request.body || {};
+      const { kelas_id, tahun_pelajaran_id, semester_id, is_archive_correction, correction_reason } = request.body || {};
       if (!kelas_id || !tahun_pelajaran_id || !semester_id) {
         return reply.status(400).send({
           message: 'kelas_id, tahun_pelajaran_id, dan semester_id wajib diisi',
@@ -112,6 +116,8 @@ export const ketarunaanPenilaianController = {
         tahun_pelajaran_id,
         semester_id,
         userId,
+        is_archive_correction,
+        correction_reason,
       });
 
       return reply.send({
@@ -131,17 +137,21 @@ export const ketarunaanPenilaianController = {
         return reply.status(400).send({ message: 'Tenant ID required' });
       }
 
-      const { kelas_id, tahun_pelajaran_id, semester_id } = request.body || {};
+      const { kelas_id, tahun_pelajaran_id, semester_id, is_archive_correction, correction_reason } = request.body || {};
       if (!kelas_id || !tahun_pelajaran_id || !semester_id) {
         return reply.status(400).send({
           message: 'kelas_id, tahun_pelajaran_id, dan semester_id wajib diisi',
         });
       }
 
+      const userId = request.user?.id;
       const data = await ketarunaanPenilaianService.unlockNilai(scope.tenantId, {
         kelas_id,
         tahun_pelajaran_id,
         semester_id,
+        userId,
+        is_archive_correction,
+        correction_reason,
       });
 
       return reply.send({ success: true, data });

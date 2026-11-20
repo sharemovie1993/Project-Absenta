@@ -17,6 +17,7 @@ import {
   Sparkles,
   Info,
   FileSpreadsheet,
+  ShieldAlert,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -36,6 +37,7 @@ import {
 import { KetarunaanSkemaSettingsModal } from './KetarunaanSkemaSettingsModal';
 import { SertifikatKetarunaanModal } from './SertifikatKetarunaanModal';
 import { KetarunaanExportModal } from './KetarunaanExportModal';
+import { KetarunaanArchiveCorrectionModal } from './KetarunaanArchiveCorrectionModal';
 
 export interface KetarunaanPenilaianTabProps {
   tahunPelajaranId?: string;
@@ -72,6 +74,18 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
   const [isSyncingPresensi, setIsSyncingPresensi] = useState(false);
   const [selectedCertStudent, setSelectedCertStudent] = useState<KetarunaanNilaiStudent | null>(null);
   const [isCertModalOpen, setIsCertModalOpen] = useState(false);
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+
+  // Peringatan sebelum menutup tab/browser jika masih ada perubahan nilai yang belum disimpan
+  useEffect(() => {
+    if (!hasChanges) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasChanges]);
 
   // 1. Query Data Nilai Kelas
   const {
@@ -107,6 +121,44 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
   const periodTahun: string = period?.tahun || tahunPelajaranNama || '';
   const periodSemester: string = period?.nama_semester || semesterNama || '';
   const isArchivePeriod = Boolean(period && !period.is_active_period);
+  const isReadOnly = isClassLocked || isArchivePeriod;
+
+  // Kunci konteks dari payload yang benar-benar sedang tampil di layar (bukan semata dari filter prop)
+  const loadedKelasId: string = payloadData?.kelas?.id || '';
+  const loadedTpId: string = period?.tahun_pelajaran_id || '';
+  const loadedSemesterId: string = period?.semester_id || '';
+
+  const assertLoadedContextReady = useCallback(() => {
+    if (isLoading || isRefetching) {
+      throw new Error('Data sedang dimuat ulang. Tunggu hingga proses muat selesai.');
+    }
+    if (!loadedKelasId || !loadedTpId || !loadedSemesterId) {
+      throw new Error('Konteks akademik dari server belum siap. Silakan muat ulang data.');
+    }
+    if (
+      loadedKelasId !== kelasId ||
+      loadedTpId !== tahunPelajaranId ||
+      loadedSemesterId !== semesterId
+    ) {
+      throw new Error(
+        'Konteks filter telah berubah dari data yang sedang tampil di layar. Muat ulang data terlebih dahulu.'
+      );
+    }
+    return {
+      kelas_id: loadedKelasId,
+      tahun_pelajaran_id: loadedTpId,
+      semester_id: loadedSemesterId,
+    };
+  }, [
+    isLoading,
+    isRefetching,
+    loadedKelasId,
+    loadedTpId,
+    loadedSemesterId,
+    kelasId,
+    tahunPelajaranId,
+    semesterId,
+  ]);
 
   // Initialize local score state when data loads (reset juga saat roster kosong agar tidak ada sisa nilai kelas lain)
   useEffect(() => {
@@ -231,10 +283,10 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
     }
   };
 
-  // Mutation: Simpan Draf
+  // Mutation: Simpan Draf (hanya periode aktif; menggunakan konteks yang terkunci dari payload)
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!kelasId || !tahunPelajaranId || !semesterId) return;
+      const ctx = assertLoadedContextReady();
       const items = students.map((s) => {
         const sc = localScores[s.siswa_id] || { samapta: 0, pbb: 0, disiplin: 0, mental: 0 };
         return {
@@ -247,9 +299,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
         };
       });
       return saveKetarunaanNilaiBulk({
-        kelas_id: kelasId,
-        tahun_pelajaran_id: tahunPelajaranId,
-        semester_id: semesterId,
+        ...ctx,
         items,
       });
     },
@@ -265,7 +315,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
   // Mutation: Kunci Nilai & Kirim ke Rapor
   const lockMutation = useMutation({
     mutationFn: async () => {
-      if (!kelasId || !tahunPelajaranId || !semesterId) return;
+      const ctx = assertLoadedContextReady();
       // Simpan draf terlebih dahulu sebelum mengunci
       const items = students.map((s) => {
         const sc = localScores[s.siswa_id] || { samapta: 0, pbb: 0, disiplin: 0, mental: 0 };
@@ -279,17 +329,11 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
         };
       });
       await saveKetarunaanNilaiBulk({
-        kelas_id: kelasId,
-        tahun_pelajaran_id: tahunPelajaranId,
-        semester_id: semesterId,
+        ...ctx,
         items,
       });
 
-      return lockKetarunaanNilai({
-        kelas_id: kelasId,
-        tahun_pelajaran_id: tahunPelajaranId,
-        semester_id: semesterId,
-      });
+      return lockKetarunaanNilai(ctx);
     },
     onSuccess: () => {
       setHasChanges(false);
@@ -304,15 +348,14 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
   // Mutation: Buka Kunci Nilai
   const unlockMutation = useMutation({
     mutationFn: async () => {
-      if (!kelasId || !tahunPelajaranId || !semesterId) return;
-      return unlockKetarunaanNilai({
-        kelas_id: kelasId,
-        tahun_pelajaran_id: tahunPelajaranId,
-        semester_id: semesterId,
-      });
+      const ctx = assertLoadedContextReady();
+      return unlockKetarunaanNilai(ctx);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ketarunaan-nilai-kelas'] });
+    },
+    onError: (err: any) => {
+      window.alert('Gagal membuka kunci nilai: ' + (err?.response?.data?.message || err?.message || 'Terjadi kendala'));
     },
   });
 
@@ -448,73 +491,99 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsSkemaModalOpen(true)}
-              className="gap-1.5 text-xs font-bold"
-            >
-              <Sliders className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Skema &amp; Bobot</span>
-            </Button>
-
-            {!isClassLocked && (
+            {!isArchivePeriod && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleSyncPresensi}
-                disabled={isSyncingPresensi}
-                className="gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
-                title="Tarik nilai Disiplin & Mental otomatis dari presensi 5 siklus (Upacara, Ketarunaan, Dhuha, Apel Sore)"
+                onClick={() => setIsSkemaModalOpen(true)}
+                className="gap-1.5 text-xs font-bold"
               >
-                <Sparkles className={`w-3.5 h-3.5 text-indigo-500 ${isSyncingPresensi ? 'animate-spin' : ''}`} />
-                <span>{isSyncingPresensi ? 'Menghitung...' : 'Tarik Nilai 5 Siklus'}</span>
+                <Sliders className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Skema &amp; Bobot</span>
               </Button>
             )}
 
-            {!isClassLocked ? (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => saveMutation.mutate()}
-                  disabled={!hasChanges || saveMutation.isPending}
-                  className="gap-1.5 text-xs font-bold"
-                >
-                  <Save className="w-3.5 h-3.5 text-slate-600" />
-                  <span>{saveMutation.isPending ? 'Menyimpan...' : 'Simpan Draf'}</span>
-                </Button>
-
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => {
-                    if (window.confirm('Kunci nilai rombel ini dan kirimkan narasi capaian ke lembar Rapor Kokurikuler Wali Kelas?')) {
-                      lockMutation.mutate();
-                    }
-                  }}
-                  disabled={lockMutation.isPending}
-                  className="gap-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>{lockMutation.isPending ? 'Mengunci...' : 'Kunci & Kirim ke Rapor'}</span>
-                </Button>
-              </>
-            ) : (
+            {isArchivePeriod ? (
               <Button
-                variant="outline"
+                variant="default"
                 size="sm"
-                onClick={() => {
-                  if (window.confirm('Buka kembali kunci nilai kelas ini untuk perbaikan/remedial?')) {
-                    unlockMutation.mutate();
-                  }
-                }}
-                disabled={unlockMutation.isPending}
-                className="gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400"
+                disabled={students.length === 0 || isLoading}
+                onClick={() => setIsArchiveModalOpen(true)}
+                className="gap-1.5 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
+                title="Buka ruang khusus Pembina untuk mengoreksi nilai ketarunaan pada tahun pelajaran/semester arsip"
               >
-                <Unlock className="w-3.5 h-3.5" />
-                <span>Buka Kunci Nilai</span>
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>Dapur Koreksi Arsip</span>
               </Button>
+            ) : (
+              <>
+                {!isClassLocked && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSyncPresensi}
+                    disabled={isSyncingPresensi}
+                    className="gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                    title="Tarik nilai Disiplin & Mental otomatis dari presensi 5 siklus (Upacara, Ketarunaan, Dhuha, Apel Sore)"
+                  >
+                    <Sparkles className={`w-3.5 h-3.5 text-indigo-500 ${isSyncingPresensi ? 'animate-spin' : ''}`} />
+                    <span>{isSyncingPresensi ? 'Menghitung...' : 'Tarik Nilai 5 Siklus'}</span>
+                  </Button>
+                )}
+
+                {!isClassLocked ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => saveMutation.mutate()}
+                      disabled={!hasChanges || saveMutation.isPending}
+                      className="gap-1.5 text-xs font-bold"
+                    >
+                      <Save className="w-3.5 h-3.5 text-slate-600" />
+                      <span>{saveMutation.isPending ? 'Menyimpan...' : 'Simpan Draf'}</span>
+                    </Button>
+
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Kunci nilai rombel ${effectiveKelasNama} pada TP ${periodTahun} (${periodSemester}) untuk ${students.length} taruna dan kirimkan narasi capaian ke Rapor Kokurikuler Wali Kelas?`
+                          )
+                        ) {
+                          lockMutation.mutate();
+                        }
+                      }}
+                      disabled={lockMutation.isPending || students.length === 0}
+                      className="gap-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>{lockMutation.isPending ? 'Mengunci...' : 'Kunci & Kirim ke Rapor'}</span>
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Buka kembali kunci nilai rombel ${effectiveKelasNama} (TP ${periodTahun} • ${periodSemester}) untuk perbaikan/remedial?`
+                        )
+                      ) {
+                        unlockMutation.mutate();
+                      }
+                    }}
+                    disabled={unlockMutation.isPending}
+                    className="gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400"
+                  >
+                    <Unlock className="w-3.5 h-3.5" />
+                    <span>Buka Kunci Nilai</span>
+                  </Button>
+                )}
+              </>
             )}
 
             <Button
@@ -542,6 +611,55 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
         </div>
       </div>
 
+      {/* Banner Peringatan Perubahan Belum Disimpan / Mode Read-Only Arsip */}
+      {hasChanges && !isArchivePeriod && (
+        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-semibold">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              Terdapat perubahan nilai pada rombel <strong>{effectiveKelasNama}</strong> (TP {periodTahun} • {periodSemester}) yang belum disimpan. Simpan sebelum mengganti filter kelas/tapel.
+            </span>
+          </div>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            className="gap-1 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>{saveMutation.isPending ? 'Menyimpan...' : 'Simpan Sekarang'}</span>
+          </Button>
+        </div>
+      )}
+
+      {isArchivePeriod && (
+        <div className="bg-amber-50/80 dark:bg-amber-950/30 border border-amber-300/80 dark:border-amber-800/70 rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
+          <div className="flex items-start sm:items-center gap-2.5 text-amber-900 dark:text-amber-200">
+            <Lock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
+            <div>
+              <span className="font-bold">
+                Mode Baca-Saja (Arsip TP {periodTahun} • {periodSemester}):
+              </span>{' '}
+              <span>
+                Input nilai reguler dikunci otomatis agar tidak terjadi salah input lintas tahun pelajaran. Untuk revisi atau ujian susulan arsip, gunakan Dapur Khusus Pembina.
+              </span>
+            </div>
+          </div>
+          {students.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsArchiveModalOpen(true)}
+              className="gap-1.5 text-xs font-bold border-amber-400 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/60 shrink-0"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>Buka Dapur Koreksi Arsip</span>
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* ── Toolbar Spreadsheet ───────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="relative w-full sm:w-72">
@@ -555,7 +673,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
           />
         </div>
 
-        {!isClassLocked && (
+        {!isReadOnly && (
           <div className="flex items-center gap-1.5 flex-wrap text-xs">
             <span className="text-[11px] text-slate-400 mr-1">Isi Cepat:</span>
             <button
@@ -822,7 +940,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                           type="number"
                           min="0"
                           max="100"
-                          disabled={isClassLocked}
+                          disabled={isReadOnly}
                           value={current.samapta}
                           onChange={(e) => handleScoreChange(s.siswa_id, 'samapta', parseInt(e.target.value, 10))}
                           className="w-20 px-2 py-1 text-center font-mono font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-70 disabled:bg-slate-100 dark:disabled:bg-slate-800"
@@ -835,7 +953,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                           type="number"
                           min="0"
                           max="100"
-                          disabled={isClassLocked}
+                          disabled={isReadOnly}
                           value={current.pbb}
                           onChange={(e) => handleScoreChange(s.siswa_id, 'pbb', parseInt(e.target.value, 10))}
                           className="w-20 px-2 py-1 text-center font-mono font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-70 disabled:bg-slate-100 dark:disabled:bg-slate-800"
@@ -848,7 +966,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                           type="number"
                           min="0"
                           max="100"
-                          disabled={isClassLocked}
+                          disabled={isReadOnly}
                           value={current.disiplin}
                           onChange={(e) => handleScoreChange(s.siswa_id, 'disiplin', parseInt(e.target.value, 10))}
                           className="w-20 px-2 py-1 text-center font-mono font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-70 disabled:bg-slate-100 dark:disabled:bg-slate-800"
@@ -861,7 +979,7 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
                           type="number"
                           min="0"
                           max="100"
-                          disabled={isClassLocked}
+                          disabled={isReadOnly}
                           value={current.mental}
                           onChange={(e) => handleScoreChange(s.siswa_id, 'mental', parseInt(e.target.value, 10))}
                           className="w-20 px-2 py-1 text-center font-mono font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-70 disabled:bg-slate-100 dark:disabled:bg-slate-800"
@@ -977,6 +1095,21 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
         tahunPelajaranNama={tahunPelajaranNama}
         semesterId={semesterId}
         semesterNama={semesterNama}
+      />
+
+      {/* ── Dapur Khusus Koreksi Nilai Arsip (Pembina) ────────────────────────── */}
+      <KetarunaanArchiveCorrectionModal
+        isOpen={isArchiveModalOpen}
+        onClose={() => setIsArchiveModalOpen(false)}
+        kelasId={loadedKelasId || kelasId || ''}
+        kelasNama={effectiveKelasNama}
+        tahunPelajaranId={loadedTpId || tahunPelajaranId || ''}
+        tahunPelajaranNama={periodTahun}
+        semesterId={loadedSemesterId || semesterId || ''}
+        semesterNama={periodSemester}
+        skema={skema}
+        students={students}
+        isClassLocked={isClassLocked}
       />
     </div>
   );

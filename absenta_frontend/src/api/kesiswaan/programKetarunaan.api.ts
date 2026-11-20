@@ -215,6 +215,8 @@ export async function saveKetarunaanNilaiBulk(payload: {
   kelas_id: string;
   tahun_pelajaran_id: string;
   semester_id: string;
+  is_archive_correction?: boolean;
+  correction_reason?: string;
   items: Array<{
     siswa_id: string;
     siswa_akademik_id?: string | null;
@@ -237,6 +239,8 @@ export async function lockKetarunaanNilai(payload: {
   kelas_id: string;
   tahun_pelajaran_id: string;
   semester_id: string;
+  is_archive_correction?: boolean;
+  correction_reason?: string;
 }): Promise<{ success: boolean; message: string }> {
   return requestWithFallback(
     'post',
@@ -249,6 +253,8 @@ export async function unlockKetarunaanNilai(payload: {
   kelas_id: string;
   tahun_pelajaran_id: string;
   semester_id: string;
+  is_archive_correction?: boolean;
+  correction_reason?: string;
 }): Promise<{ success: boolean; message: string }> {
   return requestWithFallback(
     'post',
