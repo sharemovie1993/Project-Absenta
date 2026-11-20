@@ -203,9 +203,27 @@ export async function inspectInitialBundle(file: File): Promise<{ success: boole
   return res.data;
 }
 
-export async function restoreInitialBundle(file: File): Promise<{ success: boolean; data: any; message?: string }> {
+export interface RestoreInitialBundleOptions {
+  cloneMode?: boolean;
+  targetSubdomain?: string;
+  targetName?: string;
+}
+
+export async function restoreInitialBundle(
+  file: File,
+  options?: RestoreInitialBundleOptions
+): Promise<{ success: boolean; data: any; message?: string }> {
   const formData = new FormData();
   formData.append('file', file);
+  if (options?.cloneMode) {
+    formData.append('cloneMode', 'true');
+  }
+  if (options?.targetSubdomain) {
+    formData.append('targetSubdomain', options.targetSubdomain.trim().toLowerCase());
+  }
+  if (options?.targetName) {
+    formData.append('targetName', options.targetName.trim());
+  }
   const res = await axios.post('/auth/restore-initial-bundle', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 600000 // 10 menit

@@ -34,7 +34,8 @@ import {
   FolderArchive,
   FileArchive,
   Database,
-  AlertTriangle
+  AlertTriangle,
+  Copy
 } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -83,6 +84,10 @@ const RegisterTenant = () => {
   const [bundleRestoreProgress, setBundleRestoreProgress] = useState(0);
   const [bundleRestoreStep, setBundleRestoreStep] = useState<'upload' | 'preview' | 'restoring' | 'completed'>('upload');
   const [bundleDragActive, setBundleDragActive] = useState(false);
+  const [restoreMode, setRestoreMode] = useState<'original' | 'clone'>('original');
+  const [cloneSubdomain, setCloneSubdomain] = useState('');
+  const [cloneName, setCloneName] = useState('');
+  const [restoreResult, setRestoreResult] = useState<{ targetSubdomain?: string; targetName?: string; isCloned?: boolean; redirect_url?: string } | null>(null);
   const bundleInputRef = useRef<HTMLInputElement>(null);
 
   const handleBundleFile = async (selectedFile: File) => {
@@ -96,6 +101,11 @@ const RegisterTenant = () => {
       const res = await inspectInitialBundle(selectedFile);
       if (res.success && res.data) {
         setRestoreManifest(res.data);
+        const baseSub = (res.data.source_tenant?.subdomain || 'sekolah').toLowerCase().replace(/[^a-z0-9-]/g, '');
+        setCloneSubdomain(`${baseSub || 'tenant'}-demo`);
+        setCloneName(`${res.data.source_tenant?.name || 'Sekolah'} (Demo)`);
+        setRestoreMode('original');
+        setRestoreResult(null);
         setBundleRestoreStep('preview');
         toast.success('Berkas cadangan terverifikasi!');
       } else {
@@ -111,7 +121,27 @@ const RegisterTenant = () => {
   };
 
   const handleExecuteBundleRestore = async () => {
-    if (!restoreFile) return;
+    if (!restoreFile || !restoreManifest) return;
+
+    if (restoreMode === 'clone') {
+      const cleanSub = cloneSubdomain.trim().toLowerCase();
+      const cleanName = cloneName.trim();
+      const sourceSub = (restoreManifest.source_tenant?.subdomain || '').trim().toLowerCase();
+
+      if (!cleanSub || !/^[a-z0-9-]+$/.test(cleanSub)) {
+        toast.error('Subdomain kloning hanya boleh berisi huruf kecil, angka, dan tanda hubung (-)');
+        return;
+      }
+      if (sourceSub && cleanSub === sourceSub) {
+        toast.error(`Subdomain kloning harus berbeda dari subdomain asal (${sourceSub})`);
+        return;
+      }
+      if (!cleanName) {
+        toast.error('Nama sekolah kloning/demo wajib diisi');
+        return;
+      }
+    }
+
     setIsRestoringBundle(true);
     setBundleRestoreStep('restoring');
     setBundleRestoreProgress(15);
@@ -121,12 +151,17 @@ const RegisterTenant = () => {
     }, 600);
 
     try {
-      const res = await restoreInitialBundle(restoreFile);
+      const res = await restoreInitialBundle(restoreFile, {
+        cloneMode: restoreMode === 'clone',
+        targetSubdomain: restoreMode === 'clone' ? cloneSubdomain.trim().toLowerCase() : undefined,
+        targetName: restoreMode === 'clone' ? cloneName.trim() : undefined,
+      });
       clearInterval(timer);
       setBundleRestoreProgress(100);
       if (res.success) {
+        setRestoreResult(res.data);
         setBundleRestoreStep('completed');
-        toast.success('Pemulihan sistem berhasil!');
+        toast.success(restoreMode === 'clone' ? 'Kloning tenant berhasil!' : 'Pemulihan sistem berhasil!');
       } else {
         toast.error(res.message || 'Pemulihan gagal');
         setBundleRestoreStep('preview');
@@ -619,10 +654,104 @@ const RegisterTenant = () => {
                                      </div>
                                    </div>
 
+                                   {/* Mode Pemulihan: Identitas Asli vs Kloning ke Subdomain Baru */}
+                                   <div className="space-y-3">
+                                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                                       Pilih Tujuan Pemulihan
+                                     </label>
+                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                       <button
+                                         type="button"
+                                         onClick={() => setRestoreMode('original')}
+                                         className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                                           restoreMode === 'original'
+                                             ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 ring-2 ring-blue-500/20'
+                                             : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                                         }`}
+                                       >
+                                         <div className="flex items-center gap-2 mb-1">
+                                           <School className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                           <span className="text-xs font-bold">Gunakan Identitas Asli</span>
+                                         </div>
+                                         <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                           Memulihkan subdomain <strong className="font-mono text-blue-600 dark:text-blue-300">{restoreManifest.source_tenant.subdomain || 'sekolah'}.{MAIN_DOMAIN}</strong> (Fresh Server).
+                                         </p>
+                                       </button>
+
+                                       <button
+                                         type="button"
+                                         onClick={() => setRestoreMode('clone')}
+                                         className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                                           restoreMode === 'clone'
+                                             ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-900 dark:text-indigo-100 ring-2 ring-indigo-500/20'
+                                             : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                                         }`}
+                                       >
+                                         <div className="flex items-center gap-2 mb-1">
+                                           <Copy className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                           <span className="text-xs font-bold">Kloning ke Subdomain Baru</span>
+                                         </div>
+                                         <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                           Buat sekolah replika / demo dengan subdomain baru & lisensi trial 14 hari.
+                                         </p>
+                                       </button>
+                                     </div>
+                                   </div>
+
+                                   {/* Form Input Khusus Mode Kloning */}
+                                   {restoreMode === 'clone' && (
+                                     <div className="p-4 sm:p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-800/60 space-y-4 animate-in fade-in">
+                                       <div className="space-y-1.5">
+                                         <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                                           <span>Subdomain Kloning Baru <span className="text-rose-500">*</span></span>
+                                           <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal">Trial 14 Hari Otomatis</span>
+                                         </label>
+                                         <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/30">
+                                           <Globe className="w-4 h-4 text-slate-400 ml-3 shrink-0" />
+                                           <input
+                                             type="text"
+                                             value={cloneSubdomain}
+                                             onChange={(e) => setCloneSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                                             placeholder="smkn1pld-demo"
+                                             className="w-full px-3 py-2.5 text-xs font-mono bg-transparent outline-none text-slate-800 dark:text-slate-100"
+                                           />
+                                           <span className="px-3 text-xs font-mono font-semibold text-slate-500 bg-slate-100 dark:bg-slate-900 py-2.5 border-l border-slate-200 dark:border-slate-800 shrink-0">
+                                             .{MAIN_DOMAIN}
+                                           </span>
+                                         </div>
+                                         {restoreManifest.source_tenant.subdomain && cloneSubdomain.trim().toLowerCase() === restoreManifest.source_tenant.subdomain.toLowerCase() && (
+                                           <p className="text-[11px] text-rose-500 font-semibold">
+                                             Subdomain kloning tidak boleh sama dengan subdomain asal ({restoreManifest.source_tenant.subdomain}).
+                                           </p>
+                                         )}
+                                       </div>
+
+                                       <div className="space-y-1.5">
+                                         <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                           Nama Sekolah / Label Baru <span className="text-rose-500">*</span>
+                                         </label>
+                                         <input
+                                           type="text"
+                                           value={cloneName}
+                                           onChange={(e) => setCloneName(e.target.value)}
+                                           placeholder="SMKN 1 Plered (Demo)"
+                                           className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                         />
+                                       </div>
+
+                                       <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-indigo-100 dark:border-indigo-900/50 flex items-start gap-2.5 text-[11px] text-indigo-700 dark:text-indigo-300">
+                                         <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                                         <p className="leading-relaxed">
+                                           Sistem akan memvalidasi koneksi ke Server Lisensi (api.absenta.id), membuat tenant mandiri dengan UUID baru, dan menerbitkan lisensi 14 hari tanpa mengganggu sekolah produksi asal.
+                                         </p>
+                                       </div>
+                                     </div>
+                                   )}
+
                                    <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300">
                                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                                      <p>
-                                       Konfirmasi: Sistem akan membuat tenant sekolah ini dan mengisi seluruh master data serta foto siswa ke database lokal dan MinIO Object Storage.
+                                       Konfirmasi: Sistem akan {restoreMode === 'clone' ? 'mengkloning data ke tenant baru' : 'memulihkan data sekolah ini'} dan mengisi master data serta foto siswa ke database lokal dan MinIO Storage.
                                      </p>
                                    </div>
 
@@ -638,10 +767,10 @@ const RegisterTenant = () => {
                                        type="button" 
                                        variant="default" 
                                        onClick={handleExecuteBundleRestore} 
-                                       className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 px-6 rounded-xl font-bold"
+                                       className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 px-6 rounded-xl font-bold cursor-pointer"
                                      >
                                        <ArrowRight className="w-4 h-4" />
-                                       Mulai Pemulihan Sistem
+                                       {restoreMode === 'clone' ? 'Mulai Kloning Sistem' : 'Mulai Pemulihan Sistem'}
                                      </Button>
                                    </div>
                                  </div>
@@ -669,21 +798,45 @@ const RegisterTenant = () => {
                                )}
 
                                {bundleRestoreStep === 'completed' && (
-                                 <div className="space-y-6 py-12 text-center">
-                                   <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                                 <div className="space-y-6 py-10 text-center">
+                                   <div className="w-20 h-20 mx-auto rounded-3xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
                                      <CheckCircle2 className="w-12 h-12" />
                                    </div>
                                    <div className="space-y-2 max-w-md mx-auto">
-                                     <h4 className="text-xl font-black text-slate-900 dark:text-white">Sistem Berhasil Dipulihkan!</h4>
-                                     <p className="text-xs text-slate-500">
-                                       Sekolah Anda beserta seluruh data dan media telah siap. Silakan login menggunakan akun administrator sekolah sebelumnya.
+                                     <h4 className="text-2xl font-black text-slate-900 dark:text-white">
+                                       {restoreResult?.isCloned || restoreMode === 'clone' ? 'Kloning Tenant Berhasil!' : 'Sistem Berhasil Dipulihkan!'}
+                                     </h4>
+                                     <p className="text-xs text-slate-500 leading-relaxed">
+                                       {restoreResult?.isCloned || restoreMode === 'clone'
+                                         ? `Tenant kloning "${restoreResult?.targetName || cloneName}" telah aktif dengan paket Trial 14 Hari.`
+                                         : 'Sekolah Anda beserta seluruh data dan media telah siap. Silakan login menggunakan akun administrator sekolah sebelumnya.'}
                                      </p>
                                    </div>
+
+                                   {(restoreResult?.targetSubdomain || (restoreMode === 'clone' && cloneSubdomain)) && (
+                                     <div className="max-w-md mx-auto p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800 text-xs text-left space-y-1.5">
+                                       <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 block">Alamat Subdomain Baru</span>
+                                       <div className="font-mono font-bold text-indigo-700 dark:text-indigo-300 text-sm break-all">
+                                         https://{restoreResult?.targetSubdomain || cloneSubdomain}.{MAIN_DOMAIN}
+                                       </div>
+                                       <p className="text-[10px] text-slate-400">
+                                         Gunakan akun admin yang sama dari berkas cadangan untuk masuk ke sistem.
+                                       </p>
+                                     </div>
+                                   )}
+
                                    <Button 
                                      type="button" 
                                      variant="default" 
-                                     onClick={() => navigate('/login')} 
-                                     className="w-full max-w-xs mx-auto bg-emerald-600 hover:bg-emerald-700 text-white h-12 rounded-xl font-bold flex items-center justify-center gap-2"
+                                     onClick={() => {
+                                       const sub = restoreResult?.targetSubdomain || (restoreMode === 'clone' ? cloneSubdomain : undefined);
+                                       if (sub && !window.location.hostname.startsWith(sub)) {
+                                         window.location.href = `https://${sub}.${MAIN_DOMAIN}/login`;
+                                       } else {
+                                         navigate('/login');
+                                       }
+                                     }} 
+                                     className="w-full max-w-xs mx-auto bg-emerald-600 hover:bg-emerald-700 text-white h-12 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer"
                                    >
                                      Lanjut ke Halaman Login <ArrowRight className="w-4 h-4" />
                                    </Button>

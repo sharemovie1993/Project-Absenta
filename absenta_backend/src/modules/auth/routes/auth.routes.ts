@@ -133,14 +133,14 @@ export async function authRoutes(fastify: any) {
 
   // Fresh Deploy Onboarding: Inspect Migration Bundle (.absenta)
   fastify.post('/inspect-initial-bundle', {
-    bodyLimit: 209715200,
+    bodyLimit: 314572800,
     config: { skipAuth: true, public: true },
     handler: authController.inspectInitialBundle.bind(authController),
   });
 
   // Fresh Deploy Onboarding: Restore Initial Migration Bundle (.absenta)
   fastify.post('/restore-initial-bundle', {
-    bodyLimit: 209715200,
+    bodyLimit: 314572800,
     config: { skipAuth: true, public: true },
     handler: authController.restoreInitialBundle.bind(authController),
   });
