@@ -26,6 +26,26 @@ export default async function siswaRoutes(fastify: any) {
     return siswaController.updateSiswaMe(request, reply);
   });
 
+  // POST /siswa/telemetry - Record student mobile app installation and telemetry
+  fastify.post('/telemetry', {
+    preHandler: [
+        organizationalScopeMiddleware,
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.recordAppTelemetry(request, reply);
+  });
+
+  // GET /siswa/telemetry/stats - Get telemetry install statistics
+  fastify.get('/telemetry/stats', {
+    preHandler: [
+        organizationalScopeMiddleware,
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.getAppTelemetryStats(request, reply);
+  });
+
   // GET /siswa - Get all siswa (Scoped)
   fastify.get('/', {
     preHandler: [

@@ -400,5 +400,111 @@ async sendParentAccess(request: any, reply: any) {
         data: [] 
       });
     }
+  },
+
+  async recordAppTelemetry(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const userId = request.user?.id || request.user?.userId;
+
+      if (!tenantId || !userId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: Missing credentials' });
+      }
+
+      const {
+        is_installed = true,
+        app_version,
+        ota_version,
+        device_model,
+        device_os,
+        device_uuid,
+      } = request.body || {};
+
+      const siswa = await prisma.siswa.findFirst({
+        where: {
+          tenant_id: tenantId,
+          user_id: userId,
+        },
+        select: { id: true },
+      });
+
+      if (!siswa) {
+        return reply.status(404).send({
+          success: false,
+          message: 'Profil siswa tidak ditemukan',
+        });
+      }
+
+      const updated = await prisma.siswa.update({
+        where: { id: siswa.id },
+        data: {
+          is_app_installed: Boolean(is_installed),
+          app_version: app_version ? String(app_version) : undefined,
+          ota_version: ota_version ? String(ota_version) : undefined,
+          device_model: device_model ? String(device_model) : undefined,
+          device_os: device_os ? String(device_os) : undefined,
+          device_uuid: device_uuid ? String(device_uuid) : undefined,
+          last_app_seen_at: new Date(),
+        },
+        select: {
+          id: true,
+          is_app_installed: true,
+          app_version: true,
+          ota_version: true,
+          device_model: true,
+          device_os: true,
+          last_app_seen_at: true,
+        },
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Telemetry aplikasi siswa berhasil diperbarui',
+        data: updated,
+      });
+    } catch (error: any) {
+      console.error('Error in recordAppTelemetry:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Internal server error',
+      });
+    }
+  },
+
+  async getAppTelemetryStats(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const { kelas_id, jurusan_id } = request.query || {};
+
+      const whereClause: any = {
+        tenant_id: tenantId,
+        status: 'AKTIF',
+      };
+      if (kelas_id) whereClause.kelas_id = kelas_id;
+      if (jurusan_id) whereClause.jurusan_id = jurusan_id;
+
+      const [totalSiswa, totalInstalled] = await Promise.all([
+        prisma.siswa.count({ where: whereClause }),
+        prisma.siswa.count({ where: { ...whereClause, is_app_installed: true } }),
+      ]);
+
+      const percentage = totalSiswa > 0 ? Math.round((totalInstalled / totalSiswa) * 100) : 0;
+
+      return reply.status(200).send({
+        success: true,
+        data: {
+          total_siswa: totalSiswa,
+          total_installed: totalInstalled,
+          total_not_installed: Math.max(0, totalSiswa - totalInstalled),
+          percentage,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error in getAppTelemetryStats:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Internal server error',
+      });
+    }
   }
 };

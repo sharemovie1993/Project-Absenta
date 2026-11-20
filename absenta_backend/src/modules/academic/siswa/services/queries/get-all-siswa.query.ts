@@ -99,6 +99,11 @@ export async function getAllSiswaQuery(
   const safeTahunPelajaranId = typeof params?.tahun_pelajaran_id === 'string' && params.tahun_pelajaran_id.trim() !== '' ? params.tahun_pelajaran_id.trim() : undefined;
   const safeSemesterId = typeof params?.semester_id === 'string' && params.semester_id.trim() !== '' ? params.semester_id.trim() : undefined;
 
+  const rawAppInstalled = (params as any)?.is_app_installed;
+  if (rawAppInstalled !== undefined && rawAppInstalled !== null && rawAppInstalled !== '') {
+    whereClause.is_app_installed = String(rawAppInstalled) === 'true';
+  }
+
   // Build kelas filter object
   const kelasFilter: any = {};
   if (safeTingkat !== undefined && !isNaN(safeTingkat)) {

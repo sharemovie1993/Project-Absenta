@@ -1033,11 +1033,12 @@ export class UnifiedKegiatanService {
       throw new Error('Token RFID tidak boleh kosong');
     }
 
-    // Cari Guru berdasarkan no_rfid, NIP, atau NUPTK
+    // Cari Guru berdasarkan id, no_rfid, NIP, atau NUPTK
     const guru = await prisma.guru.findFirst({
       where: {
         tenant_id: tenantId,
         OR: [
+          { id: token },
           { no_rfid: token },
           { nip: token },
           { nuptk: token },
