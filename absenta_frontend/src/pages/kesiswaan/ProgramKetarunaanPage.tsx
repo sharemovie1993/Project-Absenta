@@ -6,20 +6,15 @@ import {
   Medal,
   Users,
   BarChart2,
-  FileText,
-  LayoutList,
   Lock,
   ExternalLink,
-  RefreshCw,
 } from 'lucide-react';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import {
   getKetarunaanGuardStatus,
@@ -33,6 +28,10 @@ import { KetarunaanStatistikTab } from '../../components/kesiswaan/program-ketar
 import { KetarunaanLaporanTimTab } from '../../components/kesiswaan/program-ketarunaan/KetarunaanLaporanTimTab';
 import { KetarunaanLaporanKelasTab } from '../../components/kesiswaan/program-ketarunaan/KetarunaanLaporanKelasTab';
 import { KetarunaanPenilaianTab } from '../../components/kesiswaan/program-ketarunaan/KetarunaanPenilaianTab';
+import {
+  KetarunaanWorkdeskFlightDeck,
+  KetarunaanWorkflowStepId,
+} from '../../components/kesiswaan/program-ketarunaan/KetarunaanWorkdeskFlightDeck';
 
 const HARI_LABEL: Record<string, string> = {
   SENIN: 'Senin',
@@ -44,11 +43,6 @@ const HARI_LABEL: Record<string, string> = {
   AHAD: 'Ahad',
   MINGGU: 'Minggu',
 };
-
-function formatWaktu(w?: string | null) {
-  if (!w) return '-';
-  return w.length === 5 ? w : w.slice(0, 5);
-}
 
 // ─── GUARD STATE ───────────────────────────────────────────────────────────────
 
@@ -83,16 +77,6 @@ const GuardState: React.FC<{ navigate: ReturnType<typeof useNavigate> }> = ({ na
   );
 };
 
-// ─── TAB CONFIG ────────────────────────────────────────────────────────────────
-
-const TAB_OPTIONS = [
-  { id: 'penilaian',     label: 'Penilaian & Samapta',   icon: Medal },
-  { id: 'statistik',     label: 'Performa Perkembangan', icon: BarChart2 },
-  { id: 'laporan_kelas', label: 'Laporan Per Rombel',     icon: LayoutList },
-  { id: 'laporan_tim',   label: 'Laporan Pendamping',    icon: FileText },
-  { id: 'kepanitiaan',   label: 'Terminal Presensi & POS', icon: Users },
-];
-
 // ─── PAGE COMPONENT ────────────────────────────────────────────────────────────
 
 export interface ProgramKetarunaanPageProps {
@@ -101,7 +85,7 @@ export interface ProgramKetarunaanPageProps {
 
 const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayout = false }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('statistik');
+  const [activeTab, setActiveTab] = useState('penilaian');
   const { isKesiswaan, isAdmin, can } = useCapabilities();
 
   // Konteks Akademik Terpadu (Single Source of Truth)
@@ -182,8 +166,6 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
     { label: 'Program Ketarunaan', path: '/kesiswaan/program-ketarunaan' },
   ], []);
 
-  const tabOptionsMemo = useMemo(() => TAB_OPTIONS, []);
-
   // Stat cards serasi dengan standar SiswaPage
   const statCards = useMemo(() => {
     const ringkasan = stats?.ringkasan_periode;
@@ -233,123 +215,86 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
   const canView = isAdmin || isKesiswaan || can('attendance.sessions.view.list') || can('dashboard.view.kesiswaan');
 
   const mainContent = (
-    <div className="space-y-6">
-      {/* Status strip info: Ringkas & Bersih */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl px-4 py-3 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                <Medal className="w-4 h-4" />
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-black text-slate-800 dark:text-slate-100">
-                  {guard?.jadwal_nama || 'Program Ketarunaan'}
-                </span>
-                <span className="text-xs text-slate-400 dark:text-slate-500">•</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  {hariAktifLabel ? `${hariAktifLabel} ` : ''}{formatWaktu(guard?.jadwal_waktu_mulai)} – {formatWaktu(guard?.jadwal_waktu_selesai)} WIB
-                </span>
-                {!guard?.is_active ? (
-                  <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50">
-                    Agenda Nonaktif
-                  </Badge>
-                ) : guard?.is_today_scheduled_day && guard?.is_within_time_window ? (
-                  <Badge variant="success" className="text-[10px]">
-                    Sesi Berlangsung
-                  </Badge>
-                ) : guard?.is_today_scheduled_day ? (
-                  <Badge variant="info" className="text-[10px]">
-                    Hari Pelaksanaan
-                  </Badge>
-                ) : (
-                  <Badge variant="neutral" className="text-[10px]">
-                    Siaga Terjadwal
-                  </Badge>
-                )}
-              </div>
-            </div>
+    <div className="space-y-4">
+      {/* ── Meja Kerja Ketarunaan (Workflow Stepper 5 Tahap ala Meja Kerja Panitia CBT) ── */}
+      <KetarunaanWorkdeskFlightDeck
+        activeStep={activeTab as KetarunaanWorkflowStepId}
+        onSelectStep={(step) => handleTabChange(step)}
+        guard={guard}
+        hariAktifLabel={hariAktifLabel}
+        sesiId={sesiId}
+        stats={stats}
+        totalKelasCount={Math.max(1, (academicFilter.kelasOptions?.length || 1) - (academicFilter.toolbarProps.allowAllKelas ? 1 : 0))}
+        selectedTahunPelajaranNama={academicFilter.selectedTahunPelajaranNama}
+        selectedSemesterNama={academicFilter.selectedSemesterNama}
+        selectedKelasLabel={academicFilter.selectedKelasLabel}
+        onOpenSettings={() => navigate('/kesiswaan/jadwal-kegiatan')}
+        onRefresh={handleRefresh}
+        isRefreshing={isGuardLoading || isSesiLoading}
+      />
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefresh}
-              className="gap-1.5 text-xs text-slate-500 hover:text-slate-800 self-end sm:self-center"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Segarkan
-            </Button>
-          </div>
-
-          {/* Container Tab Utama serasi SiswaPage */}
-          <SectionCard fullWidth noPadding className="overflow-hidden border border-slate-100 dark:border-slate-800">
-            <div className="px-4 sm:px-6 pt-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <div className="overflow-x-auto no-scrollbar">
-                <TabSwitcher
-                  options={tabOptionsMemo}
-                  activeTab={activeTab}
-                  onChange={handleTabChange}
+      {/* ── Area Kerja Aktif Sesuai Tahap Terpilih ── */}
+      <SectionCard fullWidth noPadding className="overflow-hidden border border-slate-100 dark:border-slate-800">
+        <div className="bg-white dark:bg-slate-900">
+          <Suspense
+            fallback={
+              <div className="p-6 space-y-3">
+                {[1, 2, 3, 4]?.map((itemKey) => (
+                  <Skeleton key={itemKey} className="h-12 rounded-2xl" />
+                ))}
+              </div>
+            }
+          >
+            {activeTab === 'penilaian' && (
+              <KetarunaanPenilaianTab
+                tahunPelajaranId={selectedTpId}
+                tahunPelajaranNama={academicFilter.selectedTahunPelajaranNama}
+                semesterId={selectedSemId}
+                semesterNama={academicFilter.selectedSemesterNama}
+                kelasId={academicFilter.values.kelasId}
+                kelasNama={academicFilter.selectedKelasLabel}
+                jurusanId={academicFilter.values.jurusanId}
+              />
+            )}
+            {activeTab === 'kepanitiaan' && (
+              !guard?.is_active ? (
+                <GuardState navigate={navigate} />
+              ) : (
+                <KetarunaanKepanitiaanTab
+                  jadwalKegiatanId={jadwalKegiatanId}
+                  sesiId={sesiId}
+                  refetchSesi={refetchSesi}
+                  guard={guard}
                 />
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900">
-              <Suspense
-                fallback={
-                  <div className="p-6 space-y-3">
-                    {[1, 2, 3, 4]?.map((itemKey) => (
-                      <Skeleton key={itemKey} className="h-12 rounded-2xl" />
-                    ))}
-                  </div>
-                }
-              >
-                {activeTab === 'penilaian' && (
-                  <KetarunaanPenilaianTab
-                    tahunPelajaranId={selectedTpId}
-                    tahunPelajaranNama={academicFilter.selectedTahunPelajaranNama}
-                    semesterId={selectedSemId}
-                    semesterNama={academicFilter.selectedSemesterNama}
-                    kelasId={academicFilter.values.kelasId}
-                    kelasNama={academicFilter.selectedKelasLabel}
-                    jurusanId={academicFilter.values.jurusanId}
-                  />
-                )}
-                {activeTab === 'kepanitiaan' && (
-                  !guard?.is_active ? (
-                    <GuardState navigate={navigate} />
-                  ) : (
-                    <KetarunaanKepanitiaanTab
-                      jadwalKegiatanId={jadwalKegiatanId}
-                      sesiId={sesiId}
-                      refetchSesi={refetchSesi}
-                      guard={guard}
-                    />
-                  )
-                )}
-                {activeTab === 'statistik' && (
-                  <KetarunaanStatistikTab
-                    jadwalKegiatanId={jadwalKegiatanId}
-                    tahunPelajaranId={selectedTpId}
-                    semesterId={selectedSemId}
-                  />
-                )}
-                {activeTab === 'laporan_tim' && (
-                  <KetarunaanLaporanTimTab
-                    jadwalKegiatanId={jadwalKegiatanId}
-                    sesiId={sesiId}
-                    tahunPelajaranId={selectedTpId}
-                    semesterId={selectedSemId}
-                  />
-                )}
-                {activeTab === 'laporan_kelas' && (
-                  <KetarunaanLaporanKelasTab
-                    jadwalKegiatanId={jadwalKegiatanId}
-                    sesiId={sesiId}
-                    tahunPelajaranId={selectedTpId}
-                    semesterId={selectedSemId}
-                  />
-                )}
-              </Suspense>
-            </div>
-          </SectionCard>
+              )
+            )}
+            {activeTab === 'statistik' && (
+              <KetarunaanStatistikTab
+                jadwalKegiatanId={jadwalKegiatanId}
+                tahunPelajaranId={selectedTpId}
+                semesterId={selectedSemId}
+              />
+            )}
+            {activeTab === 'laporan_tim' && (
+              <KetarunaanLaporanTimTab
+                jadwalKegiatanId={jadwalKegiatanId}
+                sesiId={sesiId}
+                tahunPelajaranId={selectedTpId}
+                semesterId={selectedSemId}
+              />
+            )}
+            {activeTab === 'laporan_kelas' && (
+              <KetarunaanLaporanKelasTab
+                jadwalKegiatanId={jadwalKegiatanId}
+                sesiId={sesiId}
+                tahunPelajaranId={selectedTpId}
+                semesterId={selectedSemId}
+              />
+            )}
+          </Suspense>
         </div>
+      </SectionCard>
+    </div>
   );
 
   if (hideLayout) {

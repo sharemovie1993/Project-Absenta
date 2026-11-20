@@ -1929,11 +1929,36 @@ export const KetarunaanPenilaianTab: React.FC<KetarunaanPenilaianTabProps> = ({
           setSelectedCertStudent(null);
         }}
         student={selectedCertStudent}
+        students={filteredStudents}
+        onSelectStudent={(nextSt) => {
+          const sc = localScores[nextSt.siswa_id] || {
+            samapta: nextSt.nilai_samapta ?? 0,
+            pbb: nextSt.nilai_pbb ?? 0,
+            disiplin: nextSt.nilai_disiplin ?? 0,
+            mental: nextSt.nilai_mental ?? 0,
+            deskripsi_cp: nextSt.deskripsi_rapor ?? '',
+          };
+          const live = calculateLiveFinal(sc);
+          setSelectedCertStudent({
+            ...nextSt,
+            nilai_samapta: sc.samapta,
+            nilai_pbb: sc.pbb,
+            nilai_disiplin: sc.disiplin,
+            nilai_mental: sc.mental,
+            nilai_akhir: live.final,
+            predikat: live.grade,
+            deskripsi_rapor: sc.deskripsi_cp || nextSt.deskripsi_rapor || live.autoNarasi,
+          });
+        }}
         skema={skema}
+        kelasId={loadedKelasId || kelasId}
         kelasNama={effectiveKelasNama}
+        jurusanId={jurusanId}
         jurusanNama={effectiveJurusanNama}
-        tahunPelajaran={tahunPelajaranId}
-        semester={semesterId}
+        tahunPelajaran={loadedTpId || tahunPelajaranId}
+        tahunPelajaranNama={periodTahun}
+        semester={loadedSemesterId || semesterId}
+        semesterNama={periodSemester}
       />
 
       {/* ── Modal Ekspor Nilai Ketarunaan ke Excel (Mail Merge) ───────────────── */}

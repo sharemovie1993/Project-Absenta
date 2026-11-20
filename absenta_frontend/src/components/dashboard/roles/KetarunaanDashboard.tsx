@@ -1,25 +1,16 @@
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   Medal,
   Shield,
   Users,
   BarChart2,
-  FileText,
-  LayoutList,
   Lock,
-  ExternalLink,
-  RefreshCw,
-  Clock,
-  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SectionCard } from '@/components/ui/SectionCard';
-import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { UniversalEcosystemTopbar } from './common';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -35,6 +26,9 @@ import { KetarunaanStatistikTab } from '@/components/kesiswaan/program-ketarunaa
 import { KetarunaanLaporanTimTab } from '@/components/kesiswaan/program-ketarunaan/KetarunaanLaporanTimTab';
 import { KetarunaanLaporanKelasTab } from '@/components/kesiswaan/program-ketarunaan/KetarunaanLaporanKelasTab';
 import { KetarunaanPenilaianTab } from '@/components/kesiswaan/program-ketarunaan/KetarunaanPenilaianTab';
+import {
+  KetarunaanWorkdeskFlightDeck,
+} from '@/components/kesiswaan/program-ketarunaan/KetarunaanWorkdeskFlightDeck';
 
 const HARI_LABEL: Record<string, string> = {
   SENIN: 'Senin',
@@ -47,20 +41,7 @@ const HARI_LABEL: Record<string, string> = {
   MINGGU: 'Minggu',
 };
 
-function formatWaktu(w?: string | null) {
-  if (!w) return '-';
-  return w.length === 5 ? w : w.slice(0, 5);
-}
-
 export type KetarunaanSubtabId = 'penilaian' | 'statistik' | 'laporan_kelas' | 'laporan_tim' | 'kepanitiaan';
-
-const TAB_OPTIONS = [
-  { id: 'penilaian', label: 'Penilaian & Samapta', icon: Medal },
-  { id: 'statistik', label: 'Performa & Tren', icon: BarChart2 },
-  { id: 'laporan_kelas', label: 'Laporan Per Rombel', icon: LayoutList },
-  { id: 'laporan_tim', label: 'Laporan Pendamping', icon: FileText },
-  { id: 'kepanitiaan', label: 'Terminal Presensi & POS', icon: Users },
-];
 
 export interface KetarunaanDashboardProps {
   user?: {
@@ -72,22 +53,18 @@ export interface KetarunaanDashboardProps {
 
 export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.memo(() => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as KetarunaanSubtabId | null;
 
-  const validTabs: KetarunaanSubtabId[] = ['statistik', 'laporan_kelas', 'laporan_tim', 'kepanitiaan'];
+  const validTabs: KetarunaanSubtabId[] = ['penilaian', 'statistik', 'laporan_kelas', 'laporan_tim', 'kepanitiaan'];
 
   const [activeTab, setActiveTab] = useState<KetarunaanSubtabId>(() => {
     if (subtabParam && validTabs.includes(subtabParam)) {
       return subtabParam;
     }
-    return 'statistik';
+    return 'penilaian';
   });
 
-  const [visitedTabs, setVisitedTabs] = useState<Set<KetarunaanSubtabId>>(
-    () => new Set([activeTab])
-  );
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Synchronize Tab with URL
@@ -96,15 +73,6 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
       setActiveTab(subtabParam);
     }
   }, [subtabParam, activeTab]);
-
-  useEffect(() => {
-    setVisitedTabs((prev) => {
-      if (prev.has(activeTab)) return prev;
-      const next = new Set(prev);
-      next.add(activeTab);
-      return next;
-    });
-  }, [activeTab]);
 
   const handleTabChange = useCallback(
     (tabId: string) => {
@@ -265,60 +233,6 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
           }
         />
 
-        {/* Hero Section: Status Jadwal & Jam Pelaksanaan */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20">
-              <Medal className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                  {guard?.jadwal_nama || 'Program Ketarunaan Sekolah'}
-                </h2>
-                {!guard?.is_active ? (
-                  <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50">
-                    Agenda Nonaktif
-                  </Badge>
-                ) : guard?.is_today_scheduled_day && guard?.is_within_time_window ? (
-                  <Badge variant="success" className="text-[10px] animate-pulse">
-                    ● Sesi Sedang Berlangsung
-                  </Badge>
-                ) : guard?.is_today_scheduled_day ? (
-                  <Badge variant="info" className="text-[10px]">
-                    Hari Pelaksanaan
-                  </Badge>
-                ) : (
-                  <Badge variant="neutral" className="text-[10px]">
-                    Siaga Terjadwal
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                <span>
-                  {hariAktifLabel ? `${hariAktifLabel} ` : ''}
-                  {formatWaktu(guard?.jadwal_waktu_mulai)} – {formatWaktu(guard?.jadwal_waktu_selesai)} WIB
-                </span>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 self-end sm:self-center">
-            {guard?.is_active && (
-              <Button
-                size="sm"
-                variant={activeTab === 'kepanitiaan' ? 'default' : 'outline'}
-                onClick={() => handleTabChange('kepanitiaan')}
-                className="text-xs gap-1.5 h-8 font-bold rounded-xl"
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>Terminal Presensi</span>
-              </Button>
-            )}
-          </div>
-        </div>
-
         {/* 4 Kartu KPI Eksekutif */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {statCards.map((sc, idx) => {
@@ -352,23 +266,26 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
           })}
         </div>
 
-        {/* Toolbar Konteks Akademik Terpadu */}
-        <div className="mb-2">
-          <AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />
-        </div>
+        {/* ── Meja Kerja Ketarunaan (Workflow Stepper 5 Tahap + Filter Akademik Terintegrasi) ── */}
+        <KetarunaanWorkdeskFlightDeck
+          activeStep={activeTab}
+          onSelectStep={(step) => handleTabChange(step)}
+          guard={guard}
+          hariAktifLabel={hariAktifLabel}
+          sesiId={sesiId}
+          stats={stats}
+          totalKelasCount={Math.max(1, (academicFilter.kelasOptions?.length || 1) - (academicFilter.toolbarProps.allowAllKelas ? 1 : 0))}
+          selectedTahunPelajaranNama={academicFilter.selectedTahunPelajaranNama}
+          selectedSemesterNama={academicFilter.selectedSemesterNama}
+          selectedKelasLabel={academicFilter.selectedKelasLabel}
+          onOpenSettings={() => navigate('/kesiswaan/jadwal-kegiatan')}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing || isGuardLoading || isSesiLoading}
+          filterToolbarNode={<AcademicFilterToolbar {...academicFilter.toolbarProps} variant="compact" />}
+        />
 
-        {/* Navigasi Subtab Dashboard */}
+        {/* ── Area Kerja Aktif Sesuai Tahap Terpilih ── */}
         <SectionCard fullWidth noPadding className="overflow-hidden border border-slate-200/80 dark:border-slate-800">
-          <div className="px-4 sm:px-6 pt-3.5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-            <div className="overflow-x-auto no-scrollbar">
-              <TabSwitcher
-                options={TAB_OPTIONS}
-                activeTab={activeTab}
-                onChange={handleTabChange}
-              />
-            </div>
-          </div>
-
           <div className="bg-white dark:bg-slate-900">
             <Suspense
               fallback={
