@@ -15,7 +15,7 @@ export const PRISMA_GURU_USER_SELECT = {
         name: true,
       },
     },
-    organizationalAssigns: {
+    organizationalAssignments: {
       where: {
         is_active: true,
       },
@@ -60,11 +60,11 @@ export function enrichGuruWithUser(guru: any, filterTpId?: string): any {
     guru.no_hp = guru.no_hp || guru.User.no_hp || null;
     guru.last_login = guru.last_login || guru.User.last_login || null;
 
-    if (Array.isArray(guru.User.organizationalAssigns)) {
-      guru.organizational_assignments = guru.User.organizationalAssigns;
+    if (Array.isArray(guru.User.organizationalAssignments)) {
+      guru.organizational_assignments = guru.User.organizationalAssignments;
       const relevantAssigns = (filterTpId && filterTpId !== 'ALL')
-        ? guru.User.organizationalAssigns.filter((oa: any) => !oa.tahun_pelajaran_id || oa.tahun_pelajaran_id === filterTpId)
-        : guru.User.organizationalAssigns;
+        ? guru.User.organizationalAssignments.filter((oa: any) => !oa.tahun_pelajaran_id || oa.tahun_pelajaran_id === filterTpId)
+        : guru.User.organizationalAssignments;
 
       guru.active_positions = relevantAssigns.map((oa: any) => {
         const posName = oa.Position?.name || oa.Position?.code || 'Jabatan';

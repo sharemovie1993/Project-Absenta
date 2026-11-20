@@ -43,14 +43,14 @@ export async function getAllGuruQuery(
     if (params.position_code === 'HAS_ANY_POSITION') {
       whereClause.User = {
         ...(whereClause.User || {}),
-        organizationalAssigns: {
+        organizationalAssignments: {
           some: assignWhere,
         },
       };
     } else if (params.position_code === 'NO_POSITION') {
       whereClause.User = {
         ...(whereClause.User || {}),
-        organizationalAssigns: {
+        organizationalAssignments: {
           none: assignWhere,
         },
       };
@@ -60,7 +60,7 @@ export async function getAllGuruQuery(
       };
       whereClause.User = {
         ...(whereClause.User || {}),
-        organizationalAssigns: {
+        organizationalAssignments: {
           some: assignWhere,
         },
       };
