@@ -1,9 +1,25 @@
 import React, { useRef, useState, useMemo } from 'react';
-import { X, Printer, Download, Loader2, ZoomIn, ZoomOut, RotateCcw, Globe } from 'lucide-react';
+import {
+  X,
+  Printer,
+  Download,
+  Loader2,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Globe,
+  Image as ImageIcon,
+} from 'lucide-react';
 import { PrintDocumentSheet, PrintHeader, SendDocumentWaButton } from '@/components/ui';
 import { DenahMapGuideLayer } from './DenahMapGuideLayer';
+import { DenahImageGuideLayer } from './DenahImageGuideLayer';
 import toast from 'react-hot-toast';
-import type { DenahElementNode, DenahSpasial, DenahMapGuideConfig } from '../../types/spasial.types';
+import type {
+  DenahElementNode,
+  DenahSpasial,
+  DenahMapGuideConfig,
+  DenahImageGuideConfig,
+} from '../../types/spasial.types';
 import { detectNodeTingkat, PRINT_TINGKAT_STYLES, getNodeTranslucentBg } from './denahTingkatHelper';
 
 interface DenahPrintModalProps {
@@ -12,6 +28,7 @@ interface DenahPrintModalProps {
   denah: DenahSpasial;
   nodes: DenahElementNode[];
   mapGuideConfig?: DenahMapGuideConfig;
+  imageGuideConfig?: DenahImageGuideConfig;
 }
 
 const KATEGORI_PRINT_STYLES: Record<string, { bg: string; border: string; text: string }> = {
@@ -39,11 +56,15 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
   denah,
   nodes,
   mapGuideConfig,
+  imageGuideConfig,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [scaleMultiplier, setScaleMultiplier] = useState(1.0);
   const [showSatelliteLayer, setShowSatelliteLayer] = useState(mapGuideConfig?.enabled ?? true);
   const [satelliteOpacity, setSatelliteOpacity] = useState(mapGuideConfig?.opacity ?? 0.85);
+  const [showImageLayer, setShowImageLayer] = useState(
+    Boolean(imageGuideConfig?.enabled && imageGuideConfig?.url)
+  );
 
   // Standar Judul Dokumen Kedinasan & Penyelenggaraan Ujian Sekolah
   const defaultDocTitle = useMemo(() => {
@@ -236,6 +257,23 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
               </button>
             )}
 
+            {/* Toggle Blueprint Image Layer */}
+            {imageGuideConfig?.url && (
+              <button
+                type="button"
+                onClick={() => setShowImageLayer((prev) => !prev)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 border transition-all cursor-pointer ${
+                  showImageLayer
+                    ? 'bg-emerald-600 border-emerald-700 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
+                }`}
+                title="Sertakan atau sembunyikan gambar denah/blueprint pada lembar cetak"
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span>{showImageLayer ? 'Gambar Denah: Aktif' : 'Gambar: Mati'}</span>
+              </button>
+            )}
+
             {/* Zoom Stepper for Fine-tuning Print Fit */}
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 mr-2">
               <span className="text-[11px] font-medium text-slate-500 mr-1 hidden sm:inline">Skala:</span>
@@ -400,6 +438,32 @@ export const DenahPrintModal: React.FC<DenahPrintModalProps> = ({
                       width={denah.canvas_width || 2400}
                       height={denah.canvas_height || 1600}
                       onMapChange={() => {}}
+                    />
+                  </div>
+                )}
+
+                {/* Blueprint Image Guide Layer */}
+                {showImageLayer && imageGuideConfig && imageGuideConfig.url && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${layout.offsetX}px`,
+                      top: `${layout.offsetY}px`,
+                      width: `${denah.canvas_width || 2400}px`,
+                      height: `${denah.canvas_height || 1600}px`,
+                      transform: `scale(${layout.uniformScale})`,
+                      transformOrigin: '0 0',
+                      pointerEvents: 'none',
+                      zIndex: 1,
+                    }}
+                  >
+                    <DenahImageGuideLayer
+                      config={{
+                        ...imageGuideConfig,
+                        is_locked: true,
+                      }}
+                      width={denah.canvas_width || 2400}
+                      height={denah.canvas_height || 1600}
                     />
                   </div>
                 )}

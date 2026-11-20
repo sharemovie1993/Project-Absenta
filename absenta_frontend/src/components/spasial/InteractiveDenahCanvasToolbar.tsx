@@ -19,6 +19,7 @@ import {
   X,
   FileJson,
   Eye,
+  Image as ImageIcon,
 } from 'lucide-react';
 import type { DenahSpasial } from '../../types/spasial.types';
 
@@ -43,6 +44,9 @@ interface InteractiveDenahCanvasToolbarProps {
   onAutoLayout: () => void;
   isMapGuideOpen?: boolean;
   onToggleMapGuide?: () => void;
+  isImageGuideOpen?: boolean;
+  onToggleImageGuide?: () => void;
+  imageGuideActive?: boolean;
   isBoxTransparent?: boolean;
   onToggleBoxTransparent?: () => void;
   onOpenPrint: () => void;
@@ -75,6 +79,9 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
   onAutoLayout,
   isMapGuideOpen = false,
   onToggleMapGuide,
+  isImageGuideOpen = false,
+  onToggleImageGuide,
+  imageGuideActive = false,
   isBoxTransparent = false,
   onToggleBoxTransparent,
   onOpenPrint,
@@ -188,6 +195,26 @@ export const InteractiveDenahCanvasToolbar: React.FC<InteractiveDenahCanvasToolb
               <Globe className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Peta Satelit</span>
               {isMapGuideOpen && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+            </button>
+          )}
+
+          {/* Blueprint Image Guide Toggle (Editor Only) */}
+          {!isReadOnly && onToggleImageGuide && (
+            <button
+              type="button"
+              onClick={onToggleImageGuide}
+              className={`px-2.5 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer border shrink-0 ${
+                isImageGuideOpen
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                  : isLightMode
+                  ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                  : 'bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-750'
+              }`}
+              title="Upload & Pasang Gambar Denah / Blueprint Arsitektur"
+            >
+              <ImageIcon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Gambar Denah</span>
+              {imageGuideActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
             </button>
           )}
 

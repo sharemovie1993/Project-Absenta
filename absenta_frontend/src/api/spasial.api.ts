@@ -105,3 +105,19 @@ export async function cloneDenah(
     throw err;
   }
 }
+
+/**
+ * Unggah gambar latar blueprint / denah arsitektur sekolah
+ */
+export async function uploadDenahImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post('/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  const url = res.data?.data?.url || res.data?.url;
+  if (!url) {
+    throw new Error('Gagal mendapatkan URL gambar hasil upload');
+  }
+  return url;
+}

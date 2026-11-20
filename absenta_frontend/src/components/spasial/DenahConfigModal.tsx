@@ -20,6 +20,7 @@ import type {
   DenahSpasial,
   DenahElementNode,
   DenahMapGuideConfig,
+  DenahImageGuideConfig,
 } from '../../types/spasial.types';
 
 export interface DenahConfigExportData {
@@ -34,6 +35,7 @@ export interface DenahConfigExportData {
   canvas_height: number;
   grid_size: number;
   map_guide_config?: DenahMapGuideConfig;
+  image_guide_config?: DenahImageGuideConfig;
   total_elements: number;
   elements: DenahElementNode[];
 }
@@ -44,10 +46,12 @@ interface DenahConfigModalProps {
   denah: DenahSpasial;
   nodes: DenahElementNode[];
   mapGuideConfig?: DenahMapGuideConfig;
+  imageGuideConfig?: DenahImageGuideConfig;
   isReadOnly?: boolean;
   onImportConfig?: (
     importedNodes: DenahElementNode[],
-    importedMapConfig?: DenahMapGuideConfig
+    importedMapConfig?: DenahMapGuideConfig,
+    importedImageConfig?: DenahImageGuideConfig
   ) => void;
 }
 
@@ -57,6 +61,7 @@ export const DenahConfigModal: React.FC<DenahConfigModalProps> = ({
   denah,
   nodes,
   mapGuideConfig,
+  imageGuideConfig,
   isReadOnly = false,
   onImportConfig,
 }) => {
@@ -72,7 +77,9 @@ export const DenahConfigModal: React.FC<DenahConfigModalProps> = ({
 
   // Bersihkan elemen sistem internal sebelum diekspor
   const exportableNodes = useMemo(() => {
-    return nodes.filter((n) => n.id !== '__MAP_GUIDE_CONFIG__');
+    return nodes.filter(
+      (n) => n.id !== '__MAP_GUIDE_CONFIG__' && n.id !== '__IMAGE_GUIDE_CONFIG__'
+    );
   }, [nodes]);
 
   // Siapkan objek JSON konfigurasi yang terstandar
@@ -89,10 +96,11 @@ export const DenahConfigModal: React.FC<DenahConfigModalProps> = ({
       canvas_height: denah.canvas_height || 1600,
       grid_size: denah.grid_size || 20,
       map_guide_config: mapGuideConfig,
+      image_guide_config: imageGuideConfig,
       total_elements: exportableNodes.length,
       elements: exportableNodes,
     };
-  }, [denah, exportableNodes, mapGuideConfig]);
+  }, [denah, exportableNodes, mapGuideConfig, imageGuideConfig]);
 
   const jsonString = useMemo(() => {
     return JSON.stringify(exportPayload, null, 2);
@@ -155,6 +163,7 @@ export const DenahConfigModal: React.FC<DenahConfigModalProps> = ({
       // Dukungan fleksibel: format object standar atau array raw nodes langsung
       let elements: DenahElementNode[] = [];
       let mapConfig: DenahMapGuideConfig | undefined = undefined;
+      let imgConfig: DenahImageGuideConfig | undefined = undefined;
 
       if (Array.isArray(parsed)) {
         elements = parsed;
@@ -164,6 +173,9 @@ export const DenahConfigModal: React.FC<DenahConfigModalProps> = ({
         }
         if (parsed.map_guide_config && typeof parsed.map_guide_config === 'object') {
           mapConfig = parsed.map_guide_config;
+        }
+        if (parsed.image_guide_config && typeof parsed.image_guide_config === 'object') {
+          imgConfig = parsed.image_guide_config;
         }
       } else {
         return {
@@ -179,7 +191,7 @@ export const DenahConfigModal: React.FC<DenahConfigModalProps> = ({
         (n) => n && typeof n === 'object' && typeof n.x === 'number' && typeof n.y === 'number'
       );
 
-      if (validElements.length === 0 && !mapConfig) {
+      if (validElements.length === 0 && !mapConfig && !imgConfig) {
         return {
           isValid: false,
           error: 'Tidak ditemukan elemen ruangan atau koordinat yang valid dalam data JSON.',
@@ -202,11 +214,13 @@ export const DenahConfigModal: React.FC<DenahConfigModalProps> = ({
           canvas_height: parsed.canvas_height || 1600,
           grid_size: parsed.grid_size || 20,
           map_guide_config: mapConfig,
+          image_guide_config: imgConfig,
           total_elements: validElements.length,
           elements: validElements,
         },
         elementCount: validElements.length,
         hasMapConfig: Boolean(mapConfig),
+        hasImgConfig: Boolean(imgConfig?.url),
       };
     } catch (err: any) {
       return {
@@ -249,7 +263,7 @@ export const DenahConfigModal: React.FC<DenahConfigModalProps> = ({
       return;
     }
 
-    const { elements: newElements, map_guide_config } = parsedImportData.data;
+    const { elements: newElements, map_guide_config, image_guide_config } = parsedImportData.data;
 
     let finalNodes: DenahElementNode[] = [];
     if (importMode === 'replace') {
@@ -263,16 +277,22 @@ export const DenahConfigModal: React.FC<DenahConfigModalProps> = ({
         }
         return item;
       });
-      finalNodes = [...nodes.filter((n) => n.id !== '__MAP_GUIDE_CONFIG__'), ...adjustedNewElements];
+      finalNodes = [
+        ...nodes.filter(
+          (n) => n.id !== '__MAP_GUIDE_CONFIG__' && n.id !== '__IMAGE_GUIDE_CONFIG__'
+        ),
+        ...adjustedNewElements,
+      ];
     }
 
     const mapToApply = includeMapGuide && map_guide_config ? map_guide_config : undefined;
+    const imgToApply = image_guide_config ? image_guide_config : undefined;
 
-    onImportConfig(finalNodes, mapToApply);
+    onImportConfig(finalNodes, mapToApply, imgToApply);
     toast.success(
       `Berhasil mengimpor ${newElements.length} ruangan${
         mapToApply ? ' & peta satelit' : ''
-      }! Klik [Simpan] pada toolbar untuk menyimpan permanen.`
+      }${imgToApply?.url ? ' & gambar latar' : ''}! Klik [Simpan] pada toolbar untuk menyimpan permanen.`
     );
     onClose();
   };

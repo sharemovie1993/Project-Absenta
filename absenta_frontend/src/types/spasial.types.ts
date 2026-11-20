@@ -48,6 +48,21 @@ export interface DenahMapGuideConfig {
   location_name?: string;
 }
 
+export type DenahImageFitMode = 'contain' | 'cover' | 'original' | 'custom';
+
+export interface DenahImageGuideConfig {
+  enabled: boolean;
+  url: string;
+  file_name?: string;
+  opacity: number; // 0.05 s/d 1.0 (default 0.85)
+  x: number; // offset X dalam pixel kanvas (default 0)
+  y: number; // offset Y dalam pixel kanvas (default 0)
+  scale: number; // faktor skala (0.1 s/d 5.0, default 1.0)
+  rotation: number; // derajat rotasi (-180 s/d 180, default 0)
+  fit: DenahImageFitMode;
+  is_locked: boolean; // true = terkunci mati sebagai background, false = bisa digeser langsung di kanvas
+}
+
 export interface DenahSpasial {
   id: string;
   tenant_id?: string;

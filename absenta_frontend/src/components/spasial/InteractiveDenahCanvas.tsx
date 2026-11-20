@@ -8,6 +8,8 @@ import { DenahConfigModal } from './DenahConfigModal';
 import { InteractiveDenahCanvasToolbar } from './InteractiveDenahCanvasToolbar';
 import { DenahMapGuideLayer } from './DenahMapGuideLayer';
 import { DenahMapGuideFloatingBar } from './DenahMapGuideFloatingBar';
+import { DenahImageGuideLayer } from './DenahImageGuideLayer';
+import { DenahImageGuideFloatingBar } from './DenahImageGuideFloatingBar';
 import { DenahBatchActionBar } from './DenahBatchActionBar';
 import { DenahMobileNavigationSheet } from './DenahMobileNavigationSheet';
 import { DenahVerticalFloorStepper } from './DenahVerticalFloorStepper';
@@ -15,7 +17,12 @@ import { DenahMobilePaletteDrawer } from './DenahMobilePaletteDrawer';
 import { useDenahInteraction } from './useDenahInteraction';
 import { generateAutoFloorplan } from './denahAutoLayout';
 import { updateDenah } from '../../api/spasial.api';
-import type { DenahElementNode, DenahSpasial, DenahMapGuideConfig } from '../../types/spasial.types';
+import type {
+  DenahElementNode,
+  DenahSpasial,
+  DenahMapGuideConfig,
+  DenahImageGuideConfig,
+} from '../../types/spasial.types';
 import { detectNodeTingkat, TINGKAT_STYLES } from './denahTingkatHelper';
 
 interface InteractiveDenahCanvasProps {
@@ -78,6 +85,71 @@ export const extractMapGuideConfig = (elements?: any[], denahId?: string): Denah
   };
 };
 
+export const extractImageGuideConfig = (
+  elements?: any[],
+  denahId?: string
+): DenahImageGuideConfig => {
+  // 1. Coba dari elemen database metadata
+  if (Array.isArray(elements)) {
+    const metaNode = elements.find((el: any) => el?.id === '__IMAGE_GUIDE_CONFIG__');
+    if (metaNode && metaNode.catatan) {
+      try {
+        const parsed = JSON.parse(metaNode.catatan);
+        if (parsed && typeof parsed.url === 'string') {
+          return {
+            enabled: parsed.enabled !== false,
+            url: parsed.url,
+            file_name: parsed.file_name,
+            opacity: typeof parsed.opacity === 'number' ? parsed.opacity : 0.85,
+            x: typeof parsed.x === 'number' ? parsed.x : 0,
+            y: typeof parsed.y === 'number' ? parsed.y : 0,
+            scale: typeof parsed.scale === 'number' ? parsed.scale : 1,
+            rotation: typeof parsed.rotation === 'number' ? parsed.rotation : 0,
+            fit: parsed.fit || 'contain',
+            is_locked: parsed.is_locked !== false,
+          };
+        }
+      } catch (_) {}
+    }
+  }
+
+  // 2. Coba dari localStorage
+  if (denahId) {
+    try {
+      const saved = localStorage.getItem(`absenta_denah_image_${denahId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed.url === 'string') {
+          return {
+            enabled: parsed.enabled !== false,
+            url: parsed.url,
+            file_name: parsed.file_name,
+            opacity: typeof parsed.opacity === 'number' ? parsed.opacity : 0.85,
+            x: typeof parsed.x === 'number' ? parsed.x : 0,
+            y: typeof parsed.y === 'number' ? parsed.y : 0,
+            scale: typeof parsed.scale === 'number' ? parsed.scale : 1,
+            rotation: typeof parsed.rotation === 'number' ? parsed.rotation : 0,
+            fit: parsed.fit || 'contain',
+            is_locked: parsed.is_locked !== false,
+          };
+        }
+      }
+    } catch (_) {}
+  }
+
+  return {
+    enabled: false,
+    url: '',
+    opacity: 0.85,
+    x: 0,
+    y: 0,
+    scale: 1,
+    rotation: 0,
+    fit: 'contain',
+    is_locked: true,
+  };
+};
+
 export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   denah,
   unassignedRooms = [],
@@ -91,9 +163,11 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   highlightLabel,
   eventName = 'Ujian CBT',
 }) => {
-  // Canvas dimulai dari elemen tersimpan (filter metadata peta). Jika kosong, gunakan auto-floorplan agar canvas tidak hampa
+  // Canvas dimulai dari elemen tersimpan (filter metadata peta & gambar). Jika kosong, gunakan auto-floorplan agar canvas tidak hampa
   const rawElements = Array.isArray(denah.elements) ? denah.elements : [];
-  const realNodes = rawElements.filter((el: any) => el?.id !== '__MAP_GUIDE_CONFIG__');
+  const realNodes = rawElements.filter(
+    (el: any) => el?.id !== '__MAP_GUIDE_CONFIG__' && el?.id !== '__IMAGE_GUIDE_CONFIG__'
+  );
   const initialNodes = realNodes.length > 0 ? realNodes : generateAutoFloorplan(unassignedRooms);
 
   const [nodes, setNodes] = useState<DenahElementNode[]>(initialNodes);
@@ -118,14 +192,28 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   }, [denah.id, denah.elements]);
   const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
 
-  // Transparansi Kotak Ruangan: Kaca Transparan agar kanvas peta satelit tidak terblokir
+  // Blueprint Image Guide State (Disinkronkan otomatis dari database denah)
+  const [imageGuideConfig, setImageGuideConfig] = useState<DenahImageGuideConfig>(() =>
+    extractImageGuideConfig(denah.elements, denah.id)
+  );
+
+  useEffect(() => {
+    setImageGuideConfig(extractImageGuideConfig(denah.elements, denah.id));
+  }, [denah.id, denah.elements]);
+  const [isImageGuideOpen, setIsImageGuideOpen] = useState(false);
+
+  // Transparansi Kotak Ruangan: Kaca Transparan agar kanvas peta satelit / gambar tidak terblokir
   const [isBoxTransparent, setIsBoxTransparent] = useState<boolean>(() => {
     const hasMap = Boolean(extractMapGuideConfig(denah.elements, denah.id)?.enabled);
-    return hasMap;
+    const hasImg = Boolean(extractImageGuideConfig(denah.elements, denah.id)?.enabled && extractImageGuideConfig(denah.elements, denah.id)?.url);
+    return hasMap || hasImg;
   });
   const [boxOpacity, setBoxOpacity] = useState<number>(0.32);
 
-  const effectiveBoxTransparent = isBoxTransparent || mapGuideConfig.enabled;
+  const effectiveBoxTransparent =
+    isBoxTransparent ||
+    mapGuideConfig.enabled ||
+    (imageGuideConfig.enabled && Boolean(imageGuideConfig.url));
 
   // History for Undo/Redo
   const [history, setHistory] = useState<DenahElementNode[][]>([initialNodes]);
@@ -429,7 +517,9 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
   const handleSaveDenah = async () => {
     setIsSaving(true);
     try {
-      const cleanNodes = nodes.filter((n) => n.id !== '__MAP_GUIDE_CONFIG__');
+      const cleanNodes = nodes.filter(
+        (n) => n.id !== '__MAP_GUIDE_CONFIG__' && n.id !== '__IMAGE_GUIDE_CONFIG__'
+      );
       const mapMetaNode: DenahElementNode = {
         id: '__MAP_GUIDE_CONFIG__',
         x: 0,
@@ -441,8 +531,19 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         kategori_ruang: 'LAINNYA',
         catatan: JSON.stringify(mapGuideConfig),
       };
+      const imageMetaNode: DenahElementNode = {
+        id: '__IMAGE_GUIDE_CONFIG__',
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        rotation: 0,
+        label_utama: '__IMAGE_GUIDE__',
+        kategori_ruang: 'LAINNYA',
+        catatan: JSON.stringify(imageGuideConfig),
+      };
 
-      const payload = [...cleanNodes, mapMetaNode];
+      const payload = [...cleanNodes, mapMetaNode, imageMetaNode];
 
       const saved = await updateDenah(denah.id, {
         elements: payload,
@@ -450,9 +551,10 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
 
       try {
         localStorage.setItem(`absenta_denah_map_${denah.id}`, JSON.stringify(mapGuideConfig));
+        localStorage.setItem(`absenta_denah_image_${denah.id}`, JSON.stringify(imageGuideConfig));
       } catch (_) {}
 
-      toast.success('Denah spasial & peta satelit berhasil disimpan ke database!');
+      toast.success('Denah spasial, peta satelit & gambar latar berhasil disimpan!');
       if (onSaveSuccess) onSaveSuccess(saved);
     } catch (err: any) {
       toast.error(err.message || 'Gagal menyimpan denah');
@@ -701,6 +803,18 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             return next;
           });
         }}
+        isImageGuideOpen={isImageGuideOpen}
+        onToggleImageGuide={() => {
+          setIsImageGuideOpen((prev) => {
+            const next = !prev;
+            if (next) {
+              setImageGuideConfig((c) => ({ ...c, enabled: true }));
+              setIsBoxTransparent(true);
+            }
+            return next;
+          });
+        }}
+        imageGuideActive={imageGuideConfig.enabled && Boolean(imageGuideConfig.url)}
         isBoxTransparent={effectiveBoxTransparent}
         onToggleBoxTransparent={() => setIsBoxTransparent((prev) => !prev)}
         onOpenPrint={() => setIsPrintModalOpen(true)}
@@ -940,6 +1054,25 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
               />
             )}
 
+            {/* Realtime Blueprint Image Guide Layer (Memoized) */}
+            {imageGuideConfig.enabled && imageGuideConfig.url && (
+              <DenahImageGuideLayer
+                config={imageGuideConfig}
+                width={denah.canvas_width || 2400}
+                height={denah.canvas_height || 1600}
+                canvasScale={scale}
+                onImageChange={(updated) => {
+                  setImageGuideConfig((prev) => {
+                    const next = { ...prev, ...updated };
+                    try {
+                      localStorage.setItem(`absenta_denah_image_${denah.id}`, JSON.stringify(next));
+                    } catch (_) {}
+                    return next;
+                  });
+                }}
+              />
+            )}
+
             {/* Subtle Floating Empty State (Non-intrusive) */}
             {nodes.length === 0 && (
               <div
@@ -1019,6 +1152,31 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             onClose={() => {
               setIsMapGuideOpen(false);
               setMapGuideConfig((prev) => ({ ...prev, enabled: false }));
+            }}
+            isLightMode={isLightMode}
+          />
+        )}
+
+        {/* Floating Blueprint Image Guide Control HUD */}
+        {isImageGuideOpen && (
+          <DenahImageGuideFloatingBar
+            config={imageGuideConfig}
+            onUpdateConfig={(updated) => {
+              setImageGuideConfig((prev) => {
+                const next = { ...prev, ...updated };
+                try {
+                  localStorage.setItem(`absenta_denah_image_${denah.id}`, JSON.stringify(next));
+                } catch (_) {}
+                return next;
+              });
+            }}
+            boxOpacity={boxOpacity}
+            onUpdateBoxOpacity={(op) => {
+              setBoxOpacity(op);
+              if (op < 0.95) setIsBoxTransparent(true);
+            }}
+            onClose={() => {
+              setIsImageGuideOpen(false);
             }}
             isLightMode={isLightMode}
           />
@@ -1174,6 +1332,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         denah={denah}
         nodes={nodes}
         mapGuideConfig={mapGuideConfig}
+        imageGuideConfig={imageGuideConfig}
       />
 
       {/* Modal Ekspor & Impor Konfigurasi Denah (JSON) */}
@@ -1183,14 +1342,22 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
         denah={denah}
         nodes={nodes}
         mapGuideConfig={mapGuideConfig}
+        imageGuideConfig={imageGuideConfig}
         isReadOnly={isReadOnly}
-        onImportConfig={(importedNodes, importedMapConfig) => {
+        onImportConfig={(importedNodes, importedMapConfig, importedImageConfig) => {
           pushHistory(importedNodes);
           if (importedMapConfig) {
             setMapGuideConfig(importedMapConfig);
             setIsMapGuideOpen(importedMapConfig.enabled !== false);
             try {
               localStorage.setItem(`absenta_denah_map_${denah.id}`, JSON.stringify(importedMapConfig));
+            } catch (_) {}
+          }
+          if (importedImageConfig) {
+            setImageGuideConfig(importedImageConfig);
+            setIsImageGuideOpen(importedImageConfig.enabled !== false && Boolean(importedImageConfig.url));
+            try {
+              localStorage.setItem(`absenta_denah_image_${denah.id}`, JSON.stringify(importedImageConfig));
             } catch (_) {}
           }
         }}
