@@ -164,64 +164,89 @@ const SesiAttendanceRow = React.memo(({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className={cn(
-        "grid items-center gap-2 px-4 py-2 hover:bg-gray-50/50 dark:hover:bg-gray-900/20 transition-colors group",
-        isReportMode ? "grid-cols-[3.5fr_1fr_1fr]" : "grid-cols-[3.5fr_1fr_2fr]",
-        isGuru && "bg-indigo-50/30 dark:bg-indigo-950/20"
+        "flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3 px-2.5 sm:px-4 py-2 sm:py-2.5 hover:bg-gray-50/60 dark:hover:bg-gray-900/40 transition-colors group",
+        isGuru && "bg-indigo-50/30 dark:bg-indigo-950/20 border-l-2 border-indigo-500"
       )}
     >
-      <div className="min-w-0">
+      {/* ── 1. KIRI: NAMA SISWA / GURU & SUBLINE TAP / TELAT ── */}
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <p className="font-bold text-gray-900 dark:text-white text-[11px] truncate group-hover:text-indigo-600">
+          <p className="font-bold text-gray-900 dark:text-white text-xs sm:text-[13px] group-hover:text-indigo-600 truncate max-w-full" title={nameDisplay}>
             {nameDisplay}
           </p>
           {isGuru && (
-            <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-200 border border-indigo-300/60">
-              👨‍🏫 Guru
+            <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-200 border border-indigo-300/60">
+              👨‍🏫 Guru / Pembina
             </span>
           )}
           {record.catatan?.includes('PULANG AWAL') && (
-            <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/50">
+            <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/50">
               🟧 Pulang Awal
             </span>
           )}
           {isPiketOut && record.status !== 'HADIR' && (
-            <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300/80 animate-pulse">
+            <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300/80 animate-pulse">
               🟨 Izin Piket {record.piket_jam_keluar ? `(${record.piket_jam_keluar})` : ''}
             </span>
           )}
         </div>
-        {record.catatan && !record.catatan.includes('PULANG AWAL') && !record.catatan.includes('DISPENSASI') && (
-          <p className="text-[8px] text-indigo-500 font-bold italic truncate leading-none mt-0.5">
-            {record.catatan}
-          </p>
-        )}
-      </div>
-      <div className="flex flex-col items-center justify-center gap-0.5">
-        <span className="text-[10px] font-bold text-gray-500">
-           {formatWaktuTapDisplay(rawWaktuTap)}
-        </span>
-        {isLate && (
-          <span className="px-1.5 py-0.5 text-[8px] font-black bg-rose-50 text-rose-600 rounded-md uppercase tracking-wider border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/60 flex items-center justify-center gap-1 shadow-xs">
-            <span>TELAT</span>
-            {lateMinutes > 0 ? <span>: {lateMinutes} m</span> : null}
+
+        {/* Subline: Waktu Tap + Keterangan Terlambat / Catatan */}
+        <div className="flex items-center gap-2 mt-0.5 text-[10px] text-gray-500 dark:text-gray-400 flex-wrap">
+          <span className="font-mono font-medium">
+            {rawWaktuTap ? `Tap: ${formatWaktuTapDisplay(rawWaktuTap)} WIB` : 'Belum tap'}
           </span>
-        )}
-        {(record.status === 'DISPEN' || record.catatan?.includes('DISPENSASI')) && (
-          <span className="px-1.5 py-0.2 text-[7.5px] font-black bg-purple-50 text-purple-600 rounded-sm uppercase tracking-tighter border border-purple-100 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900/50">
-            DISPEN
-          </span>
-        )}
+          {isLate && (
+            <span className="px-1.5 py-0.2 text-[8px] font-black bg-rose-50 text-rose-600 rounded uppercase tracking-wider border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/60">
+              TELAT {lateMinutes > 0 ? `${lateMinutes}m` : ''}
+            </span>
+          )}
+          {(record.status === 'DISPEN' || record.catatan?.includes('DISPENSASI')) && (
+            <span className="px-1.5 py-0.2 text-[7.5px] font-black bg-purple-50 text-purple-600 rounded uppercase tracking-tighter border border-purple-100 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900/50">
+              DISPEN
+            </span>
+          )}
+          {record.catatan && !record.catatan.includes('PULANG AWAL') && !record.catatan.includes('DISPENSASI') && (
+            <span className="text-indigo-500 font-bold italic truncate max-w-xs">
+              • {record.catatan}
+            </span>
+          )}
+        </div>
       </div>
-      <div className={cn("flex items-center gap-1", isReportMode ? "justify-center" : "justify-end")}>
+
+      {/* ── 2. KANAN: TINDAKAN KEHADIRAN (SERAGAM DENGAN MODUL BELUM ABSEN) ── */}
+      <div className="shrink-0 flex items-center justify-end">
         {isReportMode ? (
-          <Badge 
-            variant={getAttendanceBadgeVariant(record.status)} 
-            className="text-[8px] font-black uppercase px-2 py-0.5 rounded-sm min-w-[60px] text-center flex justify-center"
-          >
-            {record.status}
-          </Badge>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {record.status === 'HADIR' ? (
+              <span className="h-6.5 sm:h-7.5 px-2.5 rounded-md bg-emerald-600 text-white text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider shadow-xs flex items-center gap-1">
+                <CheckCircle2 size={11} className="text-white" />
+                <span>Hadir</span>
+              </span>
+            ) : record.status === 'SAKIT' ? (
+              <span className="h-6.5 sm:h-7.5 px-2.5 rounded-md border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider flex items-center">
+                Sakit
+              </span>
+            ) : record.status === 'IZIN' ? (
+              <span className="h-6.5 sm:h-7.5 px-2.5 rounded-md border border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider flex items-center">
+                Izin
+              </span>
+            ) : record.status === 'DISPEN' ? (
+              <span className="h-6.5 sm:h-7.5 px-2.5 rounded-md border border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider flex items-center">
+                Dispen
+              </span>
+            ) : record.status === 'ALPA' ? (
+              <span className="h-6.5 sm:h-7.5 px-2.5 rounded-md border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider flex items-center">
+                Alpa
+              </span>
+            ) : (
+              <span className="h-6.5 sm:h-7.5 px-2.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 text-[8.5px] sm:text-[9.5px] font-bold uppercase tracking-wider flex items-center">
+                Belum Tap
+              </span>
+            )}
+          </div>
         ) : (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-end">
             {isPiketOut && record.status !== 'HADIR' && (
               <button
                 disabled={isPending}
@@ -229,47 +254,88 @@ const SesiAttendanceRow = React.memo(({
                   onUpdateStatus(studentId, 'HADIR');
                   toast.success(`Konfirmasi kembali: Status ${record.Siswa?.nama_siswa || 'siswa'} diubah ke HADIR & Piket diselesaikan`);
                 }}
-                className="h-6 px-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[8px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1 transition-all active:scale-95"
+                className="h-6.5 sm:h-7.5 px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider shadow-xs flex items-center gap-1 transition-all active:scale-95"
                 title="Siswa sudah kembali ke kelas — ubah status ke HADIR & selesaikan Izin Piket"
               >
                 <CheckCircle2 size={10} />
-                <span>Balik Ke Kelas</span>
+                <span>Balik</span>
               </button>
             )}
-            <div className="flex items-center gap-0.5 bg-gray-50 dark:bg-gray-900 p-0.5 rounded-sm border border-gray-100 dark:border-gray-800 shadow-inner">
-              {[
-                { label: 'H', val: 'HADIR', activeBg: 'bg-emerald-600 text-white shadow-sm scale-105' },
-                { label: 'I', val: 'IZIN', activeBg: 'bg-blue-600 text-white shadow-sm scale-105' },
-                { label: 'S', val: 'SAKIT', activeBg: 'bg-amber-500 text-white shadow-sm scale-105' },
-                { label: 'D', val: 'DISPEN', activeBg: 'bg-purple-600 text-white shadow-sm scale-105' },
-                { label: 'A', val: 'ALPA', activeBg: 'bg-rose-600 text-white shadow-sm scale-105' }
-              ].map((btn) => {
-                const isActive = record.status === btn.val;
-                const isCurrentPending = isPending && isActive;
-              
-              return (
-                <button
-                  key={btn.val}
-                  disabled={isPending}
-                  onClick={() => onUpdateStatus(studentId, btn.val)}
-                  title={btn.val}
-                  className={cn(
-                    "w-5 h-5 flex items-center justify-center rounded-sm text-[9px] font-black transition-all relative",
-                    isActive
-                      ? btn.activeBg
-                      : "text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700",
-                    isPending && !isActive && "opacity-40 cursor-not-allowed"
-                  )}
-                >
-                  {isCurrentPending ? (
-                    <RefreshCw className="w-2.5 h-2.5 animate-spin absolute text-white" />
-                  ) : (
-                    btn.label
-                  )}
-                </button>
-              );
-            })}
-          </div>
+
+            {/* 1. HADIR */}
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => onUpdateStatus(studentId, 'HADIR')}
+              className={cn(
+                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center shrink-0",
+                record.status === 'HADIR'
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                  : "bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+              )}
+            >
+              Hadir
+            </button>
+
+            {/* 2. SAKIT */}
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => onUpdateStatus(studentId, 'SAKIT')}
+              className={cn(
+                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center shrink-0",
+                record.status === 'SAKIT'
+                  ? "bg-amber-500 hover:bg-amber-600 text-white shadow-xs"
+                  : "bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+              )}
+            >
+              Sakit
+            </button>
+
+            {/* 3. IZIN */}
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => onUpdateStatus(studentId, 'IZIN')}
+              className={cn(
+                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center shrink-0",
+                record.status === 'IZIN'
+                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                  : "bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+              )}
+            >
+              Izin
+            </button>
+
+            {/* 4. DISPEN */}
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => onUpdateStatus(studentId, 'DISPEN')}
+              className={cn(
+                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center shrink-0",
+                record.status === 'DISPEN'
+                  ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+                  : "bg-white dark:bg-slate-900 border border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+              )}
+            >
+              Dispen
+            </button>
+
+            {/* 5. ALPA */}
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => onUpdateStatus(studentId, 'ALPA')}
+              className={cn(
+                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center shrink-0",
+                record.status === 'ALPA'
+                  ? "bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
+                  : "bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+              )}
+            >
+              Alpa
+            </button>
           </div>
         )}
       </div>
@@ -671,13 +737,9 @@ export function SesiAttendanceList({ records, sesi, sesiId, isReportMode = false
         ) : (
           <div className="space-y-1.5">
             <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden shadow-sm">
-                <div className={cn(
-                  "grid bg-slate-50/80 dark:bg-gray-900/60 px-4 py-2.5 text-[9px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-gray-800",
-                  isReportMode ? "grid-cols-[3.5fr_1fr_1fr]" : "grid-cols-[3.5fr_1fr_2fr]"
-                )}>
-                  <div>NAMA</div>
-                  <div className="text-center">TAP</div>
-                  <div className={isReportMode ? "text-center" : "text-right"}>{isReportMode ? 'STATUS' : 'AKSI CEPAT'}</div>
+                <div className="flex items-center justify-between bg-slate-50/80 dark:bg-gray-900/60 px-3 sm:px-4 py-2 sm:py-2.5 text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-gray-800">
+                  <div>Nama Peserta / Siswa</div>
+                  <div className="text-right">{isReportMode ? 'Status Kehadiran' : 'Tindakan Kehadiran'}</div>
                 </div>
                 <div className="divide-y divide-gray-100 dark:divide-gray-800">
                   {filteredRecords.map((r) => {

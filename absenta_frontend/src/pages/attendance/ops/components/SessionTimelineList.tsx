@@ -115,7 +115,7 @@ export const SessionTimelineList: React.FC<Props> = React.memo(({
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ delay: idx * 0.05 }}
-          className="relative pl-5 sm:pl-10"
+          className="relative pl-3 sm:pl-8 md:pl-10"
         >
           <div className={cn(
             "absolute left-[3px] sm:left-[11px] top-4 w-2.5 h-2.5 rounded-full z-10",
@@ -167,7 +167,7 @@ export const SessionTimelineList: React.FC<Props> = React.memo(({
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden bg-slate-50/50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800"
                 >
-                  <div className="p-8">
+                  <div className="p-2 sm:p-4 md:p-6">
                     <SesiExpandedContent 
                       sesiId={session.id as string} 
                       sesi={session as unknown as SesiDetail} 
