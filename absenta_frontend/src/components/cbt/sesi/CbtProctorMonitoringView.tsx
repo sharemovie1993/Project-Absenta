@@ -187,7 +187,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   }, []);
 
   // Deteksi Jendela Waktu Ujian Aktif:
-  // Berlaku jika status === 'ACTIVE', atau dalam rentang (mulai - 30 menit s/d selesai + 60 menit)
+  // Fleksibel: Sesi aktif, atau berada di hari pelaksanaan yang sama (same-day tolerance untuk susulan/kesiangan)
   const isWithinExamWindow = useMemo(() => {
     if (!activeJadwal) return false;
     if (activeJadwal.status === 'ACTIVE') return true;
@@ -195,6 +195,12 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     const start = new Date(activeJadwal.tanggal_mulai).getTime();
     const end = new Date(activeJadwal.tanggal_selesai).getTime();
     if (isNaN(start) || isNaN(end)) return true;
+
+    // Fleksibilitas hari yang sama: jika hari ini sama dengan hari pelaksanaan ujian, izinkan akses meja pengawas
+    const nowDateStr = new Date(nowTime).toDateString();
+    const isSameDay = nowDateStr === new Date(start).toDateString() || nowDateStr === new Date(end).toDateString();
+    if (isSameDay) return true;
+
     return nowTime >= start - 30 * 60 * 1000 && nowTime <= end + 60 * 60 * 1000;
   }, [activeJadwal]);
 
