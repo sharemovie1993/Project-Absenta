@@ -355,9 +355,14 @@ export class RestoreService {
                       // We must await the entire table processing
                       if (shouldProcess) {
                           const totalRows = tableRowCounts[currentTableName] || 0;
-                          await this.prisma.$transaction(async (tx) => {
-                              await this.processTableRows(iterator, currentTableName, newTenantId, oldTenantId!, tx, false, backupId, totalRows, metaRoles);
-                          }, { timeout: 600000 }); // 10 minutes timeout for heavy tables
+                          (globalThis as any).__bypassPrismaTrialLimit = true;
+                          try {
+                              await this.prisma.$transaction(async (tx) => {
+                                  await this.processTableRows(iterator, currentTableName, newTenantId, oldTenantId!, tx, false, backupId, totalRows, metaRoles);
+                              }, { timeout: 600000 }); // 10 minutes timeout for heavy tables
+                          } finally {
+                              (globalThis as any).__bypassPrismaTrialLimit = false;
+                          }
                           
                           // Update progress AFTER successful transaction
                           await this.prisma.tenantBackup.update({

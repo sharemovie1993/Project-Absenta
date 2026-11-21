@@ -1053,7 +1053,9 @@ export class MigrationBundleService {
 
     // Restore Database Models jika mode mengizinkan
     if (shouldRestoreDatabase) {
-      for (const modelName of models) {
+      (globalThis as any).__bypassPrismaTrialLimit = true;
+      try {
+        for (const modelName of models) {
         if (isCloning && skipModelsOnClone.has(modelName)) continue;
 
         let rows: any[] | undefined = dataTables[modelName];
@@ -1196,7 +1198,10 @@ export class MigrationBundleService {
         }
         restoredCounts[modelName] = count;
       }
-    } else {
+    } finally {
+      (globalThis as any).__bypassPrismaTrialLimit = false;
+    }
+  } else {
       console.log(`[MigrationBundle] Melewati pemulihan model database (mode: ${effectiveRestoreMode}). Profil tenant tetap terverifikasi.`);
     }
 

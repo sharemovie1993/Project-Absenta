@@ -60,6 +60,11 @@ prisma.$use(async (params, next) => {
   };
 
   if ((params.action === 'create' || params.action === 'createMany') && params.model && targetModels[params.model]) {
+    // Lewati limit kuota trial saat proses backup/restore/migrasi administratif berlangsung
+    if ((globalThis as any).__bypassPrismaTrialLimit) {
+      return next(params);
+    }
+
     const config = targetModels[params.model];
     const data = params.args?.data;
     const firstItem = Array.isArray(data) ? data[0] : data;
