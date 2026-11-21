@@ -18,6 +18,7 @@ import {
   MessageCircle,
   ZoomIn,
   ZoomOut,
+  Hand,
 } from 'lucide-react';
 import { getMyTenant, type Tenant } from '@/api/tenants.api';
 import { sekolahApi, type Sekolah } from '@/api/academic/sekolah.api';
@@ -813,12 +814,86 @@ export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
     }
   };
 
-  // Pinch-to-zoom on touch screens
+  // =========================================================================
+  // FREE-HAND PAN ENGINE (Mouse Drag & Single-Finger Touch Pan)
+  // =========================================================================
+  const [isHandToolActive, setIsHandToolActive] = useState<boolean>(true);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+
+  const dragStartRef = useRef<{
+    x: number;
+    y: number;
+    scrollLeft: number;
+    scrollTop: number;
+  } | null>(null);
+
+  // Mouse Drag-to-Pan (Desktop / Laptop)
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isHandToolActive) return;
+    if (e.button !== 0 && e.button !== 1) return; // Left or middle click
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    if (!deskRef.current) return;
+
+    e.preventDefault();
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: deskRef.current.scrollLeft,
+      scrollTop: deskRef.current.scrollTop,
+    };
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!dragStartRef.current || !deskRef.current) return;
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = e.clientY - dragStartRef.current.y;
+      deskRef.current.scrollLeft = dragStartRef.current.scrollLeft - dx;
+      deskRef.current.scrollTop = dragStartRef.current.scrollTop - dy;
+    };
+
+    const handleGlobalMouseUp = () => {
+      dragStartRef.current = null;
+      setIsDragging(false);
+    };
+
+    window.addEventListener('mousemove', handleGlobalMouseMove, { passive: true });
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isDragging, deskRef]);
+
+  // Touch Drag-to-Pan (Single Finger) & Pinch-to-Zoom (Two Fingers)
+  const touchStartRef = useRef<{
+    x: number;
+    y: number;
+    scrollLeft: number;
+    scrollTop: number;
+  } | null>(null);
   const touchDistanceRef = useRef<number | null>(null);
   const touchStartScaleRef = useRef<number>(1);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
+    if (e.touches.length === 1 && deskRef.current) {
+      const target = e.target as HTMLElement;
+      if (target.closest('button, input, select, textarea, a, [role="button"]')) return;
+      touchStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        scrollLeft: deskRef.current.scrollLeft,
+        scrollTop: deskRef.current.scrollTop,
+      };
+      setIsDragging(true);
+    } else if (e.touches.length === 2) {
+      touchStartRef.current = null;
+      setIsDragging(false);
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
@@ -829,7 +904,12 @@ export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && touchDistanceRef.current !== null) {
+    if (e.touches.length === 1 && touchStartRef.current && deskRef.current && isHandToolActive) {
+      const dx = e.touches[0].clientX - touchStartRef.current.x;
+      const dy = e.touches[0].clientY - touchStartRef.current.y;
+      deskRef.current.scrollLeft = touchStartRef.current.scrollLeft - dx;
+      deskRef.current.scrollTop = touchStartRef.current.scrollTop - dy;
+    } else if (e.touches.length === 2 && touchDistanceRef.current !== null) {
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
@@ -843,7 +923,9 @@ export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
   };
 
   const handleTouchEnd = () => {
+    touchStartRef.current = null;
     touchDistanceRef.current = null;
+    setIsDragging(false);
   };
 
   // Double tap to toggle fit/100% on touch
@@ -886,6 +968,7 @@ export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
     <div className="relative w-full">
       <div
         ref={deskRef}
+        onMouseDown={handleMouseDown}
         onTouchStart={(e) => {
           handleTouchStart(e);
           handleDoubleTap(e);
@@ -893,26 +976,45 @@ export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         className={cn(
-          'print-desk-canvas-outer overflow-y-auto overflow-x-auto max-h-[76vh] p-2 sm:p-8 bg-slate-200/70 dark:bg-slate-950/80 rounded-xl border border-slate-300 dark:border-slate-800 flex flex-col items-center gap-4 sm:gap-8 select-text touch-pan-x touch-pan-y print:overflow-visible print:max-h-none print:h-auto print:w-full print:max-w-none print:p-0 print:m-0 print:border-none print:bg-transparent print:block print:shadow-none print:static',
+          'print-desk-canvas-outer overflow-y-auto overflow-x-auto max-h-[76vh] bg-slate-200/70 dark:bg-slate-950/80 rounded-xl border border-slate-300 dark:border-slate-800 overscroll-contain touch-none print:overflow-visible print:max-h-none print:h-auto print:w-full print:max-w-none print:p-0 print:m-0 print:border-none print:bg-transparent print:block print:shadow-none print:static',
+          isHandToolActive ? (isDragging ? 'cursor-grabbing select-none' : 'cursor-grab select-none') : 'cursor-default select-text',
           className
         )}
       >
-        <div
-          ref={canvasRef}
-          id="print-desk-canvas-area"
-          style={{
-            zoom: effectiveScale,
-            width: `${baseWidth}px`,
-          }}
-          className="print-desk-canvas flex flex-col items-center gap-8 transition-all duration-150 origin-top print:overflow-visible print:max-h-none print:h-auto print:w-full print:max-w-none print:p-0 print:m-0 print:border-none print:bg-transparent print:block print:gap-0 print:static"
-        >
-          {children}
+        <div className="min-w-full w-max flex justify-center p-2 sm:p-8">
+          <div
+            ref={canvasRef}
+            id="print-desk-canvas-area"
+            style={{
+              zoom: effectiveScale,
+              width: `${baseWidth}px`,
+            }}
+            className="print-desk-canvas flex flex-col items-center gap-8 origin-top print:overflow-visible print:max-h-none print:h-auto print:w-full print:max-w-none print:p-0 print:m-0 print:border-none print:bg-transparent print:block print:gap-0 print:static"
+          >
+            {children}
+          </div>
         </div>
       </div>
 
       {/* Floating Canvas Quick Zoom Pill */}
       {showFloatingControls && (
         <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-20 print:hidden flex items-center gap-1 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-700 shadow-lg text-xs pointer-events-auto select-none">
+          {/* Hand Tool Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setIsHandToolActive((prev) => !prev)}
+            className={cn(
+              'px-2 py-0.5 rounded-full text-[10.5px] font-semibold transition-colors cursor-pointer flex items-center gap-1',
+              isHandToolActive
+                ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
+            )}
+            title={isHandToolActive ? 'Mode Geser Bebas Aktif (Klik/Sentuh & Geser Dokumen)' : 'Aktifkan Mode Geser Bebas'}
+          >
+            <Hand className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Geser</span>
+          </button>
+          <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 mx-0.5" />
           <button
             type="button"
             onClick={handleZoomOut}
