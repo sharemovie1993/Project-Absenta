@@ -173,22 +173,34 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
 
   const activeInfo = useMemo(() => parseSessionLabel(activeJadwal), [activeJadwal]);
 
+  // Deteksi environment simulasi / demo / staging / pengujian lokal
+  const isSimulationEnv = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const host = (window.location.hostname || '').toLowerCase();
+    return (
+      host.includes('simulasi') ||
+      host.includes('demo') ||
+      host.includes('staging') ||
+      host.includes('localhost') ||
+      host.includes('127.0.0.1')
+    );
+  }, []);
+
   // Deteksi Jendela Waktu Ujian Aktif:
-  // Berlaku jika status === 'ACTIVE', atau jika hari ini dan dalam rentang (mulai - 30 menit s/d selesai + 60 menit)
+  // Berlaku jika status === 'ACTIVE', atau dalam rentang (mulai - 30 menit s/d selesai + 60 menit)
   const isWithinExamWindow = useMemo(() => {
     if (!activeJadwal) return false;
     if (activeJadwal.status === 'ACTIVE') return true;
     const nowTime = Date.now();
     const start = new Date(activeJadwal.tanggal_mulai).getTime();
     const end = new Date(activeJadwal.tanggal_selesai).getTime();
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const jadwalDateStr = (activeJadwal.tanggal_mulai || '').slice(0, 10);
-    const isToday = jadwalDateStr === todayStr;
-    return isToday && nowTime >= start - 30 * 60 * 1000 && nowTime <= end + 60 * 60 * 1000;
+    if (isNaN(start) || isNaN(end)) return true;
+    return nowTime >= start - 30 * 60 * 1000 && nowTime <= end + 60 * 60 * 1000;
   }, [activeJadwal]);
 
   // Mode Pra-Ujian Terkunci (Di Luar Jadwal Sesi):
-  const isPraUjianLocked = !isPanitiaView && !isWithinExamWindow && activeJadwal?.status === 'DRAFT';
+  // Tidak terkunci jika panitia view, environment simulasi/staging/demo/lokal, atau sudah masuk waktu ujian
+  const isPraUjianLocked = !isPanitiaView && !isSimulationEnv && !isWithinExamWindow && activeJadwal?.status === 'DRAFT';
 
   // Fetch live peserta dengan interval 10 detik
   const { data: pesertaList = [], isLoading, refetch } = useQuery({

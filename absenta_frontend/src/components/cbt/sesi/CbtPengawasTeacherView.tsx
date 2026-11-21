@@ -9,9 +9,11 @@ import {
   ChevronDown,
   ChevronRight,
   RefreshCw,
+  Play,
+  FileText,
 } from 'lucide-react';
 import type { CbtJadwalUjian } from '@/types/cbt.types';
-import { parseSessionLabel } from './CbtProctorMonitoringView';
+import { CbtProctorMonitoringView, parseSessionLabel } from './CbtProctorMonitoringView';
 import { CbtDenahModal } from '../jadwal/CbtDenahModal';
 import { formatLocalTimeFromISO } from '@/utils/attendance/time';
 import { cn } from '@/lib/utils';
@@ -115,10 +117,21 @@ interface CbtPengawasTeacherViewProps {
 export const CbtPengawasTeacherView: React.FC<CbtPengawasTeacherViewProps> = ({
   guruId,
   guruNama,
+  initialJadwalId,
   myPengawasData = [],
   isLoading = false,
   onRefresh,
 }) => {
+  // Active Monitoring Desk state (jika sedang membuka meja kerja pengawas untuk satu sesi)
+  const [activeMonitorJadwalId, setActiveMonitorJadwalId] = useState<string | null>(initialJadwalId || null);
+
+  // Sync jika parent mengoper initialJadwalId baru
+  useEffect(() => {
+    if (initialJadwalId) {
+      setActiveMonitorJadwalId(initialJadwalId);
+    }
+  }, [initialJadwalId]);
+
   // Modal State Denah Ruang
   const [selectedJadwalForDenah, setSelectedJadwalForDenah] = useState<CbtJadwalUjian | null>(null);
 
@@ -137,10 +150,26 @@ export const CbtPengawasTeacherView: React.FC<CbtPengawasTeacherViewProps> = ({
     }
   };
 
+  // JIKA SEDANG MEMBUKA MEJA PENGAWAS (MONITORING / AKTIVASI SESI)
+  if (activeMonitorJadwalId) {
+    return (
+      <CbtProctorMonitoringView
+        initialJadwalId={activeMonitorJadwalId}
+        guruId={guruId}
+        myPengawasData={myPengawasData}
+        onBack={() => {
+          setActiveMonitorJadwalId(null);
+          onRefresh?.();
+        }}
+      />
+    );
+  }
+
   // ── PENGELOMPOKAN LOGIS: HARI -> RUANG -> LIST SESI ──
   const groupedDays: DayGroup[] = useMemo(() => {
     const dayMap = new Map<string, { dateFormatted: string; isToday: boolean; roomsMap: Map<string, RoomGroup> }>();
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     // Urutkan jadwal secara kronologis
     const sorted = [...myPengawasData].sort((a, b) => {
@@ -485,16 +514,60 @@ export const CbtPengawasTeacherView: React.FC<CbtPengawasTeacherViewProps> = ({
                                       </span>
                                     </div>
 
-                                    {/* SATU-SATUNYA AKSI: DENAH RUANG */}
-                                    <button
-                                      type="button"
-                                      onClick={() => setSelectedJadwalForDenah(item)}
-                                      className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:border-indigo-300 dark:hover:border-indigo-700 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs self-start sm:self-auto shrink-0"
-                                      title="Lihat Denah Ruang Ujian"
-                                    >
-                                      <MapPin size={13} className="text-indigo-600 dark:text-indigo-400" />
-                                      <span>Denah Ruang</span>
-                                    </button>
+                                    {/* Aksi: Denah Ruang & Masuk Meja Pengawas (Aktivasi / Pantau) */}
+                                    <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+                                      {/* Denah Ruang */}
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedJadwalForDenah(item)}
+                                        className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                                        title="Lihat Denah Ruang Ujian"
+                                      >
+                                        <MapPin size={13} className="text-slate-500 dark:text-slate-400" />
+                                        <span className="hidden sm:inline">Denah Ruang</span>
+                                      </button>
+
+                                      {/* Masuk Meja Pengawas / Aktifkan Sesi */}
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveMonitorJadwalId(item.id)}
+                                        className={cn(
+                                          'px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs',
+                                          item.status === 'ACTIVE'
+                                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20'
+                                            : item.status === 'COMPLETED'
+                                              ? 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700'
+                                              : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20'
+                                        )}
+                                        title={
+                                          item.status === 'ACTIVE'
+                                            ? 'Sesi sedang berlangsung. Pantau live kehadiran siswa & token.'
+                                            : item.status === 'COMPLETED'
+                                              ? 'Sesi telah selesai. Tinjau berita acara dan rekap hasil.'
+                                              : 'Masuk Meja Pengawas untuk mengaktifkan sesi dan memantau ujian.'
+                                        }
+                                      >
+                                        {item.status === 'ACTIVE' ? (
+                                          <>
+                                            <span className="relative flex h-2 w-2">
+                                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                                              <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                                            </span>
+                                            <span>Pantau Sesi (Live)</span>
+                                          </>
+                                        ) : item.status === 'COMPLETED' ? (
+                                          <>
+                                            <FileText size={13} />
+                                            <span>Berita Acara</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Play size={13} className="fill-current" />
+                                            <span>Masuk Meja Pengawas</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
                                   </div>
                                 );
                               })}
