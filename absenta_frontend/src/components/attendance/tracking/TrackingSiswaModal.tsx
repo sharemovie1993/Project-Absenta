@@ -90,10 +90,12 @@ export const TrackingSiswaModal: React.FC<TrackingSiswaModalProps> = React.memo(
         </div>
       }
     >
-      <div className="p-2.5 sm:p-6 overflow-y-auto max-h-[calc(92vh-90px)]">
+      <div className="p-2 sm:p-3.5 overflow-y-auto max-h-[calc(92vh-90px)]">
         <TrackingSiswaView
           hideLayout
           isModal
+          hideHeader
+          hideScopeBanner
           siswaId={siswaId}
           initialSiswaNama={siswaNama}
           kelasId={kelasId}

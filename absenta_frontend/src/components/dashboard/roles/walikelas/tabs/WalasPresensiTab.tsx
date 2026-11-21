@@ -1,6 +1,7 @@
 import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
+  ArrowLeft,
   ShieldAlert, 
 } from 'lucide-react';
 import { Button, Loader } from '@/components/ui';
@@ -11,8 +12,8 @@ import type { WalasDashboardData } from '../types';
 const RekapKolektifView = lazy(() =>
   import('@/components/attendance/rekap/RekapKolektifView').then((m) => ({ default: m.RekapKolektifView }))
 );
-const TrackingSiswaModal = lazy(() =>
-  import('@/components/attendance/tracking/TrackingSiswaModal').then((m) => ({ default: m.TrackingSiswaModal }))
+const TrackingSiswaView = lazy(() =>
+  import('@/components/attendance/tracking/TrackingSiswaView').then((m) => ({ default: m.TrackingSiswaView }))
 );
 
 export interface WalasPresensiTabProps {
@@ -29,16 +30,11 @@ export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
   data,
   onNavigateToDeteksi,
 }) => {
-  // Modal Tracking Siswa state
-  const [trackingTarget, setTrackingTarget] = useState<{
-    isOpen: boolean;
+  // In-Tab Master-Detail State (Tampil Full di dalam Tab tanpa Modal & tanpa pindah halaman)
+  const [selectedStudentTracking, setSelectedStudentTracking] = useState<{
     siswaId: string;
     siswaNama: string;
-  }>({
-    isOpen: false,
-    siswaId: '',
-    siswaNama: '',
-  });
+  } | null>(null);
 
   // Query EWS Siswa At-Risk Rombel (High-Performance Cache)
   const { data: ewsData } = useQuery({
@@ -89,6 +85,52 @@ export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
 
   const isHistorical = data?.academicContext?.isHistoricalPeriod ?? false;
 
+  // JIKA SISWA DIPILIH: TAMPILKAN TRACKING SECARA FULL DI DALAM TAB (TANPA MODAL, TANPA PINDAH HALAMAN)
+  if (selectedStudentTracking) {
+    return (
+      <div className="space-y-3.5 w-full max-w-full min-w-0 pb-20 sm:pb-8 animate-in fade-in duration-200">
+        {/* Navigation Toolbar Kembali ke Rekap Rombel */}
+        <div className="flex items-center justify-between gap-3 p-2.5 sm:p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setSelectedStudentTracking(null)}
+            className="gap-2 font-bold text-xs rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            <ArrowLeft className="w-4 h-4 text-indigo-500" />
+            <span>Kembali ke Rekap Rombel</span>
+          </Button>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-slate-500 hidden sm:inline">
+              Detail Tracking Siswa Rombel:
+            </span>
+            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
+              {selectedStudentTracking.siswaNama}
+            </span>
+          </div>
+        </div>
+
+        {/* Full Tracking Siswa View */}
+        <Suspense fallback={<div className="p-12 flex justify-center"><Loader size="lg" /></div>}>
+          <TrackingSiswaView
+            hideLayout={true}
+            hideHeader={true}
+            hideScopeBanner={true}
+            siswaId={selectedStudentTracking.siswaId}
+            initialSiswaNama={selectedStudentTracking.siswaNama}
+            kelasId={kelasId}
+            kelasNama={kelasNama}
+            tahunPelajaranId={data?.academicContext?.selectedTahunPelajaranId}
+            semesterId={data?.academicContext?.selectedSemesterId}
+            onClose={() => setSelectedStudentTracking(null)}
+          />
+        </Suspense>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full min-w-0 pb-28 sm:pb-8">
       {/* Shortcut Elegan ke Tab Deteksi Dini jika ada siswa at-risk */}
@@ -136,8 +178,7 @@ export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
             hideScopeBanner={true}
             readOnly={isHistorical}
             onStudentTrackingClick={(siswaId, siswaNama) => {
-              setTrackingTarget({
-                isOpen: true,
+              setSelectedStudentTracking({
                 siswaId,
                 siswaNama: siswaNama || '',
               });
@@ -145,22 +186,6 @@ export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
           />
         </Suspense>
       </div>
-
-      {/* MODAL TRACKING SISWA RESMI (STANDAR KAPROG & ABSENTA) - Lazy Mounted */}
-      {trackingTarget.isOpen && (
-        <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
-          <TrackingSiswaModal
-            isOpen={trackingTarget.isOpen}
-            onClose={() => setTrackingTarget({ isOpen: false, siswaId: '', siswaNama: '' })}
-            siswaId={trackingTarget.siswaId}
-            siswaNama={trackingTarget.siswaNama}
-            kelasId={kelasId}
-            kelasNama={kelasNama}
-            tahunPelajaranId={data?.academicContext?.selectedTahunPelajaranId}
-            semesterId={data?.academicContext?.selectedSemesterId}
-          />
-        </Suspense>
-      )}
     </div>
   );
 });
