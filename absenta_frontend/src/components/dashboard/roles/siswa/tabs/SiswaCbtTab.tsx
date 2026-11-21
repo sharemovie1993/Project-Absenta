@@ -600,18 +600,12 @@ export const SiswaCbtTab: React.FC = () => {
 
   const goToExamRoom = useCallback(
     (item?: CbtStudentExamItem) => {
-      if (item?.id) {
-        const params = new URLSearchParams();
-        params.set('jadwal_id', item.id);
-        if (item.token_ujian) {
-          params.set('token', item.token_ujian);
-        }
-        navigate(`/cbt/ruang-ujian?${params.toString()}`);
-      } else {
-        navigate('/cbt/ruang-ujian');
-      }
+      const url = item?.id
+        ? `/cbt/ruang-ujian?jadwal_id=${encodeURIComponent(item.id)}${item.token_ujian ? `&token=${encodeURIComponent(item.token_ujian)}` : ''}`
+        : '/cbt/ruang-ujian';
+      window.location.assign(url);
     },
-    [navigate]
+    []
   );
 
   return (

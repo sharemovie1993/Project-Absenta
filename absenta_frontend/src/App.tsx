@@ -588,6 +588,13 @@ function App() {
                   <Route path="forgot-password" element={<ForgotPasswordPage />} />
                 </Route>
 
+                {/* CBT Fullscreen Secure Exam Room (Isolated from MainLayout) */}
+                <Route path="/cbt/ruang-ujian" element={
+                  <ProtectedRoute requiredRoles={['SISWA', 'ADMIN', 'SUPERADMIN', 'GURU']} requiredCapability="cbt.exam.take">
+                    <CbtExamRoomPage />
+                  </ProtectedRoute>
+                } />
+
                 {/* Protected routes */}
                 <Route path="/" element={
                   isAuthenticated ? <MainLayout /> : <UnauthedGate />
@@ -1151,11 +1158,6 @@ function App() {
                     <Route path="/cbt/sesi" element={
                       <ProtectedRoute requiredCapability={['cbt.sesi.monitor', 'cbt.jadwal.manage']}>
                         <CbtSesiPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/cbt/ruang-ujian" element={
-                      <ProtectedRoute requiredRoles={['SISWA', 'ADMIN', 'SUPERADMIN', 'GURU']} requiredCapability="cbt.exam.take">
-                        <CbtExamRoomPage />
                       </ProtectedRoute>
                     } />
                     

@@ -916,6 +916,16 @@ export default function CbtExamRoomPage() {
               <ShieldAlert size={14} className="text-amber-500" />
               <span>Anti-Cheat Guard & Offline-First Active</span>
             </div>
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => (window.location.href = '/dashboard?tab=cbt')}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+              >
+                ← Kembali ke Dashboard
+              </button>
+            </div>
           </Card>
         </div>
       );
