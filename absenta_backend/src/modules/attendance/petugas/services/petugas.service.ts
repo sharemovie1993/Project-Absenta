@@ -25,6 +25,7 @@ export class PetugasService {
       AND: [
         { OR: [{ start_date: null }, { start_date: { lte: new Date() } }] },
         { OR: [{ end_date: null }, { end_date: { gte: new Date() } }] },
+        { OR: [{ tahun_pelajaran_id: null }, { TahunPelajaran: { is_active: true } }] },
       ],
       Position: { code: 'PETUGAS_KELAS' },
     };
