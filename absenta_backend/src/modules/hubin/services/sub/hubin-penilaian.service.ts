@@ -1396,7 +1396,10 @@ export class HubinPenilaianService extends HubinCommonHelper {
       select: {
         id: true,
         mitra_id: true,
+        pembimbing_id: true,
+        nilai_akhir_pkl: true,
         hard_kompetensi_teknis: true,
+        soft_kedisiplinan: true,
         nilai_json: true,
         Mitra: { select: { id: true, nama: true, alamat: true, bidang: true } },
         Siswa: {
@@ -1426,13 +1429,22 @@ export class HubinPenilaianService extends HubinCommonHelper {
     let belumSidang = 0;
     let sudahDiplotPenguji = 0;
     let belumDiplotPenguji = 0;
+    const unassessedPembimbingSet = new Set<string>();
 
     for (const p of siswaPklList) {
-      // Nilai DUDI
-      if (p.hard_kompetensi_teknis !== null && p.hard_kompetensi_teknis !== undefined) {
+      // Nilai DUDI / Pembimbing PKL
+      const isAssessed =
+        p.nilai_akhir_pkl !== null && p.nilai_akhir_pkl !== undefined ||
+        (p.hard_kompetensi_teknis !== null && p.hard_kompetensi_teknis !== undefined &&
+         p.soft_kedisiplinan !== null && p.soft_kedisiplinan !== undefined);
+
+      if (isAssessed) {
         sudahDinilaiDudi++;
       } else {
         belumDinilaiDudi++;
+        if (p.pembimbing_id) {
+          unassessedPembimbingSet.add(p.pembimbing_id);
+        }
       }
 
       // Nilai Sidang / Laporan
@@ -1590,6 +1602,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
         totalSiswaPkl,
         sudahDinilaiDudi,
         belumDinilaiDudi,
+        unassessedPembimbingCount: unassessedPembimbingSet.size,
         sudahSidang,
         belumSidang
       },

@@ -684,6 +684,31 @@ export class DashboardActionHubService {
                 entityId: jurusan.id,
               },
             });
+          } else if (totalMitra > 0 && pendingMitra === 0) {
+            items.push({
+              id: `kaprog_tp_dudi_${jurusan.id}`,
+              division: 'HUBIN',
+              urgency: 'INFO',
+              title: `Formulasi TP DU/DI — ${jurusanLabel}`,
+              subtitle: `Anda seorang Kajur. Seluruh rumusan Tujuan Pembelajaran (TP) PKL untuk ${totalMitra} Mitra Industri telah lengkap.`,
+              badgeText: 'Lengkap',
+              progress: {
+                current: totalMitra,
+                total: totalMitra,
+                percent: 100,
+                label: `${totalMitra}/${totalMitra} Mitra Selesai`,
+                variant: 'emerald',
+              },
+              action: {
+                label: 'Lihat Formulasi ➔',
+                type: 'NAVIGATE',
+                target: `/dashboard?tab=kaprog&subtab=pkl&jurusan_id=${jurusan.id}`,
+              },
+              sourceModule: {
+                table: 'SettingDeskripsiPkl',
+                entityId: jurusan.id,
+              },
+            });
           }
 
           // ── KANAL 2 KAJUR: Ploting Guru Penguji Sidang PKL ──
@@ -749,28 +774,71 @@ export class DashboardActionHubService {
                 entityId: jurusan.id,
               },
             });
-          } else if (totalMitra > 0 && pendingMitra === 0) {
+          }
+
+          // ── KANAL 3 KAJUR: Monitoring & Ingatkan Pembimbing PKL (Input Nilai PKL) ──
+          const penilaianStatus = (pklSummary as any)?.penilaianStatus || {
+            totalSiswaPkl: 0,
+            sudahDinilaiDudi: 0,
+            belumDinilaiDudi: 0,
+            unassessedPembimbingCount: 0,
+          };
+
+          const totalSiswaNilai = penilaianStatus.totalSiswaPkl || 0;
+          const sudahDinilai = penilaianStatus.sudahDinilaiDudi || 0;
+          const belumDinilai = penilaianStatus.belumDinilaiDudi || 0;
+          const unassessedPembimbing = penilaianStatus.unassessedPembimbingCount || 0;
+          const percentNilai = totalSiswaNilai > 0 ? Math.round((sudahDinilai / totalSiswaNilai) * 100) : 100;
+
+          if (belumDinilai > 0) {
             items.push({
-              id: `kaprog_tp_dudi_${jurusan.id}`,
+              id: `kaprog_reminder_pembimbing_${jurusan.id}`,
+              division: 'HUBIN',
+              urgency: 'CRITICAL',
+              title: `Monitoring Nilai Pembimbing PKL — ${jurusanLabel}`,
+              subtitle: unassessedPembimbing > 0
+                ? `Anda seorang Kajur. Ada ${belumDinilai} dari ${totalSiswaNilai} siswa PKL yang belum dinilai oleh ${unassessedPembimbing} Guru Pembimbing PKL. Segera ingatkan pembimbing!`
+                : `Anda seorang Kajur. Ada ${belumDinilai} dari ${totalSiswaNilai} siswa PKL yang belum diinput nilainya oleh Pembimbing PKL.`,
+              badgeText: `${belumDinilai} Belum Dinilai`,
+              progress: {
+                current: sudahDinilai,
+                total: totalSiswaNilai,
+                percent: percentNilai,
+                label: `${sudahDinilai}/${totalSiswaNilai} Dinilai`,
+                variant: 'rose',
+              },
+              action: {
+                label: 'Ingatkan Pembimbing ➔',
+                type: 'NAVIGATE',
+                target: `/dashboard?tab=kaprog&subtab=nilai_pkl&jurusan_id=${jurusan.id}`,
+              },
+              sourceModule: {
+                table: 'SiswaPkl',
+                entityId: jurusan.id,
+              },
+            });
+          } else if (totalSiswaNilai > 0 && belumDinilai === 0) {
+            items.push({
+              id: `kaprog_reminder_pembimbing_${jurusan.id}`,
               division: 'HUBIN',
               urgency: 'INFO',
-              title: `Formulasi TP DU/DI — ${jurusanLabel}`,
-              subtitle: `Anda seorang Kajur. Seluruh rumusan Tujuan Pembelajaran (TP) PKL untuk ${totalMitra} Mitra Industri telah lengkap.`,
+              title: `Monitoring Nilai Pembimbing PKL — ${jurusanLabel}`,
+              subtitle: `Anda seorang Kajur. Seluruh siswa PKL (${totalSiswaNilai} siswa) telah selesai dinilai oleh Pembimbing PKL.`,
               badgeText: 'Lengkap',
               progress: {
-                current: totalMitra,
-                total: totalMitra,
+                current: totalSiswaNilai,
+                total: totalSiswaNilai,
                 percent: 100,
-                label: `${totalMitra}/${totalMitra} Mitra Selesai`,
+                label: `${totalSiswaNilai}/${totalSiswaNilai} Dinilai`,
                 variant: 'emerald',
               },
               action: {
-                label: 'Lihat Formulasi ➔',
+                label: 'Lihat Nilai PKL ➔',
                 type: 'NAVIGATE',
-                target: `/dashboard?tab=kaprog&subtab=pkl&jurusan_id=${jurusan.id}`,
+                target: `/dashboard?tab=kaprog&subtab=nilai_pkl&jurusan_id=${jurusan.id}`,
               },
               sourceModule: {
-                table: 'SettingDeskripsiPkl',
+                table: 'SiswaPkl',
                 entityId: jurusan.id,
               },
             });
