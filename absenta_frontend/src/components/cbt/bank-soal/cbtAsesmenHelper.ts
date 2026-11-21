@@ -423,8 +423,9 @@ export function generateAutoFillMassal(params: {
   targetKegiatanKey: string;
   targetJurusan?: string;
   jenjang?: string;
+  isShared?: boolean;
 }): { kodeBank: string; judul: string } {
-  const { mapelOptions, targetMapelId, targetTingkat, targetKegiatanKey, targetJurusan, jenjang } = params;
+  const { mapelOptions, targetMapelId, targetTingkat, targetKegiatanKey, targetJurusan, jenjang, isShared } = params;
   const selectedMapel = mapelOptions.find((m) => m.value === targetMapelId);
   const mapelLabel = selectedMapel?.label || 'Mata Pelajaran';
   const mapelName = mapelLabel.split('(')[0]?.trim() || 'Mata Pelajaran';
@@ -442,10 +443,11 @@ export function generateAutoFillMassal(params: {
   const jurCodePart = cleanJurusan ? cleanJurusan.replace(/[,;\s|]+/g, '-').replace(/-+/g, '-') : '';
   const jurSuffix = jurCodePart ? `-${jurCodePart}` : '';
   const jurTitle = cleanJurusan ? ` (${cleanJurusan})` : '';
+  const mandiriSuffix = isShared === false ? '-M' : '';
 
   const generatedCode = isSemua
-    ? `${prefix}-${year}-${mapelShortCode}${jurSuffix}`
-    : `${prefix}-${year}-${mapelShortCode}-${romanTingkat}${jurSuffix}`;
+    ? `${prefix}-${year}-${mapelShortCode}${jurSuffix}${mandiriSuffix}`
+    : `${prefix}-${year}-${mapelShortCode}-${romanTingkat}${jurSuffix}${mandiriSuffix}`;
   const generatedTitle = isSemua
     ? `${prefix} - ${mapelName}${jurTitle}`
     : `${prefix} - ${mapelName} Tingkat ${romanTingkat}${jurTitle}`;

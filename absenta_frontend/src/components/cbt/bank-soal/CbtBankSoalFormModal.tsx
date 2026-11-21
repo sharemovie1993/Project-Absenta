@@ -508,9 +508,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     targetMapelId: string,
     targetTingkat: string,
     targetKegiatanKey: string,
-    targetJurusan?: string
+    targetJurusan?: string,
+    overrideIsShared?: boolean
   ) => {
     const activeJur = targetJurusan !== undefined ? targetJurusan : jurusan;
+    const activeShared = overrideIsShared !== undefined ? overrideIsShared : isShared;
     const { kodeBank: genCode, judul: genTitle } = generateAutoFillMassal({
       mapelOptions: activeMapelOptions,
       targetMapelId,
@@ -518,8 +520,21 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       targetKegiatanKey,
       targetJurusan: activeJur,
       jenjang,
+      isShared: activeShared,
     });
-    setKodeBank(genCode);
+
+    // Cek duplikasi kode_bank terhadap daftar bank soal yang sudah ada di tenant (Anti-Collision)
+    let finalCode = genCode;
+    const conflictList = existingBanks || [];
+    if (conflictList.some((b: any) => b.kode_bank === finalCode && b.id !== bankSoalToEdit?.id)) {
+      let counter = 2;
+      while (conflictList.some((b: any) => b.kode_bank === `${finalCode}-${counter}` && b.id !== bankSoalToEdit?.id)) {
+        counter++;
+      }
+      finalCode = `${finalCode}-${counter}`;
+    }
+
+    setKodeBank(finalCode);
     setJudul(genTitle);
   };
 
@@ -558,7 +573,10 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         (id) => id !== bankSoalToEdit.guru_id
       );
       setSelectedColleagueIds(existingColleagues);
-      const isSharedBank = Boolean(bankSoalToEdit.is_shared) || existingColleagues.length > 0;
+      const isSharedBank =
+        typeof bankSoalToEdit.is_shared === 'boolean'
+          ? bankSoalToEdit.is_shared
+          : existingColleagues.length > 0;
       setIsShared(isSharedBank);
       setShowAllMapels(true);
 
@@ -1321,6 +1339,9 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   onClick={() => {
                     setIsShared(false);
                     setSelectedColleagueIds([]);
+                    if (!bankSoalToEdit && scope === 'TERPUSAT_MASSAL' && mapelId) {
+                      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, jurusan, false);
+                    }
                   }}
                   className={cn(
                     'p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 relative',
@@ -1350,6 +1371,9 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   type="button"
                   onClick={() => {
                     setIsShared(true);
+                    if (!bankSoalToEdit && scope === 'TERPUSAT_MASSAL' && mapelId) {
+                      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, jurusan, true);
+                    }
                   }}
                   className={cn(
                     'p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 relative',

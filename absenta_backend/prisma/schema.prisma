@@ -5982,6 +5982,7 @@ model CbtBankSoal {
   acak_soal          Boolean       @default(true)
   acak_opsi          Boolean       @default(true)
   status             CbtBankStatus @default(DRAFT)
+  is_shared          Boolean       @default(false)
   created_at         DateTime      @default(now())
   updated_at         DateTime      @updatedAt
 

@@ -135,29 +135,10 @@ export class CbtBankSoalService {
       const isKuisUnit = Boolean(bank.unit_pengajaran_id);
       const isKolaborasiResmi = !isKuisUnit && isCollabMapel;
 
-      const codeUpper = (bank.kode_bank || '').toUpperCase();
-      const isOfficialExamCode =
-        codeUpper.startsWith('PSAS-') ||
-        codeUpper.startsWith('PSAT-') ||
-        codeUpper.startsWith('PSTS-') ||
-        codeUpper.startsWith('PSAJ-') ||
-        codeUpper.startsWith('UKK-') ||
-        codeUpper.startsWith('SAS-') ||
-        codeUpper.startsWith('SAT-') ||
-        codeUpper.startsWith('STS-') ||
-        codeUpper.startsWith('PAS-') ||
-        codeUpper.startsWith('PAT-') ||
-        codeUpper.startsWith('PTS-') ||
-        codeUpper.startsWith('US-') ||
-        codeUpper.startsWith('UAS-') ||
-        codeUpper.startsWith('TRYOUT-');
-      const isExamTitle = Boolean(bank.judul && bank.judul.trim().startsWith('['));
-
       const isShared =
-        (bank.Kontributor || []).length > 0 ||
-        bank.status === 'PUBLISHED' ||
-        isOfficialExamCode ||
-        isExamTitle;
+        typeof bank.is_shared === 'boolean'
+          ? bank.is_shared
+          : (bank.Kontributor || []).length > 0;
 
       return {
         ...bank,
@@ -855,10 +836,10 @@ export class CbtBankSoalService {
       data.status || (data.is_shared ? 'PUBLISHED' : 'DRAFT');
 
     // 2. Guard Validasi Duplikasi Bank Soal Resmi MGMP / Terpusat
-    // Jika bank soal berstatus publik/terpusat, tolak jika rekan MGMP lain sudah menyusun bank soal resmi untuk mapel & tingkat ini
+    // Hanya berlaku jika bank soal ini adalah naskah bersama (is_shared: true)
     if (
       !data.bypass_mgmp_guard &&
-      (data.is_shared || data.scope === 'TERPUSAT_MASSAL' || resolvedStatus === 'PUBLISHED') &&
+      Boolean(data.is_shared) &&
       !data.unit_pengajaran_id // Khusus bank soal evaluasi umum/resmi, bukan kuis sub-unit
     ) {
       const rawTingkat = String(data.tingkat || '').trim().toUpperCase();
@@ -921,6 +902,7 @@ export class CbtBankSoalService {
         acak_soal: data.acak_soal ?? true,
         acak_opsi: data.acak_opsi ?? true,
         status: resolvedStatus,
+        is_shared: Boolean(data.is_shared),
       },
       include: this.bankInclude,
     });
@@ -997,6 +979,7 @@ export class CbtBankSoalService {
         ...(data.acak_soal !== undefined ? { acak_soal: data.acak_soal } : {}),
         ...(data.acak_opsi !== undefined ? { acak_opsi: data.acak_opsi } : {}),
         ...(resolvedStatus ? { status: resolvedStatus } : {}),
+        ...(data.is_shared !== undefined ? { is_shared: Boolean(data.is_shared) } : {}),
       },
     });
 

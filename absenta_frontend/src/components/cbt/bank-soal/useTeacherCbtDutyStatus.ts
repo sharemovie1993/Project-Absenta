@@ -510,13 +510,13 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
         if (b.Kontributor && b.Kontributor.some((c) => c.guru_id === guruId && c.can_edit_soal !== false)) {
           return true;
         }
-        // Kasus 2: Bank soal adalah Master MGMP (is_shared / ber-kode resmi) dan kontributor kosong (mencakup se-jurusan)
+        // Kasus 2: Bank soal adalah Master MGMP (is_shared) dan kontributor kosong
+        // HANYA dianggap mencakup rekan lain jika naskah berstatus UMUM / SEMUA jurusan se-sekolah.
+        // Jika jurusannya spesifik (misal: TOI, TKR), HANYA guru yang eksplisit terdaftar di Kontributor yang di-cover!
         if (b.is_shared && (!b.Kontributor || b.Kontributor.length === 0)) {
           const rawJur = (b.jurusan || '').toUpperCase().trim();
           if (!rawJur || rawJur === 'SEMUA' || rawJur === 'UMUM') return true;
-          const tokens = rawJur.split(/[,;/|]+/).map((s) => s.trim()).filter(Boolean);
-          const myJurusans = Array.from(jurusanMap.keys()).map((k) => k.toUpperCase().trim());
-          return tokens.some((t) => myJurusans.includes(t));
+          return false;
         }
         return false;
       };

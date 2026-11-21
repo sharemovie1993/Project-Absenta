@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
 import type { GuruMapel } from '@/types/academic';
 import { cn } from '@/lib/utils';
-import { formatTingkatRomawi, isAssignmentMatchingJurusan } from './cbtAsesmenHelper';
+import { formatTingkatRomawi, parseTingkatToNumber, isAssignmentMatchingJurusan } from './cbtAsesmenHelper';
 
 interface CbtMgmpColleaguePickerProps {
   mapelId: string;
@@ -62,12 +62,11 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
 
       // Ekstraksi tingkat mengajar guru dari kelas atau mapel
       const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat;
-      let gmTingkatNum = Number(rawTingkat);
+      let gmTingkatNum = parseTingkatToNumber(rawTingkat || '');
       if (!gmTingkatNum && gm.Kelas?.nama_kelas) {
         const match = gm.Kelas.nama_kelas.match(/\b(X|XI|XII|10|11|12)\b/i);
         if (match) {
-          const roman = match[1].toUpperCase();
-          gmTingkatNum = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
+          gmTingkatNum = parseTingkatToNumber(match[1]);
         }
       }
 
@@ -256,7 +255,7 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
                     )}
                   </div>
                 </div>
-                {colleague.tingkatNum && (
+                {typeof colleague.tingkatNum === 'number' && !isNaN(colleague.tingkatNum) && colleague.tingkatNum > 0 && (
                   <span className="text-[9.5px] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold shrink-0">
                     Tingkat {formatTingkatRomawi(colleague.tingkatNum)}
                   </span>
