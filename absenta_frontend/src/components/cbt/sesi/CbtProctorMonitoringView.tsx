@@ -636,6 +636,16 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
       label: 'Nilai',
       className: 'min-w-[80px] text-center',
       render: (_val: unknown, row: CbtPesertaUjian) => {
+        if (row.status === 'DISQUALIFIED') {
+          return (
+            <span
+              className="font-black text-xs px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
+              title="Didiskualifikasi karena pelanggaran (Nilai 0.0)"
+            >
+              0.0
+            </span>
+          );
+        }
         if (row.status !== 'FINISHED') {
           return <span className="text-slate-400 text-xs italic">-</span>;
         }
@@ -704,7 +714,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
 
         return (
           <div className="inline-flex items-center gap-1 justify-end">
-            {row.status === 'FINISHED' && (
+            {(row.status === 'FINISHED' || row.status === 'DISQUALIFIED') && (
               <button
                 type="button"
                 onClick={() => handleRetake(row)}
@@ -1232,6 +1242,11 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                           )}
                       </span>
                     )}
+                    {p.status === 'DISQUALIFIED' && (
+                      <span className="font-black text-rose-600 dark:text-rose-400">
+                        • 0.0 (Diskualifikasi)
+                      </span>
+                    )}
                   </div>
                   {p.status === 'FINISHED' && Array.isArray(p.unit_scores) && p.unit_scores.length > 0 && (
                     <div className="flex flex-wrap gap-1 pt-1">
@@ -1271,7 +1286,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                     })()
                   ) : (
                     <>
-                      {p.status === 'FINISHED' && (
+                      {(p.status === 'FINISHED' || p.status === 'DISQUALIFIED') && (
                         <button
                           type="button"
                           onClick={() => handleRetake(p)}
