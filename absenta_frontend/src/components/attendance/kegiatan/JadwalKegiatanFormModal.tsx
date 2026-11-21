@@ -74,6 +74,7 @@ interface JadwalKegiatanFormModalProps {
   activeTahunPelajaranName: string;
   /** When opening via 'Atur' on a master card, pre-select this master name in the form */
   presetNama?: string;
+  presetDay?: string;
   onClose: () => void;
   onSubmit: (payloads: JadwalKegiatanFormData[]) => Promise<void>;
 }
@@ -114,6 +115,7 @@ export default React.memo(function JadwalKegiatanFormModal({
   activeTahunPelajaranId,
   activeTahunPelajaranName,
   presetNama = '',
+  presetDay = '',
   onClose,
   onSubmit,
 }: JadwalKegiatanFormModalProps) {
@@ -176,7 +178,7 @@ export default React.memo(function JadwalKegiatanFormModal({
       setWaktuMulai(primary.waktu_mulai || '07:00');
       setWaktuSelesai(primary.waktu_selesai || '');
       setMatrixSchedule(initialMatrix);
-      setIsMatrixMode(hasVaryingTimes);
+      setIsMatrixMode(hasVaryingTimes || (primary.nama || '').toLowerCase().includes('ketarunaan'));
     } else {
       // New form
       setNama(presetNama);
@@ -189,10 +191,10 @@ export default React.memo(function JadwalKegiatanFormModal({
       setBerlakuSampai('');
       setMasaBerlakuOption('TAHUN_PELAJARAN');
       setIsMatrixMode(false);
-      setMatrixSchedule({});
+      setMatrixSchedule(presetDay ? { [presetDay.toUpperCase()]: { waktuMulai: '07:00', waktuSelesai: '07:15' } } : {});
     }
     setErrors({});
-  }, [editingItem, editingItems, presetNama]);
+  }, [editingItem, editingItems, presetNama, presetDay]);
 
   // ── Sync matrixSchedule when days change ──
   const syncMatrixForDay = useCallback((day: string, fallbackMulai?: string, fallbackSelesai?: string) => {
