@@ -68,7 +68,7 @@ export const MonthlyAnomalyFeed: React.FC<MonthlyAnomalyFeedProps> = React.memo(
   const displayedList = filterMode === 'ANOMALY_ONLY' ? anomalyDays : allDays;
 
   return (
-    <div className={cn('space-y-4 w-full min-w-0', className)}>
+    <div className={cn('space-y-4 w-full min-w-0 max-sm:px-3', className)}>
       {/* FILTER BUTTONS & SUMMARY STRIP */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
         <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">

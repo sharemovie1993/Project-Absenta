@@ -325,7 +325,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
 
   // Konten Utama
   const contentBody = (
-    <div className="space-y-5 w-full max-w-full min-w-0 pb-16 sm:pb-6">
+    <div className="space-y-4 sm:space-y-5 w-full max-w-full min-w-0 pb-24 sm:pb-6">
       {/* ── 1. SCOPE BANNER ── */}
       {!hideScopeBanner && (propJurusanNama || propKelasNama) && (
         <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40">
@@ -537,10 +537,21 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
       </div>
 
-      {/* ── 4. FULL-WIDTH VIEW: MATRIKS 30 HARI / KALENDER / LOG ANOMALI ── */}
-      <SectionCard fullWidth className="p-3 sm:p-5">
+      {/* ── 4. FULL-WIDTH VIEW: MATRIKS 30 HARI / KALENDER / LOG ANOMALI (FULL-BLEED EDGE-TO-EDGE ON MOBILE) ── */}
+      <div
+        className={cn(
+          'w-full transition-all duration-300',
+          // Desktop: Kartu SectionCard putih yang bersih
+          'sm:bg-white sm:dark:bg-slate-900 sm:rounded-2xl sm:border sm:border-slate-200/80 sm:dark:border-slate-800 sm:shadow-xs sm:p-5',
+          // Mobile: Full-Bleed (eliminasi Box-in-Box, membentang penuh 100% menembus padding layout luar)
+          !isModal
+            ? 'max-sm:-mx-4 max-sm:w-[calc(100%+2rem)]'
+            : 'max-sm:-mx-2.5 max-sm:w-[calc(100%+1.25rem)]',
+          'max-sm:bg-transparent max-sm:border-0 max-sm:shadow-none max-sm:p-0'
+        )}
+      >
         {/* View Mode Switcher Header */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200/70 dark:border-slate-800/80 max-sm:px-3">
           <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">
             <button
               type="button"
@@ -600,7 +611,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
 
         {/* Content Based on View Mode */}
-        <div className="pt-3">
+        <div className="pt-2 sm:pt-3">
           {viewMode === 'MATRIX' ? (
             <MapelMultiChannelMatrixTable
               matrixData={monthData?.mapel_matrix}
@@ -617,14 +628,14 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
             />
           )}
         </div>
-      </SectionCard>
+      </div>
 
       {/* ── 5. MOBILE BOTTOM STUDENT NAVIGATOR (THUMB-ZONE ACCESSIBLE KHUSUS WALI KELAS/GURU) ── */}
       {!shouldHideSelector && (
         <div
           className={cn(
-            'sm:hidden sticky z-30 p-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-800 shadow-xl flex items-center gap-2',
-            isModal || hideLayout ? 'bottom-2' : 'bottom-18'
+            'sm:hidden sticky z-40 p-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-800 shadow-xl flex items-center gap-2 max-sm:mx-1',
+            isModal ? 'bottom-2' : 'bottom-[76px]'
           )}
         >
           <Button
