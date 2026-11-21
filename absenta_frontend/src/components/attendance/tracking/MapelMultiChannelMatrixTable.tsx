@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import {
   DoorOpen,
   BookOpen,
@@ -7,7 +7,11 @@ import {
   AlertTriangle,
   Clock,
   Sparkles,
-  Info
+  Info,
+  Hand,
+  ZoomIn,
+  ZoomOut,
+  Maximize2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui';
@@ -117,470 +121,169 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
     return { hadir, total, pct };
   }, [records]);
 
-  // Mode Tampilan Mobile: FIT_HORIZONTAL (100% Full tanpa scroll di HP) vs SPREADSHEET
-  const [mobileViewStyle, setMobileViewStyle] = useState<'FIT_HORIZONTAL' | 'SPREADSHEET'>('FIT_HORIZONTAL');
+    // ── FITUR ZOOM & FREE-HAND PAN KHUSUS HP (PORTRAIT / LAYAR SEMPIT) ──
+  const TABLE_NATURAL_WIDTH = 1360;
+  const deskRef = useRef<HTMLDivElement | null>(null);
+  const [mobileViewStyle, setMobileViewStyle] = useState<'CANVAS_360' | 'SPREADSHEET'>('CANVAS_360');
+  const [zoomScale, setZoomScale] = useState<number>(0.28);
+  const [fitScale, setFitScale] = useState<number>(0.28);
+  const [zoomMode, setZoomMode] = useState<'fit' | 'custom'>('fit');
+  const [isHandToolActive, setIsHandToolActive] = useState<boolean>(true);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
 
-  if (isLoading) {
-    return (
-      <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3">
-        <div className="w-8 h-8 mx-auto border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-          Memuat matriks multi-channel 30 hari...
-        </p>
-      </div>
-    );
-  }
+  // Gesture refs
+  const dragStartRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
+  const touchDistanceRef = useRef<number | null>(null);
+  const touchStartScaleRef = useRef<number>(1);
+  const lastTapRef = useRef<number>(0);
+  const hasMovedRef = useRef<boolean>(false);
 
-  if (!matrixData || records.length === 0) {
-    return (
-      <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 space-y-2">
-        <Info className="w-8 h-8 mx-auto text-slate-400" />
-        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">
-          Matriks Presensi Belum Tersedia
-        </h4>
-        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-          Belum ada jadwal sesi pelajaran atau rekaman presensi pada bulan <span className="font-semibold">{bulan}</span> untuk siswa ini.
-        </p>
-      </div>
-    );
-  }
+  // Auto-calculate fit scale based on container width
+  useEffect(() => {
+    const calcFit = () => {
+      if (!deskRef.current) return;
+      const w = deskRef.current.clientWidth;
+      if (w > 0) {
+        // Leave 12px padding
+        const calculated = Math.max(0.20, Math.min(1.0, +((w - 12) / TABLE_NATURAL_WIDTH).toFixed(3)));
+        setFitScale(calculated);
+      }
+    };
+    calcFit();
+    const timer = setTimeout(calcFit, 150);
+    window.addEventListener('resize', calcFit);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', calcFit);
+    };
+  }, []);
 
-  return (
-    <div className={cn('space-y-3 w-full max-w-full min-w-0', className)}>
-      {/* HEADER & PANDUAN SIMBOL */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-        <div>
-          <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <span>Matriks Presensi Multi-Channel 1 Bulan Penuh</span>
-          </h4>
-          <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-            Bentang horizontal seluruh sesi KBM mata pelajaran, pembiasaan pagi, gerbang, dan anomali.
-          </p>
-        </div>
+  const effectiveScale = zoomMode === 'fit' ? fitScale : zoomScale;
 
-        {/* Legend */}
-        <div className="flex items-center gap-2 flex-wrap text-[9.5px] font-semibold text-slate-600 dark:text-slate-300">
-          <span className="flex items-center gap-1">
-            <span className="w-4 h-4 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold inline-flex items-center justify-center text-[9px]">
-              H
-            </span>
-            Hadir
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-4 h-4 rounded bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-bold inline-flex items-center justify-center text-[9px]">
-              T
-            </span>
-            Terlambat
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-4 h-4 rounded bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold inline-flex items-center justify-center text-[9px]">
-              A
-            </span>
-            Alpa
-          </span>
-          <span className="flex items-center gap-1 text-slate-400">
-            <span className="font-mono font-bold text-slate-400">·</span>
-            Non-Jadwal
-          </span>
-        </div>
-      </div>
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && deskRef.current) {
+      hasMovedRef.current = false;
+      dragStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        scrollLeft: deskRef.current.scrollLeft,
+        scrollTop: deskRef.current.scrollTop,
+      };
+      setIsDragging(true);
+    } else if (e.touches.length === 2) {
+      dragStartRef.current = null;
+      setIsDragging(false);
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      touchDistanceRef.current = dist;
+      touchStartScaleRef.current = effectiveScale;
+    }
+  };
 
-      {/* MOBILE TOGGLE: FULL 1 BULAN (TANPA SCROLL) vs SPREADSHEET */}
-      <div className="flex sm:hidden items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-full">
-        <button
-          type="button"
-          onClick={() => setMobileViewStyle('FIT_HORIZONTAL')}
-          className={cn(
-            'flex-1 py-1.5 text-[11px] font-black rounded-lg text-center transition-all cursor-pointer',
-            mobileViewStyle === 'FIT_HORIZONTAL'
-              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-          )}
-        >
-          📱 Full 1 Bulan (Tanpa Scroll)
-        </button>
-        <button
-          type="button"
-          onClick={() => setMobileViewStyle('SPREADSHEET')}
-          className={cn(
-            'flex-1 py-1.5 text-[11px] font-black rounded-lg text-center transition-all cursor-pointer',
-            mobileViewStyle === 'SPREADSHEET'
-              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-          )}
-        >
-          📊 Tabel Spreadsheet (Geser)
-        </button>
-      </div>
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && dragStartRef.current && deskRef.current && isHandToolActive) {
+      const dx = e.touches[0].clientX - dragStartRef.current.x;
+      const dy = e.touches[0].clientY - dragStartRef.current.y;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+        hasMovedRef.current = true;
+      }
+      deskRef.current.scrollLeft = dragStartRef.current.scrollLeft - dx;
+      deskRef.current.scrollTop = dragStartRef.current.scrollTop - dy;
+    } else if (e.touches.length === 2 && touchDistanceRef.current !== null) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const ratio = dist / touchDistanceRef.current;
+      const next = Math.max(0.20, Math.min(2.5, +(touchStartScaleRef.current * ratio).toFixed(2)));
+      setZoomScale(next);
+      setZoomMode('custom');
+    }
+  };
 
-      {/* ── 1. MOBILE 1-MONTH FULL HORIZONTAL FIT VIEW (TANPA SCROLL HORIZONTAL) ── */}
-      <div className={cn('space-y-3', mobileViewStyle === 'FIT_HORIZONTAL' ? 'block sm:hidden' : 'hidden')}>
-        <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs space-y-3 w-full overflow-hidden">
-          {/* DAY RULER (TANGGAL 01 s.d. 30/31) */}
-          <div className="space-y-1 pb-2 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 px-0.5">
-              <span className="uppercase tracking-wider">Tanggal (01 – {String(records.length).padStart(2, '0')})</span>
-              <span className="text-[9px] text-indigo-600 dark:text-indigo-400">Tap kotak hari untuk linimasa</span>
-            </div>
-            <div
-              style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
-              className="gap-[1.5px] w-full select-none"
-            >
-              {records.map((r) => {
-                const isSelected = selectedDate === r.date;
-                return (
-                  <button
-                    key={`mob-ruler-${r.date}`}
-                    type="button"
-                    onClick={() => onDateSelect?.(r.date)}
-                    className={cn(
-                      'flex flex-col items-center justify-center py-1 rounded-xs text-center cursor-pointer transition-all',
-                      r.is_weekend
-                        ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-500'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300',
-                      isSelected && 'ring-2 ring-indigo-600 bg-indigo-600 text-white font-black z-10'
-                    )}
-                    title={`${r.day_name}, ${r.date}`}
-                  >
-                    <span className="text-[7.5px] font-black leading-none">{r.day}</span>
-                    <span className="text-[6px] uppercase leading-none opacity-80 mt-0.5">{r.day_name.slice(0, 1)}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    dragStartRef.current = null;
+    touchDistanceRef.current = null;
+  };
 
-          {/* SECTION: GERBANG SEKOLAH */}
-          <div className="space-y-2">
-            <div className="px-1 text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
-              <DoorOpen className="w-3.5 h-3.5" />
-              <span>Pintu Gerbang Sekolah</span>
-            </div>
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0 || !deskRef.current || !isHandToolActive) return;
+    hasMovedRef.current = false;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startScrollLeft = deskRef.current.scrollLeft;
+    const startScrollTop = deskRef.current.scrollTop;
+    setIsDragging(true);
 
-            {/* Tap Masuk */}
-            <div className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1">
-              <div className="flex items-center justify-between text-[10.5px]">
-                <span className="font-bold text-slate-800 dark:text-slate-200">Tap Masuk Gerbang</span>
-                <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-[10px]">
-                  {gateSummary.hadir}/{gateSummary.total} ({gateSummary.pct}%)
-                </span>
-              </div>
-              <div
-                style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
-                className="gap-[1.5px] w-full"
-              >
-                {records.map((r) => {
-                  const g = r.gerbang;
-                  const hasTap = Boolean(g?.datang_waktu);
-                  const isLate = Boolean(g?.is_terlambat);
-                  const isSelected = selectedDate === r.date;
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!deskRef.current) return;
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+        hasMovedRef.current = true;
+      }
+      deskRef.current.scrollLeft = startScrollLeft - dx;
+      deskRef.current.scrollTop = startScrollTop - dy;
+    };
 
-                  return (
-                    <button
-                      key={`mob-gin-${r.date}`}
-                      type="button"
-                      onClick={() => onDateSelect?.(r.date)}
-                      className={cn(
-                        'h-5 rounded-xs flex items-center justify-center text-[7.5px] font-black transition-transform active:scale-95 cursor-pointer leading-none',
-                        hasTap
-                          ? isLate
-                            ? 'bg-amber-500 text-white'
-                            : 'bg-emerald-500 text-white'
-                          : r.is_weekend
-                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700'
-                          : 'bg-slate-200/70 dark:bg-slate-800 text-slate-400',
-                        isSelected && 'ring-1.5 ring-indigo-600 ring-offset-1 z-10'
-                      )}
-                      title={hasTap ? `Tgl ${r.day}: Tap ${g?.datang_waktu} (${g?.datang_status})` : `Tgl ${r.day}: Tidak Tap`}
-                    >
-                      {hasTap ? (isLate ? 'T' : 'H') : r.is_weekend ? '·' : '-'}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+    const onMouseUp = () => {
+      setIsDragging(false);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
 
-            {/* Tap Pulang */}
-            <div className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1">
-              <div className="flex items-center justify-between text-[10.5px]">
-                <span className="font-bold text-slate-800 dark:text-slate-200">Tap Pulang Gerbang</span>
-                <span className="font-mono font-bold text-slate-600 dark:text-slate-400 text-[10px]">
-                  {records.filter((r) => r.gerbang?.pulang_waktu).length} Tap
-                </span>
-              </div>
-              <div
-                style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
-                className="gap-[1.5px] w-full"
-              >
-                {records.map((r) => {
-                  const g = r.gerbang;
-                  const hasPulang = Boolean(g?.pulang_waktu);
-                  const isGantung = Boolean(g?.is_tap_gantung);
-                  const isSelected = selectedDate === r.date;
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
 
-                  return (
-                    <button
-                      key={`mob-gout-${r.date}`}
-                      type="button"
-                      onClick={() => onDateSelect?.(r.date)}
-                      className={cn(
-                        'h-5 rounded-xs flex items-center justify-center text-[7.5px] font-black transition-transform active:scale-95 cursor-pointer leading-none',
-                        hasPulang
-                          ? 'bg-indigo-600 text-white'
-                          : isGantung
-                          ? 'bg-amber-500 text-white'
-                          : r.is_weekend
-                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700'
-                          : 'bg-slate-200/70 dark:bg-slate-800 text-slate-400',
-                        isSelected && 'ring-1.5 ring-indigo-600 ring-offset-1 z-10'
-                      )}
-                      title={hasPulang ? `Tgl ${r.day}: Pulang ${g?.pulang_waktu}` : isGantung ? `Tgl ${r.day}: Tap Gantung` : `Tgl ${r.day}: -`}
-                    >
-                      {hasPulang ? '✓' : isGantung ? '!' : r.is_weekend ? '·' : '-'}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 320) {
+      if (zoomMode === 'fit' || Math.abs(effectiveScale - fitScale) < 0.05) {
+        setZoomScale(1.0);
+        setZoomMode('custom');
+      } else {
+        setZoomMode('fit');
+      }
+    }
+    lastTapRef.current = now;
+  };
 
-          {/* SECTION: PEMBIASAAN PAGI */}
-          <div className="space-y-2">
-            <div className="px-1 text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Pembiasaan Pagi (Dhuha / Apel)</span>
-            </div>
+  const handleZoomIn = () => {
+    const steps = [0.25, 0.35, 0.5, 0.65, 0.8, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5];
+    const next = steps.find((s) => s > effectiveScale + 0.04) || 2.5;
+    setZoomScale(next);
+    setZoomMode('custom');
+  };
 
-            <div className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1">
-              <div className="flex items-center justify-between text-[10.5px]">
-                <span className="font-bold text-slate-800 dark:text-slate-200">Sesi Pembiasaan</span>
-                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[10px]">
-                  {pembiasaanSummary.hadir}/{pembiasaanSummary.total} ({pembiasaanSummary.pct}%)
-                </span>
-              </div>
-              <div
-                style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
-                className="gap-[1.5px] w-full"
-              >
-                {records.map((r) => {
-                  const p = r.pembiasaan;
-                  const isSelected = selectedDate === r.date;
+  const handleZoomOut = () => {
+    const steps = [0.25, 0.35, 0.5, 0.65, 0.8, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5];
+    const next = [...steps].reverse().find((s) => s < effectiveScale - 0.04) || 0.25;
+    setZoomScale(next);
+    setZoomMode('custom');
+  };
 
-                  return (
-                    <button
-                      key={`mob-p-${r.date}`}
-                      type="button"
-                      onClick={() => onDateSelect?.(r.date)}
-                      className={cn(
-                        'h-5 rounded-xs flex items-center justify-center text-[7.5px] font-black transition-transform active:scale-95 cursor-pointer leading-none',
-                        p?.status === 'HADIR'
-                          ? 'bg-emerald-500 text-white'
-                          : p?.status === 'ALPA'
-                          ? 'bg-rose-500 text-white'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700',
-                        isSelected && 'ring-1.5 ring-indigo-600 ring-offset-1 z-10'
-                      )}
-                      title={p?.status ? `Tgl ${r.day}: ${p.nama || 'Pembiasaan'} (${p.status})` : `Tgl ${r.day}: Tidak ada sesi`}
-                    >
-                      {p?.status === 'HADIR' ? 'H' : p?.status === 'ALPA' ? 'A' : '·'}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+  const handleToggleFit = () => {
+    if (zoomMode === 'fit' || Math.abs(effectiveScale - fitScale) < 0.05) {
+      setZoomScale(1.0);
+      setZoomMode('custom');
+    } else {
+      setZoomMode('fit');
+    }
+  };
 
-          {/* SECTION: SESI KBM PER MATA PELAJARAN */}
-          <div className="space-y-2">
-            <div className="px-1 text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
-              <GraduationCap className="w-3.5 h-3.5" />
-              <span>Sesi Belajar KBM ({mapelList.length} Mata Pelajaran)</span>
-            </div>
+  // Safe Click Handler: Hindari trigger jika pengguna sedang drag/pan
+  const handleCellClick = (date: string) => {
+    if (hasMovedRef.current) return;
+    onDateSelect?.(date);
+  };
 
-            {mapelList.map((mapel) => {
-              const mapelSum = summaryPerMapel[mapel.id] || {
-                total_sesi: 0,
-                hadir: 0,
-                alpa: 0,
-                persentase: 100,
-              };
-
-              return (
-                <div
-                  key={`mob-m-${mapel.id}`}
-                  className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1"
-                >
-                  <div className="flex items-center justify-between text-[10.5px]">
-                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate pr-2" title={mapel.nama_mapel}>
-                      {mapel.nama_mapel}
-                    </span>
-                    <span
-                      className={cn(
-                        'font-mono font-bold text-[10px] shrink-0',
-                        mapelSum.persentase < 85
-                          ? 'text-rose-600 dark:text-rose-400'
-                          : 'text-slate-600 dark:text-slate-400'
-                      )}
-                    >
-                      {mapelSum.hadir}/{mapelSum.total_sesi} ({mapelSum.persentase}%)
-                    </span>
-                  </div>
-                  <div
-                    style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
-                    className="gap-[1.5px] w-full"
-                  >
-                    {records.map((r) => {
-                      const session = r.mapel_sessions[mapel.id];
-                      const isSelected = selectedDate === r.date;
-
-                      let cellBg = 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700';
-                      let letter = '·';
-
-                      if (session) {
-                        if (session.status === 'HADIR' || session.status === 'TEPAT_WAKTU') {
-                          cellBg = 'bg-emerald-500 text-white';
-                          letter = 'H';
-                        } else if (session.status === 'TERLAMBAT') {
-                          cellBg = 'bg-purple-500 text-white';
-                          letter = 'T';
-                        } else if (session.status === 'ALPA') {
-                          cellBg = 'bg-rose-500 text-white';
-                          letter = 'A';
-                        } else {
-                          cellBg = 'bg-blue-500 text-white';
-                          letter = session.status.slice(0, 1);
-                        }
-                      }
-
-                      return (
-                        <button
-                          key={`mob-sess-${mapel.id}-${r.date}`}
-                          type="button"
-                          onClick={() => onDateSelect?.(r.date)}
-                          className={cn(
-                            'h-5 rounded-xs flex items-center justify-center text-[7.5px] font-black transition-transform active:scale-95 cursor-pointer leading-none',
-                            cellBg,
-                            isSelected && 'ring-1.5 ring-indigo-600 ring-offset-1 z-10'
-                          )}
-                          title={
-                            session
-                              ? `Tgl ${r.day}: ${mapel.nama_mapel} (${session.status}) ${session.waktu || ''}`
-                              : `Tgl ${r.day}: Tidak ada jadwal`
-                          }
-                        >
-                          {letter}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* SECTION: STATUS AKHIR & ANOMALI */}
-          <div className="space-y-2">
-            <div className="px-1 text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-400 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5" />
-              <span>Status Harian & Anomali</span>
-            </div>
-
-            {/* Status Akhir */}
-            <div className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1">
-              <div className="flex items-center justify-between text-[10.5px]">
-                <span className="font-bold text-slate-800 dark:text-slate-200">Status Akhir Harian</span>
-                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 font-mono">Rekap</span>
-              </div>
-              <div
-                style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
-                className="gap-[1.5px] w-full"
-              >
-                {records.map((r) => {
-                  const isSelected = selectedDate === r.date;
-                  let bgClass = 'bg-slate-100 dark:bg-slate-800 text-slate-400';
-                  let char = '-';
-
-                  if (r.final_status === 'HADIR') {
-                    bgClass = 'bg-emerald-500 text-white font-black';
-                    char = 'H';
-                  } else if (r.final_status === 'TERLAMBAT') {
-                    bgClass = 'bg-purple-500 text-white font-black';
-                    char = 'T';
-                  } else if (r.final_status === 'ALPA') {
-                    bgClass = 'bg-rose-500 text-white font-black';
-                    char = 'A';
-                  } else if (r.is_weekend) {
-                    bgClass = 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700';
-                    char = '·';
-                  }
-
-                  return (
-                    <button
-                      key={`mob-final-${r.date}`}
-                      type="button"
-                      onClick={() => onDateSelect?.(r.date)}
-                      className={cn(
-                        'h-5 rounded-xs flex items-center justify-center text-[7.5px] font-black transition-transform active:scale-95 cursor-pointer leading-none',
-                        bgClass,
-                        isSelected && 'ring-1.5 ring-indigo-600 ring-offset-1 z-10'
-                      )}
-                      title={`Status Akhir Tgl ${r.day}: ${r.final_status}`}
-                    >
-                      {char}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Anomali */}
-            <div className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1">
-              <div className="flex items-center justify-between text-[10.5px]">
-                <span className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" />
-                  <span>Deteksi Anomali</span>
-                </span>
-                <span className="font-mono font-bold text-rose-600 dark:text-rose-400 text-[10px]">
-                  {records.filter((r) => r.anomali?.is_anomali).length} Kasus
-                </span>
-              </div>
-              <div
-                style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
-                className="gap-[1.5px] w-full"
-              >
-                {records.map((r) => {
-                  const anomali = r.anomali;
-                  const isSelected = selectedDate === r.date;
-
-                  return (
-                    <button
-                      key={`mob-ano-${r.date}`}
-                      type="button"
-                      onClick={() => onDateSelect?.(r.date)}
-                      className={cn(
-                        'h-5 rounded-xs flex items-center justify-center text-[8px] font-black transition-transform active:scale-95 cursor-pointer leading-none',
-                        anomali?.is_anomali
-                          ? 'bg-rose-500 text-white animate-pulse'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700',
-                        isSelected && 'ring-1.5 ring-indigo-600 ring-offset-1 z-10'
-                      )}
-                      title={anomali?.is_anomali ? `Tgl ${r.day}: ⚠️ ${anomali.pesan}` : `Tgl ${r.day}: Normal`}
-                    >
-                      {anomali?.is_anomali ? '!' : '·'}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* HORIZONTAL SCROLLABLE SPREADSHEET TABLE */}
-      <div className={cn('bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs overflow-hidden', mobileViewStyle === 'FIT_HORIZONTAL' ? 'hidden sm:block' : 'block')}>
-        <div className="overflow-x-auto relative">
-          <table className="w-full border-collapse text-left text-xs">
+  // Fungsi Render Tabel Spreadsheet Tunggal (DRY untuk Desktop & Mobile)
+  const renderSpreadsheetTable = (isCanvas: boolean = false) => (
+    <table className={cn('border-collapse text-left text-xs', isCanvas ? 'w-[1360px]' : 'w-full min-w-[1200px]')}>
             {/* ── THEAD (TANGGAL 01 .. 31) ── */}
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200">
@@ -595,7 +298,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                   return (
                     <th
                       key={r.date}
-                      onClick={() => onDateSelect?.(r.date)}
+                      onClick={() => handleCellClick(r.date)}
                       className={cn(
                         'px-1 py-1.5 text-center min-w-[34px] max-w-[38px] cursor-pointer transition-colors border-r border-slate-100 dark:border-slate-800/60 group select-none',
                         r.is_weekend
@@ -651,7 +354,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                   return (
                     <td
                       key={`g-in-${r.date}`}
-                      onClick={() => onDateSelect?.(r.date)}
+                      onClick={() => handleCellClick(r.date)}
                       className={cn(
                         'px-0.5 py-1 text-center font-mono text-[9px] border-r border-slate-100 dark:border-slate-800/60 cursor-pointer',
                         r.is_weekend && 'bg-slate-50/30 dark:bg-slate-950/20 text-slate-300',
@@ -700,7 +403,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                   return (
                     <td
                       key={`g-out-${r.date}`}
-                      onClick={() => onDateSelect?.(r.date)}
+                      onClick={() => handleCellClick(r.date)}
                       className={cn(
                         'px-0.5 py-1 text-center font-mono text-[9px] border-r border-slate-100 dark:border-slate-800/60 cursor-pointer',
                         r.is_weekend && 'bg-slate-50/30 dark:bg-slate-950/20 text-slate-300',
@@ -759,7 +462,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                   return (
                     <td
                       key={`p-${r.date}`}
-                      onClick={() => onDateSelect?.(r.date)}
+                      onClick={() => handleCellClick(r.date)}
                       className={cn(
                         'px-0.5 py-1 text-center font-bold text-[9px] border-r border-slate-100 dark:border-slate-800/60 cursor-pointer',
                         r.is_weekend && 'bg-slate-50/30 dark:bg-slate-950/20 text-slate-300',
@@ -827,7 +530,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                       return (
                         <td
                           key={`${mapel.id}-${r.date}`}
-                          onClick={() => onDateSelect?.(r.date)}
+                          onClick={() => handleCellClick(r.date)}
                           className={cn(
                             'px-0.5 py-1 text-center font-bold text-[9px] border-r border-slate-100 dark:border-slate-800/60 cursor-pointer',
                             r.is_weekend && 'bg-slate-50/30 dark:bg-slate-950/20 text-slate-300',
@@ -903,7 +606,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                   return (
                     <td
                       key={`final-${r.date}`}
-                      onClick={() => onDateSelect?.(r.date)}
+                      onClick={() => handleCellClick(r.date)}
                       className={cn(
                         'px-0.5 py-1 text-center font-black text-[9px] border-r border-slate-100 dark:border-slate-800/60 cursor-pointer',
                         r.is_weekend && 'text-slate-300 dark:text-slate-600',
@@ -945,7 +648,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                   return (
                     <td
                       key={`ano-${r.date}`}
-                      onClick={() => onDateSelect?.(r.date)}
+                      onClick={() => handleCellClick(r.date)}
                       className={cn(
                         'px-0.5 py-1 text-center border-r border-slate-100 dark:border-slate-800/60 cursor-pointer',
                         isSelected && 'bg-primary/5'
@@ -972,6 +675,206 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
               </tr>
             </tbody>
           </table>
+  );
+
+if (isLoading) {
+    return (
+      <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3">
+        <div className="w-8 h-8 mx-auto border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          Memuat matriks multi-channel 30 hari...
+        </p>
+      </div>
+    );
+  }
+
+  if (!matrixData || records.length === 0) {
+    return (
+      <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 space-y-2">
+        <Info className="w-8 h-8 mx-auto text-slate-400" />
+        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">
+          Matriks Presensi Belum Tersedia
+        </h4>
+        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+          Belum ada jadwal sesi pelajaran atau rekaman presensi pada bulan <span className="font-semibold">{bulan}</span> untuk siswa ini.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn('space-y-3 w-full max-w-full min-w-0', className)}>
+      {/* HEADER & PANDUAN SIMBOL */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+        <div>
+          <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span>Matriks Presensi Multi-Channel 1 Bulan Penuh</span>
+          </h4>
+          <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+            Bentang horizontal seluruh sesi KBM mata pelajaran, pembiasaan pagi, gerbang, dan anomali.
+          </p>
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-2 flex-wrap text-[9.5px] font-semibold text-slate-600 dark:text-slate-300">
+          <span className="flex items-center gap-1">
+            <span className="w-4 h-4 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold inline-flex items-center justify-center text-[9px]">
+              H
+            </span>
+            Hadir
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-4 h-4 rounded bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-bold inline-flex items-center justify-center text-[9px]">
+              T
+            </span>
+            Terlambat
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-4 h-4 rounded bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold inline-flex items-center justify-center text-[9px]">
+              A
+            </span>
+            Alpa
+          </span>
+          <span className="flex items-center gap-1 text-slate-400">
+            <span className="font-mono font-bold text-slate-400">·</span>
+            Non-Jadwal
+          </span>
+        </div>
+      </div>
+
+      {/* MOBILE TOGGLE: 360° ZOOM & FREE-HAND PAN vs SPREADSHEET */}
+      <div className="flex sm:hidden items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-full">
+        <button
+          type="button"
+          onClick={() => setMobileViewStyle('CANVAS_360')}
+          className={cn(
+            'flex-1 py-1.5 text-[11px] font-black rounded-lg text-center transition-all cursor-pointer flex items-center justify-center gap-1.5',
+            mobileViewStyle === 'CANVAS_360'
+              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+          )}
+        >
+          <Hand className="w-3.5 h-3.5" />
+          <span>Full 360° (Zoom & Geser)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileViewStyle('SPREADSHEET')}
+          className={cn(
+            'flex-1 py-1.5 text-[11px] font-black rounded-lg text-center transition-all cursor-pointer flex items-center justify-center gap-1.5',
+            mobileViewStyle === 'SPREADSHEET'
+              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+          )}
+        >
+          <span>📊 Spreadsheet Klasik</span>
+        </button>
+      </div>
+
+      {/* ── 1. TAMPILAN KHUSUS HP (SM:HIDDEN) ── */}
+      <div className="block sm:hidden">
+        {mobileViewStyle === 'CANVAS_360' ? (
+          <div className="relative w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-950/80 shadow-inner">
+            {/* Guide Info Banner */}
+            <div className="px-3 py-1.5 bg-slate-200/90 dark:bg-slate-900/90 text-slate-600 dark:text-slate-400 text-[10px] flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+              <span className="font-semibold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Cubit untuk Zoom, geser 1 jari di tabel untuk navigasi 360°.
+              </span>
+              <span className="font-mono text-indigo-600 dark:text-indigo-400 font-black">
+                {Math.round(effectiveScale * 100)}%
+              </span>
+            </div>
+
+            {/* Canvas Desk Area */}
+            <div
+              ref={deskRef}
+              onTouchStart={(e) => {
+                handleTouchStart(e);
+                handleDoubleTap();
+              }}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onMouseDown={handleMouseDown}
+              className={cn(
+                'overflow-auto overscroll-contain max-h-[72vh] touch-none select-none relative',
+                isHandToolActive ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'
+              )}
+            >
+              <div className="min-w-full w-max flex justify-center p-1.5">
+                <div
+                  style={{
+                    zoom: effectiveScale,
+                    width: `${TABLE_NATURAL_WIDTH}px`,
+                  }}
+                  className="origin-top"
+                >
+                  <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-xs border border-slate-200/80 dark:border-slate-800">
+                    {renderSpreadsheetTable(true)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Floating Quick Zoom Pill */}
+            <div className="absolute bottom-3 right-3 z-20 flex items-center gap-1 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-700 shadow-lg text-xs select-none">
+              <button
+                type="button"
+                onClick={() => setIsHandToolActive((prev) => !prev)}
+                className={cn(
+                  'px-2 py-0.5 rounded-full text-[10.5px] font-semibold cursor-pointer flex items-center gap-1 transition-colors',
+                  isHandToolActive
+                    ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                )}
+                title="Mode Geser Bebas (Pan)"
+              >
+                <Hand className="w-3.5 h-3.5" />
+                <span>Geser</span>
+              </button>
+              <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 mx-0.5" />
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                disabled={effectiveScale <= 0.22}
+                className="p-1 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                title="Perkecil (-)"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleFit}
+                className="px-1.5 py-0.5 font-bold text-[10.5px] min-w-[38px] text-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-800 dark:text-slate-200"
+                title="Klik untuk beralih Pas Layar / 100%"
+              >
+                {Math.round(effectiveScale * 100)}%
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                disabled={effectiveScale >= 2.45}
+                className="p-1 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                title="Perbesar (+)"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto relative">
+              {renderSpreadsheetTable(false)}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── 2. TAMPILAN NORMAL DESKTOP (HIDDEN SM:BLOCK) ── */}
+      <div className="hidden sm:block bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs overflow-hidden">
+        <div className="overflow-x-auto relative">
+          {renderSpreadsheetTable(false)}
         </div>
       </div>
     </div>
