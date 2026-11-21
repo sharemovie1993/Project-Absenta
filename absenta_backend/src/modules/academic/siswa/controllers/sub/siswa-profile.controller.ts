@@ -102,6 +102,63 @@ export const siswaProfileController = {
         // Ignore
       }
 
+      // Hydrate Organizational Assignments (Tugas Tambahan & Jabatan Sekolah)
+      try {
+        const now = new Date();
+        const activeTp = await prisma.tahunPelajaran.findFirst({
+          where: { tenant_id: tenantId, is_active: true },
+          select: { id: true, tahun: true },
+        });
+
+        const assignments = await prisma.organizationalAssignment.findMany({
+          where: {
+            tenant_id: tenantId,
+            user_id: userId,
+            is_active: true,
+            AND: [
+              { OR: [{ start_date: null }, { start_date: { lte: now } }] },
+              { OR: [{ end_date: null }, { end_date: { gte: now } }] },
+              activeTp?.id ? { OR: [{ tahun_pelajaran_id: null }, { tahun_pelajaran_id: activeTp.id }] } : {},
+            ],
+          },
+          include: {
+            Position: { select: { id: true, code: true, name: true, scope_type: true } },
+            Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+            Unit: { select: { id: true, nama: true, singkatan: true, kode: true } },
+            TahunPelajaran: { select: { id: true, tahun: true, is_active: true } },
+          },
+          orderBy: [{ created_at: 'desc' }]
+        });
+
+        (siswa as any).assignments = assignments.map((a: any) => ({
+          id: a.id,
+          position_id: a.position_id,
+          position_code: a.Position?.code,
+          position_name: a.Position?.name,
+          custom_title: a.custom_title,
+          is_leader: a.is_leader,
+          kelas_id: a.kelas_id,
+          kelas_nama: a.Kelas?.nama_kelas,
+          unit_id: a.unit_id,
+          unit_nama: a.Unit?.nama,
+          tahun_pelajaran_id: a.tahun_pelajaran_id,
+          tahun_pelajaran: a.TahunPelajaran?.tahun || activeTp?.tahun,
+          start_date: a.start_date,
+          end_date: a.end_date,
+        }));
+
+        const hasKm = assignments.some((a: any) => a.is_leader || (a.custom_title && a.custom_title.toLowerCase().includes('km')));
+        const hasSekretaris = assignments.some((a: any) => a.custom_title && a.custom_title.toLowerCase().includes('sekretaris'));
+        const hasPetugasKelas = assignments.some((a: any) => a.Position?.code === 'PETUGAS_KELAS');
+
+        (siswa as any).is_km = hasKm;
+        (siswa as any).is_sekretaris = hasSekretaris;
+        (siswa as any).is_petugas_kelas = hasPetugasKelas;
+        (siswa as any).petugas_title = assignments.find((a: any) => a.Position?.code === 'PETUGAS_KELAS')?.custom_title || (hasKm ? 'Ketua Murid (KM)' : hasSekretaris ? 'Sekretaris' : 'Petugas Kelas');
+      } catch (err) {
+        console.warn('[getSiswaMe] Failed to hydrate organizational assignments:', err);
+      }
+
       return reply.status(200).send({
         success: true,
         message: 'Profil siswa me retrieved successfully',

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
-  User, Camera, Check, Edit3, Key, MapPin, Heart, Users, QrCode, Eye, EyeOff
+  User, Camera, Check, Edit3, Key, MapPin, Heart, Users, QrCode, Eye, EyeOff,
+  Crown, FileText, ShieldCheck, Sparkles, Award, ShoppingCart, Compass, Briefcase, CheckCircle2
 } from 'lucide-react';
 import { Button, Input, Label } from '@/components/ui';
 import { SelfMemberDocsSection } from '@/components/documents/SelfMemberDocsSection';
@@ -342,42 +343,130 @@ export const SiswaProfileTab: React.FC<SiswaProfileTabProps> = ({
           </div>
         </div>
 
-        {/* Section 2: Organisasi & Ekstrakurikuler */}
+        {/* Section 2: Tugas Tambahan & Organisasi Sekolah (Standar Seperti Profil Guru) */}
         <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
-                <Users size={18} />
+              <div className="w-8 h-8 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+                <Crown size={18} />
               </div>
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                ORGANISASI DAN EKSTRAKURIKULER
-              </h3>
+              <div>
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                  TUGAS TAMBAHAN &amp; JABATAN SEKOLAH
+                </h3>
+                <p className="text-[10px] text-slate-400">
+                  Amanah kepengurusan kelas &amp; peranan resmi di ekosistem sekolah
+                </p>
+              </div>
             </div>
-            <button onClick={() => handleOpenEditSection('ekskul')} className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-colors cursor-pointer" title="Edit Organisasi & Ekskul">
+            <button onClick={() => handleOpenEditSection('ekskul')} className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-colors cursor-pointer" title="Edit Organisasi &amp; Ekskul">
               <Edit3 size={16} />
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs">
-            <div>
-              <span className="text-slate-400 block font-medium">Anggota OSIS</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200">
-                {renderValueOrUnconnectedBadge(siswaProfile?.is_osis !== undefined && siswaProfile?.is_osis !== null ? (siswaProfile.is_osis ? 'Ya' : 'Tidak') : null)}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-400 block font-medium">Anggota MPK</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200">
-                {renderValueOrUnconnectedBadge(siswaProfile?.is_mpk !== undefined && siswaProfile?.is_mpk !== null ? (siswaProfile.is_mpk ? 'Ya' : 'Tidak') : null)}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-400 block font-medium">Ekstrakurikuler 1</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200">{renderValueOrUnconnectedBadge(siswaProfile?.ekskul_1)}</span>
-            </div>
-            <div>
-              <span className="text-slate-400 block font-medium">Ekstrakurikuler 2</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200">{renderValueOrUnconnectedBadge(siswaProfile?.ekskul_2)}</span>
+          {/* Kartu Tugas Tambahan Struktural (KM / Sekretaris / Petugas Kelas) */}
+          <div className="space-y-2.5">
+            <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              Jabatan Fungsional Kelas Aktif
+            </span>
+            {(() => {
+              const assignments: any[] = (siswaProfile as any)?.assignments || (user as any)?.assignments || [];
+              if (assignments.length > 0) {
+                return (
+                  <div className="space-y-2">
+                    {assignments.map((assign: any) => {
+                      const isKm = assign.is_leader || (assign.custom_title || '').toLowerCase().includes('km');
+                      return (
+                        <div
+                          key={assign.id}
+                          className="p-3 rounded-xl bg-gradient-to-r from-violet-500/10 via-indigo-500/5 to-transparent border border-violet-200/80 dark:border-violet-800/60 flex items-start justify-between gap-3 shadow-2xs"
+                        >
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-violet-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs font-black">
+                              {isKm ? <Crown size={14} /> : <FileText size={14} />}
+                            </div>
+                            <div className="min-w-0 space-y-0.5">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
+                                  {assign.custom_title || assign.position_name || 'Petugas Kelas'}
+                                </h4>
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800 text-[9px] font-bold text-emerald-700 dark:text-emerald-300">
+                                  <ShieldCheck size={10} className="text-emerald-500" />
+                                  <span>Penetapan Wali Kelas</span>
+                                </span>
+                              </div>
+                              <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                                Rombel: <span className="font-bold text-slate-800 dark:text-slate-200">{assign.kelas_nama || currentClassName}</span> â€¢ TP: <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{assign.tahun_pelajaran || '2025/2026'}</span>
+                              </p>
+                              <p className="text-[10px] text-violet-700 dark:text-violet-300 font-medium">
+                                Wewenang: Akses resmi pengisian presensi harian &amp; jurnal KBM rombel.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
+              if ((siswaProfile as any)?.is_km || (siswaProfile as any)?.is_sekretaris || (siswaProfile as any)?.is_petugas_kelas) {
+                const title = (siswaProfile as any)?.petugas_title || ((siswaProfile as any)?.is_km ? 'Ketua Murid (KM)' : 'Sekretaris Kelas');
+                return (
+                  <div className="p-3 rounded-xl bg-violet-50/70 dark:bg-violet-950/30 border border-violet-200/80 dark:border-violet-800/60 flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-violet-600 text-white flex items-center justify-center shrink-0">
+                      <Crown size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">{title}</h4>
+                      <p className="text-[10px] text-slate-500">Kelas {currentClassName} â€¢ Petugas Absensi Resmi</p>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
+                  Belum ada jabatan struktural kelas yang ditetapkan oleh Wali Kelas untuk Tahun Pelajaran aktif.
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Rincian Organisasi & Ekstrakurikuler */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+            <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              Keanggotaan Organisasi &amp; Ekskul
+            </span>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800/60">
+                <span className="text-slate-400 block font-medium text-[10.5px]">Pengurus OSIS</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {renderValueOrUnconnectedBadge(siswaProfile?.is_osis ? 'Pengurus Aktif' : 'Bukan Pengurus')}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800/60">
+                <span className="text-slate-400 block font-medium text-[10.5px]">Anggota MPK</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {renderValueOrUnconnectedBadge(siswaProfile?.is_mpk ? 'Anggota Aktif' : 'Bukan Anggota')}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800/60">
+                <span className="text-slate-400 block font-medium text-[10.5px]">Koperasi Siswa</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {renderValueOrUnconnectedBadge((siswaProfile as any)?.is_anggota_koperasi ? 'Anggota Terdaftar' : 'Belum Terdaftar')}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800/60">
+                <span className="text-slate-400 block font-medium text-[10.5px]">Ekstrakurikuler</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 truncate block">
+                  {renderValueOrUnconnectedBadge(
+                    Array.isArray((siswaProfile as any)?.ekskuls) && (siswaProfile as any).ekskuls.length > 0
+                      ? (siswaProfile as any).ekskuls.join(', ')
+                      : siswaProfile?.ekskul_1 || siswaProfile?.ekskul_2 || '-'
+                  )}
+                </span>
+              </div>
             </div>
           </div>
         </div>

@@ -30,6 +30,8 @@ import {
   ShoppingCart,
   Sparkles,
   Briefcase,
+  Crown,
+  FileText,
 } from 'lucide-react';
 import type { StudentBadge, SiswaDisciplineItem, SiswaMonthStats } from './types';
 
@@ -448,10 +450,45 @@ export function useSiswaDashboardData(activeTab: string = 'ringkasan') {
       });
     }
 
-    if (isPetugasKelas) {
+    // Ambil assignment aktif dari profil atau user
+    const assignments: any[] = (siswaProfile as any)?.assignments || (user as any)?.assignments || [];
+    let hasSpecificPetugasBadge = false;
+
+    if (assignments.length > 0) {
+      assignments.forEach((a: any, idx: number) => {
+        const titleLower = (a.custom_title || a.position_name || '').toLowerCase();
+        if (a.is_leader || titleLower.includes('km') || titleLower.includes('ketua murid')) {
+          hasSpecificPetugasBadge = true;
+          list.push({
+            key: `assignment-km-${idx}`,
+            label: a.custom_title || 'Ketua Murid (KM)',
+            icon: Crown,
+            color: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30 font-black',
+          });
+        } else if (titleLower.includes('sekretaris')) {
+          hasSpecificPetugasBadge = true;
+          list.push({
+            key: `assignment-sec-${idx}`,
+            label: a.custom_title || 'Sekretaris Kelas',
+            icon: FileText,
+            color: 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30 font-black',
+          });
+        } else {
+          list.push({
+            key: `assignment-${idx}`,
+            label: a.custom_title || a.position_name || 'Petugas Kelas',
+            icon: Sparkles,
+            color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 font-black',
+          });
+        }
+      });
+    }
+
+    if (!hasSpecificPetugasBadge && isPetugasKelas) {
+      const fallbackTitle = (siswaProfile as any)?.petugas_title || 'Petugas Absensi Kelas';
       list.push({
         key: 'petugas_kelas',
-        label: 'Petugas Kelas',
+        label: fallbackTitle,
         icon: Sparkles,
         color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 font-black',
       });

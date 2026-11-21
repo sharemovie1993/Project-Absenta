@@ -378,6 +378,11 @@ export const SiswaDashboard: React.FC = () => {
                 <h2 className="text-xs font-black text-slate-900 dark:text-white truncate">
                   {data.studentName}
                 </h2>
+                {data.primaryRoleTitle && (
+                  <span className="inline-block px-1.5 py-0.5 mt-0.5 rounded text-[8.5px] font-bold bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 truncate max-w-full">
+                    {data.primaryRoleTitle}
+                  </span>
+                )}
               </div>
             </div>
 

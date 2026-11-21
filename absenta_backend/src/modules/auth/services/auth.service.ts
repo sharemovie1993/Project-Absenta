@@ -915,6 +915,48 @@ export class AuthService {
 
     const now = new Date();
 
+    // Attach active assignments (Tugas Tambahan & Jabatan Struktural Sekolah)
+    try {
+      const activeAssignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          user_id: user.id,
+          tenant_id: user.tenant_id,
+          is_active: true,
+          AND: [
+            { OR: [{ start_date: null }, { start_date: { lte: now } }] },
+            { OR: [{ end_date: null }, { end_date: { gte: now } }] },
+            activeTpId ? { OR: [{ tahun_pelajaran_id: null }, { tahun_pelajaran_id: activeTpId }] } : {},
+          ],
+        },
+        include: {
+          Position: { select: { id: true, code: true, name: true, scope_type: true } },
+          Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+          Unit: { select: { id: true, nama: true, singkatan: true, kode: true } },
+          TahunPelajaran: { select: { id: true, tahun: true, is_active: true } },
+        },
+        orderBy: [{ created_at: 'desc' }]
+      });
+
+      (response as any).assignments = activeAssignments.map((a: any) => ({
+        id: a.id,
+        position_id: a.position_id,
+        position_code: a.Position?.code,
+        position_name: a.Position?.name,
+        custom_title: a.custom_title,
+        is_leader: a.is_leader,
+        kelas_id: a.kelas_id,
+        kelas_nama: a.Kelas?.nama_kelas,
+        unit_id: a.unit_id,
+        unit_nama: a.Unit?.nama,
+        tahun_pelajaran_id: a.tahun_pelajaran_id,
+        tahun_pelajaran: a.TahunPelajaran?.tahun,
+        start_date: a.start_date,
+        end_date: a.end_date,
+      }));
+    } catch (e) {
+      console.warn('[AUTH] Failed to attach active assignments:', e);
+    }
+
     // Attach kaprog_jurusan if user has KAPROG position
     if (response.position_codes.includes('KAPROG')) {
       try {
