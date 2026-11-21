@@ -78,6 +78,7 @@ interface JadwalKegiatanFormModalProps {
   presetNama?: string;
   presetDay?: string;
   focusDay?: string;
+  conflictReferenceKegiatan?: JadwalKegiatanItem[];
   onClose: () => void;
   onSubmit: (payloads: JadwalKegiatanFormData[]) => Promise<void>;
 }
@@ -120,6 +121,7 @@ export default React.memo(function JadwalKegiatanFormModal({
   presetNama = '',
   presetDay = '',
   focusDay = '',
+  conflictReferenceKegiatan = [],
   onClose,
   onSubmit,
 }: JadwalKegiatanFormModalProps) {
@@ -415,6 +417,38 @@ export default React.memo(function JadwalKegiatanFormModal({
     }
   }, [activeFocusDay, focusScope, hari]);
 
+  // ── Conflict Check with Pembiasaan Kesiswaan ──
+  const conflictWarning = useMemo(() => {
+    const isEskul = jenisKegiatan === 'ESKUL' || (!nama.toLowerCase().includes('upacara') && !nama.toLowerCase().includes('ketarunaan') && !nama.toLowerCase().includes('apel') && !nama.toLowerCase().includes('duha'));
+    if (!isEskul || !conflictReferenceKegiatan || conflictReferenceKegiatan.length === 0) return null;
+
+    for (const p of conflictReferenceKegiatan) {
+      const pDays = parseArray(p.hari).map(h => h.toUpperCase());
+      const sharedDays = hari.filter(d => pDays.includes(d.toUpperCase()));
+      if (sharedDays.length === 0) continue;
+
+      for (const day of sharedDays) {
+        const dayTime = isMatrixMode && matrixSchedule[day] ? matrixSchedule[day] : { waktuMulai, waktuSelesai };
+        const propMulai = dayTime.waktuMulai ? dayTime.waktuMulai.slice(0, 5) : '07:00';
+        const propSelesai = dayTime.waktuSelesai && dayTime.waktuSelesai.trim() !== '' ? dayTime.waktuSelesai.slice(0, 5) : '23:59';
+
+        const pMulai = (p.waktu_mulai || '07:00').slice(0, 5);
+        const pSelesai = p.waktu_selesai && p.waktu_selesai.trim() !== '' ? p.waktu_selesai.slice(0, 5) : '23:59';
+
+        const isOverlap = propMulai < pSelesai && propSelesai > pMulai;
+        if (isOverlap) {
+          return {
+            kegiatanNama: p.nama,
+            day,
+            time: `${pMulai} – ${p.waktu_selesai || 'Selesai'}`,
+            proposedTime: `${propMulai} – ${dayTime.waktuSelesai || 'Selesai'}`,
+          };
+        }
+      }
+    }
+    return null;
+  }, [nama, jenisKegiatan, hari, isMatrixMode, matrixSchedule, waktuMulai, waktuSelesai, conflictReferenceKegiatan]);
+
   const otherDays = useMemo(() => {
     if (!activeFocusDay) return [];
     return hari.filter(d => d !== activeFocusDay);
@@ -671,6 +705,24 @@ export default React.memo(function JadwalKegiatanFormModal({
 
           {/* Section 1: Identitas Kegiatan */}
           <div className="space-y-4">
+            {/* Conflict Alert with Pembiasaan Kesiswaan */}
+            {conflictWarning && (
+              <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-300 dark:border-rose-900/70 flex items-start gap-3 text-rose-900 dark:text-rose-200 animate-in fade-in shadow-xs">
+                <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <div className="font-black text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
+                    <span>Bentrok dengan Kegiatan Kesiswaan Sekolah!</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    Hari <strong>{getDayOption(conflictWarning.day)?.label || conflictWarning.day}</strong> pada jam <strong>{conflictWarning.proposedTime}</strong> bertabrakan dengan kegiatan utama: <strong>{conflictWarning.kegiatanNama} ({conflictWarning.time})</strong>.
+                  </p>
+                  <p className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold italic">
+                    *Kegiatan kesiswaan/pembiasaan bersifat prioritas. Silakan atur jam latihan eskul di luar waktu kegiatan kesiswaan.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
               1. Identitas Kegiatan

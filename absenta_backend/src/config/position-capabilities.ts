@@ -442,6 +442,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.activities.grades.manage',
     'academic.activities.grades.view',
     'kesiswaan.schedules.view.list',
+    'kesiswaan.schedules.create',
+    'kesiswaan.schedules.update',
+    'attendance.schedules.view.list',
+    'attendance.schedules.create',
+    'attendance.schedules.update',
 
     // Sesi Presensi Latihan Eskul
     'attendance.sessions.view.list',

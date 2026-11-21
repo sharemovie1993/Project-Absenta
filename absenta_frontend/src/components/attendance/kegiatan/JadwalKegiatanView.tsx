@@ -717,6 +717,7 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
             presetNama={presetMasterNama}
             presetDay={presetDay}
             focusDay={focusDay}
+            conflictReferenceKegiatan={jadwalItems.filter(j => j.jenis_kegiatan === 'PEMBIASAAN' || (j.nama && (j.nama.toLowerCase().includes('ketarunaan') || j.nama.toLowerCase().includes('upacara') || j.nama.toLowerCase().includes('apel') || j.nama.toLowerCase().includes('duha'))))}
             onClose={handleCloseModal}
             onSubmit={handleFormSubmit}
           />

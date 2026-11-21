@@ -42,6 +42,71 @@ export class JadwalKegiatanService {
     }
   }
 
+  /**
+   * Validasi bentrok waktu antara jadwal ESKUL dengan kegiatan PEMBIASAAN kesiswaan.
+   * Aturan Bisnis:
+   * 1. Jadwal ESKUL TIDAK BOLEH bertabrakan waktu dengan kegiatan PEMBIASAAN kesiswaan
+   *    (Upacara, Ketarunaan, Apel, Duha).
+   * 2. Bentrok antar-ESKUL DIPERBOLEHKAN (paralel).
+   */
+  async validateEskulConflictWithPembiasaan(
+    tenantId: string,
+    nama: string,
+    jenisKegiatan: string,
+    hariList: Hari[],
+    waktuMulai: string,
+    waktuSelesai?: string | null,
+    currentId?: string
+  ) {
+    if (!hariList || hariList.length === 0 || !waktuMulai) return;
+
+    // Cek apakah jenis kegiatan ini tergolong ESKUL
+    let isEskul = jenisKegiatan === 'ESKUL';
+    if (!isEskul) {
+      const master = await prisma.jenisKegiatanMaster.findFirst({
+        where: {
+          tenant_id: tenantId,
+          nama: { equals: nama.trim(), mode: 'insensitive' },
+        },
+      });
+      isEskul = master?.tipe === 'ESKUL';
+    }
+
+    if (!isEskul) return; // Jika kegiatan kesiswaan/pembiasaan, lewati
+
+    const proposedMulai = waktuMulai.slice(0, 5);
+    const proposedSelesai = waktuSelesai && waktuSelesai.trim() !== '' ? waktuSelesai.slice(0, 5) : '23:59';
+
+    // Cari seluruh jadwal PEMBIASAAN aktif di tenant ini
+    const pembiasaans = await prisma.jadwalKegiatan.findMany({
+      where: {
+        tenant_id: tenantId,
+        aktif: true,
+        jenis_kegiatan: 'PEMBIASAAN',
+        ...(currentId ? { id: { not: currentId } } : {}),
+      },
+    });
+
+    for (const p of pembiasaans) {
+      // Cek apakah ada irisan hari
+      const sharedDays = p.hari.filter((d: Hari) => hariList.includes(d));
+      if (sharedDays.length === 0) continue;
+
+      const pMulai = p.waktu_mulai.slice(0, 5);
+      const pSelesai = p.waktu_selesai && p.waktu_selesai.trim() !== '' ? p.waktu_selesai.slice(0, 5) : '23:59';
+
+      // Overlap: (proposedMulai < pSelesai) && (proposedSelesai > pMulai)
+      const isOverlap = proposedMulai < pSelesai && proposedSelesai > pMulai;
+
+      if (isOverlap) {
+        const dayLabels = sharedDays.join(', ');
+        throw new Error(
+          `Jadwal eskul "${nama}" bentrok dengan kegiatan kesiswaan "${p.nama}" pada hari ${dayLabels} (${pMulai} - ${p.waktu_selesai || 'selesai'}). Silakan atur jam pelaksanaan di luar jadwal kesiswaan.`
+        );
+      }
+    }
+  }
+
   async getAll(scope: DataScope, activeOnly = false) {
     if (!scope.tenantId) throw new Error('Tenant ID required');
 
@@ -80,6 +145,15 @@ export class JadwalKegiatanService {
     const cleanMulai = input.waktu_mulai.slice(0, 5);
     const cleanSelesai = input.waktu_selesai ? input.waktu_selesai.slice(0, 5) : null;
 
+    await this.validateEskulConflictWithPembiasaan(
+      scope.tenantId,
+      input.nama,
+      input.jenis_kegiatan,
+      input.hari,
+      cleanMulai,
+      cleanSelesai
+    );
+
     let tpId = input.tahun_pelajaran_id;
     if (!tpId || tpId.trim() === '') {
       const activeTp = await prisma.tahunPelajaran.findFirst({
@@ -117,7 +191,27 @@ export class JadwalKegiatanService {
 
   async update(scope: DataScope, id: string, input: UpdateJadwalKegiatanInput) {
     // Pastikan record ada dan milik tenant tersebut
-    await this.getById(scope, id);
+    const existing = await this.getById(scope, id);
+
+    if (scope.tenantId) {
+      const targetNama = input.nama ?? existing.nama;
+      const targetJenis = input.jenis_kegiatan ?? existing.jenis_kegiatan;
+      const targetHari = input.hari ?? existing.hari;
+      const targetMulai = input.waktu_mulai ? input.waktu_mulai.slice(0, 5) : existing.waktu_mulai;
+      const targetSelesai = input.waktu_selesai !== undefined
+        ? (input.waktu_selesai ? input.waktu_selesai.slice(0, 5) : null)
+        : existing.waktu_selesai;
+
+      await this.validateEskulConflictWithPembiasaan(
+        scope.tenantId,
+        targetNama,
+        targetJenis,
+        targetHari,
+        targetMulai,
+        targetSelesai,
+        id
+      );
+    }
 
     const data: any = {};
     if (input.nama !== undefined) data.nama = input.nama;
