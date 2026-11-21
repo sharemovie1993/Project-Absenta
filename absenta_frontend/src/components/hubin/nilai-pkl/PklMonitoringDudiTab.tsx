@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   UserCheck,
   Check,
+  CheckCircle2,
   ChevronDown,
   Clock,
   X,
@@ -259,8 +260,9 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
 
       existing.totalSiswa += 1;
 
-      // Status penilaian DUDI dihitung dari hard_kompetensi_teknis
-      const hasDudiScore = s.hard_kompetensi_teknis !== null && s.hard_kompetensi_teknis !== undefined;
+      // Status penilaian DUDI dihitung dari nilai_akhir_pkl atau aspek teknis
+      const hasDudiScore = (s.nilai_akhir_pkl !== null && s.nilai_akhir_pkl !== undefined) ||
+        (s.hard_kompetensi_teknis !== null && s.hard_kompetensi_teknis !== undefined);
       if (hasDudiScore) {
         existing.sudahDinilai += 1;
         const aspects = [
@@ -358,11 +360,27 @@ export const PklMonitoringDudiTab: React.FC<PklMonitoringDudiTabProps> = React.m
     const senderName = user?.full_name || 'Ketua Program Keahlian';
     const deptName = activeJurusanNama || 'Kejuruan';
 
+    // Cari siswa bimbingan dari pembimbing ini yang belum selesai dinilai (adaptif)
+    const unassessedStudents = jurusanFilteredScores.filter((s) => {
+      const nama = s.pembimbing_nama ? s.pembimbing_nama.trim() : 'Belum Diploting';
+      if (nama !== pembimbing.nama) return false;
+      const isAssessed = (s.nilai_akhir_pkl !== null && s.nilai_akhir_pkl !== undefined) ||
+        (s.hard_kompetensi_teknis !== null && s.hard_kompetensi_teknis !== undefined);
+      return !isAssessed;
+    });
+
+    const studentListFormatted = unassessedStudents
+      .map((s, idx) => `  ${idx + 1}. *${s.nama_siswa}* (${s.nama_kelas || '-'} • ${s.mitra_nama || '-'})`)
+      .join('\n');
+
+    const studentListSection = studentListFormatted
+      ? `\n\n*Daftar Siswa Bimbingan yang Belum Dinilai (${unassessedStudents.length} siswa):*\n${studentListFormatted}\n`
+      : '';
+
     const message = `Yth. Bapak/Ibu *${pembimbing.nama}*,
 
 Mengingatkan perihal penginputan *Nilai Sidang & Capaian PKL* peserta didik Jurusan *${deptName}*.
-Saat ini tercatat masih ada *${pembimbing.belumDinilai} dari ${pembimbing.totalSiswa} siswa* bimbingan Anda yang belum tuntas dinilai.
-
+Saat ini tercatat masih ada *${pembimbing.belumDinilai} dari ${pembimbing.totalSiswa} siswa* bimbingan Anda yang belum tuntas dinilai.${studentListSection}
 Mohon kesediaannya untuk segera melengkapi penilaian melalui Meja Bimbingan / Menu Penilaian PKL pada aplikasi Absenta:
 ${window.location.origin}/dashboard?tab=pembimbing_pkl
 
@@ -378,7 +396,7 @@ Atas perhatian dan kerjasamanya, kami sampaikan terima kasih.
       defaultRecipientTarget: phone,
       defaultRecipientLabel: pembimbing.nama,
     });
-  }, [guruPhoneMap, user, activeJurusanNama]);
+  }, [guruPhoneMap, user, activeJurusanNama, jurusanFilteredScores]);
 
   // Handler: Colek Semua Pembimbing via Grup WA
   const handleColekSemuaPembimbingGrup = useCallback(() => {
@@ -781,18 +799,25 @@ Terima kasih.
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleColekSemuaPembimbingGrup}
-                className="h-7 px-2.5 text-[11px] font-bold gap-1.5 border-emerald-300 text-emerald-700 bg-emerald-50/60 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 shadow-2xs cursor-pointer"
-                title="Kirim pengingat input nilai sidang & PKL ke seluruh pembimbing via Grup WhatsApp"
-              >
-                <MessageSquare size={13} className="text-emerald-600 dark:text-emerald-400" />
-                <span className="hidden sm:inline">Colek Semua Pembimbing (Grup WA)</span>
-                <span className="sm:hidden">Colek Grup</span>
-              </Button>
+              {pembimbingSummaryList.some((p) => p.nama !== 'Belum Diploting' && p.belumDinilai > 0) ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleColekSemuaPembimbingGrup}
+                  className="h-7 px-2.5 text-[11px] font-bold gap-1.5 border-emerald-300 text-emerald-700 bg-emerald-50/60 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 shadow-2xs cursor-pointer"
+                  title="Kirim pengingat input nilai sidang & PKL ke pembimbing yang belum tuntas via Grup WhatsApp"
+                >
+                  <MessageSquare size={13} className="text-emerald-600 dark:text-emerald-400" />
+                  <span className="hidden sm:inline">Colek Semua Pembimbing (Grup WA)</span>
+                  <span className="sm:hidden">Colek Grup</span>
+                </Button>
+              ) : (
+                <div className="h-7 px-2.5 text-[11px] font-bold gap-1.5 rounded-lg border border-emerald-300/80 bg-emerald-100/50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 flex items-center shadow-2xs select-none">
+                  <CheckCircle2 size={13} className="text-emerald-600 dark:text-emerald-400" />
+                  <span>Semua Pembimbing Tuntas ✓</span>
+                </div>
+              )}
 
               {selectedPembimbing !== 'ALL' && (
                 <button
@@ -864,18 +889,28 @@ Terima kasih.
                     <span>Avg Nilai: <strong className="text-slate-700 dark:text-slate-200">{pembimbing.avgNilai}</strong></span>
                     <div className="flex items-center gap-1.5">
                       {pembimbing.nama !== 'Belum Diploting' && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleColekPembimbing(pembimbing);
-                          }}
-                          className="px-1.5 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[9.5px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-                          title={`Colek WhatsApp ${pembimbing.nama} untuk pengingat nilai sidang & PKL`}
-                        >
-                          <MessageCircle size={10} className="text-emerald-600 dark:text-emerald-400" />
-                          <span>Colek WA</span>
-                        </button>
+                        pembimbing.belumDinilai > 0 ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleColekPembimbing(pembimbing);
+                            }}
+                            className="px-1.5 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[9.5px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                            title={`Colek WhatsApp ${pembimbing.nama} untuk ${pembimbing.belumDinilai} siswa yang belum dinilai`}
+                          >
+                            <MessageCircle size={10} className="text-emerald-600 dark:text-emerald-400" />
+                            <span>Colek WA ({pembimbing.belumDinilai})</span>
+                          </button>
+                        ) : (
+                          <span
+                            className="px-1.5 py-0.5 rounded-md bg-emerald-100/70 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700 text-[9px] font-bold flex items-center gap-1 cursor-default select-none shadow-2xs"
+                            title={`Luar biasa! Seluruh ${pembimbing.totalSiswa} siswa bimbingan telah tuntas dinilai.`}
+                          >
+                            <CheckCircle2 size={10} className="text-emerald-600 dark:text-emerald-400" />
+                            <span>Tuntas ✓</span>
+                          </span>
+                        )
                       )}
                       {isSelected && (
                         <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
@@ -1149,7 +1184,7 @@ Terima kasih.
                     mergedScore.soft_kejujuran, mergedScore.soft_tanggung_jawab
                   ].filter((v): v is number => typeof v === 'number' && v !== null);
                   const studentAvg = aspects.length > 0 ? (aspects.reduce((a, b) => a + b, 0) / aspects.length).toFixed(1) : '-';
-                  const hasDudiScore = aspects.length > 0;
+                  const hasDudiScore = (mergedScore.nilai_akhir_pkl !== null && mergedScore.nilai_akhir_pkl !== undefined) || aspects.length > 0;
 
                   const aspectColumns: Array<{ key: keyof ScoreRow; title: string }> = [
                     { key: 'hard_kompetensi_teknis', title: 'Kompetensi Teknis' },

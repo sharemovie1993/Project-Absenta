@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   UserCheck,
   Check,
+  CheckCircle2,
   ChevronDown,
   Clock,
   X,
@@ -339,11 +340,26 @@ export const PklMonitoringSidangTab: React.FC<PklMonitoringSidangTabProps> = Rea
     const senderName = user?.full_name || 'Ketua Program Keahlian';
     const deptName = activeJurusanNama || 'Kejuruan';
 
+    // Cari siswa uji sidang dari penguji ini yang belum dinilai (adaptif)
+    const unassessedStudents = jurusanFilteredScores.filter((s) => {
+      const nama = s.penguji_nama ? s.penguji_nama.trim() : 'Belum Diploting';
+      if (nama !== penguji.nama) return false;
+      const hasScore = s.nilai_sidang !== null && s.nilai_sidang !== undefined && s.nilai_sidang !== '';
+      return !hasScore;
+    });
+
+    const studentListFormatted = unassessedStudents
+      .map((s, idx) => `  ${idx + 1}. *${s.nama_siswa}* (${s.nama_kelas || '-'} • ${s.mitra_nama || '-'})`)
+      .join('\n');
+
+    const studentListSection = studentListFormatted
+      ? `\n\n*Daftar Siswa Uji Sidang yang Belum Dinilai (${unassessedStudents.length} siswa):*\n${studentListFormatted}\n`
+      : '';
+
     const message = `Yth. Bapak/Ibu *${penguji.nama}*,
 
 Mengingatkan perihal penginputan *Nilai Sidang PKL* peserta didik Jurusan *${deptName}*.
-Saat ini tercatat masih ada *${penguji.belumDinilai} dari ${penguji.totalSiswa} siswa* uji sidang Anda yang belum tuntas dinilai.
-
+Saat ini tercatat masih ada *${penguji.belumDinilai} dari ${penguji.totalSiswa} siswa* uji sidang Anda yang belum tuntas dinilai.${studentListSection}
 Mohon kesediaannya untuk segera melengkapi penilaian melalui Meja Penguji / Menu Sidang PKL pada aplikasi Absenta:
 ${window.location.origin}/dashboard?tab=penguji_pkl
 
@@ -359,7 +375,7 @@ Atas perhatian dan kerjasamanya, kami sampaikan terima kasih.
       defaultRecipientTarget: phone,
       defaultRecipientLabel: penguji.nama,
     });
-  }, [guruPhoneMap, user, activeJurusanNama]);
+  }, [guruPhoneMap, user, activeJurusanNama, jurusanFilteredScores]);
 
   // Handler: Colek Semua Penguji via Grup WA
   const handleColekSemuaPengujiGrup = useCallback(() => {
@@ -676,18 +692,25 @@ Terima kasih.
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleColekSemuaPengujiGrup}
-                className="h-7 px-2.5 text-[11px] font-bold gap-1.5 border-indigo-300 text-indigo-700 bg-indigo-50/60 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 shadow-2xs cursor-pointer"
-                title="Kirim pengingat input nilai sidang PKL ke seluruh penguji via Grup WhatsApp"
-              >
-                <MessageSquare size={13} className="text-indigo-600 dark:text-indigo-400" />
-                <span className="hidden sm:inline">Colek Semua Penguji (Grup WA)</span>
-                <span className="sm:hidden">Colek Grup</span>
-              </Button>
+              {pengujiSummaryList.some((p) => p.nama !== 'Belum Diploting' && p.belumDinilai > 0) ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleColekSemuaPengujiGrup}
+                  className="h-7 px-2.5 text-[11px] font-bold gap-1.5 border-indigo-300 text-indigo-700 bg-indigo-50/60 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 shadow-2xs cursor-pointer"
+                  title="Kirim pengingat input nilai sidang PKL ke penguji yang belum tuntas via Grup WhatsApp"
+                >
+                  <MessageSquare size={13} className="text-indigo-600 dark:text-indigo-400" />
+                  <span className="hidden sm:inline">Colek Semua Penguji (Grup WA)</span>
+                  <span className="sm:hidden">Colek Grup</span>
+                </Button>
+              ) : (
+                <div className="h-7 px-2.5 text-[11px] font-bold gap-1.5 rounded-lg border border-indigo-300/80 bg-indigo-100/50 text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300 flex items-center shadow-2xs select-none">
+                  <CheckCircle2 size={13} className="text-indigo-600 dark:text-indigo-400" />
+                  <span>Semua Penguji Tuntas ✓</span>
+                </div>
+              )}
 
               {selectedPenguji !== 'ALL' && (
                 <button
@@ -765,18 +788,28 @@ Terima kasih.
                     </div>
                     <div className="flex items-center gap-1">
                       {penguji.nama !== 'Belum Diploting' && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleColekPenguji(penguji);
-                          }}
-                          className="px-1.5 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 text-[9.5px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-                          title={`Colek WhatsApp ${penguji.nama} untuk pengingat nilai sidang PKL`}
-                        >
-                          <MessageCircle size={10} className="text-indigo-600 dark:text-indigo-400" />
-                          <span>Colek WA</span>
-                        </button>
+                        penguji.belumDinilai > 0 ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleColekPenguji(penguji);
+                            }}
+                            className="px-1.5 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 text-[9.5px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                            title={`Colek WhatsApp ${penguji.nama} untuk ${penguji.belumDinilai} siswa yang belum dinilai sidang`}
+                          >
+                            <MessageCircle size={10} className="text-indigo-600 dark:text-indigo-400" />
+                            <span>Colek WA ({penguji.belumDinilai})</span>
+                          </button>
+                        ) : (
+                          <span
+                            className="px-1.5 py-0.5 rounded-md bg-emerald-100/70 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700 text-[9px] font-bold flex items-center gap-1 cursor-default select-none shadow-2xs"
+                            title={`Luar biasa! Seluruh ${penguji.totalSiswa} siswa sidang telah tuntas dinilai.`}
+                          >
+                            <CheckCircle2 size={10} className="text-emerald-600 dark:text-emerald-400" />
+                            <span>Tuntas ✓</span>
+                          </span>
+                        )
                       )}
                       {isSelected && (
                         <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">
