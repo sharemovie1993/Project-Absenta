@@ -40,7 +40,6 @@ import { cn } from '@/lib/utils';
 import { isModuleUnlocked } from '@/utils/subscriptionUtils';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
-import { SharedAttendanceTimeline } from '../SharedAttendanceTimeline';
 import {
   type CalendarDayDetail,
   type CalendarStatistik,
@@ -594,22 +593,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
       </SectionCard>
 
-      {/* ── 5. DETAILED TIMELINE SESI JAM PELAJARAN HARI TERPILIH ── */}
-      <SectionCard fullWidth className="p-3 sm:p-5 flex flex-col w-full min-w-0">
-        <SharedAttendanceTimeline
-          title={`Linimasa Detail Kronologis: ${tanggal}`}
-          selectedDate={tanggal}
-          items={result?.kegiatan || []}
-          isLoading={loading}
-          emptyDescription={
-            selectedSiswaId
-              ? 'Tidak ada rincian aktivitas tercatat untuk tanggal ini.'
-              : 'Pilih siswa untuk melihat timeline aktivitas.'
-          }
-        />
-      </SectionCard>
-
-      {/* ── 6. MODAL CETAK WYSIWYG & PDF EXPORT ── */}
+      {/* ── 5. MODAL CETAK WYSIWYG & PDF EXPORT ── */}
       {isPrintModalOpen && (
         <Suspense fallback={null}>
           <TrackingSiswaPrintModal
