@@ -39,7 +39,10 @@ export interface MigrationManifest {
     durasi_smk?: string | null;
     [key: string]: any;
   };
+  backup_mode?: BackupBundleMode;
   options: {
+    backup_mode?: BackupBundleMode;
+    include_database?: boolean;
     include_attendance: boolean;
     include_media: boolean;
   };
@@ -55,7 +58,11 @@ export interface MigrationManifest {
   checksum_sha256?: string;
 }
 
+export type BackupBundleMode = 'FULL' | 'DATABASE_ONLY' | 'MEDIA_ONLY';
+
 export interface ExportBundleOptions {
+  mode?: BackupBundleMode;
+  includeDatabase?: boolean;
   includeAttendance?: boolean;
   includeMedia?: boolean;
 }
@@ -75,11 +82,14 @@ export interface ExportProgressUpdate {
   message: string;
 }
 
+export type RestoreBundleMode = 'AUTO' | 'FULL' | 'DATABASE_ONLY' | 'MEDIA_ONLY';
+
 export interface RestoreBundleOptions {
   targetTenantId?: string;
   targetSubdomain?: string;
   targetName?: string;
   cloneMode?: boolean;
+  restoreMode?: RestoreBundleMode;
   isInitialFreshSetup?: boolean;
   clearExisting?: boolean;
 }
@@ -351,15 +361,24 @@ export class MigrationBundleService {
       }
     };
 
+    const mode: BackupBundleMode = options.mode || (
+      options.includeMedia === false ? 'DATABASE_ONLY' :
+      options.includeDatabase === false ? 'MEDIA_ONLY' : 'FULL'
+    );
+    const includeDatabase = options.includeDatabase ?? (mode !== 'MEDIA_ONLY');
+    const includeMedia = options.includeMedia ?? (mode !== 'DATABASE_ONLY');
     const includeAttendance = options.includeAttendance !== false;
-    const includeMedia = options.includeMedia !== false;
 
     reportProgress({
       stage: 'init',
       processed: 0,
       total: 100,
       percentage: 5,
-      message: 'Menyiapkan metadata tenant...'
+      message: mode === 'DATABASE_ONLY'
+        ? 'Menyiapkan metadata pencadangan Basis Data...'
+        : mode === 'MEDIA_ONLY'
+          ? 'Menyiapkan metadata pencadangan Berkas Media...'
+          : 'Menyiapkan metadata pencadangan Lengkap...'
     });
 
     const tenant = await this.prisma.tenant.findUnique({
@@ -397,12 +416,13 @@ export class MigrationBundleService {
       }
     }
 
-    // Simpan juga record Tenant ke dalam dataTables['Tenant']
+    // Simpan selalu record Tenant ke dalam dataTables['Tenant'] sebagai identitas paket
     const cleanTenant: Record<string, any> = {};
     for (const [k, v] of Object.entries(tenant)) {
       cleanTenant[k] = typeof v === 'bigint' ? (v as any).toString() : v;
     }
     dataTables['Tenant'] = [cleanTenant];
+    totalRecords += 1;
 
     let modelIdx = 0;
     const totalModels = models.length;
@@ -416,7 +436,9 @@ export class MigrationBundleService {
           processed: modelIdx,
           total: totalModels,
           percentage: pct,
-          message: `Mengekstrak data tabel ${modelName} (${modelIdx}/${totalModels})...`
+          message: includeDatabase
+            ? `Mengekstrak data tabel ${modelName} (${modelIdx}/${totalModels})...`
+            : `Memindai referensi berkas ${modelName} (${modelIdx}/${totalModels})...`
         });
       }
 
@@ -437,26 +459,37 @@ export class MigrationBundleService {
         });
 
         if (Array.isArray(rows) && rows.length > 0) {
-          // Serialize bigints & collect media URLs
-          const serializedRows = rows.map((r: any) => {
-            const clean: Record<string, any> = {};
-            for (const [k, v] of Object.entries(r)) {
-              clean[k] = typeof v === 'bigint' ? v.toString() : v;
+          if (includeDatabase) {
+            // Serialize bigints & collect media URLs
+            const serializedRows = rows.map((r: any) => {
+              const clean: Record<string, any> = {};
+              for (const [k, v] of Object.entries(r)) {
+                clean[k] = typeof v === 'bigint' ? v.toString() : v;
 
-              if (includeMedia) {
+                if (includeMedia) {
+                  for (const mk of extractMediaKeysFromValue(v, k)) {
+                    mediaKeysToCollect.add(mk);
+                  }
+                }
+              }
+              return clean;
+            });
+
+            dataTables[modelName] = serializedRows;
+            totalRecords += serializedRows.length;
+          } else if (includeMedia) {
+            // Mode MEDIA_ONLY: hanya kumpulkan URL media tanpa menyimpan data tabel ke zip
+            for (const r of rows) {
+              for (const [k, v] of Object.entries(r)) {
                 for (const mk of extractMediaKeysFromValue(v, k)) {
                   mediaKeysToCollect.add(mk);
                 }
               }
             }
-            return clean;
-          });
-
-          dataTables[modelName] = serializedRows;
-          totalRecords += serializedRows.length;
+          }
         }
       } catch (err: any) {
-        console.warn(`[MigrationBundle] Gagal mengekspor model ${modelName}:`, err.message);
+        console.warn(`[MigrationBundle] Gagal memproses model ${modelName}:`, err.message);
       }
     }
 
@@ -583,7 +616,10 @@ export class MigrationBundleService {
         hari_sekolah: tenant.hari_sekolah,
         durasi_smk: tenant.durasi_smk,
       },
+      backup_mode: mode,
       options: {
+        backup_mode: mode,
+        include_database: includeDatabase,
         include_attendance: includeAttendance,
         include_media: includeMedia
       },
@@ -603,7 +639,8 @@ export class MigrationBundleService {
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const safeSubdomain = tenant.subdomain || tenant.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    const filename = `absenta_backup_${safeSubdomain}_${timestamp}.absenta`;
+    const modeSuffix = mode === 'DATABASE_ONLY' ? 'db' : mode === 'MEDIA_ONLY' ? 'media' : 'full';
+    const filename = `absenta_backup_${safeSubdomain}_${modeSuffix}_${timestamp}.absenta`;
     const tempFilePath = path.join(os.tmpdir(), `${filename}_${crypto.randomBytes(4).toString('hex')}.tmp`);
 
     reportProgress({
@@ -733,6 +770,35 @@ export class MigrationBundleService {
     }
 
     const dataTables = JSON.parse(dbEntry.getData().toString('utf8')) as Record<string, any[]>;
+
+    const manifestMode: BackupBundleMode = 
+      manifest.backup_mode || 
+      manifest.options?.backup_mode || 
+      (manifest.stats?.total_media_files > 0 ? (manifest.stats?.total_records > 1 ? 'FULL' : 'MEDIA_ONLY') : 'DATABASE_ONLY');
+
+    const requestedRestoreMode = options.restoreMode || 'AUTO';
+    let effectiveRestoreMode: 'FULL' | 'DATABASE_ONLY' | 'MEDIA_ONLY';
+
+    if (requestedRestoreMode === 'AUTO') {
+      effectiveRestoreMode = manifestMode;
+    } else {
+      if (requestedRestoreMode === 'MEDIA_ONLY' && manifestMode === 'DATABASE_ONLY') {
+        const err: any = new Error('Paket cadangan ini hanya berisi "Basis Data" (DATABASE_ONLY) dan tidak memiliki berkas media fisik untuk dipulihkan.');
+        err.statusCode = 400;
+        throw err;
+      }
+      if (requestedRestoreMode === 'DATABASE_ONLY' && manifestMode === 'MEDIA_ONLY') {
+        const err: any = new Error('Paket cadangan ini hanya berisi "Berkas Media" (MEDIA_ONLY) dan tidak memiliki tabel basis data untuk dipulihkan.');
+        err.statusCode = 400;
+        throw err;
+      }
+      effectiveRestoreMode = requestedRestoreMode;
+    }
+
+    const shouldRestoreDatabase = effectiveRestoreMode === 'FULL' || effectiveRestoreMode === 'DATABASE_ONLY';
+    const shouldRestoreMedia = effectiveRestoreMode === 'FULL' || effectiveRestoreMode === 'MEDIA_ONLY';
+
+    console.log(`[MigrationBundle] Memulai pemulihan (mode paket: ${manifestMode}, mode pemulihan: ${effectiveRestoreMode}).`);
 
     const sourceTenant = manifest.source_tenant || ({} as any);
     const tenantTableRecord = (dataTables['Tenant'] && dataTables['Tenant'][0]) || {};
@@ -980,216 +1046,228 @@ export class MigrationBundleService {
     const models = getDynamicTenantModels();
     const restoredCounts: Record<string, number> = {};
 
-    const totalModels = models.filter(m => Array.isArray(dataTables[m]) && dataTables[m].length > 0).length;
+    const totalModels = shouldRestoreDatabase
+      ? models.filter(m => Array.isArray(dataTables[m]) && dataTables[m].length > 0).length
+      : 0;
     let modelIndex = 0;
 
-    // Restore Database Models
-    for (const modelName of models) {
-      if (isCloning && skipModelsOnClone.has(modelName)) continue;
+    // Restore Database Models jika mode mengizinkan
+    if (shouldRestoreDatabase) {
+      for (const modelName of models) {
+        if (isCloning && skipModelsOnClone.has(modelName)) continue;
 
-      let rows: any[] | undefined = dataTables[modelName];
-      if (!rows) {
-        const matchedKey = Object.keys(dataTables).find(k => k.toLowerCase() === modelName.toLowerCase());
-        if (matchedKey) rows = dataTables[matchedKey];
-      }
+        let rows: any[] | undefined = dataTables[modelName];
+        if (!rows) {
+          const matchedKey = Object.keys(dataTables).find(k => k.toLowerCase() === modelName.toLowerCase());
+          if (matchedKey) rows = dataTables[matchedKey];
+        }
 
-      if (!Array.isArray(rows) || rows.length === 0) continue;
+        if (!Array.isArray(rows) || rows.length === 0) continue;
 
-      modelIndex++;
-      const currentPct = 20 + Math.round((modelIndex / Math.max(totalModels, 1)) * 50);
+        modelIndex++;
+        const currentPct = 20 + Math.round((modelIndex / Math.max(totalModels, 1)) * 50);
 
-      reportProgress({
-        stage: 'database',
-        model: modelName,
-        processed: modelIndex,
-        total: totalModels,
-        percentage: currentPct,
-        message: `Memulihkan tabel ${modelName} (${rows.length} data)...`
-      });
+        reportProgress({
+          stage: 'database',
+          model: modelName,
+          processed: modelIndex,
+          total: totalModels,
+          percentage: currentPct,
+          message: `Memulihkan tabel ${modelName} (${rows.length} data)...`
+        });
 
-      // @ts-ignore
-      const pModel = this.prisma[modelName];
-      if (!pModel) continue;
+        // @ts-ignore
+        const pModel = this.prisma[modelName];
+        if (!pModel) continue;
 
-      let count = 0;
-      const CHUNK_SIZE = 25;
-      for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
-        const chunk = rows.slice(i, i + CHUNK_SIZE);
-        await Promise.all(
-          chunk.map(async (rawRow: any) => {
-            try {
-              // Penanganan khusus Role saat cloning: gunakan ulang role jika nama sudah ada pada tenant target
-              if (isCloning && modelName === 'Role' && rawRow.name) {
-                const existingRole = await this.prisma.role.findFirst({
-                  where: {
-                    OR: [
-                      { tenant_id: effectiveTenantId, name: rawRow.name },
-                      { tenant_id: null, name: rawRow.name }
-                    ]
-                  }
-                });
-                if (existingRole) {
-                  if (typeof rawRow.id === 'string') {
-                    idMap.set(rawRow.id, existingRole.id);
-                  }
-                  count++;
-                  return;
-                }
-              }
-
-              const cleanData = sanitizeRowForModel(modelName, rawRow, effectiveTenantId, cloneCtx);
-
-              // Perlakuan khusus tabel Config agar tidak duplikat untuk key yang sama
-              if (modelName === 'Config' && cleanData.key) {
-                const existingConfig = await this.prisma.config.findFirst({
-                  where: { tenant_id: effectiveTenantId, key: cleanData.key }
-                });
-                if (existingConfig) {
-                  await this.prisma.config.update({
-                    where: { id: existingConfig.id },
-                    data: {
-                      value: cleanData.value,
-                      description: cleanData.description
-                    }
-                  });
-                  count++;
-                  return;
-                }
-              }
-
-              // Perlakuan khusus model 1:1 per tenant saat cloning ke tenant yang sudah sempat terinisialisasi
-              if (isCloning && modelName === 'StudentCardConfig') {
-                await this.prisma.studentCardConfig.upsert({
-                  where: { tenant_id: effectiveTenantId },
-                  update: cleanData,
-                  create: cleanData as any
-                });
-                count++;
-                return;
-              }
-              if (isCloning && modelName === 'ShuConfig') {
-                await this.prisma.shuConfig.upsert({
-                  where: { tenantId: effectiveTenantId },
-                  update: cleanData,
-                  create: cleanData as any
-                });
-                count++;
-                return;
-              }
-
-              if (isCloning) {
-                await pModel.create({ data: cleanData });
-              } else {
-                const uniqueWhere = buildModelUniqueWhere(modelName, cleanData);
-                if (uniqueWhere) {
-                  await pModel.upsert({
-                    where: uniqueWhere,
-                    update: cleanData,
-                    create: cleanData
-                  });
-                } else {
-                  await pModel.create({ data: cleanData });
-                }
-              }
-              count++;
-            } catch (err: any) {
-              // Retry jika terjadi foreign key mismatch pada user/relasi sekunder
+        let count = 0;
+        const CHUNK_SIZE = 25;
+        for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+          const chunk = rows.slice(i, i + CHUNK_SIZE);
+          await Promise.all(
+            chunk.map(async (rawRow: any) => {
               try {
-                const cleanData = sanitizeRowForModel(modelName, rawRow, effectiveTenantId, cloneCtx);
-                if (cleanData.uploaded_by_user_id || cleanData.created_by_user_id || cleanData.supervisor_id) {
-                  delete cleanData.uploaded_by_user_id;
-                  delete cleanData.created_by_user_id;
-                  delete cleanData.supervisor_id;
-                  if (isCloning) {
-                    await pModel.create({ data: cleanData });
-                  } else {
-                    const retryWhere = buildModelUniqueWhere(modelName, cleanData);
-                    if (retryWhere) {
-                      await pModel.upsert({
-                        where: retryWhere,
-                        update: cleanData,
-                        create: cleanData
-                      });
-                    } else {
-                      await pModel.create({ data: cleanData });
+                // Penanganan khusus Role saat cloning: gunakan ulang role jika nama sudah ada pada tenant target
+                if (isCloning && modelName === 'Role' && rawRow.name) {
+                  const existingRole = await this.prisma.role.findFirst({
+                    where: {
+                      OR: [
+                        { tenant_id: effectiveTenantId, name: rawRow.name },
+                        { tenant_id: null, name: rawRow.name }
+                      ]
                     }
+                  });
+                  if (existingRole) {
+                    if (typeof rawRow.id === 'string') {
+                      idMap.set(rawRow.id, existingRole.id);
+                    }
+                    count++;
+                    return;
                   }
-                  count++;
-                } else {
-                  console.warn(`[MigrationBundle] Notice inserting ${modelName}:`, err?.message);
                 }
-              } catch (retryErr: any) {
-                console.warn(`[MigrationBundle] Notice retry ${modelName}:`, retryErr?.message);
+
+                const cleanData = sanitizeRowForModel(modelName, rawRow, effectiveTenantId, cloneCtx);
+
+                // Perlakuan khusus tabel Config agar tidak duplikat untuk key yang sama
+                if (modelName === 'Config' && cleanData.key) {
+                  const existingConfig = await this.prisma.config.findFirst({
+                    where: { tenant_id: effectiveTenantId, key: cleanData.key }
+                  });
+                  if (existingConfig) {
+                    await this.prisma.config.update({
+                      where: { id: existingConfig.id },
+                      data: {
+                        value: cleanData.value,
+                        description: cleanData.description
+                      }
+                    });
+                    count++;
+                    return;
+                  }
+                }
+
+                // Perlakuan khusus model 1:1 per tenant saat cloning ke tenant yang sudah sempat terinisialisasi
+                if (isCloning && modelName === 'StudentCardConfig') {
+                  await this.prisma.studentCardConfig.upsert({
+                    where: { tenant_id: effectiveTenantId },
+                    update: cleanData,
+                    create: cleanData as any
+                  });
+                  count++;
+                  return;
+                }
+                if (isCloning && modelName === 'ShuConfig') {
+                  await this.prisma.shuConfig.upsert({
+                    where: { tenantId: effectiveTenantId },
+                    update: cleanData,
+                    create: cleanData as any
+                  });
+                  count++;
+                  return;
+                }
+
+                if (isCloning) {
+                  await pModel.create({ data: cleanData });
+                } else {
+                  const uniqueWhere = buildModelUniqueWhere(modelName, cleanData);
+                  if (uniqueWhere) {
+                    await pModel.upsert({
+                      where: uniqueWhere,
+                      update: cleanData,
+                      create: cleanData
+                    });
+                  } else {
+                    await pModel.create({ data: cleanData });
+                  }
+                }
+                count++;
+              } catch (err: any) {
+                // Retry jika terjadi foreign key mismatch pada user/relasi sekunder
+                try {
+                  const cleanData = sanitizeRowForModel(modelName, rawRow, effectiveTenantId, cloneCtx);
+                  if (cleanData.uploaded_by_user_id || cleanData.created_by_user_id || cleanData.supervisor_id) {
+                    delete cleanData.uploaded_by_user_id;
+                    delete cleanData.created_by_user_id;
+                    delete cleanData.supervisor_id;
+                    if (isCloning) {
+                      await pModel.create({ data: cleanData });
+                    } else {
+                      const retryWhere = buildModelUniqueWhere(modelName, cleanData);
+                      if (retryWhere) {
+                        await pModel.upsert({
+                          where: retryWhere,
+                          update: cleanData,
+                          create: cleanData
+                        });
+                      } else {
+                        await pModel.create({ data: cleanData });
+                      }
+                    }
+                    count++;
+                  } else {
+                    console.warn(`[MigrationBundle] Notice inserting ${modelName}:`, err?.message);
+                  }
+                } catch (retryErr: any) {
+                  console.warn(`[MigrationBundle] Notice retry ${modelName}:`, retryErr?.message);
+                }
               }
-            }
-          })
-        );
+            })
+          );
+        }
+        restoredCounts[modelName] = count;
       }
-      restoredCounts[modelName] = count;
+    } else {
+      console.log(`[MigrationBundle] Melewati pemulihan model database (mode: ${effectiveRestoreMode}). Profil tenant tetap terverifikasi.`);
     }
 
-    // Restore Media Storage jika ada
-    reportProgress({
-      stage: 'storage',
-      processed: 0,
-      total: 100,
-      percentage: 75,
-      message: 'Memulihkan file media dan dokumen ke Object Storage MinIO...'
-    });
-
+    // Restore Media Storage jika ada dan mode mengizinkan
     const entries = zip.getEntries();
-    const mediaEntries = entries.filter((e: any) => 
-      !e.isDirectory && (e.entryName.startsWith('media/') || e.entryName.startsWith('storage/'))
-    );
+    const mediaEntries = shouldRestoreMedia
+      ? entries.filter((e: any) => 
+          !e.isDirectory && (e.entryName.startsWith('media/') || e.entryName.startsWith('storage/'))
+        )
+      : [];
 
     let mediaProcessed = 0;
-    for (const entry of mediaEntries) {
-      try {
-        let storageKey: string;
-        if (entry.entryName.startsWith('media/')) {
-          storageKey = entry.entryName.substring('media/'.length);
-        } else if (entry.entryName.startsWith('storage/storage/')) {
-          storageKey = entry.entryName.substring('storage/'.length);
-        } else if (entry.entryName.startsWith('storage/uploads/')) {
-          storageKey = entry.entryName.substring('storage/'.length);
-        } else if (entry.entryName.startsWith('storage/tenants/')) {
-          storageKey = entry.entryName.substring('storage/'.length);
-        } else {
-          storageKey = entry.entryName.replace(/^storage\//, '');
+    if (shouldRestoreMedia && mediaEntries.length > 0) {
+      reportProgress({
+        stage: 'storage',
+        processed: 0,
+        total: 100,
+        percentage: 75,
+        message: 'Memulihkan file media dan dokumen ke Object Storage MinIO...'
+      });
+
+      for (const entry of mediaEntries) {
+        try {
+          let storageKey: string;
+          if (entry.entryName.startsWith('media/')) {
+            storageKey = entry.entryName.substring('media/'.length);
+          } else if (entry.entryName.startsWith('storage/storage/')) {
+            storageKey = entry.entryName.substring('storage/'.length);
+          } else if (entry.entryName.startsWith('storage/uploads/')) {
+            storageKey = entry.entryName.substring('storage/'.length);
+          } else if (entry.entryName.startsWith('storage/tenants/')) {
+            storageKey = entry.entryName.substring('storage/'.length);
+          } else {
+            storageKey = entry.entryName.replace(/^storage\//, '');
+          }
+
+          if (isCloning && sourceTenantId && UUID_PATTERN.test(sourceTenantId) && storageKey.includes(sourceTenantId)) {
+            storageKey = storageKey.split(sourceTenantId).join(effectiveTenantId);
+          }
+
+          const fileData = entry.getData();
+          const contentType = getContentTypeFromKey(storageKey);
+          await storageService.uploadBuffer(storageKey, fileData, { contentType });
+
+          // Kompatibilitas ganda: dukung path dengan dan tanpa awalan 'storage/'
+          if (storageKey.startsWith('storage/documents/')) {
+            const altKey = storageKey.replace(/^storage\//, '');
+            await storageService.uploadBuffer(altKey, fileData, { contentType }).catch(() => {});
+          } else if (storageKey.startsWith('documents/')) {
+            const altKey = `storage/${storageKey}`;
+            await storageService.uploadBuffer(altKey, fileData, { contentType }).catch(() => {});
+          }
+
+          mediaProcessed++;
+
+          if (mediaProcessed % 10 === 0 || mediaProcessed === mediaEntries.length) {
+            const storagePct = 75 + Math.round((mediaProcessed / Math.max(mediaEntries.length, 1)) * 20);
+            reportProgress({
+              stage: 'storage',
+              processed: mediaProcessed,
+              total: mediaEntries.length,
+              percentage: Math.min(storagePct, 95),
+              message: `Memulihkan media: ${mediaProcessed}/${mediaEntries.length} file...`
+            });
+          }
+        } catch (err: any) {
+          console.warn(`[MigrationBundle] Gagal restore media ${entry.entryName}:`, err.message);
         }
-
-        if (isCloning && sourceTenantId && UUID_PATTERN.test(sourceTenantId) && storageKey.includes(sourceTenantId)) {
-          storageKey = storageKey.split(sourceTenantId).join(effectiveTenantId);
-        }
-
-        const fileData = entry.getData();
-        const contentType = getContentTypeFromKey(storageKey);
-        await storageService.uploadBuffer(storageKey, fileData, { contentType });
-
-        // Kompatibilitas ganda: dukung path dengan dan tanpa awalan 'storage/'
-        if (storageKey.startsWith('storage/documents/')) {
-          const altKey = storageKey.replace(/^storage\//, '');
-          await storageService.uploadBuffer(altKey, fileData, { contentType }).catch(() => {});
-        } else if (storageKey.startsWith('documents/')) {
-          const altKey = `storage/${storageKey}`;
-          await storageService.uploadBuffer(altKey, fileData, { contentType }).catch(() => {});
-        }
-
-        mediaProcessed++;
-
-        if (mediaProcessed % 10 === 0 || mediaProcessed === mediaEntries.length) {
-          const storagePct = 75 + Math.round((mediaProcessed / Math.max(mediaEntries.length, 1)) * 20);
-          reportProgress({
-            stage: 'storage',
-            processed: mediaProcessed,
-            total: mediaEntries.length,
-            percentage: Math.min(storagePct, 95),
-            message: `Memulihkan media: ${mediaProcessed}/${mediaEntries.length} file...`
-          });
-        }
-      } catch (err: any) {
-        console.warn(`[MigrationBundle] Gagal restore media ${entry.entryName}:`, err.message);
       }
+    } else {
+      console.log(`[MigrationBundle] Melewati pemulihan berkas media storage (mode: ${effectiveRestoreMode}, mediaEntries: ${mediaEntries.length}).`);
     }
 
     reportProgress({
@@ -1441,6 +1519,27 @@ export class MigrationBundleService {
       });
     } catch {}
 
+    const totalRestoredRecords = Object.values(restoredCounts).reduce((a, b) => a + b, 0);
+
+    let summaryMessage: string;
+    if (isCloning) {
+      if (effectiveRestoreMode === 'DATABASE_ONLY') {
+        summaryMessage = `Berhasil mengkloning basis data tenant "${manifest.source_tenant.name}" ke "${effectiveName}" (${effectiveSubdomain}.absenta.id) dengan ${totalRestoredRecords} rekaman data. Berkas media dilewati.`;
+      } else if (effectiveRestoreMode === 'MEDIA_ONLY') {
+        summaryMessage = `Berhasil mengkloning berkas media tenant "${manifest.source_tenant.name}" ke "${effectiveName}" (${effectiveSubdomain}.absenta.id) dengan ${mediaProcessed} file MinIO. Tabel database dilewati.`;
+      } else {
+        summaryMessage = `Berhasil mengkloning tenant "${manifest.source_tenant.name}" ke tenant baru "${effectiveName}" (${effectiveSubdomain}.absenta.id) dengan ${mediaProcessed} file media & ${totalRestoredRecords} rekaman data.`;
+      }
+    } else {
+      if (effectiveRestoreMode === 'DATABASE_ONLY') {
+        summaryMessage = `Berhasil memulihkan basis data ${manifest.source_tenant.name} (${totalRestoredRecords} rekaman data dipulihkan). Berkas media tidak diubah.`;
+      } else if (effectiveRestoreMode === 'MEDIA_ONLY') {
+        summaryMessage = `Berhasil memulihkan berkas media ${manifest.source_tenant.name} (${mediaProcessed} berkas MinIO dipulihkan). Tabel database tidak diubah.`;
+      } else {
+        summaryMessage = `Berhasil memulihkan tenant ${manifest.source_tenant.name} (${mediaProcessed} file media & ${totalRestoredRecords} rekaman data dipulihkan).`;
+      }
+    }
+
     return {
       success: true,
       manifest,
@@ -1448,9 +1547,7 @@ export class MigrationBundleService {
       targetSubdomain: effectiveSubdomain,
       targetTenantId: effectiveTenantId,
       isCloned: isCloning,
-      message: isCloning
-        ? `Berhasil mengkloning tenant "${manifest.source_tenant.name}" ke tenant baru "${effectiveName}" (${effectiveSubdomain}.absenta.id) dengan ${mediaProcessed} file media & ${Object.values(restoredCounts).reduce((a, b) => a + b, 0)} rekaman data.`
-        : `Berhasil memulihkan tenant ${manifest.source_tenant.name} (${mediaProcessed} file media & ${Object.values(restoredCounts).reduce((a, b) => a + b, 0)} rekaman data).`
+      message: summaryMessage
     };
   }
 }

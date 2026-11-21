@@ -433,10 +433,14 @@ export class BackupController {
         return reply.status(400).send({ success: false, message: 'Tenant ID wajib ditentukan' });
       }
 
+      const mode = (req.query?.mode || req.body?.mode) as any;
       const includeAttendance = req.query?.includeAttendance !== 'false' && req.body?.includeAttendance !== false;
       const includeMedia = req.query?.includeMedia !== 'false' && req.body?.includeMedia !== false;
+      const includeDatabase = req.query?.includeDatabase !== 'false' && req.body?.includeDatabase !== false;
 
       const { filepath, filename, manifest, size } = await migrationBundleService.createExportBundleFile(tenantId, {
+        mode,
+        includeDatabase,
         includeAttendance,
         includeMedia
       });
@@ -526,14 +530,17 @@ export class BackupController {
         : (req.tenantId || req.dataScope?.tenantId || req.user?.tenantId || req.user?.tenant_id);
       const targetTenantId = rawTargetTenantId || fallbackTenantId;
 
+      const restoreMode = (req.query?.restoreMode || readField('restoreMode') || req.body?.restoreMode || 'AUTO') as any;
+
       const buffer = await filePart.toBuffer();
 
-      console.log(`[BackupController] Memulai restorasi bundle (cloneMode=${cloneMode}, targetSubdomain=${targetSubdomain || 'auto'}, targetTenantId=${targetTenantId || 'auto'})...`);
+      console.log(`[BackupController] Memulai restorasi bundle (restoreMode=${restoreMode}, cloneMode=${cloneMode}, targetSubdomain=${targetSubdomain || 'auto'}, targetTenantId=${targetTenantId || 'auto'})...`);
       const result = await migrationBundleService.restoreBundle(buffer, {
         targetTenantId,
         targetSubdomain,
         targetName,
         cloneMode,
+        restoreMode,
         isInitialFreshSetup: false,
         clearExisting: false
       });
@@ -871,10 +878,14 @@ export class BackupController {
         return reply.status(400).send({ success: false, message: 'Tenant ID wajib ditentukan' });
       }
 
+      const mode = (req.query?.mode || req.body?.mode) as any;
       const includeAttendance = req.query?.includeAttendance !== 'false' && req.body?.includeAttendance !== false;
       const includeMedia = req.query?.includeMedia !== 'false' && req.body?.includeMedia !== false;
+      const includeDatabase = req.query?.includeDatabase !== 'false' && req.body?.includeDatabase !== false;
 
       const job = await backupJobService.startExportJob(tenantId, {
+        mode,
+        includeDatabase,
         includeAttendance,
         includeMedia
       });
@@ -929,6 +940,8 @@ export class BackupController {
         : (req.tenantId || req.dataScope?.tenantId || req.user?.tenantId || req.user?.tenant_id);
       const targetTenantId = rawTargetTenantId || fallbackTenantId;
 
+      const restoreMode = (req.query?.restoreMode || readField('restoreMode') || req.body?.restoreMode || 'AUTO') as any;
+
       // Stream file unggahan langsung ke disk sementara (bukan buffer RAM)
       tempFilePath = path.join(os.tmpdir(), `upload_restore_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.absenta`);
       const writeStream = fs.createWriteStream(tempFilePath);
@@ -944,6 +957,7 @@ export class BackupController {
         targetSubdomain,
         targetName,
         cloneMode,
+        restoreMode,
         isInitialFreshSetup: false,
         clearExisting: false
       });

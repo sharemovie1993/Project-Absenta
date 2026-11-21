@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { purgeTenantData, getBackupHistory, BackupHistoryItem } from '@/api/academic/backup.api';
-import { backupApi } from '@/api/superadmin-backups.api';
+import { backupApi, BackupBundleMode, RestoreBundleMode } from '@/api/superadmin-backups.api';
 import type { MigrationManifest } from '@/api/auth.api';
 import { useAuthStore } from '@/store/authStore';
 import { SectionCard, Button, Badge } from '@/components/ui';
@@ -30,14 +30,15 @@ const BackupPage: React.FC = React.memo(() => {
   const { user } = useAuthStore();
   const isMobile = useIsMobile();
 
-  // Export State
+  // Export State (3 Pilihan Kondisi: FULL, DATABASE_ONLY, MEDIA_ONLY)
+  const [exportMode, setExportMode] = useState<BackupBundleMode>('FULL');
   const [includeAttendance, setIncludeAttendance] = useState(true);
-  const [includeMedia, setIncludeMedia] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
   // States for .absenta file inspection and restore
   const [importFile, setImportFile] = useState<File | null>(null);
   const [manifest, setManifest] = useState<MigrationManifest | null>(null);
+  const [restoreMode, setRestoreMode] = useState<RestoreBundleMode>('AUTO');
   const [isInspecting, setIsInspecting] = useState(false);
   const [loadingImport, setLoadingImport] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
@@ -71,10 +72,12 @@ const BackupPage: React.FC = React.memo(() => {
     const toastId = toast.loading('Memulai pekerjaan pencadangan di latar belakang...');
 
     try {
-      // 1. Kirim job ke backend (instan < 100ms)
+      // 1. Kirim job ke backend (instan < 100ms) dengan opsi mode yang dipilih
       const jobRes = await backupApi.startExportJob(tenantId, {
+        mode: exportMode,
         includeAttendance,
-        includeMedia
+        includeMedia: exportMode !== 'DATABASE_ONLY',
+        includeDatabase: exportMode !== 'MEDIA_ONLY'
       });
 
       const jobId = jobRes?.data?.id;
@@ -107,7 +110,7 @@ const BackupPage: React.FC = React.memo(() => {
     } finally {
       setIsExporting(false);
     }
-  }, [user, includeAttendance, includeMedia, loadHistory]);
+  }, [user, exportMode, includeAttendance, loadHistory]);
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -142,6 +145,7 @@ const BackupPage: React.FC = React.memo(() => {
   const handleResetFile = useCallback(() => {
     setImportFile(null);
     setManifest(null);
+    setRestoreMode('AUTO');
   }, []);
 
   const executeImport = useCallback(async () => {
@@ -150,9 +154,15 @@ const BackupPage: React.FC = React.memo(() => {
     const totalRecords = manifest.stats?.total_records || (manifest.stats as any)?.total_db_records || 0;
     const totalMedia = manifest.stats?.total_media_files || 0;
 
+    const targetModeText = restoreMode === 'DATABASE_ONLY'
+      ? 'Hanya Basis Data'
+      : restoreMode === 'MEDIA_ONLY'
+        ? 'Hanya Berkas Media'
+        : 'Lengkap (Basis Data & Media)';
+
     const ok = await confirm({
-      title: 'Mulai Pemulihan Data Sekolah?',
-      description: `Sistem akan memulihkan data sekolah "${manifest.source_tenant.name}" (${totalRecords} data database, ${totalMedia} file media). Data duplikat akan otomatis dilewati secara aman.`,
+      title: `Mulai Pemulihan Data (${targetModeText})?`,
+      description: `Sistem akan memulihkan data sekolah "${manifest.source_tenant.name}" (${totalRecords} data database, ${totalMedia} berkas media). Mode: ${targetModeText}. Data duplikat akan otomatis dilewati dan berkas media tetap terhubung sinkron.`,
       confirmText: 'Mulai Pemulihan',
       cancelText: 'Batalkan',
       style: 'primary'
@@ -165,8 +175,11 @@ const BackupPage: React.FC = React.memo(() => {
       setImportProgress(5);
       setRestoreMessage('Mengunggah berkas cadangan ke server...');
 
-      // 1. Kirim file ke backend (streamed langsung ke disk sementara di server)
-      const jobRes = await backupApi.startRestoreJob(importFile, user?.tenant_id);
+      // 1. Kirim file ke backend dengan restoreMode (streamed langsung ke disk sementara di server)
+      const jobRes = await backupApi.startRestoreJob(importFile, {
+        targetTenantId: user?.tenant_id,
+        restoreMode: restoreMode
+      });
       const jobId = jobRes?.data?.id;
 
       if (!jobId) {
@@ -180,11 +193,12 @@ const BackupPage: React.FC = React.memo(() => {
       });
 
       setImportProgress(100);
-      setRestoreMessage(completedJob.message || 'Pemulihan data dan berkas media selesai!');
+      setRestoreMessage(completedJob.message || 'Pemulihan data selesai!');
 
       toast.success(completedJob.message || 'Sistem sekolah berhasil dipulihkan!');
       setImportFile(null);
       setManifest(null);
+      setRestoreMode('AUTO');
       loadHistory();
       queryClient.invalidateQueries();
     } catch (err: any) {
@@ -196,7 +210,7 @@ const BackupPage: React.FC = React.memo(() => {
         setImportProgress(0);
       }, 1500);
     }
-  }, [importFile, manifest, confirm, user?.tenant_id, loadHistory, queryClient]);
+  }, [importFile, manifest, confirm, restoreMode, user?.tenant_id, loadHistory, queryClient]);
 
   const handleManualPurge = useCallback(async () => {
     const ok = await confirm({
@@ -254,10 +268,10 @@ const BackupPage: React.FC = React.memo(() => {
             className="flex flex-col h-full overflow-hidden"
           >
             <ExportSection 
+              mode={exportMode}
+              setMode={setExportMode}
               includeAttendance={includeAttendance}
               setIncludeAttendance={setIncludeAttendance}
-              includeMedia={includeMedia}
-              setIncludeMedia={setIncludeMedia}
               onExport={handleExport}
               loading={isExporting}
             />
@@ -280,6 +294,8 @@ const BackupPage: React.FC = React.memo(() => {
               loadingImport={loadingImport}
               importProgress={importProgress}
               restoreMessage={restoreMessage}
+              restoreMode={restoreMode}
+              setRestoreMode={setRestoreMode}
               onManualPurge={handleManualPurge}
               onImport={executeImport}
             />

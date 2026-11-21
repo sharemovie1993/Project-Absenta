@@ -17,11 +17,15 @@ export interface Backup {
   }
 }
 
+export type BackupBundleMode = 'FULL' | 'DATABASE_ONLY' | 'MEDIA_ONLY';
+export type RestoreBundleMode = 'AUTO' | 'FULL' | 'DATABASE_ONLY' | 'MEDIA_ONLY';
+
 export interface ImportBundleOptions {
   targetTenantId?: string;
   targetSubdomain?: string;
   targetName?: string;
   cloneMode?: boolean;
+  restoreMode?: RestoreBundleMode;
 }
 
 export interface BackupJobProgress {
@@ -68,9 +72,11 @@ export const backupApi = {
     });
     return response.data as Blob;
   },
-  exportBundle: async (tenantId?: string, options?: { includeAttendance?: boolean; includeMedia?: boolean }) => {
+  exportBundle: async (tenantId?: string, options?: { mode?: BackupBundleMode; includeDatabase?: boolean; includeAttendance?: boolean; includeMedia?: boolean }) => {
     const response = await axios.post('/admin/backups/export-bundle', {
       tenantId: tenantId || undefined,
+      mode: options?.mode,
+      includeDatabase: options?.includeDatabase,
       includeAttendance: options?.includeAttendance !== false,
       includeMedia: options?.includeMedia !== false,
     }, {
@@ -101,6 +107,7 @@ export const backupApi = {
     if (opts.targetSubdomain) params.targetSubdomain = opts.targetSubdomain;
     if (opts.targetName) params.targetName = opts.targetName;
     if (opts.cloneMode !== undefined) params.cloneMode = opts.cloneMode;
+    if (opts.restoreMode) params.restoreMode = opts.restoreMode;
 
     const res = await axios.post('/admin/backups/import-bundle', formData, {
       params,
@@ -110,9 +117,11 @@ export const backupApi = {
     return res.data;
   },
   // Asynchronous Background Job APIs (Mitigasi Timeout Skala Besar)
-  startExportJob: async (tenantId?: string, options?: { includeAttendance?: boolean; includeMedia?: boolean }) => {
+  startExportJob: async (tenantId?: string, options?: { mode?: BackupBundleMode; includeDatabase?: boolean; includeAttendance?: boolean; includeMedia?: boolean }) => {
     const res = await axios.post('/academic/backup/export-async', {
       tenantId: tenantId || undefined,
+      mode: options?.mode,
+      includeDatabase: options?.includeDatabase,
       includeAttendance: options?.includeAttendance !== false,
       includeMedia: options?.includeMedia !== false,
     });
@@ -131,6 +140,7 @@ export const backupApi = {
     if (opts.targetSubdomain) params.targetSubdomain = opts.targetSubdomain;
     if (opts.targetName) params.targetName = opts.targetName;
     if (opts.cloneMode !== undefined) params.cloneMode = opts.cloneMode;
+    if (opts.restoreMode) params.restoreMode = opts.restoreMode;
 
     const res = await axios.post('/academic/backup/import-async', formData, {
       params,
