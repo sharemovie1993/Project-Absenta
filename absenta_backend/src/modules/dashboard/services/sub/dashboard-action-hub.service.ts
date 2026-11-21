@@ -684,6 +684,71 @@ export class DashboardActionHubService {
                 entityId: jurusan.id,
               },
             });
+          }
+
+          // ── KANAL 2 KAJUR: Ploting Guru Penguji Sidang PKL ──
+          const plotingStatus = (pklSummary as any)?.plotingPengujiStatus || {
+            totalSiswa: 0,
+            sudahDiplot: 0,
+            belumDiplot: 0,
+            completionPercentage: 100,
+          };
+
+          const totalSiswaPloting = plotingStatus.totalSiswa || 0;
+          const sudahDiplot = plotingStatus.sudahDiplot || 0;
+          const belumDiplot = plotingStatus.belumDiplot || 0;
+          const completionPloting = plotingStatus.completionPercentage || 0;
+
+          if (belumDiplot > 0) {
+            items.push({
+              id: `kaprog_ploting_penguji_${jurusan.id}`,
+              division: 'HUBIN',
+              urgency: 'CRITICAL',
+              title: `Ploting Penguji Sidang PKL — ${jurusanLabel}`,
+              subtitle: `Anda seorang Kajur. Ada pekerjaan ploting Guru Penguji Sidang PKL untuk ${belumDiplot} dari ${totalSiswaPloting} siswa PKL.`,
+              badgeText: `${belumDiplot} Belum Diplot`,
+              progress: {
+                current: sudahDiplot,
+                total: totalSiswaPloting,
+                percent: completionPloting,
+                label: `${sudahDiplot}/${totalSiswaPloting} Terploting`,
+                variant: 'rose',
+              },
+              action: {
+                label: 'Ploting Penguji ➔',
+                type: 'NAVIGATE',
+                target: `/dashboard?tab=kaprog&subtab=ploting_penguji&jurusan_id=${jurusan.id}`,
+              },
+              sourceModule: {
+                table: 'SiswaPkl',
+                entityId: jurusan.id,
+              },
+            });
+          } else if (totalSiswaPloting > 0 && belumDiplot === 0) {
+            items.push({
+              id: `kaprog_ploting_penguji_${jurusan.id}`,
+              division: 'HUBIN',
+              urgency: 'INFO',
+              title: `Ploting Penguji Sidang PKL — ${jurusanLabel}`,
+              subtitle: `Anda seorang Kajur. Seluruh siswa PKL (${totalSiswaPloting} siswa) telah selesai diplot Penguji Sidang.`,
+              badgeText: 'Lengkap',
+              progress: {
+                current: totalSiswaPloting,
+                total: totalSiswaPloting,
+                percent: 100,
+                label: `${totalSiswaPloting}/${totalSiswaPloting} Terploting`,
+                variant: 'emerald',
+              },
+              action: {
+                label: 'Lihat Ploting ➔',
+                type: 'NAVIGATE',
+                target: `/dashboard?tab=kaprog&subtab=ploting_penguji&jurusan_id=${jurusan.id}`,
+              },
+              sourceModule: {
+                table: 'SiswaPkl',
+                entityId: jurusan.id,
+              },
+            });
           } else if (totalMitra > 0 && pendingMitra === 0) {
             items.push({
               id: `kaprog_tp_dudi_${jurusan.id}`,

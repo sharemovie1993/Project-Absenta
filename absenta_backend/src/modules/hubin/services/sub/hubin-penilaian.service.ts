@@ -1424,6 +1424,8 @@ export class HubinPenilaianService extends HubinCommonHelper {
     let belumDinilaiDudi = 0;
     let sudahSidang = 0;
     let belumSidang = 0;
+    let sudahDiplotPenguji = 0;
+    let belumDiplotPenguji = 0;
 
     for (const p of siswaPklList) {
       // Nilai DUDI
@@ -1439,6 +1441,14 @@ export class HubinPenilaianService extends HubinCommonHelper {
         sudahSidang++;
       } else {
         belumSidang++;
+      }
+
+      // Ploting Guru Penguji Sidang
+      const pengujiId = (p.nilai_json as any)?.penguji_id;
+      if (pengujiId) {
+        sudahDiplotPenguji++;
+      } else {
+        belumDiplotPenguji++;
       }
 
       if (p.mitra_id && p.Mitra) {
@@ -1569,6 +1579,12 @@ export class HubinPenilaianService extends HubinCommonHelper {
         pendingMitra,
         completionPercentage,
         rolloverAvailableCount,
+      },
+      plotingPengujiStatus: {
+        totalSiswa: totalSiswaPkl,
+        sudahDiplot: sudahDiplotPenguji,
+        belumDiplot: belumDiplotPenguji,
+        completionPercentage: totalSiswaPkl > 0 ? Math.round((sudahDiplotPenguji / totalSiswaPkl) * 100) : 100,
       },
       penilaianStatus: {
         totalSiswaPkl,

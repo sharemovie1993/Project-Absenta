@@ -225,6 +225,7 @@ export const KaprogPlotingPengujiTab: React.FC<KaprogPlotingPengujiTabProps> = R
     queryClient.invalidateQueries({ queryKey: ['hubin-settings'] });
     queryClient.invalidateQueries({ queryKey: ['rapor'] });
     queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['my-action-hub-dashboard'] });
     notifySidangPlotingUpdated();
   }, [queryClient]);
 
