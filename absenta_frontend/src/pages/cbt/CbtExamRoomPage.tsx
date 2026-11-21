@@ -30,6 +30,8 @@ import {
   CloudOff,
   Check,
   RotateCcw,
+  LayoutGrid,
+  Flag,
 } from 'lucide-react';
 import { cbtApi } from '@/api/cbt.api';
 import { cbtOfflineStorage, LocalAnswerRecord } from '@/utils/cbtOfflineStorage';
@@ -110,6 +112,7 @@ export default function CbtExamRoomPage() {
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
   const [warningMessage, setWarningMessage] = useState('');
   const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false);
+  const [isMobileQuestionDrawerOpen, setIsMobileQuestionDrawerOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -755,7 +758,13 @@ export default function CbtExamRoomPage() {
     // ─── RENDER 1: TOKEN GATEKEEPER ─────────────────────────────────────────────
     if (step === 'TOKEN_GATE') {
       return (
-        <div className="min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-3 sm:p-4">
+        <div
+          className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-3 sm:p-4"
+          style={{
+            paddingTop: 'max(env(safe-area-inset-top, 0px), 24px)',
+            paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 24px)',
+          }}
+        >
           <Card className="w-full max-w-md p-5 sm:p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm rounded-2xl space-y-5 text-center">
             <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto border border-indigo-100 dark:border-indigo-900/40 shadow-xs">
               <Maximize2 size={28} />
@@ -934,7 +943,13 @@ export default function CbtExamRoomPage() {
     // ─── RENDER 2: KONFIRMASI SESI SEBELUM MULAI ────────────────────────────────
     if (step === 'CONFIRMATION') {
       return (
-        <div className="min-h-[calc(100vh-3.5rem)] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-3 sm:p-4">
+        <div
+          className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-3 sm:p-4"
+          style={{
+            paddingTop: 'max(env(safe-area-inset-top, 0px), 24px)',
+            paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 24px)',
+          }}
+        >
           <Card className="w-full max-w-md p-4 sm:p-6 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm rounded-2xl space-y-4">
             {/* Header Sesi Ujian */}
             <div className="text-center space-y-1.5 pb-2 border-b border-slate-100 dark:border-slate-800/80">
@@ -1058,7 +1073,13 @@ export default function CbtExamRoomPage() {
     // ─── RENDER 3: SELESAI / COMPLETED SCREEN ───────────────────────────────────
     if (step === 'COMPLETED') {
       return (
-        <div className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-4">
+        <div
+          className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-4"
+          style={{
+            paddingTop: 'max(env(safe-area-inset-top, 0px), 24px)',
+            paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 24px)',
+          }}
+        >
           <Card className="w-full max-w-md p-8 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl rounded-2xl space-y-6 text-center">
             <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto border border-emerald-100 dark:border-emerald-900/40">
               <CheckCircle2 size={36} />
@@ -1103,23 +1124,38 @@ export default function CbtExamRoomPage() {
 
     // ─── RENDER 4: LIVE EXAM ROOM (HIGH-CONCURRENCY DESKTOP & MOBILE) ───────────
     return (
-      <div ref={containerRef} className="fixed inset-0 z-50 min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col select-none overflow-hidden">
-        {/* Top Bar Pengawasan & Timer */}
-        <header className="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-xs">
-          <div className="flex items-center gap-3">
+      <div
+        ref={containerRef}
+        className="fixed inset-0 z-50 min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col select-none overflow-hidden"
+      >
+        {/* Top Bar Pengawasan & Timer dengan Proteksi Kamera Notch / Punch Hole Depan */}
+        <header
+          className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-xs"
+          style={{
+            paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
+            paddingLeft: 'max(env(safe-area-inset-left, 0px), 0.75rem)',
+            paddingRight: 'max(env(safe-area-inset-right, 0px), 0.75rem)',
+            minHeight: 'calc(3.5rem + max(env(safe-area-inset-top, 0px), 16px))',
+          }}
+        >
+          {/* Sisi Kiri: CBT Badge & Identitas Sesi (Aman dari Kamera Tengah) */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Badge variant="default" className="bg-indigo-600 text-white font-mono text-xs font-bold">
-              CBT ONLINE
+              CBT
             </Badge>
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 hidden sm:inline">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[110px] xs:max-w-[150px] sm:max-w-[220px]">
               {examOverview?.nama_sesi || 'UAS Semester'}
             </span>
           </div>
 
-          {/* Status Network, Sinkronisasi Cloud, & Countdown Timer */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Area Tengah: Buffer Kosong Aman Kamera Punch Hole HP */}
+          <div className="flex-1 min-w-[12px] sm:min-w-[24px]" />
+
+          {/* Sisi Kanan: Status Sinkronisasi, Timer, & Tombol Aksi */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Status Jaringan Offline/Online */}
             <div
-              className={`flex items-center gap-1.5 text-xs font-semibold ${
+              className={`flex items-center gap-1 text-xs font-semibold ${
                 isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400 animate-pulse'
               }`}
               title={isOnline ? 'Terhubung ke jaringan' : 'Mode Offline: Jawaban tersimpan lokal di IndexedDB'}
@@ -1131,7 +1167,7 @@ export default function CbtExamRoomPage() {
             {/* Status Sinkronisasi Server / Cloud SSoT */}
             <div
               className={cn(
-                'flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all border',
+                'flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all border',
                 syncStatus === 'synced' && 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
                 syncStatus === 'syncing' && 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800 animate-pulse',
                 syncStatus === 'offline' && 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
@@ -1165,16 +1201,17 @@ export default function CbtExamRoomPage() {
 
             {/* Timer Display */}
             <div
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl font-mono text-xs sm:text-sm font-bold border transition-colors ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl font-mono text-xs sm:text-sm font-bold border transition-colors ${
                 sisaWaktuDetik < 300
                   ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-600 text-rose-600 dark:text-rose-400 animate-pulse'
                   : 'bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-indigo-300'
               }`}
             >
-              <Clock size={15} />
+              <Clock size={13} />
               <span>{formatTimer(sisaWaktuDetik)}</span>
             </div>
 
+            {/* Tombol Kumpulkan Header (Khusus Layar Desktop / Tablet Lebar) */}
             <Button
               type="button"
               variant="primary"
@@ -1183,7 +1220,7 @@ export default function CbtExamRoomPage() {
                 setSubmitError(null);
                 setIsSubmitConfirmOpen(true);
               }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 shadow-xs"
+              className="hidden md:inline-flex bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 px-3 shadow-xs shrink-0"
             >
               <Send size={13} className="mr-1.5" />
               <span>Kumpulkan</span>
@@ -1192,34 +1229,42 @@ export default function CbtExamRoomPage() {
         </header>
 
         {/* Main Workspace Layout */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
           {/* Kolom Soal Aktif (75%) */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+          <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 lg:p-8 space-y-5 pb-24 md:pb-8">
             {currentSoal ? (
-              <div className="max-w-3xl mx-auto space-y-6">
-                {/* Soal Header */}
-                <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
-                  <span className="text-sm sm:text-base font-bold text-indigo-600 dark:text-indigo-400 tracking-wide whitespace-nowrap shrink-0">
-                    SOAL NOMOR {currentIdx + 1}
-                  </span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold whitespace-nowrap shrink-0">
+              <div className="max-w-3xl mx-auto space-y-5">
+                {/* Soal Header dengan Badge Nomor Segar */}
+                <div className="flex items-center justify-between gap-2 pb-1">
+                  <div className="inline-flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white font-black text-xs sm:text-sm tracking-wide shadow-xs flex items-center gap-1.5">
+                      <span>NOMOR {currentIdx + 1}</span>
+                    </span>
+                    {currentIsRagu && (
+                      <span className="px-2 py-0.5 rounded-lg bg-amber-500 text-white text-[11px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs animate-in fade-in">
+                        <Flag size={11} className="fill-white" />
+                        <span>Ragu-Ragu</span>
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-bold px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 shrink-0">
                     Bobot: {currentSoal.bobot} Poin
                   </span>
                 </div>
 
-                {/* Konten Pertanyaan & Stimulus Soal */}
-                <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+                {/* Konten Pertanyaan & Stimulus Soal dengan Blok Warna Segar (Eye-Comfort & Anti-Jenuh) */}
+                <div className="p-4 sm:p-6 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-white to-blue-50/40 dark:from-slate-900 dark:via-slate-900/90 dark:to-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/70 shadow-sm border-l-4 border-l-indigo-600">
                   <CbtContentRenderer
                     content={currentSoal.konten_pertanyaan}
                     imageUrl={currentSoal.gambar_stimulus_url}
                     imageAlt={`Stimulus Soal Nomor ${currentIdx + 1}`}
-                    className="text-slate-800 dark:text-slate-100 text-sm leading-relaxed"
+                    className="text-slate-800 dark:text-slate-100 text-sm sm:text-base leading-relaxed"
                   />
                 </div>
 
-                {/* Pilihan Jawaban A-E (Auto-Adaptive: Grid 1 Baris, 2 Kolom, atau 1 Kolom Penuh) */}
+                {/* Pilihan Jawaban A-E dengan Blok Warna Menarik */}
                 <div className="space-y-2.5">
-                  <span className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <span className="block text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">
                     PILIHAN JAWABAN:
                   </span>
 
@@ -1232,8 +1277,8 @@ export default function CbtExamRoomPage() {
                   />
                 </div>
 
-                {/* Bottom Navigasi Tombol */}
-                <div className="flex items-center justify-between pt-6 border-t border-slate-200 dark:border-slate-800">
+                {/* Desktop-Only Bottom Navigation Buttons (Untuk Pengguna Mouse di Komputer) */}
+                <div className="hidden md:flex items-center justify-between pt-6 border-t border-slate-200 dark:border-slate-800">
                   <Button
                     type="button"
                     variant="outline"
@@ -1329,8 +1374,8 @@ export default function CbtExamRoomPage() {
             )}
           </main>
 
-          {/* Sidebar Navigasi Nomor Soal (25%) */}
-          <aside className="w-full md:w-80 bg-slate-50/80 dark:bg-slate-900/80 border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 p-4 sm:p-5 flex flex-col justify-between shrink-0">
+          {/* Sidebar Navigasi Nomor Soal (25%) - Desktop Layar Lebar */}
+          <aside className="hidden md:flex w-80 bg-slate-50/80 dark:bg-slate-900/80 border-l border-slate-200 dark:border-slate-800 p-4 sm:p-5 flex-col justify-between shrink-0">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
@@ -1404,9 +1449,164 @@ export default function CbtExamRoomPage() {
               </Button>
             </div>
           </aside>
-      </div>
+        </div>
 
-      {/* Modal Peringatan Anti-Curang */}
+        {/* ── STICKY MOBILE BOTTOM BAR (SLIM & BEBAS TUMPANG TINDIH TOMBOL NAVIGASI HP) ── */}
+        <nav
+          aria-label="Navigasi Soal Ponsel"
+          className="md:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-2.5 py-1.5 shrink-0 z-40 shadow-md"
+          style={{
+            paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
+            paddingLeft: 'max(env(safe-area-inset-left, 0px), 0.5rem)',
+            paddingRight: 'max(env(safe-area-inset-right, 0px), 0.5rem)',
+          }}
+        >
+          <div className="flex items-center justify-between gap-1.5 max-w-lg mx-auto">
+            {/* Tombol Sebelumnya (Slim) */}
+            <button
+              type="button"
+              onClick={() => setCurrentIdx((prev) => Math.max(0, prev - 1))}
+              disabled={currentIdx === 0}
+              className="h-8 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+            >
+              <ArrowLeft size={13} />
+              <span className="text-[11px]">Sebelum</span>
+            </button>
+
+            {/* Tombol Ragu-Ragu (Slim) */}
+            {currentSoal && (
+              <button
+                type="button"
+                onClick={() => handleToggleRagu(currentSoal.id)}
+                className={`h-8 px-2.5 rounded-lg border text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all shadow-2xs ${
+                  currentIsRagu
+                    ? 'bg-amber-500 text-white border-amber-500'
+                    : 'border-amber-400/80 text-amber-600 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-950/30'
+                }`}
+              >
+                <Flag size={12} className={currentIsRagu ? 'fill-white' : ''} />
+                <span className="text-[11px]">{currentIsRagu ? 'Ragu' : 'Tandai'}</span>
+              </button>
+            )}
+
+            {/* Tombol Buka Daftar Nomor Soal (Drawer Pop-up Slim Pill) */}
+            <button
+              type="button"
+              onClick={() => setIsMobileQuestionDrawerOpen(true)}
+              className="h-8 px-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold text-xs flex items-center justify-center gap-1 active:scale-95 transition-all shadow-2xs"
+              title="Buka Daftar Nomor Soal"
+            >
+              <LayoutGrid size={12} />
+              <span className="text-[11px]">No. {currentIdx + 1}/{soalList.length} ▾</span>
+            </button>
+
+            {/* Tombol Selanjutnya ATAU Kumpulkan pada butir terakhir (Slim) */}
+            {currentIdx === soalList.length - 1 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSubmitError(null);
+                  setIsSubmitConfirmOpen(true);
+                }}
+                className="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 transition-all shadow-xs"
+              >
+                <Send size={12} />
+                <span className="text-[11px]">Kumpul</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCurrentIdx((prev) => Math.min(soalList.length - 1, prev + 1))}
+                className="h-8 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 transition-all shadow-xs"
+              >
+                <span className="text-[11px]">Lanjut</span>
+                <ArrowRight size={13} />
+              </button>
+            )}
+          </div>
+        </nav>
+
+        {/* ── MOBILE MODAL DAFTAR NOMOR SOAL (AKSES INSTAN TANPA SCROLLING) ── */}
+        <Modal
+          isOpen={isMobileQuestionDrawerOpen}
+          onClose={() => setIsMobileQuestionDrawerOpen(false)}
+          title={`Daftar Soal (${soalList.length} Butir)`}
+          size="md"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+              <span>Terjawab: <strong className="text-indigo-600 dark:text-indigo-400">{totalTerjawab}</strong> / {soalList.length}</span>
+              <span>Ragu-ragu: <strong className="text-amber-500">{totalRagu}</strong></span>
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-200 dark:border-slate-800">
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded bg-indigo-600" /> Terjawab
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded bg-amber-500" /> Ragu
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700" /> Belum
+              </span>
+            </div>
+
+            {/* Grid Butir Soal */}
+            <div className="grid grid-cols-5 gap-2 max-h-[50vh] overflow-y-auto p-1">
+              {(soalList || []).map((soal, idx) => {
+                const ans = answersMap[soal.id];
+                const hasAnswer = Boolean(ans?.jawaban);
+                const isRagu = Boolean(ans?.isRagu);
+                const isCurrent = idx === currentIdx;
+
+                return (
+                  <button
+                    key={soal.id}
+                    type="button"
+                    onClick={() => {
+                      setCurrentIdx(idx);
+                      setIsMobileQuestionDrawerOpen(false);
+                    }}
+                    className={`h-11 rounded-xl text-xs font-bold transition-all flex items-center justify-center relative ${
+                      isCurrent ? 'ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900 scale-105' : ''
+                    } ${
+                      isRagu
+                        ? 'bg-amber-500 text-white font-black'
+                        : hasAnswer
+                        ? 'bg-indigo-600 text-white font-black'
+                        : 'bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-2xs'
+                    }`}
+                  >
+                    <span>{idx + 1}</span>
+                    {hasAnswer && !isRagu && (
+                      <span className="absolute bottom-1 right-1.5 text-[8px] font-mono text-indigo-200">
+                        {ans.jawaban}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pt-2">
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => {
+                  setIsMobileQuestionDrawerOpen(false);
+                  setSubmitError(null);
+                  setIsSubmitConfirmOpen(true);
+                }}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow-md"
+              >
+                Kumpulkan Ujian Sekarang
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Modal Peringatan Anti-Curang */}
       <Modal
         isOpen={isWarningModalOpen}
         onClose={() => setIsWarningModalOpen(false)}

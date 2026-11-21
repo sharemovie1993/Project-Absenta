@@ -17,9 +17,8 @@ export interface CbtOptionsRendererProps {
 }
 
 /**
- * Warna badge opsi huruf (A, B, C, D, E) yang SELARAS SATU WARNA
- * dengan lingkungan ekosistem dashboard (Indigo / Ruang Pendidik).
- * Tidak warna-warni, rapi, dan memberikan pembeda jelas antara huruf opsi dan teks opsi.
+ * Warna badge opsi huruf (A, B, C, D, E) dengan identitas warna blok segar
+ * agar siswa tidak merasa jenuh selama mengerjakan ujian.
  */
 export function getOptionBadgeColor(
   kode: string,
@@ -27,12 +26,18 @@ export function getOptionBadgeColor(
   isSelected: boolean = false,
   isExam: boolean = false
 ): string {
-  // Mode Ujian Siswa (Exam Room - Theme Aware: Light & Dark Adaptive)
+  // Mode Ujian Siswa (Exam Room - Color-Coded per Huruf Opsi)
   if (isExam) {
     if (isSelected) {
       return 'bg-indigo-600 text-white border-indigo-600 shadow-xs font-black';
     }
-    return 'bg-slate-100 dark:bg-indigo-950/60 text-slate-700 dark:text-indigo-300 border-slate-200 dark:border-indigo-500/40 font-bold';
+    const k = (kode || '').toUpperCase().trim();
+    if (k === 'A') return 'bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700 font-black';
+    if (k === 'B') return 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 font-black';
+    if (k === 'C') return 'bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700 font-black';
+    if (k === 'D') return 'bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700 font-black';
+    if (k === 'E') return 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-700 font-black';
+    return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 font-bold';
   }
 
   // Mode Pratinjau Guru - Jika Opsi ini adalah Kunci Jawaban (Wajib Emerald Green)
@@ -42,6 +47,32 @@ export function getOptionBadgeColor(
 
   // Mode Pratinjau Guru - Satu warna selaras ekosistem dashboard (Indigo/Purple Ruang Pendidik)
   return 'bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/90 dark:border-indigo-800/80 shadow-2xs font-bold';
+}
+
+/**
+ * Blok warna latar kartu pilihan jawaban (Anti-Jenuh / Fresh Block Themes)
+ */
+export function getOptionCardStyle(kode: string, isSelected: boolean): string {
+  if (isSelected) {
+    return 'border-2 border-indigo-600 bg-gradient-to-r from-indigo-50 via-indigo-50/80 to-blue-50/70 dark:from-indigo-950/70 dark:via-indigo-950/50 dark:to-blue-950/40 text-indigo-950 dark:text-white shadow-xs ring-2 ring-indigo-500/25';
+  }
+  const k = (kode || '').toUpperCase().trim();
+  if (k === 'A') {
+    return 'border border-blue-200/90 dark:border-blue-900/60 bg-gradient-to-r from-blue-50/50 via-white to-blue-50/15 dark:from-slate-900 dark:via-slate-900/80 dark:to-blue-950/20 hover:border-blue-400 hover:bg-blue-50/70 text-slate-800 dark:text-slate-200';
+  }
+  if (k === 'B') {
+    return 'border border-emerald-200/90 dark:border-emerald-900/60 bg-gradient-to-r from-emerald-50/50 via-white to-emerald-50/15 dark:from-slate-900 dark:via-slate-900/80 dark:to-emerald-950/20 hover:border-emerald-400 hover:bg-emerald-50/70 text-slate-800 dark:text-slate-200';
+  }
+  if (k === 'C') {
+    return 'border border-amber-200/90 dark:border-amber-900/60 bg-gradient-to-r from-amber-50/50 via-white to-amber-50/15 dark:from-slate-900 dark:via-slate-900/80 dark:to-amber-950/20 hover:border-amber-400 hover:bg-amber-50/70 text-slate-800 dark:text-slate-200';
+  }
+  if (k === 'D') {
+    return 'border border-purple-200/90 dark:border-purple-900/60 bg-gradient-to-r from-purple-50/50 via-white to-purple-50/15 dark:from-slate-900 dark:via-slate-900/80 dark:to-purple-950/20 hover:border-purple-400 hover:bg-purple-50/70 text-slate-800 dark:text-slate-200';
+  }
+  if (k === 'E') {
+    return 'border border-rose-200/90 dark:border-rose-900/60 bg-gradient-to-r from-rose-50/50 via-white to-rose-50/15 dark:from-slate-900 dark:via-slate-900/80 dark:to-rose-950/20 hover:border-rose-400 hover:bg-rose-50/70 text-slate-800 dark:text-slate-200';
+  }
+  return 'border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200';
 }
 
 /**
@@ -152,10 +183,8 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                 onClick={() => !readOnly && onSelectAnswer?.(opt.kode)}
                 disabled={readOnly}
                 className={cn(
-                  'p-2 sm:p-2.5 rounded-xl border flex items-center justify-center gap-1.5 transition-all duration-150 select-none text-center min-w-0 cursor-pointer active:scale-95',
-                  isSelected
-                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-900 dark:text-white shadow-xs ring-2 ring-indigo-500/40'
-                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-200'
+                  'p-2 sm:p-2.5 rounded-xl border flex items-center justify-center gap-1.5 transition-all duration-150 select-none text-center min-w-0 cursor-pointer active:scale-95 shadow-2xs',
+                  getOptionCardStyle(opt.kode, isSelected)
                 )}
               >
                 <div
@@ -179,11 +208,9 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                 key={opt.kode}
                 onClick={() => !readOnly && onSelectAnswer?.(opt.kode)}
                 className={cn(
-                  'p-2.5 sm:p-3.5 rounded-xl border flex items-start gap-2.5 transition-all duration-150 select-none min-w-0',
+                  'p-2.5 sm:p-3.5 rounded-xl border flex items-start gap-2.5 transition-all duration-150 select-none min-w-0 shadow-2xs',
                   !readOnly && 'cursor-pointer active:scale-[0.99]',
-                  isSelected
-                    ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-950 dark:text-white shadow-xs ring-1 ring-indigo-500'
-                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-200'
+                  getOptionCardStyle(opt.kode, isSelected)
                 )}
               >
                 <div
@@ -209,11 +236,9 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
               key={opt.kode}
               onClick={() => !readOnly && onSelectAnswer?.(opt.kode)}
               className={cn(
-                'p-3 sm:p-4 rounded-xl border flex items-start gap-3 transition-all duration-150 select-none min-w-0',
+                'p-3 sm:p-4 rounded-xl border flex items-start gap-3 transition-all duration-150 select-none min-w-0 shadow-2xs',
                 !readOnly && 'cursor-pointer active:scale-[0.99]',
-                isSelected
-                  ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-950 dark:text-white shadow-xs ring-1 ring-indigo-500'
-                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-200'
+                getOptionCardStyle(opt.kode, isSelected)
               )}
             >
               <div
