@@ -1,3 +1,4 @@
+import { RoleName } from '@/constants/enums';
 import { pembinaKegiatanEskulController } from './pembina-kegiatan-eskul.controller';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
@@ -5,7 +6,7 @@ import { determineDataScope } from '@/middlewares/dataScope';
 export async function pembinaKegiatanEskulRoutes(fastify: any) {
   // GET /api/attendance/pembina-kegiatan-eskul/guru-picker?search=
   fastify.get('/guru-picker', {
-    preHandler: [requireCapability('attendance.schedules.view.list'), determineDataScope()]
+    preHandler: [requireCapability('attendance.schedules.view.list', { exemptRoles: [RoleName.SISWA, RoleName.GURU] }), determineDataScope()]
   }, pembinaKegiatanEskulController.getGuruList);
 
   // GET /api/attendance/pembina-kegiatan-eskul/:jenisKegiatanId

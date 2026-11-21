@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import {
   LayoutList,
   LayoutGrid,
+  Compass,
   CheckCircle2,
   FileText,
   FolderOpen,
@@ -48,6 +49,7 @@ import { SiswaHeaderBanner } from './siswa/components/SiswaHeaderBanner';
 // Subtabs
 import { SiswaRingkasanTab } from './siswa/tabs/SiswaRingkasanTab';
 import { SiswaJadwalTab } from './siswa/tabs/SiswaJadwalTab';
+import { SiswaEkskulTab } from './siswa/tabs/SiswaEkskulTab';
 import { SiswaPklTab } from './siswa/tabs/SiswaPklTab';
 import { SiswaCbtTab } from './siswa/tabs/SiswaCbtTab';
 import { SiswaKehadiranTab } from './siswa/tabs/SiswaKehadiranTab';
@@ -80,7 +82,7 @@ const SiswaOnboardingModal = lazy(() =>
 export const SiswaDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab') as SiswaTabId | null;
-  const validTabs: SiswaTabId[] = ['ringkasan', 'jadwal', 'pkl', 'cbt', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil'];
+  const validTabs: SiswaTabId[] = ['ringkasan', 'jadwal', 'ekskul', 'pkl', 'cbt', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil'];
   const activeTab: SiswaTabId = rawTab && validTabs.includes(rawTab) ? rawTab : 'ringkasan';
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -263,6 +265,7 @@ export const SiswaDashboard: React.FC = () => {
     const tabs: SiswaNavTabItem[] = [
       { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', icon: LayoutList, category: 'operasional' },
       { id: 'jadwal', label: 'Jadwal Pelajaran', shortLabel: 'Jadwal', icon: Calendar, category: 'akademik' },
+      { id: 'ekskul', label: 'Ekstrakurikuler', shortLabel: 'Ekskul', icon: Compass, category: 'akademik' },
     ];
     if (data.isAktifPkl || data.myPenempatan) {
       tabs.push({
@@ -297,6 +300,7 @@ export const SiswaDashboard: React.FC = () => {
     switch (activeTab) {
       case 'ringkasan': return 'Pusat Kendali';
       case 'jadwal': return 'Jadwal Pelajaran';
+      case 'ekskul': return 'Ekstrakurikuler Saya';
       case 'kehadiran': return 'Riwayat Presensi';
       case 'pkl': return 'Praktik Kerja (PKL)';
       case 'cbt': return 'Ujian Online (CBT)';
@@ -584,6 +588,31 @@ export const SiswaDashboard: React.FC = () => {
               <SiswaJadwalTab
                 kelasId={data.siswaProfile?.kelas_id}
                 kelasNama={data.currentClassName}
+              />
+            </div>
+          )}
+
+          {visitedTabs.has('ekskul') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'ekskul'}
+              className={cn('w-full min-w-0', activeTab === 'ekskul' ? 'block' : 'hidden')}
+            >
+              <SiswaEkskulTab
+                studentProfile={{
+                  id: data.siswaProfile?.id || (data.user as any)?.siswa_id,
+                  nis: (data.siswaProfile as any)?.nis || (data.user as any)?.username,
+                  nisn: data.nisn,
+                  nama: data.studentName,
+                  nama_siswa: data.studentName,
+                  kelas_id: data.siswaProfile?.kelas_id,
+                  kelas_nama: data.currentClassName,
+                  foto: data.studentPhotoUrl,
+                  foto_url: data.studentPhotoUrl,
+                  ekskul_1: (data.siswaProfile as any)?.ekskul_1,
+                  ekskul_2: (data.siswaProfile as any)?.ekskul_2,
+                  ekskuls: (data.siswaProfile as any)?.ekskuls,
+                }}
               />
             </div>
           )}

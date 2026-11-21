@@ -1,3 +1,4 @@
+import { RoleName } from '@/constants/enums';
 import { jadwalKegiatanController } from '../controllers/jadwal-kegiatan.controller';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
@@ -5,7 +6,7 @@ import { determineDataScope } from '@/middlewares/dataScope';
 export async function jadwalKegiatanRoutes(fastify: any) {
   fastify.get('/', {
     preHandler: [
-      requireCapability(['attendance.schedules.view.list', 'academic.schedules.view.list']),
+      requireCapability(['attendance.schedules.view.list', 'academic.schedules.view.list', 'kesiswaan.schedules.view.list'], { exemptRoles: [RoleName.SISWA, RoleName.GURU] }),
       determineDataScope()
     ]
   }, jadwalKegiatanController.getAll);

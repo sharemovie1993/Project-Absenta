@@ -1,3 +1,4 @@
+import { RoleName } from '@/constants/enums';
 import { anggotaKegiatanEskulController } from './anggota-kegiatan-eskul.controller';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
@@ -5,7 +6,7 @@ import { determineDataScope } from '@/middlewares/dataScope';
 export async function anggotaKegiatanEskulRoutes(fastify: any) {
   // GET /api/attendance/anggota-kegiatan-eskul/siswa-picker?search=&kelas_id=
   fastify.get('/siswa-picker', {
-    preHandler: [requireCapability('attendance.schedules.view.list'), determineDataScope()]
+    preHandler: [requireCapability('attendance.schedules.view.list', { exemptRoles: [RoleName.SISWA, RoleName.GURU] }), determineDataScope()]
   }, anggotaKegiatanEskulController.getSiswaAkademikList);
 
   // GET /api/attendance/anggota-kegiatan-eskul/:jenisKegiatanId

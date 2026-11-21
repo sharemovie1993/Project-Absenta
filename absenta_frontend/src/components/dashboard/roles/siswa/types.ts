@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type SiswaTabId = 'ringkasan' | 'jadwal' | 'pkl' | 'cbt' | 'portal' | 'kehadiran' | 'catatan' | 'berkas' | 'profil';
+export type SiswaTabId = 'ringkasan' | 'jadwal' | 'ekskul' | 'pkl' | 'cbt' | 'portal' | 'kehadiran' | 'catatan' | 'berkas' | 'profil';
 
 export interface SiswaNavTabItem {
   id: SiswaTabId;
