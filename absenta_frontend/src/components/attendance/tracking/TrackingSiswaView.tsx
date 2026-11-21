@@ -17,7 +17,9 @@ import {
   AlertTriangle,
   Clock,
   Layers,
-  Printer
+  Printer,
+  FileText,
+  Hand
 } from 'lucide-react';
 
 import {
@@ -48,6 +50,8 @@ import {
   MapelMultiChannelMatrixTable,
   type MapelMatrixData,
 } from './MapelMultiChannelMatrixTable';
+import { PrintDeskCanvas } from '@/components/ui/PrintHeader';
+import { TrackingSiswaDocumentSheet } from './TrackingSiswaDocumentSheet';
 
 const SearchableSelect = lazy(() =>
   import('@/components/ui/SearchableSelect').then((module) => ({
@@ -174,8 +178,13 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
   const [bulan, setBulan] = useState<string>(toLocalMonth());
   const [selectedSiswaId, setSelectedSiswaId] = useState<string>(initialTargetId);
 
-  // Tab View Mode: 'MATRIX' | 'ANOMALY'
-  const [viewMode, setViewMode] = useState<'MATRIX' | 'ANOMALY'>('MATRIX');
+  // Tab View Mode: 'SHEET' (360° Zoom & Pan) | 'MATRIX' | 'ANOMALY'
+  const [viewMode, setViewMode] = useState<'SHEET' | 'MATRIX' | 'ANOMALY'>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return 'SHEET';
+    }
+    return 'MATRIX';
+  });
   const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
 
   // Sync prop changes
@@ -518,6 +527,23 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
           <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0 flex-wrap">
             <button
               type="button"
+              onClick={() => setViewMode('SHEET')}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                viewMode === 'SHEET'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+              )}
+            >
+              <FileText className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Lembar 360° (Zoom & Geser)</span>
+              <span className="hidden sm:inline-block px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-[9px] rounded font-mono font-bold">
+                A4
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setViewMode('MATRIX')}
               className={cn(
                 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
@@ -527,7 +553,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
               )}
             >
               <Layers className="w-3.5 h-3.5 text-primary" />
-              <span>Matriks 30 Hari (Mapel)</span>
+              <span>Tabel Matriks</span>
             </button>
 
             <button
@@ -574,7 +600,35 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
 
         {/* Content Based on View Mode */}
         <div className="pt-3">
-          {viewMode === 'MATRIX' ? (
+          {viewMode === 'SHEET' ? (
+            <div className="w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-900/95 shadow-inner">
+              <div className="px-3 py-1.5 bg-slate-800/80 text-slate-300 text-[11px] flex items-center justify-between border-b border-slate-700/60">
+                <div className="flex items-center gap-1.5 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Lembar 360° Interaktif: Cubit / Tombol Zoom untuk perbesar, geser bebas dengan 1 jari atau mouse.</span>
+                </div>
+                <span className="hidden sm:inline text-[10px] text-slate-400">Pinch / Ctrl + Scroll untuk Zoom</span>
+              </div>
+              <PrintDeskCanvas
+                orientation="landscape"
+                className="min-h-[480px] max-h-[75vh]"
+                showFloatingControls={true}
+              >
+                <TrackingSiswaDocumentSheet
+                  siswaNama={displayStudentName}
+                  siswaNis={displayStudentNis}
+                  kelasNama={propKelasNama || (singleSiswaQuery.data as any)?.Kelas?.nama_kelas || (singleSiswaQuery.data as any)?.kelas?.nama_kelas}
+                  jurusanNama={propJurusanNama || (singleSiswaQuery.data as any)?.Jurusan?.nama_jurusan || (singleSiswaQuery.data as any)?.jurusan?.nama_jurusan}
+                  bulan={bulan}
+                  matrixData={monthData?.mapel_matrix}
+                  channelSummary={channelSummary}
+                  waliKelasNama={user?.nama || user?.name || 'Wali Kelas'}
+                  selectedDate={tanggal}
+                  onDateClick={(newDate) => setTanggal(newDate)}
+                />
+              </PrintDeskCanvas>
+            </div>
+          ) : viewMode === 'MATRIX' ? (
             <MapelMultiChannelMatrixTable
               matrixData={monthData?.mapel_matrix}
               bulan={bulan}
