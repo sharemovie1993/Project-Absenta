@@ -23,7 +23,7 @@ export interface KesiswaanJadwalBuilderProps {
   jadwalItems: JadwalKegiatanItem[];
   classes: any[];
   readOnly?: boolean;
-  onEditItem: (item: JadwalKegiatanItem) => void;
+  onEditItem: (item: JadwalKegiatanItem, targetDay?: string) => void;
   onDeleteItem: (id: string, nama: string) => void;
   onAddNewToDay: (day: string) => void;
 }
@@ -306,7 +306,7 @@ export const KesiswaanJadwalBuilder: React.FC<KesiswaanJadwalBuilderProps> = Rea
                       return (
                         <div
                           key={`${dayKey}-${item.id}`}
-                          onClick={() => !readOnly && onEditItem(item)}
+                          onClick={() => !readOnly && onEditItem(item, dayKey)}
                           className={cn(
                             'p-3 rounded-xl border transition-all text-left group cursor-pointer relative shadow-xs hover:shadow-md hover:scale-[1.01]',
                             isKetarunaan
@@ -367,7 +367,7 @@ export const KesiswaanJadwalBuilder: React.FC<KesiswaanJadwalBuilderProps> = Rea
                                 title="Edit Jadwal"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onEditItem(item);
+                                  onEditItem(item, dayKey);
                                 }}
                                 className="p-1 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800"
                               >

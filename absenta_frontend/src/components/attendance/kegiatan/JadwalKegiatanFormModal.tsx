@@ -14,6 +14,8 @@ import {
   Copy,
   Sliders,
   AlertCircle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';

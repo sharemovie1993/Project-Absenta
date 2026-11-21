@@ -100,6 +100,7 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
   const [editingItems, setEditingItems] = useState<JadwalKegiatanItem[]>([]);
   const [presetMasterNama, setPresetMasterNama] = useState<string | undefined>(undefined);
   const [presetDay, setPresetDay] = useState<string | undefined>(undefined);
+  const [focusDay, setFocusDay] = useState<string | undefined>(undefined);
 
   // Fallback ke Platform-Wide Academic Filter jika tidak diinjeksi oleh parent
   const internalAcademic = useAcademicFilter({
@@ -125,6 +126,7 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
     setEditingItems([]);
     setPresetMasterNama(undefined);
     setPresetDay(undefined);
+    setFocusDay(undefined);
     setIsModalOpen(true);
   }, [readOnly]);
 
@@ -134,6 +136,7 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
     setEditingItems([]);
     setPresetMasterNama(undefined);
     setPresetDay(day);
+    setFocusDay(day ? day.toUpperCase() : undefined);
     setIsModalOpen(true);
   }, [readOnly]);
 
@@ -143,15 +146,17 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
     setEditingItems([]);
     setPresetMasterNama(masterNama);
     setPresetDay(undefined);
+    setFocusDay(undefined);
     setIsModalOpen(true);
   }, [readOnly]);
 
-  const handleOpenEdit = useCallback((primary: JadwalKegiatanItem, allItems: JadwalKegiatanItem[] = []) => {
+  const handleOpenEdit = useCallback((primary: JadwalKegiatanItem, allItems: JadwalKegiatanItem[] = [], targetDay?: string) => {
     if (readOnly) return;
     setEditingItem(primary);
     setEditingItems(allItems.length > 0 ? allItems : [primary]);
     setPresetMasterNama(undefined);
     setPresetDay(undefined);
+    setFocusDay(targetDay ? targetDay.toUpperCase() : undefined);
     setIsModalOpen(true);
   }, [readOnly]);
 
@@ -161,6 +166,7 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
     setEditingItems([]);
     setPresetMasterNama(undefined);
     setPresetDay(undefined);
+    setFocusDay(undefined);
   }, []);
 
   const handleFormSubmit = useCallback(async (payloads: JadwalKegiatanFormData[]) => {
@@ -453,7 +459,13 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
           jadwalItems={jadwalItems}
           classes={classes}
           readOnly={readOnly}
-          onEditItem={(item) => handleOpenEdit(item, [item])}
+          onEditItem={(item, targetDay) => {
+            const allRelated = jadwalItems.filter(j => 
+              j.id === item.id ||
+              (j.nama && item.nama && j.nama.toLowerCase().trim() === item.nama.toLowerCase().trim())
+            );
+            handleOpenEdit(item, allRelated, targetDay);
+          }}
           onDeleteItem={(id, nama) => handleDelete([{ id, nama } as any], nama)}
           onAddNewToDay={(day) => handleOpenCreateForDay(day)}
         />
@@ -704,6 +716,7 @@ export const JadwalKegiatanView: React.FC<UniversalJadwalKegiatanViewProps> = Re
             activeTahunPelajaranName={effectiveTpName}
             presetNama={presetMasterNama}
             presetDay={presetDay}
+            focusDay={focusDay}
             onClose={handleCloseModal}
             onSubmit={handleFormSubmit}
           />

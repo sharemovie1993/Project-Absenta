@@ -207,6 +207,9 @@ async function fetchRemoteManifest(currentVersion: string = '1.0.3'): Promise<Ot
 
 /**
  * Memeriksa ketersediaan pembaruan OTA ke VPS Dedicated
+ * Jika terdeteksi versi baru, OTA engine secara otomatis mengunduh bundle
+ * di background secara senyap (seamless) tanpa memunculkan dialog skip/tawaran.
+ *
  * @param forceCheck Jika true, lewati throttling dan paksa cek
  * @param showNotificationIfNoUpdate Jika true, tampilkan toast jika sudah versi terbaru (untuk cek manual)
  */
@@ -242,7 +245,9 @@ export const checkOtaUpdate = async (
       hasUpdate: isNewer,
       manifest,
       remoteVersion: manifest.version,
-      isModalOpen: isNewer ? true : state.isModalOpen,
+      // Jangan buka modal dialog tawar-menawar!
+      // Modal hanya terbuka ketika unduhan SELESAI (isReadyToReload: true)
+      isModalOpen: state.isReadyToReload ? true : false,
       lastCheckedAt: now,
       error: null,
     });
@@ -251,6 +256,13 @@ export const checkOtaUpdate = async (
       toast.success(`Aplikasi sudah menggunakan versi terbaru (v${currentVersion}).`, {
         id: 'ota-up-to-date',
       });
+    }
+
+    // 🚀 SEAMLESS BACKGROUND AUTO-DOWNLOAD:
+    // Jika ada update baru dan belum sedang mendownload/ready, langsung unduh senyap di latar belakang!
+    if (isNewer && !state.isDownloading && !state.isReadyToReload) {
+      console.log(`[OTA] Versi baru terdeteksi (v${manifest.version}). Memulai unduhan seamless di background...`);
+      startOtaDownload();
     }
 
     return state;
@@ -271,10 +283,14 @@ export const checkOtaUpdate = async (
 };
 
 /**
- * Mengunduh dan memasang bundle pembaruan OTA
+ * Mengunduh dan memasang bundle pembaruan OTA secara otomatis (seamless).
+ * Setelah terunduh:
+ * 1. Bundle langsung di-set sebagai aktif (siap pakai di startup berikutnya).
+ * 2. Menampilkan dialog konfirmasi ramah jika ingin restart sekarang.
  */
 export const startOtaDownload = async (): Promise<boolean> => {
   if (!state.manifest || !isMobileNative()) return false;
+  if (state.isDownloading) return false;
 
   setState({ isDownloading: true, downloadProgress: 0, error: null });
 
@@ -288,7 +304,7 @@ export const startOtaDownload = async (): Promise<boolean> => {
       });
     } catch {}
 
-    console.log('[OTA] Memulai unduhan bundle:', state.manifest.bundle_url);
+    console.log('[OTA] [Seamless] Memulai unduhan bundle:', state.manifest.bundle_url);
     const downloaded = await CapacitorUpdater.download({
       url: state.manifest.bundle_url,
       version: state.manifest.version,
@@ -296,12 +312,13 @@ export const startOtaDownload = async (): Promise<boolean> => {
     });
 
     if (downloaded && downloaded.id) {
-      // Pasang bundle sebagai next aktif
+      // 1. Pasang bundle sebagai next aktif
+      // (Artinya: ketika aplikasi dibuka kembali di sesi berikutnya, otomatis langsung jalan di versi baru)
       await CapacitorUpdater.set({ id: downloaded.id });
       await Preferences.set({ key: CURRENT_OTA_VERSION_KEY, value: state.manifest.version });
       console.log('[OTA] ✅ Bundle baru berhasil disimpan dan siap diterapkan!');
 
-      // Kirim telemetri sukses instalasi bundle OTA
+      // 2. Kirim telemetri sukses instalasi bundle OTA
       getOrCreateOtaDeviceId()
         .then((deviceId) => {
           fetch(OTA_TRACK_URL, {
@@ -317,10 +334,12 @@ export const startOtaDownload = async (): Promise<boolean> => {
         })
         .catch(() => {});
 
+      // 3. Update status: Siap muat ulang & tampilkan popup opsi restart
       setState({
         isDownloading: false,
         downloadProgress: 100,
         isReadyToReload: true,
+        isModalOpen: true, // Tampilkan popup ramah untuk restart sekarang / lanjut
       });
 
       return true;
@@ -328,12 +347,11 @@ export const startOtaDownload = async (): Promise<boolean> => {
       throw new Error('Hasil unduhan bundle tidak valid.');
     }
   } catch (err: any) {
-    console.error('[OTA] Gagal mengunduh bundle OTA:', err);
+    console.error('[OTA] Gagal mengunduh bundle OTA di background:', err);
     setState({
       isDownloading: false,
       error: err?.message || 'Gagal mengunduh pembaruan OTA.',
     });
-    toast.error('Gagal mengunduh berkas pembaruan. Silakan coba lagi.', { id: 'ota-download-fail' });
     return false;
   } finally {
     if (progressHandle && typeof progressHandle.remove === 'function') {
@@ -342,6 +360,14 @@ export const startOtaDownload = async (): Promise<boolean> => {
       } catch {}
     }
   }
+};
+
+/** Alias fungsi untuk kompatibilitas penuh dengan pemanggil manual */
+export const downloadAndApplyOtaUpdate = async (manifest?: OtaManifest | null): Promise<boolean> => {
+  if (manifest) {
+    setState({ manifest, remoteVersion: manifest.version, hasUpdate: true });
+  }
+  return await startOtaDownload();
 };
 
 /** Muat ulang WebView seketika untuk menerapkan bundle yang telah diunduh */
@@ -365,12 +391,12 @@ export const initOtaUpdateLifecycle = () => {
   // 1. Konfirmasi ke plugin bahwa aplikasi berjalan baik (anti-rollback)
   CapacitorUpdater.notifyAppReady().catch(() => {});
 
-  // 2. Jalankan pengecekan otomatis setelah 1.5 detik
+  // 2. Jalankan pengecekan otomatis setelah 2 detik
   setTimeout(() => {
     checkOtaUpdate(false);
-  }, 1500);
+  }, 2000);
 
-  // 3. Pasang listener saat aplikasi dibuka kembali dari background
+  // 3. Pasang listener saat aplikasi dibuka kembali dari background / multitasking
   try {
     App.addListener('appStateChange', (appState) => {
       if (appState.isActive) {
