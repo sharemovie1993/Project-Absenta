@@ -81,6 +81,7 @@ export interface UniversalRekapKolektifViewProps {
 
   // Callbacks
   onClose?: () => void;
+  onStudentTrackingClick?: (siswaId: string, siswaNama?: string) => void;
 }
 
 export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = React.memo(({
@@ -99,8 +100,17 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
   hideScopeBanner = false,
   readOnly = false,
   onClose,
+  onStudentTrackingClick,
 }) => {
   const navigate = useNavigate();
+
+  const handleOpenTracking = useCallback((siswaId: string, siswaNama?: string) => {
+    if (onStudentTrackingClick) {
+      onStudentTrackingClick(siswaId, siswaNama);
+    } else {
+      navigate(`/attendance/tracking-siswa?siswa_id=${siswaId}`);
+    }
+  }, [onStudentTrackingClick, navigate]);
   const { user } = useAuthStore();
   const { isKaprog, kaprogJurusan, isWaliKelas, walikelasKelas, isAdmin } = useCapabilities();
 
@@ -559,7 +569,7 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                         <td className="py-2.5 px-4 font-semibold text-slate-800 dark:text-slate-100">
                           <button
                             type="button"
-                            onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
+                            onClick={() => handleOpenTracking(r.siswa_id, r.nama_siswa)}
                             className="group/name inline-flex items-center gap-1 font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline cursor-pointer truncate max-w-[240px] text-left"
                             title={`Klik untuk Buka Tracking Presensi: ${r.nama_siswa}`}
                           >
@@ -596,7 +606,7 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                         <td className="py-2.5 px-3 text-center">
                           <button
                             type="button"
-                            onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
+                            onClick={() => handleOpenTracking(r.siswa_id, r.nama_siswa)}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 transition-all cursor-pointer shadow-2xs"
                             title="Buka Matriks Tracking Multi-Channel Siswa"
                           >
@@ -636,7 +646,7 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                           <div className="min-w-0 flex-1">
                             <button
                               type="button"
-                              onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
+                              onClick={() => handleOpenTracking(r.siswa_id, r.nama_siswa)}
                               className="group/name inline-flex items-center gap-1 text-left font-bold text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer truncate max-w-full"
                             >
                               <span className="truncate">{r.nama_siswa}</span>
@@ -695,7 +705,7 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                       <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex justify-end">
                         <button
                           type="button"
-                          onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
+                          onClick={() => handleOpenTracking(r.siswa_id, r.nama_siswa)}
                           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors cursor-pointer"
                         >
                           <Compass className="w-3.5 h-3.5 text-indigo-500" />
@@ -747,7 +757,7 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                     <td className="py-1 px-2 font-semibold text-slate-800 dark:text-slate-100 truncate max-w-[150px] sticky left-0 z-10 bg-white dark:bg-slate-900 shadow-[1px_0_3px_rgba(0,0,0,0.06)]" title={r.nama_siswa}>
                       <button
                         type="button"
-                        onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
+                        onClick={() => handleOpenTracking(r.siswa_id, r.nama_siswa)}
                         className="group/name inline-flex items-center gap-1 text-left font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline cursor-pointer truncate max-w-[140px]"
                         title={`Klik untuk Buka Tracking: ${r.nama_siswa}`}
                       >
@@ -799,7 +809,7 @@ export const RekapKolektifView: React.FC<UniversalRekapKolektifViewProps> = Reac
                     <td className="py-1 px-1 text-center sticky right-0 bg-white dark:bg-slate-900 z-10 shadow-[-1px_0_3px_rgba(0,0,0,0.06)]">
                       <button
                         type="button"
-                        onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${r.siswa_id}`)}
+                        onClick={() => handleOpenTracking(r.siswa_id, r.nama_siswa)}
                         className="p-1 rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer inline-flex items-center justify-center shadow-2xs"
                         title={`Buka Tracking Multi-Channel: ${r.nama_siswa}`}
                       >

@@ -135,6 +135,13 @@ export const WalasPresensiTab: React.FC<WalasPresensiTabProps> = React.memo(({
             hideLayout={true}
             hideScopeBanner={true}
             readOnly={isHistorical}
+            onStudentTrackingClick={(siswaId, siswaNama) => {
+              setTrackingTarget({
+                isOpen: true,
+                siswaId,
+                siswaNama: siswaNama || '',
+              });
+            }}
           />
         </Suspense>
       </div>

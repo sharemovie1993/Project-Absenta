@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Users, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { RekapKolektifView, type UniversalRekapKolektifViewProps } from '@/components/attendance/rekap/RekapKolektifView';
 import type { KelasKehadiranItem } from '../types';
+
+const TrackingSiswaModal = lazy(() =>
+  import('@/components/attendance/tracking/TrackingSiswaModal').then((m) => ({ default: m.TrackingSiswaModal }))
+);
 
 export { RekapKolektifView, type UniversalRekapKolektifViewProps };
 
@@ -28,6 +32,15 @@ export const KaprogRekapKolektifModal: React.FC<KaprogRekapKolektifModalProps> =
   semesterId,
 }) => {
   const navigate = useNavigate();
+  const [trackingTarget, setTrackingTarget] = useState<{
+    isOpen: boolean;
+    siswaId: string;
+    siswaNama: string;
+  }>({
+    isOpen: false,
+    siswaId: '',
+    siswaNama: '',
+  });
 
   if (!isOpen) return null;
 
@@ -67,7 +80,30 @@ export const KaprogRekapKolektifModal: React.FC<KaprogRekapKolektifModalProps> =
           tahunPelajaranId={tahunPelajaranId}
           semesterId={semesterId}
           onClose={onClose}
+          onStudentTrackingClick={(siswaId, siswaNama) => {
+            setTrackingTarget({
+              isOpen: true,
+              siswaId,
+              siswaNama: siswaNama || '',
+            });
+          }}
         />
+
+        {/* Modal Tracking Siswa In-Place */}
+        {trackingTarget.isOpen && (
+          <Suspense fallback={null}>
+            <TrackingSiswaModal
+              isOpen={trackingTarget.isOpen}
+              onClose={() => setTrackingTarget({ isOpen: false, siswaId: '', siswaNama: '' })}
+              siswaId={trackingTarget.siswaId}
+              siswaNama={trackingTarget.siswaNama}
+              jurusanId={jurusanId}
+              jurusanNama={jurusanNama}
+              tahunPelajaranId={tahunPelajaranId}
+              semesterId={semesterId}
+            />
+          </Suspense>
+        )}
 
         {/* Footer Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
