@@ -77,6 +77,7 @@ interface JadwalKegiatanFormModalProps {
   /** When opening via 'Atur' on a master card, pre-select this master name in the form */
   presetNama?: string;
   presetDay?: string;
+  focusDay?: string;
   onClose: () => void;
   onSubmit: (payloads: JadwalKegiatanFormData[]) => Promise<void>;
 }
@@ -118,6 +119,7 @@ export default React.memo(function JadwalKegiatanFormModal({
   activeTahunPelajaranName,
   presetNama = '',
   presetDay = '',
+  focusDay = '',
   onClose,
   onSubmit,
 }: JadwalKegiatanFormModalProps) {
@@ -143,6 +145,12 @@ export default React.memo(function JadwalKegiatanFormModal({
   // ── Matrix State ──
   const [isMatrixMode, setIsMatrixMode] = useState(false);
   const [matrixSchedule, setMatrixSchedule] = useState<Record<string, DayScheduleMatrix>>({});
+  const [activeFocusDay, setActiveFocusDay] = useState<string | undefined>(
+    focusDay ? focusDay.toUpperCase() : undefined
+  );
+  const [focusScope, setFocusScope] = useState<'ONLY_THIS_DAY' | 'ALL_DAYS'>('ONLY_THIS_DAY');
+  const [showOtherDays, setShowOtherDays] = useState(false);
+  const focusInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // ── Init from editingItem / editingItems or presetNama ──
   useEffect(() => {
@@ -180,7 +188,25 @@ export default React.memo(function JadwalKegiatanFormModal({
       setWaktuMulai(primary.waktu_mulai || '07:00');
       setWaktuSelesai(primary.waktu_selesai || '');
       setMatrixSchedule(initialMatrix);
-      setIsMatrixMode(hasVaryingTimes || (primary.nama || '').toLowerCase().includes('ketarunaan'));
+      setIsMatrixMode(hasVaryingTimes || Boolean(focusDay) || (primary.nama || '').toLowerCase().includes('ketarunaan'));
+
+      if (focusDay) {
+        const upperFocus = focusDay.toUpperCase();
+        setActiveFocusDay(upperFocus);
+        setIsMatrixMode(true);
+        if (!uniqueDays.includes(upperFocus)) {
+          uniqueDays.push(upperFocus);
+          setHari(uniqueDays);
+        }
+        if (!initialMatrix[upperFocus]) {
+          const matching = items.find(it => parseArray(it.hari).map(h => h.toUpperCase()).includes(upperFocus));
+          initialMatrix[upperFocus] = {
+            waktuMulai: matching?.waktu_mulai || primary.waktu_mulai || '07:00',
+            waktuSelesai: matching?.waktu_selesai || primary.waktu_selesai || '',
+          };
+          setMatrixSchedule({ ...initialMatrix });
+        }
+      }
     } else {
       // New form
       setNama(presetNama);
@@ -196,7 +222,7 @@ export default React.memo(function JadwalKegiatanFormModal({
       setMatrixSchedule(presetDay ? { [presetDay.toUpperCase()]: { waktuMulai: '07:00', waktuSelesai: '07:15' } } : {});
     }
     setErrors({});
-  }, [editingItem, editingItems, presetNama, presetDay]);
+  }, [editingItem, editingItems, presetNama, presetDay, focusDay]);
 
   // ── Sync matrixSchedule when days change ──
   const syncMatrixForDay = useCallback((day: string, fallbackMulai?: string, fallbackSelesai?: string) => {
@@ -312,6 +338,95 @@ export default React.memo(function JadwalKegiatanFormModal({
     });
     toast.success(`Jam ${getDayShortLabel(sourceDay)} (${source.waktuMulai} - ${source.waktuSelesai || 'Selesai'}) disalin ke seluruh hari terpilih!`);
   }, [matrixSchedule, waktuMulai, waktuSelesai, hari]);
+
+  // ── Auto focus to time input when focus day is set ──
+  useEffect(() => {
+    if (activeFocusDay) {
+      const timer = setTimeout(() => {
+        focusInputRef.current?.focus();
+        focusInputRef.current?.select?.();
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [activeFocusDay]);
+
+  const currentFocusData = useMemo(() => {
+    if (!activeFocusDay) return { waktuMulai, waktuSelesai };
+    return matrixSchedule[activeFocusDay] || { waktuMulai, waktuSelesai };
+  }, [activeFocusDay, matrixSchedule, waktuMulai, waktuSelesai]);
+
+  const currentFocusDur = useMemo(() => {
+    return calculateDuration(currentFocusData.waktuMulai, currentFocusData.waktuSelesai);
+  }, [currentFocusData]);
+
+  const handleUpdateFocusDayTime = useCallback((field: 'waktuMulai' | 'waktuSelesai', val: string) => {
+    if (!activeFocusDay) {
+      if (field === 'waktuMulai') setWaktuMulai(val);
+      if (field === 'waktuSelesai') setWaktuSelesai(val);
+      return;
+    }
+
+    if (focusScope === 'ALL_DAYS') {
+      setMatrixSchedule(prev => {
+        const next = { ...prev };
+        hari.forEach(d => {
+          next[d] = {
+            ...(next[d] || { waktuMulai, waktuSelesai }),
+            [field]: val,
+          };
+        });
+        return next;
+      });
+      if (field === 'waktuMulai') setWaktuMulai(val);
+      if (field === 'waktuSelesai') setWaktuSelesai(val);
+    } else {
+      setMatrixSchedule(prev => ({
+        ...prev,
+        [activeFocusDay]: {
+          ...(prev[activeFocusDay] || { waktuMulai, waktuSelesai }),
+          [field]: val,
+        }
+      }));
+    }
+  }, [activeFocusDay, focusScope, hari, waktuMulai, waktuSelesai]);
+
+  const handleApplyFocusDayPreset = useCallback((mulai: string, selesai: string) => {
+    if (!activeFocusDay) {
+      setWaktuMulai(mulai);
+      setWaktuSelesai(selesai);
+      return;
+    }
+
+    if (focusScope === 'ALL_DAYS') {
+      setMatrixSchedule(prev => {
+        const next = { ...prev };
+        hari.forEach(d => {
+          next[d] = { waktuMulai: mulai, waktuSelesai: selesai };
+        });
+        return next;
+      });
+      setWaktuMulai(mulai);
+      setWaktuSelesai(selesai);
+    } else {
+      setMatrixSchedule(prev => ({
+        ...prev,
+        [activeFocusDay]: { waktuMulai: mulai, waktuSelesai: selesai }
+      }));
+    }
+  }, [activeFocusDay, focusScope, hari]);
+
+  const otherDays = useMemo(() => {
+    if (!activeFocusDay) return [];
+    return hari.filter(d => d !== activeFocusDay);
+  }, [hari, activeFocusDay]);
+
+  const handleDayButtonClick = useCallback((day: string) => {
+    if (isMatrixMode && hari.includes(day) && activeFocusDay !== day) {
+      setActiveFocusDay(day);
+    } else {
+      handleToggleDay(day);
+    }
+  }, [isMatrixMode, hari, activeFocusDay, handleToggleDay]);
 
   // ── Quick Class Selectors & Grouping by Tingkat ──
   const groupedClasses = useMemo(() => {
@@ -521,6 +636,12 @@ export default React.memo(function JadwalKegiatanFormModal({
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
                   {editingItem ? (editingItems.length > 1 ? `Matrix (${editingItems.length} Slot)` : 'Edit Mode') : 'Baru'}
                 </span>
+                {activeFocusDay && (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800 flex items-center gap-1 shadow-2xs">
+                    <Clock size={11} className="text-amber-600 dark:text-amber-400" />
+                    Fokus: Hari {getDayOption(activeFocusDay)?.label || activeFocusDay}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
                 Jadwal ini di-generate otomatis menjadi sesi absensi harian pada pukul 01:00
@@ -666,14 +787,21 @@ export default React.memo(function JadwalKegiatanFormModal({
                       type="button"
                       id={`btn-hari-${opt.value.toLowerCase()}`}
                       aria-pressed={active}
-                      onClick={() => handleToggleDay(opt.value)}
-                      className={`min-h-[42px] px-2 py-2 rounded-xl text-xs font-bold border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                        active
+                      onClick={() => handleDayButtonClick(opt.value)}
+                      className={`min-h-[42px] px-2 py-2 rounded-xl text-xs font-bold border transition-all flex flex-col items-center justify-center gap-0.5 relative ${
+                        activeFocusDay === opt.value
+                          ? 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-500/30 ring-2 ring-amber-400 dark:ring-amber-300 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 scale-[1.03]'
+                          : active
                           ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/20 scale-[1.02]'
                           : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-300'
                       }`}
                     >
                       <span>{opt.label}</span>
+                      {activeFocusDay === opt.value && (
+                        <span className="text-[8px] font-black uppercase tracking-wider bg-white/25 px-1 rounded-sm">
+                          Fokus
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -681,179 +809,419 @@ export default React.memo(function JadwalKegiatanFormModal({
               {errors.hari && <p role="alert" className="mt-1 text-[11px] text-rose-500 font-medium">{errors.hari}</p>}
             </div>
 
-            {/* Matrix Mode Switcher Toggle Card */}
-            <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className={`p-2 rounded-xl mt-0.5 ${isMatrixMode ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'bg-slate-200/60 dark:bg-slate-700 text-slate-500'}`}>
-                  <Layers size={17} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                      Mode Matrix Waktu (Jam Berbeda per Hari)
-                    </span>
-                    {isMatrixMode && (
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                        Aktif
-                      </span>
-                    )}
+            {/* 🌟 FOCUSED DAY HIGHLIGHT CARD (Ketika modal dibuka dari hari tertentu di Jadwal Builder) */}
+            {activeFocusDay && (
+              <div className="p-4 sm:p-5 rounded-2xl border-2 border-amber-300 dark:border-amber-700/80 bg-gradient-to-br from-amber-50/90 via-white to-amber-50/40 dark:from-amber-950/40 dark:via-slate-900 dark:to-amber-950/20 shadow-md space-y-4">
+                {/* Header Card */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-amber-200/80 dark:border-amber-900/50 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-amber-500 text-white shadow-sm flex items-center justify-center shrink-0">
+                      <Clock size={18} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                          <span>Waktu Pelaksanaan Khusus Hari</span>
+                          <span className="px-2 py-0.5 rounded-lg bg-amber-200 text-amber-900 dark:bg-amber-900/80 dark:text-amber-200 text-xs font-black uppercase tracking-wider">
+                            {getDayOption(activeFocusDay)?.label || activeFocusDay}
+                          </span>
+                        </h4>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Fokus assignment hari {getDayOption(activeFocusDay)?.label || activeFocusDay} dari Jadwal Builder. Atur jam mulai dan selesai khusus untuk hari ini.
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                    Aktifkan jika durasi jam berbeda di hari tertentu (contoh: <strong>Sabtu dari pagi s.d siang</strong>, sedangkan hari kerja hanya 1 jam).
-                  </p>
-                </div>
-              </div>
 
-              <button
-                type="button"
-                role="switch"
-                aria-checked={isMatrixMode}
-                onClick={handleToggleMatrixMode}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                  isMatrixMode ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                    isMatrixMode ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-
-            {/* Waktu Pelaksanaan: Mode Seragam vs Mode Matrix */}
-            {!isMatrixMode ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-4 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800">
-                <div>
-                  <Label htmlFor="form-waktu-mulai" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                    Jam Mulai <span className="text-rose-500">*</span>
-                  </Label>
-                  <div className="relative mt-1.5">
-                    <input
-                      id="form-waktu-mulai"
-                      name="waktu_mulai"
-                      type="time"
-                      value={waktuMulai}
-                      onChange={e => setWaktuMulai(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm font-semibold"
-                    />
+                  {/* Scope Selector */}
+                  <div className="flex items-center gap-1 p-1 rounded-xl bg-amber-100/70 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-900 text-[11px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setFocusScope('ONLY_THIS_DAY')}
+                      className={`px-2.5 py-1 rounded-lg transition-all ${
+                        focusScope === 'ONLY_THIS_DAY'
+                          ? 'bg-white dark:bg-slate-900 text-amber-900 dark:text-amber-200 shadow-xs font-black'
+                          : 'text-amber-700 dark:text-amber-400 hover:text-amber-900'
+                      }`}
+                    >
+                      Hanya Hari {getDayOption(activeFocusDay)?.label || activeFocusDay}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFocusScope('ALL_DAYS')}
+                      className={`px-2.5 py-1 rounded-lg transition-all ${
+                        focusScope === 'ALL_DAYS'
+                          ? 'bg-white dark:bg-slate-900 text-amber-900 dark:text-amber-200 shadow-xs font-black'
+                          : 'text-amber-700 dark:text-amber-400 hover:text-amber-900'
+                      }`}
+                    >
+                      Terapkan ke Semua Hari
+                    </button>
                   </div>
                 </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="form-waktu-selesai" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                      Jam Selesai <span className="text-slate-400 text-[10px] normal-case font-normal">(opsional)</span>
+
+                {/* Input Jam Mulai & Selesai Hari Fokus */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <Label htmlFor="focus-waktu-mulai" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                      Jam Mulai Hari {getDayOption(activeFocusDay)?.label || activeFocusDay} <span className="text-rose-500">*</span>
                     </Label>
-                    {waktuMulai && waktuSelesai && (
-                      <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded-md">
-                        Durasi: {calculateDuration(waktuMulai, waktuSelesai)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="relative mt-1.5">
                     <input
-                      id="form-waktu-selesai"
-                      name="waktu_selesai"
+                      ref={focusInputRef}
+                      id="focus-waktu-mulai"
                       type="time"
-                      value={waktuSelesai}
-                      onChange={e => setWaktuSelesai(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm font-semibold"
+                      value={currentFocusData.waktuMulai || '07:00'}
+                      onChange={e => handleUpdateFocusDayTime('waktuMulai', e.target.value)}
+                      className="mt-1.5 w-full px-4 py-2.5 rounded-xl border-2 border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-950 text-sm font-extrabold focus:outline-none focus:ring-2 focus:ring-amber-500/40 text-slate-800 dark:text-slate-100 shadow-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="focus-waktu-selesai" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                        Jam Selesai Hari {getDayOption(activeFocusDay)?.label || activeFocusDay}
+                      </Label>
+                      {currentFocusDur && (
+                        <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 rounded-md">
+                          Durasi: {currentFocusDur}
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      id="focus-waktu-selesai"
+                      type="time"
+                      value={currentFocusData.waktuSelesai || ''}
+                      onChange={e => handleUpdateFocusDayTime('waktuSelesai', e.target.value)}
+                      className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-extrabold focus:outline-none focus:ring-2 focus:ring-amber-500/40 text-slate-800 dark:text-slate-100 shadow-xs"
                     />
                   </div>
                 </div>
+
+                {/* Preset Cepat */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1 mr-1">
+                    <Sparkles size={11} className="text-amber-500" /> Preset Cepat:
+                  </span>
+                  {activeFocusDay === 'SABTU' ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyFocusDayPreset('06:30', '12:00')}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-300/80 dark:border-amber-800 text-amber-900 dark:text-amber-200 transition-colors shadow-2xs"
+                      >
+                        06:30 – 12:00 (Pagi s/d Siang)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyFocusDayPreset('06:30', '11:30')}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-300/80 dark:border-amber-800 text-amber-900 dark:text-amber-200 transition-colors shadow-2xs"
+                      >
+                        06:30 – 11:30
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyFocusDayPreset('07:00', '12:00')}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-300/80 dark:border-amber-800 text-amber-900 dark:text-amber-200 transition-colors shadow-2xs"
+                      >
+                        07:00 – 12:00
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyFocusDayPreset('06:30', '07:30')}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-colors shadow-2xs"
+                      >
+                        06:30 – 07:30 (1 Jam)
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyFocusDayPreset('06:30', '07:30')}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 transition-colors shadow-2xs"
+                      >
+                        06:30 – 07:30
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyFocusDayPreset('07:00', '07:50')}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 transition-colors shadow-2xs"
+                      >
+                        07:00 – 07:50
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyFocusDayPreset('15:30', '16:00')}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 transition-colors shadow-2xs"
+                      >
+                        15:30 – 16:00 (Sore)
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            ) : (
-              /* Matrix Mode: Baris per Hari */
-              <div className="space-y-3">
-                {hari.length === 0 ? (
-                  <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2">
-                    <AlertCircle size={15} />
-                    <span>Silakan pilih minimal satu hari pelaksanaan di atas untuk menyusun matrix jam.</span>
+            )}
+
+            {/* Accordion Hari Lainnya jika activeFocusDay aktif dan ada hari lain */}
+            {activeFocusDay && otherDays.length > 0 && (
+              <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden bg-slate-50/50 dark:bg-slate-900/30">
+                <button
+                  type="button"
+                  onClick={() => setShowOtherDays(prev => !prev)}
+                  className="w-full p-3.5 flex items-center justify-between text-left hover:bg-slate-100/70 dark:hover:bg-slate-800/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Calendar size={14} className="text-slate-500" />
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                      Jadwal Hari Lainnya ({otherDays.length} Hari: {otherDays.map(d => getDayOption(d)?.label || d).join(', ')})
+                    </span>
                   </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    {hari.map((dayKey) => {
-                      const opt = getDayOption(dayKey);
-                      const currentDayData = matrixSchedule[dayKey] || { waktuMulai, waktuSelesai };
-                      const dur = calculateDuration(currentDayData.waktuMulai, currentDayData.waktuSelesai);
-                      const isSabtu = dayKey === 'SABTU';
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                    <span>{showOtherDays ? 'Sembunyikan' : 'Lihat & Sesuaikan'}</span>
+                    {showOtherDays ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </div>
+                </button>
 
-                      return (
-                        <div
-                          key={dayKey}
-                          className={`p-3.5 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 ${
-                            isSabtu
-                              ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/50 shadow-sm'
-                              : 'bg-white dark:bg-slate-950 border-slate-200/80 dark:border-slate-800'
-                          }`}
-                        >
-                          {/* Day info */}
-                          <div className="flex items-center gap-2.5 sm:min-w-[150px]">
-                            <span className={`px-2.5 py-1 rounded-xl text-xs font-black uppercase tracking-wider ${
-                              isSabtu
-                                ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-200'
-                                : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
-                            }`}>
-                              {opt?.label || dayKey}
-                            </span>
-                            {isSabtu && (
-                              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">
-                                (Latihan Lapangan)
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Time Inputs */}
-                          <div className="flex-1 grid grid-cols-2 sm:grid-cols-2 gap-2">
-                            <div>
-                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                                Mulai
-                              </label>
-                              <input
-                                type="time"
-                                value={currentDayData.waktuMulai}
-                                onChange={e => handleUpdateMatrixDay(dayKey, 'waktuMulai', e.target.value)}
-                                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold focus:ring-2 focus:ring-indigo-500/30"
-                              />
+                {showOtherDays && (
+                  <div className="p-3.5 pt-0 space-y-2.5 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-950">
+                    <div className="pt-2.5 space-y-2">
+                      {otherDays.map(dayKey => {
+                        const opt = getDayOption(dayKey);
+                        const dayData = matrixSchedule[dayKey] || { waktuMulai, waktuSelesai };
+                        const dur = calculateDuration(dayData.waktuMulai, dayData.waktuSelesai);
+                        return (
+                          <div
+                            key={dayKey}
+                            className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                          >
+                            <div className="flex items-center gap-2 min-w-[120px]">
+                              <button
+                                type="button"
+                                onClick={() => setActiveFocusDay(dayKey)}
+                                title="Klik untuk fokus ke hari ini"
+                                className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-100 transition-colors"
+                              >
+                                {opt?.label || dayKey}
+                              </button>
                             </div>
-                            <div>
-                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                                Selesai
-                              </label>
-                              <input
-                                type="time"
-                                value={currentDayData.waktuSelesai}
-                                onChange={e => handleUpdateMatrixDay(dayKey, 'waktuSelesai', e.target.value)}
-                                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold focus:ring-2 focus:ring-indigo-500/30"
-                              />
+
+                            <div className="flex-1 grid grid-cols-2 gap-2">
+                              <div>
+                                <input
+                                  type="time"
+                                  value={dayData.waktuMulai}
+                                  onChange={e => handleUpdateMatrixDay(dayKey, 'waktuMulai', e.target.value)}
+                                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold"
+                                />
+                              </div>
+                              <div>
+                                <input
+                                  type="time"
+                                  value={dayData.waktuSelesai}
+                                  onChange={e => handleUpdateMatrixDay(dayKey, 'waktuSelesai', e.target.value)}
+                                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 justify-end">
+                              {dur && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                  {dur}
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleCopyDayTimeToAll(dayKey)}
+                                title="Salin ke semua hari"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                              >
+                                <Copy size={12} />
+                              </button>
                             </div>
                           </div>
-
-                          {/* Duration & Quick Copy */}
-                          <div className="flex items-center justify-between md:justify-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
-                            {dur ? (
-                              <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                                {dur}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-slate-400 italic">Hingga selesai</span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => handleCopyDayTimeToAll(dayKey)}
-                              title="Salin jam hari ini ke semua hari terpilih"
-                              className="px-2 py-1 rounded-lg text-[10px] font-bold text-slate-500 hover:text-indigo-600 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors flex items-center gap-1"
-                            >
-                              <Copy size={11} />
-                              <span className="hidden sm:inline">Salin ke Semua</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Matrix Mode Switcher Toggle Card (Hanya jika tidak sedang fokus spesifik atau saat ingin beralih mode) */}
+            {!activeFocusDay && (
+              <>
+                <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-xl mt-0.5 ${isMatrixMode ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'bg-slate-200/60 dark:bg-slate-700 text-slate-500'}`}>
+                      <Layers size={17} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                          Mode Matrix Waktu (Jam Berbeda per Hari)
+                        </span>
+                        {isMatrixMode && (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            Aktif
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                        Aktifkan jika durasi jam berbeda di hari tertentu (contoh: <strong>Sabtu dari pagi s.d siang</strong>, sedangkan hari kerja hanya 1 jam).
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isMatrixMode}
+                    onClick={handleToggleMatrixMode}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                      isMatrixMode ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        isMatrixMode ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Waktu Pelaksanaan: Mode Seragam vs Mode Matrix */}
+                {!isMatrixMode ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-4 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800">
+                    <div>
+                      <Label htmlFor="form-waktu-mulai" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                        Jam Mulai <span className="text-rose-500">*</span>
+                      </Label>
+                      <div className="relative mt-1.5">
+                        <input
+                          id="form-waktu-mulai"
+                          name="waktu_mulai"
+                          type="time"
+                          value={waktuMulai}
+                          onChange={e => setWaktuMulai(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm font-semibold"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="form-waktu-selesai" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                          Jam Selesai <span className="text-slate-400 text-[10px] normal-case font-normal">(opsional)</span>
+                        </Label>
+                        {waktuMulai && waktuSelesai && (
+                          <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded-md">
+                            Durasi: {calculateDuration(waktuMulai, waktuSelesai)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative mt-1.5">
+                        <input
+                          id="form-waktu-selesai"
+                          name="waktu_selesai"
+                          type="time"
+                          value={waktuSelesai}
+                          onChange={e => setWaktuSelesai(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm font-semibold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Matrix Mode: Baris per Hari */
+                  <div className="space-y-3">
+                    {hari.length === 0 ? (
+                      <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2">
+                        <AlertCircle size={15} />
+                        <span>Silakan pilih minimal satu hari pelaksanaan di atas untuk menyusun matrix jam.</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {hari.map((dayKey) => {
+                          const opt = getDayOption(dayKey);
+                          const currentDayData = matrixSchedule[dayKey] || { waktuMulai, waktuSelesai };
+                          const dur = calculateDuration(currentDayData.waktuMulai, currentDayData.waktuSelesai);
+                          const isSabtu = dayKey === 'SABTU';
+
+                          return (
+                            <div
+                              key={dayKey}
+                              className={`p-3.5 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                                isSabtu
+                                  ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/50 shadow-sm'
+                                  : 'bg-white dark:bg-slate-950 border-slate-200/80 dark:border-slate-800'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 sm:min-w-[150px]">
+                                <span className={`px-2.5 py-1 rounded-xl text-xs font-black uppercase tracking-wider ${
+                                  isSabtu
+                                    ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-200'
+                                    : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                                }`}>
+                                  {opt?.label || dayKey}
+                                </span>
+                                {isSabtu && (
+                                  <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                                    (Latihan Lapangan)
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex-1 grid grid-cols-2 sm:grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                                    Mulai
+                                  </label>
+                                  <input
+                                    type="time"
+                                    value={currentDayData.waktuMulai}
+                                    onChange={e => handleUpdateMatrixDay(dayKey, 'waktuMulai', e.target.value)}
+                                    className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold focus:ring-2 focus:ring-indigo-500/30"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                                    Selesai
+                                  </label>
+                                  <input
+                                    type="time"
+                                    value={currentDayData.waktuSelesai}
+                                    onChange={e => handleUpdateMatrixDay(dayKey, 'waktuSelesai', e.target.value)}
+                                    className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold focus:ring-2 focus:ring-indigo-500/30"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between md:justify-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
+                                {dur ? (
+                                  <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                    {dur}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 italic">Hingga selesai</span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyDayTimeToAll(dayKey)}
+                                  title="Salin jam hari ini ke semua hari terpilih"
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold text-slate-500 hover:text-indigo-600 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors flex items-center gap-1"
+                                >
+                                  <Copy size={11} />
+                                  <span className="hidden sm:inline">Salin ke Semua</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
