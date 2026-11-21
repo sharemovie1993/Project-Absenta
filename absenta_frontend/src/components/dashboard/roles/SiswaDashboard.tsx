@@ -689,6 +689,11 @@ export const SiswaDashboard: React.FC = () => {
                 isLoadingSchedule={data.isLoadingSchedule}
                 isApiConnected={data.isApiConnected}
                 kelasId={data.siswaProfile?.kelas_id || ''}
+                siswaId={data.siswaProfile?.id || (data.user as any)?.siswa_id || data.user?.id || ''}
+                studentName={data.studentName}
+                studentNis={data.currentNisn}
+                kelasNama={data.currentClassName}
+                jurusanNama={data.currentJurusan}
               />
             </div>
           )}

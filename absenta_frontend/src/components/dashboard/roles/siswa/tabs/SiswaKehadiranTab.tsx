@@ -15,6 +15,11 @@ export interface SiswaKehadiranTabProps {
   isLoadingSchedule: boolean;
   isApiConnected: boolean;
   kelasId: string;
+  siswaId?: string;
+  studentName?: string;
+  studentNis?: string;
+  kelasNama?: string;
+  jurusanNama?: string;
 }
 
 export const SiswaKehadiranTab: React.FC<SiswaKehadiranTabProps> = ({
@@ -31,6 +36,11 @@ export const SiswaKehadiranTab: React.FC<SiswaKehadiranTabProps> = ({
   isLoadingSchedule,
   isApiConnected,
   kelasId,
+  siswaId,
+  studentName,
+  studentNis,
+  kelasNama,
+  jurusanNama,
 }) => {
   return (
     <div className="space-y-4">
@@ -48,6 +58,11 @@ export const SiswaKehadiranTab: React.FC<SiswaKehadiranTabProps> = ({
         isLoadingSchedule={isLoadingSchedule}
         isApiConnected={isApiConnected}
         kelasId={kelasId}
+        siswaId={siswaId}
+        studentName={studentName}
+        studentNis={studentNis}
+        kelasNama={kelasNama}
+        jurusanNama={jurusanNama}
       />
     </div>
   );

@@ -35,7 +35,7 @@ export async function rekapRoutes(fastify: any) {
   });
 
   fastify.get('/siswa/me/harian', {
-    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view'), determineDataScope()],
+    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view', { exemptRoles: [RoleName.SISWA] }), determineDataScope()],
     schema: {
       description: 'Get daily attendance recap for current student',
       tags: ['Rekap'],
@@ -83,7 +83,7 @@ export async function rekapRoutes(fastify: any) {
   }, getRekapHarianSiswaMe);
 
   fastify.get('/siswa/me/bulanan', {
-    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view'), determineDataScope()],
+    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view', { exemptRoles: [RoleName.SISWA] }), determineDataScope()],
     schema: {
       description: 'Get monthly attendance recap for current student',
       tags: ['Rekap'],
@@ -142,7 +142,7 @@ export async function rekapRoutes(fastify: any) {
   }, getRekapBulananSiswaMe);
 
   fastify.get('/siswa/:id/harian', {
-    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view'), determineDataScope()],
+    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view', { exemptRoles: [RoleName.SISWA] }), determineDataScope()],
     schema: {
       description: 'Get daily attendance recap for a specific student',
       tags: ['Rekap'],
@@ -197,7 +197,7 @@ export async function rekapRoutes(fastify: any) {
   }, getRekapHarianSiswa);
 
   fastify.get('/siswa/:id/bulanan', {
-    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view'), determineDataScope()],
+    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view', { exemptRoles: [RoleName.SISWA] }), determineDataScope()],
     schema: {
       description: 'Get monthly attendance recap for a specific student',
       tags: ['Rekap'],
@@ -618,7 +618,7 @@ export async function rekapRoutes(fastify: any) {
   }, getRekapHarianGuru);
 
   fastify.get('/siswa/:id/tracking', {
-    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view'), determineDataScope()],
+    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view', { exemptRoles: [RoleName.SISWA] }), determineDataScope()],
     schema: {
       description: 'Get daily activity tracking for a specific student',
       tags: ['Rekap'],

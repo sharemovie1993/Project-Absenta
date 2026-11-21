@@ -117,6 +117,7 @@ export interface UniversalTrackingSiswaViewProps {
   // Target & Context Overrides
   siswaId?: string;
   initialSiswaNama?: string;
+  initialSiswaNis?: string;
   kelasId?: string;
   kelasNama?: string;
   jurusanId?: string;
@@ -129,6 +130,7 @@ export interface UniversalTrackingSiswaViewProps {
   hideLayout?: boolean; // When true, does NOT wrap with AcademicPageLayout (suitable for Tabs & Modals)
   hideHeader?: boolean; // When true, hides "Kembali ke Rekap"
   hideScopeBanner?: boolean; // Hides scope badge/pill if needed
+  hideStudentSelector?: boolean; // When true, hides previous/next/dropdown student switcher (e.g. for student self-view)
   readOnly?: boolean;
 
   // Custom Titles/Breadcrumbs
@@ -140,6 +142,7 @@ export interface UniversalTrackingSiswaViewProps {
 export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = React.memo(({
   siswaId: propSiswaId,
   initialSiswaNama,
+  initialSiswaNis,
   kelasId: propKelasId,
   kelasNama: propKelasNama,
   jurusanId: propJurusanId,
@@ -150,6 +153,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
   hideLayout = false,
   hideHeader = false,
   hideScopeBanner = false,
+  hideStudentSelector = false,
   readOnly = false,
   title = 'Tracking Multi-Channel Siswa',
   description = 'Lacak jejak kehadiran multi-channel (Gerbang, Pembiasaan, KBM, PKL) secara kronologis.',
@@ -162,11 +166,13 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
   const { user, subscription } = useAuthStore();
   const { can } = useCapabilities();
 
+  const isSiswaRole = user?.role === 'SISWA';
+  const mySiswaId = (user as any)?.siswa_id || (isSiswaRole ? user?.id : '');
+  const initialTargetId = propSiswaId || (isSiswaRole ? mySiswaId : '') || paramSiswaId || '';
+
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
   const [bulan, setBulan] = useState<string>(toLocalMonth());
-  const [selectedSiswaId, setSelectedSiswaId] = useState<string>(
-    propSiswaId || paramSiswaId || ''
-  );
+  const [selectedSiswaId, setSelectedSiswaId] = useState<string>(initialTargetId);
 
   // Tab View Mode: 'MATRIX' | 'ANOMALY'
   const [viewMode, setViewMode] = useState<'MATRIX' | 'ANOMALY'>('MATRIX');
@@ -174,14 +180,15 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
 
   // Sync prop changes
   useEffect(() => {
-    if (propSiswaId) {
-      setSelectedSiswaId(propSiswaId);
-    } else if (paramSiswaId) {
-      setSelectedSiswaId(paramSiswaId);
+    const target = propSiswaId || (isSiswaRole ? mySiswaId : '') || paramSiswaId || '';
+    if (target) {
+      setSelectedSiswaId(target);
     }
-  }, [propSiswaId, paramSiswaId]);
+  }, [propSiswaId, paramSiswaId, isSiswaRole, mySiswaId]);
 
-  const canView = useMemo(() => can('attendance.reports.view'), [can]);
+  const isSelfSiswa = isSiswaRole || Boolean(selectedSiswaId && mySiswaId && selectedSiswaId === mySiswaId);
+  const shouldHideSelector = hideStudentSelector || isSelfSiswa;
+  const canView = useMemo(() => isSelfSiswa || can('attendance.reports.view'), [isSelfSiswa, can]);
   const isLocked = !isModuleUnlocked(subscription, 'ABSENSI');
 
   // Query opsi siswa (didukung filter kelas atau jurusan)
@@ -214,19 +221,20 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         );
       }
     },
+    enabled: !shouldHideSelector && canView && !isLocked,
     staleTime: 5 * 60 * 1000,
   });
 
   const siswaOptions = siswaOptionsQuery.data || [];
 
-  // Jika selectedSiswaId belum ada di opsi dropdown, ambil detailnya
+  // Jika selectedSiswaId belum ada di opsi dropdown, ambil detailnya (khusus non-self)
   const singleSiswaQuery = useQuery({
     queryKey: ['siswa-single-tracking', selectedSiswaId],
     queryFn: async () => {
       const res = await siswaApi.getById(selectedSiswaId);
       return res?.data || null;
     },
-    enabled: !!selectedSiswaId && !siswaOptions.some((s) => s.value === selectedSiswaId),
+    enabled: !shouldHideSelector && !!selectedSiswaId && !siswaOptions.some((s) => s.value === selectedSiswaId),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -299,15 +307,19 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
 
   // Nama dan NIS yang akan ditampilkan pada profil
   const displayStudentName =
-    result?.nama ||
-    (singleSiswaQuery.data as { nama_siswa?: string })?.nama_siswa ||
     initialSiswaNama ||
+    result?.nama ||
+    monthData?.nama_siswa ||
+    (singleSiswaQuery.data as { nama_siswa?: string })?.nama_siswa ||
+    (isSelfSiswa ? (user as any)?.name || (user as any)?.nama : null) ||
     siswaOptions.find((o) => o.value === selectedSiswaId)?.label ||
     'Siswa';
 
   const displayStudentNis =
+    initialSiswaNis ||
     result?.nis ||
     (singleSiswaQuery.data as { nis?: string })?.nis ||
+    (isSelfSiswa ? (user as any)?.nis || (user as any)?.nisn : null) ||
     '-';
 
   // Konten Utama
@@ -367,56 +379,64 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
             </div>
           </div>
 
-          {/* Selector: Prev, Dropdown, Next */}
-          <div className="flex items-center gap-2 w-full md:w-auto md:min-w-[380px] max-w-lg">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              aria-label="Siswa sebelumnya"
-              onClick={handlePrevSiswa}
-              disabled={currentIndex <= 0}
-              className="h-9 w-9 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
-            >
-              <ChevronLeft size={16} />
-            </Button>
-
-            <div className="flex-1 min-w-0">
-              <Suspense
-                fallback={
-                  <div className="h-9 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
-                }
-              >
-                <SearchableSelect
-                  id="pilih-siswa-select"
-                  aria-label="Pilih siswa untuk tracking aktivitas"
-                  value={selectedSiswaId}
-                  onValueChange={(val) => setSelectedSiswaId(val)}
-                  options={siswaOptions}
-                  placeholder="Cari Nama Siswa..."
-                  triggerClassName="h-9 rounded-xl bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-800 font-bold text-xs"
-                />
-              </Suspense>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              aria-label="Siswa berikutnya"
-              onClick={handleNextSiswa}
-              disabled={currentIndex === -1 || currentIndex >= siswaOptions.length - 1}
-              className="h-9 w-9 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
-            >
-              <ChevronRight size={16} />
-            </Button>
-
-            {siswaOptions.length > 0 && currentIndex !== -1 && (
-              <span className="text-[10.5px] font-bold text-slate-400 font-mono shrink-0 whitespace-nowrap hidden sm:inline-block">
-                {currentIndex + 1} / {siswaOptions.length}
+          {/* Selector: Prev, Dropdown, Next OR Self Badge */}
+          {shouldHideSelector ? (
+            <div className="flex items-center gap-2 self-start md:self-auto">
+              <span className="px-3 py-1 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
+                Matriks Presensi Saya
               </span>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 w-full md:w-auto md:min-w-[380px] max-w-lg">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-label="Siswa sebelumnya"
+                onClick={handlePrevSiswa}
+                disabled={currentIndex <= 0}
+                className="h-9 w-9 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+              >
+                <ChevronLeft size={16} />
+              </Button>
+
+              <div className="flex-1 min-w-0">
+                <Suspense
+                  fallback={
+                    <div className="h-9 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                  }
+                >
+                  <SearchableSelect
+                    id="pilih-siswa-select"
+                    aria-label="Pilih siswa untuk tracking aktivitas"
+                    value={selectedSiswaId}
+                    onValueChange={(val) => setSelectedSiswaId(val)}
+                    options={siswaOptions}
+                    placeholder="Cari Nama Siswa..."
+                    triggerClassName="h-9 rounded-xl bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-800 font-bold text-xs"
+                  />
+                </Suspense>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-label="Siswa berikutnya"
+                onClick={handleNextSiswa}
+                disabled={currentIndex === -1 || currentIndex >= siswaOptions.length - 1}
+                className="h-9 w-9 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+              >
+                <ChevronRight size={16} />
+              </Button>
+
+              {siswaOptions.length > 0 && currentIndex !== -1 && (
+                <span className="text-[10.5px] font-bold text-slate-400 font-mono shrink-0 whitespace-nowrap hidden sm:inline-block">
+                  {currentIndex + 1} / {siswaOptions.length}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

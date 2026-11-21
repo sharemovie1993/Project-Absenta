@@ -8,6 +8,7 @@ import { SesiAttendanceList } from '@/components/attendance/sesi/SesiAttendanceL
 import { getTeacherStatusMeta, getSessionStatusMeta } from '@/utils/kbm-normalizer';
 import { UniversalKbmCard } from '@/components/dashboard/shared/kbm/UniversalKbmCard';
 import { PhotoPreviewModal } from '@/components/dashboard/shared/kbm/PhotoPreviewModal';
+import { TrackingSiswaView } from '@/components/attendance/tracking/TrackingSiswaView';
 
 export interface SiswaAttendanceTabProps {
   gamification: {
@@ -54,6 +55,11 @@ export interface SiswaAttendanceTabProps {
   monthlyRecap?: any;
   dailyRecapRes?: any;
   kelasId?: string;
+  siswaId?: string;
+  studentName?: string;
+  studentNis?: string;
+  kelasNama?: string;
+  jurusanNama?: string;
 }
 
 const SiswaSesiExpandedContent: React.FC<{ sesiId: string; sesi: any; monthlyRecap?: any }> = React.memo(({
@@ -124,6 +130,11 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
   monthlyRecap,
   dailyRecapRes,
   kelasId,
+  siswaId,
+  studentName,
+  studentNis,
+  kelasNama,
+  jurusanNama,
 }) => {
   const { user } = useAuthStore();
   const attendanceRate = gamification?.attendanceRate ?? 100;
@@ -364,6 +375,22 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── 3. FULL-SPECTRUM TRACKING & MATRIKS MULTI-CHANNEL 30 HARI ── */}
+      <div className="pt-2">
+        <TrackingSiswaView
+          siswaId={siswaId || (user as any)?.siswa_id || user?.id}
+          initialSiswaNama={studentName}
+          initialSiswaNis={studentNis}
+          kelasId={kelasId}
+          kelasNama={kelasNama}
+          jurusanNama={jurusanNama}
+          hideLayout={true}
+          hideHeader={true}
+          hideScopeBanner={true}
+          hideStudentSelector={true}
+        />
       </div>
 
       {/* Modal Preview Foto Lightbox untuk Siswa */}

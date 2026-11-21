@@ -20,7 +20,7 @@ interface AuthenticatedRequest {
 // GET /api/attendance/rekap/siswa/:id/harian?tanggal=YYYY-MM-DD
 export async function getRekapHarianSiswa(request: AuthenticatedRequest, reply: any) {
   try {
-    const { id: siswaId } = request.params as { id: string };
+    let { id: siswaId } = request.params as { id: string };
     const { tanggal, tahun_pelajaran_id } = request.query as { tanggal?: string; tahun_pelajaran_id?: string };
     const tenantId = (request as any).tenantId ?? request.tenant?.id;
     const userId = request.user?.id;
@@ -63,6 +63,9 @@ export async function getRekapHarianSiswa(request: AuthenticatedRequest, reply: 
       
       if (!hasOfficerPermission) {
         const mySiswaId = await rekapService.getSiswaIdFromUser(tenantId, userId);
+        if (siswaId === 'me' || siswaId === userId || !siswaId) {
+          siswaId = mySiswaId || siswaId;
+        }
         if (mySiswaId !== siswaId) {
            return reply.status(403).send({
              success: false,
@@ -186,7 +189,7 @@ export async function getRekapHarianSiswaMe(request: AuthenticatedRequest, reply
 // GET /api/attendance/rekap/siswa/:id/bulanan?bulan=YYYY-MM
 export async function getRekapBulananSiswa(request: AuthenticatedRequest, reply: any) {
   try {
-    const { id: siswaId } = request.params as { id: string };
+    let { id: siswaId } = request.params as { id: string };
     const { bulan, tahun_pelajaran_id } = request.query as { bulan?: string; tahun_pelajaran_id?: string };
     const tenantId = (request as any).tenantId ?? request.tenant?.id;
     const userId = request.user?.id;
@@ -229,6 +232,9 @@ export async function getRekapBulananSiswa(request: AuthenticatedRequest, reply:
       
       if (!hasOfficerPermission) {
         const mySiswaId = await rekapService.getSiswaIdFromUser(tenantId, userId);
+        if (siswaId === 'me' || siswaId === userId || !siswaId) {
+          siswaId = mySiswaId || siswaId;
+        }
         if (mySiswaId !== siswaId) {
            return reply.status(403).send({
              success: false,
@@ -679,7 +685,7 @@ export async function getRekapHarianGuru(request: AuthenticatedRequest, reply: a
 // GET /api/attendance/rekap/siswa/:id/tracking?tanggal=YYYY-MM-DD
 export async function getTrackingHarianSiswa(request: AuthenticatedRequest, reply: any) {
   try {
-    const { id: siswaId } = request.params as { id: string };
+    let { id: siswaId } = request.params as { id: string };
     const { tanggal } = request.query as { tanggal?: string };
     const tenantId = (request as any).tenantId ?? request.tenant?.id;
     const userId = request.user?.id;
@@ -720,6 +726,9 @@ export async function getTrackingHarianSiswa(request: AuthenticatedRequest, repl
       
       if (!hasOfficerPermission) {
         const mySiswaId = await rekapService.getSiswaIdFromUser(tenantId, userId);
+        if (siswaId === 'me' || siswaId === userId || !siswaId) {
+          siswaId = mySiswaId || siswaId;
+        }
         if (mySiswaId !== siswaId) {
            return reply.status(403).send({
              success: false,
