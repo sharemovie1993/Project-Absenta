@@ -553,6 +553,8 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
           kelasNama={targetJadwal.kelas_nama}
           mapelNama={targetJadwal.kegiatan}
           guruNama={guruNama}
+          jenisKegiatan={targetJadwal.jenis_kegiatan}
+          activityName={targetJadwal.kegiatan}
           isLoading={openSessionMutation.isPending}
         />
       )}

@@ -344,6 +344,8 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
           kelasNama={targetJadwal.kelas_nama}
           mapelNama={targetJadwal.kegiatan}
           guruNama={guruNama}
+          jenisKegiatan={targetJadwal.jenis_kegiatan}
+          activityName={targetJadwal.kegiatan}
           isLoading={openSessionMutation.isPending}
         />
       )}

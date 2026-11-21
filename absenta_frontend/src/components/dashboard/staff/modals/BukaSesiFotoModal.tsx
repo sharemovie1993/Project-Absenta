@@ -8,13 +8,18 @@ import { useWebRtcCamera } from '../../../../hooks/useWebRtcCamera';
 import { useCameraOrientation } from '../../../../hooks/useCameraOrientation';
 import { createPortal } from 'react-dom';
 
-interface BukaSesiFotoModalProps {
+export interface BukaSesiFotoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (photoDataUrl: string) => void;
   kelasNama?: string;
   mapelNama?: string;
   guruNama?: string;
+  jenisKegiatan?: string;
+  activityName?: string;
+  title?: string;
+  badgeTitle?: string;
+  instructionText?: string;
   isLoading?: boolean;
 }
 
@@ -25,12 +30,51 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
   kelasNama,
   mapelNama,
   guruNama,
+  jenisKegiatan,
+  activityName,
+  title,
+  badgeTitle,
+  instructionText,
   isLoading = false,
 }) => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const nativeCameraInputRef = useRef<HTMLInputElement | null>(null);
+
+  const isActivity = Boolean(
+    (jenisKegiatan && jenisKegiatan.toUpperCase() !== 'KBM') ||
+    activityName
+  );
+
+  const displayActivityName = activityName || (
+    isActivity 
+      ? (jenisKegiatan === 'KETARUNAAN' 
+          ? 'Program Ketarunaan' 
+          : jenisKegiatan === 'DHUHA' 
+          ? 'Pembiasaan Dhuha' 
+          : jenisKegiatan === 'UPACARA'
+          ? 'Upacara Bendera'
+          : jenisKegiatan === 'APEL_SORE'
+          ? 'Apel Sore'
+          : (jenisKegiatan || 'Kegiatan'))
+      : 'KBM'
+  );
+
+  const modalTitle = title || (isActivity ? `Buka Sesi ${displayActivityName}` : 'Buka Sesi KBM');
+  const modalBadge = isActivity ? (jenisKegiatan?.toUpperCase() || 'KEGIATAN') : 'Buka Sesi KBM';
+  const stampBadgeTitle = badgeTitle || (isActivity ? `✓ ABSENTA VERIFIED ${jenisKegiatan?.toUpperCase() || 'KEGIATAN'} STAMP` : '✓ ABSENTA VERIFIED KBM STAMP');
+  const displayHeaderTitle = kelasNama || (isActivity ? 'Peleton / Seluruh Peserta' : 'Kelas');
+  const displaySubject = mapelNama || displayActivityName;
+  const displaySubtitle = `${displaySubject}${guruNama ? ` • ${guruNama}` : ''}`;
+  const instruction = instructionText || (isActivity 
+    ? 'Arahkan kamera ke barisan peleton / peserta kegiatan atau foto bersama pendamping.' 
+    : 'Arahkan kamera ke suasana kelas atau selfie bersama siswa.');
+  const buttonSubmitText = isActivity ? `Buka Sesi ${displayActivityName}` : 'Buka Sesi KBM';
+  const loadingOverlayTitle = isActivity ? `Membuka Sesi ${displayActivityName}...` : 'Membuka Sesi KBM...';
+  const loadingOverlayDesc = isActivity 
+    ? 'Menyimpan bukti foto kegiatan & menyinkronkan kehadiran pembina/guru ke sistem.'
+    : 'Menyimpan bukti foto & menyinkronkan kehadiran guru ke sistem.';
 
   const { angle, isLandscape, uiRotationStyle } = useCameraOrientation();
 
@@ -51,7 +95,7 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
     idealHeight: 720,
   });
 
-  // Handle native OS camera fallback capture with verified KBM stamp
+  // Handle native OS camera fallback capture with verified stamp
   const handleNativeCameraFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -59,10 +103,10 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
       const stampedPhoto = await processExternalImageFile(
         file,
         {
-          kelasNama,
-          mapelNama,
+          kelasNama: displayHeaderTitle,
+          mapelNama: displaySubject,
           guruNama,
-          badgeTitle: '✓ ABSENTA VERIFIED KBM STAMP',
+          badgeTitle: stampBadgeTitle,
         },
         0.75
       );
@@ -120,10 +164,10 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
 
     const photo = capturePhoto(
       {
-        kelasNama,
-        mapelNama,
+        kelasNama: displayHeaderTitle,
+        mapelNama: displaySubject,
         guruNama,
-        badgeTitle: '✓ ABSENTA VERIFIED KBM STAMP',
+        badgeTitle: stampBadgeTitle,
       },
       0.75, // Kualitas optimal 0.75 (reduksi payload ~75% tanpa mengorbankan ketajaman teks stamp)
       angle
@@ -179,14 +223,14 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs sm:text-sm font-black text-white truncate">
-                    {kelasNama || 'Kelas'}
+                    {displayHeaderTitle}
                   </span>
                   <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                    Buka Sesi KBM
+                    {modalBadge}
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 truncate">
-                  {mapelNama || 'Mata Pelajaran'} {guruNama ? `• ${guruNama}` : ''}
+                  {displaySubtitle}
                 </p>
               </div>
             </div>
@@ -316,17 +360,17 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-[10px] sm:text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 drop-shadow-sm">
                           <ShieldCheck size={13} />
-                          <span>✓ ABSENTA VERIFIED KBM STAMP</span>
+                          <span>{stampBadgeTitle}</span>
                         </span>
                         <span className="text-[10px] font-semibold text-slate-300 font-mono drop-shadow-sm">
                           {currentTime}
                         </span>
                       </div>
                       <p className="text-xs sm:text-sm font-black text-white truncate drop-shadow">
-                        {kelasNama || 'Kelas'} — {mapelNama || 'Mata Pelajaran'}
+                        {displayHeaderTitle} — {displaySubject}
                       </p>
                       <p className="text-[10px] font-medium text-slate-200 truncate drop-shadow-sm">
-                        Pengajar: {guruNama || 'Guru'}
+                        {isActivity ? 'Pembina / Pendamping:' : 'Pengajar:'} {guruNama || (isActivity ? 'Pembina' : 'Guru')}
                       </p>
                     </div>
                   </div>
@@ -337,7 +381,7 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
               <div className="relative w-full h-full flex items-center justify-center bg-black">
                 <img
                   src={capturedImage}
-                  alt="Bukti Foto KBM dengan Stamp"
+                  alt={`Bukti Foto ${displayActivityName} dengan Stamp`}
                   className="max-h-[56vh] w-auto object-contain rounded-xl"
                 />
                 <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-emerald-500 text-slate-950 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xl">
@@ -353,7 +397,7 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
             {!capturedImage ? (
               <div className="w-full flex items-center justify-between gap-3">
                 <p className="text-xs text-slate-400 hidden sm:block">
-                  Arahkan kamera ke suasana kelas atau selfie bersama siswa.
+                  {instruction}
                 </p>
 
                 {/* Shutter Button in Center */}
@@ -406,12 +450,12 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
                   {isLoading ? (
                     <>
                       <RefreshCw size={14} className="animate-spin" />
-                      <span>Membuka Sesi...</span>
+                      <span>{loadingOverlayTitle}</span>
                     </>
                   ) : (
                     <>
                       <Sparkles size={14} />
-                      <span>Buka Sesi KBM</span>
+                      <span>{buttonSubmitText}</span>
                     </>
                   )}
                 </Button>
@@ -426,9 +470,9 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
                 <RefreshCw size={26} className="animate-spin text-emerald-400" />
               </div>
               <div className="space-y-1">
-                <h4 className="text-base font-black text-white">Membuka Sesi KBM...</h4>
+                <h4 className="text-base font-black text-white">{loadingOverlayTitle}</h4>
                 <p className="text-xs text-slate-300 max-w-xs">
-                  Menyimpan bukti foto &amp; menyinkronkan kehadiran guru ke sistem.
+                  {loadingOverlayDesc}
                 </p>
               </div>
             </div>

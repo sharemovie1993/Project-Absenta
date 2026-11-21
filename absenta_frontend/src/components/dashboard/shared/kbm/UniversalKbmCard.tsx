@@ -222,6 +222,13 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
   const jamLabel = item.jamLabel || item.jam_label || (item.JamPelajaran?.nama_jam) || null;
 
+  const isSesiKegiatan = Boolean(
+    (item.jenis_kegiatan && String(item.jenis_kegiatan).toUpperCase() !== 'KBM') ||
+    item.kegiatan ||
+    item.nama_kegiatan
+  );
+  const kegiatanNamaLabel = item.kegiatan || item.nama_kegiatan || (item.jenis_kegiatan === 'KETARUNAAN' ? 'Ketarunaan' : item.jenis_kegiatan === 'DHUHA' ? 'Dhuha' : item.jenis_kegiatan) || 'Kegiatan';
+
   // 🏛️ Prediksi Batas Aman Hadir — Real-Time, update tiap menit
   // Hanya aktif untuk kartu mode GURU yang belum dimulai / siap dibuka
   const isGuroPrediksiActive = mode === 'GURU' && (isReadyToOpen || isUpcoming);
@@ -670,7 +677,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                     e.stopPropagation();
                     onOpenPhotoModal(item);
                   }}
-                  title="Ambil foto Bapak/Ibu Guru yang sedang mengajar di depan kelas"
+                  title={isSesiKegiatan ? `Ambil foto pembina/pendamping ${kegiatanNamaLabel}` : "Ambil foto Bapak/Ibu Guru yang sedang mengajar di depan kelas"}
                   className={cn(
                     "h-8 px-3 rounded-xl text-xs font-black border flex items-center gap-1.5 cursor-pointer transition-all",
                     isTeacherPresent
@@ -679,7 +686,11 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                   )}
                 >
                   <Camera size={13} />
-                  <span>{isTeacherPresent ? "Foto Guru ✓" : "Foto Guru"}</span>
+                  <span>
+                    {isTeacherPresent 
+                      ? (isSesiKegiatan ? "Foto Pembina ✓" : "Foto Guru ✓") 
+                      : (isSesiKegiatan ? "Foto Pembina" : "Foto Guru")}
+                  </span>
                 </Button>
               )}
               {isTeacherPresent && fotoKegiatanUrl && onViewPhoto && (
@@ -747,7 +758,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                   className="h-8 px-3.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-900/20"
                 >
                   <Camera size={13} />
-                  <span>Mulai KBM</span>
+                  <span>{isSesiKegiatan ? `Mulai ${kegiatanNamaLabel}` : "Mulai KBM"}</span>
                 </Button>
               )}
 

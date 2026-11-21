@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { resolveProfilePhotoUrl } from '@/lib/utils';
 import { SmartStudentPicker, type Student } from '@/components/common/SmartStudentPicker';
+import toast from 'react-hot-toast';
 import {
   tapUnifiedPendampingRfid,
   type UnifiedRfidTapResponse
@@ -116,12 +117,37 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
 
   // Camera QR State
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
+  const nativeCameraInputRef = useRef<HTMLInputElement | null>(null);
   const [cameraList, setCameraList] = useState<Array<{ id: string; label: string }>>([]);
   const [activeCameraIndex, setActiveCameraIndex] = useState(0);
   const [cameraStatus, setCameraStatus] = useState<string>('Memulai kamera...');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const lastScannedTokenRef = useRef<string>('');
   const lastScannedTimeRef = useRef<number>(0);
+
+  // Fallback scan via foto kamera sistem OS
+  const handleNativeCameraScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setCameraStatus('Memindai QR dari foto kamera sistem...');
+      let scanner = qrScannerRef.current;
+      if (!scanner) {
+        scanner = new Html5Qrcode('pos-panel-camera-qr-reader');
+        qrScannerRef.current = scanner;
+      }
+      const decoded = await scanner.scanFile(file, true);
+      if (decoded) {
+        handleProcessToken(decoded, 'QR');
+      } else {
+        toast.error('QR Code tidak terbaca dari foto. Pastikan pencahayaan cukup dan foto tegak lurus.');
+      }
+    } catch {
+      toast.error('Gagal mendeteksi QR Code dari foto. Silakan coba arahkan kamera lebih dekat.');
+    } finally {
+      if (nativeCameraInputRef.current) nativeCameraInputRef.current.value = '';
+    }
+  };
 
   // Hardware Buffer Refs (HID)
   const inputRef = useRef<HTMLInputElement>(null);
@@ -257,50 +283,83 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
   const startCameraScanner = useCallback(async (camIndex = 0) => {
     try {
       setCameraError(null);
-      setCameraStatus('Mempersiapkan kamera pemindai...');
+      setCameraStatus('Meminta izin & mendeteksi sensor kamera...');
 
       await stopCameraScanner();
 
       const elem = document.getElementById('pos-panel-camera-qr-reader');
       if (!elem) return;
 
-      const devices = await Html5Qrcode.getCameras();
-      if (!devices || devices.length === 0) {
-        setCameraError('Tidak ada kamera yang terdeteksi di perangkat ini.');
-        return;
+      // 1. Proactive WebRTC permission handshake agar browser membuka sensor kamera & label lengkap
+      let tempStream: MediaStream | null = null;
+      try {
+        if (navigator?.mediaDevices?.getUserMedia) {
+          tempStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } }
+          }).catch(async () => {
+            return await navigator.mediaDevices.getUserMedia({ video: true });
+          });
+        }
+      } catch (permErr: unknown) {
+        console.warn('[UnifiedKegiatanTerminal] Permission handshake catch:', permErr);
+      } finally {
+        if (tempStream) {
+          tempStream.getTracks().forEach((t) => t.stop());
+        }
       }
 
-      setCameraList(devices);
-      const targetDevice = devices[camIndex % devices.length];
-      setActiveCameraIndex(camIndex % devices.length);
-      setCameraStatus(`Kamera Aktif: ${targetDevice.label || 'Kamera Utama'}`);
+      // 2. Enumerate cameras
+      let devices: Array<{ id: string; label: string }> = [];
+      try {
+        devices = await Html5Qrcode.getCameras();
+      } catch (camErr) {
+        console.warn('[UnifiedKegiatanTerminal] getCameras error:', camErr);
+      }
 
       const html5QrCode = new Html5Qrcode('pos-panel-camera-qr-reader');
       qrScannerRef.current = html5QrCode;
 
-      await html5QrCode.start(
-        targetDevice.id,
-        {
-          fps: 15,
-          qrbox: { width: 220, height: 220 },
-          aspectRatio: 1.333333,
-        },
-        (decodedText) => {
-          const now = Date.now();
-          if (decodedText === lastScannedTokenRef.current && now - lastScannedTimeRef.current < 2500) {
-            return; // Debounce scan token yang sama 2.5 detik
-          }
-          lastScannedTokenRef.current = decodedText;
-          lastScannedTimeRef.current = now;
-          handleProcessToken(decodedText, 'QR');
-        },
-        () => {
-          // Frame scanner ignore
+      const onScanSuccess = (decodedText: string) => {
+        const now = Date.now();
+        if (decodedText === lastScannedTokenRef.current && now - lastScannedTimeRef.current < 2500) {
+          return; // Debounce scan token yang sama 2.5 detik
         }
-      );
-    } catch (err: any) {
+        lastScannedTokenRef.current = decodedText;
+        lastScannedTimeRef.current = now;
+        handleProcessToken(decodedText, 'QR');
+      };
+
+      const qrConfig = {
+        fps: 20,
+        qrbox: { width: 230, height: 230 },
+        aspectRatio: 1.333333,
+      };
+
+      if (devices && devices.length > 0) {
+        setCameraList(devices);
+        const targetDevice = devices[camIndex % devices.length];
+        setActiveCameraIndex(camIndex % devices.length);
+        setCameraStatus(`Kamera Aktif: ${targetDevice.label || 'Kamera Utama'}`);
+
+        try {
+          await html5QrCode.start(targetDevice.id, qrConfig, onScanSuccess, () => {});
+        } catch {
+          // Fallback ke facingMode environment jika start by ID gagal
+          await html5QrCode.start({ facingMode: 'environment' }, qrConfig, onScanSuccess, () => {});
+        }
+      } else {
+        // Fallback langsung menggunakan facingMode environment
+        setCameraStatus('Kamera Aktif: Sensor Belakang');
+        await html5QrCode.start({ facingMode: 'environment' }, qrConfig, onScanSuccess, () => {});
+      }
+    } catch (err: unknown) {
       console.warn('Start QR scanner exception:', err);
-      setCameraError(err?.message || 'Gagal menyalakan kamera. Pastikan izin kamera telah diberikan di browser.');
+      const errMsg = String((err as { message?: string })?.message || err || '');
+      if (errMsg.toLowerCase().includes('permission') || errMsg.includes('NotAllowedError')) {
+        setCameraError('Izin akses kamera ditolak oleh browser/perangkat. Berikan izin kamera di setelan browser atau gunakan kamera sistem.');
+      } else {
+        setCameraError(errMsg || 'Gagal menyalakan kamera. Pastikan izin kamera telah diberikan di browser.');
+      }
     }
   }, [stopCameraScanner, handleProcessToken]);
 
@@ -473,21 +532,39 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
           {/* TAB 2: Scan QR Kamera */}
           {activeTab === 'QR' && (
             <div className="space-y-3">
+              <input
+                ref={nativeCameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleNativeCameraScan}
+                className="hidden"
+              />
+
               <div className="relative overflow-hidden rounded-3xl bg-slate-950 w-full min-h-[260px] shadow-2xl ring-1 ring-slate-800 flex flex-col items-center justify-center">
                 <div id="pos-panel-camera-qr-reader" className="w-full h-full min-h-[260px] overflow-hidden [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&_video]:rounded-3xl" />
                 
                 {cameraError ? (
-                  <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center text-rose-400">
+                  <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center text-rose-400 z-20">
                     <AlertCircle className="w-10 h-10 mb-2" />
-                    <p className="text-sm font-bold">{cameraError}</p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => startCameraScanner(activeCameraIndex)}
-                      className="mt-4 text-xs font-bold"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Coba Lagi
-                    </Button>
+                    <p className="text-sm font-bold text-white max-w-md">{cameraError}</p>
+                    <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => startCameraScanner(activeCameraIndex)}
+                        className="text-xs font-bold bg-slate-800 text-white border-slate-700 hover:bg-slate-700"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Coba Izin Lagi
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => nativeCameraInputRef.current?.click()}
+                        className="text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none shadow-lg shadow-emerald-500/20"
+                      >
+                        <Camera className="w-3.5 h-3.5 mr-1.5" /> Buka Kamera Sistem HP
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="absolute bottom-3 inset-x-3 text-center text-white text-xs font-medium bg-black/60 backdrop-blur-md py-1.5 px-4 rounded-xl pointer-events-none z-10 flex items-center justify-between">
@@ -497,8 +574,18 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
                 )}
               </div>
 
-              {cameraList.length > 1 && (
-                <div className="flex justify-end">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => nativeCameraInputRef.current?.click()}
+                  className="text-xs font-bold gap-1.5 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+                >
+                  <Camera className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Fallback Kamera Sistem HP</span>
+                </Button>
+
+                {cameraList.length > 1 && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -507,8 +594,8 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
                   >
                     <RefreshCw className="w-3.5 h-3.5" /> Ganti Kamera ({activeCameraIndex + 1}/{cameraList.length})
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 

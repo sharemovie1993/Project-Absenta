@@ -99,7 +99,14 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
   const [showCreateSessionForm, setShowCreateSessionForm] = useState(false);
   const [creatingSession, setCreatingSession] = useState(false);
   const [photoGuruModalOpen, setPhotoGuruModalOpen] = useState(false);
-  const [photoGuruTarget, setPhotoGuruTarget] = useState<{ sesiId: string; kelasNama: string; mapelNama: string; guruNama: string } | null>(null);
+  const [photoGuruTarget, setPhotoGuruTarget] = useState<{
+    sesiId: string;
+    kelasNama: string;
+    mapelNama: string;
+    guruNama: string;
+    jenisKegiatan?: string;
+    activityName?: string;
+  } | null>(null);
   const [previewPhotoData, setPreviewPhotoData] = useState<{ photoUrl: string; guruNama: string; kelasNama: string; mapelNama: string; timestamp: string } | null>(null);
   const [journalModalOpen, setJournalModalOpen] = useState(false);
   const [journalSesiId, setJournalSesiId] = useState<string>('');
@@ -210,11 +217,15 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
     setJournalModalOpen(true);
   }, []);
   const handleOpenPhotoGuruModal = useCallback((item: Record<string, unknown>) => {
+    const isKegiatan = Boolean(item.jenis_kegiatan && String(item.jenis_kegiatan).toUpperCase() !== 'KBM');
+    const kegiatanLabel = (item.kegiatan as string) || (item.nama_kegiatan as string) || (item.nama as string) || (item.jenis_kegiatan as string) || 'Kegiatan';
     setPhotoGuruTarget({
       sesiId: (item.id as string) || (item.session_id as string),
-      kelasNama: (item.kelas_nama as string) || getKelasLabel(item.kelas_id as string),
-      mapelNama: (item.mapel_nama as string) || getMapelLabel(item.mapel_id as string),
+      kelasNama: (item.kelas_nama as string) || getKelasLabel(item.kelas_id as string) || (isKegiatan ? 'Peleton / Seluruh Peserta' : ''),
+      mapelNama: (item.mapel_nama as string) || (isKegiatan ? kegiatanLabel : getMapelLabel(item.mapel_id as string)),
       guruNama: (item.guru_nama as string) || getGuruLabel(item.guru_id as string),
+      jenisKegiatan: (item.jenis_kegiatan as string) || 'KBM',
+      activityName: isKegiatan ? kegiatanLabel : undefined,
     });
     setPhotoGuruModalOpen(true);
   }, [getKelasLabel, getMapelLabel, getGuruLabel]);
@@ -462,6 +473,8 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
                 kelasNama={photoGuruTarget.kelasNama}
                 mapelNama={photoGuruTarget.mapelNama}
                 guruNama={photoGuruTarget.guruNama}
+                jenisKegiatan={photoGuruTarget.jenisKegiatan}
+                activityName={photoGuruTarget.activityName}
                 isLoading={scanLoading}
               />
             </Suspense>
