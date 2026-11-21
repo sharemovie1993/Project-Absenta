@@ -176,8 +176,20 @@ function sanitizeRowForModel(
 
     if (isCloning) {
       // 1. Remap UUID primary & foreign keys via idMap
-      if (typeof val === 'string' && idMap?.has(val)) {
-        val = idMap.get(val)!;
+      if (typeof val === 'string') {
+        if (idMap?.has(val)) {
+          val = idMap.get(val)!;
+        } else if (idMap && (modelName === 'Config' || modelName === 'DenahSpasial' || val.includes('-'))) {
+          // Remap embedded UUIDs inside JSON string values (e.g. CBT_EVENTS_CONFIG, CBT_ACTIVE_EVENT_ID)
+          val = val.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, (uuid) => idMap.get(uuid) || uuid);
+        }
+      } else if (idMap && val && typeof val === 'object') {
+        // Remap embedded UUIDs inside JSON objects / arrays (e.g. DenahSpasial.elements)
+        try {
+          const jsonStr = JSON.stringify(val);
+          const remapped = jsonStr.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, (uuid) => idMap.get(uuid) || uuid);
+          val = JSON.parse(remapped);
+        } catch {}
       }
 
       // 2. Rewrite tenant-scoped storage/media paths referencing sourceTenantId
