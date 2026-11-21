@@ -574,9 +574,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       );
       setSelectedColleagueIds(existingColleagues);
       const isSharedBank =
-        typeof bankSoalToEdit.is_shared === 'boolean'
-          ? bankSoalToEdit.is_shared
-          : existingColleagues.length > 0;
+        Boolean(bankSoalToEdit.is_shared) || existingColleagues.length > 0;
       setIsShared(isSharedBank);
       setShowAllMapels(true);
 

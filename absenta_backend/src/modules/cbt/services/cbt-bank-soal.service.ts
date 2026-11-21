@@ -136,9 +136,7 @@ export class CbtBankSoalService {
       const isKolaborasiResmi = !isKuisUnit && isCollabMapel;
 
       const isShared =
-        typeof bank.is_shared === 'boolean'
-          ? bank.is_shared
-          : (bank.Kontributor || []).length > 0;
+        Boolean(bank.is_shared) || (bank.Kontributor || []).length > 0;
 
       return {
         ...bank,
