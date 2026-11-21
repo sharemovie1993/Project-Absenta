@@ -384,12 +384,40 @@ export const applyOtaReload = async (): Promise<void> => {
 export const openOtaModal = () => setState({ isModalOpen: true });
 export const dismissOtaModal = () => setState({ isModalOpen: false });
 
+/**
+ * Membersihkan bundle-bundle versi lama agar tidak memakan memori/storage di HP pengguna (Zero Garbage Accumulation).
+ * Hanya menyisakan bundle yang sedang aktif.
+ */
+export const pruneOldOtaBundles = async (): Promise<void> => {
+  if (!isMobileNative()) return;
+  try {
+    const current = await CapacitorUpdater.current();
+    const currentId = current?.bundle?.id;
+    const { bundles } = await CapacitorUpdater.list();
+    if (bundles && bundles.length > 0) {
+      for (const b of bundles) {
+        if (b.id && b.id !== currentId && b.id !== 'builtin') {
+          console.log(`[OTA] 🧹 Membersihkan berkas versi lama: ${b.id} (v${b.version || 'unknown'})`);
+          await CapacitorUpdater.delete({ id: b.id }).catch(() => {});
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[OTA] Pembersihan bundle lama dilewati:', err);
+  }
+};
+
 /** Inisialisasi lifecycle OTA saat aplikasi mulai berjalan */
 export const initOtaUpdateLifecycle = () => {
   if (!isMobileNative()) return;
 
-  // 1. Konfirmasi ke plugin bahwa aplikasi berjalan baik (anti-rollback)
-  CapacitorUpdater.notifyAppReady().catch(() => {});
+  // 1. Konfirmasi ke plugin bahwa aplikasi berjalan baik (anti-rollback) & bersihkan versi lama
+  CapacitorUpdater.notifyAppReady()
+    .then(() => {
+      // Bersihkan bundle-bundle lama secara otomatis begitu versi baru berjalan lancar
+      pruneOldOtaBundles();
+    })
+    .catch(() => {});
 
   // 2. Jalankan pengecekan otomatis setelah 2 detik
   setTimeout(() => {
