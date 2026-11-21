@@ -441,73 +441,88 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
       </div>
 
-      {/* ── 3. MULTI-CHANNEL PERFORMANCE STRIP (4 CARDS) ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        {/* Card 1: Gerbang */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <DoorOpen className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Gerbang Masuk</span>
+      {/* ── 3. SINGLE-ROW ANALYTICS CARD (1 BARIS) ── */}
+      <div className="p-2 sm:p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center justify-between overflow-x-auto no-scrollbar divide-x divide-slate-100 dark:divide-slate-800 gap-1 sm:gap-2">
+        {/* 1. Gerbang */}
+        <div className="flex items-center gap-2 px-2 sm:px-3 shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <DoorOpen size={13} />
+          </div>
+          <div className="min-w-0 leading-tight">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+              Gerbang
             </span>
-          </div>
-          <div className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            {channelSummary?.gerbang?.total_hadir ?? 0} Hadir
-          </div>
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-            {channelSummary?.gerbang?.total_terlambat ?? 0} Terlambat • {channelSummary?.gerbang?.total_tap_gantung ?? 0} Gantung
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                {channelSummary?.gerbang?.total_hadir ?? 0} H
+              </span>
+              {(channelSummary?.gerbang?.total_terlambat ?? 0) > 0 && (
+                <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400">
+                  ({channelSummary?.gerbang?.total_terlambat} T)
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Card 2: Pembiasaan */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Pembiasaan</span>
+        {/* 2. Pembiasaan */}
+        <div className="flex items-center gap-2 px-2 sm:px-3 shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <BookOpen size={13} />
+          </div>
+          <div className="min-w-0 leading-tight">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+              Pembiasaan
             </span>
-          </div>
-          <div className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            {channelSummary?.pembiasaan?.total_hadir ?? 0} Sesi
-          </div>
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-            {channelSummary?.pembiasaan?.total_alpa ?? 0} Terlewat (Alpa)
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400">
+                {channelSummary?.pembiasaan?.total_hadir ?? 0} Sesi
+              </span>
+              {(channelSummary?.pembiasaan?.total_alpa ?? 0) > 0 && (
+                <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400">
+                  ({channelSummary?.pembiasaan?.total_alpa} A)
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Card 3: KBM */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <GraduationCap className="w-3.5 h-3.5 text-amber-500" />
-              <span>Sesi KBM</span>
+        {/* 3. KBM */}
+        <div className="flex items-center gap-2 px-2 sm:px-3 shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <GraduationCap size={13} />
+          </div>
+          <div className="min-w-0 leading-tight">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+              KBM Mapel
             </span>
-          </div>
-          <div className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            {channelSummary?.kbm?.persentase ?? 100}% Hadir
-          </div>
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-            {channelSummary?.kbm?.hadir_sesi ?? 0}/{channelSummary?.kbm?.total_sesi ?? 0} JP • {channelSummary?.kbm?.alpa_sesi ?? 0} Alpa JP
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-xs sm:text-sm font-black text-indigo-600 dark:text-indigo-400">
+                {channelSummary?.kbm?.persentase ?? 100}%
+              </span>
+              <span className="text-[9px] text-slate-400">
+                ({channelSummary?.kbm?.hadir_sesi ?? 0}/{channelSummary?.kbm?.total_sesi ?? 0})
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Card 4: PKL */}
-        <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Briefcase className="w-3.5 h-3.5 text-purple-500" />
-              <span>DU/DI (PKL)</span>
+        {/* 4. PKL */}
+        <div className="flex items-center gap-2 px-2 sm:px-3 shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+            <Briefcase size={13} />
+          </div>
+          <div className="min-w-0 leading-tight">
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+              {channelSummary?.pkl?.is_active ? 'DU/DI' : 'PKL'}
             </span>
-          </div>
-          <div className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            {channelSummary?.pkl?.is_active
-              ? `${channelSummary.pkl.total_hadir} Hadir`
-              : 'Non-PKL'}
-          </div>
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-            {channelSummary?.pkl?.is_active
-              ? (channelSummary.pkl.mitra_nama || 'DU/DI Terkait')
-              : 'KBM Sekolah Normal'}
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                {channelSummary?.pkl?.is_active
+                  ? `${channelSummary.pkl.total_hadir} H`
+                  : 'Non-PKL'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -515,38 +530,38 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
       {/* ── 4. FULL-WIDTH VIEW: MATRIKS 30 HARI / KALENDER / LOG ANOMALI ── */}
       <SectionCard fullWidth className="p-3 sm:p-5">
         {/* View Mode Switcher Header */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0 flex-wrap">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">
             <button
               type="button"
               onClick={() => setViewMode('MATRIX')}
               className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                'flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5',
                 viewMode === 'MATRIX'
                   ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
               )}
             >
               <Layers className="w-3.5 h-3.5 text-primary" />
-              <span>Matriks 30 Hari (Mapel)</span>
+              <span>Matriks 30 Hari</span>
             </button>
 
             <button
               type="button"
               onClick={() => setViewMode('ANOMALY')}
               className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                'flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5',
                 viewMode === 'ANOMALY'
                   ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-2xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-rose-600'
               )}
             >
               <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-              <span>Log Anomali ({anomaliCount})</span>
+              <span>Anomali ({anomaliCount})</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center justify-between sm:justify-end gap-2">
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                 Bulan:
@@ -555,7 +570,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
                 type="month"
                 value={bulan}
                 onChange={(e) => setBulan(e.target.value)}
-                className="h-8 px-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                className="h-8 px-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
               />
             </div>
 
@@ -565,10 +580,11 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
               size="sm"
               onClick={() => setIsPrintModalOpen(true)}
               disabled={!monthData?.mapel_matrix || monthLoading}
-              className="h-8 px-3 rounded-xl border-slate-200 dark:border-slate-800 text-xs font-bold gap-1.5 cursor-pointer shadow-2xs hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400 disabled:opacity-40"
+              className="h-8 px-2.5 rounded-xl border-slate-200 dark:border-slate-800 text-xs font-bold gap-1.5 cursor-pointer shadow-2xs hover:bg-slate-100 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400 disabled:opacity-40"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Cetak Laporan</span>
+              <span className="hidden sm:inline">Cetak Laporan</span>
+              <span className="sm:hidden">Cetak</span>
             </Button>
           </div>
         </div>

@@ -704,89 +704,62 @@ if (isLoading) {
 
   return (
     <div className={cn('space-y-3 w-full max-w-full min-w-0', className)}>
-      {/* HEADER & PANDUAN SIMBOL */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-        <div>
-          <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <span>Matriks Presensi Multi-Channel 1 Bulan Penuh</span>
-          </h4>
-          <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-            Bentang horizontal seluruh sesi KBM mata pelajaran, pembiasaan pagi, gerbang, dan anomali.
-          </p>
-        </div>
-
-        {/* Legend */}
-        <div className="flex items-center gap-2 flex-wrap text-[9.5px] font-semibold text-slate-600 dark:text-slate-300">
-          <span className="flex items-center gap-1">
-            <span className="w-4 h-4 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold inline-flex items-center justify-center text-[9px]">
-              H
-            </span>
-            Hadir
+      {/* ── UNIFIED COMPACT SUB-TOOLBAR (LEGENDA + TOGGLE MODE MOBILE) ── */}
+      <div className="flex items-center justify-between gap-2 p-1.5 sm:p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-xs">
+        {/* Compact Legend */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap text-[9.5px] sm:text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+          <span className="inline-flex items-center gap-1">
+            <span className="w-3.5 h-3.5 rounded bg-emerald-500 text-white font-bold inline-flex items-center justify-center text-[8.5px]">H</span>
+            <span>Hadir</span>
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-4 h-4 rounded bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 font-bold inline-flex items-center justify-center text-[9px]">
-              T
-            </span>
-            Terlambat
+          <span className="inline-flex items-center gap-1">
+            <span className="w-3.5 h-3.5 rounded bg-purple-500 text-white font-bold inline-flex items-center justify-center text-[8.5px]">T</span>
+            <span>Telat</span>
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-4 h-4 rounded bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold inline-flex items-center justify-center text-[9px]">
-              A
-            </span>
-            Alpa
+          <span className="inline-flex items-center gap-1">
+            <span className="w-3.5 h-3.5 rounded bg-rose-500 text-white font-bold inline-flex items-center justify-center text-[8.5px]">A</span>
+            <span>Alpa</span>
           </span>
-          <span className="flex items-center gap-1 text-slate-400">
-            <span className="font-mono font-bold text-slate-400">·</span>
-            Non-Jadwal
+          <span className="inline-flex items-center gap-1 text-slate-400">
+            <span className="font-mono font-bold">·</span>
+            <span>Libur</span>
           </span>
         </div>
-      </div>
 
-      {/* MOBILE TOGGLE: 360° ZOOM & FREE-HAND PAN vs SPREADSHEET */}
-      <div className="flex sm:hidden items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-full">
-        <button
-          type="button"
-          onClick={() => setMobileViewStyle('CANVAS_360')}
-          className={cn(
-            'flex-1 py-1.5 text-[11px] font-black rounded-lg text-center transition-all cursor-pointer flex items-center justify-center gap-1.5',
-            mobileViewStyle === 'CANVAS_360'
-              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-          )}
-        >
-          <Hand className="w-3.5 h-3.5" />
-          <span>Full 360° (Zoom & Geser)</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setMobileViewStyle('SPREADSHEET')}
-          className={cn(
-            'flex-1 py-1.5 text-[11px] font-black rounded-lg text-center transition-all cursor-pointer flex items-center justify-center gap-1.5',
-            mobileViewStyle === 'SPREADSHEET'
-              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
-              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-          )}
-        >
-          <span>📊 Spreadsheet Klasik</span>
-        </button>
+        {/* Mobile Toggle Pill: 360° vs Spreadsheet */}
+        <div className="flex sm:hidden items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileViewStyle('CANVAS_360')}
+            className={cn(
+              'px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer flex items-center gap-1',
+              mobileViewStyle === 'CANVAS_360'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+            )}
+          >
+            <Hand className="w-3 h-3" />
+            <span>360° Zoom</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileViewStyle('SPREADSHEET')}
+            className={cn(
+              'px-2 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer flex items-center gap-1',
+              mobileViewStyle === 'SPREADSHEET'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+            )}
+          >
+            <span>Klasik</span>
+          </button>
+        </div>
       </div>
 
       {/* ── 1. TAMPILAN KHUSUS HP (SM:HIDDEN) ── */}
       <div className="block sm:hidden">
         {mobileViewStyle === 'CANVAS_360' ? (
           <div className="relative w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-950/80 shadow-inner">
-            {/* Guide Info Banner */}
-            <div className="px-3 py-1.5 bg-slate-200/90 dark:bg-slate-900/90 text-slate-600 dark:text-slate-400 text-[10px] flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
-              <span className="font-semibold flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Cubit untuk Zoom, geser 1 jari di tabel untuk navigasi 360°.
-              </span>
-              <span className="font-mono text-indigo-600 dark:text-indigo-400 font-black">
-                {Math.round(effectiveScale * 100)}%
-              </span>
-            </div>
-
             {/* Canvas Desk Area */}
             <div
               ref={deskRef}
