@@ -224,7 +224,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                       {bankSoal.kolaborasi_badge}
                     </span>
                   )}
-                  {bankSoal.UnitPengajaran && (
+                  {bankSoal.UnitPengajaran && bankSoal.UnitPengajaran.nama_unit && (
                     <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
                       Unit: {bankSoal.UnitPengajaran.nama_unit}
                     </span>

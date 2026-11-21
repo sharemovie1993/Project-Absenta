@@ -881,16 +881,28 @@ export const CbtInlineSoalCard: React.FC<CbtInlineSoalCardProps> = ({
         );
       }
 
-      await queryClient.invalidateQueries({
-        queryKey: cbtQueryKeys.soalList(bankSoalId),
-        exact: false,
-        refetchType: 'all',
-      });
-      await queryClient.invalidateQueries({
-        queryKey: cbtQueryKeys.bankSoal(),
-        exact: false,
-        refetchType: 'all',
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: cbtQueryKeys.soalList(bankSoalId),
+          exact: false,
+          refetchType: 'all',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: cbtQueryKeys.bankSoal(),
+          exact: false,
+          refetchType: 'all',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['cbt-bank-soal-for-teacher-duty'],
+          exact: false,
+          refetchType: 'all',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['teacher-cbt-duty-status'],
+          exact: false,
+          refetchType: 'all',
+        }),
+      ]);
 
       if (mode === 'add-next' && !soal) {
         // Reset form untuk soal berikutnya langsung di tempat

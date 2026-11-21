@@ -844,6 +844,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           refetchType: 'all',
         }),
         queryClient.invalidateQueries({
+          queryKey: ['cbt-bank-soal-for-teacher-duty'],
+          exact: false,
+          refetchType: 'all',
+        }),
+        queryClient.invalidateQueries({
           queryKey: ['teacher-cbt-duty-status'],
           exact: false,
           refetchType: 'all',

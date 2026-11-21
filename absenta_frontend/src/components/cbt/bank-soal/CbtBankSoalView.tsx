@@ -170,11 +170,23 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
     mutationFn: (id: string) => cbtApi.deleteBankSoal(id),
     onSuccess: async () => {
       toast.success('Bank soal berhasil dihapus');
-      await queryClient.invalidateQueries({
-        queryKey: cbtQueryKeys.bankSoal(),
-        exact: false,
-        refetchType: 'all',
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: cbtQueryKeys.bankSoal(),
+          exact: false,
+          refetchType: 'all',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['cbt-bank-soal-for-teacher-duty'],
+          exact: false,
+          refetchType: 'all',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['teacher-cbt-duty-status'],
+          exact: false,
+          refetchType: 'all',
+        }),
+      ]);
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Gagal menghapus bank soal');
@@ -200,11 +212,23 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
     mutationFn: (id: string) => cbtApi.duplicateBankSoal(id, currentGuruId),
     onSuccess: async () => {
       toast.success('Bank soal berhasil disalin!');
-      await queryClient.invalidateQueries({
-        queryKey: cbtQueryKeys.bankSoal(),
-        exact: false,
-        refetchType: 'all',
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: cbtQueryKeys.bankSoal(),
+          exact: false,
+          refetchType: 'all',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['cbt-bank-soal-for-teacher-duty'],
+          exact: false,
+          refetchType: 'all',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['teacher-cbt-duty-status'],
+          exact: false,
+          refetchType: 'all',
+        }),
+      ]);
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Gagal menyalin bank soal');
@@ -284,7 +308,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
                     {row.kolaborasi_badge}
                   </span>
                 )}
-                {row.UnitPengajaran && (
+                {row.UnitPengajaran && row.UnitPengajaran.nama_unit && (
                   <span className="text-[10px] font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 px-1.5 py-0.5 rounded border border-sky-200/60 dark:border-sky-800/50">
                     Unit: {row.UnitPengajaran.nama_unit}
                   </span>

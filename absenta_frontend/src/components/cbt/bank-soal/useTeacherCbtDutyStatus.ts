@@ -103,7 +103,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
             .catch(() => null)
         : null,
     enabled: Boolean(guruId),
-    staleTime: 30 * 1000,
+    staleTime: 5 * 1000,
   });
 
   const rawAssignedList: GuruMapel[] = useMemo(() => {
