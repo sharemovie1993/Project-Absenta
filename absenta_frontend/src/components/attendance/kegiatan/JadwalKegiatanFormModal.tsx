@@ -1,6 +1,20 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { z } from 'zod';
-import { X, Info, Clock, Calendar, CheckSquare, Square, RotateCcw, Check, Sparkles, Layers } from 'lucide-react';
+import {
+  X,
+  Info,
+  Clock,
+  Calendar,
+  CheckSquare,
+  Square,
+  RotateCcw,
+  Check,
+  Sparkles,
+  Layers,
+  Copy,
+  Sliders,
+  AlertCircle,
+} from 'lucide-react';
 import { Button } from '@/components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Label } from '@/components/ui/Label';
@@ -8,6 +22,15 @@ import type { JenisKegiatanMaster } from '@/api/academic/jenisKegiatanMaster.api
 import type { Kelas } from '@/types/academic';
 import type { JadwalKegiatanItem } from '@/api/attendance/jadwalKegiatan.api';
 import { toLocalDate } from '@/utils/attendance/time';
+import {
+  HARI_LIST as HARI_OPTION,
+  WORKDAYS_HARI_KEYS as WORKDAYS,
+  getDayShortLabel,
+  getDayOption,
+} from '@/constants/day.constants';
+import { useJenisKegiatanMaster } from '@/hooks/academic/useJenisKegiatanMaster';
+import { useKelasOptions } from '@/hooks/useKelasOptions';
+import { toast } from 'react-hot-toast';
 
 // ─── Zod Schema ──────────────────────────────────────────────────────────────
 export const jadwalKegiatanSchema = z.object({
@@ -36,26 +59,56 @@ export const jadwalKegiatanSchema = z.object({
 
 export type JadwalKegiatanFormData = z.infer<typeof jadwalKegiatanSchema>;
 
-import { HARI_LIST as HARI_OPTION, WORKDAYS_HARI_KEYS as WORKDAYS } from '@/constants/day.constants';
+export interface DayScheduleMatrix {
+  waktuMulai: string;
+  waktuSelesai: string;
+}
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 interface JadwalKegiatanFormModalProps {
   editingItem: JadwalKegiatanItem | null;
-  masterKegiatans: JenisKegiatanMaster[];
-  classes: Kelas[];
+  editingItems?: JadwalKegiatanItem[];
+  masterKegiatans?: JenisKegiatanMaster[];
+  classes?: Kelas[];
   activeTahunPelajaranId: string;
   activeTahunPelajaranName: string;
   /** When opening via 'Atur' on a master card, pre-select this master name in the form */
   presetNama?: string;
   onClose: () => void;
-  onSubmit: (payload: JadwalKegiatanFormData) => Promise<void>;
+  onSubmit: (payloads: JadwalKegiatanFormData[]) => Promise<void>;
 }
 
-import { useJenisKegiatanMaster } from '@/hooks/academic/useJenisKegiatanMaster';
-import { useKelasOptions } from '@/hooks/useKelasOptions';
+const parseArray = (val: any): string[] => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    return val.split(',').map((s: string) => s.trim()).filter(Boolean);
+  }
+  return [];
+};
+
+function calculateDuration(start: string, end?: string | null): string {
+  if (!start || !end) return '';
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) return '';
+  let diff = (eh * 60 + em) - (sh * 60 + sm);
+  if (diff < 0) diff += 24 * 60;
+  const hours = Math.floor(diff / 60);
+  const minutes = diff % 60;
+  if (hours > 0 && minutes > 0) return `${hours} jam ${minutes} mnt`;
+  if (hours > 0) return `${hours} jam`;
+  if (minutes > 0) return `${minutes} menit`;
+  return '';
+}
 
 export default React.memo(function JadwalKegiatanFormModal({
   editingItem,
+  editingItems = [],
   masterKegiatans: propMasterKegiatans,
   classes: propClasses,
   activeTahunPelajaranId,
@@ -68,50 +121,66 @@ export default React.memo(function JadwalKegiatanFormModal({
   const { rawList: fallbackClasses } = useKelasOptions();
   const masterKegiatans = propMasterKegiatans && propMasterKegiatans.length > 0 ? propMasterKegiatans : fallbackMasterKegiatans;
   const classes = propClasses && propClasses.length > 0 ? propClasses : fallbackClasses;
+
   // ── Form State ──
-  const [nama, setNama] = React.useState('');
-  const [jenisKegiatan, setJenisKegiatan] = React.useState('');
-  const [hari, setHari] = React.useState<string[]>([]);
-  const [waktuMulai, setWaktuMulai] = React.useState('07:00');
-  const [waktuSelesai, setWaktuSelesai] = React.useState('07:15');
-  const [targetSemuaKelas, setTargetSemuaKelas] = React.useState(true);
-  const [targetKelasIds, setTargetKelasIds] = React.useState<string[]>([]);
-  const [berlakuMulai, setBerlakuMulai] = React.useState(toLocalDate());
-  const [berlakuSampai, setBerlakuSampai] = React.useState('');
-  const [masaBerlakuOption, setMasaBerlakuOption] = React.useState<'MANUAL' | 'GANJIL' | 'GENAP' | 'TAHUN_PELAJARAN'>('TAHUN_PELAJARAN');
-  const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = React.useState(false);
+  const [nama, setNama] = useState('');
+  const [jenisKegiatan, setJenisKegiatan] = useState('');
+  const [hari, setHari] = useState<string[]>([]);
+  const [waktuMulai, setWaktuMulai] = useState('07:00');
+  const [waktuSelesai, setWaktuSelesai] = useState('07:15');
+  const [targetSemuaKelas, setTargetSemuaKelas] = useState(true);
+  const [targetKelasIds, setTargetKelasIds] = useState<string[]>([]);
+  const [berlakuMulai, setBerlakuMulai] = useState(toLocalDate());
+  const [berlakuSampai, setBerlakuSampai] = useState('');
+  const [masaBerlakuOption, setMasaBerlakuOption] = useState<'MANUAL' | 'GANJIL' | 'GENAP' | 'TAHUN_PELAJARAN'>('TAHUN_PELAJARAN');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
-  // ── Init from editingItem or presetNama ──
+  // ── Matrix State ──
+  const [isMatrixMode, setIsMatrixMode] = useState(false);
+  const [matrixSchedule, setMatrixSchedule] = useState<Record<string, DayScheduleMatrix>>({});
+
+  // ── Init from editingItem / editingItems or presetNama ──
   useEffect(() => {
-    const parseArray = (val: any): string[] => {
-      if (!val) return [];
-      if (Array.isArray(val)) return val;
-      if (typeof val === 'string') {
-        try {
-          const parsed = JSON.parse(val);
-          if (Array.isArray(parsed)) return parsed;
-        } catch {}
-        return val.split(',').map(s => s.trim()).filter(Boolean);
-      }
-      return [];
-    };
+    const items = editingItems && editingItems.length > 0 ? editingItems : editingItem ? [editingItem] : [];
 
-    if (editingItem) {
-      setNama(editingItem.nama || '');
-      setJenisKegiatan(editingItem.jenis_kegiatan || '');
-      setHari(parseArray(editingItem.hari));
-      setWaktuMulai(editingItem.waktu_mulai || '07:00');
-      setWaktuSelesai(editingItem.waktu_selesai || '');
-      setTargetSemuaKelas(Boolean(editingItem.target_semua_kelas));
-      setTargetKelasIds(parseArray(editingItem.target_kelas_ids));
-      setBerlakuMulai(editingItem.berlaku_mulai ? String(editingItem.berlaku_mulai).split('T')[0] : toLocalDate());
-      setBerlakuSampai(editingItem.berlaku_sampai ? String(editingItem.berlaku_sampai).split('T')[0] : '');
+    if (items.length > 0) {
+      const primary = items[0];
+      setNama(primary.nama || '');
+      setJenisKegiatan(primary.jenis_kegiatan || '');
+      setTargetSemuaKelas(Boolean(primary.target_semua_kelas));
+      setTargetKelasIds(parseArray(primary.target_kelas_ids));
+      setBerlakuMulai(primary.berlaku_mulai ? String(primary.berlaku_mulai).split('T')[0] : toLocalDate());
+      setBerlakuSampai(primary.berlaku_sampai ? String(primary.berlaku_sampai).split('T')[0] : '');
       setMasaBerlakuOption('MANUAL');
+
+      // Check if multi-item matrix exists
+      const initialMatrix: Record<string, DayScheduleMatrix> = {};
+      const allDays: string[] = [];
+      let hasVaryingTimes = items.length > 1;
+
+      items.forEach((item) => {
+        const itemDays = parseArray(item.hari);
+        itemDays.forEach((d) => {
+          const upper = d.toUpperCase();
+          allDays.push(upper);
+          initialMatrix[upper] = {
+            waktuMulai: item.waktu_mulai || '07:00',
+            waktuSelesai: item.waktu_selesai || '',
+          };
+        });
+      });
+
+      const uniqueDays = Array.from(new Set(allDays));
+      setHari(uniqueDays);
+      setWaktuMulai(primary.waktu_mulai || '07:00');
+      setWaktuSelesai(primary.waktu_selesai || '');
+      setMatrixSchedule(initialMatrix);
+      setIsMatrixMode(hasVaryingTimes);
     } else {
-      // New form — apply preset from master card if provided
+      // New form
       setNama(presetNama);
-      setJenisKegiatan(presetNama); // matches option value (master.nama)
+      setJenisKegiatan(presetNama);
       setHari([]);
       setWaktuMulai('07:00');
       setWaktuSelesai('07:15');
@@ -119,9 +188,25 @@ export default React.memo(function JadwalKegiatanFormModal({
       setTargetKelasIds([]);
       setBerlakuSampai('');
       setMasaBerlakuOption('TAHUN_PELAJARAN');
+      setIsMatrixMode(false);
+      setMatrixSchedule({});
     }
     setErrors({});
-  }, [editingItem, presetNama]);
+  }, [editingItem, editingItems, presetNama]);
+
+  // ── Sync matrixSchedule when days change ──
+  const syncMatrixForDay = useCallback((day: string, fallbackMulai?: string, fallbackSelesai?: string) => {
+    setMatrixSchedule(prev => {
+      if (prev[day]) return prev;
+      return {
+        ...prev,
+        [day]: {
+          waktuMulai: fallbackMulai || waktuMulai || '07:00',
+          waktuSelesai: fallbackSelesai || waktuSelesai || '07:15',
+        }
+      };
+    });
+  }, [waktuMulai, waktuSelesai]);
 
   // ── Masa berlaku preset ──
   useEffect(() => {
@@ -153,24 +238,79 @@ export default React.memo(function JadwalKegiatanFormModal({
   }, [masaBerlakuOption, activeTahunPelajaranName]);
 
   // ── Quick Day Selectors ──
-  const handleToggleDay = React.useCallback((day: string) => {
-    setHari(prev => prev.includes(day) ? prev.filter(h => h !== day) : [...prev, day]);
-  }, []);
+  const handleToggleDay = useCallback((day: string) => {
+    setHari(prev => {
+      const next = prev.includes(day) ? prev.filter(h => h !== day) : [...prev, day];
+      if (!prev.includes(day)) {
+        syncMatrixForDay(day);
+      }
+      return next;
+    });
+  }, [syncMatrixForDay]);
 
-  const handleSelectWorkdays = React.useCallback(() => {
+  const handleSelectWorkdays = useCallback(() => {
     setHari(WORKDAYS);
-  }, []);
+    WORKDAYS.forEach(d => syncMatrixForDay(d));
+  }, [syncMatrixForDay]);
 
-  const handleSelectAllDays = React.useCallback(() => {
-    setHari(HARI_OPTION.map(h => h.value));
-  }, []);
+  const handleSelectAllDays = useCallback(() => {
+    const all = HARI_OPTION.map(h => h.value);
+    setHari(all);
+    all.forEach(d => syncMatrixForDay(d));
+  }, [syncMatrixForDay]);
 
-  const handleResetDays = React.useCallback(() => {
+  const handleResetDays = useCallback(() => {
     setHari([]);
   }, []);
 
+  // ── Toggle Matrix Mode ──
+  const handleToggleMatrixMode = useCallback(() => {
+    setIsMatrixMode(prev => {
+      const next = !prev;
+      if (next) {
+        // Initialize matrix for all selected days with current uniform times
+        const newMatrix: Record<string, DayScheduleMatrix> = { ...matrixSchedule };
+        hari.forEach(d => {
+          if (!newMatrix[d]) {
+            newMatrix[d] = {
+              waktuMulai: waktuMulai || '07:00',
+              waktuSelesai: waktuSelesai || '07:15',
+            };
+          }
+        });
+        setMatrixSchedule(newMatrix);
+        toast('Mode Matrix Hari & Jam diaktifkan. Anda dapat mengatur jam berbeda di setiap hari.', {
+          icon: '⏱️',
+        });
+      }
+      return next;
+    });
+  }, [matrixSchedule, hari, waktuMulai, waktuSelesai]);
+
+  const handleUpdateMatrixDay = useCallback((day: string, field: 'waktuMulai' | 'waktuSelesai', value: string) => {
+    setMatrixSchedule(prev => ({
+      ...prev,
+      [day]: {
+        waktuMulai: field === 'waktuMulai' ? value : (prev[day]?.waktuMulai || waktuMulai || '07:00'),
+        waktuSelesai: field === 'waktuSelesai' ? value : (prev[day]?.waktuSelesai || waktuSelesai || ''),
+      }
+    }));
+  }, [waktuMulai, waktuSelesai]);
+
+  const handleCopyDayTimeToAll = useCallback((sourceDay: string) => {
+    const source = matrixSchedule[sourceDay] || { waktuMulai, waktuSelesai };
+    setMatrixSchedule(prev => {
+      const updated: Record<string, DayScheduleMatrix> = { ...prev };
+      hari.forEach(d => {
+        updated[d] = { ...source };
+      });
+      return updated;
+    });
+    toast.success(`Jam ${getDayShortLabel(sourceDay)} (${source.waktuMulai} - ${source.waktuSelesai || 'Selesai'}) disalin ke seluruh hari terpilih!`);
+  }, [matrixSchedule, waktuMulai, waktuSelesai, hari]);
+
   // ── Quick Class Selectors & Grouping by Tingkat ──
-  const groupedClasses = React.useMemo(() => {
+  const groupedClasses = useMemo(() => {
     const map = new Map<string | number, { label: string; items: Kelas[] }>();
     classes.forEach(c => {
       const key = c.tingkat ?? 'Lainnya';
@@ -189,11 +329,11 @@ export default React.memo(function JadwalKegiatanFormModal({
     });
   }, [classes]);
 
-  const handleToggleClass = React.useCallback((classId: string) => {
+  const handleToggleClass = useCallback((classId: string) => {
     setTargetKelasIds(prev => prev.includes(classId) ? prev.filter(id => id !== classId) : [...prev, classId]);
   }, []);
 
-  const handleToggleTingkat = React.useCallback((items: Kelas[]) => {
+  const handleToggleTingkat = useCallback((items: Kelas[]) => {
     const itemIds = items.map(c => c.id);
     setTargetKelasIds(prev => {
       const allSelected = itemIds.every(id => prev.includes(id));
@@ -206,17 +346,16 @@ export default React.memo(function JadwalKegiatanFormModal({
     });
   }, []);
 
-  const handleSelectAllClasses = React.useCallback(() => {
+  const handleSelectAllClasses = useCallback(() => {
     setTargetKelasIds(classes.map(c => c.id));
   }, [classes]);
 
-  const handleClearClasses = React.useCallback(() => {
+  const handleClearClasses = useCallback(() => {
     setTargetKelasIds([]);
   }, []);
 
-  const handleJenisChange = React.useCallback((value: string) => {
+  const handleJenisChange = useCallback((value: string) => {
     setJenisKegiatan(value);
-    // Auto-populate nama if blank or matches a previous master
     const selectedMaster = masterKegiatans.find(m => m.id === value || m.nama === value);
     if (selectedMaster) {
       setNama(prev => {
@@ -227,54 +366,133 @@ export default React.memo(function JadwalKegiatanFormModal({
     }
   }, [masterKegiatans]);
 
-  // ── Submit with Zod validation ──
-  const handleSubmit = React.useCallback(async (e: React.FormEvent) => {
+  // ── Submit Logic ──
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
 
-    const cleanWaktuSelesai = waktuSelesai && waktuSelesai.trim() !== '' ? waktuSelesai.trim() : null;
     const cleanBerlakuMulai = berlakuMulai ? berlakuMulai.trim().split('T')[0] : toLocalDate();
     const cleanBerlakuSampai = berlakuSampai && berlakuSampai.trim() !== '' ? berlakuSampai.trim().split('T')[0] : null;
-    const cleanHari = (hari || []).map(h => h.toUpperCase());
     const cleanTpId = (editingItem?.tahun_pelajaran_id || activeTahunPelajaranId || '').trim();
 
-    const formData: JadwalKegiatanFormData = {
-      nama: nama.trim(),
-      jenis_kegiatan: jenisKegiatan,
-      hari: cleanHari,
-      waktu_mulai: waktuMulai ? waktuMulai.trim() : '07:00',
-      waktu_selesai: cleanWaktuSelesai,
-      target_semua_kelas: targetSemuaKelas,
-      target_kelas_ids: targetSemuaKelas ? [] : targetKelasIds,
-      berlaku_mulai: cleanBerlakuMulai,
-      berlaku_sampai: cleanBerlakuSampai,
-      tahun_pelajaran_id: cleanTpId,
-    };
-
-    const result = jadwalKegiatanSchema.safeParse(formData);
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      const issues = result.error.issues || (result.error as any).errors || [];
-      issues.forEach(err => {
-        const field = err.path[0] as string;
-        if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
-      });
-      setErrors(fieldErrors);
+    if (!nama.trim()) {
+      setErrors({ nama: 'Nama kegiatan wajib diisi' });
       return;
+    }
+    if (!jenisKegiatan) {
+      setErrors({ jenis_kegiatan: 'Pilih kategori kegiatan' });
+      return;
+    }
+    if (hari.length === 0) {
+      setErrors({ hari: 'Pilih minimal satu hari pelaksanaan' });
+      return;
+    }
+    if (!targetSemuaKelas && targetKelasIds.length === 0) {
+      setErrors({ target_kelas_ids: 'Pilih minimal satu kelas target' });
+      return;
+    }
+
+    let payloads: JadwalKegiatanFormData[] = [];
+
+    if (!isMatrixMode) {
+      // Uniform mode: single payload
+      const payload: JadwalKegiatanFormData = {
+        nama: nama.trim(),
+        jenis_kegiatan: jenisKegiatan,
+        hari: hari.map(h => h.toUpperCase()),
+        waktu_mulai: waktuMulai ? waktuMulai.trim() : '07:00',
+        waktu_selesai: waktuSelesai && waktuSelesai.trim() !== '' ? waktuSelesai.trim() : null,
+        target_semua_kelas: targetSemuaKelas,
+        target_kelas_ids: targetSemuaKelas ? [] : targetKelasIds,
+        berlaku_mulai: cleanBerlakuMulai,
+        berlaku_sampai: cleanBerlakuSampai,
+        tahun_pelajaran_id: cleanTpId,
+      };
+
+      const result = jadwalKegiatanSchema.safeParse(payload);
+      if (!result.success) {
+        const fieldErrors: Record<string, string> = {};
+        const issues = result.error.issues || (result.error as any).errors || [];
+        issues.forEach((err: any) => {
+          const field = err.path[0] as string;
+          if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
+        });
+        setErrors(fieldErrors);
+        return;
+      }
+      payloads = [result.data];
+    } else {
+      // Matrix Mode: Group days by start + end time
+      const timeGroups = new Map<string, { waktuMulai: string; waktuSelesai: string | null; days: string[] }>();
+      
+      for (const d of hari) {
+        const dSched = matrixSchedule[d] || { waktuMulai, waktuSelesai };
+        const wMulai = dSched.waktuMulai ? dSched.waktuMulai.trim() : '07:00';
+        const wSelesai = dSched.waktuSelesai && dSched.waktuSelesai.trim() !== '' ? dSched.waktuSelesai.trim() : null;
+        
+        const key = `${wMulai}___${wSelesai || 'null'}`;
+        if (!timeGroups.has(key)) {
+          timeGroups.set(key, { waktuMulai: wMulai, waktuSelesai: wSelesai, days: [] });
+        }
+        timeGroups.get(key)!.days.push(d.toUpperCase());
+      }
+
+      for (const group of timeGroups.values()) {
+        const payload: JadwalKegiatanFormData = {
+          nama: nama.trim(),
+          jenis_kegiatan: jenisKegiatan,
+          hari: group.days,
+          waktu_mulai: group.waktuMulai,
+          waktu_selesai: group.waktuSelesai,
+          target_semua_kelas: targetSemuaKelas,
+          target_kelas_ids: targetSemuaKelas ? [] : targetKelasIds,
+          berlaku_mulai: cleanBerlakuMulai,
+          berlaku_sampai: cleanBerlakuSampai,
+          tahun_pelajaran_id: cleanTpId,
+        };
+
+        const result = jadwalKegiatanSchema.safeParse(payload);
+        if (!result.success) {
+          const fieldErrors: Record<string, string> = {};
+          const issues = result.error.issues || (result.error as any).errors || [];
+          issues.forEach((err: any) => {
+            const field = err.path[0] as string;
+            if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
+          });
+          setErrors(fieldErrors);
+          return;
+        }
+        payloads.push(result.data);
+      }
     }
 
     setSubmitting(true);
     try {
-      await onSubmit(result.data);
+      await onSubmit(payloads);
     } catch {
-      // Error sudah ditampilkan melalui toast pada mutation onError
+      // Handled via toast
     } finally {
       setSubmitting(false);
     }
-  }, [nama, jenisKegiatan, hari, waktuMulai, waktuSelesai, targetSemuaKelas, targetKelasIds, berlakuMulai, berlakuSampai, editingItem, activeTahunPelajaranId, onSubmit]);
+  }, [
+    nama,
+    jenisKegiatan,
+    hari,
+    isMatrixMode,
+    matrixSchedule,
+    waktuMulai,
+    waktuSelesai,
+    targetSemuaKelas,
+    targetKelasIds,
+    berlakuMulai,
+    berlakuSampai,
+    editingItem,
+    activeTahunPelajaranId,
+    onSubmit,
+  ]);
 
   // ── Memoized options ──
-  const jenisOptions = React.useMemo(() =>
+  const jenisOptions = useMemo(() =>
     masterKegiatans
       .filter(m => m.nama !== 'KBM' && m.tipe !== 'KBM')
       .map(m => ({ value: m.nama, label: `${m.nama} (${m.tipe})` })),
@@ -283,9 +501,9 @@ export default React.memo(function JadwalKegiatanFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 transition-opacity animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-full sm:max-w-xl md:max-w-2xl xl:max-w-3xl rounded-t-3xl sm:rounded-2xl flex flex-col max-h-[92vh] sm:max-h-[85vh] shadow-2xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-full sm:max-w-xl md:max-w-2xl xl:max-w-3xl rounded-t-3xl sm:rounded-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] shadow-2xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200 overflow-hidden">
         
-        {/* Modal Header (Fixed at top) */}
+        {/* Modal Header */}
         <div className="flex-none px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 backdrop-blur-md flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
@@ -297,7 +515,7 @@ export default React.memo(function JadwalKegiatanFormModal({
                   {editingItem ? 'Edit Jadwal Kegiatan' : 'Tambah Jadwal Kegiatan'}
                 </h2>
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
-                  {editingItem ? 'Edit Mode' : 'Baru'}
+                  {editingItem ? (editingItems.length > 1 ? `Matrix (${editingItems.length} Slot)` : 'Edit Mode') : 'Baru'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
@@ -315,7 +533,7 @@ export default React.memo(function JadwalKegiatanFormModal({
           </button>
         </div>
 
-        {/* Modal Form Body (Scrollable area) */}
+        {/* Modal Form Body */}
         <form id="jadwal-kegiatan-form" onSubmit={handleSubmit} noValidate className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6">
           
           {/* Auto-session info badge */}
@@ -326,7 +544,7 @@ export default React.memo(function JadwalKegiatanFormModal({
             </p>
           </div>
 
-          {/* Section 1: Informasi Utama Kegiatan */}
+          {/* Section 1: Identitas Kegiatan */}
           <div className="space-y-4">
             <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
@@ -334,7 +552,6 @@ export default React.memo(function JadwalKegiatanFormModal({
             </h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Nama Kegiatan */}
               <div>
                 <Label htmlFor="form-nama-kegiatan" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                   Nama Kegiatan <span className="text-rose-500">*</span>
@@ -343,18 +560,14 @@ export default React.memo(function JadwalKegiatanFormModal({
                   id="form-nama-kegiatan"
                   name="nama"
                   type="text"
-                  aria-label="Nama kegiatan rutin"
-                  aria-required="true"
-                  aria-describedby={errors.nama ? 'error-nama' : undefined}
                   placeholder="Contoh: Apel Pagi, Latihan Ketarunaan, Shalat Duha"
                   value={nama}
                   onChange={e => setNama(e.target.value)}
                   className={`mt-1.5 w-full px-4 py-2.5 rounded-xl border bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm transition-colors ${errors.nama ? 'border-rose-400 dark:border-rose-600' : 'border-slate-200 dark:border-slate-700'}`}
                 />
-                {errors.nama && <p id="error-nama" role="alert" className="mt-1 text-[11px] text-rose-500 font-medium">{errors.nama}</p>}
+                {errors.nama && <p role="alert" className="mt-1 text-[11px] text-rose-500 font-medium">{errors.nama}</p>}
               </div>
 
-              {/* Kategori Kegiatan */}
               <div>
                 <Label htmlFor="form-jenis-kegiatan" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                   Kategori Kegiatan <span className="text-rose-500">*</span>
@@ -373,8 +586,6 @@ export default React.memo(function JadwalKegiatanFormModal({
                   <select
                     id="form-jenis-kegiatan"
                     name="jenis_kegiatan"
-                    aria-label="Kategori kegiatan rutin"
-                    aria-required="true"
                     value={jenisKegiatan}
                     onChange={e => setJenisKegiatan(e.target.value)}
                     className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm"
@@ -392,12 +603,19 @@ export default React.memo(function JadwalKegiatanFormModal({
 
           <hr className="border-slate-100 dark:border-slate-800" />
 
-          {/* Section 2: Waktu & Hari Pelaksanaan */}
+          {/* Section 2: Waktu & Pelaksanaan (Dengan Dukungan Dynamic Matrix) */}
           <div className="space-y-4">
-            <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-indigo-500" />
-              2. Waktu & Pelaksanaan
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                2. Waktu &amp; Hari Pelaksanaan
+              </h3>
+              {isMatrixMode && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center gap-1">
+                  <Sliders size={12} /> Mode Matrix Aktif
+                </span>
+              )}
+            </div>
 
             {/* Hari Pelaksanaan */}
             <div>
@@ -406,14 +624,14 @@ export default React.memo(function JadwalKegiatanFormModal({
                   Hari Pelaksanaan <span className="text-rose-500">*</span>
                 </Label>
                 
-                {/* Quick Presets for Days */}
+                {/* Quick Presets */}
                 <div className="flex items-center gap-1.5 text-[11px]">
                   <button
                     type="button"
                     onClick={handleSelectWorkdays}
                     className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-semibold"
                   >
-                    Sen-Jum
+                    Sen-Sab
                   </button>
                   <button
                     type="button"
@@ -434,7 +652,7 @@ export default React.memo(function JadwalKegiatanFormModal({
                 </div>
               </div>
 
-              {/* Responsive Day Grid */}
+              {/* Day Grid */}
               <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 sm:gap-2" role="group" aria-label="Pilih hari pelaksanaan kegiatan">
                 {HARI_OPTION.map(opt => {
                   const active = hari.includes(opt.value);
@@ -459,42 +677,180 @@ export default React.memo(function JadwalKegiatanFormModal({
               {errors.hari && <p role="alert" className="mt-1 text-[11px] text-rose-500 font-medium">{errors.hari}</p>}
             </div>
 
-            {/* Waktu Pelaksanaan */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div>
-                <Label htmlFor="form-waktu-mulai" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  Jam Mulai <span className="text-rose-500">*</span>
-                </Label>
-                <div className="relative mt-1.5">
-                  <input
-                    id="form-waktu-mulai"
-                    name="waktu_mulai"
-                    type="time"
-                    aria-label="Jam mulai kegiatan"
-                    aria-required="true"
-                    value={waktuMulai}
-                    onChange={e => setWaktuMulai(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm"
-                  />
+            {/* Matrix Mode Switcher Toggle Card */}
+            <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className={`p-2 rounded-xl mt-0.5 ${isMatrixMode ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'bg-slate-200/60 dark:bg-slate-700 text-slate-500'}`}>
+                  <Layers size={17} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                      Mode Matrix Waktu (Jam Berbeda per Hari)
+                    </span>
+                    {isMatrixMode && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        Aktif
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                    Aktifkan jika durasi jam berbeda di hari tertentu (contoh: <strong>Sabtu dari pagi s.d siang</strong>, sedangkan hari kerja hanya 1 jam).
+                  </p>
                 </div>
               </div>
-              <div>
-                <Label htmlFor="form-waktu-selesai" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  Jam Selesai <span className="text-slate-400 text-[10px] normal-case font-normal">(opsional)</span>
-                </Label>
-                <div className="relative mt-1.5">
-                  <input
-                    id="form-waktu-selesai"
-                    name="waktu_selesai"
-                    type="time"
-                    aria-label="Jam selesai kegiatan (opsional)"
-                    value={waktuSelesai}
-                    onChange={e => setWaktuSelesai(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm"
-                  />
-                </div>
-              </div>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isMatrixMode}
+                onClick={handleToggleMatrixMode}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                  isMatrixMode ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    isMatrixMode ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
             </div>
+
+            {/* Waktu Pelaksanaan: Mode Seragam vs Mode Matrix */}
+            {!isMatrixMode ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-4 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800">
+                <div>
+                  <Label htmlFor="form-waktu-mulai" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                    Jam Mulai <span className="text-rose-500">*</span>
+                  </Label>
+                  <div className="relative mt-1.5">
+                    <input
+                      id="form-waktu-mulai"
+                      name="waktu_mulai"
+                      type="time"
+                      value={waktuMulai}
+                      onChange={e => setWaktuMulai(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm font-semibold"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="form-waktu-selesai" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                      Jam Selesai <span className="text-slate-400 text-[10px] normal-case font-normal">(opsional)</span>
+                    </Label>
+                    {waktuMulai && waktuSelesai && (
+                      <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded-md">
+                        Durasi: {calculateDuration(waktuMulai, waktuSelesai)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative mt-1.5">
+                    <input
+                      id="form-waktu-selesai"
+                      name="waktu_selesai"
+                      type="time"
+                      value={waktuSelesai}
+                      onChange={e => setWaktuSelesai(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm font-semibold"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Matrix Mode: Baris per Hari */
+              <div className="space-y-3">
+                {hari.length === 0 ? (
+                  <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2">
+                    <AlertCircle size={15} />
+                    <span>Silakan pilih minimal satu hari pelaksanaan di atas untuk menyusun matrix jam.</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {hari.map((dayKey) => {
+                      const opt = getDayOption(dayKey);
+                      const currentDayData = matrixSchedule[dayKey] || { waktuMulai, waktuSelesai };
+                      const dur = calculateDuration(currentDayData.waktuMulai, currentDayData.waktuSelesai);
+                      const isSabtu = dayKey === 'SABTU';
+
+                      return (
+                        <div
+                          key={dayKey}
+                          className={`p-3.5 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                            isSabtu
+                              ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/50 shadow-sm'
+                              : 'bg-white dark:bg-slate-950 border-slate-200/80 dark:border-slate-800'
+                          }`}
+                        >
+                          {/* Day info */}
+                          <div className="flex items-center gap-2.5 sm:min-w-[150px]">
+                            <span className={`px-2.5 py-1 rounded-xl text-xs font-black uppercase tracking-wider ${
+                              isSabtu
+                                ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-200'
+                                : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                            }`}>
+                              {opt?.label || dayKey}
+                            </span>
+                            {isSabtu && (
+                              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                                (Latihan Lapangan)
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Time Inputs */}
+                          <div className="flex-1 grid grid-cols-2 sm:grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                                Mulai
+                              </label>
+                              <input
+                                type="time"
+                                value={currentDayData.waktuMulai}
+                                onChange={e => handleUpdateMatrixDay(dayKey, 'waktuMulai', e.target.value)}
+                                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold focus:ring-2 focus:ring-indigo-500/30"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                                Selesai
+                              </label>
+                              <input
+                                type="time"
+                                value={currentDayData.waktuSelesai}
+                                onChange={e => handleUpdateMatrixDay(dayKey, 'waktuSelesai', e.target.value)}
+                                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold focus:ring-2 focus:ring-indigo-500/30"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Duration & Quick Copy */}
+                          <div className="flex items-center justify-between md:justify-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
+                            {dur ? (
+                              <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                {dur}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 italic">Hingga selesai</span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleCopyDayTimeToAll(dayKey)}
+                              title="Salin jam hari ini ke semua hari terpilih"
+                              className="px-2 py-1 rounded-lg text-[10px] font-bold text-slate-500 hover:text-indigo-600 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors flex items-center gap-1"
+                            >
+                              <Copy size={11} />
+                              <span className="hidden sm:inline">Salin ke Semua</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <hr className="border-slate-100 dark:border-slate-800" />
@@ -557,7 +913,6 @@ export default React.memo(function JadwalKegiatanFormModal({
 
             {!targetSemuaKelas && (
               <div className="space-y-3 mt-3">
-                {/* Global Class Action Bar */}
                 <div className="flex items-center justify-between px-1">
                   <span className="text-[11px] text-slate-500 font-medium">Dikelompokkan Berdasarkan Tingkat:</span>
                   <div className="flex items-center gap-2">
@@ -579,7 +934,6 @@ export default React.memo(function JadwalKegiatanFormModal({
                   </div>
                 </div>
 
-                {/* Grouped Classes List by Tingkat */}
                 <div className="space-y-3 max-h-[260px] sm:max-h-[300px] overflow-y-auto pr-1">
                   {groupedClasses.map(([tingkatKey, group]) => {
                     const groupItemIds = group.items.map(c => c.id);
@@ -588,7 +942,6 @@ export default React.memo(function JadwalKegiatanFormModal({
 
                     return (
                       <div key={String(tingkatKey)} className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 space-y-2">
-                        {/* Tingkat Header */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
@@ -612,7 +965,6 @@ export default React.memo(function JadwalKegiatanFormModal({
                           </button>
                         </div>
 
-                        {/* Class Grid inside this Tingkat */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-1">
                           {group.items.map(cls => {
                             const selected = targetKelasIds.includes(cls.id);
@@ -680,8 +1032,6 @@ export default React.memo(function JadwalKegiatanFormModal({
                   id="form-berlaku-mulai"
                   name="berlaku_mulai"
                   type="date"
-                  aria-label="Tanggal mulai berlaku"
-                  aria-required="true"
                   value={berlakuMulai}
                   onChange={e => setBerlakuMulai(e.target.value)}
                   disabled={masaBerlakuOption !== 'MANUAL'}
@@ -697,7 +1047,6 @@ export default React.memo(function JadwalKegiatanFormModal({
                   id="form-berlaku-sampai"
                   name="berlaku_sampai"
                   type="date"
-                  aria-label="Tanggal selesai berlaku (opsional)"
                   value={berlakuSampai}
                   onChange={e => setBerlakuSampai(e.target.value)}
                   disabled={masaBerlakuOption !== 'MANUAL'}
@@ -708,7 +1057,7 @@ export default React.memo(function JadwalKegiatanFormModal({
           </div>
         </form>
 
-        {/* Modal Footer (Sticky / Fixed at bottom) */}
+        {/* Modal Footer */}
         <div className="flex-none px-4 sm:px-6 py-3.5 sm:py-4 border-t border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex items-center justify-between gap-3 z-10">
           <div className="hidden sm:block text-xs text-slate-500 dark:text-slate-400">
             {Object.keys(errors).length > 0 ? (

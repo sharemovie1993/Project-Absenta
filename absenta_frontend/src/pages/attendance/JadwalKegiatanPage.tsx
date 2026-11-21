@@ -1,19 +1,15 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import {
-  getJadwalKegiatan,
   createJadwalKegiatan,
   updateJadwalKegiatan,
   deleteJadwalKegiatan,
   type JadwalKegiatanItem,
 } from '@/api/attendance/jadwalKegiatan.api';
-import { jenisKegiatanMasterApi, type JenisKegiatanMaster } from '@/api/academic/jenisKegiatanMaster.api';
+import type { JenisKegiatanMaster } from '@/api/academic/jenisKegiatanMaster.api';
 import { useJenisKegiatanMaster } from '@/hooks/academic/useJenisKegiatanMaster';
 import { useKelasOptions } from '@/hooks/useKelasOptions';
-import { getKelasList } from '@/api/academic/kelas.api';
-import { getActiveTahunPelajaran } from '@/api/academic/tahunPelajaran.api';
-import type { Kelas } from '@/types/academic';
 import { toast } from 'react-hot-toast';
 import { useConfirm } from '@/providers/ConfirmProvider';
 import {
@@ -27,6 +23,7 @@ import {
   Users,
   UserCheck,
   Shield,
+  Layers,
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Button, SectionCard, TabSwitcher } from '@/components/ui';
@@ -35,32 +32,32 @@ import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/ac
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import type { JadwalKegiatanFormData } from '@/components/attendance/kegiatan/JadwalKegiatanFormModal';
 import { formatDate } from '@/utils/layoutUtils';
-
-// Lazy-loaded heavy modal form
-const JadwalKegiatanFormModal = lazy(() => import('@/components/attendance/kegiatan/JadwalKegiatanFormModal'));
-
 import { HARI_LIST as HARI_OPTION } from '../../constants/day.constants';
 import { useJadwalKegiatan } from '@/hooks/attendance/useJadwalKegiatan';
+
+// Lazy-loaded modal form
+const JadwalKegiatanFormModal = lazy(() => import('@/components/attendance/kegiatan/JadwalKegiatanFormModal'));
 
 interface CardItem {
   id: string;
   nama: string;
   jenis_kegiatan: string;
   master: JenisKegiatanMaster | null;
+  dbItems: JadwalKegiatanItem[];
   dbItem: JadwalKegiatanItem | null;
 }
 
 const parseArrayField = (field: unknown): string[] => {
   if (!field) return [];
-  if (Array.isArray(field)) return field?.map(String) || [];
+  if (Array.isArray(field)) return field.map(String) || [];
   if (typeof field === 'string') {
     try {
       const parsed = JSON.parse(field);
-      if (Array.isArray(parsed)) return parsed?.map(String) || [];
+      if (Array.isArray(parsed)) return parsed.map(String) || [];
     } catch {
-      // not JSON, fallback to comma-separated
+      // fallback to comma-separated
     }
-    return field.split(',')?.map((s: string) => s.trim()).filter(Boolean) || [];
+    return field.split(',').map((s: string) => s.trim()).filter(Boolean) || [];
   }
   return [];
 };
@@ -73,6 +70,7 @@ export default React.memo(function JadwalKegiatanPage() {
   const [activeTab, setActiveTab] = useState<'PEMBIASAAN' | 'ESKUL'>('PEMBIASAAN');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<JadwalKegiatanItem | null>(null);
+  const [editingItems, setEditingItems] = useState<JadwalKegiatanItem[]>([]);
   const [presetMasterNama, setPresetMasterNama] = useState<string | undefined>(undefined);
 
   // Konteks Akademik Terpusat
@@ -82,11 +80,7 @@ export default React.memo(function JadwalKegiatanPage() {
   });
 
   const {
-    values: { tahunPelajaranId: selectedTpId, semesterId: selectedSemId },
-    handleTpChange: setSelectedTpId,
-    setSemesterId: setSelectedSemId,
-    tpOptions,
-    semesterOptions,
+    values: { tahunPelajaranId: selectedTpId },
     activeTpYear,
   } = academicFilter;
 
@@ -102,67 +96,23 @@ export default React.memo(function JadwalKegiatanPage() {
     queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan'] });
   }, [queryClient]);
 
-  // Mutations
-  const createMutation = useMutation({
-    mutationFn: (payload: JadwalKegiatanFormData) => createJadwalKegiatan({
-      ...payload,
-      hari: (payload.hari || [])?.map(h => h.toUpperCase()),
-      tahun_pelajaran_id: activeTahunPelajaranId,
-    }),
-    onSuccess: () => {
-      invalidateJadwal();
-      toast.success('Jadwal kegiatan berhasil disimpan!');
-      setIsModalOpen(false);
-    },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.message || err?.message || 'Gagal menyimpan jadwal kegiatan.';
-      toast.error(msg);
-    }
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: JadwalKegiatanFormData }) => updateJadwalKegiatan(id, {
-      ...payload,
-      hari: (payload.hari || [])?.map(h => h.toUpperCase()),
-      tahun_pelajaran_id: activeTahunPelajaranId,
-    }),
-    onSuccess: () => {
-      invalidateJadwal();
-      toast.success('Jadwal kegiatan berhasil diperbarui!');
-      setIsModalOpen(false);
-    },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.message || err?.message || 'Gagal memperbarui jadwal kegiatan.';
-      toast.error(msg);
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteJadwalKegiatan(id),
-    onSuccess: () => {
-      invalidateJadwal();
-      toast.success('Jadwal kegiatan berhasil dihapus.');
-    },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.message || err?.message || 'Gagal menghapus jadwal kegiatan.';
-      toast.error(msg);
-    }
-  });
-
   const handleOpenCreate = useCallback(() => {
     setEditingItem(null);
+    setEditingItems([]);
     setPresetMasterNama(undefined);
     setIsModalOpen(true);
   }, []);
 
   const handleOpenCreateFromMaster = useCallback((masterNama: string) => {
     setEditingItem(null);
+    setEditingItems([]);
     setPresetMasterNama(masterNama);
     setIsModalOpen(true);
   }, []);
 
-  const handleOpenEdit = useCallback((item: JadwalKegiatanItem) => {
-    setEditingItem(item);
+  const handleOpenEdit = useCallback((primary: JadwalKegiatanItem, allItems: JadwalKegiatanItem[] = []) => {
+    setEditingItem(primary);
+    setEditingItems(allItems.length > 0 ? allItems : [primary]);
     setPresetMasterNama(undefined);
     setIsModalOpen(true);
   }, []);
@@ -170,41 +120,91 @@ export default React.memo(function JadwalKegiatanPage() {
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
     setEditingItem(null);
+    setEditingItems([]);
     setPresetMasterNama(undefined);
   }, []);
 
-  const handleFormSubmit = useCallback(async (formData: JadwalKegiatanFormData) => {
-    if (editingItem) {
-      await updateMutation.mutateAsync({ id: editingItem.id, payload: formData });
-    } else {
-      await createMutation.mutateAsync(formData);
-    }
-  }, [editingItem, updateMutation, createMutation]);
+  const handleFormSubmit = useCallback(async (payloads: JadwalKegiatanFormData[]) => {
+    if (!payloads || payloads.length === 0) return;
 
-  const handleDelete = useCallback(async (id: string, nama: string) => {
+    const existingItemsToUpdate = [...editingItems];
+
+    try {
+      for (let i = 0; i < payloads.length; i++) {
+        const payload = payloads[i];
+        if (i < existingItemsToUpdate.length) {
+          // Update existing item
+          await updateJadwalKegiatan(existingItemsToUpdate[i].id, {
+            ...payload,
+            hari: (payload.hari || []).map(h => h.toUpperCase()),
+            tahun_pelajaran_id: activeTahunPelajaranId,
+          });
+        } else {
+          // Create new item
+          await createJadwalKegiatan({
+            ...payload,
+            hari: (payload.hari || []).map(h => h.toUpperCase()),
+            tahun_pelajaran_id: activeTahunPelajaranId,
+          });
+        }
+      }
+
+      // If previously there were more slots than now, clean up the surplus
+      if (existingItemsToUpdate.length > payloads.length) {
+        for (let i = payloads.length; i < existingItemsToUpdate.length; i++) {
+          await deleteJadwalKegiatan(existingItemsToUpdate[i].id);
+        }
+      }
+
+      invalidateJadwal();
+      toast.success(
+        payloads.length > 1
+          ? `Matrix jadwal kegiatan (${payloads.length} slot waktu) berhasil disimpan!`
+          : 'Jadwal kegiatan berhasil disimpan!'
+      );
+      setIsModalOpen(false);
+      setEditingItem(null);
+      setEditingItems([]);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Gagal menyimpan jadwal kegiatan.';
+      toast.error(msg);
+    }
+  }, [editingItems, activeTahunPelajaranId, invalidateJadwal]);
+
+  const handleDelete = useCallback(async (items: JadwalKegiatanItem[], nama: string) => {
+    if (!items || items.length === 0) return;
+    const isMultiple = items.length > 1;
     const ok = await confirm({
       title: 'Hapus Jadwal Kegiatan?',
-      description: `Apakah Anda yakin ingin menghapus jadwal untuk "${nama}"?`,
+      description: isMultiple
+        ? `Apakah Anda yakin ingin menghapus seluruh jadwal (${items.length} slot waktu matrix) untuk "${nama}"?`
+        : `Apakah Anda yakin ingin menghapus jadwal untuk "${nama}"?`,
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
       style: 'danger'
     });
     if (ok) {
-      await deleteMutation.mutateAsync(id);
+      try {
+        await Promise.all(items.map(i => deleteJadwalKegiatan(i.id)));
+        invalidateJadwal();
+        toast.success(`Jadwal "${nama}" berhasil dihapus.`);
+      } catch {
+        toast.error('Gagal menghapus jadwal kegiatan.');
+      }
     }
-  }, [confirm, deleteMutation]);
+  }, [confirm, invalidateJadwal]);
 
   const handleToggleClick = useCallback(async (card: CardItem) => {
-    if (!card.dbItem) {
+    if (!card.dbItems || card.dbItems.length === 0) {
       handleOpenCreateFromMaster(card.nama);
       return;
     }
-    const item = card.dbItem;
-    const nextAktif = !item.aktif;
+    const anyActive = card.dbItems.some(i => i.aktif);
+    const nextAktif = !anyActive;
     try {
-      await updateJadwalKegiatan(item.id, { aktif: nextAktif });
+      await Promise.all(card.dbItems.map(i => updateJadwalKegiatan(i.id, { aktif: nextAktif })));
       invalidateJadwal();
-      toast.success(`Jadwal "${item.nama}" berhasil ${nextAktif ? 'diaktifkan' : 'dinonaktifkan'}.`);
+      toast.success(`Jadwal "${card.nama}" berhasil ${nextAktif ? 'diaktifkan' : 'dinonaktifkan'}.`);
     } catch {
       toast.error('Gagal mengubah status aktif jadwal.');
     }
@@ -224,8 +224,8 @@ export default React.memo(function JadwalKegiatanPage() {
     const allMasters = Array.isArray(masterKegiatans) ? masterKegiatans : [];
 
     const list: CardItem[] = safeFilteredMasters.map(master => {
-      const match = safeJadwal.find(j => 
-        j.jenis_kegiatan_id === master.id ||
+      const matches = safeJadwal.filter(j => 
+        (j as any).jenis_kegiatan_id === master.id ||
         j.nama?.toLowerCase().trim() === master.nama.toLowerCase().trim() ||
         j.jenis_kegiatan?.toLowerCase().trim() === master.nama.toLowerCase().trim()
       );
@@ -234,19 +234,26 @@ export default React.memo(function JadwalKegiatanPage() {
         nama: master.nama,
         jenis_kegiatan: master.tipe,
         master,
-        dbItem: match || null,
+        dbItems: matches,
+        dbItem: matches[0] || null,
       };
     });
 
+    const handledIds = new Set<string>();
+    list.forEach(item => {
+      item.dbItems.forEach(j => handledIds.add(j.id));
+    });
+
     safeJadwal.forEach(j => {
-      const existsInList = list.some(item => 
-        item.dbItem?.id === j.id ||
-        (item.master && item.master.id === j.jenis_kegiatan_id) ||
-        item.nama?.toLowerCase().trim() === j.nama?.toLowerCase().trim()
-      );
-      if (!existsInList) {
+      if (!handledIds.has(j.id)) {
+        const sameNameGroup = safeJadwal.filter(other => 
+          !handledIds.has(other.id) &&
+          other.nama?.toLowerCase().trim() === j.nama?.toLowerCase().trim()
+        );
+        sameNameGroup.forEach(item => handledIds.add(item.id));
+
         const matchedMaster = allMasters.find(
-          m => m.nama?.toLowerCase().trim() === j.jenis_kegiatan?.toLowerCase().trim() || m.id === j.jenis_kegiatan_id
+          m => m.nama?.toLowerCase().trim() === j.jenis_kegiatan?.toLowerCase().trim() || m.id === (j as any).jenis_kegiatan_id
         );
         const resolvedTab = matchedMaster?.tipe || j.jenis_kegiatan;
         if (resolvedTab === activeTab || (activeTab === 'PEMBIASAAN' && resolvedTab !== 'ESKUL')) {
@@ -255,6 +262,7 @@ export default React.memo(function JadwalKegiatanPage() {
             nama: j.nama,
             jenis_kegiatan: j.jenis_kegiatan,
             master: matchedMaster || null,
+            dbItems: sameNameGroup,
             dbItem: j,
           });
         }
@@ -332,7 +340,7 @@ export default React.memo(function JadwalKegiatanPage() {
             className="flex items-center gap-1.5 font-bold rounded-xl"
           >
             <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            Anggota & Pembina Eskul
+            Anggota &amp; Pembina Eskul
           </Button>
           <Button
             id="btn-tambah-jadwal"
@@ -347,12 +355,13 @@ export default React.memo(function JadwalKegiatanPage() {
         </div>
       }
       instruction={{
-        title: "Panduan Jadwal Kegiatan",
+        title: "Panduan Jadwal Kegiatan & Matrix Jam",
         description: "Kelola jadwal jam pelaksanaan kegiatan rutin pembiasaan dan ekstrakurikuler sekolah.",
         items: [
           { text: "Atur waktu mulai dan selesai untuk masing-masing kegiatan pembiasaan/eskul." },
+          { text: "Gunakan Mode Matrix untuk menentukan jam yang berbeda di hari tertentu (misal: Sabtu 06:30 - 12:00)." },
           { text: "Gunakan toggle status untuk mengaktifkan atau menonaktifkan jadwal." },
-          { text: "Klik Anggota & Pembina Eskul untuk memetakan siswa dan guru ke kegiatan." },
+          { text: "Klik Anggota & Pembina Eskul untuk memetakan siswa dan pembina ke kegiatan." },
           { text: "Klik Jadwal Pembina Upacara untuk menyusun rotasi giliran pembina upacara Senin." }
         ]
       }}
@@ -428,6 +437,7 @@ export default React.memo(function JadwalKegiatanPage() {
               </div>
             </div>
           )}
+
           {loading ? (
             <div className="flex justify-center items-center py-20">
               <Loader size="lg" />
@@ -442,10 +452,12 @@ export default React.memo(function JadwalKegiatanPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-3 p-6 max-w-full overflow-x-auto">
-              {cards?.map((card) => {
-                const isConfigured = !!card.dbItem;
-                const isActive = isConfigured && card.dbItem?.aktif;
-                const item = card.dbItem;
+              {cards.map((card) => {
+                const isConfigured = card.dbItems && card.dbItems.length > 0;
+                const isActive = isConfigured && card.dbItems.some(i => i.aktif);
+                const isMultiple = card.dbItems.length > 1;
+                const primaryItem = card.dbItem;
+                const allDays = Array.from(new Set(card.dbItems.flatMap(i => parseArrayField(i.hari))));
 
                 return (
                   <div
@@ -459,15 +471,38 @@ export default React.memo(function JadwalKegiatanPage() {
                     }`}
                   >
                     {/* Time Block */}
-                    <div className="flex items-center gap-4 sm:min-w-[170px] md:border-r border-slate-100 dark:border-slate-800 pr-4 w-full md:w-auto mb-3 md:mb-0">
-                      <div className={`p-2.5 rounded-xl ${!isConfigured ? 'bg-slate-100 text-slate-400' : 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400'}`}>
-                        <Clock size={18} />
+                    <div className="flex items-center gap-3.5 sm:min-w-[190px] md:border-r border-slate-100 dark:border-slate-800 pr-4 w-full md:w-auto mb-3 md:mb-0">
+                      <div className={`p-2.5 rounded-xl ${!isConfigured ? 'bg-slate-100 text-slate-400' : isMultiple ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400' : 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400'}`}>
+                        {isMultiple ? <Layers size={18} /> : <Clock size={18} />}
                       </div>
                       <div className="flex flex-col">
-                        <span className={`text-base font-bold ${!isConfigured ? 'text-slate-400 italic' : 'text-slate-800 dark:text-slate-100'}`}>
-                          {isConfigured ? `${item?.waktu_mulai} - ${item?.waktu_selesai ?? 'Selesai'}` : 'Belum diatur'}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-medium">Jam Pelaksanaan</span>
+                        {!isConfigured ? (
+                          <span className="text-base font-bold text-slate-400 italic">Belum diatur</span>
+                        ) : !isMultiple ? (
+                          <span className="text-base font-bold text-slate-800 dark:text-slate-100">
+                            {primaryItem?.waktu_mulai} - {primaryItem?.waktu_selesai ?? 'Selesai'}
+                          </span>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-black px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                                Matrix ({card.dbItems.length} Slot)
+                              </span>
+                            </div>
+                            <div className="flex flex-col gap-0.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                              {card.dbItems.map((slot, idx) => {
+                                const daysStr = parseArrayField(slot.hari).map(h => HARI_OPTION.find(o => o.value === h)?.shortLabel || h).join(', ');
+                                return (
+                                  <div key={slot.id || idx} className="flex items-center gap-1 text-[10px]">
+                                    <span className="text-slate-500 font-bold">{daysStr}:</span>
+                                    <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{slot.waktu_mulai}–{slot.waktu_selesai || 'Selesai'}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        <span className="text-[10px] text-slate-400 font-medium mt-0.5">Jam Pelaksanaan</span>
                       </div>
                     </div>
 
@@ -491,9 +526,9 @@ export default React.memo(function JadwalKegiatanPage() {
                                 : 'Masuk Radar Siklus Ketarunaan (Kelas X)'}
                             </span>
                           )}
-                          {isConfigured && (
+                          {isConfigured && primaryItem && (
                             <span className="text-[10px] text-slate-400 font-semibold font-mono">
-                              Mulai: {formatDate(item?.berlaku_mulai ?? '')}
+                              Mulai: {formatDate(primaryItem.berlaku_mulai ?? '')}
                             </span>
                           )}
                         </div>
@@ -506,8 +541,8 @@ export default React.memo(function JadwalKegiatanPage() {
                         <div className="flex items-center gap-1.5">
                           <Calendar size={13} className="text-slate-400 shrink-0" />
                           <span className="truncate font-semibold">
-                            {isConfigured
-                              ? (parseArrayField(item?.hari) ?? [])?.map(h => HARI_OPTION.find(opt => opt.value === h)?.label ?? h).join(', ') || 'Hari: Belum diatur'
+                            {isConfigured && allDays.length > 0
+                              ? allDays.map(h => HARI_OPTION.find(opt => opt.value === h)?.label ?? h).join(', ')
                               : 'Hari: Belum diatur'}
                           </span>
                         </div>
@@ -515,7 +550,7 @@ export default React.memo(function JadwalKegiatanPage() {
                           <Users size={13} className="text-slate-400 shrink-0" />
                           <span className="truncate font-semibold">
                             {isConfigured
-                              ? formatTargetKelasSummary(item, card.nama)
+                              ? formatTargetKelasSummary(primaryItem, card.nama)
                               : 'Target: Belum diatur'}
                           </span>
                         </div>
@@ -529,7 +564,7 @@ export default React.memo(function JadwalKegiatanPage() {
                           id={`btn-edit-jadwal-${card.id}`}
                           type="button"
                           aria-label={isConfigured ? `Edit jadwal ${card.nama}` : `Atur jadwal ${card.nama}`}
-                          onClick={() => isConfigured && item ? handleOpenEdit(item) : handleOpenCreateFromMaster(card.nama)}
+                          onClick={() => isConfigured && primaryItem ? handleOpenEdit(primaryItem, card.dbItems) : handleOpenCreateFromMaster(card.nama)}
                           className={`px-3 py-2 rounded-xl transition-all text-xs font-extrabold flex items-center gap-1.5 ${
                             !isConfigured
                               ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow-md'
@@ -539,12 +574,12 @@ export default React.memo(function JadwalKegiatanPage() {
                           <Edit3 size={13} />
                           <span>{isConfigured ? 'Edit' : 'Atur'}</span>
                         </button>
-                        {isConfigured && item && (
+                        {isConfigured && card.dbItems.length > 0 && (
                           <button
                             id={`btn-hapus-jadwal-${card.id}`}
                             type="button"
                             aria-label={`Hapus jadwal ${card.nama}`}
-                            onClick={() => handleDelete(item.id, item.nama)}
+                            onClick={() => handleDelete(card.dbItems, card.nama)}
                             className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-red-950/40 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-all"
                           >
                             <Trash2 size={14} />
@@ -558,11 +593,15 @@ export default React.memo(function JadwalKegiatanPage() {
                         aria-label={`${isActive ? 'Nonaktifkan' : 'Aktifkan'} jadwal ${card.nama}`}
                         aria-pressed={!!isActive}
                         onClick={() => handleToggleClick(card)}
-                        className="text-slate-400 hover:text-indigo-600 transition-colors shrink-0"
+                        className={`p-2 rounded-xl transition-all ${
+                          !isConfigured
+                            ? 'text-slate-300 dark:text-slate-700 cursor-not-allowed'
+                            : isActive
+                            ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                            : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
                       >
-                        {isActive
-                          ? <ToggleRight size={32} className="text-indigo-600" />
-                          : <ToggleLeft size={32} />}
+                        {isActive ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
                       </button>
                     </div>
                   </div>
@@ -573,18 +612,12 @@ export default React.memo(function JadwalKegiatanPage() {
         </SectionCard>
       </PremiumFeatureGate>
 
-      {/* Lazy + Suspense for heavy modal form */}
+      {/* Form Modal */}
       {isModalOpen && (
-        <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 flex items-center gap-3 shadow-2xl">
-              <Loader size="md" />
-              <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">Memuat form...</span>
-            </div>
-          </div>
-        }>
+        <Suspense fallback={null}>
           <JadwalKegiatanFormModal
             editingItem={editingItem}
+            editingItems={editingItems}
             masterKegiatans={masterKegiatans}
             classes={classes}
             activeTahunPelajaranId={activeTahunPelajaranId}
