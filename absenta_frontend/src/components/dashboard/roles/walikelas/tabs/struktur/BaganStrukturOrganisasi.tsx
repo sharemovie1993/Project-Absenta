@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Crown, 
   UserCheck, 
@@ -15,8 +16,11 @@ import {
   Users,
   GitBranch,
   ListTree,
-  Printer
+  Printer,
+  Info,
+  Loader2
 } from 'lucide-react';
+import { getPetugasList, assignPetugas, unassignPetugas, type PetugasResponse } from '@/api/attendance/petugas.api';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui';
 import { Button } from '@/components/ui/Button';
@@ -131,6 +135,24 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
 }) => {
   const storageKey = `absenta_walas_struktur_${kelasId}`;
 
+  // Fetch real OrganizationalAssignment (PETUGAS_KELAS) dari backend
+  const {
+    data: petugasRes,
+    refetch: refetchPetugas,
+    isLoading: isLoadingPetugas,
+  } = useQuery({
+    queryKey: ['walas-petugas-kelas-list', kelasId],
+    queryFn: () => getPetugasList(1, 50, '', kelasId),
+    enabled: Boolean(kelasId && kelasId !== 'default'),
+    staleTime: 30 * 1000,
+  });
+
+  const activePetugasList = useMemo(() => {
+    return (petugasRes?.data || []) as PetugasResponse[];
+  }, [petugasRes]);
+
+  const [isSubmittingAssignment, setIsSubmittingAssignment] = useState(false);
+
   // Local state for positions
   const [positions, setPositions] = useState<PengurusPosition[]>(() => {
     try {
@@ -144,6 +166,66 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
     }
     return DEFAULT_POSITIONS;
   });
+
+  // Sinkronkan data jabatan KM dan Sekretaris dari database OrganizationalAssignment jika ada
+  useEffect(() => {
+    if (activePetugasList.length === 0) return;
+
+    // Cari KM (is_leader = true atau custom_title mengandung KM/Ketua)
+    const dbKm = activePetugasList.find(
+      (p) => p.is_leader || (p.custom_title && (p.custom_title.toLowerCase().includes('km') || p.custom_title.toLowerCase().includes('ketua')))
+    );
+
+    // Cari Sekretaris
+    const dbSekretaris = activePetugasList.filter(
+      (p) =>
+        (p.custom_title && p.custom_title.toLowerCase().includes('sekretaris')) ||
+        (!p.is_leader && p.id !== dbKm?.id)
+    );
+
+    setPositions((prev) => {
+      let changed = false;
+      const next = prev.map((pos) => {
+        if (pos.id === 'km' && dbKm?.Siswa) {
+          const studentId = dbKm.Siswa.id;
+          const studentName = dbKm.Siswa.nama_siswa;
+          if (pos.assignedStudentIds[0] !== studentId) {
+            changed = true;
+            return {
+              ...pos,
+              assignedStudentIds: [studentId],
+              assignedStudentNames: [studentName],
+            };
+          }
+        }
+
+        if (pos.id === 'sekretaris' && dbSekretaris.length > 0) {
+          const s1 = dbSekretaris[0]?.Siswa;
+          const s2 = dbSekretaris[1]?.Siswa;
+          const newIds: string[] = [s1?.id, s2?.id].filter(Boolean) as string[];
+          const newNames: string[] = [s1?.nama_siswa, s2?.nama_siswa].filter(Boolean) as string[];
+
+          if (JSON.stringify(pos.assignedStudentIds) !== JSON.stringify(newIds) && newIds.length > 0) {
+            changed = true;
+            return {
+              ...pos,
+              assignedStudentIds: newIds,
+              assignedStudentNames: newNames,
+            };
+          }
+        }
+        return pos;
+      });
+
+      if (changed) {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(next));
+        } catch {}
+        return next;
+      }
+      return prev;
+    });
+  }, [activePetugasList, storageKey]);
 
   // Mode Tampilan: Bagan Pohon Visual vs List Hierarki Vertikal
   const [viewMode, setViewMode] = useState<'visual_tree' | 'vertical_tree'>('visual_tree');
@@ -200,8 +282,8 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
     setSelectedStudent2(pos.assignedStudentIds[1] || '');
   };
 
-  // Submit modal edit
-  const handleSaveEdit = () => {
+  // Submit modal edit dengan integrasi langsung ke OrganizationalAssignment Petugas Kelas
+  const handleSaveEdit = async () => {
     if (!editingPosition) return;
 
     const s1Obj = studentsList.find((s) => s.id === selectedStudent1);
@@ -230,8 +312,84 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
     );
 
     handleSavePositions(updated);
+
+    // â”€â”€ INTEGRASI OTOMATIS KE ORGANIZATIONAL ASSIGNMENT PETUGAS KELAS (KM & SEKRETARIS) â”€â”€
+    if (editingPosition.id === 'km' || editingPosition.id === 'sekretaris') {
+      setIsSubmittingAssignment(true);
+      try {
+        if (editingPosition.id === 'km') {
+          // Cari assignment KM lama jika ada
+          const oldKmAssign = activePetugasList.find(
+            (p) => p.is_leader || (p.custom_title && (p.custom_title.toLowerCase().includes('km') || p.custom_title.toLowerCase().includes('ketua')))
+          );
+
+          // Jika siswa KM diganti atau dihapus, unassign yang lama
+          if (oldKmAssign && (!s1Obj || oldKmAssign.Siswa?.id !== s1Obj.id)) {
+            await unassignPetugas(oldKmAssign.id).catch(() => null);
+          }
+
+          // Assign KM baru jika dipilih
+          if (s1Obj && kelasId) {
+            await assignPetugas({
+              siswa_id: s1Obj.id,
+              kelas_id: kelasId,
+              custom_title: 'Ketua Murid (KM)',
+              is_leader: true,
+            });
+          }
+        } else if (editingPosition.id === 'sekretaris') {
+          // Cari assignment Sekretaris lama
+          const oldSekretarisList = activePetugasList.filter(
+            (p) =>
+              (p.custom_title && p.custom_title.toLowerCase().includes('sekretaris')) ||
+              (!p.is_leader && !p.custom_title?.toLowerCase().includes('km'))
+          );
+
+          const targetIds = [s1Obj?.id, s2Obj?.id].filter(Boolean);
+
+          // Unassign sekretaris lama yang sudah tidak dipilih
+          for (const oldSec of oldSekretarisList) {
+            if (oldSec.Siswa?.id && !targetIds.includes(oldSec.Siswa.id)) {
+              await unassignPetugas(oldSec.id).catch(() => null);
+            }
+          }
+
+          // Assign Sekretaris 1
+          if (s1Obj && kelasId) {
+            await assignPetugas({
+              siswa_id: s1Obj.id,
+              kelas_id: kelasId,
+              custom_title: 'Sekretaris 1',
+              is_leader: false,
+            });
+          }
+
+          // Assign Sekretaris 2
+          if (s2Obj && kelasId) {
+            await assignPetugas({
+              siswa_id: s2Obj.id,
+              kelas_id: kelasId,
+              custom_title: 'Sekretaris 2',
+              is_leader: false,
+            });
+          }
+        }
+
+        await refetchPetugas();
+        toast.success(
+          `${editingPosition.roleTitle} berhasil disimpan & disinkronkan ke Petugas Kelas Absenta!`
+        );
+      } catch (err: any) {
+        console.error('Error synchronizing petugas assignment:', err);
+        toast.error(err?.response?.data?.message || err?.message || 'Gagal menyinkronkan penugasan petugas ke database');
+      } finally {
+        setIsSubmittingAssignment(false);
+      }
+    } else {
+      toast.success(`Jabatan ${editingPosition.roleTitle} berhasil diperbarui!`);
+    }
+
     setEditingPosition(null);
-    toast.success(`Jabatan ${editingPosition.roleTitle} berhasil diperbarui!`);
   };
 
   // Student options for Select
@@ -381,9 +539,15 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate" title={km?.assignedStudentNames[0]}>
-                    {km?.assignedStudentNames[0] || '(Belum Ditentukan)'}
-                  </h5>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate" title={km?.assignedStudentNames[0]}>
+                      {km?.assignedStudentNames[0] || '(Belum Ditentukan)'}
+                    </h5>
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800 text-[9px] font-bold text-emerald-700 dark:text-emerald-300">
+                      <ShieldCheck className="w-2.5 h-2.5 text-emerald-500" />
+                      <span>Petugas Absensi</span>
+                    </span>
+                  </div>
                   <p className="text-[10px] text-slate-400 truncate">
                     {km?.description}
                   </p>
@@ -445,9 +609,15 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
                       <div className="p-1 sm:p-1.5 rounded-lg bg-sky-100 dark:bg-sky-900/60 text-sky-600 dark:text-sky-400 shrink-0">
                         <FileText className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       </div>
-                      <span className="text-[10px] sm:text-[11px] font-bold text-sky-800 dark:text-sky-300 truncate">
-                        Sekretaris
-                      </span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-[10px] sm:text-[11px] font-bold text-sky-800 dark:text-sky-300 truncate">
+                          Sekretaris
+                        </span>
+                        <span className="hidden sm:inline-flex items-center gap-0.5 px-1 rounded bg-sky-100/70 dark:bg-sky-900/60 text-[8.5px] font-black text-sky-700 dark:text-sky-300">
+                          <ShieldCheck className="w-2.5 h-2.5" />
+                          <span>Absensi</span>
+                        </span>
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -714,6 +884,18 @@ export const BaganStrukturOrganisasi: React.FC<BaganStrukturOrganisasiProps> = R
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Pilih perwakilan siswa dari rombel {kelasNama} untuk menempati jabatan ini.
             </p>
+
+            {(editingPosition.id === 'km' || editingPosition.id === 'sekretaris') && (
+              <div className="p-3 rounded-2xl bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/40 dark:to-indigo-950/30 border border-violet-200/80 dark:border-violet-800/60 flex items-start gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+                <div className="text-[11px] text-violet-900 dark:text-violet-200 space-y-0.5">
+                  <p className="font-bold">Integrasi Otomatis Akses Petugas Kelas</p>
+                  <p className="text-violet-700 dark:text-violet-300 leading-relaxed text-[10.5px]">
+                    Siswa yang ditetapkan sebagai {editingPosition.roleTitle} otomatis terdaftar di <strong>OrganizationalAssignment</strong> dengan wewenang mengisi presensi harian rombel di aplikasi Absenta.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div>

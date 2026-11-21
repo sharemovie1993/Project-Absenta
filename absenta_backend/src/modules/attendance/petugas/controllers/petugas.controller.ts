@@ -5,17 +5,20 @@ import { appLogger } from '@/utils/app-logger';
 export const assignPetugasSchema = z.object({
   siswa_id: z.string().min(1, 'siswa_id wajib diisi'),
   kelas_id: z.string().min(1, 'kelas_id wajib diisi'),
+  custom_title: z.string().optional(),
+  is_leader: z.boolean().optional(),
 });
 
 export const petugasController = {
   async getAll(request: any, reply: any) {
     try {
       const scope = request.dataScope;
-      const { page, limit, search } = request.query as any;
+      const { page, limit, search, kelas_id } = request.query as any;
       const result = await petugasService.getAll(scope, {
         page: parseInt(page) || 1,
         limit: parseInt(limit) || 10,
-        search: search || ''
+        search: search || '',
+        kelas_id: kelas_id || undefined,
       });
       return reply.status(200).send({ success: true, message: 'Daftar petugas absensi', ...result });
     } catch (error: any) {

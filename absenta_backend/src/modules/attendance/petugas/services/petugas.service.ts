@@ -6,10 +6,12 @@ import { applyDataScope } from '@/utils/applyDataScope';
 export interface AssignPetugasInput {
   siswa_id: string;
   kelas_id: string;
+  custom_title?: string;
+  is_leader?: boolean;
 }
 
 export class PetugasService {
-  async getAll(scope: DataScope, params?: { page?: number; limit?: number; search?: string }) {
+  async getAll(scope: DataScope, params?: { page?: number; limit?: number; search?: string; kelas_id?: string }) {
     const tenantId = scope.tenantId;
     if (!tenantId) throw new Error('Tenant ID required');
 
@@ -29,6 +31,10 @@ export class PetugasService {
 
     // Apply Scoping
     where = applyDataScope(where, scope);
+
+    if (params?.kelas_id) {
+      where.kelas_id = params.kelas_id;
+    }
 
     if (params?.search) {
       where.User = {
@@ -130,6 +136,11 @@ export class PetugasService {
         update: { updated_at: new Date(), is_active: true },
       });
 
+      const activeTp = await tx.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+
       const activeExists = await tx.organizationalAssignment.findFirst({
         where: {
           tenant_id: tenantId,
@@ -138,9 +149,22 @@ export class PetugasService {
           kelas_id: input.kelas_id,
           is_active: true,
         },
-        select: { id: true },
+        select: { id: true, custom_title: true, is_leader: true, user_id: true },
       });
-      if (activeExists) throw new Error('Siswa is already assigned as Petugas Kelas');
+
+      if (activeExists) {
+        if (input.custom_title !== undefined || input.is_leader !== undefined) {
+          return tx.organizationalAssignment.update({
+            where: { id: activeExists.id },
+            data: {
+              custom_title: input.custom_title !== undefined ? input.custom_title : activeExists.custom_title,
+              is_leader: input.is_leader !== undefined ? input.is_leader : activeExists.is_leader,
+              updated_at: new Date(),
+            },
+          });
+        }
+        return activeExists;
+      }
 
       const inactive = await tx.organizationalAssignment.findFirst({
         where: {
@@ -150,13 +174,21 @@ export class PetugasService {
           kelas_id: input.kelas_id,
           is_active: false,
         },
-        select: { id: true },
+        select: { id: true, custom_title: true, is_leader: true },
       });
 
       if (inactive) {
         return tx.organizationalAssignment.update({
           where: { id: inactive.id },
-          data: { is_active: true, start_date: new Date(), end_date: null, updated_at: new Date() },
+          data: {
+            is_active: true,
+            start_date: new Date(),
+            end_date: null,
+            custom_title: input.custom_title !== undefined ? input.custom_title : inactive.custom_title,
+            is_leader: input.is_leader !== undefined ? input.is_leader : inactive.is_leader,
+            tahun_pelajaran_id: activeTp?.id || null,
+            updated_at: new Date()
+          },
         });
       }
 
@@ -167,6 +199,9 @@ export class PetugasService {
           user_id: siswa.user_id,
           kelas_id: input.kelas_id,
           unit_id: null,
+          tahun_pelajaran_id: activeTp?.id || null,
+          custom_title: input.custom_title || null,
+          is_leader: input.is_leader ?? false,
           start_date: new Date(),
           end_date: null,
           is_active: true,
@@ -185,9 +220,19 @@ export class PetugasService {
 
     const existing = await prisma.organizationalAssignment.findFirst({
       where: { id, tenant_id: tenantId, Position: { code: 'PETUGAS_KELAS' } },
-      select: { id: true, user_id: true },
+      select: { id: true, user_id: true, kelas_id: true },
     });
     if (!existing) throw new Error('Assignment not found');
+
+    if (
+      Array.isArray(scope.kelasIds) &&
+      scope.kelasIds.length > 0 &&
+      !scope.tenantWide &&
+      existing.kelas_id &&
+      !scope.kelasIds.map(String).includes(String(existing.kelas_id))
+    ) {
+      throw new Error('Anda tidak memiliki otoritas untuk menghapus petugas di kelas ini');
+    }
 
     await prisma.organizationalAssignment.update({
       where: { id },
