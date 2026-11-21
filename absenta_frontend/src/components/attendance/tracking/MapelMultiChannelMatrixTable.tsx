@@ -76,6 +76,7 @@ interface MapelMultiChannelMatrixTableProps {
   selectedDate?: string;
   onDateSelect?: (dateStr: string) => void;
   isLoading?: boolean;
+  isModal?: boolean;
   className?: string;
 }
 
@@ -85,6 +86,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
   selectedDate,
   onDateSelect,
   isLoading = false,
+  isModal = false,
   className,
 }) => {
   const mapelList = matrixData?.mapel_list || [];
@@ -705,7 +707,7 @@ if (isLoading) {
   return (
     <div className={cn('space-y-2.5 sm:space-y-3 w-full max-w-full min-w-0', className)}>
       {/* ── UNIFIED COMPACT SUB-TOOLBAR (LEGENDA + TOGGLE MODE MOBILE) ── */}
-      <div className="flex items-center justify-between gap-2 p-1.5 sm:p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-xs max-sm:mx-2">
+      <div className="flex items-center justify-between gap-2 p-1.5 sm:p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-xs">
         {/* Compact Legend */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap text-[9.5px] sm:text-[10px] font-semibold text-slate-600 dark:text-slate-300">
           <span className="inline-flex items-center gap-1">
@@ -759,7 +761,13 @@ if (isLoading) {
       {/* ── 1. TAMPILAN KHUSUS HP (SM:HIDDEN) ── */}
       <div className="block sm:hidden">
         {mobileViewStyle === 'CANVAS_360' ? (
-          <div className="relative w-full max-sm:rounded-none max-sm:border-x-0 border-y sm:rounded-2xl overflow-hidden border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-950/80 shadow-inner">
+          <div
+            className={cn(
+              'relative w-full overflow-hidden border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-950/80 shadow-inner',
+              !isModal ? 'max-sm:-mx-4 max-sm:w-[calc(100%+2rem)]' : 'max-sm:-mx-2.5 max-sm:w-[calc(100%+1.25rem)]',
+              'max-sm:rounded-none max-sm:border-x-0 border-y sm:rounded-2xl sm:border'
+            )}
+          >
             {/* Canvas Desk Area */}
             <div
               ref={deskRef}
@@ -836,7 +844,13 @@ if (isLoading) {
             </div>
           </div>
         ) : (
-          <div className="bg-white dark:bg-slate-900 border-y sm:border border-slate-200/80 dark:border-slate-800 max-sm:rounded-none sm:rounded-2xl shadow-2xs overflow-hidden">
+          <div
+            className={cn(
+              'bg-white dark:bg-slate-900 shadow-2xs overflow-hidden',
+              !isModal ? 'max-sm:-mx-4 max-sm:w-[calc(100%+2rem)]' : 'max-sm:-mx-2.5 max-sm:w-[calc(100%+1.25rem)]',
+              'max-sm:rounded-none max-sm:border-x-0 border-y sm:border sm:rounded-2xl border-slate-200/80 dark:border-slate-800'
+            )}
+          >
             <div className="overflow-x-auto relative">
               {renderSpreadsheetTable(false)}
             </div>

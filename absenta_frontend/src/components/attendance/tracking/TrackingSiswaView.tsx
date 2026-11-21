@@ -356,25 +356,25 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
       )}
 
       {/* ── 2. TOP STUDENT NAVIGATION & IDENTITY BAR ── */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+        <div className="flex items-center justify-between gap-3">
           {/* Identity: Avatar, Name, NIS */}
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0 font-bold text-sm sm:text-base">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0 font-bold text-xs sm:text-base">
               {displayStudentName.slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 truncate">
+                <h3 className="text-xs sm:text-base font-black text-slate-900 dark:text-slate-100 truncate">
                   {displayStudentName}
                 </h3>
                 {propKelasNama && (
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
+                  <span className="px-1.5 py-0.5 rounded-md text-[9.5px] sm:text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
                     Kelas: {propKelasNama}
                   </span>
                 )}
               </div>
-              <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+              <p className="text-[10px] sm:text-[11px] font-mono text-slate-500 dark:text-slate-400">
                 NIS: {displayStudentNis}
               </p>
             </div>
@@ -382,21 +382,14 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
 
           {/* Selector: Prev, Dropdown, Next OR Self Badge */}
           {shouldHideSelector ? (
-            <div className="flex items-center gap-2 self-start md:self-auto">
+            <div className="flex items-center gap-2 shrink-0">
               <span className="px-3 py-1 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
                 Matriks Presensi Saya
               </span>
             </div>
           ) : (
             <>
-              {/* Counter Pill di HP (Header ringkas tanpa dropdown yang membebani) */}
-              {siswaOptions.length > 0 && currentIndex !== -1 && (
-                <span className="sm:hidden px-2.5 py-1 rounded-xl text-[10.5px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 shrink-0 self-center">
-                  {currentIndex + 1} / {siswaOptions.length}
-                </span>
-              )}
-
-              {/* Selector Desktop: Tetap di Atas */}
+              {/* Selector Desktop: Tetap di Atas (Di HP navigasi terpusat ergonomis di bottom navigator) */}
               <div className="hidden sm:flex items-center gap-2 w-full md:w-auto md:min-w-[380px] max-w-lg">
                 <Button
                   type="button"
@@ -451,24 +444,24 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
       </div>
 
-      {/* ── 3. SINGLE-ROW ANALYTICS CARD (1 BARIS) ── */}
-      <div className="p-2 sm:p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center justify-between overflow-x-auto no-scrollbar divide-x divide-slate-100 dark:divide-slate-800 gap-1 sm:gap-2">
+      {/* ── 3. SINGLE-ROW ANALYTICS CARD (GRID 4-KOLOM RESPONSIVE ZERO-CLIPPING) ── */}
+      <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs grid grid-cols-4 divide-x divide-slate-100 dark:divide-slate-800">
         {/* 1. Gerbang */}
-        <div className="flex items-center gap-2 px-2 sm:px-3 shrink-0">
-          <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+        <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-1 sm:px-3 min-w-0">
+          <div className="hidden sm:flex w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 items-center justify-center shrink-0">
             <DoorOpen size={13} />
           </div>
-          <div className="min-w-0 leading-tight">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+          <div className="min-w-0 leading-tight text-center sm:text-left">
+            <span className="text-[8.5px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-wider block truncate">
               Gerbang
             </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                {channelSummary?.gerbang?.total_hadir ?? 0} H
+            <div className="flex items-baseline justify-center sm:justify-start gap-0.5 sm:gap-1 mt-0.5">
+              <span className="text-[11px] sm:text-sm font-black text-slate-900 dark:text-white truncate">
+                {channelSummary?.gerbang?.total_hadir ?? 0}H
               </span>
               {(channelSummary?.gerbang?.total_terlambat ?? 0) > 0 && (
-                <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400">
-                  ({channelSummary?.gerbang?.total_terlambat} T)
+                <span className="text-[8px] sm:text-[9px] font-bold text-amber-600 dark:text-amber-400">
+                  ({channelSummary?.gerbang?.total_terlambat}T)
                 </span>
               )}
             </div>
@@ -476,21 +469,22 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
 
         {/* 2. Pembiasaan */}
-        <div className="flex items-center gap-2 px-2 sm:px-3 shrink-0">
-          <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+        <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-1 sm:px-3 min-w-0">
+          <div className="hidden sm:flex w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 items-center justify-center shrink-0">
             <BookOpen size={13} />
           </div>
-          <div className="min-w-0 leading-tight">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+          <div className="min-w-0 leading-tight text-center sm:text-left">
+            <span className="text-[8.5px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-wider block truncate">
               Pembiasaan
             </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400">
-                {channelSummary?.pembiasaan?.total_hadir ?? 0} Sesi
+            <div className="flex items-baseline justify-center sm:justify-start gap-0.5 sm:gap-1 mt-0.5">
+              <span className="text-[11px] sm:text-sm font-black text-emerald-600 dark:text-emerald-400 truncate">
+                {channelSummary?.pembiasaan?.total_hadir ?? 0}
               </span>
+              <span className="text-[8px] sm:text-[9px] text-slate-400 hidden sm:inline">Sesi</span>
               {(channelSummary?.pembiasaan?.total_alpa ?? 0) > 0 && (
-                <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400">
-                  ({channelSummary?.pembiasaan?.total_alpa} A)
+                <span className="text-[8px] sm:text-[9px] font-bold text-rose-600 dark:text-rose-400">
+                  ({channelSummary?.pembiasaan?.total_alpa}A)
                 </span>
               )}
             </div>
@@ -498,19 +492,19 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
 
         {/* 3. KBM */}
-        <div className="flex items-center gap-2 px-2 sm:px-3 shrink-0">
-          <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+        <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-1 sm:px-3 min-w-0">
+          <div className="hidden sm:flex w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 items-center justify-center shrink-0">
             <GraduationCap size={13} />
           </div>
-          <div className="min-w-0 leading-tight">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+          <div className="min-w-0 leading-tight text-center sm:text-left">
+            <span className="text-[8.5px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-wider block truncate">
               KBM Mapel
             </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xs sm:text-sm font-black text-indigo-600 dark:text-indigo-400">
+            <div className="flex items-baseline justify-center sm:justify-start gap-0.5 sm:gap-1 mt-0.5">
+              <span className="text-[11px] sm:text-sm font-black text-indigo-600 dark:text-indigo-400 truncate">
                 {channelSummary?.kbm?.persentase ?? 100}%
               </span>
-              <span className="text-[9px] text-slate-400">
+              <span className="text-[8px] sm:text-[9px] text-slate-400 hidden sm:inline">
                 ({channelSummary?.kbm?.hadir_sesi ?? 0}/{channelSummary?.kbm?.total_sesi ?? 0})
               </span>
             </div>
@@ -518,18 +512,18 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
 
         {/* 4. PKL */}
-        <div className="flex items-center gap-2 px-2 sm:px-3 shrink-0">
-          <div className="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+        <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-1 sm:px-3 min-w-0">
+          <div className="hidden sm:flex w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 items-center justify-center shrink-0">
             <Briefcase size={13} />
           </div>
-          <div className="min-w-0 leading-tight">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
-              {channelSummary?.pkl?.is_active ? 'DU/DI' : 'PKL'}
+          <div className="min-w-0 leading-tight text-center sm:text-left">
+            <span className="text-[8.5px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+              PKL / DUDI
             </span>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+            <div className="flex items-baseline justify-center sm:justify-start gap-0.5 sm:gap-1 mt-0.5">
+              <span className="text-[10px] sm:text-sm font-black text-slate-900 dark:text-white truncate">
                 {channelSummary?.pkl?.is_active
-                  ? `${channelSummary.pkl.total_hadir} H`
+                  ? `${channelSummary.pkl.total_hadir}H`
                   : 'Non-PKL'}
               </span>
             </div>
@@ -537,21 +531,10 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
       </div>
 
-      {/* ── 4. FULL-WIDTH VIEW: MATRIKS 30 HARI / KALENDER / LOG ANOMALI (FULL-BLEED EDGE-TO-EDGE ON MOBILE) ── */}
-      <div
-        className={cn(
-          'w-full transition-all duration-300',
-          // Desktop: Kartu SectionCard putih yang bersih
-          'sm:bg-white sm:dark:bg-slate-900 sm:rounded-2xl sm:border sm:border-slate-200/80 sm:dark:border-slate-800 sm:shadow-xs sm:p-5',
-          // Mobile: Full-Bleed (eliminasi Box-in-Box, membentang penuh 100% menembus padding layout luar)
-          !isModal
-            ? 'max-sm:-mx-4 max-sm:w-[calc(100%+2rem)]'
-            : 'max-sm:-mx-2.5 max-sm:w-[calc(100%+1.25rem)]',
-          'max-sm:bg-transparent max-sm:border-0 max-sm:shadow-none max-sm:p-0'
-        )}
-      >
-        {/* View Mode Switcher Header */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200/70 dark:border-slate-800/80 max-sm:px-3">
+      {/* ── 4. VIEW: MATRIKS 30 HARI / KALENDER / LOG ANOMALI ── */}
+      <div className="w-full space-y-2 sm:space-y-3">
+        {/* View Mode Switcher Header (Sejajar rapi dengan kartu profil di atasnya) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pb-1 sm:pb-2 border-b border-slate-200/70 dark:border-slate-800/80">
           <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">
             <button
               type="button"
@@ -611,7 +594,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
 
         {/* Content Based on View Mode */}
-        <div className="pt-2 sm:pt-3">
+        <div>
           {viewMode === 'MATRIX' ? (
             <MapelMultiChannelMatrixTable
               matrixData={monthData?.mapel_matrix}
@@ -619,6 +602,7 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
               selectedDate={tanggal}
               onDateSelect={(newDate) => setTanggal(newDate)}
               isLoading={monthLoading}
+              isModal={isModal}
             />
           ) : (
             <MonthlyAnomalyFeed
