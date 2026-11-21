@@ -16,6 +16,8 @@ import {
   LayoutTemplate,
   ChevronDown,
   MessageCircle,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { getMyTenant, type Tenant } from '@/api/tenants.api';
 import { sekolahApi, type Sekolah } from '@/api/academic/sekolah.api';
@@ -703,10 +705,15 @@ export const PrintDocumentSheet: React.FC<PrintDocumentSheetProps> = ({
 // 6. UNIVERSAL DESK CANVAS: PrintDeskCanvas (Adaptive Mobile Zoom & Desk)
 // ============================================================================
 
+export const DOCUMENT_ZOOM_STEPS = [0.25, 0.35, 0.5, 0.65, 0.75, 0.9, 1.0, 1.15, 1.25, 1.5, 1.75, 2.0, 2.5];
+
 export interface PrintDeskCanvasProps {
   orientation?: 'portrait' | 'landscape';
-  zoomMode?: 'fit' | 'original';
-  onZoomModeChange?: (mode: 'fit' | 'original') => void;
+  zoomMode?: 'fit' | 'original' | 'custom';
+  zoomScale?: number;
+  onZoomModeChange?: (mode: 'fit' | 'original' | 'custom') => void;
+  onZoomScaleChange?: (scale: number) => void;
+  showFloatingControls?: boolean;
   children: React.ReactNode;
   className?: string;
   deskRef?: React.RefObject<HTMLDivElement | null>;
@@ -716,6 +723,10 @@ export interface PrintDeskCanvasProps {
 export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
   orientation = 'portrait',
   zoomMode = 'fit',
+  zoomScale: externalZoomScale,
+  onZoomModeChange,
+  onZoomScaleChange,
+  showFloatingControls = true,
   children,
   className,
   deskRef: externalDeskRef,
@@ -729,19 +740,18 @@ export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
   const isLandscape = orientation === 'landscape';
   const baseWidth = isLandscape ? 1123 : 794;
 
-  const [autoScale, setAutoScale] = useState<number>(1);
+  const [calculatedFitScale, setCalculatedFitScale] = useState<number>(1);
+  const [internalCustomScale, setInternalCustomScale] = useState<number>(1);
 
+  // Recalculate fit scale on resize
   useEffect(() => {
     const calcScale = () => {
       if (!deskRef.current) return;
       const containerWidth = deskRef.current.clientWidth;
-      if (zoomMode === 'original') {
-        setAutoScale(1);
-      } else if (containerWidth < baseWidth + 16) {
-        const calculated = Math.max(0.3, Math.min(1, (containerWidth - 16) / baseWidth));
-        setAutoScale(calculated);
-      } else {
-        setAutoScale(1);
+      if (containerWidth > 0) {
+        // Leave 24px margin
+        const calculated = Math.max(0.25, Math.min(1.2, (containerWidth - 24) / baseWidth));
+        setCalculatedFitScale(calculated);
       }
     };
 
@@ -752,28 +762,212 @@ export const PrintDeskCanvas: React.FC<PrintDeskCanvasProps> = ({
       clearTimeout(timer);
       window.removeEventListener('resize', calcScale);
     };
-  }, [zoomMode, orientation, baseWidth, deskRef]);
+  }, [orientation, baseWidth, deskRef]);
+
+  // Determine effective scale
+  const effectiveScale = useMemo(() => {
+    if (zoomMode === 'original') return 1;
+    if (zoomMode === 'fit') return calculatedFitScale;
+    return externalZoomScale ?? internalCustomScale;
+  }, [zoomMode, calculatedFitScale, externalZoomScale, internalCustomScale]);
+
+  // Sync effective scale up to parent
+  useEffect(() => {
+    onZoomScaleChange?.(effectiveScale);
+  }, [effectiveScale, onZoomScaleChange]);
+
+  const handleZoomIn = () => {
+    const next =
+      DOCUMENT_ZOOM_STEPS.find((s) => s > effectiveScale + 0.04) ??
+      Math.min(2.5, +(effectiveScale + 0.25).toFixed(2));
+    setInternalCustomScale(next);
+    onZoomModeChange?.('custom');
+    onZoomScaleChange?.(next);
+  };
+
+  const handleZoomOut = () => {
+    const reversed = [...DOCUMENT_ZOOM_STEPS].reverse();
+    const prev =
+      reversed.find((s) => s < effectiveScale - 0.04) ??
+      Math.max(0.25, +(effectiveScale - 0.25).toFixed(2));
+    setInternalCustomScale(prev);
+    onZoomModeChange?.('custom');
+    onZoomScaleChange?.(prev);
+  };
+
+  const handleSetFit = () => {
+    onZoomModeChange?.('fit');
+    onZoomScaleChange?.(calculatedFitScale);
+  };
+
+  const handleSet100 = () => {
+    onZoomModeChange?.('original');
+    onZoomScaleChange?.(1);
+  };
+
+  const handleToggleFitOr100 = () => {
+    if (zoomMode === 'fit') {
+      handleSet100();
+    } else {
+      handleSetFit();
+    }
+  };
+
+  // Pinch-to-zoom on touch screens
+  const touchDistanceRef = useRef<number | null>(null);
+  const touchStartScaleRef = useRef<number>(1);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      touchDistanceRef.current = dist;
+      touchStartScaleRef.current = effectiveScale;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchDistanceRef.current !== null) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const ratio = dist / touchDistanceRef.current;
+      const nextScale = Math.max(0.25, Math.min(2.5, +(touchStartScaleRef.current * ratio).toFixed(2)));
+      setInternalCustomScale(nextScale);
+      onZoomModeChange?.('custom');
+      onZoomScaleChange?.(nextScale);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchDistanceRef.current = null;
+  };
+
+  // Double tap to toggle fit/100% on touch
+  const lastTapRef = useRef<number>(0);
+  const handleDoubleTap = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      const now = Date.now();
+      if (now - lastTapRef.current < 300) {
+        handleToggleFitOr100();
+        lastTapRef.current = 0;
+      } else {
+        lastTapRef.current = now;
+      }
+    }
+  };
+
+  // Ctrl + Wheel to zoom on desktop
+  useEffect(() => {
+    const el = deskRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.15 : -0.15;
+        const next = Math.max(0.25, Math.min(2.5, +(effectiveScale + delta).toFixed(2)));
+        setInternalCustomScale(next);
+        onZoomModeChange?.('custom');
+        onZoomScaleChange?.(next);
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, [deskRef, effectiveScale, onZoomModeChange, onZoomScaleChange]);
 
   return (
-    <div
-      ref={deskRef}
-      className={cn(
-        'print-desk-canvas-outer overflow-y-auto overflow-x-auto max-h-[76vh] p-2 sm:p-8 bg-slate-200/70 dark:bg-slate-950/80 rounded-xl border border-slate-300 dark:border-slate-800 flex flex-col items-center gap-4 sm:gap-8 select-text print:overflow-visible print:max-h-none print:h-auto print:w-full print:max-w-none print:p-0 print:m-0 print:border-none print:bg-transparent print:block print:shadow-none print:static',
-        className
-      )}
-    >
+    <div className="relative w-full">
       <div
-        ref={canvasRef}
-        id="print-desk-canvas-area"
-        style={{
-          zoom: autoScale < 1 ? autoScale : undefined,
-          width: `${baseWidth}px`,
-          maxWidth: zoomMode === 'original' ? `${baseWidth}px` : undefined,
+        ref={deskRef}
+        onTouchStart={(e) => {
+          handleTouchStart(e);
+          handleDoubleTap(e);
         }}
-        className="print-desk-canvas flex flex-col items-center gap-8 transition-all duration-150 origin-top print:overflow-visible print:max-h-none print:h-auto print:w-full print:max-w-none print:p-0 print:m-0 print:border-none print:bg-transparent print:block print:gap-0 print:static"
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className={cn(
+          'print-desk-canvas-outer overflow-y-auto overflow-x-auto max-h-[76vh] p-2 sm:p-8 bg-slate-200/70 dark:bg-slate-950/80 rounded-xl border border-slate-300 dark:border-slate-800 flex flex-col items-center gap-4 sm:gap-8 select-text touch-pan-x touch-pan-y print:overflow-visible print:max-h-none print:h-auto print:w-full print:max-w-none print:p-0 print:m-0 print:border-none print:bg-transparent print:block print:shadow-none print:static',
+          className
+        )}
       >
-        {children}
+        <div
+          ref={canvasRef}
+          id="print-desk-canvas-area"
+          style={{
+            zoom: effectiveScale,
+            width: `${baseWidth}px`,
+          }}
+          className="print-desk-canvas flex flex-col items-center gap-8 transition-all duration-150 origin-top print:overflow-visible print:max-h-none print:h-auto print:w-full print:max-w-none print:p-0 print:m-0 print:border-none print:bg-transparent print:block print:gap-0 print:static"
+        >
+          {children}
+        </div>
       </div>
+
+      {/* Floating Canvas Quick Zoom Pill */}
+      {showFloatingControls && (
+        <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-20 print:hidden flex items-center gap-1 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-700 shadow-lg text-xs pointer-events-auto select-none">
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            disabled={effectiveScale <= 0.26}
+            className="p-1 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer transition-colors"
+            title="Perkecil (-)"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleToggleFitOr100}
+            className="px-1.5 py-0.5 font-bold text-[10.5px] min-w-[38px] text-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-800 dark:text-slate-200 transition-colors"
+            title="Klik untuk beralih mode zoom"
+          >
+            {Math.round(effectiveScale * 100)}%
+          </button>
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            disabled={effectiveScale >= 2.49}
+            className="p-1 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer transition-colors"
+            title="Perbesar (+)"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </button>
+          <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 mx-0.5" />
+          <button
+            type="button"
+            onClick={handleSetFit}
+            className={cn(
+              'px-2 py-0.5 rounded-full text-[10.5px] font-semibold transition-colors cursor-pointer',
+              zoomMode === 'fit'
+                ? 'bg-blue-600 text-white font-bold shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+            )}
+            title="Pas Layar"
+          >
+            Pas
+          </button>
+          <button
+            type="button"
+            onClick={handleSet100}
+            className={cn(
+              'px-2 py-0.5 rounded-full text-[10.5px] font-semibold transition-colors cursor-pointer',
+              zoomMode === 'original'
+                ? 'bg-blue-600 text-white font-bold shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+            )}
+            title="100% Ukuran Asli"
+          >
+            100%
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -912,11 +1106,46 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
   const activeLogoDaerah = externalShowLogoDaerah !== undefined ? externalShowLogoDaerah : internalLogoDaerah;
   const activeLogoSekolah = externalShowLogoSekolah !== undefined ? externalShowLogoSekolah : internalLogoSekolah;
 
-  const [zoomMode, setZoomMode] = useState<'fit' | 'original'>('fit');
+  const [zoomMode, setZoomMode] = useState<'fit' | 'original' | 'custom'>('fit');
+  const [zoomScale, setZoomScale] = useState<number>(1);
   const [showMobileOptions, setShowMobileOptions] = useState<boolean>(false);
   const [isSendWaOpen, setIsSendWaOpen] = useState<boolean>(false);
   const deskRef = useRef<HTMLDivElement | null>(null);
   const resolvedWaFilename = resolveDefaultWaFilename(defaultWaFilename, title);
+
+  const handleZoomIn = () => {
+    const next =
+      DOCUMENT_ZOOM_STEPS.find((s) => s > zoomScale + 0.04) ??
+      Math.min(2.5, +(zoomScale + 0.25).toFixed(2));
+    setZoomScale(next);
+    setZoomMode('custom');
+  };
+
+  const handleZoomOut = () => {
+    const reversed = [...DOCUMENT_ZOOM_STEPS].reverse();
+    const prev =
+      reversed.find((s) => s < zoomScale - 0.04) ??
+      Math.max(0.25, +(zoomScale - 0.25).toFixed(2));
+    setZoomScale(prev);
+    setZoomMode('custom');
+  };
+
+  const handleSetFit = () => {
+    setZoomMode('fit');
+  };
+
+  const handleSet100 = () => {
+    setZoomMode('original');
+    setZoomScale(1);
+  };
+
+  const handleToggleFitOr100 = () => {
+    if (zoomMode === 'fit') {
+      handleSet100();
+    } else {
+      handleSetFit();
+    }
+  };
 
   const handleToggleOrientation = () => {
     const next = activeOrientation === 'portrait' ? 'landscape' : 'portrait';
@@ -1006,15 +1235,15 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
             </div>
           )}
 
-          {/* Tier 1: Action Strip (Print, Download PDF, Zoom Toggle, Opsi Toggle) */}
-          <div className="flex items-center justify-between gap-1.5">
-            {/* Left: Quick Actions (Cetak & Unduh) */}
-            <div className="flex items-center gap-1.5 shrink-0">
+          {/* Tier 1: Action Strip (Print, Download PDF, WA, Opsi) */}
+          <div className="flex items-center justify-between gap-1.5 flex-wrap sm:flex-nowrap">
+            {/* Left: Quick Actions (Cetak & Unduh & WA) */}
+            <div className="flex items-center gap-1.5 flex-wrap">
               <Button
                 type="button"
                 size="sm"
                 onClick={handlePrint}
-                className="text-xs gap-1 bg-blue-600 hover:bg-blue-700 text-white h-7.5 px-2.5 font-semibold shadow-xs"
+                className="text-xs gap-1 bg-blue-600 hover:bg-blue-700 text-white h-7.5 px-2.5 font-semibold shadow-xs shrink-0"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>{printButtonText}</span>
@@ -1026,7 +1255,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={onDownloadPdf}
-                  className="text-xs gap-1 h-7.5 px-2"
+                  className="text-xs gap-1 h-7.5 px-2 shrink-0"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>{downloadPdfText}</span>
@@ -1039,7 +1268,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={() => setIsSendWaOpen(true)}
-                  className="text-xs gap-1 h-7.5 px-2 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                  className="text-xs gap-1 h-7.5 px-2 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shrink-0"
                   title="Kirim PDF dokumen ini melalui WhatsApp"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
@@ -1048,65 +1277,89 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
               )}
             </div>
 
-            {/* Right: Zoom Mini Segmented + Opsi Collapse Button */}
-            <div className="flex items-center gap-1 shrink-0">
-              {/* Zoom Mini Segmented */}
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => setZoomMode('fit')}
-                  className={cn(
-                    'px-2 py-0.5 rounded font-medium transition-all flex items-center gap-0.5 cursor-pointer',
-                    zoomMode === 'fit'
-                      ? 'bg-white dark:bg-slate-900 text-primary shadow-xs font-bold'
-                      : 'text-muted-foreground'
-                  )}
-                  title="Pas Layar"
-                >
-                  <Smartphone className="w-3 h-3" />
-                  <span>Pas</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setZoomMode('original')}
-                  className={cn(
-                    'px-2 py-0.5 rounded font-medium transition-all flex items-center gap-0.5 cursor-pointer',
-                    zoomMode === 'original'
-                      ? 'bg-white dark:bg-slate-900 text-primary shadow-xs font-bold'
-                      : 'text-muted-foreground'
-                  )}
-                  title="100% Asli"
-                >
-                  <Maximize2 className="w-3 h-3" />
-                  <span>100%</span>
-                </button>
-              </div>
-
-              {/* Opsi / Pengaturan Button Toggle */}
-              {(allowLogoToggles || allowOrientationToggle || (templateOptions && templateOptions.length > 0) || (onDownloadBatchPdf && batchTotal > 1)) && (
-                <button
-                  type="button"
-                  onClick={() => setShowMobileOptions((prev) => !prev)}
-                  className={cn(
-                    'h-7.5 px-2 rounded-lg border text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer',
-                    showMobileOptions
-                      ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-100 dark:text-slate-900'
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                  )}
-                  title="Pengaturan Kop, Orientasi & Template"
-                >
-                  <SlidersHorizontal className="w-3 h-3" />
-                  <span>Opsi</span>
-                  <ChevronDown className={cn('w-3 h-3 transition-transform duration-200', showMobileOptions && 'rotate-180')} />
-                </button>
-              )}
-            </div>
+            {/* Right: Opsi Collapse Button */}
+            {(allowLogoToggles || allowOrientationToggle || (templateOptions && templateOptions.length > 0) || (onDownloadBatchPdf && batchTotal > 1)) && (
+              <button
+                type="button"
+                onClick={() => setShowMobileOptions((prev) => !prev)}
+                className={cn(
+                  'h-7.5 px-2 rounded-lg border text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shrink-0 ml-auto',
+                  showMobileOptions
+                    ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-100 dark:text-slate-900'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                )}
+                title="Pengaturan Kop, Orientasi & Template"
+              >
+                <SlidersHorizontal className="w-3 h-3" />
+                <span>Opsi</span>
+                <ChevronDown className={cn('w-3 h-3 transition-transform duration-200', showMobileOptions && 'rotate-180')} />
+              </button>
+            )}
           </div>
 
-          {/* Tier 2: Extra Actions & Batch Navigation (if any) */}
-          {(extraActions || batchTotal > 1) && (
-            <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5">
-              {/* Batch Navigation */}
+          {/* Tier 2: Dedicated Zoom & Auxiliary Actions Strip */}
+          <div className="flex items-center justify-between gap-1.5 pt-0.5 flex-wrap">
+            {/* Zoom Controls */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs shrink-0">
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                disabled={zoomScale <= 0.26}
+                className="p-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 cursor-pointer"
+                title="Perkecil (-)"
+              >
+                <ZoomOut className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleFitOr100}
+                className="px-1.5 py-0.5 font-bold text-[10.5px] min-w-[38px] text-center rounded hover:bg-white dark:hover:bg-slate-700 cursor-pointer text-slate-800 dark:text-slate-200"
+                title="Klik untuk beralih mode zoom"
+              >
+                {Math.round(zoomScale * 100)}%
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                disabled={zoomScale >= 2.49}
+                className="p-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 cursor-pointer"
+                title="Perbesar (+)"
+              >
+                <ZoomIn className="w-3 h-3" />
+              </button>
+              <div className="h-3 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+              <button
+                type="button"
+                onClick={handleSetFit}
+                className={cn(
+                  'px-2 py-0.5 rounded text-[10.5px] font-medium transition-all flex items-center gap-0.5 cursor-pointer',
+                  zoomMode === 'fit'
+                    ? 'bg-white dark:bg-slate-900 text-primary shadow-xs font-bold'
+                    : 'text-muted-foreground'
+                )}
+                title="Pas Layar"
+              >
+                <Smartphone className="w-3 h-3" />
+                <span>Pas</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleSet100}
+                className={cn(
+                  'px-2 py-0.5 rounded text-[10.5px] font-medium transition-all flex items-center gap-0.5 cursor-pointer',
+                  zoomMode === 'original'
+                    ? 'bg-white dark:bg-slate-900 text-primary shadow-xs font-bold'
+                    : 'text-muted-foreground'
+                )}
+                title="100% Ukuran Asli"
+              >
+                <Maximize2 className="w-3 h-3" />
+                <span>100%</span>
+              </button>
+            </div>
+
+            {/* Extra Actions Container & Batch Navigation */}
+            <div className="flex items-center gap-1.5 flex-wrap">
               {batchTotal > 1 && (
                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0">
                   <Button
@@ -1134,18 +1387,10 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
                   </Button>
                 </div>
               )}
-
-              {/* Batch Selector if any */}
               {batchSelector && <div className="shrink-0">{batchSelector}</div>}
-
-              {/* Extra Actions Container */}
-              {extraActions && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {extraActions}
-                </div>
-              )}
+              {extraActions}
             </div>
-          )}
+          </div>
 
           {/* Collapsible Mobile Options Drawer */}
           {showMobileOptions && (
@@ -1304,7 +1549,34 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
             <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
               <button
                 type="button"
-                onClick={() => setZoomMode('fit')}
+                onClick={handleZoomOut}
+                disabled={zoomScale <= 0.26}
+                className="p-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 cursor-pointer transition-colors"
+                title="Perkecil (-)"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleFitOr100}
+                className="px-1.5 py-0.5 font-bold text-[11px] min-w-[42px] text-center hover:bg-white dark:hover:bg-slate-700 rounded transition-colors cursor-pointer text-slate-800 dark:text-slate-200"
+                title="Klik untuk beralih mode zoom"
+              >
+                {Math.round(zoomScale * 100)}%
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                disabled={zoomScale >= 2.49}
+                className="p-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 cursor-pointer transition-colors"
+                title="Perbesar (+)"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+              <div className="h-3.5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+              <button
+                type="button"
+                onClick={handleSetFit}
                 className={cn(
                   'px-2 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer',
                   zoomMode === 'fit'
@@ -1318,7 +1590,7 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setZoomMode('original')}
+                onClick={handleSet100}
                 className={cn(
                   'px-2 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer',
                   zoomMode === 'original'
@@ -1512,7 +1784,9 @@ export const UniversalDocumentModal: React.FC<UniversalDocumentModalProps> = ({
           deskRef={deskRef}
           orientation={activeOrientation}
           zoomMode={zoomMode}
+          zoomScale={zoomScale}
           onZoomModeChange={setZoomMode}
+          onZoomScaleChange={setZoomScale}
           className={subHeader ? 'max-h-[70vh]' : undefined}
         >
           {children}
@@ -1624,10 +1898,45 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
   const activeLogoDaerah = externalShowLogoDaerah !== undefined ? externalShowLogoDaerah : internalLogoDaerah;
   const activeLogoSekolah = externalShowLogoSekolah !== undefined ? externalShowLogoSekolah : internalLogoSekolah;
 
-  const [zoomMode, setZoomMode] = useState<'fit' | 'original'>('fit');
+  const [zoomMode, setZoomMode] = useState<'fit' | 'original' | 'custom'>('fit');
+  const [zoomScale, setZoomScale] = useState<number>(1);
   const [isSendWaOpen, setIsSendWaOpen] = useState<boolean>(false);
   const deskRef = useRef<HTMLDivElement | null>(null);
   const resolvedWaFilename = resolveDefaultWaFilename(defaultWaFilename, title);
+
+  const handleZoomIn = () => {
+    const next =
+      DOCUMENT_ZOOM_STEPS.find((s) => s > zoomScale + 0.04) ??
+      Math.min(2.5, +(zoomScale + 0.25).toFixed(2));
+    setZoomScale(next);
+    setZoomMode('custom');
+  };
+
+  const handleZoomOut = () => {
+    const reversed = [...DOCUMENT_ZOOM_STEPS].reverse();
+    const prev =
+      reversed.find((s) => s < zoomScale - 0.04) ??
+      Math.max(0.25, +(zoomScale - 0.25).toFixed(2));
+    setZoomScale(prev);
+    setZoomMode('custom');
+  };
+
+  const handleSetFit = () => {
+    setZoomMode('fit');
+  };
+
+  const handleSet100 = () => {
+    setZoomMode('original');
+    setZoomScale(1);
+  };
+
+  const handleToggleFitOr100 = () => {
+    if (zoomMode === 'fit') {
+      handleSet100();
+    } else {
+      handleSetFit();
+    }
+  };
 
   const handleToggleOrientation = () => {
     const next = activeOrientation === 'portrait' ? 'landscape' : 'portrait';
@@ -1763,7 +2072,34 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
           <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
             <button
               type="button"
-              onClick={() => setZoomMode('fit')}
+              onClick={handleZoomOut}
+              disabled={zoomScale <= 0.26}
+              className="p-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 cursor-pointer transition-colors"
+              title="Perkecil (-)"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={handleToggleFitOr100}
+              className="px-1.5 py-0.5 font-bold text-[11px] min-w-[42px] text-center hover:bg-white dark:hover:bg-slate-700 rounded transition-colors cursor-pointer text-slate-800 dark:text-slate-200"
+              title="Klik untuk beralih mode zoom"
+            >
+              {Math.round(zoomScale * 100)}%
+            </button>
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              disabled={zoomScale >= 2.49}
+              className="p-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 cursor-pointer transition-colors"
+              title="Perbesar (+)"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            <div className="h-3.5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+            <button
+              type="button"
+              onClick={handleSetFit}
               className={cn(
                 'px-2 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer',
                 zoomMode === 'fit'
@@ -1776,7 +2112,7 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setZoomMode('original')}
+              onClick={handleSet100}
               className={cn(
                 'px-2 py-1 rounded text-[11px] font-medium transition-all flex items-center gap-1 cursor-pointer',
                 zoomMode === 'original'
@@ -1954,7 +2290,9 @@ export const UniversalDocumentTab: React.FC<UniversalDocumentTabProps> = ({
         deskRef={deskRef}
         orientation={activeOrientation}
         zoomMode={zoomMode}
+        zoomScale={zoomScale}
         onZoomModeChange={setZoomMode}
+        onZoomScaleChange={setZoomScale}
         className={subHeader ? 'max-h-[70vh]' : undefined}
       >
         {children}

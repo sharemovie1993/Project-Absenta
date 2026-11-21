@@ -144,6 +144,14 @@ export const TrackingSiswaPrintModal: React.FC<TrackingSiswaPrintModalProps> = (
   const handleDownloadPdf = async () => {
     setIsExporting(true);
     const toastId = toast.loading('Sedang merender PDF Matriks Tracking Presensi True WYSIWYG...');
+    const deskCanvas = document.getElementById('print-desk-canvas-area');
+    const prevZoom = deskCanvas ? deskCanvas.style.zoom : '';
+    if (deskCanvas) {
+      deskCanvas.style.zoom = '1';
+      deskCanvas.style.transform = 'none';
+      void deskCanvas.offsetHeight;
+    }
+
     try {
       const sheet = document.querySelector('.print-sheet') as HTMLElement;
       if (!sheet) {
@@ -182,6 +190,9 @@ export const TrackingSiswaPrintModal: React.FC<TrackingSiswaPrintModalProps> = (
       toast.error('Gagal merender canvas, membuka dialog cetak browser...', { id: toastId });
       window.print();
     } finally {
+      if (deskCanvas) {
+        deskCanvas.style.zoom = prevZoom;
+      }
       setIsExporting(false);
     }
   };
