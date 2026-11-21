@@ -757,7 +757,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         {/* Main Content Area */}
         <main className="min-w-0 space-y-4">
           {/* Quick Access Banner ke Meja Bimbingan PKL Pribadi bagi Kaprog */}
-          {isPembimbingPkl && ['pkl', 'ploting_pkl', 'presensi_pkl', 'nilai_pkl', 'ploting_penguji', 'sidang_pkl'].includes(activeTab) && (
+          {isPembimbingPkl && ['pkl', 'presensi_pkl', 'nilai_pkl', 'ploting_penguji', 'sidang_pkl'].includes(activeTab) && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-teal-50 via-teal-50/60 to-emerald-50 dark:from-teal-950/40 dark:via-teal-950/20 dark:to-emerald-950/30 border border-teal-200/80 dark:border-teal-800/60 shadow-2xs">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-teal-500/15 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0">

@@ -266,12 +266,11 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
             <SearchableSelect
               id="plotting-pembimbing"
               options={effectiveGuruOptions}
-              placeholder="-- Pilih pembimbing --"
+              placeholder="-- Pilih pembimbing (ketik untuk cari) --"
               triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
               onValueChange={(val) => setSelectedPembimbingId(val)}
               value={selectedPembimbingId}
-              onSearch={onGuruSearch}
-              isLoading={isLoadingGuru}
+              clearable
             />
           </SimpleFormField>
         </div>

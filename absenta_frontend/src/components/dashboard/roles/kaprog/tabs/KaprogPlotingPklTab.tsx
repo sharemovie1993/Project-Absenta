@@ -32,6 +32,7 @@ export const KaprogPlotingPklTab: React.FC<KaprogPlotingPklTabProps> = React.mem
           isModal={false}
           hideLayout={true}
           hideScopeBanner={true}
+          hideTabs={true}
           jurusanId={jurusanId}
           jurusanNama={jurusanNama}
           tahunPelajaranId={tahunPelajaranId}

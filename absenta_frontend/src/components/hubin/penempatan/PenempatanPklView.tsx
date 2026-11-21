@@ -73,6 +73,7 @@ export interface UniversalPenempatanPklViewProps {
   siswaList?: any[];
   mitraOptions?: { value: string; label: string }[];
   readOnly?: boolean;      // True jika user hanya memiliki hak pantau (misal: Kepsek / Pengawas)
+  hideTabs?: boolean;      // True untuk menyembunyikan tab switcher (misal: Kaprog Ploting konteks)
 
   // 3. Event Callbacks
   onClose?: () => void;    // Callback penutup jika dipanggil dalam modal
@@ -100,6 +101,7 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
   hideScopeBanner = false,
   hideTpFilter = false,
   hideKelasFilter = false,
+  hideTabs = false,
   siswaList: propSiswaList,
   mitraOptions: propMitraOptions,
   initialKelasId,
@@ -305,9 +307,10 @@ export const PenempatanPklView: React.FC<UniversalPenempatanPklViewProps> = Reac
   }, [allActiveList, rawPenempatan, isWaliKelas, walikelasKelas, isAdmin, isHubin, isKaprog, propJurusanId]);
 
   const showTabs = useMemo(() => {
+    if (hideTabs) return false;
     if (propGuruId) return false;
     return (canManage || isWaliKelas) && isActuallyPembimbing;
-  }, [canManage, isWaliKelas, isActuallyPembimbing, propGuruId]);
+  }, [hideTabs, canManage, isWaliKelas, isActuallyPembimbing, propGuruId]);
 
   // Sync activeTab if tabs are hidden or propGuruId is injected
   useEffect(() => {
