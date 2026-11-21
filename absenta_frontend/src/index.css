@@ -132,6 +132,44 @@ html[data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
   scrollbar-width: none !important; /* Firefox */
 }
 
+/* Sleek, unobtrusive, modern scrollbar for desktop role dashboard navigation sidebars */
+.role-dashboard-sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+  overscroll-behavior: contain;
+}
+
+.role-dashboard-sidebar-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.role-dashboard-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.role-dashboard-sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.45);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.role-dashboard-sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.75);
+}
+
+html[data-theme="dark"] .role-dashboard-sidebar-scroll {
+  scrollbar-color: rgba(100, 116, 139, 0.5) transparent;
+}
+
+html[data-theme="dark"] .role-dashboard-sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.45);
+}
+
+html[data-theme="dark"] .role-dashboard-sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.75);
+}
+
 ::selection {
   background-color: rgba(37, 99, 235, 0.2);
   color: inherit;

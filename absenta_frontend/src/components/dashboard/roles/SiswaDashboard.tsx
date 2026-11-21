@@ -350,8 +350,8 @@ export const SiswaDashboard: React.FC = () => {
 
       {/* 2. Desktop 2-Column Sidebar Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
-        {/* Left Column: Sidebar Controls (Desktop sticky & independent scroll without scrollbar UI) */}
-        <aside className="hidden lg:block sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain no-scrollbar space-y-3 pb-6">
+        {/* Left Column: Sidebar Controls (Desktop sticky & independent scroll with elegant sleek scrollbar) */}
+        <aside className="hidden lg:block sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain role-dashboard-sidebar-scroll pr-1.5 space-y-3 pb-12">
           {/* Identity Mini Card */}
           <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5">
             <div className="flex items-center gap-3">

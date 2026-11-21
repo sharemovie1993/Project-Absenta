@@ -766,7 +766,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
           {/* 2. Desktop 2-Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-5 items-start">
             {/* Kolom Kiri: Sidebar Sub-Menu Guru (Desktop sticky, tersembunyi di mobile) */}
-            <aside className="hidden lg:block space-y-3 sticky top-20">
+            <aside className="hidden lg:block sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain role-dashboard-sidebar-scroll pr-1.5 space-y-3 pb-12">
               <TeacherSidebarNav
                 activeSubTab={activeSubTab}
                 onChangeSubTab={handleSubTabChange}

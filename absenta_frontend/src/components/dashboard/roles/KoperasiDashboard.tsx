@@ -396,8 +396,8 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
 
         {/* 2. Desktop 2-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
-          {/* Left Column: Sidebar Controls (Desktop sticky & independent scroll without scrollbar UI) */}
-          <aside className="hidden lg:block sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain no-scrollbar space-y-3 pb-6">
+          {/* Left Column: Sidebar Controls (Desktop sticky & independent scroll with elegant sleek scrollbar) */}
+          <aside className="hidden lg:block sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain role-dashboard-sidebar-scroll pr-1.5 space-y-3 pb-12">
             {/* Identitas Koperasi Ringkas (Ecosystem Banner Accent) */}
             <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-700 via-emerald-700 to-green-800 text-white shadow-xs space-y-2.5 border border-emerald-500/40 relative overflow-hidden">
               <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/10 rounded-full blur-xl pointer-events-none" aria-hidden="true" />
