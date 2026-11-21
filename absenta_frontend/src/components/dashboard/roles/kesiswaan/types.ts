@@ -6,6 +6,7 @@ export type KesiswaanTabId =
   | 'prestasi'
   | 'dhuha'
   | 'ketarunaan'
+  | 'kegiatan'
   | 'tatib'
   | 'rekap'
   | 'aturan_absensi'

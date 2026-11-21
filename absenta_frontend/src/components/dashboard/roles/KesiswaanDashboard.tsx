@@ -44,6 +44,7 @@ import { KesiswaanTatibTab } from './kesiswaan/tabs/KesiswaanTatibTab';
 import { KesiswaanRekapTab } from './kesiswaan/tabs/KesiswaanRekapTab';
 import { DivisiStrukturOrganisasiView } from '@/components/academic/struktur/DivisiStrukturOrganisasiView';
 const TenantAttendanceForm = React.lazy(() => import('@/components/attendance/settings/TenantAttendanceForm'));
+const JadwalKegiatanView = React.lazy(() => import('@/components/attendance/kegiatan/JadwalKegiatanView'));
 
 export interface KesiswaanDashboardProps {
   user?: {
@@ -65,6 +66,7 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
     'prestasi',
     'dhuha',
     'ketarunaan',
+    'kegiatan',
     'tatib',
     'rekap',
     'aturan_absensi',
@@ -207,6 +209,7 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
       case 'prestasi': return 'Prestasi Siswa';
       case 'dhuha': return 'Pembiasaan Dhuha';
       case 'ketarunaan': return 'Ketarunaan';
+      case 'kegiatan': return 'Jadwal Kegiatan & Eskul';
       case 'tatib': return 'Tata Tertib & Poin';
       case 'rekap': return 'Cetak Dokumen';
       case 'aturan_absensi': return 'Aturan Presensi';
@@ -421,7 +424,31 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
             </div>
           )}
 
-          {/* TAB 6: MASTER TATA TERTIB */}
+                    {/* TAB: KEGIATAN KESISWAAN & ESKUL (UNIVERSAL ROLE-READY VIEW) */}
+          {visitedTabs.has('kegiatan') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'kegiatan'}
+              className={cn('w-full min-w-0', activeTab === 'kegiatan' ? 'block' : 'hidden')}
+            >
+              <Suspense
+                fallback={
+                  <div className="py-20 flex flex-col items-center justify-center gap-3">
+                    <Loader size="md" />
+                    <span className="text-xs text-slate-500 font-medium">Memuat Jadwal Kegiatan...</span>
+                  </div>
+                }
+              >
+                <JadwalKegiatanView
+                  hideLayout={true}
+                  tahunPelajaranId={academicFilter.values.tahunPelajaranId}
+                  semesterId={academicFilter.values.semesterId}
+                />
+              </Suspense>
+            </div>
+          )}
+
+{/* TAB 6: MASTER TATA TERTIB */}
           {visitedTabs.has('tatib') && (
             <div
               role="tabpanel"

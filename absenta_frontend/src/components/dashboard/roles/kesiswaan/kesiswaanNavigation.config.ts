@@ -4,6 +4,7 @@ import {
   Trophy,
   HeartPulse,
   Award,
+  Calendar,
   FileSpreadsheet,
   Printer,
   Clock,
@@ -55,6 +56,7 @@ export const KESISWAAN_SUBTABS_BASE: KesiswaanTabDefinition[] = [
   { id: 'prestasi', label: 'Prestasi', shortLabel: 'Prestasi', category: 'kedisiplinan', icon: Trophy, targetPath: '/dashboard?tab=kesiswaan&subtab=prestasi', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'dhuha', label: 'Dhuha', shortLabel: 'Dhuha', category: 'kedisiplinan', icon: HeartPulse, targetPath: '/dashboard?tab=kesiswaan&subtab=dhuha', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
   { id: 'ketarunaan', label: 'Ketarunaan', shortLabel: 'Ketarunaan', category: 'kedisiplinan', icon: Award, targetPath: '/dashboard?tab=kesiswaan&subtab=ketarunaan', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
+  { id: 'kegiatan', label: 'Kegiatan Siswa', shortLabel: 'Kegiatan', category: 'kedisiplinan', icon: Calendar, targetPath: '/dashboard?tab=kesiswaan&subtab=kegiatan', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
 
   // 📋 KATEGORI 2: REGULASI & PELAPORAN
   { id: 'tatib', label: 'Tatib', shortLabel: 'Tatib', category: 'regulasi', icon: FileSpreadsheet, targetPath: '/dashboard?tab=kesiswaan&subtab=tatib', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
