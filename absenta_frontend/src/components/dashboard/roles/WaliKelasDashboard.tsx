@@ -33,7 +33,6 @@ import { WalasJurnalTab } from './walikelas/tabs/WalasJurnalTab';
 import { WalasIzinTab } from './walikelas/tabs/WalasIzinTab';
 import { WalasDisiplinTab } from './walikelas/tabs/WalasDisiplinTab';
 import { WalasPrestasiTab } from './walikelas/tabs/WalasPrestasiTab';
-import { WalasRekapTab } from './walikelas/tabs/WalasRekapTab';
 import { WalasCetakRaporTab } from './walikelas/tabs/WalasCetakRaporTab';
 import { 
   UniversalMobileSubtabSidebar, 
@@ -66,7 +65,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
   const subtabParam = searchParams.get('subtab') as WaliKelasTabId | null;
 
   const validTabs: WaliKelasTabId[] = [
-    'ringkasan', 'siswa', 'cek-dapodik', 'struktur', 'presensi', 'deteksi', 'ketuntasan', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rekap', 'rapor'
+    'ringkasan', 'siswa', 'cek-dapodik', 'struktur', 'presensi', 'deteksi', 'ketuntasan', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rapor'
   ];
 
   // Mobile Filter Collapsible State
@@ -527,18 +526,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
                 </div>
               )}
 
-              {visitedTabs.has('rekap') && (
-                <div
-                  key="tab-rekap"
-                  className={cn('w-full', activeTab === 'rekap' ? 'block animate-in fade-in duration-100' : 'hidden')}
-                >
-                  <WalasRekapTab
-                    kelasId={activeKelasId}
-                    kelasNama={activeKelasNama}
-                    data={walasData}
-                  />
-                </div>
-              )}
+
 
               {visitedTabs.has('rapor') && (
                 <div

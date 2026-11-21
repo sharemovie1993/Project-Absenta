@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, Suspense, lazy } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   BookOpen, 
@@ -11,7 +11,8 @@ import {
   Search, 
   Filter,
   CheckCircle2,
-  FileText
+  FileText,
+  Printer
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button, Badge, Loader } from '@/components/ui';
@@ -21,9 +22,22 @@ import {
   createJurnalWaliKelas, 
   deleteJurnalWaliKelas 
 } from '@/api/kurikulum/waliKelas.api';
+import { 
+  PrintDocumentSheet, 
+  PrintHeader, 
+  UniversalDocumentSignatures,
+  usePrintHeaderData 
+} from '@/components/ui/PrintHeader';
+import { format } from 'date-fns';
+import { id as localeID } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import type { WalasDashboardData } from '../types';
+
+// Code-splitting document modal to optimize initial tab bundle (Pilar 21B & TBT Optimization)
+const UniversalDocumentModal = lazy(() =>
+  import('@/components/ui/PrintHeader').then((m) => ({ default: m.UniversalDocumentModal }))
+);
 
 export interface WalasJurnalTabProps {
   kelasId?: string;
@@ -40,7 +54,30 @@ export const WalasJurnalTab: React.FC<WalasJurnalTabProps> = React.memo(({
   const [search, setSearch] = useState('');
   const [selectedKategori, setSelectedKategori] = useState<string>('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const printSheetRef = useRef<HTMLDivElement>(null);
+
+  const { tenantInfo, logoSekolahBase64, logoDaerahBase64 } = usePrintHeaderData();
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      toast.loading('Mempersiapkan dokumen PDF...', { id: 'walas-jurnal-pdf' });
+      window.print();
+      toast.success('Gunakan opsi "Save as PDF" pada dialog cetak browser.', { id: 'walas-jurnal-pdf', duration: 4000 });
+    } catch {
+      toast.error('Gagal mencetak dokumen.', { id: 'walas-jurnal-pdf' });
+    }
+  };
+
+  const walasName = data?.kelasInfo?.waliKelas?.nama || (data as any)?.wali_kelas?.nama || 'Wali Kelas';
+  const walasNip = data?.kelasInfo?.waliKelas?.nip || (data as any)?.wali_kelas?.nip || '';
+  const tahunPelajaranStr = data?.academicContext?.tahunPelajaranNama || (data as any)?.tahun_pelajaran?.nama || '';
+  const semesterStr = data?.academicContext?.semesterNama || (data as any)?.tahun_pelajaran?.semester || '';
 
   // Form State
   const [formData, setFormData] = useState({
@@ -161,14 +198,26 @@ export const WalasJurnalTab: React.FC<WalasJurnalTabProps> = React.memo(({
           </div>
         </div>
 
-        <Button
-          size="sm"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm self-stretch sm:self-auto"
-          disabled={isHistorical}
-          onClick={() => setIsAddModalOpen(true)}
-        >
-          <Plus className="w-4 h-4 mr-1.5" /> Tulis Jurnal Baru
-        </Button>
+        <div className="flex items-center gap-2 self-stretch sm:self-auto">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="font-semibold text-xs gap-1.5 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800"
+            onClick={() => setIsPrintModalOpen(true)}
+          >
+            <Printer className="w-4 h-4 text-slate-500" />
+            <span>Cetak Buku Jurnal</span>
+          </Button>
+          <Button
+            size="sm"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm"
+            disabled={isHistorical}
+            onClick={() => setIsAddModalOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-1.5" /> Tulis Jurnal Baru
+          </Button>
+        </div>
       </div>
 
       {/* 2. FILTER & PENCARIAN */}
@@ -405,6 +454,110 @@ export const WalasJurnalTab: React.FC<WalasJurnalTabProps> = React.memo(({
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* 6. UNIVERSAL DOCUMENT PRINT MODAL - BUKU JURNAL WALI KELAS */}
+      {isPrintModalOpen && (
+        <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+          <UniversalDocumentModal
+            isOpen={isPrintModalOpen}
+            onClose={() => setIsPrintModalOpen(false)}
+            title="Dokumen Resmi: Buku Jurnal Pembinaan Wali Kelas"
+            subtitle={`Rombel ${kelasNama || data?.kelasInfo?.nama_kelas || ''} - TP. ${tahunPelajaranStr} Semester ${semesterStr}`}
+            orientation="portrait"
+            onPrint={handlePrint}
+            onDownloadPdf={handleDownloadPdf}
+            printButtonText="Cetak Dokumen"
+            downloadPdfText="Simpan PDF"
+            size="5xl"
+          >
+            <div ref={printSheetRef}>
+              <PrintDocumentSheet
+                orientation="portrait"
+                pageNumber={1}
+                totalPages={1}
+                footerText={`Dokumen Sah Wali Kelas • Dicetak otomatis oleh Absenta pada ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: localeID })}`}
+              >
+                {/* Kop Surat Resmi */}
+                <PrintHeader 
+                  showDoubleLine={true}
+                  showLogoSekolah={true}
+                  showLogoDaerah={true}
+                  logoSekolahUrl={logoSekolahBase64}
+                  logoDaerahUrl={logoDaerahBase64}
+                />
+
+                {/* Judul Dokumen */}
+                <div className="text-center my-4 font-serif">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-black">
+                    BUKU JURNAL PEMBINAAN WALI KELAS
+                  </h2>
+                  <p className="text-xs text-gray-700 mt-0.5">
+                    Kelas: <span className="font-bold text-black">{kelasNama || data?.kelasInfo?.nama_kelas || '-'}</span> | 
+                    Tahun Pelajaran: <span className="font-bold text-black">{tahunPelajaranStr || '-'}</span> (Semester {semesterStr || '-'})
+                  </p>
+                </div>
+
+                {/* Table Data Content */}
+                <div className="mt-4">
+                  <table className="w-full border-collapse border border-black text-[11px] font-sans">
+                    <thead>
+                      <tr className="bg-gray-100 text-black">
+                        <th className="border border-black p-1.5 text-center w-8">No</th>
+                        <th className="border border-black p-1.5 text-center w-24">Tanggal</th>
+                        <th className="border border-black p-1.5 text-center w-28">Kategori</th>
+                        <th className="border border-black p-1.5 text-left">Uraian Pembinaan / Tindak Lanjut</th>
+                        <th className="border border-black p-1.5 text-center w-28">Paraf Walas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {!rawJurnalList || rawJurnalList.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="border border-black p-3 text-center text-gray-500">
+                            Belum ada riwayat catatan jurnal pembinaan.
+                          </td>
+                        </tr>
+                      ) : (
+                        rawJurnalList.map((j: any, idx: number) => (
+                          <tr key={j.id || idx} className="text-black">
+                            <td className="border border-black p-1.5 text-center">{idx + 1}</td>
+                            <td className="border border-black p-1.5 text-center">{new Date(j.tanggal).toLocaleDateString('id-ID')}</td>
+                            <td className="border border-black p-1.5 text-center font-medium">{j.kategori?.replace('_', ' ') || j.kategori}</td>
+                            <td className="border border-black p-1.5">
+                              <p className="font-bold">{j.judul}</p>
+                              <p className="text-gray-700 mt-0.5 leading-relaxed">{j.isi}</p>
+                            </td>
+                            <td className="border border-black p-1.5 text-center"></td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 2-Tier Bureaucracy Signatures Menggunakan Universal Signature Engine */}
+                <div className="mt-8 pt-2 w-full page-break-inside-avoid">
+                  <UniversalDocumentSignatures
+                    layout="triangle_2tier"
+                    tahunPelajaranId={data?.academicContext?.selectedTahunPelajaranId}
+                    semesterId={data?.academicContext?.selectedSemesterId}
+                    kelasId={kelasId}
+                    verifierLabel={"Mengetahui,\nWakil Kepala Sekolah Bid. Kesiswaan"}
+                    makerLabel={`Wali Kelas ${kelasNama || data?.kelasInfo?.nama_kelas || ''},`}
+                    notesOrApprovalLabel={"Menyetujui / Mengesahkan,\nKepala Sekolah"}
+                    overrideSignerLeft={{
+                      personName: '( ........................................ )',
+                    }}
+                    overrideSignerRight={{
+                      personName: walasName,
+                      nip: walasNip,
+                    }}
+                  />
+                </div>
+              </PrintDocumentSheet>
+            </div>
+          </UniversalDocumentModal>
+        </Suspense>
       )}
     </div>
   );

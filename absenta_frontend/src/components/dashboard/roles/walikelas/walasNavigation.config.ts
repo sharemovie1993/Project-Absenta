@@ -75,7 +75,6 @@ export const WALAS_SUBTABS_BASE: WalasTabDefinition[] = [
 
   // 📊 KATEGORI 3: JURNAL & PELAPORAN
   { id: 'jurnal', label: 'Jurnal', shortLabel: 'Jurnal', category: 'pelaporan', icon: BookOpen, targetPath: '/dashboard?tab=binaan&subtab=jurnal', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
-  { id: 'rekap', label: 'Rekap', shortLabel: 'Rekap', category: 'pelaporan', icon: FileSpreadsheet, targetPath: '/dashboard?tab=binaan&subtab=rekap', color: 'bg-cyan-50 dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-400' },
   { id: 'rapor', label: 'Rapor', shortLabel: 'Rapor', category: 'pelaporan', icon: Printer, targetPath: '/dashboard?tab=binaan&subtab=rapor', color: 'bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400' },
 ];
 

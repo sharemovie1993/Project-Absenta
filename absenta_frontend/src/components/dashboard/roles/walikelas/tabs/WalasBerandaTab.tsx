@@ -218,14 +218,7 @@ export const WalasBerandaTab: React.FC<WalasBerandaTabProps> = React.memo(({
       iconColorClass: 'text-indigo-600 dark:text-indigo-400',
       onClick: () => onSelectTab('struktur'),
     },
-    // Slot 6: Cetak Rekapitulasi F-BK
-    {
-      id: 'rekap',
-      label: 'Cetak Rekap',
-      icon: FileText,
-      iconColorClass: 'text-teal-600 dark:text-teal-400',
-      onClick: () => onSelectTab('rekap'),
-    },
+
     // Slot 7: Cetak Rapor Akademik
     {
       id: 'rapor',
