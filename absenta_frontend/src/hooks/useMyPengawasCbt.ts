@@ -6,18 +6,26 @@ import type { CbtJadwalUjian } from '@/types/cbt.types';
 
 export function useMyPengawasCbt(overrideGuruId?: string) {
   const user = useAuthStore((state) => state.user);
-  const effectiveGuruId =
-    overrideGuruId ||
-    user?.guru_profile?.id ||
-    (user as any)?.guru_id ||
-    (user as any)?.ptk_id ||
-    user?.id ||
-    null;
+  const rawRole = String(
+    user?.role?.name ||
+      (typeof user?.role === 'string' ? user.role : (user as any)?.roleName) ||
+      ''
+  ).toUpperCase();
+  const isSiswa = rawRole === 'SISWA';
+
+  const effectiveGuruId = isSiswa
+    ? null
+    : (overrideGuruId ||
+      user?.guru_profile?.id ||
+      (user as any)?.guru_id ||
+      (user as any)?.ptk_id ||
+      user?.id ||
+      null);
 
   const { data: myPengawasCbtData, isLoading, refetch } = useQuery<CbtJadwalUjian[]>({
     queryKey: ['my-pengawas-cbt-schedules', effectiveGuruId],
     queryFn: async () => {
-      if (!effectiveGuruId) return [];
+      if (!effectiveGuruId || isSiswa) return [];
       // Prioritaskan pengawas_guru_id langsung di query backend
       const res = await cbtApi
         .getJadwalList({ limit: 500, pengawas_guru_id: effectiveGuruId })
@@ -42,7 +50,7 @@ export function useMyPengawasCbt(overrideGuruId?: string) {
         );
       });
     },
-    enabled: Boolean(effectiveGuruId),
+    enabled: Boolean(effectiveGuruId) && !isSiswa,
     staleTime: 30 * 1000,
   });
 

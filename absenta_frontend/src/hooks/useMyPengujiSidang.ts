@@ -27,17 +27,25 @@ export const notifySidangPlotingUpdated = () => {
 export function useMyPengujiSidang() {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
-  const effectiveGuruId =
-    user?.guru_profile?.id ||
-    (user as any)?.guru_id ||
-    (user as any)?.ptk_id ||
-    user?.id ||
-    null;
+  const rawRole = String(
+    user?.role?.name ||
+      (typeof user?.role === 'string' ? user.role : (user as any)?.roleName) ||
+      ''
+  ).toUpperCase();
+  const isSiswa = rawRole === 'SISWA';
+
+  const effectiveGuruId = isSiswa
+    ? null
+    : (user?.guru_profile?.id ||
+      (user as any)?.guru_id ||
+      (user as any)?.ptk_id ||
+      user?.id ||
+      null);
 
   const { data: mySidangData, isLoading, refetch } = useQuery({
     queryKey: ['my-penguji-sidang-students', effectiveGuruId],
     queryFn: async () => {
-      if (!effectiveGuruId) return [];
+      if (!effectiveGuruId || isSiswa) return [];
       const res = await hubinApi
         .getRekapPklSiswa({
           status: 'ELIGIBLE',
@@ -50,7 +58,7 @@ export function useMyPengujiSidang() {
         return Boolean(pId && pId === effectiveGuruId);
       });
     },
-    enabled: Boolean(effectiveGuruId),
+    enabled: Boolean(effectiveGuruId) && !isSiswa,
     staleTime: 5 * 1000, // ⚡ 5 detik: Sangat responsif terhadap perubahan ploting
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,

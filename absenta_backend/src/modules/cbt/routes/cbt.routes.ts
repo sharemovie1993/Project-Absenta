@@ -7,7 +7,7 @@ import { requireCapability } from '../../../middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
 
 const cbtGuruExempt = {
-  exemptRoles: ['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'GURU', 'WALIKELAS'] as any[],
+  exemptRoles: ['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'GURU', 'WALIKELAS', 'KEPALA_SEKOLAH', 'STAFF', 'OPERATOR'] as any[],
 };
 
 const cbtStudentExempt = {
@@ -121,19 +121,19 @@ export async function cbtRoutes(fastify: any) {
   }, CbtJadwalController.delete);
 
   fastify.post('/jadwal/:id/regenerate-token', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+    preHandler: [requireCapability(['cbt.jadwal.manage', 'cbt.sesi.monitor'], cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.regenerateToken);
 
   fastify.post('/jadwal/:id/activate', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+    preHandler: [requireCapability(['cbt.jadwal.manage', 'cbt.sesi.monitor'], cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.activate);
 
   fastify.post('/jadwal/:id/pause', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+    preHandler: [requireCapability(['cbt.jadwal.manage', 'cbt.sesi.monitor'], cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.pause);
 
   fastify.post('/jadwal/:id/complete', {
-    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+    preHandler: [requireCapability(['cbt.jadwal.manage', 'cbt.sesi.monitor'], cbtGuruExempt), determineDataScope()],
   }, CbtJadwalController.complete);
 
   // Live Proctor & Participant Monitoring

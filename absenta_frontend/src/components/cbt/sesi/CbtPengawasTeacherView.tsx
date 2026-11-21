@@ -150,21 +150,6 @@ export const CbtPengawasTeacherView: React.FC<CbtPengawasTeacherViewProps> = ({
     }
   };
 
-  // JIKA SEDANG MEMBUKA MEJA PENGAWAS (MONITORING / AKTIVASI SESI)
-  if (activeMonitorJadwalId) {
-    return (
-      <CbtProctorMonitoringView
-        initialJadwalId={activeMonitorJadwalId}
-        guruId={guruId}
-        myPengawasData={myPengawasData}
-        onBack={() => {
-          setActiveMonitorJadwalId(null);
-          onRefresh?.();
-        }}
-      />
-    );
-  }
-
   // ── PENGELOMPOKAN LOGIS: HARI -> RUANG -> LIST SESI ──
   const groupedDays: DayGroup[] = useMemo(() => {
     const dayMap = new Map<string, { dateFormatted: string; isToday: boolean; roomsMap: Map<string, RoomGroup> }>();
@@ -317,6 +302,22 @@ export const CbtPengawasTeacherView: React.FC<CbtPengawasTeacherViewProps> = ({
 
   const totalHariMengawas = groupedDays.length;
   const totalSesi = myPengawasData.length;
+
+  // JIKA SEDANG MEMBUKA MEJA PENGAWAS (MONITORING / AKTIVASI SESI)
+  // Diposisikan setelah seluruh hooks terpanggil secara konsisten agar tidak melanggar Rules of Hooks (React Error #300)
+  if (activeMonitorJadwalId) {
+    return (
+      <CbtProctorMonitoringView
+        initialJadwalId={activeMonitorJadwalId}
+        guruId={guruId}
+        myPengawasData={myPengawasData}
+        onBack={() => {
+          setActiveMonitorJadwalId(null);
+          onRefresh?.();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4 pb-20 sm:pb-8">
