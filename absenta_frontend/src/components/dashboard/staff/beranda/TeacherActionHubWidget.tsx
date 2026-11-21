@@ -330,6 +330,12 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
                       <h4 className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-slate-100 leading-snug break-words">
                         {item.title}
                       </h4>
+                      {item.id.startsWith('kaprog_tp_dudi') && (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-200/80 dark:border-amber-800/70 shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          Kajur
+                        </span>
+                      )}
                       {isEventTask && (
                         <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/80 px-1.5 py-0.5 rounded border border-rose-200/80 dark:border-rose-800/70 shadow-2xs">
                           <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />

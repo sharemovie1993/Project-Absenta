@@ -4,6 +4,8 @@ import { DashboardCommonHelper } from './dashboard-common.helper';
 import { Hari } from '@prisma/client';
 import { NilaiService } from '@/modules/rapor/services/nilai.service';
 import { CbtSettingsService } from '@/modules/cbt/services/cbt-settings.service';
+import { HubinPenilaianService } from '@/modules/hubin/services/sub/hubin-penilaian.service';
+import { STRUKTUR_CODES } from '@/config/organization-structure';
 
 export interface UnifiedActionItem {
   id: string;
@@ -54,6 +56,7 @@ const CACHE_TTL_MS = 10 * 1000; // 10 detik in-memory TTL
 
 export class DashboardActionHubService {
   private helper = new DashboardCommonHelper();
+  private hubinPenilaianService = new HubinPenilaianService();
 
   async getMyActionHub(tenantId: string, userId: string): Promise<ActionHubResult> {
     const cacheKey = `${tenantId}:${userId}`;
@@ -83,7 +86,8 @@ export class DashboardActionHubService {
       this.detectSarprasLoanTasks(tenantId, userId, startOfDay),
       guruId ? this.detectPerangkatAjarTasks(tenantId, guruId) : Promise.resolve([]),
       guruId ? this.detectCbtBankSoalTasks(tenantId, guruId) : Promise.resolve([]),
-      guruId ? this.detectCbtPengawasTasks(tenantId, guruId) : Promise.resolve([])
+      guruId ? this.detectCbtPengawasTasks(tenantId, guruId) : Promise.resolve([]),
+      this.detectKaprogTpDudiTasks(tenantId, userId, guruId),
     ]);
 
     // 3. Konsolidasi seluruh item yang sukses diambil
@@ -537,6 +541,146 @@ export class DashboardActionHubService {
 
       return items;
     } catch (e) {
+      return [];
+    }
+  }
+
+  // --- DETECTOR 4B: Formulasi TP DU/DI (Khusus Kepala Jurusan / Kaprog) ---
+  private async detectKaprogTpDudiTasks(
+    tenantId: string,
+    userId: string,
+    guruId?: string
+  ): Promise<UnifiedActionItem[]> {
+    try {
+      const now = new Date();
+
+      // 1. Ambil penugasan organisasi aktif user sebagai KAPROG / KAJUR
+      const assignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          user_id: userId,
+          tenant_id: tenantId,
+          is_active: true,
+          AND: [
+            { OR: [{ start_date: null }, { start_date: { lte: now } }] },
+            { OR: [{ end_date: null }, { end_date: { gte: now } }] },
+          ],
+          Position: {
+            OR: [
+              { code: STRUKTUR_CODES.KAPROG },
+              { code: { contains: 'KAPROG', mode: 'insensitive' } },
+              { code: { contains: 'KAJUR', mode: 'insensitive' } },
+              { name: { contains: 'Ketua Jurusan', mode: 'insensitive' } },
+              { name: { contains: 'Kepala Program', mode: 'insensitive' } },
+            ],
+          },
+        },
+        include: {
+          Unit: {
+            select: { id: true, nama: true, singkatan: true, kode: true },
+          },
+        },
+      });
+
+      if (!assignments || assignments.length === 0) {
+        return [];
+      }
+
+      // Ambil tahun pelajaran aktif
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, tahun: true },
+      });
+
+      const items: UnifiedActionItem[] = [];
+
+      for (const assignment of assignments) {
+        const jurusan = assignment.Unit;
+        if (!jurusan) continue;
+
+        try {
+          const pklSummary = await this.hubinPenilaianService.getKaprogPklSummary(
+            tenantId,
+            userId,
+            jurusan.id,
+            undefined,
+            { tahunPelajaranId: activeTp?.id }
+          );
+
+          const tpStatus = pklSummary?.tpStatus || {
+            totalMitra: 0,
+            filledMitra: 0,
+            pendingMitra: 0,
+            completionPercentage: 100,
+          };
+
+          const totalMitra = tpStatus.totalMitra || 0;
+          const filledMitra = tpStatus.filledMitra || 0;
+          const pendingMitra = tpStatus.pendingMitra || 0;
+          const completionPercentage = tpStatus.completionPercentage || 0;
+          const jurusanLabel = jurusan.singkatan || jurusan.nama;
+
+          if (pendingMitra > 0) {
+            items.push({
+              id: `kaprog_tp_dudi_${jurusan.id}`,
+              division: 'HUBIN',
+              urgency: 'CRITICAL',
+              title: `Formulasi TP DU/DI — ${jurusanLabel}`,
+              subtitle: `Anda seorang Kajur. Ada pekerjaan pengisian rumusan Tujuan Pembelajaran (TP) PKL untuk ${pendingMitra} dari ${totalMitra} Mitra Industri.${
+                (tpStatus.rolloverAvailableCount || 0) > 0
+                  ? ` ${tpStatus.rolloverAvailableCount} di antaranya bisa disalin dari rumusan tahun lalu.`
+                  : ''
+              }`,
+              badgeText: `${pendingMitra} Mitra Belum Diisi`,
+              progress: {
+                current: filledMitra,
+                total: totalMitra,
+                percent: completionPercentage,
+                label: `${filledMitra}/${totalMitra} Mitra Terformulasi`,
+                variant: 'rose',
+              },
+              action: {
+                label: 'Isi TP DUDI ➔',
+                type: 'NAVIGATE',
+                target: `/dashboard?tab=kaprog&subtab=pkl&jurusan_id=${jurusan.id}`,
+              },
+              sourceModule: {
+                table: 'SettingDeskripsiPkl',
+                entityId: jurusan.id,
+              },
+            });
+          } else if (totalMitra > 0 && pendingMitra === 0) {
+            items.push({
+              id: `kaprog_tp_dudi_${jurusan.id}`,
+              division: 'HUBIN',
+              urgency: 'INFO',
+              title: `Formulasi TP DU/DI — ${jurusanLabel}`,
+              subtitle: `Anda seorang Kajur. Seluruh rumusan Tujuan Pembelajaran (TP) PKL untuk ${totalMitra} Mitra Industri telah lengkap.`,
+              badgeText: 'Lengkap',
+              progress: {
+                current: totalMitra,
+                total: totalMitra,
+                percent: 100,
+                label: `${totalMitra}/${totalMitra} Mitra Selesai`,
+                variant: 'emerald',
+              },
+              action: {
+                label: 'Lihat Formulasi ➔',
+                type: 'NAVIGATE',
+                target: `/dashboard?tab=kaprog&subtab=pkl&jurusan_id=${jurusan.id}`,
+              },
+              sourceModule: {
+                table: 'SettingDeskripsiPkl',
+                entityId: jurusan.id,
+              },
+            });
+          }
+        } catch (innerErr) {
+          // Fail gracefully per jurusan
+        }
+      }
+
+      return items;
+    } catch (error) {
       return [];
     }
   }

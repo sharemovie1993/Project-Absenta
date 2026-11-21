@@ -453,6 +453,8 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     queryClient.invalidateQueries({ queryKey: ['rapor-data'] });
     queryClient.invalidateQueries({ queryKey: ['rapor-leger'] });
     queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
+    // Sinkronkan kanal peringatan "Tugas Saya" di Beranda Guru (Formulasi TP DUDI Kajur)
+    queryClient.invalidateQueries({ queryKey: ['my-action-hub-dashboard'] });
   }, [queryClient]);
 
   // Mutation: Simpan Deskripsi TP Inline
