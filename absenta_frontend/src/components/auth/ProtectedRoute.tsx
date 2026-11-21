@@ -20,8 +20,10 @@ function hasCapability(
   capability: string
 ) {
   if (!user) return false;
+  const roleName = typeof user.role === 'string' ? user.role : user.role?.name;
   if (isSystemSuperAdmin(user.role as any, (user as any).tenant_id)) return true;
-  if (user.role?.name === 'ADMIN') return true;
+  if (roleName === 'ADMIN' || roleName === 'SUPERADMIN') return true;
+  if (roleName === 'SISWA' && (capability === 'cbt.exam.take' || capability === 'core.auth.logout')) return true;
   if (user.capabilities && user.capabilities.includes(capability)) return true;
 
   const raw = (user as any).permissions ?? (user.role as any)?.permissions ?? null;

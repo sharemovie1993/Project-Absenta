@@ -1154,7 +1154,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/cbt/ruang-ujian" element={
-                      <ProtectedRoute requiredCapability={['cbt.exam.take', 'core.auth.logout']}>
+                      <ProtectedRoute requiredRoles={['SISWA', 'ADMIN', 'SUPERADMIN', 'GURU']} requiredCapability="cbt.exam.take">
                         <CbtExamRoomPage />
                       </ProtectedRoute>
                     } />

@@ -211,7 +211,7 @@ export async function cbtRoutes(fastify: any) {
   // 6. CBT EVENT SETTINGS & HIERARCHY ROUTES
   // ==========================================
   fastify.get('/settings/events', {
-    preHandler: [requireCapability('cbt.jadwal.view', cbtGuruExempt), determineDataScope()],
+    preHandler: [requireCapability('cbt.jadwal.view', cbtDenahViewExempt), determineDataScope()],
   }, CbtSettingsController.getEventsSummary);
 
   fastify.post('/settings/events', {

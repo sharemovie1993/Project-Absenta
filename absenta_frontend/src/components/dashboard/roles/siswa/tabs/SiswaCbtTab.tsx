@@ -928,7 +928,10 @@ export const SiswaCbtTab: React.FC = () => {
 
                               <button
                                 type="button"
-                                onClick={() => handleOpenDenah(item)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDenah(item);
+                                }}
                                 className="px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0 transition-all group"
                                 title="Buka Denah Ruang Ujian"
                               >
@@ -957,7 +960,10 @@ export const SiswaCbtTab: React.FC = () => {
                               {actionable ? (
                                 <button
                                   type="button"
-                                  onClick={() => goToExamRoom(item)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    goToExamRoom(item);
+                                  }}
                                   disabled={isPaused}
                                   className="px-4 py-1.5 rounded-xl text-xs font-black bg-violet-600 hover:bg-violet-700 text-white shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                                 >
@@ -972,7 +978,10 @@ export const SiswaCbtTab: React.FC = () => {
                                   </span>
                                   <button
                                     type="button"
-                                    onClick={() => handleOpenDenah(item)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenDenah(item);
+                                    }}
                                     className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800/60 flex items-center gap-1 cursor-pointer transition-all"
                                     title="Denah Lokasi Ruangan"
                                   >
@@ -981,7 +990,10 @@ export const SiswaCbtTab: React.FC = () => {
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => setSelectedDetailItem(item)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedDetailItem(item);
+                                    }}
                                     className="px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 text-xs font-bold flex items-center gap-0.5 cursor-pointer transition-colors"
                                     title="Detail Sesi Ujian"
                                   >
@@ -1047,7 +1059,10 @@ export const SiswaCbtTab: React.FC = () => {
                           <span>•</span>
                           <button
                             type="button"
-                            onClick={() => handleOpenDenah(item)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDenah(item);
+                            }}
                             className="inline-flex items-center gap-1 font-bold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer group"
                             title="Buka Denah Posisi Ruangan"
                           >
@@ -1082,7 +1097,10 @@ export const SiswaCbtTab: React.FC = () => {
 
                       <button
                         type="button"
-                        onClick={() => setSelectedDetailItem(item)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDetailItem(item);
+                        }}
                         className="text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-0.5 cursor-pointer ml-auto"
                       >
                         <span>Detail Sesi</span>
@@ -1116,7 +1134,10 @@ export const SiswaCbtTab: React.FC = () => {
 
                         <button
                           type="button"
-                          onClick={() => handleOpenDenah(item)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenDenah(item);
+                          }}
                           className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] border border-indigo-200/80 dark:border-indigo-800 transition-all cursor-pointer active:scale-95 group"
                           title="Buka Denah Ruangan Ujian"
                         >
@@ -1174,7 +1195,10 @@ export const SiswaCbtTab: React.FC = () => {
                     {/* Tombol Utama: Kerjakan Ujian (Fokus Aksi) */}
                     <button
                       type="button"
-                      onClick={() => goToExamRoom(item)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        goToExamRoom(item);
+                      }}
                       disabled={isPaused}
                       className={cn(
                         'w-full py-3 px-4 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md active:scale-98',
@@ -1321,7 +1345,10 @@ export const SiswaCbtTab: React.FC = () => {
 
                           <button
                             type="button"
-                            onClick={() => setSelectedDetailItem(item)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedDetailItem(item);
+                            }}
                             className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 cursor-pointer"
                           >
                             <span>Detail Sesi</span>
