@@ -388,55 +388,65 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 w-full md:w-auto md:min-w-[380px] max-w-lg">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                aria-label="Siswa sebelumnya"
-                onClick={handlePrevSiswa}
-                disabled={currentIndex <= 0}
-                className="h-9 w-9 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
-              >
-                <ChevronLeft size={16} />
-              </Button>
-
-              <div className="flex-1 min-w-0">
-                <Suspense
-                  fallback={
-                    <div className="h-9 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
-                  }
-                >
-                  <SearchableSelect
-                    id="pilih-siswa-select"
-                    aria-label="Pilih siswa untuk tracking aktivitas"
-                    value={selectedSiswaId}
-                    onValueChange={(val) => setSelectedSiswaId(val)}
-                    options={siswaOptions}
-                    placeholder="Cari Nama Siswa..."
-                    triggerClassName="h-9 rounded-xl bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-800 font-bold text-xs"
-                  />
-                </Suspense>
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                aria-label="Siswa berikutnya"
-                onClick={handleNextSiswa}
-                disabled={currentIndex === -1 || currentIndex >= siswaOptions.length - 1}
-                className="h-9 w-9 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
-              >
-                <ChevronRight size={16} />
-              </Button>
-
+            <>
+              {/* Counter Pill di HP (Header ringkas tanpa dropdown yang membebani) */}
               {siswaOptions.length > 0 && currentIndex !== -1 && (
-                <span className="text-[10.5px] font-bold text-slate-400 font-mono shrink-0 whitespace-nowrap hidden sm:inline-block">
+                <span className="sm:hidden px-2.5 py-1 rounded-xl text-[10.5px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 shrink-0 self-center">
                   {currentIndex + 1} / {siswaOptions.length}
                 </span>
               )}
-            </div>
+
+              {/* Selector Desktop: Tetap di Atas */}
+              <div className="hidden sm:flex items-center gap-2 w-full md:w-auto md:min-w-[380px] max-w-lg">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label="Siswa sebelumnya"
+                  onClick={handlePrevSiswa}
+                  disabled={currentIndex <= 0}
+                  className="h-9 w-9 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                >
+                  <ChevronLeft size={16} />
+                </Button>
+
+                <div className="flex-1 min-w-0">
+                  <Suspense
+                    fallback={
+                      <div className="h-9 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                    }
+                  >
+                    <SearchableSelect
+                      id="pilih-siswa-select"
+                      aria-label="Pilih siswa untuk tracking aktivitas"
+                      value={selectedSiswaId}
+                      onValueChange={(val) => setSelectedSiswaId(val)}
+                      options={siswaOptions}
+                      placeholder="Cari Nama Siswa..."
+                      triggerClassName="h-9 rounded-xl bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-800 font-bold text-xs"
+                    />
+                  </Suspense>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label="Siswa berikutnya"
+                  onClick={handleNextSiswa}
+                  disabled={currentIndex === -1 || currentIndex >= siswaOptions.length - 1}
+                  className="h-9 w-9 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                >
+                  <ChevronRight size={16} />
+                </Button>
+
+                {siswaOptions.length > 0 && currentIndex !== -1 && (
+                  <span className="text-[10.5px] font-bold text-slate-400 font-mono shrink-0 whitespace-nowrap">
+                    {currentIndex + 1} / {siswaOptions.length}
+                  </span>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -609,7 +619,65 @@ export const TrackingSiswaView: React.FC<UniversalTrackingSiswaViewProps> = Reac
         </div>
       </SectionCard>
 
-      {/* ── 5. MODAL CETAK WYSIWYG & PDF EXPORT ── */}
+      {/* ── 5. MOBILE BOTTOM STUDENT NAVIGATOR (THUMB-ZONE ACCESSIBLE KHUSUS WALI KELAS/GURU) ── */}
+      {!shouldHideSelector && (
+        <div
+          className={cn(
+            'sm:hidden sticky z-30 p-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-800 shadow-xl flex items-center gap-2',
+            isModal || hideLayout ? 'bottom-2' : 'bottom-18'
+          )}
+        >
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label="Siswa sebelumnya"
+            onClick={handlePrevSiswa}
+            disabled={currentIndex <= 0}
+            className="h-10 w-10 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer active:scale-95 shadow-2xs"
+          >
+            <ChevronLeft size={18} />
+          </Button>
+
+          <div className="flex-1 min-w-0">
+            <Suspense
+              fallback={
+                <div className="h-10 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+              }
+            >
+              <SearchableSelect
+                id="pilih-siswa-mobile-bottom-select"
+                aria-label="Pilih siswa untuk tracking aktivitas"
+                value={selectedSiswaId}
+                onValueChange={(val) => setSelectedSiswaId(val)}
+                options={siswaOptions}
+                placeholder="Cari / Pilih Siswa..."
+                triggerClassName="h-10 rounded-xl bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-800 font-bold text-xs"
+              />
+            </Suspense>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label="Siswa berikutnya"
+            onClick={handleNextSiswa}
+            disabled={currentIndex === -1 || currentIndex >= siswaOptions.length - 1}
+            className="h-10 w-10 shrink-0 rounded-xl border-slate-200 dark:border-slate-800 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer active:scale-95 shadow-2xs"
+          >
+            <ChevronRight size={18} />
+          </Button>
+
+          {siswaOptions.length > 0 && currentIndex !== -1 && (
+            <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 shrink-0 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+              {currentIndex + 1}/{siswaOptions.length}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ── 6. MODAL CETAK WYSIWYG & PDF EXPORT ── */}
       {isPrintModalOpen && (
         <Suspense fallback={null}>
           <TrackingSiswaPrintModal
