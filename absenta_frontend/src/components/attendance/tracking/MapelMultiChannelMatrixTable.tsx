@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   DoorOpen,
   BookOpen,
@@ -117,6 +117,9 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
     return { hadir, total, pct };
   }, [records]);
 
+  // Mode Tampilan Mobile: FIT_HORIZONTAL (100% Full tanpa scroll di HP) vs SPREADSHEET
+  const [mobileViewStyle, setMobileViewStyle] = useState<'FIT_HORIZONTAL' | 'SPREADSHEET'>('FIT_HORIZONTAL');
+
   if (isLoading) {
     return (
       <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3">
@@ -183,8 +186,399 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
         </div>
       </div>
 
+      {/* MOBILE TOGGLE: FULL 1 BULAN (TANPA SCROLL) vs SPREADSHEET */}
+      <div className="flex sm:hidden items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-full">
+        <button
+          type="button"
+          onClick={() => setMobileViewStyle('FIT_HORIZONTAL')}
+          className={cn(
+            'flex-1 py-1.5 text-[11px] font-black rounded-lg text-center transition-all cursor-pointer',
+            mobileViewStyle === 'FIT_HORIZONTAL'
+              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+          )}
+        >
+          📱 Full 1 Bulan (Tanpa Scroll)
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileViewStyle('SPREADSHEET')}
+          className={cn(
+            'flex-1 py-1.5 text-[11px] font-black rounded-lg text-center transition-all cursor-pointer',
+            mobileViewStyle === 'SPREADSHEET'
+              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+          )}
+        >
+          📊 Tabel Spreadsheet (Geser)
+        </button>
+      </div>
+
+      {/* ── 1. MOBILE 1-MONTH FULL HORIZONTAL FIT VIEW (TANPA SCROLL HORIZONTAL) ── */}
+      <div className={cn('space-y-3', mobileViewStyle === 'FIT_HORIZONTAL' ? 'block sm:hidden' : 'hidden')}>
+        <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs space-y-3 w-full overflow-hidden">
+          {/* DAY RULER (TANGGAL 01 s.d. 30/31) */}
+          <div className="space-y-1 pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 px-0.5">
+              <span className="uppercase tracking-wider">Tanggal (01 – {String(records.length).padStart(2, '0')})</span>
+              <span className="text-[9px] text-indigo-600 dark:text-indigo-400">Tap kotak hari untuk linimasa</span>
+            </div>
+            <div
+              style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
+              className="gap-[1.5px] w-full select-none"
+            >
+              {records.map((r) => {
+                const isSelected = selectedDate === r.date;
+                return (
+                  <button
+                    key={`mob-ruler-${r.date}`}
+                    type="button"
+                    onClick={() => onDateSelect?.(r.date)}
+                    className={cn(
+                      'flex flex-col items-center justify-center py-1 rounded-xs text-center cursor-pointer transition-all',
+                      r.is_weekend
+                        ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-500'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300',
+                      isSelected && 'ring-2 ring-indigo-600 bg-indigo-600 text-white font-black z-10'
+                    )}
+                    title={`${r.day_name}, ${r.date}`}
+                  >
+                    <span className="text-[7.5px] font-black leading-none">{r.day}</span>
+                    <span className="text-[6px] uppercase leading-none opacity-80 mt-0.5">{r.day_name.slice(0, 1)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* SECTION: GERBANG SEKOLAH */}
+          <div className="space-y-2">
+            <div className="px-1 text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
+              <DoorOpen className="w-3.5 h-3.5" />
+              <span>Pintu Gerbang Sekolah</span>
+            </div>
+
+            {/* Tap Masuk */}
+            <div className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1">
+              <div className="flex items-center justify-between text-[10.5px]">
+                <span className="font-bold text-slate-800 dark:text-slate-200">Tap Masuk Gerbang</span>
+                <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-[10px]">
+                  {gateSummary.hadir}/{gateSummary.total} ({gateSummary.pct}%)
+                </span>
+              </div>
+              <div
+                style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
+                className="gap-[1.5px] w-full"
+              >
+                {records.map((r) => {
+                  const g = r.gerbang;
+                  const hasTap = Boolean(g?.datang_waktu);
+                  const isLate = Boolean(g?.is_terlambat);
+                  const isSelected = selectedDate === r.date;
+
+                  return (
+                    <button
+                      key={`mob-gin-${r.date}`}
+                      type="button"
+                      onClick={() => onDateSelect?.(r.date)}
+                      className={cn(
+                        'h-5 rounded-xs flex items-center justify-center text-[7.5px] font-black transition-transform active:scale-95 cursor-pointer leading-none',
+                        hasTap
+                          ? isLate
+                            ? 'bg-amber-500 text-white'
+                            : 'bg-emerald-500 text-white'
+                          : r.is_weekend
+                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700'
+                          : 'bg-slate-200/70 dark:bg-slate-800 text-slate-400',
+                        isSelected && 'ring-1.5 ring-indigo-600 ring-offset-1 z-10'
+                      )}
+                      title={hasTap ? `Tgl ${r.day}: Tap ${g?.datang_waktu} (${g?.datang_status})` : `Tgl ${r.day}: Tidak Tap`}
+                    >
+                      {hasTap ? (isLate ? 'T' : 'H') : r.is_weekend ? '·' : '-'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Tap Pulang */}
+            <div className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1">
+              <div className="flex items-center justify-between text-[10.5px]">
+                <span className="font-bold text-slate-800 dark:text-slate-200">Tap Pulang Gerbang</span>
+                <span className="font-mono font-bold text-slate-600 dark:text-slate-400 text-[10px]">
+                  {records.filter((r) => r.gerbang?.pulang_waktu).length} Tap
+                </span>
+              </div>
+              <div
+                style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
+                className="gap-[1.5px] w-full"
+              >
+                {records.map((r) => {
+                  const g = r.gerbang;
+                  const hasPulang = Boolean(g?.pulang_waktu);
+                  const isGantung = Boolean(g?.is_tap_gantung);
+                  const isSelected = selectedDate === r.date;
+
+                  return (
+                    <button
+                      key={`mob-gout-${r.date}`}
+                      type="button"
+                      onClick={() => onDateSelect?.(r.date)}
+                      className={cn(
+                        'h-5 rounded-xs flex items-center justify-center text-[7.5px] font-black transition-transform active:scale-95 cursor-pointer leading-none',
+                        hasPulang
+                          ? 'bg-indigo-600 text-white'
+                          : isGantung
+                          ? 'bg-amber-500 text-white'
+                          : r.is_weekend
+                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700'
+                          : 'bg-slate-200/70 dark:bg-slate-800 text-slate-400',
+                        isSelected && 'ring-1.5 ring-indigo-600 ring-offset-1 z-10'
+                      )}
+                      title={hasPulang ? `Tgl ${r.day}: Pulang ${g?.pulang_waktu}` : isGantung ? `Tgl ${r.day}: Tap Gantung` : `Tgl ${r.day}: -`}
+                    >
+                      {hasPulang ? '✓' : isGantung ? '!' : r.is_weekend ? '·' : '-'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION: PEMBIASAAN PAGI */}
+          <div className="space-y-2">
+            <div className="px-1 text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Pembiasaan Pagi (Dhuha / Apel)</span>
+            </div>
+
+            <div className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1">
+              <div className="flex items-center justify-between text-[10.5px]">
+                <span className="font-bold text-slate-800 dark:text-slate-200">Sesi Pembiasaan</span>
+                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[10px]">
+                  {pembiasaanSummary.hadir}/{pembiasaanSummary.total} ({pembiasaanSummary.pct}%)
+                </span>
+              </div>
+              <div
+                style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
+                className="gap-[1.5px] w-full"
+              >
+                {records.map((r) => {
+                  const p = r.pembiasaan;
+                  const isSelected = selectedDate === r.date;
+
+                  return (
+                    <button
+                      key={`mob-p-${r.date}`}
+                      type="button"
+                      onClick={() => onDateSelect?.(r.date)}
+                      className={cn(
+                        'h-5 rounded-xs flex items-center justify-center text-[7.5px] font-black transition-transform active:scale-95 cursor-pointer leading-none',
+                        p?.status === 'HADIR'
+                          ? 'bg-emerald-500 text-white'
+                          : p?.status === 'ALPA'
+                          ? 'bg-rose-500 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700',
+                        isSelected && 'ring-1.5 ring-indigo-600 ring-offset-1 z-10'
+                      )}
+                      title={p?.status ? `Tgl ${r.day}: ${p.nama || 'Pembiasaan'} (${p.status})` : `Tgl ${r.day}: Tidak ada sesi`}
+                    >
+                      {p?.status === 'HADIR' ? 'H' : p?.status === 'ALPA' ? 'A' : '·'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION: SESI KBM PER MATA PELAJARAN */}
+          <div className="space-y-2">
+            <div className="px-1 text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>Sesi Belajar KBM ({mapelList.length} Mata Pelajaran)</span>
+            </div>
+
+            {mapelList.map((mapel) => {
+              const mapelSum = summaryPerMapel[mapel.id] || {
+                total_sesi: 0,
+                hadir: 0,
+                alpa: 0,
+                persentase: 100,
+              };
+
+              return (
+                <div
+                  key={`mob-m-${mapel.id}`}
+                  className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1"
+                >
+                  <div className="flex items-center justify-between text-[10.5px]">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate pr-2" title={mapel.nama_mapel}>
+                      {mapel.nama_mapel}
+                    </span>
+                    <span
+                      className={cn(
+                        'font-mono font-bold text-[10px] shrink-0',
+                        mapelSum.persentase < 85
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : 'text-slate-600 dark:text-slate-400'
+                      )}
+                    >
+                      {mapelSum.hadir}/{mapelSum.total_sesi} ({mapelSum.persentase}%)
+                    </span>
+                  </div>
+                  <div
+                    style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
+                    className="gap-[1.5px] w-full"
+                  >
+                    {records.map((r) => {
+                      const session = r.mapel_sessions[mapel.id];
+                      const isSelected = selectedDate === r.date;
+
+                      let cellBg = 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700';
+                      let letter = '·';
+
+                      if (session) {
+                        if (session.status === 'HADIR' || session.status === 'TEPAT_WAKTU') {
+                          cellBg = 'bg-emerald-500 text-white';
+                          letter = 'H';
+                        } else if (session.status === 'TERLAMBAT') {
+                          cellBg = 'bg-purple-500 text-white';
+                          letter = 'T';
+                        } else if (session.status === 'ALPA') {
+                          cellBg = 'bg-rose-500 text-white';
+                          letter = 'A';
+                        } else {
+                          cellBg = 'bg-blue-500 text-white';
+                          letter = session.status.slice(0, 1);
+                        }
+                      }
+
+                      return (
+                        <button
+                          key={`mob-sess-${mapel.id}-${r.date}`}
+                          type="button"
+                          onClick={() => onDateSelect?.(r.date)}
+                          className={cn(
+                            'h-5 rounded-xs flex items-center justify-center text-[7.5px] font-black transition-transform active:scale-95 cursor-pointer leading-none',
+                            cellBg,
+                            isSelected && 'ring-1.5 ring-indigo-600 ring-offset-1 z-10'
+                          )}
+                          title={
+                            session
+                              ? `Tgl ${r.day}: ${mapel.nama_mapel} (${session.status}) ${session.waktu || ''}`
+                              : `Tgl ${r.day}: Tidak ada jadwal`
+                          }
+                        >
+                          {letter}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* SECTION: STATUS AKHIR & ANOMALI */}
+          <div className="space-y-2">
+            <div className="px-1 text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-400 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />
+              <span>Status Harian & Anomali</span>
+            </div>
+
+            {/* Status Akhir */}
+            <div className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1">
+              <div className="flex items-center justify-between text-[10.5px]">
+                <span className="font-bold text-slate-800 dark:text-slate-200">Status Akhir Harian</span>
+                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 font-mono">Rekap</span>
+              </div>
+              <div
+                style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
+                className="gap-[1.5px] w-full"
+              >
+                {records.map((r) => {
+                  const isSelected = selectedDate === r.date;
+                  let bgClass = 'bg-slate-100 dark:bg-slate-800 text-slate-400';
+                  let char = '-';
+
+                  if (r.final_status === 'HADIR') {
+                    bgClass = 'bg-emerald-500 text-white font-black';
+                    char = 'H';
+                  } else if (r.final_status === 'TERLAMBAT') {
+                    bgClass = 'bg-purple-500 text-white font-black';
+                    char = 'T';
+                  } else if (r.final_status === 'ALPA') {
+                    bgClass = 'bg-rose-500 text-white font-black';
+                    char = 'A';
+                  } else if (r.is_weekend) {
+                    bgClass = 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700';
+                    char = '·';
+                  }
+
+                  return (
+                    <button
+                      key={`mob-final-${r.date}`}
+                      type="button"
+                      onClick={() => onDateSelect?.(r.date)}
+                      className={cn(
+                        'h-5 rounded-xs flex items-center justify-center text-[7.5px] font-black transition-transform active:scale-95 cursor-pointer leading-none',
+                        bgClass,
+                        isSelected && 'ring-1.5 ring-indigo-600 ring-offset-1 z-10'
+                      )}
+                      title={`Status Akhir Tgl ${r.day}: ${r.final_status}`}
+                    >
+                      {char}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Anomali */}
+            <div className="p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 space-y-1">
+              <div className="flex items-center justify-between text-[10.5px]">
+                <span className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  <span>Deteksi Anomali</span>
+                </span>
+                <span className="font-mono font-bold text-rose-600 dark:text-rose-400 text-[10px]">
+                  {records.filter((r) => r.anomali?.is_anomali).length} Kasus
+                </span>
+              </div>
+              <div
+                style={{ display: 'grid', gridTemplateColumns: `repeat(${records.length}, minmax(0, 1fr))` }}
+                className="gap-[1.5px] w-full"
+              >
+                {records.map((r) => {
+                  const anomali = r.anomali;
+                  const isSelected = selectedDate === r.date;
+
+                  return (
+                    <button
+                      key={`mob-ano-${r.date}`}
+                      type="button"
+                      onClick={() => onDateSelect?.(r.date)}
+                      className={cn(
+                        'h-5 rounded-xs flex items-center justify-center text-[8px] font-black transition-transform active:scale-95 cursor-pointer leading-none',
+                        anomali?.is_anomali
+                          ? 'bg-rose-500 text-white animate-pulse'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700',
+                        isSelected && 'ring-1.5 ring-indigo-600 ring-offset-1 z-10'
+                      )}
+                      title={anomali?.is_anomali ? `Tgl ${r.day}: ⚠️ ${anomali.pesan}` : `Tgl ${r.day}: Normal`}
+                    >
+                      {anomali?.is_anomali ? '!' : '·'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* HORIZONTAL SCROLLABLE SPREADSHEET TABLE */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs overflow-hidden">
+      <div className={cn('bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs overflow-hidden', mobileViewStyle === 'FIT_HORIZONTAL' ? 'hidden sm:block' : 'block')}>
         <div className="overflow-x-auto relative">
           <table className="w-full border-collapse text-left text-xs">
             {/* ── THEAD (TANGGAL 01 .. 31) ── */}
@@ -223,7 +617,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                 })}
 
                 {/* Kolom Sticky Kanan: Total / Persentase */}
-                <th className="sticky right-0 z-20 bg-slate-50 dark:bg-slate-900 px-2.5 py-2.5 text-center font-black uppercase tracking-wider text-[10px] text-slate-500 dark:text-slate-400 min-w-[95px] border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                <th className="sm:sticky sm:right-0 z-20 bg-slate-50 dark:bg-slate-900 px-2.5 py-2.5 text-center font-black uppercase tracking-wider text-[10px] text-slate-500 dark:text-slate-400 min-w-[95px] border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                   Total Rekap
                 </th>
               </tr>
@@ -285,7 +679,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                   );
                 })}
 
-                <td className="sticky right-0 z-10 bg-white dark:bg-slate-900 px-2 py-1 text-center font-bold text-slate-800 dark:text-slate-200 border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-[10px]">
+                <td className="sm:sticky sm:right-0 z-10 bg-white dark:bg-slate-900 px-2 py-1 text-center font-bold text-slate-800 dark:text-slate-200 border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-[10px]">
                   {gateSummary.hadir}/{gateSummary.total} ({gateSummary.pct}%)
                 </td>
               </tr>
@@ -337,7 +731,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                   );
                 })}
 
-                <td className="sticky right-0 z-10 bg-white dark:bg-slate-900 px-2 py-1 text-center font-semibold text-slate-600 dark:text-slate-400 border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-[10px]">
+                <td className="sm:sticky sm:right-0 z-10 bg-white dark:bg-slate-900 px-2 py-1 text-center font-semibold text-slate-600 dark:text-slate-400 border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-[10px]">
                   {records.filter((r) => r.gerbang?.pulang_waktu).length} Tap
                 </td>
               </tr>
@@ -388,7 +782,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                   );
                 })}
 
-                <td className="sticky right-0 z-10 bg-white dark:bg-slate-900 px-2 py-1 text-center font-bold text-slate-800 dark:text-slate-200 border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-[10px]">
+                <td className="sm:sticky sm:right-0 z-10 bg-white dark:bg-slate-900 px-2 py-1 text-center font-bold text-slate-800 dark:text-slate-200 border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-[10px]">
                   {pembiasaanSummary.hadir}/{pembiasaanSummary.total} ({pembiasaanSummary.pct}%)
                 </td>
               </tr>
@@ -473,7 +867,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                     })}
 
                     {/* Summary Mapel */}
-                    <td className="sticky right-0 z-10 bg-white dark:bg-slate-900 px-2 py-1 text-center font-bold border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-[10px]">
+                    <td className="sm:sticky sm:right-0 z-10 bg-white dark:bg-slate-900 px-2 py-1 text-center font-bold border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-[10px]">
                       <span
                         className={cn(
                           mapelSum.persentase < 85
@@ -532,7 +926,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                   );
                 })}
 
-                <td className="sticky right-0 z-10 bg-slate-50 dark:bg-slate-900 px-2 py-1 text-center font-black text-indigo-600 dark:text-indigo-400 border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-[10.5px]">
+                <td className="sm:sticky sm:right-0 z-10 bg-slate-50 dark:bg-slate-900 px-2 py-1 text-center font-black text-indigo-600 dark:text-indigo-400 border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-[10.5px]">
                   Rekap
                 </td>
               </tr>
@@ -572,7 +966,7 @@ export const MapelMultiChannelMatrixTable: React.FC<MapelMultiChannelMatrixTable
                   );
                 })}
 
-                <td className="sticky right-0 z-10 bg-white dark:bg-slate-900 px-2 py-1 text-center font-bold text-rose-600 dark:text-rose-400 border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-[10px]">
+                <td className="sm:sticky sm:right-0 z-10 bg-white dark:bg-slate-900 px-2 py-1 text-center font-bold text-rose-600 dark:text-rose-400 border-l border-slate-200 dark:border-slate-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-[10px]">
                   {records.filter((r) => r.anomali?.is_anomali).length} Kasus
                 </td>
               </tr>
