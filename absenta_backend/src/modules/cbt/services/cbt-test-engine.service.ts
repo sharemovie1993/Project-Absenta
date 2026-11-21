@@ -691,7 +691,7 @@ export class CbtTestEngineService {
       throw err;
     }
 
-    // ── DIAGNOSIS 8: PENEGAKAN JENDELA WAKTU & KETERLAMBATAN RESMI ──
+    // ── DIAGNOSIS 8: PENEGAKAN JENDELA WAKTU & KETERLAMBATAN FLEKSIBEL (HUMAN-CENTRIC CBT ENGINE) ──
     const now = new Date();
     const tanggalMulai = new Date(jadwal.tanggal_mulai);
     const tanggalSelesai = new Date(jadwal.tanggal_selesai);
@@ -700,9 +700,12 @@ export class CbtTestEngineService {
     // Buffer 15 menit sebelum bel resmi berbunyi agar siswa dapat verifikasi token & persiapan
     const EARLY_ACCESS_BUFFER_MS = 15 * 60 * 1000;
     const isEarlyAccessAllowed = Boolean((jadwal.setting_keamanan as any)?.allow_early_start);
+    const allowFloating = (jadwal.setting_keamanan as any)?.floating_duration !== false;
 
     // 8A. Belum Jam Ujian (Lebih dari 15 menit sebelum tanggal_mulai)
-    if (!isRemedial && !isEarlyAccessAllowed && now.getTime() < (tanggalMulai.getTime() - EARLY_ACCESS_BUFFER_MS)) {
+    // Mode Fleksibel: Jika sesi sudah di-ACTIVE-kan oleh pengawas di ruang ujian,
+    // izinkan siswa masuk langsung tanpa menunggu jam mulai resmi.
+    if (!isRemedial && !isEarlyAccessAllowed && jadwal.status !== 'ACTIVE' && now.getTime() < (tanggalMulai.getTime() - EARLY_ACCESS_BUFFER_MS)) {
       const jamMulaiStr = CbtTestEngineService.formatJamIndo(tanggalMulai);
       const tglMulaiStr = CbtTestEngineService.formatTanggalIndo(tanggalMulai);
       const err: any = new Error(
@@ -719,7 +722,13 @@ export class CbtTestEngineService {
     }
 
     // 8B. Waktu Pelaksanaan Sesi Ujian Telah Berakhir (Expired)
-    if (now.getTime() >= tanggalSelesai.getTime()) {
+    // Mode Fleksibel: Jika jadwal berstatus ACTIVE pada hari yang sama (atau floating_duration aktif),
+    // siswa diizinkan masuk untuk mengakomodasi siswa yang kesiangan, susulan di hari yang sama,
+    // maupun pemulihan siswa yang mengalami kendala teknis/restart perangkat.
+    const isSameDay = now.toDateString() === tanggalMulai.toDateString() || now.toDateString() === tanggalSelesai.toDateString();
+    const allowFlexibleActive = jadwal.status === 'ACTIVE' && (isSameDay || allowFloating);
+
+    if (!allowFlexibleActive && now.getTime() >= tanggalSelesai.getTime()) {
       const jamSelesaiStr = CbtTestEngineService.formatJamIndo(tanggalSelesai);
       const tglSelesaiStr = CbtTestEngineService.formatTanggalIndo(tanggalSelesai);
       const err: any = new Error(
@@ -736,8 +745,13 @@ export class CbtTestEngineService {
     }
 
     // 8C. Validasi Toleransi Keterlambatan (Hanya untuk siswa yang baru akan mulai, bukan yang reconnect)
+    // Mode Fleksibel: Keterlambatan HANYA menolak siswa jika panitia secara eksplisit
+    // menyetel strict_late_entry: true pada setting keamanan ujian. Jika tidak disetel strict,
+    // siswa yang kesiangan atau susulan tetap dapat memulai ujian dengan durasi penuh (floating duration).
     const isNewParticipant = !existingPeserta || !existingPeserta.waktu_mulai;
-    if (!isRemedial && isNewParticipant && toleransiMenit > 0) {
+    const isStrictLate = Boolean((jadwal.setting_keamanan as any)?.strict_late_entry);
+
+    if (!isRemedial && isNewParticipant && isStrictLate && toleransiMenit > 0) {
       // ── RESILIENT: Hitung toleransi dari waktu pengawas benar-benar membuka sesi ──
       // Jika pengawas terlambat mengaktifkan (misal jadwal 07:00 tapi diaktifkan 07:45),
       // maka siswa mendapat toleransi penuh dari 07:45, bukan dari 07:00.
