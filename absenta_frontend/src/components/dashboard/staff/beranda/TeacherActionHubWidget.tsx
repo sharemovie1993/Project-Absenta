@@ -15,7 +15,10 @@ import {
   Layers,
   Sparkles,
   RefreshCw,
-  Filter
+  Filter,
+  Users,
+  Flag,
+  UserCircle
 } from 'lucide-react';
 import { HubCard, HubBentoGrid, type HubBentoCell } from '@/components/ui/hub';
 import { Badge, Button } from '@/components/ui';
@@ -48,6 +51,19 @@ const DIVISION_ICON: Record<string, any> = {
   CBT: CheckSquare,
 };
 
+const ROLE_GROUP_ICON: Record<string, any> = {
+  GURU: BookOpen,
+  KAPROG: Briefcase,
+  KURIKULUM: Layers,
+  WALIKELAS: Users,
+  PEMBIMBING_PKL: Briefcase,
+  PENGUJI_PKL: GraduationCap,
+  PENGAWAS_CBT: CheckSquare,
+  PIKET: ClipboardList,
+  UPACARA: Flag,
+  PEMINJAM_SARPRAS: Building,
+};
+
 export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = React.memo(({
   actions = [],
   summary,
@@ -69,6 +85,21 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
     if (filter === 'UPCOMING') return actions.filter(a => a.urgency === 'UPCOMING' || a.urgency === 'INFO');
     return actions;
   }, [actions, filter]);
+
+  // ── Sekat Notifikasi Per Jabatan (Sebagai Guru / Kajur / Piket, dst) ──
+  const groupedActions = useMemo(() => {
+    const map = new Map<string, { key: string; label: string; order: number; items: UnifiedActionItem[]; criticalCount: number }>();
+    for (const item of filteredActions) {
+      const g = item.roleGroup || { key: 'LAINNYA', label: 'Tugas Lainnya', order: 99 };
+      if (!map.has(g.key)) {
+        map.set(g.key, { key: g.key, label: g.label, order: g.order, items: [], criticalCount: 0 });
+      }
+      const entry = map.get(g.key)!;
+      entry.items.push(item);
+      if (item.urgency === 'CRITICAL') entry.criticalCount++;
+    }
+    return Array.from(map.values()).sort((a, b) => a.order - b.order);
+  }, [filteredActions]);
 
   // ── 1. Bento Analytics Grid 2x2 Ala Keuangan Shopee (Hairline Flat) ──
   const bentoCells: HubBentoCell[] = useMemo(() => [
@@ -291,8 +322,32 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
           )}
         </div>
       ) : (
-        <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-          {filteredActions.map((item) => {
+        <div className="divide-y divide-slate-200/80 dark:divide-slate-800">
+          {groupedActions.map((group) => {
+            const GroupIcon = ROLE_GROUP_ICON[group.key] || UserCircle;
+            return (
+            <section key={group.key} aria-label={group.label}>
+              {/* Header Sekat Jabatan */}
+              <header className="flex items-center justify-between gap-2 px-3 sm:px-3.5 py-2 bg-slate-50/90 dark:bg-slate-900/70 border-b border-slate-100 dark:border-slate-800/80">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-5 h-5 rounded-md bg-indigo-100 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                    <GroupIcon size={12} />
+                  </div>
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 truncate">
+                    {group.label}
+                  </h4>
+                  <span className="text-[10px] font-semibold text-slate-400 shrink-0">
+                    ({group.items.length})
+                  </span>
+                </div>
+                {group.criticalCount > 0 && (
+                  <span className="text-[9.5px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-400 px-1.5 py-0.5 rounded-full shrink-0">
+                    {group.criticalCount} Mendesak
+                  </span>
+                )}
+              </header>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+          {group.items.map((item) => {
             const IconComp = DIVISION_ICON[item.division] || AlertCircle;
             const isCritical = item.urgency === 'CRITICAL';
             const isToday = item.urgency === 'TODAY';
@@ -330,12 +385,6 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
                       <h4 className="text-xs sm:text-[13px] font-bold text-slate-800 dark:text-slate-100 leading-snug break-words">
                         {item.title}
                       </h4>
-                      {item.id.startsWith('kaprog_tp_dudi') && (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-200/80 dark:border-amber-800/70 shadow-2xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                          Kajur
-                        </span>
-                      )}
                       {isEventTask && (
                         <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/80 px-1.5 py-0.5 rounded border border-rose-200/80 dark:border-rose-800/70 shadow-2xs">
                           <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
@@ -407,6 +456,10 @@ export const TeacherActionHubWidget: React.FC<TeacherActionHubWidgetProps> = Rea
                   </Button>
                 </div>
               </div>
+            );
+          })}
+              </div>
+            </section>
             );
           })}
         </div>

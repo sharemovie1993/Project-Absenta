@@ -32,6 +32,39 @@ export interface UnifiedActionItem {
     table: string;
     entityId: string;
   };
+  /** Sekat jabatan: tugas ini muncul karena peran apa (Guru, Kajur, Piket, dst) */
+  roleGroup?: ActionRoleGroup;
+}
+
+export interface ActionRoleGroup {
+  key: string;
+  label: string;
+  order: number;
+}
+
+/**
+ * SSOT pemetaan tugas → jabatan berdasarkan prefix id item.
+ * Tambahkan baris baru di sini saat menambah detektor untuk jabatan lain
+ * (mis. KURIKULUM, WALIKELAS, KESISWAAN).
+ */
+const ROLE_GROUP_RULES: Array<{ prefixes: string[]; group: ActionRoleGroup }> = [
+  { prefixes: ['kbm_journal_', 'perangkat_', 'rapor_task_', 'cbt_bank_soal_'], group: { key: 'GURU', label: 'Sebagai Guru', order: 1 } },
+  { prefixes: ['kaprog_'], group: { key: 'KAPROG', label: 'Sebagai Kajur', order: 2 } },
+  { prefixes: ['kurikulum_'], group: { key: 'KURIKULUM', label: 'Sebagai Kurikulum', order: 3 } },
+  { prefixes: ['walas_'], group: { key: 'WALIKELAS', label: 'Sebagai Wali Kelas', order: 4 } },
+  { prefixes: ['pkl_nilai_pembimbing_'], group: { key: 'PEMBIMBING_PKL', label: 'Sebagai Pembimbing PKL', order: 5 } },
+  { prefixes: ['pkl_nilai_sidang_'], group: { key: 'PENGUJI_PKL', label: 'Sebagai Penguji Sidang PKL', order: 6 } },
+  { prefixes: ['cbt_pengawas_'], group: { key: 'PENGAWAS_CBT', label: 'Sebagai Pengawas Ujian (CBT)', order: 7 } },
+  { prefixes: ['piket_duty_'], group: { key: 'PIKET', label: 'Sebagai Guru Piket', order: 8 } },
+  { prefixes: ['upacara_duty_'], group: { key: 'UPACARA', label: 'Sebagai Petugas Upacara', order: 9 } },
+  { prefixes: ['sarpras_loan_'], group: { key: 'PEMINJAM_SARPRAS', label: 'Sebagai Peminjam Sarpras', order: 10 } },
+];
+
+const FALLBACK_ROLE_GROUP: ActionRoleGroup = { key: 'LAINNYA', label: 'Tugas Lainnya', order: 99 };
+
+function resolveRoleGroup(itemId: string): ActionRoleGroup {
+  const rule = ROLE_GROUP_RULES.find(r => r.prefixes.some(p => itemId.startsWith(p)));
+  return rule ? rule.group : FALLBACK_ROLE_GROUP;
 }
 
 export interface ActionHubSummary {
@@ -97,6 +130,9 @@ export class DashboardActionHubService {
         allActions = allActions.concat(res.value);
       }
     });
+
+    // 3b. Tandai sekat jabatan tiap tugas (Sebagai Guru / Kajur / Piket, dst)
+    allActions = allActions.map((a) => ({ ...a, roleGroup: a.roleGroup || resolveRoleGroup(a.id) }));
 
     // 4. Urutkan berdasarkan bobot urgensi: CRITICAL > TODAY > UPCOMING > INFO
     const urgencyOrder: Record<string, number> = {

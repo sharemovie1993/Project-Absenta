@@ -218,6 +218,12 @@ export interface UnifiedActionItem {
     table: string;
     entityId: string;
   };
+  /** Sekat jabatan: tugas ini muncul karena peran apa (Guru, Kajur, Piket, dst) */
+  roleGroup?: {
+    key: string;
+    label: string;
+    order: number;
+  };
 }
 
 export interface ActionHubSummary {
