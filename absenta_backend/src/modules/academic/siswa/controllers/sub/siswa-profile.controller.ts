@@ -532,13 +532,28 @@ async sendParentAccess(request: any, reply: any) {
     try {
       const tenantId = request.tenantId;
       const { kelas_id, jurusan_id } = request.query || {};
+      const org = request.organizationalScope;
 
       const whereClause: any = {
         tenant_id: tenantId,
         status: 'AKTIF',
       };
-      if (kelas_id) whereClause.kelas_id = kelas_id;
-      if (jurusan_id) whereClause.jurusan_id = jurusan_id;
+
+      if (kelas_id) {
+        whereClause.kelas_id = kelas_id;
+      } else if (jurusan_id) {
+        whereClause.OR = [
+          { jurusan_id: jurusan_id },
+          { Kelas: { jurusan_id: jurusan_id } },
+        ];
+      } else if (org?.is_unit_restricted && Array.isArray(org.unit_ids) && org.unit_ids.length > 0 && !org.tenant_wide) {
+        whereClause.OR = [
+          { jurusan_id: { in: org.unit_ids } },
+          { Kelas: { jurusan_id: { in: org.unit_ids } } },
+        ];
+      } else if (org?.is_wali_kelas && Array.isArray(org.kelas_ids) && org.kelas_ids.length > 0 && !org.tenant_wide) {
+        whereClause.kelas_id = { in: org.kelas_ids };
+      }
 
       const [totalSiswa, totalInstalled] = await Promise.all([
         prisma.siswa.count({ where: whereClause }),

@@ -29,6 +29,7 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
       <Suspense fallback={<div className="p-12 flex justify-center"><Loader size="lg" /></div>}>
         <SiswaView
           hideLayout
+          hideScopeBanner
           roleScope="kaprog"
           jurusanId={safeJurusanId}
           jurusanNama={jurusanNama}
