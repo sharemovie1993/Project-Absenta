@@ -1120,9 +1120,16 @@ export const SiswaCbtTab: React.FC = () => {
                 : meta;
               const StatusIcon = resolvedMeta.icon;
 
-              const activeWaktuMulai = item.waktu_mulai || latestRemedialChild?.waktu_mulai;
-              const activeWaktuSelesai = item.waktu_selesai || latestRemedialChild?.waktu_selesai;
-              const activeDurasi = item.durasi_pengerjaan_menit || latestRemedialChild?.durasi_pengerjaan_menit;
+              // Metadata waktu & peringatan: prioritaskan sesi yang menghasilkan nilai aktif
+              const activeWaktuMulai = (hasRemedialChild && isChildFinished && latestRemedialChild?.waktu_mulai)
+                ? latestRemedialChild.waktu_mulai
+                : item.waktu_mulai || latestRemedialChild?.waktu_mulai;
+              const activeWaktuSelesai = (hasRemedialChild && isChildFinished && latestRemedialChild?.waktu_selesai)
+                ? latestRemedialChild.waktu_selesai
+                : item.waktu_selesai || latestRemedialChild?.waktu_selesai;
+              const activeDurasi = (hasRemedialChild && isChildFinished && latestRemedialChild?.durasi_pengerjaan_menit)
+                ? latestRemedialChild.durasi_pengerjaan_menit
+                : item.durasi_pengerjaan_menit || latestRemedialChild?.durasi_pengerjaan_menit;
 
               const accuracyPct =
                 (hasRemedialChild && latestRemedialChild?.hasil && (latestRemedialChild.total_soal > 0 || latestRemedialChild.hasil.jumlah_benar + latestRemedialChild.hasil.jumlah_salah > 0))
@@ -1130,7 +1137,9 @@ export const SiswaCbtTab: React.FC = () => {
                   : item.hasil && item.total_soal > 0
                   ? Math.round((item.hasil.jumlah_benar / item.total_soal) * 100)
                   : null;
-              const pelanggaranCount = item.pelanggaran_count ?? 0;
+              const pelanggaranCount = (hasRemedialChild && isChildFinished && latestRemedialChild)
+                ? latestRemedialChild.pelanggaran_count ?? 0
+                : item.pelanggaran_count ?? 0;
               const totalSoalDisplay = latestRemedialChild?.total_soal || item.total_soal;
               const jumlahTerjawab =
                 item.jumlah_terjawab && item.jumlah_terjawab > 0
@@ -1517,7 +1526,7 @@ export const SiswaCbtTab: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Sub-Accordion Child: Riwayat Remedial & Percobaan */}
+                  {/* Sub-Accordion Child: Riwayat Sesi (Sesi Utama vs Susulan / Remedial) */}
                   {hasRemedialChild && (
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
                       <button
@@ -1530,7 +1539,13 @@ export const SiswaCbtTab: React.FC = () => {
                       >
                         <span className="flex items-center gap-1.5">
                           <History size={13} className="text-indigo-500" />
-                          <span>Riwayat Percobaan &amp; {isSusulanChild ? 'Susulan' : 'Remedial'} ({item.children!.length + 1} Sesi)</span>
+                          <span>
+                            {isSusulanChild
+                              ? 'Rincian Sesi Ujian (Sesi Utama & Susulan)'
+                              : item.children!.length > 1
+                              ? `Rincian Sesi & Remedial (${item.children!.length + 1} Sesi)`
+                              : 'Rincian Sesi & Remedial'}
+                          </span>
                         </span>
                         <ChevronDown
                           size={14}
@@ -1540,13 +1555,13 @@ export const SiswaCbtTab: React.FC = () => {
 
                       {expandedHistoryMap[item.id] && (
                         <div className="mt-2.5 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 space-y-2.5 text-xs">
-                          {/* 1. Sesi Induk (Percobaan 1) */}
+                          {/* 1. Sesi Induk (Sesi Utama / Reguler) */}
                           <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-1.5">
                                 <span className="w-2 h-2 rounded-full bg-slate-400" />
                                 <span className="font-bold text-slate-800 dark:text-slate-200">
-                                  Percobaan 1 (Ujian Reguler)
+                                  Sesi Utama (Ujian Reguler)
                                 </span>
                                 {item.status_peserta !== 'FINISHED' && (
                                   <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
@@ -1568,12 +1583,17 @@ export const SiswaCbtTab: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* 2. Sesi Anak (Percobaan 2, dst) */}
+                          {/* 2. Sesi Anak (Susulan / Remedial) */}
                           {item.children!.map((child, cIdx) => {
                             const childScore = child.hasil?.nilai_akhir ?? null;
                             const childKktp = child.kktp_threshold || 75;
                             const isLulus = childScore !== null && childScore >= childKktp;
                             const isChildSusulan = Boolean(child.is_susulan || child.tipe_peserta === 'SUSULAN');
+                            const childTitle = isChildSusulan
+                              ? 'Sesi Susulan (Ujian Pengganti)'
+                              : item.children!.length > 1
+                              ? `Sesi Remedial Ke-${cIdx + 1}`
+                              : 'Sesi Remedial';
 
                             return (
                               <div key={child.id} className="flex items-start justify-between gap-2 pt-1">
@@ -1581,7 +1601,7 @@ export const SiswaCbtTab: React.FC = () => {
                                   <div className="flex items-center gap-1.5">
                                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                     <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                                      Percobaan {cIdx + 2} ({isChildSusulan ? 'Ujian Susulan' : 'Remedial'})
+                                      {childTitle}
                                     </span>
                                     <span className={cn(
                                       "text-[9px] font-black px-1.5 py-0.2 rounded",
