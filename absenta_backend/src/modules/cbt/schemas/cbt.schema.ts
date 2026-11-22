@@ -177,7 +177,7 @@ const jadwalUjianBaseSchema = z.object({
   tanggal_mulai: z.string().datetime({ message: 'Format tanggal_mulai harus ISO DateTime' }),
   tanggal_selesai: z.string().datetime({ message: 'Format tanggal_selesai harus ISO DateTime' }),
   durasi_menit: z.number().int().min(10).max(300).default(60),
-  toleransi_terlambat_menit: z.number().int().min(0).max(120).default(15),
+  toleransi_terlambat_menit: z.number().int().min(0).max(10080).default(15),
   target_kelas_ids: z.array(z.string().uuid()).min(1, 'Pilih minimal 1 kelas target'),
   setting_keamanan: settingKeamananSchema.optional(),
 });

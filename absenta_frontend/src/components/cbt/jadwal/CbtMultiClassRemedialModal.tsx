@@ -366,7 +366,7 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
         tanggal_mulai: startIso,
         tanggal_selesai: endIso,
         durasi_menit: Number(durasiMenit) || 60,
-        toleransi_terlambat_menit: 10080, // Fleksibel 7 hari
+        toleransi_terlambat_menit: 120, // Fleksibel 120 menit (maksimal batas validasi skema)
         target_kelas_ids: targetKelas,
         bypass_overlap_guard: true,
         status: 'ACTIVE' as const,

@@ -237,7 +237,7 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
         tanggal_mulai: startIso,
         tanggal_selesai: endIso,
         durasi_menit: Number(durasiMenit) || 60,
-        toleransi_terlambat_menit: 10080, // Fleksibel 7 hari untuk remedial asinkron
+        toleransi_terlambat_menit: 120, // Fleksibel 120 menit (maksimal batas validasi skema)
         target_kelas_ids: jadwal.target_kelas_ids || [],
         status: 'ACTIVE' as const,
         setting_keamanan: {
