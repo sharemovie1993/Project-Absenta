@@ -585,10 +585,18 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                 <p className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-tight">
                   {behavioralStats.verdictTitle}
                 </p>
-                <span className="text-[9px] text-slate-500 line-clamp-1">
+                <span className="text-[9.5px] text-slate-600 dark:text-slate-400 leading-normal block mt-0.5">
                   {behavioralStats.verdictSubtitle}
                 </span>
               </div>
+            </div>
+
+            {/* Banner Narasi Deskriptif Vonis Perilaku */}
+            <div className="p-2.5 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs flex items-start gap-2">
+              <span className="font-bold text-slate-800 dark:text-slate-200 shrink-0">Catatan Analitik Sistem:</span>
+              <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-[11.5px]">
+                <strong>{behavioralStats.verdictBadge} ({behavioralStats.verdictTitle})</strong> — {behavioralStats.verdictSubtitle}
+              </p>
             </div>
           </div>
 
@@ -869,6 +877,12 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                   </tr>
                 </tbody>
               </table>
+              <div className="mt-1 px-2 py-1 bg-slate-50 border border-slate-300 rounded text-[9.5px] text-black leading-snug flex items-start gap-1.5">
+                <span className="font-bold shrink-0">Analisis Forensik Perilaku:</span>
+                <span>
+                  <strong>{behavioralStats.verdictBadge} ({behavioralStats.verdictTitle})</strong> — {behavioralStats.verdictSubtitle}
+                </span>
+              </div>
             </div>
 
             {/* 6. KRONOLOGI FORENSIK DETAIL PELANGGARAN */}
