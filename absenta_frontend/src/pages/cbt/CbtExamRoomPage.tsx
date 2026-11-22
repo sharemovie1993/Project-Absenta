@@ -86,7 +86,10 @@ export default function CbtExamRoomPage() {
   const [tokenInput, setTokenInput] = useState('');
   const [examOverview, setExamOverview] = useState<any>(null);
   const [loadingVerify, setLoadingVerify] = useState(false);
-  const [isRestoringSession, setIsRestoringSession] = useState(true);
+  const [isRestoringSession, setIsRestoringSession] = useState(() => {
+    const persisted = getSessionFromStorage();
+    return Boolean(persisted?.jadwalId && persisted?.token && persisted?.signature);
+  });
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('synced');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [errorDiagnosis, setErrorDiagnosis] = useState<{
@@ -143,87 +146,89 @@ export default function CbtExamRoomPage() {
     let isMounted = true;
 
     const restoreOrInitialize = async () => {
-      const persisted = getSessionFromStorage();
-      const urlJadwalId = searchParams.get('jadwal_id');
-      const urlToken = searchParams.get('token');
+      try {
+        const persisted = getSessionFromStorage();
+        const urlJadwalId = searchParams.get('jadwal_id');
+        const urlToken = searchParams.get('token');
 
-      // ── SKENARIO 1: PEMULIHAN SESI AKTIF (RELOAD / F5 / RECONNECT) ──
-      if (persisted?.jadwalId && persisted?.token && persisted?.signature) {
-        try {
-          setIsRestoringSession(true);
-          if (!isMounted) return;
-          setJadwalId(persisted.jadwalId);
-          setTokenInput(persisted.token);
-          setSignature(persisted.signature);
+        // ── SKENARIO 1: PEMULIHAN SESI AKTIF (RELOAD / F5 / RECONNECT) ──
+        if (persisted?.jadwalId && persisted?.token && persisted?.signature) {
+          try {
+            setIsRestoringSession(true);
+            if (!isMounted) return;
+            setJadwalId(persisted.jadwalId);
+            setTokenInput(persisted.token);
+            setSignature(persisted.signature);
 
-          const res = await cbtApi.startExamSession({
-            jadwal_ujian_id: persisted.jadwalId,
-            token_masuk: persisted.token,
-            metadata_perangkat: {
-              userAgent: navigator.userAgent,
-              reconnected: true,
-              waktu_reconnect: new Date().toISOString(),
-            },
-          });
+            const res = await cbtApi.startExamSession({
+              jadwal_ujian_id: persisted.jadwalId,
+              token_masuk: persisted.token,
+              metadata_perangkat: {
+                userAgent: navigator.userAgent,
+                reconnected: true,
+                waktu_reconnect: new Date().toISOString(),
+              },
+            });
 
-          if (!isMounted) return;
+            if (!isMounted) return;
 
-          const loadedSoal = res.soal || [];
-          setSoalList(loadedSoal);
-          setSisaWaktuDetik(res.sisa_waktu_detik || res.durasi_menit * 60);
-          setMaxViolations(res.setting_keamanan?.max_tab_switches || 3);
+            const loadedSoal = res.soal || [];
+            setSoalList(loadedSoal);
+            setSisaWaktuDetik(res.sisa_waktu_detik || res.durasi_menit * 60);
+            setMaxViolations(res.setting_keamanan?.max_tab_switches || 3);
 
-          // Muat jawaban lokal & server
-          const localAnswers = await cbtOfflineStorage.getAllAnswers(persisted.jadwalId, studentId || 'siswa');
-          const mergedMap: Record<string, { jawaban: string; isRagu: boolean }> = {};
-          if (Array.isArray(res.jawaban_tersimpan)) {
-            res.jawaban_tersimpan.forEach((item) => {
+            // Muat jawaban lokal & server
+            const localAnswers = await cbtOfflineStorage.getAllAnswers(persisted.jadwalId, studentId || 'siswa');
+            const mergedMap: Record<string, { jawaban: string; isRagu: boolean }> = {};
+            if (Array.isArray(res.jawaban_tersimpan)) {
+              res.jawaban_tersimpan.forEach((item) => {
+                mergedMap[item.soal_id] = { jawaban: item.jawaban_siswa, isRagu: item.is_ragu };
+              });
+            }
+            localAnswers.forEach((item) => {
               mergedMap[item.soal_id] = { jawaban: item.jawaban_siswa, isRagu: item.is_ragu };
             });
-          }
-          localAnswers.forEach((item) => {
-            mergedMap[item.soal_id] = { jawaban: item.jawaban_siswa, isRagu: item.is_ragu };
-          });
-          setAnswersMap(mergedMap);
+            setAnswersMap(mergedMap);
 
-          if (persisted.lastSavedIdx >= 0 && persisted.lastSavedIdx < loadedSoal.length) {
-            setCurrentIdx(persisted.lastSavedIdx);
-          }
+            if (persisted.lastSavedIdx >= 0 && persisted.lastSavedIdx < loadedSoal.length) {
+              setCurrentIdx(persisted.lastSavedIdx);
+            }
 
-          setStep('EXAM_ROOM');
-          toast.success('Sesi ujian Anda berhasil dipulihkan!');
-          return;
-        } catch (err: any) {
-          console.warn('[CBT Session Restore Failed]', err?.message);
-          clearSessionStorage();
-        } finally {
-          if (isMounted) setIsRestoringSession(false);
-        }
-      }
-
-      // ── SKENARIO 2: MASUK DARI DASHBOARD SISWA (URL QUERY PARAMS) ──
-      if (urlJadwalId) {
-        const tokenToVerify = urlToken ? urlToken.trim().toUpperCase() : 'TOKENLESS';
-        setTokenInput(tokenToVerify);
-        try {
-          setLoadingVerify(true);
-          const res = await cbtApi.verifyToken(tokenToVerify, urlJadwalId);
-          if (isMounted) {
-            setExamOverview(res);
-            setJadwalId(res.jadwal_id);
-            setStep('CONFIRMATION');
+            setStep('EXAM_ROOM');
+            toast.success('Sesi ujian Anda berhasil dipulihkan!');
             return;
+          } catch (err: any) {
+            console.warn('[CBT Session Restore Failed]', err?.message);
+            clearSessionStorage();
+          } finally {
+            if (isMounted) setIsRestoringSession(false);
           }
-        } catch (err: any) {
-          console.warn('[CBT Auto verify with urlJadwalId failed, fallback to TOKEN_GATE]', err?.message);
-        } finally {
-          if (isMounted) setLoadingVerify(false);
         }
-      } else if (urlToken) {
-        setTokenInput(urlToken.toUpperCase());
-      }
 
-      if (isMounted) setIsRestoringSession(false);
+        // ── SKENARIO 2: MASUK DARI DASHBOARD SISWA (URL QUERY PARAMS) ──
+        if (urlJadwalId) {
+          const tokenToVerify = urlToken ? urlToken.trim().toUpperCase() : 'TOKENLESS';
+          setTokenInput(tokenToVerify);
+          try {
+            setLoadingVerify(true);
+            const res = await cbtApi.verifyToken(tokenToVerify, urlJadwalId);
+            if (isMounted) {
+              setExamOverview(res);
+              setJadwalId(res.jadwal_id);
+              setStep('CONFIRMATION');
+              return;
+            }
+          } catch (err: any) {
+            console.warn('[CBT Auto verify with urlJadwalId failed, fallback to TOKEN_GATE]', err?.message);
+          } finally {
+            if (isMounted) setLoadingVerify(false);
+          }
+        } else if (urlToken) {
+          setTokenInput(urlToken.toUpperCase());
+        }
+      } finally {
+        if (isMounted) setIsRestoringSession(false);
+      }
     };
 
     restoreOrInitialize();
