@@ -27,7 +27,9 @@ import {
   Trash2,
   Lock,
   Unlock,
+  Eye,
 } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtPesertaUjian } from '@/types/cbt.types';
 import { CbtTransferNilaiModal } from '../jadwal/CbtTransferNilaiModal';
@@ -487,10 +489,59 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
       (Array.isArray(p.log_pelanggaran_json) && p.log_pelanggaran_json.length > 0)
   ).length;
 
+  const { user } = useAuthStore();
+  const currentGuruId = guruId || (user as any)?.guru_profile?.id || (user as any)?.guru_id;
+  const currentUserId = user?.id;
+  const roleName = String(user?.role?.name || '').toUpperCase();
+
+  // 1. Panitia / Admin: Memiliki otoritas penuh lintas ruang
+  const isPanitia =
+    isPanitiaView ||
+    [
+      'ADMIN',
+      'SUPERADMIN',
+      'KEPALA_SEKOLAH',
+      'WAKIL_KURIKULUM',
+      'KURIKULUM',
+      'PANITIA_CBT',
+      'ADMIN_CBT',
+    ].includes(roleName);
+
+  // 2. Pengawas Terjadwal: Memiliki wewenang HANYA jika ia terplot di sesi/ruang ini
+  const isAssignedProctor = useMemo(() => {
+    if (!activeJadwal) return false;
+    // Jika dibuka melalui daftar tugas mengawas pribadi
+    if (myPengawasData && myPengawasData.some((p: any) => p.id === activeJadwal.id)) {
+      return true;
+    }
+    const sec = activeJadwal.setting_keamanan as any;
+    if (!sec) return false;
+
+    // Cek kecocokan ID pengawas ruang
+    const p1Id = sec.pengawas_1_id || sec.pengawas_1_guru_id;
+    const p2Id = sec.pengawas_2_id || sec.pengawas_2_guru_id;
+    const pGenId = sec.pengawas_id || sec.pengawas_guru_id;
+
+    if (currentUserId && (p1Id === currentUserId || p2Id === currentUserId || pGenId === currentUserId)) {
+      return true;
+    }
+    if (currentGuruId && (p1Id === currentGuruId || p2Id === currentGuruId || pGenId === currentGuruId)) {
+      return true;
+    }
+    return false;
+  }, [activeJadwal, myPengawasData, currentUserId, currentGuruId]);
+
+  // 3. Hak Kontrol Sesi & Peserta (Proctor Execution Permission)
+  const canControlSession = isPanitia || isAssignedProctor;
+
+  // 4. Mode Spectator: Jika bukan Panitia dan bukan Pengawas terplot di sesi ini (Guru Mapel murni)
+  const isSpectatorOnly = !canControlSession;
+
+  // 5. Hak Akses Transfer Nilai ke e-Rapor (Khusus Guru Mapel pemilik Bank Soal atau Panitia)
   const isOwnerOrAdmin =
-    !guruId ||
-    activeJadwal?.BankSoal?.guru_id === guruId ||
-    activeJadwal?.setting_keamanan?.created_by_guru_id === guruId;
+    isPanitia ||
+    (currentGuruId && activeJadwal?.BankSoal?.guru_id === currentGuruId) ||
+    (currentGuruId && (activeJadwal?.setting_keamanan as any)?.created_by_guru_id === currentGuruId);
 
   const filteredItems = useMemo(() => {
     return pesertaList.filter((p) => {
@@ -708,6 +759,16 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
       label: 'Aksi',
       className: 'min-w-[130px] text-right',
       render: (_val: unknown, row: CbtPesertaUjian) => {
+        if (isSpectatorOnly) {
+          return (
+            <div className="text-right">
+              <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 italic bg-slate-50 dark:bg-slate-800/60 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700/60" title="Aksi intervensi peserta hanya dapat dilakukan oleh Pengawas Ruang atau Panitia">
+                Pengawas Ruang
+              </span>
+            </div>
+          );
+        }
+
         if (row.status === 'STANDBY') {
           const isDispensasi =
             Array.isArray((activeJadwal?.setting_keamanan as any)?.dispensasi_terlambat_siswa_ids) &&
@@ -734,45 +795,64 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
           );
         }
 
-        return (
-          <div className="inline-flex items-center gap-1.5 justify-end">
-            {(row.status === 'FINISHED' || row.status === 'DISQUALIFIED') && (
+        // 1. Siswa SUDAH SELESAI (FINISHED): Tampilkan Tuntas dan opsi Ulang kecil jika remedial
+        if (row.status === 'FINISHED') {
+          return (
+            <div className="inline-flex items-center gap-1.5 justify-end">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                <Check size={11} className="text-emerald-600" />
+                <span>Tuntas</span>
+              </span>
               <button
                 type="button"
                 onClick={() => handleRetake(row)}
-                className="text-[11px] h-7 px-2.5 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/70 hover:bg-rose-100 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95 shrink-0"
+                className="text-[10px] h-6 px-1.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50/60 font-semibold transition-all cursor-pointer inline-flex items-center gap-1"
+                title="Beri kesempatan remedial / tes ulang (Hapus jawaban & mulai dari awal)"
+              >
+                <RotateCcw size={10} />
+                <span>Ulang</span>
+              </button>
+            </div>
+          );
+        }
+
+        // 2. Siswa DIDISKUALIFIKASI (DISQUALIFIED): Tampilkan Buka Blokir atau Ulang dari Nol
+        if (row.status === 'DISQUALIFIED') {
+          return (
+            <div className="inline-flex items-center gap-1.5 justify-end">
+              <button
+                type="button"
+                onClick={() => handleReset(row)}
+                className="text-[11px] h-7 px-2.5 rounded-lg border border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-300 dark:bg-emerald-950/60 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95 shrink-0"
+                title="Buka blokir agar siswa dapat melanjutkan ujian (Jawaban Tersimpan Aman)"
+              >
+                <Unlock size={11} className="text-emerald-700 dark:text-emerald-400" />
+                <span>Buka Blokir</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRetake(row)}
+                className="text-[11px] h-7 px-2 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/70 hover:bg-rose-100 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95 shrink-0"
                 title="Hapus seluruh jawaban dan mulai ulang dari nol"
               >
                 <RotateCcw size={11} />
-                <span>Ulang dari Nol</span>
+                <span>Ulang Nol</span>
               </button>
-            )}
+            </div>
+          );
+        }
+
+        // 3. Siswa SEDANG UJIAN (IN_PROGRESS): Hanya butuh tombol Izinkan Masuk jika HP mati/logout
+        return (
+          <div className="inline-flex items-center gap-1.5 justify-end">
             <button
               type="button"
               onClick={() => handleReset(row)}
-              className={cn(
-                "text-[11px] h-7 px-2.5 rounded-lg border font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95 shrink-0",
-                row.status === 'DISQUALIFIED'
-                  ? "border-emerald-300 text-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-300 dark:bg-emerald-950/60"
-                  : "border-amber-300 text-amber-800 bg-amber-50/70 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:bg-amber-950/60"
-              )}
-              title={
-                row.status === 'DISQUALIFIED'
-                  ? "Buka blokir agar siswa dapat melanjutkan ujian (Jawaban Tersimpan Aman)"
-                  : "Izinkan siswa login kembali jika HP mati atau logout (Jawaban Tersimpan Aman)"
-              }
+              className="text-[11px] h-7 px-2.5 rounded-lg border border-amber-300 text-amber-800 bg-amber-50/70 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:bg-amber-950/60 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95 shrink-0"
+              title="Izinkan siswa login kembali jika HP mati, baterai habis, atau logout (Jawaban Tersimpan Aman)"
             >
-              {row.status === 'DISQUALIFIED' ? (
-                <>
-                  <Unlock size={11} className="text-emerald-700 dark:text-emerald-400" />
-                  <span>Buka Blokir</span>
-                </>
-              ) : (
-                <>
-                  <RotateCw size={11} className="text-amber-700 dark:text-amber-400" />
-                  <span>Izinkan Masuk</span>
-                </>
-              )}
+              <RotateCw size={11} className="text-amber-700 dark:text-amber-400" />
+              <span>Izinkan Masuk</span>
             </button>
           </div>
         );
@@ -989,6 +1069,23 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
         </div>
       )}
 
+      {/* ── BANNER MODE PEMANTAU GURU MAPEL (SPECTATOR MODE - ZERO DISRUPTION) ── */}
+      {isSpectatorOnly && (
+        <div className="mx-3 sm:mx-4 my-2 px-3.5 py-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-sky-950 dark:text-sky-200 flex items-center justify-between gap-3 text-xs shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+              <Eye size={14} />
+            </div>
+            <p className="truncate sm:whitespace-normal">
+              <strong className="font-bold">Mode Pemantau Guru Mapel (Read-Only)</strong>: Anda memantau jalannya ujian kelas ini secara langsung. Kontrol sesi (Jeda, Selesaikan) & aksi peserta dikelola oleh Pengawas Ruang resmi (<strong>{activeJadwal?.setting_keamanan?.pengawas_1_nama || 'Pengawas Ruang'}</strong>) atau Panitia CBT.
+            </p>
+          </div>
+          <span className="px-2 py-0.5 rounded-md font-mono text-[9px] font-black uppercase tracking-wider bg-sky-200/70 dark:bg-sky-800 text-sky-800 dark:text-sky-200 shrink-0">
+            Spectator
+          </span>
+        </div>
+      )}
+
       {/* ── BARIS 3: TOOLBAR OPERASIONAL & FILTER RINGKAS (ZERO VERTICAL WASTE) ── */}
       <div className="p-2.5 sm:p-3 bg-slate-50/70 dark:bg-slate-800/40 flex flex-wrap items-center justify-between gap-2.5">
         {/* Kiri: Filter status tabs & Search */}
@@ -1045,8 +1142,8 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
 
         {/* Kanan: Action buttons */}
         <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-          {/* 1. Kontrol Sesi (Aktifkan / Jeda / Lanjutkan / Selesaikan) */}
-          {(activeJadwal?.status === 'DRAFT' || activeJadwal?.status === 'PAUSED') && (
+          {/* 1. Kontrol Sesi (Aktifkan / Jeda / Lanjutkan / Selesaikan - HANYA PENGAWAS TERPLOT & PANITIA) */}
+          {canControlSession && (activeJadwal?.status === 'DRAFT' || activeJadwal?.status === 'PAUSED') && (
             <button
               type="button"
               onClick={handleActivateSession}
@@ -1078,7 +1175,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             </button>
           )}
 
-          {activeJadwal?.status === 'ACTIVE' && (
+          {canControlSession && activeJadwal?.status === 'ACTIVE' && (
             <>
               <button
                 type="button"
@@ -1103,8 +1200,8 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             </>
           )}
 
-          {/* 2. TTD Digital Pengawas (Hanya jika dibuka oleh Pengawas langsung, bukan di posko Panitia) */}
-          {!isPanitiaView && (
+          {/* 2. TTD Digital Pengawas (Hanya jika dibuka oleh Pengawas Resmi Ruangan, bukan di posko Panitia atau Guru Mapel) */}
+          {!isPanitiaView && isAssignedProctor && (
             <button
               type="button"
               onClick={() => setIsSignModalOpen(true)}
@@ -1302,31 +1399,56 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                   )}
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0">
-                  {p.status === 'STANDBY' ? (
-                    (() => {
-                      const isDispensasi =
-                        Array.isArray((activeJadwal?.setting_keamanan as any)?.dispensasi_terlambat_siswa_ids) &&
-                        (activeJadwal.setting_keamanan as any).dispensasi_terlambat_siswa_ids.includes(p.siswa_id);
-                      return isDispensasi ? (
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200">
-                          Izin Telat ✓
+                {!isSpectatorOnly ? (
+                  <div className="flex items-center gap-1 shrink-0">
+                    {p.status === 'STANDBY' ? (
+                      (() => {
+                        const isDispensasi =
+                          Array.isArray((activeJadwal?.setting_keamanan as any)?.dispensasi_terlambat_siswa_ids) &&
+                          (activeJadwal.setting_keamanan as any).dispensasi_terlambat_siswa_ids.includes(p.siswa_id);
+                        return isDispensasi ? (
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200">
+                            Izin Telat ✓
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleGrantDispensasi(p)}
+                            className="text-[10px] h-6 px-2 border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold rounded-lg cursor-pointer flex items-center gap-1"
+                            title="Beri izin masuk jika siswa terlambat"
+                          >
+                            <Clock size={10} />
+                            <span>Izin Telat</span>
+                          </button>
+                        );
+                      })()
+                    ) : p.status === 'FINISHED' ? (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          <Check size={10} className="text-emerald-600" />
+                          <span>Tuntas</span>
                         </span>
-                      ) : (
                         <button
                           type="button"
-                          onClick={() => handleGrantDispensasi(p)}
-                          className="text-[10px] h-6 px-2 border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold rounded-lg cursor-pointer flex items-center gap-1"
-                          title="Beri izin masuk jika siswa terlambat"
+                          onClick={() => handleRetake(p)}
+                          className="text-[10px] h-6 px-1.5 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-600 hover:border-rose-300 font-semibold rounded-md cursor-pointer flex items-center gap-0.5"
+                          title="Beri kesempatan remedial / tes ulang (Hapus jawaban & mulai dari awal)"
                         >
-                          <Clock size={10} />
-                          <span>Izin Telat</span>
+                          <RotateCcw size={10} />
+                          <span>Ulang</span>
                         </button>
-                      );
-                    })()
-                  ) : (
-                    <>
-                      {(p.status === 'FINISHED' || p.status === 'DISQUALIFIED') && (
+                      </div>
+                    ) : p.status === 'DISQUALIFIED' ? (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleReset(p)}
+                          className="text-[11px] h-7 px-2 border border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0"
+                          title="Buka blokir agar siswa dapat melanjutkan ujian (Jawaban Aman)"
+                        >
+                          <Unlock size={11} className="text-emerald-700" />
+                          <span>Buka Blokir</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleRetake(p)}
@@ -1336,37 +1458,26 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                           <RotateCcw size={11} />
                           <span>Ulang Nol</span>
                         </button>
-                      )}
+                      </div>
+                    ) : (
                       <button
                         type="button"
                         onClick={() => handleReset(p)}
-                        className={cn(
-                          "text-[11px] h-7 px-2 border font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0",
-                          p.status === 'DISQUALIFIED'
-                            ? "border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100"
-                            : "border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100"
-                        )}
-                        title={
-                          p.status === 'DISQUALIFIED'
-                            ? "Buka blokir agar siswa dapat melanjutkan ujian (Jawaban Aman)"
-                            : "Izinkan siswa login kembali jika HP mati atau logout (Jawaban Aman)"
-                        }
+                        className="text-[11px] h-7 px-2 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0"
+                        title="Izinkan siswa login kembali jika HP mati atau logout (Jawaban Aman)"
                       >
-                        {p.status === 'DISQUALIFIED' ? (
-                          <>
-                            <Unlock size={11} className="text-emerald-700" />
-                            <span>Buka Blokir</span>
-                          </>
-                        ) : (
-                          <>
-                            <RotateCw size={11} className="text-amber-700" />
-                            <span>Izinkan Masuk</span>
-                          </>
-                        )}
+                        <RotateCw size={11} className="text-amber-700" />
+                        <span>Izinkan Masuk</span>
                       </button>
-                    </>
-                  )}
-                </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="shrink-0 text-right">
+                    <span className="text-[10px] font-semibold text-slate-400 italic bg-slate-50 dark:bg-slate-800/60 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700/60">
+                      Pengawas
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })
