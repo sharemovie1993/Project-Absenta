@@ -357,7 +357,7 @@ export function normalizeFromSesiAbsensi(raw: any): KbmItem {
   const isFinished = raw.isFinished ?? raw._summary?.isFinished ?? summary.isFinished ?? raw.status?.isFinished ?? (raw.status === 'SELESAI');
   const isOverdue = raw.isOverdue ?? raw.is_overdue ?? raw._summary?.isOverdue ?? summary.isOverdue ?? raw.status?.isOverdue ?? false;
   const isUpcoming = raw.isUpcoming ?? raw._summary?.isUpcoming ?? summary.isUpcoming ?? raw.status?.isUpcoming ?? false;
-  const isVirtual = Boolean(raw.is_virtual ?? raw.isVirtual ?? (typeof raw.id === 'string' && (raw.id.startsWith('sched_') || raw.status === 'MENDATANG')));
+  const isVirtual = Boolean(raw.is_virtual ?? raw.isVirtual ?? (typeof raw.id === 'string' && raw.id.startsWith('sched_')));
   const teacherStatus = raw.teacherStatus ?? raw._summary?.teacherStatus ?? summary.teacherStatus ?? raw.guru_status ?? (raw.AbsenGuru?.[0]?.status) ?? 'BELUM_TAP';
 
   const status: KbmStatus = {

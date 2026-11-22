@@ -751,7 +751,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               {/* Mulai KBM (Foto) Button */}
-              {isReadyToOpen && !isLive && !isFinished && !isOverdue && onOpenPhotoModal && (
+              {!isLive && !isFinished && !isOverdue && onOpenPhotoModal && (
                 <Button
                   type="button"
                   size="sm"
@@ -759,7 +759,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                     e.stopPropagation();
                     onOpenPhotoModal(item);
                   }}
-                  className="h-8 px-3.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-900/20"
+                  className="h-8 px-3.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-900/20 active:scale-95 transition-all"
                 >
                   <Camera size={13} />
                   <span>{isSesiKegiatan ? `Mulai ${kegiatanNamaLabel}` : "Mulai KBM"}</span>
@@ -767,7 +767,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               )}
 
               {/* 🎯 MEJA KERJA KELAS (ZEN LIVE WORKSPACE) */}
-              {onOpenWorkspace && (isLive || (isTeacherPresent && !isOverdue && !isFinished)) && (
+              {onOpenWorkspace && !isFinished && !isOverdue && (
                 <Button
                   type="button"
                   size="sm"
@@ -776,7 +776,12 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                     onOpenWorkspace(item);
                   }}
                   title="Buka Meja Kerja Kelas (Ruang Fokus Presensi Siswa)"
-                  className="h-8 px-3.5 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-950/30 active:scale-95 transition-all animate-pulse"
+                  className={cn(
+                    "h-8 px-3.5 rounded-xl text-xs font-black border-none flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 transition-all",
+                    isLive
+                      ? "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-950/30 animate-pulse"
+                      : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-950/30"
+                  )}
                 >
                   <Sparkles size={13} className="text-amber-300" />
                   <span>🎯 Meja Kerja Kelas</span>
@@ -816,24 +821,6 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 >
                   <Camera size={13} className="text-emerald-500" />
                   <span>Foto Kelas</span>
-                </Button>
-              )}
-
-              {/* Buka Bahan Ajar Button */}
-              {onOpenBahanAjar && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenBahanAjar(item);
-                  }}
-                  title="Buka Bahan Ajar Digital & Panduan KBM"
-                  className="h-8 px-2.5 rounded-xl text-xs font-black bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5 cursor-pointer border border-indigo-200 dark:border-indigo-800"
-                >
-                  <BookOpen size={13} className="text-indigo-600 dark:text-indigo-400" />
-                  <span>Bahan Ajar</span>
                 </Button>
               )}
 
