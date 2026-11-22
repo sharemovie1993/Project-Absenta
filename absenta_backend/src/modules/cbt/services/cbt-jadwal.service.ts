@@ -334,7 +334,13 @@ export class CbtJadwalService {
 
     const token = data.token_ujian ? String(data.token_ujian).trim().toUpperCase() : this.generateToken();
 
-    return prisma.cbtJadwalUjian.create({
+    // ── BEHAVIOR KHUSUS SESI REMEDIAL & SUSULAN ──
+    // Sesi yang dibuat dari remedial otomatis diaktifkan (status: 'ACTIVE')
+    // agar guru tidak perlu mengaktifkannya secara manual, dan siswa bisa langsung mulai ujian.
+    const initialStatus = isRemedial || data.status === 'ACTIVE' ? 'ACTIVE' : (data.status as any) || 'DRAFT';
+    const waktuAktif = initialStatus === 'ACTIVE' ? new Date() : null;
+
+    const newJadwal = await prisma.cbtJadwalUjian.create({
       data: {
         tenant_id: tenantId,
         bank_soal_id: data.bank_soal_id,
@@ -357,12 +363,51 @@ export class CbtJadwalService {
           token_refresh_interval: 0,
           ...(data.setting_keamanan || {}),
         },
-        status: (data.status as any) || 'DRAFT',
+        status: initialStatus,
+        waktu_diaktifkan: waktuAktif,
       },
       include: {
         BankSoal: { select: { kode_bank: true, judul: true } },
       },
     });
+
+    // Jika langsung AKTIF (seperti sesi Remedial), pre-heat bundle ke Redis agar instan siap dikerjakan siswa
+    if (initialStatus === 'ACTIVE') {
+      try {
+        const redis = getRedisConnection();
+        if (redis) {
+          const soalList = await prisma.cbtSoal.findMany({
+            where: { tenant_id: tenantId, bank_soal_id: newJadwal.bank_soal_id },
+            orderBy: { nomor_urut: 'asc' },
+            select: {
+              id: true,
+              nomor_urut: true,
+              jenis_soal: true,
+              konten_pertanyaan: true,
+              gambar_stimulus_url: true,
+              bobot: true,
+              opsi_jawaban_json: true,
+            },
+          });
+
+          const bundlePayload = JSON.stringify({
+            jadwal_id: newJadwal.id,
+            nama_sesi: newJadwal.nama_sesi,
+            durasi_menit: newJadwal.durasi_menit,
+            setting_keamanan: newJadwal.setting_keamanan,
+            total_soal: soalList.length,
+            soal: soalList,
+          });
+
+          await redis.set(`cbt:${tenantId}:bundle:${newJadwal.id}`, bundlePayload, 'EX', 86400).catch(() => null);
+          await redis.set(`cbt:${tenantId}:token:${newJadwal.token_ujian}`, newJadwal.id, 'EX', 86400).catch(() => null);
+        }
+      } catch (redisErr: any) {
+        console.warn('[CBT Remedial Auto-Activate Redis Pre-heat Warn]', redisErr?.message);
+      }
+    }
+
+    return newJadwal;
   }
 
   /**

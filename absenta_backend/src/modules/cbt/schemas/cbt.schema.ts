@@ -180,6 +180,7 @@ const jadwalUjianBaseSchema = z.object({
   toleransi_terlambat_menit: z.number().int().min(0).max(10080).default(15),
   target_kelas_ids: z.array(z.string().uuid()).min(1, 'Pilih minimal 1 kelas target'),
   setting_keamanan: settingKeamananSchema.optional(),
+  status: z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED']).optional(),
 });
 
 /**
