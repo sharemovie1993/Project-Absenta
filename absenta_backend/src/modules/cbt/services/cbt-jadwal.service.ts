@@ -390,10 +390,48 @@ export class CbtJadwalService {
   }
 
   /**
+   * Validasi Otorisasi Pengawas / Proktor / Panitia
+   * Memastikan pengawas ruang HANYA dapat mengontrol sesi di ruangan miliknya sendiri
+   */
+  private static assertProctorOrPanitiaPermission(jadwal: any, currentUser?: any) {
+    if (!currentUser) return;
+    const role = String(currentUser.roleName || currentUser.role?.name || currentUser.role || '').toUpperCase();
+    const isPrivileged = [
+      'ADMIN',
+      'SUPERADMIN',
+      'KEPALA_SEKOLAH',
+      'WAKIL_KURIKULUM',
+      'KURIKULUM',
+      'PANITIA_CBT',
+      'ADMIN_CBT',
+    ].includes(role);
+
+    if (isPrivileged) return;
+
+    const sec = (jadwal.setting_keamanan as any) || {};
+    const p1Id = sec.pengawas_1_id || sec.pengawas_1_guru_id;
+    const p2Id = sec.pengawas_2_id || sec.pengawas_2_guru_id;
+    const proktorId = sec.proktor_id || sec.pengawas_id || sec.pengawas_guru_id;
+
+    const effectiveGuruId = currentUser.guru_profile?.id || currentUser.guru_id;
+    const effectiveUserId = currentUser.id;
+
+    const isAssigned = Boolean(
+      (effectiveGuruId && (p1Id === effectiveGuruId || p2Id === effectiveGuruId || proktorId === effectiveGuruId)) ||
+      (effectiveUserId && (p1Id === effectiveUserId || p2Id === effectiveUserId || proktorId === effectiveUserId))
+    );
+
+    if (!isAssigned) {
+      throw new Error('Akses ditolak: Anda bukan pengawas atau proktor yang ditugaskan pada ruangan ini.');
+    }
+  }
+
+  /**
    * Generate token baru untuk jadwal yang aktif
    */
-  static async regenerateToken(tenantId: string, id: string) {
-    await this.getById(tenantId, id);
+  static async regenerateToken(tenantId: string, id: string, currentUser?: any) {
+    const jadwal = await this.getById(tenantId, id);
+    this.assertProctorOrPanitiaPermission(jadwal, currentUser);
     const newToken = this.generateToken();
 
     await prisma.cbtJadwalUjian.update({
@@ -414,8 +452,9 @@ export class CbtJadwalService {
    * Mengaktifkan Sesi Ujian & Pre-heating Redis Cache Bundle
    * Memastikan 3000 user dapat mengambil bundle soal secara instan tanpa query database berulang.
    */
-  static async activateJadwal(tenantId: string, id: string) {
+  static async activateJadwal(tenantId: string, id: string, currentUser?: any) {
     const jadwal = await this.getById(tenantId, id);
+    this.assertProctorOrPanitiaPermission(jadwal, currentUser);
 
     // Ambil butir soal lengkap
     const soalList = await prisma.cbtSoal.findMany({
@@ -467,8 +506,9 @@ export class CbtJadwalService {
   /**
    * Pause Jadwal Ujian
    */
-  static async pauseJadwal(tenantId: string, id: string) {
-    await this.getById(tenantId, id);
+  static async pauseJadwal(tenantId: string, id: string, currentUser?: any) {
+    const jadwal = await this.getById(tenantId, id);
+    this.assertProctorOrPanitiaPermission(jadwal, currentUser);
 
     return prisma.cbtJadwalUjian.update({
       where: { id },
@@ -479,8 +519,9 @@ export class CbtJadwalService {
   /**
    * Menyelesaikan Jadwal Ujian & Menjalankan Auto-Transfer ke e-Rapor jika diaktifkan
    */
-  static async completeJadwal(tenantId: string, id: string) {
+  static async completeJadwal(tenantId: string, id: string, currentUser?: any) {
     const jadwal = await this.getById(tenantId, id);
+    this.assertProctorOrPanitiaPermission(jadwal, currentUser);
 
     const redis = getRedisConnection();
     if (redis) {

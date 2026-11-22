@@ -123,6 +123,25 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const [selectedForensicPeserta, setSelectedForensicPeserta] = useState<CbtPesertaUjian | null>(null);
   const [isForensicModalOpen, setIsForensicModalOpen] = useState(false);
 
+  const { user } = useAuthStore();
+  const currentGuruId = guruId || (user as any)?.guru_profile?.id || (user as any)?.guru_id;
+  const currentUserId = user?.id;
+  const roleName = String(user?.role?.name || '').toUpperCase();
+
+  // 1. Panitia / Admin: Memiliki otoritas penuh lintas ruang
+  const isPrivilegedPanitia = [
+    'ADMIN',
+    'SUPERADMIN',
+    'KEPALA_SEKOLAH',
+    'WAKIL_KURIKULUM',
+    'KURIKULUM',
+    'PANITIA_CBT',
+    'ADMIN_CBT',
+  ].includes(roleName);
+
+  // Jika user ber-role GURU murni, isPanitiaView dari parent tidak boleh menjadikannya panitia
+  const isPanitia = isPrivilegedPanitia || (isPanitiaView && roleName !== 'GURU');
+
   // Sync bila initialJadwalId berubah dari luar
   useEffect(() => {
     if (initialJadwalId) {
@@ -143,9 +162,30 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     return jadwalData?.items || [];
   }, [schedulesList, myPengawasData, jadwalData]);
 
+  // SSOT: Ruang yang dapat diakses oleh user saat ini
+  // Jika Panitia / Admin: dapat melihat seluruh ruang
+  // Jika Pengawas Ruang murni: HANYA tampilkan ruang di mana ia ditugaskan
+  const filteredSchedulesForViewer = useMemo(() => {
+    if (isPanitia) return availableSchedules;
+    return availableSchedules.filter((j) => {
+      const sec = (j.setting_keamanan as any) || {};
+      const p1 = sec.pengawas_1_id || sec.pengawas_1_guru_id;
+      const p2 = sec.pengawas_2_id || sec.pengawas_2_guru_id;
+      const pr = sec.proktor_id || sec.pengawas_id || sec.pengawas_guru_id;
+      const isAssigned = Boolean(
+        (currentGuruId && (p1 === currentGuruId || p2 === currentGuruId || pr === currentGuruId)) ||
+        (currentUserId && (p1 === currentUserId || p2 === currentUserId || pr === currentUserId)) ||
+        (myPengawasData && myPengawasData.some((p: any) => p.id === j.id))
+      );
+      // Jika sesi ini adalah initialJadwalId yang sengaja dibuka (misal oleh Guru Mapel mode spectator), tetap izinkan melihat
+      if (j.id === initialJadwalId) return true;
+      return isAssigned;
+    });
+  }, [availableSchedules, isPanitia, currentGuruId, currentUserId, myPengawasData, initialJadwalId]);
+
   // Urutan Ruang Natural (R.01, R.02, dst)
   const sortedSchedules = useMemo(() => {
-    return [...availableSchedules].sort((a, b) => {
+    return [...filteredSchedulesForViewer].sort((a, b) => {
       const infoA = parseSessionLabel(a);
       const infoB = parseSessionLabel(b);
       const numA = parseInt(infoA.roomCode.replace(/\D/g, ''), 10) || 9999;
@@ -153,14 +193,14 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
       if (numA !== numB) return numA - numB;
       return infoA.roomCode.localeCompare(infoB.roomCode);
     });
-  }, [availableSchedules]);
+  }, [filteredSchedulesForViewer]);
 
   // Auto-select jadwal pertama jika belum dipilih
   useEffect(() => {
-    if (!selectedJadwalId && availableSchedules.length > 0) {
-      setSelectedJadwalId(availableSchedules[0].id);
+    if (!selectedJadwalId && filteredSchedulesForViewer.length > 0) {
+      setSelectedJadwalId(filteredSchedulesForViewer[0].id);
     }
-  }, [availableSchedules, selectedJadwalId]);
+  }, [filteredSchedulesForViewer, selectedJadwalId]);
 
   // Query detail jadwal aktif secara reaktif untuk menjamin data setting_keamanan & TTD selalu teranyar
   const { data: activeJadwalDetail } = useQuery({
@@ -171,8 +211,8 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
 
   const activeJadwal = useMemo(() => {
     if (activeJadwalDetail) return activeJadwalDetail;
-    return availableSchedules.find((j) => j.id === selectedJadwalId) || availableSchedules[0];
-  }, [availableSchedules, selectedJadwalId, activeJadwalDetail]);
+    return filteredSchedulesForViewer.find((j) => j.id === selectedJadwalId) || filteredSchedulesForViewer[0] || availableSchedules[0];
+  }, [filteredSchedulesForViewer, availableSchedules, selectedJadwalId, activeJadwalDetail]);
 
   const activeInfo = useMemo(() => parseSessionLabel(activeJadwal), [activeJadwal]);
 
@@ -488,25 +528,6 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
       p.status === 'DISQUALIFIED' ||
       (Array.isArray(p.log_pelanggaran_json) && p.log_pelanggaran_json.length > 0)
   ).length;
-
-  const { user } = useAuthStore();
-  const currentGuruId = guruId || (user as any)?.guru_profile?.id || (user as any)?.guru_id;
-  const currentUserId = user?.id;
-  const roleName = String(user?.role?.name || '').toUpperCase();
-
-  // 1. Panitia / Admin: Memiliki otoritas penuh lintas ruang
-  const isPrivilegedPanitia = [
-    'ADMIN',
-    'SUPERADMIN',
-    'KEPALA_SEKOLAH',
-    'WAKIL_KURIKULUM',
-    'KURIKULUM',
-    'PANITIA_CBT',
-    'ADMIN_CBT',
-  ].includes(roleName);
-
-  // Jika user ber-role GURU murni, isPanitiaView dari parent tidak boleh menjadikannya panitia
-  const isPanitia = isPrivilegedPanitia || (isPanitiaView && roleName !== 'GURU');
 
   // 2. Pengawas Terjadwal: Memiliki wewenang HANYA jika ia terplot di sesi/ruang ini
   const isAssignedProctor = useMemo(() => {

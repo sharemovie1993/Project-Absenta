@@ -70,7 +70,7 @@ export class CbtJadwalController {
     try {
       const { tenant_id } = req.user!;
       const { id } = req.params;
-      const result = await CbtJadwalService.regenerateToken(tenant_id, id);
+      const result = await CbtJadwalService.regenerateToken(tenant_id, id, req.user);
       return sendResponse(reply, 200, true, 'Token ujian baru berhasil digenerate', result);
     } catch (error: any) {
       return sendError(reply, 400, error.message || 'Gagal memperbarui token ujian');
@@ -81,7 +81,7 @@ export class CbtJadwalController {
     try {
       const { tenant_id } = req.user!;
       const { id } = req.params;
-      const result = await CbtJadwalService.activateJadwal(tenant_id, id);
+      const result = await CbtJadwalService.activateJadwal(tenant_id, id, req.user);
       return sendResponse(reply, 200, true, 'Sesi ujian berhasil diaktifkan & bundle soal ter-cache', result);
     } catch (error: any) {
       return sendError(reply, 400, error.message || 'Gagal mengaktifkan jadwal ujian');
@@ -92,7 +92,7 @@ export class CbtJadwalController {
     try {
       const { tenant_id } = req.user!;
       const { id } = req.params;
-      const result = await CbtJadwalService.pauseJadwal(tenant_id, id);
+      const result = await CbtJadwalService.pauseJadwal(tenant_id, id, req.user);
       return sendResponse(reply, 200, true, 'Sesi ujian berhasil dijeda', result);
     } catch (error: any) {
       return sendError(reply, 400, error.message || 'Gagal menjeda jadwal ujian');
@@ -103,7 +103,7 @@ export class CbtJadwalController {
     try {
       const { tenant_id } = req.user!;
       const { id } = req.params;
-      const result = await CbtJadwalService.completeJadwal(tenant_id, id);
+      const result = await CbtJadwalService.completeJadwal(tenant_id, id, req.user);
       return sendResponse(reply, 200, true, 'Sesi ujian berhasil diselesaikan', result);
     } catch (error: any) {
       return sendError(reply, 400, error.message || 'Gagal menyelesaikan jadwal ujian');
