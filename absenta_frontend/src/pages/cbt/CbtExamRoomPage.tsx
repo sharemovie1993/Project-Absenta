@@ -1205,8 +1205,20 @@ export default function CbtExamRoomPage() {
 
     // ─── RENDER 3: SELESAI / COMPLETED SCREEN (RICH SUBMISSION RECEIPT) ─────────
     if (step === 'COMPLETED') {
-      const studentFullName = user?.nama_lengkap || user?.name || (user as any)?.siswa?.nama_lengkap || 'Siswa';
-      const studentFirstName = studentFullName.split(' ')[0] || 'Siswa';
+      const studentFullName =
+        user?.full_name ||
+        (user as any)?.nama_lengkap ||
+        (user as any)?.name ||
+        (user as any)?.siswa_profile?.nama_lengkap ||
+        (user as any)?.siswa?.nama_lengkap ||
+        (user as any)?.nama ||
+        'Siswa';
+      const rawFirstName = studentFullName.trim().split(' ')[0] || 'Siswa';
+      const studentFirstName =
+        rawFirstName.length > 1
+          ? rawFirstName.charAt(0).toUpperCase() + rawFirstName.slice(1).toLowerCase()
+          : rawFirstName.toUpperCase();
+
       const mapelName = examOverview?.mapel || examOverview?.judul_bank || 'Ujian CBT';
       const totalSoalCount = finalResult?.total_soal || soalList.length || examOverview?.total_soal || 0;
       const terjawabCount = finalResult?.jumlah_terjawab ?? Object.keys(answersMap).filter((k) => Boolean(answersMap[k]?.jawaban)).length;
