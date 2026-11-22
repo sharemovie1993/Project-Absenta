@@ -779,32 +779,20 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
 
                         <div className="flex items-center gap-2 shrink-0">
                           {st.isSusulan ? (
-                            <div className="text-right">
-                              <div className="px-2 py-0.5 rounded-lg text-xs font-black border bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
-                                SUSULAN
-                              </div>
-                              <div className="text-[9px] sm:text-[9.5px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">
-                                Belum Ujian (Standby)
-                              </div>
-                            </div>
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 flex items-center gap-1.5">
+                              <Clock size={11} className="stroke-[2.5]" />
+                              <span>Susulan</span>
+                            </span>
+                          ) : isBelow ? (
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/60 flex items-center gap-1.5">
+                              <span className="font-mono font-black">{st.nilaiAwal !== null ? st.nilaiAwal : '-'}</span>
+                              <span className="text-[10px] text-rose-500 font-medium">· Remedial</span>
+                            </span>
                           ) : (
-                            <div className="text-right">
-                              <div
-                                className={cn(
-                                  'font-black text-xs font-mono',
-                                  st.nilaiAwal === null
-                                    ? 'text-slate-400'
-                                    : isBelow
-                                    ? 'text-rose-600 dark:text-rose-400'
-                                    : 'text-emerald-600 dark:text-emerald-400'
-                                )}
-                              >
-                                {st.nilaiAwal !== null ? `${st.nilaiAwal}` : '-'}
-                              </div>
-                              <div className="text-[9px] sm:text-[9.5px] font-bold text-slate-400">
-                                {isBelow ? 'Di Bawah KKTP' : 'Tuntas'}
-                              </div>
-                            </div>
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 flex items-center gap-1.5">
+                              <span className="font-mono font-black">{st.nilaiAwal !== null ? st.nilaiAwal : '-'}</span>
+                              <span className="text-[10px] text-emerald-600 font-medium">· Tuntas</span>
+                            </span>
                           )}
                         </div>
                       </div>
