@@ -114,6 +114,7 @@ export default function CbtExamRoomPage() {
   const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false);
   const [isMobileQuestionDrawerOpen, setIsMobileQuestionDrawerOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showManualToken, setShowManualToken] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const isSubmittingRef = useRef(false);
@@ -201,24 +202,25 @@ export default function CbtExamRoomPage() {
       }
 
       // ── SKENARIO 2: MASUK DARI DASHBOARD SISWA (URL QUERY PARAMS) ──
-      if (urlToken) {
-        setTokenInput(urlToken.toUpperCase());
-      }
-
-      if (urlJadwalId && urlToken) {
+      if (urlJadwalId) {
+        const tokenToVerify = urlToken ? urlToken.trim().toUpperCase() : 'TOKENLESS';
+        setTokenInput(tokenToVerify);
         try {
           setLoadingVerify(true);
-          const res = await cbtApi.verifyToken(urlToken.toUpperCase(), urlJadwalId);
+          const res = await cbtApi.verifyToken(tokenToVerify, urlJadwalId);
           if (isMounted) {
             setExamOverview(res);
             setJadwalId(res.jadwal_id);
             setStep('CONFIRMATION');
+            return;
           }
         } catch (err: any) {
-          // Token belum dibuka atau belum aktif, biarkan siswa di TOKEN_GATE dengan field terisi
+          console.warn('[CBT Auto verify with urlJadwalId failed, fallback to TOKEN_GATE]', err?.message);
         } finally {
           if (isMounted) setLoadingVerify(false);
         }
+      } else if (urlToken) {
+        setTokenInput(urlToken.toUpperCase());
       }
 
       if (isMounted) setIsRestoringSession(false);
@@ -844,79 +846,101 @@ export default function CbtExamRoomPage() {
             </div>
 
             <div className="space-y-1">
-              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Masuk Ruang Ujian CBT</h1>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                {activeRemedial && !showManualToken ? 'Sesi Ujian CBT Tersedia' : 'Masuk Ruang Ujian CBT'}
+              </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Masukkan 6 digit token ujian resmi dari pengawas ruangan
+                {activeRemedial && !showManualToken
+                  ? 'Sesi ujian Anda telah disiapkan oleh guru dan siap untuk dikerjakan'
+                  : 'Masukkan 6 digit token ujian resmi dari pengawas ruangan'}
               </p>
             </div>
 
             {/* 1-Click Remedial Entry Card (Bebas Token) */}
-            {activeRemedial && (
-              <div className="text-left p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-gradient-to-br from-indigo-50/80 to-purple-50/50 dark:from-indigo-950/40 dark:to-purple-950/30 space-y-2.5">
+            {activeRemedial && !showManualToken && (
+              <div className="text-left p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800/60 bg-gradient-to-br from-indigo-50/80 to-purple-50/50 dark:from-indigo-950/40 dark:to-purple-950/30 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-300 font-bold text-xs">
                     <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-                    <span>Sesi Remedial Terbuka</span>
+                    <span>Sesi Siap Dikerjakan</span>
                   </div>
                   <Badge variant="success" className="text-[10px] px-2 py-0.5">
-                    Bebas Token
+                    {activeRemedial.is_tokenless ? 'Bebas Token' : `Token: ${activeRemedial.token_ujian || '-'}`}
                   </Badge>
                 </div>
-                <div className="space-y-0.5">
-                  <div className="font-bold text-sm text-slate-900 dark:text-white">
+                <div className="space-y-1">
+                  <div className="font-bold text-base text-slate-900 dark:text-white">
                     {activeRemedial.mapel || activeRemedial.judul_bank}
                   </div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400">
-                    Guru: {activeRemedial.guru || 'Guru Mapel'} • {activeRemedial.total_soal} Soal ({activeRemedial.durasi_menit} Menit)
+                  <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2 flex-wrap">
+                    <span>Guru: {activeRemedial.guru || 'Guru Mapel'}</span>
+                    <span>•</span>
+                    <span>{activeRemedial.total_soal} Butir Soal ({activeRemedial.durasi_menit} Menit)</span>
                   </div>
                 </div>
                 <Button
                   type="button"
                   onClick={() => handleStartDirectRemedial(activeRemedial)}
                   disabled={loadingVerify}
-                  className="w-full h-9 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer mt-2"
                 >
-                  <Sparkles size={14} />
-                  <span>Mulai Remedial Sekarang (Tanpa Token)</span>
+                  <Sparkles size={16} />
+                  <span>{loadingVerify ? 'Menghubungkan...' : 'Mulai Ujian Sekarang →'}</span>
                 </Button>
               </div>
             )}
 
-            {activeRemedial && (
-              <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-[11px]">
-                <div className="flex-1 border-t border-slate-200 dark:border-slate-800" />
-                <span>atau ujian reguler</span>
-                <div className="flex-1 border-t border-slate-200 dark:border-slate-800" />
+            {activeRemedial && !showManualToken && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowManualToken(true)}
+                  className="text-xs font-semibold text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 underline underline-offset-4 transition-colors cursor-pointer"
+                >
+                  Punya token sesi ujian lain? Masukkan token manual
+                </button>
               </div>
             )}
 
-            <form onSubmit={handleVerifyToken} className="space-y-4">
-              <div>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={tokenInput}
-                  onChange={(e) => {
-                    setTokenInput(e.target.value.toUpperCase());
-                    if (errorDiagnosis) setErrorDiagnosis(null);
-                  }}
-                  placeholder="TOKEN"
-                  className="w-full text-center tracking-[0.35em] font-mono text-2xl font-bold py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-indigo-600 dark:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase placeholder:text-slate-400 dark:placeholder:text-slate-600 shadow-2xs"
-                  aria-label="Input Token Ujian CBT"
-                  required
-                  autoFocus
-                />
-              </div>
+            {(!activeRemedial || showManualToken) && (
+              <form onSubmit={handleVerifyToken} className="space-y-4">
+                <div>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={tokenInput}
+                    onChange={(e) => {
+                      setTokenInput(e.target.value.toUpperCase());
+                      if (errorDiagnosis) setErrorDiagnosis(null);
+                    }}
+                    placeholder="TOKEN"
+                    className="w-full text-center tracking-[0.35em] font-mono text-2xl font-bold py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-indigo-600 dark:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase placeholder:text-slate-400 dark:placeholder:text-slate-600 shadow-2xs"
+                    aria-label="Input Token Ujian CBT"
+                    required
+                    autoFocus
+                  />
+                </div>
 
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={loadingVerify || tokenInput.length < 4}
-                className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 font-bold text-sm text-white rounded-xl shadow-md transition-all cursor-pointer"
-              >
-                {loadingVerify ? 'Memeriksa Token...' : 'Verifikasi Token'}
-              </Button>
-            </form>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={loadingVerify || tokenInput.length < 4}
+                  className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 font-bold text-sm text-white rounded-xl shadow-md transition-all cursor-pointer"
+                >
+                  {loadingVerify ? 'Memeriksa Token...' : 'Verifikasi Token'}
+                </Button>
+
+                {activeRemedial && showManualToken && (
+                  <button
+                    type="button"
+                    onClick={() => setShowManualToken(false)}
+                    className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline block mx-auto pt-1 cursor-pointer"
+                  >
+                    ← Kembali ke Sesi Siap Dikerjakan
+                  </button>
+                )}
+              </form>
+            )}
 
             {/* Structured Real-Time Diagnostic Box */}
             {errorDiagnosis && (
