@@ -344,6 +344,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     ...(isPengujiSidang ? ['sidang_guru' as const] : []),
   ], [isPengujiSidang]);
 
+  const activeSubTab = validSubTabs.includes(subTabParam) ? subTabParam : 'agenda';
+
   const [selectedPengawasJadwalId, setSelectedPengawasJadwalId] = useState<string | undefined>(() => {
     return searchParams.get('pengawas_jadwal_id') || searchParams.get('sesi_id') || undefined;
   });
@@ -387,8 +389,6 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     setShowPengawasDispatchModal(false);
     handleSubTabChange('pengawas_cbt');
   }, [handleSubTabChange]);
-
-  const activeSubTab = validSubTabs.includes(subTabParam) ? subTabParam : 'agenda';
 
   // Resolusi Judul & Icon Subtab untuk Universal Ecosystem Topbar
   const { currentSubtabTitle, currentSubtabIcon } = useMemo(() => {
