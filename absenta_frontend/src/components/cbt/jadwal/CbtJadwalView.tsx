@@ -38,6 +38,7 @@ import { useCbtOperationMode } from '../cbtModeHelper';
 import { CbtJadwalFormModal } from './CbtJadwalFormModal';
 import { CbtBeritaAcaraPrintModal } from './CbtBeritaAcaraPrintModal';
 import { CbtTransferNilaiModal } from './CbtTransferNilaiModal';
+import { CbtRemedialModal } from './CbtRemedialModal';
 import { CbtProctorMonitoringView } from '../sesi/CbtProctorMonitoringView';
 import { CbtPanitiaOrchestratorView } from './CbtPanitiaOrchestratorView';
 import useConfirm from '@/hooks/useConfirm';
@@ -88,7 +89,9 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [isRemedialModalOpen, setIsRemedialModalOpen] = useState(false);
   const [selectedJadwal, setSelectedJadwal] = useState<CbtJadwalUjian | null>(null);
+  const [remedialJadwal, setRemedialJadwal] = useState<CbtJadwalUjian | null>(null);
   const [internalMonitorJadwalId, setInternalMonitorJadwalId] = useState<string | null>(null);
   const [isOrchestratorOpen, setIsOrchestratorOpen] = useState(false);
 
@@ -684,6 +687,16 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           // Transfer Nilai ke Rapor: Guru Mapel pemilik Bank Soal atau Panitia, ketika sesi aktif/selesai & ada peserta
           const canTransferRapor = !readOnly && (isPrivilegedPanitia || isSubjectTeacherOwner) && isSessionUsed;
 
+          // Penerbitan Remedial CBT:
+          // Hak Prerogatif Guru Pengampu Mapel (atau Panitia) pada Sesi Utama (bukan anak remedial) yang aktif/selesai & ada peserta
+          const canPublishRemedial =
+            !readOnly &&
+            !row._isChildRow &&
+            !(row.setting_keamanan as any)?.is_remedial &&
+            (isPrivilegedPanitia || isSubjectTeacherOwner || Boolean(guruId)) &&
+            (row.status === 'ACTIVE' || row.status === 'COMPLETED') &&
+            pesertaCount > 0;
+
           // Edit & Hapus Jadwal:
           // - Panitia berhak mengedit/menghapus
           // - Guru Mapel pembuat soal HANYA berhak jika sesi MASIH DRAFT MURNI (belum diaktifkan & belum ada peserta)
@@ -724,6 +737,24 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                 >
                   <ArrowRightLeft size={12} className="mr-1" />
                   <span>Transfer Rapor</span>
+                </Button>
+              )}
+
+              {/* Penerbitan Sesi Remedial CBT (Khusus Guru Pengampu Mapel di Tab Sesi Binaan) */}
+              {canPublishRemedial && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setRemedialJadwal(row);
+                    setIsRemedialModalOpen(true);
+                  }}
+                  className="text-xs h-7 px-2 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700 font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 cursor-pointer"
+                  title="Terbitkan Sesi Ujian Remedial CBT untuk Siswa Belum Tuntas"
+                >
+                  <Sparkles size={12} className="mr-1 text-amber-600 dark:text-amber-400" />
+                  <span>Remedial</span>
                 </Button>
               )}
 
@@ -1118,6 +1149,25 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           jadwal={selectedJadwal}
           defaultTpId={filter.values.tahunPelajaranId}
           defaultSemesterId={filter.values.semesterId}
+        />
+      )}
+
+      {/* Modal Penerbitan Remedial CBT Khusus Guru Mapel */}
+      {isRemedialModalOpen && remedialJadwal && (
+        <CbtRemedialModal
+          isOpen={isRemedialModalOpen}
+          onClose={() => {
+            setIsRemedialModalOpen(false);
+            setRemedialJadwal(null);
+          }}
+          jadwal={remedialJadwal}
+          onSuccess={async () => {
+            await queryClient.invalidateQueries({
+              queryKey: cbtQueryKeys.jadwal(),
+              exact: false,
+              refetchType: 'all',
+            });
+          }}
         />
       )}
     </div>

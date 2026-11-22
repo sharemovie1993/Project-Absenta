@@ -23,7 +23,6 @@ import {
   FileText,
   PenTool,
   DoorOpen,
-  Sparkles,
   Trash2,
   Lock,
   Unlock,
@@ -33,7 +32,6 @@ import { useAuthStore } from '@/store/authStore';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtPesertaUjian } from '@/types/cbt.types';
 import { CbtTransferNilaiModal } from '../jadwal/CbtTransferNilaiModal';
-import { CbtRemedialModal } from '../jadwal/CbtRemedialModal';
 import { CbtBeritaAcaraPrintModal } from '../jadwal/CbtBeritaAcaraPrintModal';
 import { CbtDaftarHadirPrintModal } from '../jadwal/CbtDaftarHadirPrintModal';
 import { CbtDenahModal } from '../jadwal/CbtDenahModal';
@@ -117,7 +115,6 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-  const [isRemedialModalOpen, setIsRemedialModalOpen] = useState(false);
   const [isBeritaAcaraOpen, setIsBeritaAcaraOpen] = useState(false);
   const [isDaftarHadirOpen, setIsDaftarHadirOpen] = useState(false);
   const [isDenahModalOpen, setIsDenahModalOpen] = useState(false);
@@ -1291,40 +1288,6 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             </button>
           )}
 
-          {/* 7. Sesi Remedial Terarah CBT (Hanya untuk sesi reguler jika ada siswa selesai atau sesi selesai) */}
-          {activeJadwal && !(activeJadwal.setting_keamanan as any)?.is_remedial && (activeJadwal.status === 'ACTIVE' || activeJadwal.status === 'COMPLETED' || isPanitiaView) && (
-            <button
-              type="button"
-              disabled={finished === 0 && activeJadwal.status !== 'COMPLETED'}
-              onClick={() => {
-                if (finished === 0 && activeJadwal.status !== 'COMPLETED') {
-                  toast.error('Belum ada siswa yang berstatus selesai (FINISHED)');
-                  return;
-                }
-                setIsRemedialModalOpen(true);
-              }}
-              className={cn(
-                "h-7 px-2.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition-all shrink-0",
-                finished > 0 || activeJadwal.status === 'COMPLETED'
-                  ? "border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100/80 cursor-pointer active:scale-95"
-                  : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600 bg-slate-50/50 dark:bg-slate-900/40 cursor-not-allowed opacity-60"
-              )}
-              title={
-                finished === 0 && activeJadwal.status !== 'COMPLETED'
-                  ? "Belum ada siswa yang berstatus selesai (FINISHED)"
-                  : "Terbitkan Sesi Ujian Remedial CBT Khusus Siswa Belum Tuntas"
-              }
-            >
-              <Sparkles size={12} className={finished > 0 ? "text-amber-600" : "text-slate-400"} />
-              <span>Remedial</span>
-              {finished > 0 && (
-                <span className="text-[10px] px-1 rounded-full bg-amber-200/80 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200 font-black">
-                  {finished}
-                </span>
-              )}
-            </button>
-          )}
-
           {/* 7. Segarkan Data */}
           <button
             type="button"
@@ -1645,16 +1608,6 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
           penName={activeJadwal.setting_keamanan?.pengawas_1_nama || 'Pengawas Ruang'}
           initialSignature={pengawasSignature}
           onSave={(sig) => updatePengawasSignatureMutation.mutate(sig)}
-        />
-      )}
-
-      {/* Modal Remedial Terarah CBT */}
-      {isRemedialModalOpen && activeJadwal && (
-        <CbtRemedialModal
-          isOpen={isRemedialModalOpen}
-          onClose={() => setIsRemedialModalOpen(false)}
-          jadwal={activeJadwal}
-          pesertaList={pesertaList}
         />
       )}
 
