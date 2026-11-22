@@ -67,6 +67,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id || 'default';
+  const schoolName = (user as any)?.tenant?.nama_sekolah || (user as any)?.tenant?.nama || '';
   const { tingkatList } = useJenjang();
 
   const [activeTab, setActiveTab] = useState<ViewTabMode>('BELUM');
@@ -917,6 +918,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           onNudgeWhatsApp={handleNudgeForMatrixCell}
           tenantId={tenantId}
           eventName={eventName}
+          schoolName={schoolName}
         />
       )}
 

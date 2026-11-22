@@ -272,6 +272,10 @@ export interface CbtStudentExamItem {
   durasi_menit: number;
   status_jadwal: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ARCHIVED';
   is_remedial?: boolean;
+  parent_jadwal_id?: string | null;
+  kktp_threshold?: number | null;
+  remedial_policy?: string | null;
+  children?: CbtStudentExamItem[];
   is_tokenless?: boolean;
   token_ujian?: string | null;
   nama_sesi_waktu?: string | null;

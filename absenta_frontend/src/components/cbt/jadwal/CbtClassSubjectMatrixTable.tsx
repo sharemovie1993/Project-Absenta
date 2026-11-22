@@ -23,6 +23,7 @@ import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 import { getNudgeHistory, formatNudgeMinutesAgo } from './cbtMgmpHelper';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -45,6 +46,7 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
   eventName,
   schoolName,
 }) => {
+  const { user } = useAuthStore();
   const { classes, subjects, cellMap, totalCellsCovered, totalCellsRequired, overallPercentage } = matrixResult;
 
   // View mode: 'fit' (Muat 20 kelas dalam 1 layar tanpa horizontal scroll) atau 'detailed' (Lebar + scroll horizontal)
@@ -135,6 +137,15 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
                   Mode 1 Layar ({classes.length} Kelas Pas)
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => setIsShareModalOpen(true)}
+                className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 cursor-pointer transition-all shadow-2xs"
+                title="Buka dialog bagikan tautan publik matriks ke WhatsApp"
+              >
+                <Share2 size={10} />
+                <span>Link Publik</span>
+              </button>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
               {classes.length} Rombel Kelas &bull; {subjects.length} Mata Pelajaran &bull; Terisi {totalCellsCovered} dari {totalCellsRequired} slot ({overallPercentage}%)
@@ -190,11 +201,11 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
           <button
             type="button"
             onClick={() => setIsShareModalOpen(true)}
-            className="px-2.5 py-1.2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
+            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shadow-emerald-700/20 active:scale-95 cursor-pointer shrink-0"
             title="Bagikan Tautan Matriks ke Grup WhatsApp"
           >
-            <MessageSquare size={13} />
-            <span className="hidden sm:inline">Bagikan ke WA</span>
+            <Share2 size={13} className="text-emerald-100" />
+            <span>Bagikan ke WA</span>
           </button>
 
           {/* Legend */}
@@ -757,7 +768,7 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
             const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
             const publicLink = `${currentOrigin}/cbt/public-matrix?tingkat=${currentTingkat}`;
             const targetEvent = eventName || 'Asesmen CBT';
-            const targetSchool = schoolName || 'Sekolah';
+            const targetSchool = schoolName || (user as any)?.tenant?.nama_sekolah || (user as any)?.tenant?.nama || 'Sekolah';
             const tingkatRomawi = formatTingkatRomawi(currentTingkat);
 
             const waText = `📢 *MATRIKS KESIAPAN BANK SOAL CBT*\n🏛️ *${targetSchool}*\n📝 *${targetEvent}*\n\n📊 *Progres Tingkat ${tingkatRomawi} (Kelas ${currentTingkat}):*\n- Terisi: *${totalCellsCovered}* dari *${totalCellsRequired}* slot (${overallPercentage}%)\n- Rombel: *${classes.length} Kelas*\n- Mata Pelajaran: *${subjects.length} Mapel*\n\nBapak/Ibu Guru dapat memeriksa status kesiapan butir soal dan kelengkapan mapel rombel masing-masing melalui tautan resmi Meja Panitia:\n👉 ${publicLink}\n\n_Mohon kerja samanya untuk melengkapi butir soal sebelum batas waktu penjadwalan._\n— *Panitia Pelaksana CBT*`;

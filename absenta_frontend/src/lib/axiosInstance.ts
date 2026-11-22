@@ -126,6 +126,7 @@ axiosInstance.interceptors.request.use(
     
     // Updated isPublic list based on audit directives
     const isPublic = 
+        urlToCheck.startsWith('/public/') ||
         urlToCheck.startsWith('/auth/login') ||
         urlToCheck.startsWith('/auth/register') ||
         urlToCheck.startsWith('/auth/tenant-info') ||
@@ -278,6 +279,7 @@ axiosInstance.interceptors.response.use(
     const urlToCheck = url.startsWith('/') ? url : '/' + url;
 
     const isPublic = 
+        urlToCheck.startsWith('/public/') ||
         urlToCheck.startsWith('/auth/login') ||
         urlToCheck.startsWith('/auth/register') ||
         urlToCheck.startsWith('/auth/tenant-info') ||

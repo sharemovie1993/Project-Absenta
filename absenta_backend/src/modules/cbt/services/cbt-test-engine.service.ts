@@ -377,10 +377,13 @@ export class CbtTestEngineService {
           jumlah_terjawab: jumlahTerjawab,
           pelanggaran_count: pelanggaranArr.length,
           is_remedial: isRemedial,
+          parent_jadwal_id: (sec.parent_jadwal_id || sec.original_jadwal_id || null) as string | null,
+          kktp_threshold: isRemedial ? Number(sec.kktp_threshold || 75) : null,
+          remedial_policy: isRemedial ? (sec.remedial_policy || 'max_kktp') : null,
           is_tokenless: isTokenless,
           token_ujian: isTokenless ? (j as any).token_ujian : null,
           hasil:
-            isFinished && (showResult || j.status === 'COMPLETED')
+            isFinished && (showResult || isRemedial || j.status === 'COMPLETED')
               ? {
                   nilai_akhir: Number(peserta?.nilai_akhir ?? 0),
                   jumlah_benar: peserta?.jumlah_benar ?? 0,
