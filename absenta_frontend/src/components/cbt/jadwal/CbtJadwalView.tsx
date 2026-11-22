@@ -47,6 +47,7 @@ import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { formatLocalTimeFromISO, getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
 import { useAuthStore } from '@/store/authStore';
+import { cn } from '@/lib/utils';
 
 export interface UniversalCbtJadwalViewProps {
   guruId?: string;
