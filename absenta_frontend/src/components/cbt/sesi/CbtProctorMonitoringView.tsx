@@ -444,6 +444,28 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
 
   const handleCompleteSession = async () => {
     if (!activeJadwal) return;
+
+    // 1. Validasi Tanda Tangan Digital Pengawas Ruang:
+    // Pengawas ruang wajib menandatangani Berita Acara sebelum sesi ujian ruangan ini resmi diselesaikan
+    const hasSignature = Boolean(
+      activeJadwal?.setting_keamanan?.tanda_tangan_pengawas_1 ||
+      (activeJadwal?.setting_keamanan as any)?.tanda_tangan_digital
+    );
+
+    if (!isPanitia && !hasSignature) {
+      const wantToSign = await confirm({
+        title: 'Tanda Tangan Pengawas Diperlukan',
+        message: 'Pengawas ruang wajib membubuhkan Tanda Tangan Digital pada Berita Acara sebelum sesi ujian ruangan ini resmi diselesaikan. Bubuhkan tanda tangan Anda sekarang?',
+        confirmText: 'Tanda Tangani Sekarang',
+        cancelText: 'Nanti Dulu',
+        style: 'primary',
+      });
+      if (wantToSign) {
+        setIsSignModalOpen(true);
+      }
+      return;
+    }
+
     const inProgressCount = pesertaList.filter((p) => p.status === 'IN_PROGRESS').length;
     const standbyCount = pesertaList.filter((p) => p.status === 'STANDBY').length;
 
