@@ -441,7 +441,7 @@ export const SiswaCbtTab: React.FC = () => {
   const structuredHistory = useMemo(() => {
     const historyList = exams.filter(isHistory);
     const isRemedialItem = (item: CbtStudentExamItem) =>
-      Boolean(item.is_remedial) || (item.nama_sesi || '').toUpperCase().includes('[REMEDIAL');
+      !item.is_susulan && (Boolean(item.is_remedial) || (item.nama_sesi || '').toUpperCase().includes('[REMEDIAL'));
 
     const parents: (CbtStudentExamItem & { children: CbtStudentExamItem[] })[] = [];
     const childrenToAttach: CbtStudentExamItem[] = [];
@@ -1424,13 +1424,18 @@ export const SiswaCbtTab: React.FC = () => {
                         </div>
                       ) : item.hasil && predikat ? (
                         <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className={cn('text-lg sm:text-xl font-black leading-none', predikat.scoreClass)}>
                               {formatScore(item.hasil.nilai_akhir)}
                             </span>
                             <span className={cn('px-2 py-0.5 rounded-md text-[10px] font-bold border', predikat.badgeClass)}>
                               {predikat.label}
                             </span>
+                            {item.is_susulan && (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-black border bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950/80 dark:text-indigo-300">
+                                📋 Susulan (Nilai Murni)
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-2 text-[11px] text-slate-500 font-semibold">

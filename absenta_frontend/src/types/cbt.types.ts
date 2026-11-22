@@ -272,6 +272,8 @@ export interface CbtStudentExamItem {
   durasi_menit: number;
   status_jadwal: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ARCHIVED';
   is_remedial?: boolean;
+  is_susulan?: boolean;
+  tipe_peserta?: 'SUSULAN' | 'REMEDIAL' | 'REGULER';
   parent_jadwal_id?: string | null;
   kktp_threshold?: number | null;
   remedial_policy?: string | null;

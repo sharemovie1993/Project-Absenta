@@ -1230,7 +1230,14 @@ export default function CbtExamRoomPage() {
         dateStyle: 'medium',
         timeStyle: 'medium',
       });
-      const isRemedialSession = finalResult?.is_remedial || (examOverview?.nama_sesi || '').toLowerCase().includes('remedial');
+      const isSusulan = Boolean(
+        finalResult?.is_susulan ||
+        finalResult?.tipe_peserta === 'SUSULAN' ||
+        finalResult?.remedial_audit?.is_susulan
+      );
+      const isRemedialSession = !isSusulan && Boolean(
+        finalResult?.is_remedial || (examOverview?.nama_sesi || '').toLowerCase().includes('remedial')
+      );
       const kktpTarget = finalResult?.kktp_threshold || 75;
       const hasScore = finalResult?.nilai_akhir != null;
       const isTuntas = hasScore && finalResult.nilai_akhir >= kktpTarget;
@@ -1290,9 +1297,19 @@ export default function CbtExamRoomPage() {
                     <div className="flex items-center gap-2">
                       <Award className="text-indigo-600 dark:text-indigo-400" size={18} />
                       <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                        {isRemedialSession ? 'Hasil Asesmen Remedial' : 'Nilai Akhir Ujian'}
+                        {isSusulan ? 'Hasil Asesmen Susulan' : isRemedialSession ? 'Hasil Asesmen Remedial' : 'Nilai Akhir Ujian'}
                       </span>
                     </div>
+                    {isSusulan && (
+                      <span className={cn(
+                        'text-xs font-black px-2.5 py-1 rounded-full border',
+                        isTuntas
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-700'
+                          : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700'
+                      )}>
+                        {isTuntas ? '✨ TUNTAS KKTP (Susulan)' : '📚 BELUM TUNTAS KKTP'}
+                      </span>
+                    )}
                     {isRemedialSession && (
                       <span className={cn(
                         'text-xs font-black px-2.5 py-1 rounded-full border',
@@ -1320,6 +1337,19 @@ export default function CbtExamRoomPage() {
                       </div>
                     </div>
                   </div>
+
+                  {isSusulan && (
+                    <div className={cn(
+                      'text-xs rounded-xl p-3 border leading-relaxed',
+                      isTuntas
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                        : 'bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                    )}>
+                      {isTuntas
+                        ? `Selamat! Anda telah menyelesaikan ujian susulan dengan predikat Tuntas. Hak nilai murni Anda (${finalResult.nilai_akhir}) telah tervalidasi penuh dan disinkronkan ke buku nilai e-Rapor.`
+                        : `Ujian susulan telah selesai diserahkan. Nilai murni Anda (${finalResult.nilai_akhir}) telah dicatat dan disinkronkan ke buku nilai e-Rapor.`}
+                    </div>
+                  )}
 
                   {isRemedialSession && (
                     <div className={cn(

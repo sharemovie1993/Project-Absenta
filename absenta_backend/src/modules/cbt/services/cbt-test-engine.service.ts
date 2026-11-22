@@ -342,8 +342,27 @@ export class CbtTestEngineService {
 
         const displayMapel = isKuisUnit && unitNama ? `${baseMapel} — ${unitNama}` : baseMapel;
 
-        const isRemedial = Boolean(sec.is_remedial);
-        const isTokenless = isRemedial && sec.tokenless !== false;
+        const isRemedialSchedule = Boolean(sec.is_remedial);
+        const isTokenless = isRemedialSchedule && sec.tokenless !== false;
+        const parentJadwalId = (sec.parent_jadwal_id || sec.original_jadwal_id || null) as string | null;
+
+        // Deteksi Otomatis Susulan vs Remedial Berbasis Hak Regulasi Kurikulum Merdeka
+        let isSusulan = false;
+        if (isRemedialSchedule) {
+          const pMeta = (peserta?.metadata_perangkat as any) || {};
+          if (pMeta?.remedial_audit?.is_susulan) {
+            isSusulan = true;
+          } else if (parentJadwalId) {
+            const parentJadwal = jadwalList.find((x) => x.id === parentJadwalId);
+            const parentPeserta = parentJadwal?.Peserta?.[0];
+            if (!parentPeserta || parentPeserta.status !== 'FINISHED' || parentPeserta.nilai_akhir === null) {
+              isSusulan = true;
+            }
+          } else {
+            isSusulan = true;
+          }
+        }
+        const isRemedial = isRemedialSchedule && !isSusulan;
 
         return {
           id: j.id,
@@ -377,13 +396,15 @@ export class CbtTestEngineService {
           jumlah_terjawab: jumlahTerjawab,
           pelanggaran_count: pelanggaranArr.length,
           is_remedial: isRemedial,
-          parent_jadwal_id: (sec.parent_jadwal_id || sec.original_jadwal_id || null) as string | null,
-          kktp_threshold: isRemedial ? Number(sec.kktp_threshold || 75) : null,
+          is_susulan: isSusulan,
+          tipe_peserta: isSusulan ? 'SUSULAN' : isRemedial ? 'REMEDIAL' : 'REGULER',
+          parent_jadwal_id: parentJadwalId,
+          kktp_threshold: isRemedialSchedule ? Number(sec.kktp_threshold || 75) : null,
           remedial_policy: isRemedial ? (sec.remedial_policy || 'max_kktp') : null,
           is_tokenless: isTokenless,
           token_ujian: isTokenless ? (j as any).token_ujian : null,
           hasil:
-            isFinished && (showResult || isRemedial || j.status === 'COMPLETED')
+            isFinished && (showResult || isRemedialSchedule || j.status === 'COMPLETED')
               ? {
                   nilai_akhir: Number(peserta?.nilai_akhir ?? 0),
                   jumlah_benar: peserta?.jumlah_benar ?? 0,
@@ -1321,27 +1342,49 @@ export class CbtTestEngineService {
     const effectiveTotalSoal = totalSoal || 1;
     const rawScore = Math.round((jumlahBenar / effectiveTotalSoal) * 100 * 100) / 100;
 
-    // ── LOGIKA ENGINE KEPUTUSAN NILAI AKHIR (REMEDIAL VS REGULER) ──
+    // ── LOGIKA ENGINE KEPUTUSAN NILAI AKHIR (SUSULAN VS REMEDIAL VS REGULER) ──
     const sec = (peserta.JadwalUjian.setting_keamanan as any) || {};
-    const isRemedial = Boolean(sec.is_remedial);
+    const isRemedialSchedule = Boolean(sec.is_remedial);
+    const originalJadwalId = sec.parent_jadwal_id || sec.original_jadwal_id;
+
+    let initialScore: number | null = null;
+    let hasFinishedParent = false;
+
+    if (isRemedialSchedule && originalJadwalId) {
+      const originalPeserta = await prisma.cbtPesertaUjian.findFirst({
+        where: { tenant_id: tenantId, jadwal_ujian_id: originalJadwalId, siswa_id: siswaId },
+        select: { nilai_akhir: true, status: true },
+      });
+      if (originalPeserta && originalPeserta.status === 'FINISHED' && originalPeserta.nilai_akhir !== null) {
+        initialScore = Number(originalPeserta.nilai_akhir);
+        hasFinishedParent = true;
+      }
+    }
+
+    // Klasifikasi Pedagogis & Regulasi Kurikulum Merdeka / Kemendikdasmen:
+    // Jika sesi ini berlabel remedial/susulan, namun siswa BELUM PERNAH menyelesaikan sesi induk (misal: sakit / izin),
+    // maka siswa adalah PESERTA SUSULAN, BUKAN PESERTA REMEDIAL.
+    // Peserta ujian susulan berhak memperoleh NILAI MURNI PENUH 100% tanpa pembatasan batas KKTP!
+    const isSusulan = isRemedialSchedule && !hasFinishedParent;
+    const isRemedial = isRemedialSchedule && hasFinishedParent;
+
     let nilaiAkhir = rawScore;
     let remedialAudit: Record<string, any> | null = null;
 
-    if (isRemedial) {
+    if (isSusulan) {
+      // Siswa Susulan: Berhak atas nilai murni penuh 100%
+      nilaiAkhir = rawScore;
+      remedialAudit = {
+        tipe_peserta: 'SUSULAN',
+        is_susulan: true,
+        is_remedial: false,
+        raw_score: rawScore,
+        final_decided_score: nilaiAkhir,
+        keterangan: 'Peserta Ujian Susulan (berhak atas nilai murni 100% tanpa batasan KKTP)',
+      };
+    } else if (isRemedial) {
       const policy: 'max_kktp' | 'highest' | 'murni' = sec.remedial_policy || 'max_kktp';
       const kktp = Number(sec.kktp_threshold) || 75;
-      const originalJadwalId = sec.parent_jadwal_id || sec.original_jadwal_id;
-
-      let initialScore: number | null = null;
-      if (originalJadwalId) {
-        const originalPeserta = await prisma.cbtPesertaUjian.findFirst({
-          where: { tenant_id: tenantId, jadwal_ujian_id: originalJadwalId, siswa_id: siswaId },
-          select: { nilai_akhir: true },
-        });
-        if (originalPeserta && originalPeserta.nilai_akhir !== null) {
-          initialScore = Number(originalPeserta.nilai_akhir);
-        }
-      }
 
       if (policy === 'max_kktp') {
         // Standar Regulasi: Jika nilai remedial melampaui KKTP, skor dipatok maksimal = batas KKTP
@@ -1365,6 +1408,8 @@ export class CbtTestEngineService {
       }
 
       remedialAudit = {
+        tipe_peserta: 'REMEDIAL',
+        is_susulan: false,
         is_remedial: true,
         policy,
         kktp_threshold: kktp,
@@ -1419,21 +1464,23 @@ export class CbtTestEngineService {
     });
 
     const kktpThreshold = Number(sec.kktp_threshold) || 75;
-    const showInstant = ((peserta.JadwalUjian.setting_keamanan as any)?.show_result_instant ?? false) || isRemedial;
+    const showInstant = ((peserta.JadwalUjian.setting_keamanan as any)?.show_result_instant ?? false) || isRemedial || isSusulan;
     const receiptNumber = `ABST-REC-${(siswaId || 'SIS').slice(-4).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
     const submittedAt = new Date().toISOString();
-    const isLulusKktp = isRemedial ? nilaiAkhir >= kktpThreshold : undefined;
+    const isLulusKktp = (isRemedial || isSusulan) ? nilaiAkhir >= kktpThreshold : undefined;
 
     return {
       success: true,
-      message: 'Ujian berhasil diserahkan.',
+      message: isSusulan ? 'Ujian susulan berhasil diserahkan.' : 'Ujian berhasil diserahkan.',
       status: 'FINISHED',
       receipt_number: receiptNumber,
       submitted_at: submittedAt,
       total_soal: totalSoal,
       jumlah_terjawab: payload.jawaban_final.filter((j) => Boolean(j.jawaban_siswa)).length,
       is_remedial: isRemedial,
-      kktp_threshold: isRemedial ? kktpThreshold : undefined,
+      is_susulan: isSusulan,
+      tipe_peserta: isSusulan ? 'SUSULAN' : isRemedial ? 'REMEDIAL' : 'REGULER',
+      kktp_threshold: (isRemedial || isSusulan) ? kktpThreshold : undefined,
       is_lulus_kktp: isLulusKktp,
       ...(showInstant
         ? {
