@@ -184,6 +184,7 @@ export class CbtTestEngineService {
               jumlah_salah: true,
               jawaban_json: true,
               log_pelanggaran_json: true,
+              metadata_perangkat: true,
             },
           },
         },
@@ -349,7 +350,7 @@ export class CbtTestEngineService {
         // Deteksi Otomatis Susulan vs Remedial Berbasis Hak Regulasi Kurikulum Merdeka
         let isSusulan = false;
         if (isRemedialSchedule) {
-          const pMeta = (peserta?.metadata_perangkat as any) || {};
+          const pMeta = ((peserta as any)?.metadata_perangkat as any) || {};
           if (pMeta?.remedial_audit?.is_susulan) {
             isSusulan = true;
           } else if (parentJadwalId) {
