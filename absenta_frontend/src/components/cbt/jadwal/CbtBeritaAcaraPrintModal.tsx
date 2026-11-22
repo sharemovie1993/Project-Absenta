@@ -112,11 +112,11 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
     );
 
     const defaultGuruNama =
-      cfg?.pengawas_1_nama ||
+      (isRemedialSession ? (cfg?.guru_mapel_nama || cfg?.pengawas_1_nama) : cfg?.pengawas_1_nama) ||
       currentJadwal?.BankSoal?.Guru?.nama_guru ||
       '';
     const defaultGuruNip =
-      cfg?.pengawas_1_nip ||
+      (isRemedialSession ? (cfg?.guru_mapel_nip || cfg?.pengawas_1_nip) : cfg?.pengawas_1_nip) ||
       (currentJadwal?.BankSoal?.Guru as any)?.nip ||
       '-';
     const defaultProktorNama =

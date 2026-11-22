@@ -107,6 +107,12 @@ export class CbtJadwalService {
       });
     }
     if (query.pengawas_guru_id) {
+      // Meja Pengawas murni untuk sesi orkestrasi kepanitiaan ujian sekolah, kecualikan sesi remedial/susulan
+      andConditions.push({
+        NOT: {
+          nama_sesi: { contains: '[REMEDIAL', mode: 'insensitive' },
+        },
+      });
       andConditions.push({
         OR: [
           {

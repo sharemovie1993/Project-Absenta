@@ -41,7 +41,18 @@ export function useMyPengawasCbt(overrideGuruId?: string) {
       }
 
       return list.filter((item) => {
-        const cfg = item.setting_keamanan;
+        const rawCfg = item.setting_keamanan;
+        const cfg = typeof rawCfg === 'string' ? JSON.parse(rawCfg) : rawCfg;
+
+        // ── Meja Pengawas murni untuk tugas pengawasan orkestrasi panitia ──
+        // Sesi remedial & susulan mandiri guru mapel TIDAK dimasukkan ke Meja Pengawas
+        const isRemedial = Boolean(
+          cfg?.is_remedial ||
+          item.nama_sesi?.toUpperCase()?.includes('REMEDIAL') ||
+          item.nama_sesi?.toUpperCase()?.includes('SUSULAN')
+        );
+        if (isRemedial) return false;
+
         return Boolean(
           cfg &&
             (cfg.pengawas_1_id === effectiveGuruId ||
