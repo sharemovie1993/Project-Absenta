@@ -1217,14 +1217,22 @@ export class CbtTestEngineService {
     let jumlahBenar = 0;
     let jumlahSalah = 0;
 
-    for (const jwb of payload.jawaban_final) {
-      const correctKey = keyMap.get(jwb.soal_id);
-      if (correctKey && jwb.jawaban_siswa && jwb.jawaban_siswa.toUpperCase() === correctKey.toUpperCase()) {
+    const enrichedJawabanFinal = payload.jawaban_final.map((jwb) => {
+      const correctKey = keyMap ? keyMap.get(jwb.soal_id) : undefined;
+      const studentAns = String(jwb.jawaban_siswa || '').trim().toUpperCase();
+      const isFilled = Boolean(studentAns);
+      const isCorrect = isFilled && Boolean(correctKey && studentAns === correctKey.toUpperCase());
+      if (isCorrect) {
         jumlahBenar++;
       } else {
         jumlahSalah++;
       }
-    }
+      return {
+        ...jwb,
+        kunci_jawaban: correctKey || undefined,
+        is_benar: isCorrect,
+      };
+    });
 
     const effectiveTotalSoal = totalSoal || 1;
     const rawScore = Math.round((jumlahBenar / effectiveTotalSoal) * 100 * 100) / 100;
@@ -1299,7 +1307,7 @@ export class CbtTestEngineService {
         status_sinkron: 'SYNCED',
         waktu_selesai: new Date(),
         sisa_waktu_detik: 0,
-        jawaban_json: payload.jawaban_final,
+        jawaban_json: enrichedJawabanFinal,
         jumlah_benar: jumlahBenar,
         jumlah_salah: jumlahSalah,
         nilai_akhir: isDisqualified ? new Prisma.Decimal(0) : new Prisma.Decimal(nilaiAkhir),

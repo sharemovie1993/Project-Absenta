@@ -123,6 +123,18 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
   // Status Badge Helper
   const isDisqualified = peserta.status === 'DISQUALIFIED' || normalizedViolations.length > 0;
 
+  // Map kunci jawaban dari Bank Soal (jika ada)
+  const bankSoalKeyMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    const bankSoalList: any[] = (jadwal as any)?.BankSoal?.Soal || [];
+    bankSoalList.forEach((s) => {
+      if (s.id && s.kunci_jawaban) {
+        map.set(s.id, String(s.kunci_jawaban).trim().toUpperCase());
+      }
+    });
+    return map;
+  }, [jadwal]);
+
   // ── Pemetaan Cerdas: Menghubungkan Pelanggaran Layar ke Nomor Butir Soal ──
   const questionViolationMap = React.useMemo(() => {
     const map = new Map<number, { urutan: number; tipe: string; waktuStr: string; detail: string; isFatal: boolean }[]>();
@@ -174,11 +186,16 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
     let rapidGuessCount = 0; // Butir dijawab < 5 detik
     let totalRevisit = 0;
     let questionsWithDurationCount = 0;
+    let computedBenar = 0;
+    let computedSalah = 0;
 
     rawJawaban.forEach((j) => {
       const dur = typeof j.durasi_detik === 'number' ? j.durasi_detik : null;
       const rev = typeof j.revisit_count === 'number' ? j.revisit_count : 1;
-      const isFilled = Boolean(j.jawaban_siswa);
+      const studentAns = String(j.jawaban_siswa || '').trim().toUpperCase();
+      const isFilled = Boolean(studentAns);
+      const correctKey = String(j.kunci_jawaban || bankSoalKeyMap.get(j.soal_id) || '').trim().toUpperCase();
+      const isBenar = j.is_benar !== undefined ? Boolean(j.is_benar) : (isFilled && Boolean(correctKey) ? studentAns === correctKey : null);
 
       if (dur !== null) {
         totalDetik += dur;
@@ -190,7 +207,18 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
       if (rev > 1) {
         totalRevisit += rev - 1;
       }
+      if (isFilled) {
+        if (isBenar === true) computedBenar++;
+        else if (isBenar === false) computedSalah++;
+      }
     });
+
+    const totalBenar = computedBenar > 0 || computedSalah > 0
+      ? computedBenar
+      : (typeof peserta.jumlah_benar === 'number' ? peserta.jumlah_benar : 0);
+    const totalSalah = computedBenar > 0 || computedSalah > 0
+      ? computedSalah
+      : (typeof peserta.jumlah_salah === 'number' ? peserta.jumlah_salah : 0);
 
     const rataRataDetikPerSoal =
       questionsWithDurationCount > 0
@@ -202,34 +230,45 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
     const rapidGuessIndex =
       totalJawabanTerisi > 0 ? Math.round((rapidGuessCount / totalJawabanTerisi) * 100) : 0;
 
-    // Vonis Matriks Perilaku Sistem
+    // Vonis Matriks Perilaku Sistem & Narasi Deskriptif Lengkap
     let verdictTitle = 'Pola Pengerjaan Wajar & Analitis';
     let verdictSubtitle = 'Siswa membaca stimulus soal dengan waktu yang proporsional dan tertib.';
     let verdictType: 'success' | 'warning' | 'danger' | 'info' = 'success';
     let verdictBadge = '✅ Wajar & Analitis';
+    let descriptiveVerdict = `Siswa menunjukkan pola pengerjaan yang wajar dan berintegritas. Waktu membaca dan menjawab terdistribusi secara proporsional (rata-rata ${rataRataDetikPerSoal} detik per butir soal) tanpa catatan pelanggaran layar (100% kepatuhan ruang ujian).`;
 
     const nilaiAkhirNum = Number(peserta.nilai_akhir || 0);
 
     if (peserta.status === 'DISQUALIFIED') {
-      verdictTitle = 'Sanksi Diskualifikasi Sistem';
-      verdictSubtitle = 'Pelanggaran batas toleransi layar server (≥ 3x). Akses sesi dihentikan otomatis.';
+      verdictTitle = 'Sanksi Diskualifikasi Sistem Anti-Cheat';
+      verdictSubtitle = 'Pelanggaran batas toleransi layar server (≥ 3x). Akses sesi dihentikan otomatis secara permanen.';
       verdictType = 'danger';
       verdictBadge = '🚨 Diskualifikasi';
+      descriptiveVerdict = `Sistem CBT Absenta mendeteksi pelanggaran integritas fatal berupa perpindahan layar/aplikasi sebanyak ${normalizedViolations.length} kali (melampaui batas toleransi server: 3x). Sesuai regulasi integritas asesmen, sesi ujian siswa dihentikan dan didiskualifikasi secara otomatis oleh sistem.`;
     } else if (rapidGuessIndex >= 60 && totalJawabanTerisi >= 5) {
-      verdictTitle = 'Rapid Guessing (Nembak Kilat)';
+      verdictTitle = 'Rapid Guessing (Tebakan Kilat / Nembak)';
       verdictSubtitle = `${rapidGuessIndex}% butir soal dijawab < 5 detik tanpa jeda membaca stimulus yang wajar.`;
       verdictType = 'warning';
       verdictBadge = '⚠️ Nembak Kilat';
+      descriptiveVerdict = `Berdasarkan audit telemetri waktu pengerjaan, siswa terindikasi kuat melakukan Tebakan Kilat (Rapid Guessing) secara serampangan. Dari total ${totalJawabanTerisi} butir soal yang dijawab, sebanyak ${rapidGuessCount} butir (${rapidGuessIndex}%) diselesaikan dalam waktu kurang dari 5 detik dengan kecepatan rata-rata ${rataRataDetikPerSoal} detik/butir. Pola pengerjaan kilat ini membuktikan jawaban dipilih secara spekulatif (nembak) tanpa proses kognitif membaca stimulus soal.`;
     } else if (rapidGuessIndex >= 35 && nilaiAkhirNum >= 85 && normalizedViolations.length >= 1) {
-      verdictTitle = 'Indikasi Kecurangan Terbimbing (AI/Joki)';
-      verdictSubtitle = 'Pengerjaan sangat cepat disertai akurasi ekstrem dan catatan pelanggaran layar.';
+      verdictTitle = 'Indikasi Bantuan Eksternal (AI / Joki / Browsing)';
+      verdictSubtitle = 'Pengerjaan sangat cepat disertai akurasi ekstrem dan catatan riwayat keluar layar.';
       verdictType = 'danger';
       verdictBadge = '🚨 Indikasi Curang';
+      descriptiveVerdict = `Sistem mendeteksi anomali integritas tinggi: Siswa memperoleh skor sangat tinggi (${nilaiAkhirNum}) dengan durasi pengerjaan kilat (${rapidGuessIndex}% butir < 5s) disertai rekaman ${normalizedViolations.length} kali perpindahan layar ujian. Terindikasi kuat adanya bantuan eksternal saat mengerjakan.`;
     } else if (rataRataDetikPerSoal >= 90 && totalKosong >= totalSoal * 0.4) {
-      verdictTitle = 'Struggling / Kehabisan Waktu';
+      verdictTitle = 'Kendala Manajemen Waktu (Kehabisan Waktu)';
       verdictSubtitle = 'Siswa menghabiskan waktu terlalu lama pada soal awal sehingga soal akhir tidak tuntas.';
       verdictType = 'info';
       verdictBadge = '⏳ Kehabisan Waktu';
+      descriptiveVerdict = `Siswa mengalami kendala manajemen waktu pengerjaan ujian. Menghabiskan waktu rata-rata ${rataRataDetikPerSoal} detik pada butir-butir awal sehingga menyisakan ${totalKosong} butir soal dalam kondisi kosong tanpa sempat dijawab sebelum batas waktu sesi berakhir.`;
+    } else if (normalizedViolations.length > 0) {
+      verdictTitle = 'Peringatan Ketertiban Layar (Minor)';
+      verdictSubtitle = `Terdeteksi ${normalizedViolations.length} kali meninggalkan layar ujian, di bawah batas diskualifikasi.`;
+      verdictType = 'warning';
+      verdictBadge = '⚠️ Peringatan Layar';
+      descriptiveVerdict = `Siswa sempat meninggalkan jendela ujian sebanyak ${normalizedViolations.length} kali, namun belum mencapai ambang batas diskualifikasi server (3x). Catatan kejadian tercatat dalam log kronologi digital forensik.`;
     }
 
     return {
@@ -238,20 +277,26 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
       rapidGuessCount,
       rapidGuessIndex,
       totalRevisit,
+      totalBenar,
+      totalSalah,
       hasDurationData: questionsWithDurationCount > 0,
       verdictTitle,
       verdictSubtitle,
       verdictType,
       verdictBadge,
+      descriptiveVerdict,
     };
   }, [
     rawJawaban,
+    bankSoalKeyMap,
     totalJawabanTerisi,
     totalSoal,
     totalKosong,
     durasiMenit,
     peserta.status,
     peserta.nilai_akhir,
+    peserta.jumlah_benar,
+    peserta.jumlah_salah,
     normalizedViolations.length,
   ]);
 
@@ -592,10 +637,26 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
             </div>
 
             {/* Banner Narasi Deskriptif Vonis Perilaku */}
-            <div className="p-2.5 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs flex items-start gap-2">
-              <span className="font-bold text-slate-800 dark:text-slate-200 shrink-0">Catatan Analitik Sistem:</span>
-              <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-[11.5px]">
-                <strong>{behavioralStats.verdictBadge} ({behavioralStats.verdictTitle})</strong> — {behavioralStats.verdictSubtitle}
+            <div
+              className={cn(
+                'p-3 rounded-xl border text-xs space-y-1',
+                behavioralStats.verdictType === 'danger'
+                  ? 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-200'
+                  : behavioralStats.verdictType === 'warning'
+                  ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-200'
+                  : behavioralStats.verdictType === 'info'
+                  ? 'bg-sky-50/80 dark:bg-sky-950/40 border-sky-300 dark:border-sky-800 text-sky-950 dark:text-sky-200'
+                  : 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-200'
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-bold shrink-0 uppercase tracking-wide">Vonis Deskriptif Sistem:</span>
+                <span className="font-black px-2 py-0.5 rounded-full text-[10.5px] bg-white/90 dark:bg-slate-900/90 border border-current">
+                  {behavioralStats.verdictBadge} ({behavioralStats.verdictTitle})
+                </span>
+              </div>
+              <p className="leading-relaxed text-[11.5px] font-medium pt-0.5">
+                {behavioralStats.descriptiveVerdict}
               </p>
             </div>
           </div>
@@ -682,6 +743,13 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                     const no = j.nomor || idx + 1;
                     const jwb = String(j.jawaban_siswa || '').trim().toUpperCase();
                     const isFilled = Boolean(jwb);
+                    const correctKey = String(j.kunci_jawaban || bankSoalKeyMap.get(j.soal_id) || '').trim().toUpperCase();
+                    const isBenar =
+                      j.is_benar !== undefined
+                        ? Boolean(j.is_benar)
+                        : isFilled && Boolean(correctKey)
+                        ? jwb === correctKey
+                        : null;
                     const dur = typeof j.durasi_detik === 'number' ? j.durasi_detik : null;
                     const rev = typeof j.revisit_count === 'number' ? j.revisit_count : 1;
                     const isRapid = isFilled && dur !== null && dur < 5;
@@ -692,29 +760,30 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                     return (
                       <div
                         key={j.soal_id || idx}
-                        className={`relative p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-center min-h-[58px] ${
-                          hasViolation
-                            ? isFatal
-                              ? 'bg-rose-100 dark:bg-rose-950/80 border-rose-500 text-rose-900 dark:text-rose-100 ring-2 ring-rose-400 font-black'
-                              : 'bg-amber-50 dark:bg-amber-950/70 border-amber-400 text-amber-950 dark:text-amber-100 ring-1 ring-amber-300 font-black'
-                            : isFilled
-                            ? isRapid
-                              ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 text-rose-900 dark:text-rose-200 font-bold'
-                              : 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 text-indigo-900 dark:text-indigo-200 font-bold'
-                            : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 text-slate-400 font-normal'
-                        }`}
+                        className={cn(
+                          'relative p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-center min-h-[62px]',
+                          hasViolation && (isFatal ? 'ring-2 ring-rose-500' : 'ring-2 ring-amber-400'),
+                          !isFilled
+                            ? 'bg-slate-50 dark:bg-slate-800/40 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 font-normal'
+                            : isBenar === true
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 font-bold'
+                            : isBenar === false
+                            ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-700 text-rose-950 dark:text-rose-100 font-bold'
+                            : 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-950 dark:text-indigo-100 font-bold'
+                        )}
                         title={
                           hasViolation
                             ? `Soal No. ${no}: Terdeteksi ${violationsOnThis.map((v) => `Pelanggaran #${v.urutan} (${v.tipe} ${v.waktuStr})`).join(', ')}`
-                            : `Soal No. ${no}: ${isFilled ? `Pilihan ${jwb}` : 'Kosong'}${dur !== null ? ` • Waktu: ${dur} detik • ${rev}x dibuka` : ''}`
+                            : `Soal No. ${no}: ${isFilled ? `Pilihan ${jwb} (${isBenar === true ? 'BENAR ✓' : isBenar === false ? 'SALAH ✗' : 'TERISI'})` : 'KOSONG'}${correctKey ? ` • Kunci: ${correctKey}` : ''}${dur !== null ? ` • Waktu: ${dur} detik • ${rev}x dibuka` : ''}`
                         }
                       >
                         {/* Badge Ikon Pelanggaran */}
                         {hasViolation && (
                           <span
-                            className={`absolute -top-2 -right-1.5 px-1 py-0.2 rounded-full text-[9px] font-black flex items-center gap-0.5 shadow-xs ${
-                              isFatal ? 'bg-rose-600 text-white animate-pulse' : 'bg-amber-500 text-white'
-                            }`}
+                            className={cn(
+                              'absolute -top-2 -right-1.5 px-1 py-0.2 rounded-full text-[9px] font-black flex items-center gap-0.5 shadow-xs text-white',
+                              isFatal ? 'bg-rose-600 animate-pulse' : 'bg-amber-500'
+                            )}
                           >
                             <AlertTriangle size={8} />
                             <span>#{violationsOnThis.map((v) => v.urutan).join(',')}</span>
@@ -722,23 +791,34 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                         )}
 
                         <span className="block text-[9px] text-slate-400 dark:text-slate-500 font-mono">#{no}</span>
-                        <span className="text-xs font-black">{isFilled ? jwb : '-'}</span>
+                        <div className="flex items-center justify-center gap-1 text-xs font-black">
+                          {isFilled ? (
+                            <>
+                              {isBenar === true && <span className="text-emerald-600 dark:text-emerald-400 font-black">✓</span>}
+                              {isBenar === false && <span className="text-rose-600 dark:text-rose-400 font-black">✗</span>}
+                              <span>{jwb}</span>
+                            </>
+                          ) : (
+                            <span>-</span>
+                          )}
+                        </div>
 
                         {/* Indikator Durasi & Revisit */}
                         {dur !== null && (
                           <span
-                            className={`text-[8px] font-bold px-1 rounded-xs mt-0.5 leading-tight ${
+                            className={cn(
+                              'text-[8.5px] px-1 rounded-xs mt-0.5 leading-tight font-mono',
                               isRapid
-                                ? 'bg-rose-200/80 text-rose-800 dark:bg-rose-900/80 dark:text-rose-200 font-black'
-                                : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-600 dark:text-slate-400'
-                            }`}
+                                ? 'text-rose-600 dark:text-rose-400 font-black bg-rose-100/90 dark:bg-rose-950/90 ring-1 ring-rose-300 dark:ring-rose-800'
+                                : 'text-slate-500 dark:text-slate-400 font-medium'
+                            )}
                           >
-                            {dur}s{rev > 1 ? ` (${rev}x)` : ''}
+                            {isRapid && '⚡'}{dur}s{rev > 1 ? ` (${rev}x)` : ''}
                           </span>
                         )}
 
                         {hasViolation && (
-                          <span className="text-[7.5px] font-black text-rose-700 dark:text-rose-300 truncate max-w-full leading-tight">
+                          <span className="text-[7.5px] font-black text-rose-700 dark:text-rose-300 truncate max-w-full leading-tight mt-0.5">
                             {isFatal ? 'Diskualifikasi' : 'Tab Switch'}
                           </span>
                         )}
@@ -750,23 +830,27 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                 {/* Legend Keterangan Matriks */}
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-wrap items-center gap-4 text-[11px]">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3.5 h-3.5 rounded bg-indigo-100 border border-indigo-300 inline-block" />
-                    <span className="text-slate-600 dark:text-slate-300 font-medium">Jawaban Wajar</span>
+                    <span className="w-4 h-4 rounded bg-emerald-100 border border-emerald-400 text-emerald-700 text-[10px] font-black inline-flex items-center justify-center">✓</span>
+                    <span className="text-emerald-800 dark:text-emerald-300 font-bold">Jawaban Benar</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3.5 h-3.5 rounded bg-rose-100 border border-rose-300 text-rose-700 text-[10px] font-black inline-flex items-center justify-center">⚡</span>
+                    <span className="w-4 h-4 rounded bg-rose-100 border border-rose-400 text-rose-700 text-[10px] font-black inline-flex items-center justify-center">✗</span>
+                    <span className="text-rose-800 dark:text-rose-300 font-bold">Jawaban Salah</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded bg-slate-100 border border-dashed border-slate-300 inline-block" />
+                    <span className="text-slate-600 dark:text-slate-300 font-medium">Belum Dijawab (Kosong)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-rose-600 font-black font-mono text-xs">⚡ 1s</span>
                     <span className="text-rose-700 dark:text-rose-300 font-bold">&lt; 5s (Nembak Kilat)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3.5 h-3.5 rounded bg-slate-100 border border-slate-300 inline-block" />
-                    <span className="text-slate-600 dark:text-slate-300 font-medium">Kosong</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-3.5 h-3.5 rounded bg-amber-100 border border-amber-400 ring-1 ring-amber-300 inline-block" />
+                    <span className="w-4 h-4 rounded bg-amber-100 border border-amber-400 ring-2 ring-amber-400 inline-block" />
                     <span className="text-amber-800 dark:text-amber-300 font-bold">⚠️ Titik Tab Switch</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-3.5 h-3.5 rounded bg-rose-200 border border-rose-500 ring-2 ring-rose-400 inline-block" />
+                    <span className="w-4 h-4 rounded bg-rose-100 border border-rose-500 ring-2 ring-rose-500 inline-block" />
                     <span className="text-rose-800 dark:text-rose-300 font-black">🚨 Titik Terdiskualifikasi</span>
                   </div>
                 </div>
@@ -859,7 +943,9 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                 <tbody className="text-center">
                   <tr className="border-b border-slate-300">
                     <td className="p-1 border-r border-slate-300 font-bold">{totalSoal} Soal</td>
-                    <td className="p-1 border-r border-slate-300 font-bold text-indigo-800">{totalJawabanTerisi} Soal</td>
+                    <td className="p-1 border-r border-slate-300 font-bold text-indigo-800">
+                      {totalJawabanTerisi} Soal ({behavioralStats.totalBenar} Benar, {behavioralStats.totalSalah} Salah)
+                    </td>
                     <td className="p-1 border-r border-slate-300 font-bold text-amber-700">{totalKosong} Soal</td>
                     <td className="p-1 border-r border-slate-300 font-black">
                       {peserta.status === 'DISQUALIFIED' ? 'DIDISKUALIFIKASI (PELANGGARAN)' : peserta.status}
@@ -877,11 +963,16 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                   </tr>
                 </tbody>
               </table>
-              <div className="mt-1 px-2 py-1 bg-slate-50 border border-slate-300 rounded text-[9.5px] text-black leading-snug flex items-start gap-1.5">
-                <span className="font-bold shrink-0">Analisis Forensik Perilaku:</span>
-                <span>
-                  <strong>{behavioralStats.verdictBadge} ({behavioralStats.verdictTitle})</strong> — {behavioralStats.verdictSubtitle}
-                </span>
+              <div className="mt-1 px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded text-[9.5px] text-black leading-snug space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold shrink-0 uppercase tracking-wide">Vonis Deskriptif Sistem CBT &amp; Catatan Forensik:</span>
+                  <span className="font-black px-1.5 py-0.2 rounded border border-slate-400 bg-white text-[9px]">
+                    {behavioralStats.verdictBadge} ({behavioralStats.verdictTitle})
+                  </span>
+                </div>
+                <p className="text-slate-800 leading-relaxed font-medium">
+                  {behavioralStats.descriptiveVerdict}
+                </p>
               </div>
             </div>
 
@@ -928,6 +1019,13 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                       const no = j.nomor || idx + 1;
                       const jwb = String(j.jawaban_siswa || '').trim().toUpperCase();
                       const isFilled = Boolean(jwb);
+                      const correctKey = String(j.kunci_jawaban || bankSoalKeyMap.get(j.soal_id) || '').trim().toUpperCase();
+                      const isBenar =
+                        j.is_benar !== undefined
+                          ? Boolean(j.is_benar)
+                          : isFilled && Boolean(correctKey)
+                          ? jwb === correctKey
+                          : null;
                       const dur = typeof j.durasi_detik === 'number' ? j.durasi_detik : null;
                       const rev = typeof j.revisit_count === 'number' ? j.revisit_count : 1;
                       const isRapid = isFilled && dur !== null && dur < 5;
@@ -938,21 +1036,39 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                       return (
                         <div
                           key={j.soal_id || idx}
-                          className={`p-0.5 text-center border rounded flex flex-col justify-between min-h-[35px] ${
-                            hasViolation
-                              ? isFatal
-                                ? 'border-rose-600 bg-rose-100 font-black text-rose-900 ring-1 ring-rose-500'
-                                : 'border-amber-500 bg-amber-100 font-bold text-amber-950 ring-1 ring-amber-400'
-                              : isFilled
-                              ? isRapid
-                                ? 'border-rose-400 bg-rose-50 text-rose-950 font-bold'
-                                : 'border-slate-300 bg-white text-slate-800'
-                              : 'border-dashed border-slate-300 bg-slate-100/70 text-slate-400'
-                          }`}
+                          className={cn(
+                            'p-0.5 text-center border rounded flex flex-col justify-between min-h-[36px]',
+                            hasViolation && isFatal
+                              ? 'border-rose-600 bg-rose-100 ring-1 ring-rose-500'
+                              : hasViolation
+                              ? 'border-amber-500 bg-amber-100 ring-1 ring-amber-400'
+                              : !isFilled
+                              ? 'border-dashed border-slate-300 bg-slate-100/70 text-slate-400'
+                              : isBenar === true
+                              ? 'border-emerald-500 bg-emerald-50 text-emerald-950 font-bold'
+                              : isBenar === false
+                              ? 'border-rose-400 bg-rose-50 text-rose-950 font-bold'
+                              : 'border-slate-300 bg-white text-slate-800'
+                          )}
                         >
-                          <div className="text-[7px] font-mono text-slate-500">#{no}</div>
-                          <div className="text-[9.5px] font-black">{isFilled ? jwb : '-'}</div>
-                          <div className={`text-[6px] font-bold leading-tight ${isRapid ? 'text-rose-600 font-black' : 'text-slate-500'}`}>
+                          <div className="text-[7px] font-mono text-slate-500 leading-none">#{no}</div>
+                          <div className="text-[9.5px] font-black flex items-center justify-center gap-0.5 leading-none my-0.5">
+                            {isFilled ? (
+                              <>
+                                {isBenar === true && <span className="text-emerald-600 text-[8px] font-black">✓</span>}
+                                {isBenar === false && <span className="text-rose-600 text-[8px] font-black">✗</span>}
+                                <span>{jwb}</span>
+                              </>
+                            ) : (
+                              <span>-</span>
+                            )}
+                          </div>
+                          <div
+                            className={cn(
+                              'text-[6px] leading-tight font-mono',
+                              isRapid ? 'text-rose-600 font-black' : 'text-slate-500 font-medium'
+                            )}
+                          >
                             {dur !== null ? `${dur}s` : ''}{rev > 1 ? ` (${rev}x)` : ''}
                           </div>
                           {hasViolation && (
@@ -964,22 +1080,25 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                       );
                     })}
                   </div>
-                  <div className="flex items-center gap-3 text-[8px] text-slate-600 mt-1.5 pt-1 border-t border-slate-200">
-                    <span className="font-semibold">Keterangan:</span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2.5 h-2.5 bg-white border border-slate-300 inline-block rounded-xs" /> Terisi
+                  <div className="flex flex-wrap items-center gap-3 text-[8px] text-slate-700 mt-1.5 pt-1 border-t border-slate-200">
+                    <span className="font-bold">Keterangan:</span>
+                    <span className="flex items-center gap-1 font-semibold text-emerald-800">
+                      <span className="w-2.5 h-2.5 bg-emerald-50 border border-emerald-500 inline-flex items-center justify-center text-[7px] font-black text-emerald-700 rounded-xs">✓</span> Benar
+                    </span>
+                    <span className="flex items-center gap-1 font-semibold text-rose-800">
+                      <span className="w-2.5 h-2.5 bg-rose-50 border border-rose-400 inline-flex items-center justify-center text-[7px] font-black text-rose-700 rounded-xs">✗</span> Salah
+                    </span>
+                    <span className="flex items-center gap-1 text-slate-500">
+                      <span className="w-2.5 h-2.5 bg-slate-100 border border-dashed border-slate-300 inline-block rounded-xs" /> Kosong
                     </span>
                     <span className="flex items-center gap-1 text-rose-700 font-bold">
-                      <span className="w-2.5 h-2.5 bg-rose-50 border border-rose-400 inline-block rounded-xs" /> ⚡ &lt; 5s (Nembak Kilat)
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2.5 h-2.5 bg-slate-100 border border-dashed border-slate-300 inline-block rounded-xs" /> Kosong
+                      <span className="font-mono font-black text-rose-600">1s</span> Waktu &lt; 5s (Nembak Kilat)
                     </span>
                     <span className="flex items-center gap-1 text-amber-800 font-bold">
                       <span className="w-2.5 h-2.5 bg-amber-100 border border-amber-500 inline-block rounded-xs" /> ⚠️ Titik Tab Switch
                     </span>
                     <span className="flex items-center gap-1 text-rose-800 font-black">
-                      <span className="w-2.5 h-2.5 bg-rose-100 border border-rose-600 inline-block rounded-xs" /> 🚨 Titik Diskualifikasi
+                      <span className="w-2.5 h-2.5 bg-rose-200 border border-rose-600 inline-block rounded-xs" /> 🚨 Titik Diskualifikasi
                     </span>
                   </div>
                 </div>

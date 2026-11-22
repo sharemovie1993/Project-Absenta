@@ -243,6 +243,9 @@ export interface CbtStudentAnswerItem {
   timestamp: number;
   durasi_detik?: number;
   revisit_count?: number;
+  nomor?: number;
+  kunci_jawaban?: string;
+  is_benar?: boolean;
 }
 
 export type CbtStudentExamStatus = 'BELUM_MULAI' | 'STANDBY' | 'IN_PROGRESS' | 'FINISHED' | 'DISQUALIFIED';

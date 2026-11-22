@@ -249,6 +249,10 @@ export class CbtJadwalService {
             Kontributor: {
               select: { guru_id: true, unit_pengajaran_id: true },
             },
+            Soal: {
+              select: { id: true, nomor_urut: true, kunci_jawaban: true, bobot: true },
+              orderBy: { nomor_urut: 'asc' },
+            },
           },
         },
         TahunPelajaran: { select: { id: true, tahun: true, is_active: true } },
@@ -979,16 +983,16 @@ export class CbtJadwalService {
       } catch {}
     }
 
-    // Ambil struktur butir soal per UnitPengajaran (untuk breakdown nilai per unit pada ujian kolaborasi)
+    // Ambil struktur butir soal di Bank Soal (untuk validasi kunci jawaban & breakdown kolaborasi)
     const bankSoalQuestions = jadwal?.bank_soal_id
       ? await prisma.cbtSoal.findMany({
           where: {
             tenant_id: tenantId,
             bank_soal_id: jadwal.bank_soal_id,
-            unit_pengajaran_id: { not: null },
           },
           select: {
             id: true,
+            nomor_urut: true,
             bobot: true,
             kunci_jawaban: true,
             unit_pengajaran_id: true,
@@ -1001,12 +1005,14 @@ export class CbtJadwalService {
               },
             },
           },
+          orderBy: { nomor_urut: 'asc' },
         })
       : [];
 
-    const hasUnitTaggedQuestions = bankSoalQuestions.length > 0;
+    const unitTaggedQuestions = bankSoalQuestions.filter((q) => q.unit_pengajaran_id !== null);
+    const hasUnitTaggedQuestions = unitTaggedQuestions.length > 0;
     const soalMetaById = new Map(
-      bankSoalQuestions.map((q) => [
+      unitTaggedQuestions.map((q) => [
         q.id,
         {
           unitId: q.unit_pengajaran_id!,
@@ -1014,6 +1020,18 @@ export class CbtJadwalService {
           guruName: q.UnitPengajaran?.Guru?.nama_guru || null,
           bobot: Number(q.bobot) || 1,
           kunci: String(q.kunci_jawaban || '').trim().toUpperCase(),
+        },
+      ])
+    );
+
+    const allSoalMetaById = new Map(
+      bankSoalQuestions.map((q) => [
+        q.id,
+        {
+          id: q.id,
+          nomor_urut: q.nomor_urut,
+          kunci: String(q.kunci_jawaban || '').trim().toUpperCase(),
+          bobot: Number(q.bobot) || 1,
         },
       ])
     );
@@ -1057,6 +1075,25 @@ export class CbtJadwalService {
           effectiveJawabanJson = rSession.jawaban;
           liveStatusSinkron = 'SYNCED';
           lastSyncTimestamp = rSession.last_sync;
+        }
+
+        // Enrich jawaban_json dengan metadata kunci jawaban & status kebenaran (untuk matriks forensik proctor)
+        if (Array.isArray(effectiveJawabanJson)) {
+          effectiveJawabanJson = (effectiveJawabanJson as any[]).map((ans, idx) => {
+            const meta = ans?.soal_id
+              ? allSoalMetaById.get(ans.soal_id)
+              : (bankSoalQuestions[idx] ? { kunci: String(bankSoalQuestions[idx].kunci_jawaban || '').trim().toUpperCase(), nomor_urut: bankSoalQuestions[idx].nomor_urut } : null);
+            const correctKey = (meta?.kunci || ans?.kunci_jawaban || '').trim().toUpperCase();
+            const studentAns = String(ans?.jawaban_siswa || '').trim().toUpperCase();
+            const isFilled = Boolean(studentAns);
+            const isBenar = isFilled && Boolean(correctKey) ? studentAns === correctKey : (ans?.is_benar ?? false);
+            return {
+              ...ans,
+              nomor: ans?.nomor || meta?.nomor_urut || idx + 1,
+              kunci_jawaban: correctKey || ans?.kunci_jawaban || undefined,
+              is_benar: isFilled ? isBenar : false,
+            };
+          });
         }
 
         // Hitung breakdown skor per UnitPengajaran (khusus ujian kolaborasi dengan soal tagged unit)
