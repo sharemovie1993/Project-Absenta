@@ -16,6 +16,8 @@ export interface LocalAnswerRecord {
   jawaban_siswa: string;
   is_ragu: boolean;
   timestamp: number;
+  durasi_detik?: number;
+  revisit_count?: number;
   is_synced: boolean;
 }
 
@@ -51,7 +53,9 @@ export const cbtOfflineStorage = {
     siswaId: string,
     soalId: string,
     jawaban: string,
-    isRagu: boolean
+    isRagu: boolean,
+    durasiDetik?: number,
+    revisitCount?: number
   ): Promise<void> {
     try {
       const db = await openDB();
@@ -66,6 +70,8 @@ export const cbtOfflineStorage = {
         jawaban_siswa: jawaban,
         is_ragu: isRagu,
         timestamp: Date.now(),
+        durasi_detik: durasiDetik,
+        revisit_count: revisitCount,
         is_synced: false,
       };
 

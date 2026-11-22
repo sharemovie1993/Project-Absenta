@@ -209,6 +209,8 @@ export interface CbtPesertaUjian {
     jawaban_siswa: string;
     is_ragu: boolean;
     timestamp: number;
+    durasi_detik?: number;
+    revisit_count?: number;
   }>;
   jumlah_benar: number;
   jumlah_salah: number;
@@ -239,6 +241,8 @@ export interface CbtStudentAnswerItem {
   jawaban_siswa: string;
   is_ragu: boolean;
   timestamp: number;
+  durasi_detik?: number;
+  revisit_count?: number;
 }
 
 export type CbtStudentExamStatus = 'BELUM_MULAI' | 'STANDBY' | 'IN_PROGRESS' | 'FINISHED' | 'DISQUALIFIED';

@@ -451,6 +451,47 @@ export default function CbtExamRoomPage() {
   const sisaWaktuDetikRef = useRef(sisaWaktuDetik);
   sisaWaktuDetikRef.current = sisaWaktuDetik;
 
+  // ── Tracking Durasi per Butir Soal & Revisit Count (Zero Overhead, RAM Murni) ──
+  const questionTimingRef = useRef<Record<string, { durasiDetik: number; revisitCount: number }>>({});
+  const activeSoalEnterTimeRef = useRef<number>(Date.now());
+  const activeSoalIdRef = useRef<string | null>(null);
+
+  // Akumulasikan waktu yang dihabiskan siswa pada butir soal yang sedang aktif
+  const flushCurrentQuestionTime = useCallback(() => {
+    const activeId = activeSoalIdRef.current;
+    if (!activeId) return;
+    const now = Date.now();
+    const elapsed = Math.max(0, Math.round((now - activeSoalEnterTimeRef.current) / 1000));
+    const safeElapsed = Math.min(3600, elapsed); // Lindungi dari anomali jika laptop/HP sleep
+
+    const existing = questionTimingRef.current[activeId] || { durasiDetik: 0, revisitCount: 1 };
+    questionTimingRef.current[activeId] = {
+      ...existing,
+      durasiDetik: existing.durasiDetik + safeElapsed,
+    };
+    activeSoalEnterTimeRef.current = now;
+  }, []);
+
+  // Catat perpindahan nomor butir soal (currentIdx)
+  useEffect(() => {
+    if (step !== 'EXAM_ROOM' || !soalList.length) return;
+    const activeSoal = soalList[currentIdx];
+    if (!activeSoal) return;
+
+    // Catat waktu butir sebelumnya
+    flushCurrentQuestionTime();
+
+    // Inisiasi timer soal baru & tambahkan counter bolak-balik (revisit)
+    const targetId = activeSoal.id;
+    const existing = questionTimingRef.current[targetId] || { durasiDetik: 0, revisitCount: 0 };
+    questionTimingRef.current[targetId] = {
+      ...existing,
+      revisitCount: existing.revisitCount + 1,
+    };
+    activeSoalIdRef.current = targetId;
+    activeSoalEnterTimeRef.current = Date.now();
+  }, [currentIdx, step, soalList, flushCurrentQuestionTime]);
+
   // 4a. Debounced Autosave Realtime (1.2 detik setelah memilih jawaban)
   const triggerDebouncedSync = useCallback(() => {
     if (!navigator.onLine) {
@@ -465,8 +506,10 @@ export default function CbtExamRoomPage() {
     setSyncStatus('syncing');
 
     debounceTimerRef.current = setTimeout(async () => {
+      flushCurrentQuestionTime();
       const currentAnswers = answersMapRef.current;
       const currentSisaWaktu = sisaWaktuDetikRef.current;
+      const currentTiming = questionTimingRef.current;
 
       const answersArray: CbtStudentAnswerItem[] = Object.entries(currentAnswers).map(
         ([soalId, val]) => ({
@@ -474,6 +517,8 @@ export default function CbtExamRoomPage() {
           jawaban_siswa: val.jawaban,
           is_ragu: val.isRagu,
           timestamp: Date.now(),
+          durasi_detik: currentTiming[soalId]?.durasiDetik ?? 0,
+          revisit_count: currentTiming[soalId]?.revisitCount ?? 1,
         })
       );
 
@@ -492,15 +537,17 @@ export default function CbtExamRoomPage() {
         setSyncStatus('synced');
       }
     }, 1200);
-  }, [jadwalId, studentId]);
+  }, [jadwalId, studentId, flushCurrentQuestionTime]);
 
   // 4b. Background Safety Sync Heartbeat ke Redis setiap 20 detik
   useEffect(() => {
     if (step !== 'EXAM_ROOM' || !jadwalId) return;
 
     const syncInterval = setInterval(async () => {
+      flushCurrentQuestionTime();
       const currentAnswers = answersMapRef.current;
       const currentSisaWaktu = sisaWaktuDetikRef.current;
+      const currentTiming = questionTimingRef.current;
 
       const answersArray: CbtStudentAnswerItem[] = Object.entries(currentAnswers).map(
         ([soalId, val]) => ({
@@ -508,6 +555,8 @@ export default function CbtExamRoomPage() {
           jawaban_siswa: val.jawaban,
           is_ragu: val.isRagu,
           timestamp: Date.now(),
+          durasi_detik: currentTiming[soalId]?.durasiDetik ?? 0,
+          revisit_count: currentTiming[soalId]?.revisitCount ?? 1,
         })
       );
 
@@ -526,7 +575,7 @@ export default function CbtExamRoomPage() {
     }, 20000);
 
     return () => clearInterval(syncInterval);
-  }, [step, jadwalId, studentId]);
+  }, [step, jadwalId, studentId, flushCurrentQuestionTime]);
 
   // 5. Anti-Cheat Security Watchers (Tab Switch & Fullscreen Exit)
   useEffect(() => {
@@ -629,7 +678,17 @@ export default function CbtExamRoomPage() {
     }));
 
     // Simpan instan ke IndexedDB lokal (<1ms)
-    await cbtOfflineStorage.saveAnswer(jadwalId, user?.id || 'siswa', soalId, kodeOpsi, currentRagu);
+    flushCurrentQuestionTime();
+    const currentTiming = questionTimingRef.current[soalId];
+    await cbtOfflineStorage.saveAnswer(
+      jadwalId,
+      user?.id || 'siswa',
+      soalId,
+      kodeOpsi,
+      currentRagu,
+      currentTiming?.durasiDetik ?? 0,
+      currentTiming?.revisitCount ?? 1
+    );
 
     // Update session storage index
     if (signature) {
@@ -679,11 +738,16 @@ export default function CbtExamRoomPage() {
       setIsSubmitting(true);
       setSubmitError(null);
 
+      flushCurrentQuestionTime();
+      const currentTiming = questionTimingRef.current;
+
       const answersArray: CbtStudentAnswerItem[] = (soalList || []).map((s) => ({
         soal_id: s.id,
         jawaban_siswa: answersMap[s.id]?.jawaban || '',
         is_ragu: answersMap[s.id]?.isRagu || false,
         timestamp: Date.now(),
+        durasi_detik: currentTiming[s.id]?.durasiDetik ?? 0,
+        revisit_count: currentTiming[s.id]?.revisitCount ?? 1,
       }));
 
       const res = await cbtApi.submitFinal(jadwalId, {

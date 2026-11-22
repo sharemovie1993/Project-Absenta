@@ -251,7 +251,9 @@ export const syncAnswerItemSchema = z.object({
   jawaban_siswa: z.string(), // 'A' | 'B' | 'C' | 'D' | 'E' atau string kosong
   is_ragu: z.boolean().default(false),
   timestamp: z.number(),
-});
+  durasi_detik: z.number().int().min(0).optional().default(0),
+  revisit_count: z.number().int().min(0).optional().default(1),
+}).passthrough();
 
 export const syncAnswersBatchSchema = z.object({
   jawaban: z.array(syncAnswerItemSchema),

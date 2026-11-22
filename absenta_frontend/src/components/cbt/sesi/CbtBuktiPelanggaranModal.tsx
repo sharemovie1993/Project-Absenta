@@ -21,6 +21,8 @@ import {
   XCircle,
   HelpCircle,
   Hash,
+  Activity,
+  Zap,
 } from 'lucide-react';
 import type { CbtJadwalUjian, CbtPesertaUjian } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
@@ -165,6 +167,93 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
 
     return map;
   }, [normalizedViolations, totalJawabanTerisi, totalSoal, peserta.status]);
+
+  // ── Analisis Forensik Perilaku Siswa (Behavioral Timing & Revisit Analytics) ──
+  const behavioralStats = React.useMemo(() => {
+    let totalDetik = 0;
+    let rapidGuessCount = 0; // Butir dijawab < 5 detik
+    let totalRevisit = 0;
+    let questionsWithDurationCount = 0;
+
+    rawJawaban.forEach((j) => {
+      const dur = typeof j.durasi_detik === 'number' ? j.durasi_detik : null;
+      const rev = typeof j.revisit_count === 'number' ? j.revisit_count : 1;
+      const isFilled = Boolean(j.jawaban_siswa);
+
+      if (dur !== null) {
+        totalDetik += dur;
+        questionsWithDurationCount++;
+        if (isFilled && dur < 5 && dur >= 0) {
+          rapidGuessCount++;
+        }
+      }
+      if (rev > 1) {
+        totalRevisit += rev - 1;
+      }
+    });
+
+    const rataRataDetikPerSoal =
+      questionsWithDurationCount > 0
+        ? Math.round(totalDetik / questionsWithDurationCount)
+        : totalJawabanTerisi > 0 && durasiMenit > 0
+        ? Math.round((durasiMenit * 60) / totalJawabanTerisi)
+        : 0;
+
+    const rapidGuessIndex =
+      totalJawabanTerisi > 0 ? Math.round((rapidGuessCount / totalJawabanTerisi) * 100) : 0;
+
+    // Vonis Matriks Perilaku Sistem
+    let verdictTitle = 'Pola Pengerjaan Wajar & Analitis';
+    let verdictSubtitle = 'Siswa membaca stimulus soal dengan waktu yang proporsional dan tertib.';
+    let verdictType: 'success' | 'warning' | 'danger' | 'info' = 'success';
+    let verdictBadge = '✅ Wajar & Analitis';
+
+    const nilaiAkhirNum = Number(peserta.nilai_akhir || 0);
+
+    if (peserta.status === 'DISQUALIFIED') {
+      verdictTitle = 'Sanksi Diskualifikasi Sistem';
+      verdictSubtitle = 'Pelanggaran batas toleransi layar server (≥ 3x). Akses sesi dihentikan otomatis.';
+      verdictType = 'danger';
+      verdictBadge = '🚨 Diskualifikasi';
+    } else if (rapidGuessIndex >= 60 && totalJawabanTerisi >= 5) {
+      verdictTitle = 'Rapid Guessing (Nembak Kilat)';
+      verdictSubtitle = `${rapidGuessIndex}% butir soal dijawab < 5 detik tanpa jeda membaca stimulus yang wajar.`;
+      verdictType = 'warning';
+      verdictBadge = '⚠️ Nembak Kilat';
+    } else if (rapidGuessIndex >= 35 && nilaiAkhirNum >= 85 && normalizedViolations.length >= 1) {
+      verdictTitle = 'Indikasi Kecurangan Terbimbing (AI/Joki)';
+      verdictSubtitle = 'Pengerjaan sangat cepat disertai akurasi ekstrem dan catatan pelanggaran layar.';
+      verdictType = 'danger';
+      verdictBadge = '🚨 Indikasi Curang';
+    } else if (rataRataDetikPerSoal >= 90 && totalKosong >= totalSoal * 0.4) {
+      verdictTitle = 'Struggling / Kehabisan Waktu';
+      verdictSubtitle = 'Siswa menghabiskan waktu terlalu lama pada soal awal sehingga soal akhir tidak tuntas.';
+      verdictType = 'info';
+      verdictBadge = '⏳ Kehabisan Waktu';
+    }
+
+    return {
+      totalDetik,
+      rataRataDetikPerSoal,
+      rapidGuessCount,
+      rapidGuessIndex,
+      totalRevisit,
+      hasDurationData: questionsWithDurationCount > 0,
+      verdictTitle,
+      verdictSubtitle,
+      verdictType,
+      verdictBadge,
+    };
+  }, [
+    rawJawaban,
+    totalJawabanTerisi,
+    totalSoal,
+    totalKosong,
+    durasiMenit,
+    peserta.status,
+    peserta.nilai_akhir,
+    normalizedViolations.length,
+  ]);
 
   const handleBrowserPrint = () => {
     if (activeTab !== 'print') {
@@ -428,7 +517,82 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
             </div>
           </div>
 
-          {/* 3. Panel Kronologi Pelanggaran (Digital Forensic Timeline) */}
+          {/* 3. Panel Analitik Forensik Perilaku Siswa & Vonis Sistem */}
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 text-indigo-600 flex items-center justify-center font-bold">
+                  <Activity size={16} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-slate-800 dark:text-slate-100">
+                    Analitik Forensik Perilaku &amp; Pola Pengerjaan Siswa
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Menilai keaslian pengerjaan berdasarkan kecepatan membaca butir soal dan kebiasaan bolak-balik
+                  </p>
+                </div>
+              </div>
+
+              <span
+                className={`text-xs font-black px-2.5 py-1 rounded-lg border ${
+                  behavioralStats.verdictType === 'danger'
+                    ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300'
+                    : behavioralStats.verdictType === 'warning'
+                    ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300'
+                    : behavioralStats.verdictType === 'info'
+                    ? 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300'
+                    : 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300'
+                }`}
+              >
+                {behavioralStats.verdictBadge}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+              <div className="p-3 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+                <span className="text-[10px] font-bold text-slate-400 block mb-0.5">Rata-rata Waktu / Soal</span>
+                <p className="text-sm font-black text-slate-800 dark:text-slate-100">
+                  {behavioralStats.rataRataDetikPerSoal} Detik / Butir
+                </p>
+                <span className="text-[9.5px] text-slate-500">
+                  {behavioralStats.rataRataDetikPerSoal < 5 ? '⚠️ Sangat Cepat (Nembak)' : 'Wajar & Proporsional'}
+                </span>
+              </div>
+
+              <div className="p-3 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+                <span className="text-[10px] font-bold text-slate-400 block mb-0.5">Indeks Tebakan Kilat (RGI)</span>
+                <p className={`text-sm font-black ${behavioralStats.rapidGuessIndex >= 50 ? 'text-rose-600' : 'text-slate-800 dark:text-slate-100'}`}>
+                  {behavioralStats.rapidGuessIndex}%
+                </p>
+                <span className="text-[9.5px] text-slate-500">
+                  {behavioralStats.rapidGuessCount} butir dijawab &lt; 5 detik
+                </span>
+              </div>
+
+              <div className="p-3 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+                <span className="text-[10px] font-bold text-slate-400 block mb-0.5">Pemeriksaan Ulang (Revisit)</span>
+                <p className="text-sm font-black text-slate-800 dark:text-slate-100">
+                  {behavioralStats.totalRevisit}x Bolak-balik
+                </p>
+                <span className="text-[9.5px] text-slate-500">
+                  {behavioralStats.totalRevisit > 0 ? 'Siswa mengecek ulang butir' : 'Sekali lewat langsung selesai'}
+                </span>
+              </div>
+
+              <div className="p-3 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+                <span className="text-[10px] font-bold text-slate-400 block mb-0.5">Kesimpulan Forensik</span>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-tight">
+                  {behavioralStats.verdictTitle}
+                </p>
+                <span className="text-[9px] text-slate-500 line-clamp-1">
+                  {behavioralStats.verdictSubtitle}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Panel Kronologi Pelanggaran (Digital Forensic Timeline) */}
           <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -510,6 +674,9 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                     const no = j.nomor || idx + 1;
                     const jwb = String(j.jawaban_siswa || '').trim().toUpperCase();
                     const isFilled = Boolean(jwb);
+                    const dur = typeof j.durasi_detik === 'number' ? j.durasi_detik : null;
+                    const rev = typeof j.revisit_count === 'number' ? j.revisit_count : 1;
+                    const isRapid = isFilled && dur !== null && dur < 5;
                     const violationsOnThis = questionViolationMap.get(no) || [];
                     const hasViolation = violationsOnThis.length > 0;
                     const isFatal = violationsOnThis.some((v) => v.isFatal);
@@ -517,19 +684,21 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                     return (
                       <div
                         key={j.soal_id || idx}
-                        className={`relative p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-center min-h-[54px] ${
+                        className={`relative p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-center min-h-[58px] ${
                           hasViolation
                             ? isFatal
                               ? 'bg-rose-100 dark:bg-rose-950/80 border-rose-500 text-rose-900 dark:text-rose-100 ring-2 ring-rose-400 font-black'
                               : 'bg-amber-50 dark:bg-amber-950/70 border-amber-400 text-amber-950 dark:text-amber-100 ring-1 ring-amber-300 font-black'
                             : isFilled
-                            ? 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 text-indigo-900 dark:text-indigo-200 font-bold'
+                            ? isRapid
+                              ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 text-rose-900 dark:text-rose-200 font-bold'
+                              : 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 text-indigo-900 dark:text-indigo-200 font-bold'
                             : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 text-slate-400 font-normal'
                         }`}
                         title={
                           hasViolation
                             ? `Soal No. ${no}: Terdeteksi ${violationsOnThis.map((v) => `Pelanggaran #${v.urutan} (${v.tipe} ${v.waktuStr})`).join(', ')}`
-                            : `Soal No. ${no}: ${isFilled ? `Pilihan ${jwb}` : 'Kosong / Belum Diisi'}`
+                            : `Soal No. ${no}: ${isFilled ? `Pilihan ${jwb}` : 'Kosong'}${dur !== null ? ` • Waktu: ${dur} detik • ${rev}x dibuka` : ''}`
                         }
                       >
                         {/* Badge Ikon Pelanggaran */}
@@ -547,6 +716,19 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                         <span className="block text-[9px] text-slate-400 dark:text-slate-500 font-mono">#{no}</span>
                         <span className="text-xs font-black">{isFilled ? jwb : '-'}</span>
 
+                        {/* Indikator Durasi & Revisit */}
+                        {dur !== null && (
+                          <span
+                            className={`text-[8px] font-bold px-1 rounded-xs mt-0.5 leading-tight ${
+                              isRapid
+                                ? 'bg-rose-200/80 text-rose-800 dark:bg-rose-900/80 dark:text-rose-200 font-black'
+                                : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
+                            {dur}s{rev > 1 ? ` (${rev}x)` : ''}
+                          </span>
+                        )}
+
                         {hasViolation && (
                           <span className="text-[7.5px] font-black text-rose-700 dark:text-rose-300 truncate max-w-full leading-tight">
                             {isFatal ? 'Diskualifikasi' : 'Tab Switch'}
@@ -561,7 +743,11 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-wrap items-center gap-4 text-[11px]">
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 rounded bg-indigo-100 border border-indigo-300 inline-block" />
-                    <span className="text-slate-600 dark:text-slate-300 font-medium">Jawaban Terisi</span>
+                    <span className="text-slate-600 dark:text-slate-300 font-medium">Jawaban Wajar</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3.5 h-3.5 rounded bg-rose-100 border border-rose-300 text-rose-700 text-[10px] font-black inline-flex items-center justify-center">⚡</span>
+                    <span className="text-rose-700 dark:text-rose-300 font-bold">&lt; 5s (Nembak Kilat)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-3.5 h-3.5 rounded bg-slate-100 border border-slate-300 inline-block" />
@@ -650,29 +836,36 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
             </table>
 
             {/* 5. REKAPITULASI CAPAIAN & FORENSIK */}
-            <div className="my-3">
+            <div className="my-2.5">
               <h4 className="text-xs font-bold text-black uppercase mb-1">A. Rekapitulasi Pengerjaan &amp; Status Kelulusan Sesi:</h4>
-              <table className="w-full text-[11px] border-collapse border border-slate-400 text-black">
+              <table className="w-full text-[10.5px] border-collapse border border-slate-400 text-black">
                 <thead>
                   <tr className="bg-slate-100 border-b border-slate-400 font-bold text-center">
-                    <th className="p-1.5 border-r border-slate-300">Total Soal</th>
-                    <th className="p-1.5 border-r border-slate-300">Butir Dijawab</th>
-                    <th className="p-1.5 border-r border-slate-300">Butir Kosong</th>
-                    <th className="p-1.5 border-r border-slate-300">Status Akhir</th>
-                    <th className="p-1.5">Nilai CBT</th>
+                    <th className="p-1 border-r border-slate-300">Total Soal</th>
+                    <th className="p-1 border-r border-slate-300">Butir Dijawab</th>
+                    <th className="p-1 border-r border-slate-300">Butir Kosong</th>
+                    <th className="p-1 border-r border-slate-300">Status Akhir</th>
+                    <th className="p-1">Nilai CBT</th>
                   </tr>
                 </thead>
                 <tbody className="text-center">
-                  <tr>
-                    <td className="p-1.5 border-r border-slate-300 font-bold">{totalSoal} Soal</td>
-                    <td className="p-1.5 border-r border-slate-300 font-bold text-indigo-800">{totalJawabanTerisi} Soal</td>
-                    <td className="p-1.5 border-r border-slate-300 font-bold text-amber-700">{totalKosong} Soal</td>
-                    <td className="p-1.5 border-r border-slate-300 font-black">
+                  <tr className="border-b border-slate-300">
+                    <td className="p-1 border-r border-slate-300 font-bold">{totalSoal} Soal</td>
+                    <td className="p-1 border-r border-slate-300 font-bold text-indigo-800">{totalJawabanTerisi} Soal</td>
+                    <td className="p-1 border-r border-slate-300 font-bold text-amber-700">{totalKosong} Soal</td>
+                    <td className="p-1 border-r border-slate-300 font-black">
                       {peserta.status === 'DISQUALIFIED' ? 'DIDISKUALIFIKASI (PELANGGARAN)' : peserta.status}
                     </td>
-                    <td className="p-1.5 font-black text-sm text-slate-900">
+                    <td className="p-1 font-black text-sm text-slate-900">
                       {peserta.nilai_akhir !== null && peserta.nilai_akhir !== undefined ? peserta.nilai_akhir : 0}
                     </td>
+                  </tr>
+                  <tr className="bg-slate-50/70 text-[9.5px]">
+                    <td className="p-1 border-r border-slate-300 text-slate-600 font-semibold">Rata Waktu / Soal:</td>
+                    <td className="p-1 border-r border-slate-300 font-bold text-slate-900">{behavioralStats.rataRataDetikPerSoal} Detik / Butir</td>
+                    <td className="p-1 border-r border-slate-300 text-slate-600 font-semibold">Tebakan Kilat (&lt;5s):</td>
+                    <td className="p-1 border-r border-slate-300 font-bold text-rose-700">{behavioralStats.rapidGuessIndex}% ({behavioralStats.rapidGuessCount} Soal)</td>
+                    <td className="p-1 font-black text-slate-800">{behavioralStats.verdictBadge}</td>
                   </tr>
                 </tbody>
               </table>
@@ -721,6 +914,9 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                       const no = j.nomor || idx + 1;
                       const jwb = String(j.jawaban_siswa || '').trim().toUpperCase();
                       const isFilled = Boolean(jwb);
+                      const dur = typeof j.durasi_detik === 'number' ? j.durasi_detik : null;
+                      const rev = typeof j.revisit_count === 'number' ? j.revisit_count : 1;
+                      const isRapid = isFilled && dur !== null && dur < 5;
                       const violationsOnThis = questionViolationMap.get(no) || [];
                       const hasViolation = violationsOnThis.length > 0;
                       const isFatal = violationsOnThis.some((v) => v.isFatal);
@@ -728,20 +924,25 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                       return (
                         <div
                           key={j.soal_id || idx}
-                          className={`p-1 text-center border rounded flex flex-col justify-between min-h-[32px] ${
+                          className={`p-0.5 text-center border rounded flex flex-col justify-between min-h-[35px] ${
                             hasViolation
                               ? isFatal
                                 ? 'border-rose-600 bg-rose-100 font-black text-rose-900 ring-1 ring-rose-500'
                                 : 'border-amber-500 bg-amber-100 font-bold text-amber-950 ring-1 ring-amber-400'
                               : isFilled
-                              ? 'border-slate-300 bg-white text-slate-800'
+                              ? isRapid
+                                ? 'border-rose-400 bg-rose-50 text-rose-950 font-bold'
+                                : 'border-slate-300 bg-white text-slate-800'
                               : 'border-dashed border-slate-300 bg-slate-100/70 text-slate-400'
                           }`}
                         >
-                          <div className="text-[7.5px] font-mono text-slate-500">#{no}</div>
+                          <div className="text-[7px] font-mono text-slate-500">#{no}</div>
                           <div className="text-[9.5px] font-black">{isFilled ? jwb : '-'}</div>
+                          <div className={`text-[6px] font-bold leading-tight ${isRapid ? 'text-rose-600 font-black' : 'text-slate-500'}`}>
+                            {dur !== null ? `${dur}s` : ''}{rev > 1 ? ` (${rev}x)` : ''}
+                          </div>
                           {hasViolation && (
-                            <div className="text-[6.5px] font-black text-rose-700 leading-tight">
+                            <div className="text-[6px] font-black text-rose-700 leading-tight">
                               {isFatal ? '🚨Stop' : '⚠️Tab'}
                             </div>
                           )}
@@ -753,6 +954,9 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
                     <span className="font-semibold">Keterangan:</span>
                     <span className="flex items-center gap-1">
                       <span className="w-2.5 h-2.5 bg-white border border-slate-300 inline-block rounded-xs" /> Terisi
+                    </span>
+                    <span className="flex items-center gap-1 text-rose-700 font-bold">
+                      <span className="w-2.5 h-2.5 bg-rose-50 border border-rose-400 inline-block rounded-xs" /> ⚡ &lt; 5s (Nembak Kilat)
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="w-2.5 h-2.5 bg-slate-100 border border-dashed border-slate-300 inline-block rounded-xs" /> Kosong
