@@ -257,6 +257,15 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
           pengawas_2_nama: null,
           proktor_id: null,
           proktor_nama: null,
+          // ── SANITASI TANDA TANGAN DIGITAL DARI SESI INDUK ──
+          // Sesi remedial adalah milik Guru Mapel, TIDAK BOLEH mewarisi TTD pengawas ruang sesi induk!
+          tanda_tangan_pengawas_1: null,
+          waktu_ttd_pengawas_1: null,
+          tanda_tangan_pengawas_2: null,
+          waktu_ttd_pengawas_2: null,
+          tanda_tangan_proktor: null,
+          waktu_ttd_proktor: null,
+          catatan_kejadian_khusus: '',
           shuffle_questions: true,
           shuffle_options: true,
         },

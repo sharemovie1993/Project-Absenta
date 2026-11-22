@@ -105,6 +105,12 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
   const populateDefaultSigners = () => {
     const rawCfg = currentJadwal?.setting_keamanan;
     const cfg = typeof rawCfg === 'string' ? JSON.parse(rawCfg) : rawCfg;
+    const isRemedialSession = Boolean(
+      cfg?.is_remedial ||
+      currentJadwal?.nama_sesi?.toUpperCase()?.includes('REMEDIAL') ||
+      currentJadwal?.nama_sesi?.toUpperCase()?.includes('SUSULAN')
+    );
+
     const defaultGuruNama =
       cfg?.pengawas_1_nama ||
       currentJadwal?.BankSoal?.Guru?.nama_guru ||
@@ -123,7 +129,7 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
       '-';
     const defaultRuang =
       cfg?.ruang_ujian ||
-      'Ruang Kelas / Ruang Ujian CBT';
+      (isRemedialSession ? 'Ruang Kelas / Laboratorium CBT (Remedial & Susulan)' : 'Ruang Kelas / Ruang Ujian CBT');
 
     const defaultKepsek =
       sekolahData?.kepala_sekolah ||
@@ -143,6 +149,12 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
     setPengawas2Signature(cfg?.tanda_tangan_proktor || cfg?.tanda_tangan_pengawas_2 || '');
     setKepsekNama(defaultKepsek);
     setKepsekNip(defaultNipKepsek);
+
+    if (isRemedialSession) {
+      setCatatanPelaksanaan(
+        'Pelaksanaan asesmen remedial dan susulan mata pelajaran berlangsung dengan tertib, aman, dan lancar. Peserta didik yang belum mencapai KKTP telah mendapatkan bimbingan dan evaluasi ulang.'
+      );
+    }
   };
 
   useEffect(() => {
@@ -535,7 +547,16 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
           {/* 2. JUDUL DOKUMEN */}
           <div className="text-center my-4 space-y-0.5">
             <h3 className="text-sm font-bold uppercase tracking-wider underline text-black">
-              BERITA ACARA PELAKSANAAN {eventName ? eventName.toUpperCase() : 'ASESMEN BERBASIS KOMPUTER (CBT)'}
+              {Boolean(
+                (typeof currentJadwal?.setting_keamanan === 'string'
+                  ? JSON.parse(currentJadwal.setting_keamanan || '{}')
+                  : currentJadwal?.setting_keamanan || {}
+                )?.is_remedial ||
+                currentJadwal?.nama_sesi?.toUpperCase()?.includes('REMEDIAL') ||
+                currentJadwal?.nama_sesi?.toUpperCase()?.includes('SUSULAN')
+              )
+                ? `BERITA ACARA & REKAPITULASI PELAKSANAAN REMEDIAL / SUSULAN ${eventName ? eventName.toUpperCase() : 'CBT'}`
+                : `BERITA ACARA PELAKSANAAN ${eventName ? eventName.toUpperCase() : 'ASESMEN BERBASIS KOMPUTER (CBT)'}`}
             </h3>
             <p className="text-[11px] font-semibold text-slate-700">
               Nomor: BA-CBT/{tglMulai.getFullYear()}/{currentJadwal.token_ujian}
@@ -654,7 +675,16 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
                 notesOrApprovalLabel="Mengetahui / Menyetujui,\nKepala Sekolah"
                 customSigners={{
                   pengawasUjian: {
-                    roleTitle: 'Pengawas Ruang Ujian,',
+                    roleTitle: Boolean(
+                      (typeof currentJadwal?.setting_keamanan === 'string'
+                        ? JSON.parse(currentJadwal.setting_keamanan || '{}')
+                        : currentJadwal?.setting_keamanan || {}
+                      )?.is_remedial ||
+                      currentJadwal?.nama_sesi?.toUpperCase()?.includes('REMEDIAL') ||
+                      currentJadwal?.nama_sesi?.toUpperCase()?.includes('SUSULAN')
+                    )
+                      ? 'Guru Mata Pelajaran,'
+                      : 'Pengawas Ruang Ujian,',
                     personName: pengawas1Nama,
                     nip: pengawas1Nip,
                     signatureImage: pengawas1Signature,
@@ -676,8 +706,19 @@ export const CbtBeritaAcaraPrintModal: React.FC<CbtBeritaAcaraPrintModalProps> =
       <DigitalSignaturePadModal
         isOpen={isSignModalOpen}
         onClose={() => setIsSignModalOpen(false)}
-        title="Tanda Tangan Digital Pengawas Ujian"
-        subtitle={`Sesi: ${currentJadwal.nama_sesi || 'Ujian CBT'} • Ruang: ${ruangUjian}`}
+        title={
+          Boolean(
+            (typeof currentJadwal?.setting_keamanan === 'string'
+              ? JSON.parse(currentJadwal.setting_keamanan || '{}')
+              : currentJadwal?.setting_keamanan || {}
+            )?.is_remedial ||
+            currentJadwal?.nama_sesi?.toUpperCase()?.includes('REMEDIAL') ||
+            currentJadwal?.nama_sesi?.toUpperCase()?.includes('SUSULAN')
+          )
+            ? 'Tanda Tangan Digital Guru Mata Pelajaran'
+            : 'Tanda Tangan Digital Pengawas Ujian'
+        }
+        subtitle={`Sesi: ${currentJadwal?.nama_sesi || 'Ujian CBT'} • Ruang: ${ruangUjian}`}
         penName={pengawas1Nama || 'Pengawas Ruang'}
         initialSignature={pengawas1Signature}
         onSave={(sig) => {

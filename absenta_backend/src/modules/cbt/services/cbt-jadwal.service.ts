@@ -340,6 +340,18 @@ export class CbtJadwalService {
     const initialStatus = isRemedial || data.status === 'ACTIVE' ? 'ACTIVE' : (data.status as any) || 'DRAFT';
     const waktuAktif = initialStatus === 'ACTIVE' ? new Date() : null;
 
+    // Sanitasi setting_keamanan: Sesi remedial TIDAK BOLEH mewarisi tanda tangan digital pengawas sesi induk!
+    const incomingSetting = { ...(data.setting_keamanan || {}) };
+    if (isRemedial) {
+      delete (incomingSetting as any).tanda_tangan_pengawas_1;
+      delete (incomingSetting as any).waktu_ttd_pengawas_1;
+      delete (incomingSetting as any).tanda_tangan_pengawas_2;
+      delete (incomingSetting as any).waktu_ttd_pengawas_2;
+      delete (incomingSetting as any).tanda_tangan_proktor;
+      delete (incomingSetting as any).waktu_ttd_proktor;
+      delete (incomingSetting as any).catatan_kejadian_khusus;
+    }
+
     const newJadwal = await prisma.cbtJadwalUjian.create({
       data: {
         tenant_id: tenantId,
@@ -361,7 +373,7 @@ export class CbtJadwalService {
           shuffle_options: bankSoal.acak_opsi,
           show_result_instant: false,
           token_refresh_interval: 0,
-          ...(data.setting_keamanan || {}),
+          ...incomingSetting,
         },
         status: initialStatus,
         waktu_diaktifkan: waktuAktif,
