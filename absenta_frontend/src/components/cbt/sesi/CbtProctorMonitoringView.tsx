@@ -495,17 +495,18 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const roleName = String(user?.role?.name || '').toUpperCase();
 
   // 1. Panitia / Admin: Memiliki otoritas penuh lintas ruang
-  const isPanitia =
-    isPanitiaView ||
-    [
-      'ADMIN',
-      'SUPERADMIN',
-      'KEPALA_SEKOLAH',
-      'WAKIL_KURIKULUM',
-      'KURIKULUM',
-      'PANITIA_CBT',
-      'ADMIN_CBT',
-    ].includes(roleName);
+  const isPrivilegedPanitia = [
+    'ADMIN',
+    'SUPERADMIN',
+    'KEPALA_SEKOLAH',
+    'WAKIL_KURIKULUM',
+    'KURIKULUM',
+    'PANITIA_CBT',
+    'ADMIN_CBT',
+  ].includes(roleName);
+
+  // Jika user ber-role GURU murni, isPanitiaView dari parent tidak boleh menjadikannya panitia
+  const isPanitia = isPrivilegedPanitia || (isPanitiaView && roleName !== 'GURU');
 
   // 2. Pengawas Terjadwal: Memiliki wewenang HANYA jika ia terplot di sesi/ruang ini
   const isAssignedProctor = useMemo(() => {
@@ -517,10 +518,10 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     const sec = activeJadwal.setting_keamanan as any;
     if (!sec) return false;
 
-    // Cek kecocokan ID pengawas ruang
+    // Cek kecocokan ID pengawas ruang atau proktor
     const p1Id = sec.pengawas_1_id || sec.pengawas_1_guru_id;
     const p2Id = sec.pengawas_2_id || sec.pengawas_2_guru_id;
-    const pGenId = sec.pengawas_id || sec.pengawas_guru_id;
+    const pGenId = sec.pengawas_id || sec.pengawas_guru_id || sec.proktor_id;
 
     if (currentUserId && (p1Id === currentUserId || p2Id === currentUserId || pGenId === currentUserId)) {
       return true;
@@ -1289,7 +1290,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
           </button>
 
           {/* 8. Hapus Sesi Ujian (HANYA PANITIA YANG BERHAK) */}
-          {isPanitiaView && activeJadwal && (
+          {isPanitia && activeJadwal && (
             <button
               type="button"
               onClick={handleDeleteSession}

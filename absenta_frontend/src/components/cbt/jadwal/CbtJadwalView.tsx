@@ -39,6 +39,7 @@ import { CbtPanitiaOrchestratorView } from './CbtPanitiaOrchestratorView';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { formatLocalTimeFromISO, getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
+import { useAuthStore } from '@/store/authStore';
 
 export interface UniversalCbtJadwalViewProps {
   guruId?: string;
@@ -57,8 +58,24 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const confirm = useConfirm();
+  const { user } = useAuthStore();
+  const roleName = String(user?.role?.name || '').toUpperCase();
+  const authGuruId = (user as any)?.guru_profile?.id || (user as any)?.guru_id;
+  const currentGuruId = guruId || authGuruId;
+  const currentUserId = user?.id;
+
+  const isPrivilegedPanitia = [
+    'ADMIN',
+    'SUPERADMIN',
+    'KEPALA_SEKOLAH',
+    'WAKIL_KURIKULUM',
+    'KURIKULUM',
+    'PANITIA_CBT',
+    'ADMIN_CBT',
+  ].includes(roleName);
+
   const { isOrkestrasi, eventName, lockTeacherScheduling } = useCbtOperationMode();
-  const isTeacherLocked = Boolean(guruId) && isOrkestrasi && lockTeacherScheduling;
+  const isTeacherLocked = Boolean(currentGuruId) && isOrkestrasi && lockTeacherScheduling;
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -439,23 +456,43 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         className: 'min-w-[260px] text-right',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           const pesertaCount = row._count?.Peserta || 0;
-          const isOwnerOrAdmin =
-            !guruId ||
-            row.BankSoal?.guru_id === guruId ||
-            row.setting_keamanan?.created_by_guru_id === guruId;
-          const isProktor =
-            Boolean(guruId) &&
-            (row.setting_keamanan?.proktor_id === guruId ||
-              row.setting_keamanan?.pengawas_2_id === guruId);
-          const isPengawas =
-            Boolean(guruId) && row.setting_keamanan?.pengawas_1_id === guruId;
+          const sec = (row.setting_keamanan as any) || {};
+          const p1Id = sec.pengawas_1_id || sec.pengawas_1_guru_id;
+          const p2Id = sec.pengawas_2_id || sec.pengawas_2_guru_id;
+          const proktorId = sec.proktor_id || sec.pengawas_guru_id;
+
+          // Pengawas Ruang atau Proktor yang resmi diploting di sesi ini
+          const isAssignedProctor = Boolean(
+            (currentGuruId && (p1Id === currentGuruId || p2Id === currentGuruId || proktorId === currentGuruId)) ||
+            (currentUserId && (p1Id === currentUserId || p2Id === currentUserId || proktorId === currentUserId))
+          );
+
+          // Guru Pengampu Mapel Pemilik Bank Soal / Pembuat Jadwal ini
+          const isSubjectTeacherOwner = Boolean(
+            currentGuruId &&
+            (row.BankSoal?.guru_id === currentGuruId || sec.created_by_guru_id === currentGuruId)
+          );
 
           const isSessionUsed = row.status !== 'DRAFT' || pesertaCount > 0;
-          const canOpenMonitor = isSessionUsed || isPengawas || isProktor;
-          // Pengawas Ruang (1 pengawas di kelas ujian HP) maupun Proktor memiliki akses penuh kontrol jalannya sesi & token
-          const canControlSession = !readOnly && (isOwnerOrAdmin || isProktor || isPengawas);
-          const canTransferRapor = !readOnly && isOwnerOrAdmin && row.status !== 'DRAFT' && pesertaCount > 0;
-          const canEditSchedule = !readOnly && isOwnerOrAdmin;
+
+          // Live Monitoring: Panitia, Pengawas Ruang resmi, atau Guru Mapel pemilik soal (Mode Spectator)
+          const canOpenMonitor = isPrivilegedPanitia || isAssignedProctor || isSubjectTeacherOwner || isSessionUsed;
+
+          // KONTROL OPERASIONAL SESI (JEDA, SELESAIKAN, AKTIFKAN, REGENERATE TOKEN):
+          // HANYA Panitia CBT atau Pengawas Ruang/Proktor yang sah diploting di sesi ini!
+          // Guru Mapel biasa murni Spectator, DILARANG KERAS memegang kendali operasional ini demi keamanan pelaksanaan ujian!
+          const canControlSession = !readOnly && (isPrivilegedPanitia || isAssignedProctor);
+
+          // Transfer Nilai ke Rapor: Guru Mapel pemilik Bank Soal atau Panitia, ketika sesi aktif/selesai & ada peserta
+          const canTransferRapor = !readOnly && (isPrivilegedPanitia || isSubjectTeacherOwner) && isSessionUsed;
+
+          // Edit & Hapus Jadwal:
+          // - Panitia berhak mengedit/menghapus
+          // - Guru Mapel pembuat soal HANYA berhak jika sesi MASIH DRAFT MURNI (belum diaktifkan & belum ada peserta)
+          const canEditSchedule = !readOnly && (
+            isPrivilegedPanitia ||
+            (isSubjectTeacherOwner && !isTeacherLocked && row.status === 'DRAFT' && pesertaCount === 0)
+          );
 
           return (
             <div className="flex items-center justify-end gap-1 flex-nowrap" onClick={(e) => e.stopPropagation()}>
@@ -597,7 +634,16 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         },
       },
     ],
-    [copiedToken, readOnly, guruId, onNavigateMonitor]
+    [
+      copiedToken,
+      readOnly,
+      guruId,
+      currentGuruId,
+      currentUserId,
+      isPrivilegedPanitia,
+      isTeacherLocked,
+      onNavigateMonitor,
+    ]
   );
 
   // Jika pengguna mengklik tombol Monitor dan CbtJadwalView tidak menerima onNavigateMonitor eksternal,
@@ -606,7 +652,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
     return (
       <CbtProctorMonitoringView
         initialJadwalId={internalMonitorJadwalId}
-        guruId={guruId}
+        guruId={currentGuruId}
         onBack={() => setInternalMonitorJadwalId(null)}
       />
     );
@@ -636,7 +682,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
       <AcademicFilterToolbar
         {...filter.toolbarProps}
         extraActions={
-          !guruId && !readOnly ? (
+          isPrivilegedPanitia && !readOnly ? (
             <Button
               type="button"
               variant="outline"
