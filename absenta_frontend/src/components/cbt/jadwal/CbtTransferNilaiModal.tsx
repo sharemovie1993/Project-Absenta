@@ -12,13 +12,16 @@ import { raporApi } from '@/api/rapor.api';
 import type { CbtJadwalUjian, CbtRaporSlot } from '@/types/cbt.types';
 import {
   ArrowRightLeft,
-  AlertCircle,
   ArrowRight,
+  ArrowLeft,
   TrendingUp,
   CheckSquare,
   Square,
-  ChevronDown,
-  ChevronUp,
+  Layers,
+  Calendar,
+  AlertCircle,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -79,6 +82,9 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
   const queryClient = useQueryClient();
   const { rawList: rawKelasList } = useKelasOptions();
 
+  // ── WIZARD STEP: 1 = KONFIGURASI TARGET, 2 = TABEL DAFTAR NILAI ──
+  const [step, setStep] = useState<1 | 2>(1);
+
   const academicFilter = useAcademicFilter({
     enableTp: true,
     enableSemester: true,
@@ -106,7 +112,13 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
   const [excludeZeroScores, setExcludeZeroScores] = useState<boolean>(true);
   const [roundInteger, setRoundInteger] = useState(true);
   const [overwriteExisting, setOverwriteExisting] = useState(true);
-  const [showAdvancedKonteks, setShowAdvancedKonteks] = useState(false);
+
+  // Reset to Step 1 whenever modal is opened
+  useEffect(() => {
+    if (isOpen) {
+      setStep(1);
+    }
+  }, [isOpen]);
 
   // Sync defaults when modal opens with a jadwal
   useEffect(() => {
@@ -331,6 +343,8 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
     return found?.label || jadwal?.BankSoal?.Mapel?.nama_mapel || 'Mata Pelajaran';
   }, [mapelOptions, mapelId, jadwal]);
 
+  const isTargetActivePeriod = Boolean(activeTpYear?.is_active && activeSemester?.is_active);
+
   const transferMutation = useMutation({
     mutationFn: () => {
       if (!jadwal) throw new Error('Jadwal tidak valid');
@@ -368,8 +382,7 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleNextToStep2 = () => {
     if (!effectiveTpId || !effectiveSemId) {
       toast.error('Pilih Tahun Pelajaran dan Semester tujuan terlebih dahulu');
       return;
@@ -378,6 +391,15 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
       toast.error('Pilih Mata Pelajaran tujuan di e-Rapor');
       return;
     }
+    if (finishedPeserta.length === 0) {
+      toast.error('Belum ada siswa berstatus Selesai (FINISHED) untuk ditransfer');
+      return;
+    }
+    setStep(2);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     if (selectedSiswaIds.length === 0) {
       toast.error('Pilih minimal 1 siswa yang akan ditransfer nilainya ke e-Rapor');
       return;
@@ -394,378 +416,552 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Transfer Nilai CBT ke e-Rapor"
-      size="2xl"
+      title={step === 1 ? 'Transfer Nilai CBT: Konfigurasi Target' : 'Transfer Nilai CBT: Pratinjau Nilai Siswa'}
+      size={step === 1 ? '2xl' : '4xl'}
     >
-      <form onSubmit={handleSubmit} className="space-y-3.5">
-        {/* ── HEADER SUMMARY (CLEAN & LOW NOISE: GABUNGKAN SUMBER & TARGET) ── */}
-        <div className="space-y-2">
-          {/* Baris 1: Sesi & Kolom Target */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
-            <div className="min-w-0 flex-1">
-              <h4 className="text-sm font-black text-slate-900 dark:text-white truncate">
-                {jadwal.nama_sesi}
-              </h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                {selectedMapelName} • {classNamesText}
-              </p>
-            </div>
-
-            {/* Segmented Slot Selector (Ramping, 32px) */}
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl self-start sm:self-center shrink-0">
-              {RAPOR_SLOTS.map((slot) => {
-                const active = targetSlot === slot.key;
-                return (
-                  <button
-                    key={slot.key}
-                    type="button"
-                    onClick={() => setTargetSlot(slot.key)}
-                    className={cn(
-                      'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer',
-                      active
-                        ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-2xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    )}
-                    title={`${slot.title}: ${slot.desc}`}
-                  >
-                    {slot.shortLabel}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Baris 2: Konteks Tujuan e-Rapor (Default Ringkas 1 Baris) */}
-          <div className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 text-xs">
-            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 min-w-0 truncate">
-              <span className="font-semibold text-slate-400 shrink-0">Konteks Rapor:</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
-                {activeTpYear?.tahun || 'TP Aktif'} ({activeSemester?.nama_semester || 'Semester'}) • {selectedMapelName}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowAdvancedKonteks(!showAdvancedKonteks)}
-              className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer flex items-center gap-1 shrink-0 ml-2"
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* ── STEPPER WIZARD INDICATOR (2 STEPS) ── */}
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            {/* Step 1 Pill */}
+            <div
+              onClick={() => setStep(1)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer',
+                step === 1
+                  ? 'bg-indigo-600 text-white shadow-2xs'
+                  : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+              )}
             >
-              <span>{showAdvancedKonteks ? 'Tutup' : 'Ubah Konteks'}</span>
-              {showAdvancedKonteks ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            </button>
+              <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">1</span>
+              <span>Konfigurasi Target</span>
+              {step === 2 && <CheckCircle2 size={12} className="text-emerald-600 dark:text-emerald-400" />}
+            </div>
+
+            <ArrowRight size={13} className="text-slate-300 dark:text-slate-600" />
+
+            {/* Step 2 Pill */}
+            <div
+              onClick={() => {
+                if (finishedPeserta.length > 0 && effectiveTpId && effectiveSemId && mapelId) {
+                  setStep(2);
+                }
+              }}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all',
+                step === 2
+                  ? 'bg-indigo-600 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+              )}
+            >
+              <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">2</span>
+              <span>Pratinjau Nilai Siswa</span>
+            </div>
           </div>
 
-          {/* Expanded Konteks Akademik Dropdowns (HANYA MUNCUL JIKA GURU MEMILIH 'UBAH') */}
-          {showAdvancedKonteks && (
-            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs animate-in fade-in-50 duration-200">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                  Tahun Pelajaran *
-                </label>
-                <SearchableSelect
-                  options={tpOptions}
-                  value={effectiveTpId}
-                  onChange={handleTpChange}
-                  placeholder="Pilih TP..."
-                  aria-label="Tahun Pelajaran Tujuan"
-                />
-              </div>
+          <span className="text-[11px] font-semibold text-slate-400 truncate max-w-[200px] hidden sm:inline">
+            {jadwal.nama_sesi}
+          </span>
+        </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                  Semester *
-                </label>
-                <SearchableSelect
-                  options={semOptions}
-                  value={effectiveSemId}
-                  onChange={setSemesterId}
-                  placeholder="Pilih Semester..."
-                  aria-label="Semester Tujuan"
-                />
-              </div>
+        {/* ════════════════════════════════════════════════════════════════
+            STEP 1: MENENTUKAN MAU DIKIRIM KE KOLOM NILAI APA & KONTEKS RAPOR
+           ════════════════════════════════════════════════════════════════ */}
+        {step === 1 && (
+          <div className="space-y-4">
+            {/* 1. Pilih Kolom Nilai Rapor Tujuan */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Layers size={14} className="text-indigo-600" />
+                <span>Pilih Kolom / Slot Nilai Tujuan di e-Rapor *</span>
+              </label>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                  Mata Pelajaran *
-                </label>
-                <SearchableSelect
-                  options={mapelOptions}
-                  value={mapelId}
-                  onChange={handleMapelChange}
-                  placeholder="Pilih Mapel..."
-                  aria-label="Mata Pelajaran Tujuan"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Multi-Class Chips Filter (Hanya tampil jika ada > 1 rombel) */}
-          {availableClasses.length > 1 && (
-            <div className="flex items-center gap-2 pt-0.5 text-xs">
-              <span className="font-semibold text-slate-400 shrink-0">Filter Kelas:</span>
-              <div className="flex flex-wrap gap-1">
-                {availableClasses.map((k) => {
-                  const checked = selectedKelasIds.includes(k.id);
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {RAPOR_SLOTS.map((slot) => {
+                  const active = targetSlot === slot.key;
                   return (
                     <button
-                      key={k.id}
+                      key={slot.key}
                       type="button"
-                      onClick={() => toggleKelas(k.id)}
+                      onClick={() => setTargetSlot(slot.key)}
                       className={cn(
-                        'px-2.5 py-0.5 rounded-lg text-xs font-bold border transition-all cursor-pointer',
-                        checked
-                          ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900'
-                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
+                        'p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1',
+                        active
+                          ? 'border-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/60 dark:border-indigo-500 ring-2 ring-indigo-500/20'
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
                       )}
                     >
-                      {k.nama_kelas}
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className={cn(
+                            'px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider',
+                            active
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                          )}
+                        >
+                          {slot.shortLabel}
+                        </span>
+                        {active && <CheckCircle2 size={13} className="text-indigo-600 dark:text-indigo-400 shrink-0" />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                          {slot.title}
+                        </p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
+                          {slot.desc}
+                        </p>
+                      </div>
                     </button>
                   );
                 })}
               </div>
             </div>
-          )}
 
-          {/* Opsi Pembulatan, Penimpaan & Proteksi Nilai 0 (1 Baris Ringkas) */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-600 dark:text-slate-400 pt-0.5">
-            <label className="flex items-center gap-1.5 cursor-pointer font-medium select-none">
-              <input
-                type="checkbox"
-                checked={roundInteger}
-                onChange={(e) => setRoundInteger(e.target.checked)}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span>Bulatkan (0–100)</span>
-            </label>
-
-            <label className="flex items-center gap-1.5 cursor-pointer font-medium select-none">
-              <input
-                type="checkbox"
-                checked={overwriteExisting}
-                onChange={(e) => setOverwriteExisting(e.target.checked)}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span>Timpa Nilai Lama</span>
-            </label>
-
-            <label className="flex items-center gap-1.5 cursor-pointer font-medium select-none">
-              <input
-                type="checkbox"
-                checked={excludeZeroScores}
-                onChange={(e) => setExcludeZeroScores(e.target.checked)}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span>Lewati Nilai 0 (Belum Mengerjakan)</span>
-            </label>
-          </div>
-        </div>
-
-        {/* ── DAFTAR PRATINJAU SISWA & DIFF NILAI (FOKUS UTAMA) ── */}
-        <div className="space-y-1.5 pt-1">
-          {/* Baris Status & Seleksi Semua */}
-          <div className="flex items-center justify-between text-xs px-1">
-            <button
-              type="button"
-              onClick={toggleSelectAll}
-              className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 hover:text-indigo-600 cursor-pointer select-none"
-            >
-              {selectedSiswaIds.length === finishedPeserta.length && finishedPeserta.length > 0 ? (
-                <CheckSquare size={14} className="text-indigo-600" />
-              ) : (
-                <Square size={14} className="text-slate-400" />
-              )}
-              <span>Daftar Nilai Siswa ({selectedSiswaIds.length}/{finishedPeserta.length} Dipilih)</span>
-            </button>
-
-            {/* Quick Stats Badges */}
-            <div className="flex items-center gap-1.5 text-[10px]">
-              {stats.susulanCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                  ✨ {stats.susulanCount} Susulan
+            {/* 2. Konteks Akademik Rapor (Tahun Pelajaran, Semester, Mata Pelajaran) */}
+            <div className="p-3.5 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/50 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Calendar size={14} className="text-indigo-600" />
+                  <span>Konteks Akademik e-Rapor Tujuan</span>
                 </span>
-              )}
-              {stats.remedialCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                  🔄 {stats.remedialCount} Remedial
-                </span>
-              )}
-              {stats.zeroCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full font-semibold bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
-                  {stats.zeroCount} Nilai 0 (Dilewati)
-                </span>
-              )}
-            </div>
-          </div>
 
-          {/* List Siswa (Lega, Scroll Nyaman max-h-72) */}
-          <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-            {isLoadingPeserta ? (
-              <div className="p-8 text-center text-xs text-slate-400 font-semibold">
-                Memuat daftar nilai peserta ujian...
+                {isTargetActivePeriod && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                    <ShieldCheck size={12} />
+                    <span>Periode Aktif ({activeTpYear?.tahun} • {activeSemester?.nama_semester})</span>
+                  </span>
+                )}
               </div>
-            ) : finishedPeserta.length === 0 ? (
-              <div className="p-8 text-center space-y-1">
-                <AlertCircle size={20} className="mx-auto text-amber-500" />
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Belum ada peserta yang menyelesaikan ujian ini
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  Pastikan siswa telah mengklik Kumpulkan Ujian atau waktu ujian telah selesai.
-                </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                    Tahun Pelajaran *
+                  </label>
+                  <SearchableSelect
+                    options={tpOptions}
+                    value={effectiveTpId}
+                    onChange={handleTpChange}
+                    placeholder="Pilih TP..."
+                    aria-label="Tahun Pelajaran Tujuan"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                    Semester *
+                  </label>
+                  <SearchableSelect
+                    options={semOptions}
+                    value={effectiveSemId}
+                    onChange={setSemesterId}
+                    placeholder="Pilih Semester..."
+                    aria-label="Semester Tujuan"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                    Mata Pelajaran *
+                  </label>
+                  <SearchableSelect
+                    options={mapelOptions}
+                    value={mapelId}
+                    onChange={handleMapelChange}
+                    placeholder="Pilih Mapel..."
+                    aria-label="Mata Pelajaran Tujuan"
+                  />
+                </div>
               </div>
-            ) : (
-              finishedPeserta.map((p, idx) => {
-                const rawVal = Number(p.nilai_akhir ?? 0);
-                const finalVal = roundInteger ? Math.round(rawVal) : Math.round(rawVal * 100) / 100;
-                const studentName =
-                  (p.Siswa as any)?.nama_siswa || p.Siswa?.nama_lengkap || 'Siswa';
-                const { isSusulan, isRemedial, initialScore } = resolveParticipantType(p);
-                const existingVal = existingGradesMap.get(p.siswa_id);
-                const hasExisting = existingVal !== null && existingVal !== undefined;
-                const isSelected = selectedSiswaIds.includes(p.siswa_id);
-                const isZero = finalVal === 0;
 
-                // Semantic badge style for CBT score
-                const scoreBadgeClass = isZero
-                  ? 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
-                  : finalVal >= 75
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800'
-                  : 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800';
-
-                const isImproved = hasExisting && finalVal > existingVal;
-
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => toggleSelectSiswa(p.siswa_id)}
-                    className={cn(
-                      'px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs transition-colors cursor-pointer select-none',
-                      isSelected
-                        ? 'bg-white hover:bg-slate-50/80 dark:bg-slate-900 dark:hover:bg-slate-800/40'
-                        : 'bg-slate-50/50 hover:bg-slate-100/60 dark:bg-slate-950/40 opacity-55'
-                    )}
-                  >
-                    {/* Kiri: Checkbox, Urutan, Nama, Kelas, Badge Tipe Sesi */}
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelectSiswa(p.siswa_id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                      />
-                      <span className="w-5 text-[11px] font-mono text-slate-400 shrink-0">{idx + 1}.</span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                            {studentName}
-                          </p>
-
-                          {/* PENANDA KHUSUS: SUSULAN VS REMEDIAL */}
-                          {isSusulan && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
-                              <span>✨ Susulan (Murni)</span>
-                            </span>
-                          )}
-                          {isRemedial && (
-                            <span
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0"
-                              title={initialScore !== null ? `Nilai Awal Sesi Utama: ${initialScore}` : undefined}
-                            >
-                              <span>🔄 Remedial (Max KKTP)</span>
-                              {initialScore !== null && (
-                                <span className="text-[9px] text-emerald-600/80 dark:text-emerald-400 font-semibold">
-                                  (Awal: {initialScore})
-                                </span>
-                              )}
-                            </span>
-                          )}
-                          {isZero && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-semibold bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 shrink-0">
-                              0 Soal
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="text-[10px] text-slate-500 mt-0.5">
-                          {p.Siswa?.Kelas?.nama_kelas || '-'} • Benar: {p.jumlah_benar} / Salah: {p.jumlah_salah}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Kanan: Diff View (Rapor Eksisting ➔ CBT Baru) */}
-                    <div className="flex items-center gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {/* Kolom 1: Nilai Rapor Saat Ini */}
-                      <div className="text-right">
-                        <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block">
-                          Rapor Eksisting
-                        </span>
-                        <span
+              {/* Filter Rombel jika jadwal mencakup > 1 rombel */}
+              {availableClasses.length > 1 && (
+                <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-800 flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-500 shrink-0">Filter Kelas:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {availableClasses.map((k) => {
+                      const checked = selectedKelasIds.includes(k.id);
+                      return (
+                        <button
+                          key={k.id}
+                          type="button"
+                          onClick={() => toggleKelas(k.id)}
                           className={cn(
-                            'font-mono text-xs font-bold',
-                            hasExisting
-                              ? 'text-slate-600 dark:text-slate-300'
-                              : 'text-slate-400 italic text-[11px]'
+                            'px-2.5 py-0.5 rounded-lg text-xs font-bold border transition-all cursor-pointer',
+                            checked
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
                           )}
                         >
-                          {hasExisting ? existingVal : '— (Kosong)'}
-                        </span>
-                      </div>
+                          {k.nama_kelas}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
-                      {/* Panah Indikator Transformasi */}
-                      <ArrowRight size={13} className="text-slate-300 dark:text-slate-600 shrink-0" />
+            {/* 3. Aturan Nilai & Opsi Proteksi */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={roundInteger}
+                  onChange={(e) => setRoundInteger(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <div>
+                  <span className="font-bold text-slate-800 dark:text-slate-200 block">
+                    Bulatkan ke Bilangan Bulat
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Sesuai format lembar input e-Rapor (contoh: 66.7 → 67).
+                  </span>
+                </div>
+              </label>
 
-                      {/* Kolom 2: Nilai Baru CBT */}
-                      <div className="text-right">
-                        <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block">
-                          Nilai CBT
-                        </span>
-                        <div className="flex items-center gap-1 justify-end">
-                          <span
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={overwriteExisting}
+                  onChange={(e) => setOverwriteExisting(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <div>
+                  <span className="font-bold text-slate-800 dark:text-slate-200 block">
+                    Timpa Nilai jika Sudah Terisi
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Perbarui kolom {selectedSlotMeta?.shortLabel} dengan nilai CBT terbaru.
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={excludeZeroScores}
+                  onChange={(e) => setExcludeZeroScores(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <div>
+                  <span className="font-bold text-slate-800 dark:text-slate-200 block">
+                    Lewati Siswa Bernilai 0
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Proteksi agar rapor tidak tertimpa 0 bagi yang belum mengerjakan.
+                  </span>
+                </div>
+              </label>
+            </div>
+
+            {/* Footer Step 1 */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-200/80 dark:border-slate-800">
+              <span className="text-xs text-slate-500 font-medium">
+                {finishedPeserta.length} peserta telah menyelesaikan ujian ini
+              </span>
+
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" onClick={onClose}>
+                  Batal
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleNextToStep2}
+                  disabled={finishedPeserta.length === 0}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5"
+                >
+                  <span>Lanjut ke Pratinjau Nilai</span>
+                  <ArrowRight size={14} />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ════════════════════════════════════════════════════════════════
+            STEP 2: TABEL DAFTAR NILAI SISWA DENGAN KOLOM NILAI EXISTING
+           ════════════════════════════════════════════════════════════════ */}
+        {step === 2 && (
+          <div className="space-y-3">
+            {/* Header Ringkas Target Pengiriman */}
+            <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-indigo-600 text-white">
+                  Target: {selectedSlotMeta?.shortLabel}
+                </span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {selectedMapelName}
+                </span>
+                <span className="text-slate-400">•</span>
+                <span className="text-slate-600 dark:text-slate-400">
+                  {activeTpYear?.tahun || 'TP Aktif'} ({activeSemester?.nama_semester || 'Semester'})
+                </span>
+                <span className="text-slate-400">•</span>
+                <span className="text-slate-600 dark:text-slate-400">
+                  Kelas: {classNamesText}
+                </span>
+              </div>
+
+              {/* Quick Status Pill */}
+              <div className="flex items-center gap-1.5 text-[10px]">
+                {stats.susulanCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200">
+                    ✨ {stats.susulanCount} Susulan
+                  </span>
+                )}
+                {stats.remedialCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200">
+                    🔄 {stats.remedialCount} Remedial
+                  </span>
+                )}
+                {stats.zeroCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-200">
+                    {stats.zeroCount} Nilai 0 (Dilewati)
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* TABEL PRATINJAU DAFTAR NILAI (TRUE TABULAR GRID, ZERO REDUNDANCY) */}
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
+              <div className="max-h-[380px] overflow-y-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 select-none">
+                    <tr>
+                      <th className="py-2.5 px-3 w-10 text-center">
+                        <button
+                          type="button"
+                          onClick={toggleSelectAll}
+                          className="cursor-pointer text-slate-500 hover:text-indigo-600 inline-flex items-center justify-center"
+                          title="Pilih / Batalkan Semua"
+                        >
+                          {selectedSiswaIds.length === finishedPeserta.length && finishedPeserta.length > 0 ? (
+                            <CheckSquare size={15} className="text-indigo-600" />
+                          ) : (
+                            <Square size={15} className="text-slate-400" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="py-2.5 px-2 w-10 text-center font-mono text-[11px] text-slate-400">
+                        No
+                      </th>
+                      <th className="py-2.5 px-3 font-bold text-slate-700 dark:text-slate-300">
+                        Nama Siswa
+                      </th>
+                      <th className="py-2.5 px-3 font-bold text-slate-700 dark:text-slate-300">
+                        Status Sesi
+                      </th>
+                      <th className="py-2.5 px-3 text-center font-bold text-slate-700 dark:text-slate-300">
+                        Akurasi (B/S)
+                      </th>
+                      <th className="py-2.5 px-3 text-right font-bold text-slate-700 dark:text-slate-300">
+                        Nilai Eksisting Rapor
+                      </th>
+                      <th className="py-2.5 px-2 text-center text-slate-400 w-8">
+                        ➔
+                      </th>
+                      <th className="py-2.5 px-3 text-right font-bold text-slate-700 dark:text-slate-300">
+                        Nilai Baru CBT
+                      </th>
+                      <th className="py-2.5 px-3 text-center font-bold text-slate-700 dark:text-slate-300">
+                        Keterangan
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                    {isLoadingPeserta ? (
+                      <tr>
+                        <td colSpan={9} className="py-8 text-center text-slate-400 font-semibold">
+                          Memuat data peserta ujian...
+                        </td>
+                      </tr>
+                    ) : finishedPeserta.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-8 text-center text-slate-400 space-y-1">
+                          <AlertCircle size={20} className="mx-auto text-amber-500" />
+                          <p className="font-bold text-slate-700 dark:text-slate-300">Belum ada siswa yang selesai ujian</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      finishedPeserta.map((p, idx) => {
+                        const rawVal = Number(p.nilai_akhir ?? 0);
+                        const finalVal = roundInteger ? Math.round(rawVal) : Math.round(rawVal * 100) / 100;
+                        const studentName = (p.Siswa as any)?.nama_siswa || p.Siswa?.nama_lengkap || 'Siswa';
+                        const { isSusulan, isRemedial, initialScore } = resolveParticipantType(p);
+                        const existingVal = existingGradesMap.get(p.siswa_id);
+                        const hasExisting = existingVal !== null && existingVal !== undefined;
+                        const isSelected = selectedSiswaIds.includes(p.siswa_id);
+                        const isZero = finalVal === 0;
+
+                        // Semantic badge style for CBT score
+                        const scoreBadgeClass = isZero
+                          ? 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+                          : finalVal >= 75
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800'
+                          : 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800';
+
+                        const isImproved = hasExisting && finalVal > existingVal;
+                        const isUnchanged = hasExisting && finalVal === existingVal;
+
+                        return (
+                          <tr
+                            key={p.id}
+                            onClick={() => toggleSelectSiswa(p.siswa_id)}
                             className={cn(
-                              'inline-block px-2.5 py-0.5 rounded-lg font-mono font-black text-xs border shadow-2xs',
-                              scoreBadgeClass
+                              'transition-colors cursor-pointer select-none',
+                              isSelected
+                                ? 'bg-white hover:bg-slate-50/80 dark:bg-slate-900 dark:hover:bg-slate-800/40'
+                                : 'bg-slate-50/50 hover:bg-slate-100/60 dark:bg-slate-950/40 opacity-50'
                             )}
                           >
-                            {finalVal}
-                          </span>
-                          {isImproved && (
-                            <TrendingUp size={12} className="text-emerald-500 shrink-0" title="Nilai meningkat dibanding rapor saat ini" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+                            {/* Checkbox */}
+                            <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleSelectSiswa(p.siswa_id)}
+                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                              />
+                            </td>
 
-        {/* ── FOOTER ACTIONS ── */}
-        <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-200/80 dark:border-slate-800">
-          <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
-            Transfer ke kolom <strong className="text-indigo-600 dark:text-indigo-400">{selectedSlotMeta?.shortLabel}</strong>
-          </span>
+                            {/* No */}
+                            <td className="py-2.5 px-2 text-center font-mono text-[11px] text-slate-400">
+                              {idx + 1}
+                            </td>
 
-          <div className="flex items-center gap-2 ml-auto">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Batal
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={transferMutation.isPending || selectedSiswaIds.length === 0}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5"
-            >
-              <ArrowRightLeft size={15} />
-              <span>
-                {transferMutation.isPending
-                  ? 'Mentransfer Nilai...'
-                  : `Transfer ${selectedSiswaIds.length} Nilai ke ${selectedSlotMeta?.shortLabel}`}
-              </span>
-            </Button>
+                            {/* Nama Siswa & Kelas */}
+                            <td className="py-2.5 px-3">
+                              <p className="font-bold text-slate-900 dark:text-white truncate">
+                                {studentName}
+                              </p>
+                              <p className="text-[10px] text-slate-400">
+                                {p.Siswa?.Kelas?.nama_kelas || classNamesText}
+                              </p>
+                            </td>
+
+                            {/* Status Sesi (Susulan / Remedial / Reguler) */}
+                            <td className="py-2.5 px-3">
+                              {isSusulan ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                  ✨ Susulan (Murni)
+                                </span>
+                              ) : isRemedial ? (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                  title={initialScore !== null ? `Nilai Awal Sesi Utama: ${initialScore}` : undefined}
+                                >
+                                  <span>🔄 Remedial</span>
+                                  {initialScore !== null && (
+                                    <span className="text-[9px] text-emerald-600 font-semibold">
+                                      (Awal: {initialScore})
+                                    </span>
+                                  )}
+                                </span>
+                              ) : isZero ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-semibold bg-rose-50 text-rose-600 border border-rose-200">
+                                  0 Soal
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-[11px]">Reguler</span>
+                              )}
+                            </td>
+
+                            {/* Akurasi Benar / Salah */}
+                            <td className="py-2.5 px-3 text-center text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                              <span className="text-emerald-600 font-semibold">{p.jumlah_benar}</span>
+                              <span className="text-slate-300 mx-1">/</span>
+                              <span className="text-rose-500 font-semibold">{p.jumlah_salah}</span>
+                            </td>
+
+                            {/* Kolom Nilai Eksisting Rapor */}
+                            <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-600 dark:text-slate-300">
+                              {hasExisting ? (
+                                <span>{existingVal}</span>
+                              ) : (
+                                <span className="text-slate-400 italic text-[11px] font-normal">— (Kosong)</span>
+                              )}
+                            </td>
+
+                            {/* Panah Transformasi */}
+                            <td className="py-2.5 px-2 text-center text-slate-300 dark:text-slate-600">
+                              <ArrowRight size={13} className="mx-auto" />
+                            </td>
+
+                            {/* Kolom Nilai Baru CBT */}
+                            <td className="py-2.5 px-3 text-right">
+                              <span
+                                className={cn(
+                                  'inline-block px-2.5 py-0.5 rounded-lg font-mono font-black text-xs border shadow-2xs',
+                                  scoreBadgeClass
+                                )}
+                              >
+                                {finalVal}
+                              </span>
+                            </td>
+
+                            {/* Kolom Keterangan / Diff Status */}
+                            <td className="py-2.5 px-3 text-center">
+                              {isImproved ? (
+                                <span className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                                  <TrendingUp size={11} />
+                                  <span>+{Math.round((finalVal - (existingVal || 0)) * 10) / 10}</span>
+                                </span>
+                              ) : isUnchanged ? (
+                                <span className="text-slate-400 font-medium text-[11px]">Tetap</span>
+                              ) : !hasExisting ? (
+                                <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-[11px]">Baru</span>
+                              ) : isZero ? (
+                                <span className="text-rose-500 font-semibold text-[11px]">Dilewati</span>
+                              ) : (
+                                <span className="text-slate-400 text-[11px]">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Footer Step 2 */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-200/80 dark:border-slate-800">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep(1)}
+                className="flex items-center gap-1.5 text-xs font-bold"
+              >
+                <ArrowLeft size={13} />
+                <span>Kembali ke Konfigurasi</span>
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" onClick={onClose}>
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={transferMutation.isPending || selectedSiswaIds.length === 0}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5"
+                >
+                  <ArrowRightLeft size={15} />
+                  <span>
+                    {transferMutation.isPending
+                      ? 'Mentransfer Nilai...'
+                      : `Transfer ${selectedSiswaIds.length} Nilai ke ${selectedSlotMeta?.shortLabel}`}
+                  </span>
+                </Button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </form>
     </Modal>
   );
