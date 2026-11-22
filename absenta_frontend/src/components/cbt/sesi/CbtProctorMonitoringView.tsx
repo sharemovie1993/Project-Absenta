@@ -444,10 +444,20 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
 
   const handleCompleteSession = async () => {
     if (!activeJadwal) return;
+    const inProgressCount = pesertaList.filter((p) => p.status === 'IN_PROGRESS').length;
+    const standbyCount = pesertaList.filter((p) => p.status === 'STANDBY').length;
+
+    let warningMsg = `Akhiri sesi "${activeJadwal.nama_sesi}"? Siswa di ruangan ini tidak dapat lagi login atau mengirimkan jawaban baru.`;
+    if (inProgressCount > 0) {
+      warningMsg = `PERHATIAN: Masih ada ${inProgressCount} siswa yang sedang aktif mengerjakan ujian! Mengakhiri sesi sekarang akan otomatis mengunci dan mengumpulkan lembar jawaban mereka saat ini. Apakah Anda yakin ingin menyelesaikan sesi ruangan ini?`;
+    } else if (standbyCount > 0) {
+      warningMsg = `Catatan: Terdapat ${standbyCount} siswa yang belum hadir / belum mengerjakan ujian. Mengakhiri sesi ini akan menutup ujian ruangan ini dan siswa yang belum hadir dapat dialihkan ke sesi susulan. Lanjutkan selesaikan ujian?`;
+    }
+
     const isConfirmed = await confirm({
-      title: 'Selesaikan Sesi Ujian?',
-      message: `Akhiri sesi "${activeJadwal.nama_sesi}"? Siswa tidak dapat lagi login atau mengirimkan jawaban baru.`,
-      confirmText: 'Selesaikan Ujian',
+      title: inProgressCount > 0 ? 'Peringatan: Siswa Sedang Mengerjakan!' : 'Selesaikan Sesi Ujian?',
+      message: warningMsg,
+      confirmText: 'Selesaikan Sekarang',
       cancelText: 'Batal',
       style: 'danger',
     });
@@ -1219,8 +1229,8 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             </button>
           )}
 
-          {/* 1. Kontrol Siklus Sesi (Jeda / Selesaikan Sesi Global - HANYA PANITIA CBT RESMI) */}
-          {isPanitia && activeJadwal?.status === 'ACTIVE' && (
+          {/* 1. Kontrol Siklus Sesi (Jeda / Selesaikan Sesi - PENGAWAS RUANG RESMI & PANITIA) */}
+          {canControlSession && activeJadwal?.status === 'ACTIVE' && (
             <>
               <button
                 type="button"
@@ -1236,8 +1246,8 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                 type="button"
                 onClick={handleCompleteSession}
                 disabled={completeMutation.isPending}
-                className="h-7 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shrink-0"
-                title="Selesaikan Sesi Ujian"
+                className="h-7 px-2.5 rounded-lg border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 bg-rose-50/70 hover:bg-rose-100 dark:bg-rose-950/40 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shrink-0 shadow-2xs"
+                title="Selesaikan Sesi Ujian Ruangan Ini"
               >
                 <CheckCircle size={12} />
                 <span>Selesaikan</span>
