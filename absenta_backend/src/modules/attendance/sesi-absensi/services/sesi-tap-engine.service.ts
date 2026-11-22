@@ -179,12 +179,29 @@ export class SesiTapEngineService {
 
     const tapTime = waktu_tap ? new Date(waktu_tap) : new Date();
 
-    // 🛡️ Time-Window Validation:
-    // Cegah siswa mengabsenkan sesi jam siang/sore di pagi hari sekaligus.
-    // Presensi HADIR mandiri hanya diizinkan mulai dari 15 menit sebelum waktu_mulai sesi.
-    // Bypass: Operasi sistem (GATE_PROPAGATION, AUTO_PULL), Guru/Petugas manual, atau status non-HADIR (IZIN, SAKIT, DISPEN).
-    const isSystemOrManualOp = ['GATE_PROPAGATION', 'SYSTEM_AUTO_PULL', 'RECONCILIATION'].includes(_userId) || Boolean(siswa_akademik_id) || status !== 'HADIR';
-    if (!isSystemOrManualOp && status === 'HADIR' && sesi.waktu_mulai) {
+    // 🛡️ Rule 1: Sesi KBM Wajib Dibuka oleh Guru (Attendance List & Governance SOP)
+    // Siswa tidak boleh diabsen di kelas jika guru belum membuka sesi KBM (belum selfie / tap masuk kelas).
+    const isSystemAutomated = ['GATE_PROPAGATION', 'SYSTEM_AUTO_PULL', 'RECONCILIATION'].includes(_userId);
+    if (!isSystemAutomated) {
+      const isSesiOpen = sesi.status === 'BERLANGSUNG' || Boolean(sesi.foto_kegiatan);
+      if (!isSesiOpen) {
+        const teacherAttendance = await prisma.absenGuru.findFirst({
+          where: {
+            tenant_id: tenantId,
+            sesi_id: sesi.id,
+            status: { in: ['HADIR', 'TERLAMBAT', 'PENUGASAN', 'DINAS_LUAR'] }
+          }
+        });
+        if (!teacherAttendance) {
+          throw new Error('Sesi KBM belum dibuka oleh Guru pengampu. Ambil foto Mulai KBM terlebih dahulu sebelum mengabsenkan siswa.');
+        }
+      }
+    }
+
+    // 🛡️ Rule 2: Time-Window Validation:
+    // Cegah presensi HADIR di luar jam (misal 2 jam lebih awal sebelum jadwal dimulai).
+    // Presensi hanya diizinkan mulai dari 15 menit sebelum waktu_mulai sesi.
+    if (!isSystemAutomated && status === 'HADIR' && sesi.waktu_mulai) {
       const tz = await getTenantTimezone(tenantId);
       const tzLabel = getTimezoneLabel(tz);
       const EARLY_TOLERANCE_MS = 15 * 60 * 1000; // 15 menit sebelum jam mulai
@@ -193,7 +210,7 @@ export class SesiTapEngineService {
         const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: tz });
         const openTimeStr = fmt(earliestAllowed);
         const startTimeStr = fmt(sesi.waktu_mulai);
-        throw new Error(`Sesi KBM belum dibuka. Presensi sesi ini (jam ${startTimeStr}) baru dapat dilakukan mulai pukul ${openTimeStr} ${tzLabel} (15 menit sebelum jam mulai).`);
+        throw new Error(`Sesi KBM belum dimulai. Presensi sesi ini (jadwal ${startTimeStr}) baru dapat dilakukan mulai pukul ${openTimeStr} ${tzLabel} (15 menit sebelum jam mulai).`);
       }
     }
 

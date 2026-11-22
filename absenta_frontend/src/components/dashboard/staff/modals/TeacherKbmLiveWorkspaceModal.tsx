@@ -18,7 +18,8 @@ import {
   SlidersHorizontal,
   ChevronRight,
   ShieldCheck,
-  Check
+  Check,
+  Camera
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
@@ -44,6 +45,7 @@ export interface TeacherKbmLiveWorkspaceModalProps {
   timelineItem: TimelineItem | null;
   guruId?: string;
   guruNama?: string;
+  onOpenPhotoModal?: (item: TimelineItem) => void;
   onOpenJournalModal?: (item: TimelineItem) => void;
   onOpenBahanAjar?: (item: TimelineItem) => void;
   onSessionFinished?: () => void;
@@ -55,6 +57,7 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
   timelineItem,
   guruId,
   guruNama,
+  onOpenPhotoModal,
   onOpenJournalModal,
   onOpenBahanAjar,
   onSessionFinished,
@@ -63,6 +66,31 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
 
   const sesi = timelineItem?.session;
   const effectiveSesiId = sesi?.id || (timelineItem?.id && !String(timelineItem.id).startsWith('sched_') ? timelineItem.id : undefined);
+
+  // ── Existing KBM Engine Governance Rules (Identik dengan StaffKbmAbsenTab & SesiAttendanceList) ──
+  const isStartedByTeacher = Boolean(
+    sesi?.foto_kegiatan ||
+    (timelineItem?.guru_status && !['BELUM_TAP', 'BELUM_HADIR', 'ALPA', 'MENDATANG'].includes(timelineItem.guru_status)) ||
+    (sesi?.status === 'BERLANGSUNG') ||
+    (timelineItem?.isLive ?? timelineItem?.status?.isLive ?? false)
+  );
+
+  const isFinished = Boolean(
+    timelineItem?.isFinished ??
+    timelineItem?.status?.isFinished ??
+    (timelineItem?.status === 'SELESAI' || sesi?.status === 'SELESAI')
+  );
+
+  const isOverdue = Boolean(
+    timelineItem?.is_overdue ??
+    timelineItem?.isOverdue ??
+    timelineItem?.status?.isOverdue ??
+    timelineItem?._summary?.isOverdue ??
+    (timelineItem?.status !== 'SELESAI' && timelineItem?.waktu_selesai && new Date(timelineItem.waktu_selesai).getTime() < Date.now())
+  );
+
+  const isReportMode = Boolean(isFinished || isOverdue);
+  const canMarkAttendance = isStartedByTeacher && !isReportMode;
 
   // ── 1. ACTIVE ATTENDANCE QUERY ──
   const { data: presensiRes, isLoading: loadingPresensi, refetch: refetchAttendance } = useQuery({
@@ -192,6 +220,15 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
   });
 
   const handleUpdateStatus = (siswaAkademikId: string, status: string, catatan?: string) => {
+    if (!canMarkAttendance) {
+      if (!isStartedByTeacher) {
+        toast.error('Sesi belum dibuka oleh Guru. Ambil foto Mulai KBM terlebih dahulu.');
+      } else {
+        toast.error('Sesi KBM telah selesai. Presensi sudah ditutup.');
+      }
+      return;
+    }
+
     if (['SAKIT', 'IZIN', 'DISPEN'].includes(status) && catatan === undefined) {
       const rec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.id) === siswaAkademikId);
       const studentName = rec?.Siswa?.nama_siswa || (rec as any)?.nama_siswa || 'Siswa';
@@ -239,6 +276,15 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
   const [isBulkPending, setIsBulkPending] = useState(false);
 
   const handleMarkAllPresent = async () => {
+    if (!canMarkAttendance) {
+      if (!isStartedByTeacher) {
+        toast.error('Sesi belum dibuka oleh Guru. Ambil foto Mulai KBM terlebih dahulu.');
+      } else {
+        toast.error('Sesi KBM telah selesai. Presensi sudah ditutup.');
+      }
+      return;
+    }
+
     const uncommittedStudents = localRecords.filter(r => !r.status || r.status === 'BELUM_TAP');
     if (uncommittedStudents.length === 0) {
       toast('Seluruh siswa sudah memiliki status kehadiran', { icon: 'ℹ️' });
@@ -401,17 +447,32 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
               </Button>
             )}
 
-            {/* Finish Session Button */}
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setIsFinishConfirmOpen(true)}
-              className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-900/40 border-none"
-            >
-              <CheckCircle2 size={14} />
-              <span className="hidden sm:inline">Selesaikan Sesi</span>
-              <span className="sm:hidden">Selesai</span>
-            </Button>
+            {/* Quick Button: Mulai KBM (jika sesi belum dibuka guru) */}
+            {!isStartedByTeacher && !isReportMode && onOpenPhotoModal && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => onOpenPhotoModal(timelineItem)}
+                className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-900/40 border-none animate-pulse"
+              >
+                <Camera size={14} />
+                <span>Mulai KBM</span>
+              </Button>
+            )}
+
+            {/* Finish Session Button (hanya jika sesi sedang berlangsung) */}
+            {isStartedByTeacher && !isFinished && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsFinishConfirmOpen(true)}
+                className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-900/40 border-none"
+              >
+                <CheckCircle2 size={14} />
+                <span className="hidden sm:inline">Selesaikan Sesi</span>
+                <span className="sm:hidden">Selesai</span>
+              </Button>
+            )}
           </div>
         </header>
 
@@ -454,10 +515,13 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
             {stats.belum > 0 && (
               <button
                 type="button"
-                disabled={isBulkPending}
+                disabled={isBulkPending || !canMarkAttendance}
                 onClick={handleMarkAllPresent}
-                title="Tandai semua siswa yang belum absen sebagai HADIR"
-                className="h-9 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-md shadow-emerald-950/40 flex items-center gap-1.5 border-none cursor-pointer transition-all active:scale-95 disabled:opacity-50 shrink-0"
+                title={!isStartedByTeacher ? "Sesi belum dibuka oleh Guru" : isReportMode ? "Sesi telah selesai" : "Tandai semua siswa yang belum absen sebagai HADIR"}
+                className={cn(
+                  "h-9 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-md shadow-emerald-950/40 flex items-center gap-1.5 border-none cursor-pointer transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0",
+                  !canMarkAttendance && "opacity-40 cursor-not-allowed pointer-events-none"
+                )}
               >
                 {isBulkPending ? (
                   <RefreshCw size={14} className="animate-spin" />
@@ -529,6 +593,44 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
 
         {/* ── MAIN WORKSPACE CONTENT: ERGONOMIC ATTENDANCE LIST ── */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-950 space-y-2">
+          {/* 🛡️ Banner Aturan KBM: Sesi Belum Dibuka Oleh Guru */}
+          {!isStartedByTeacher && !isReportMode && (
+            <div className="max-w-5xl mx-auto mb-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-200 shadow-lg">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="text-amber-400 shrink-0 mt-0.5" size={20} />
+                <div>
+                  <h4 className="font-bold text-amber-300 text-sm">Sesi KBM Belum Dibuka Oleh Guru</h4>
+                  <p className="text-xs text-amber-200/80 mt-0.5">
+                    Presensi siswa terkunci. Sesuai aturan KBM, Guru pengampu wajib membuka sesi (ambil foto Mulai KBM) terlebih dahulu sebelum dapat mengabsenkan siswa.
+                  </p>
+                </div>
+              </div>
+              {onOpenPhotoModal && (
+                <button
+                  type="button"
+                  onClick={() => onOpenPhotoModal(timelineItem)}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all active:scale-95 shrink-0"
+                >
+                  <Camera size={15} />
+                  <span>📸 Mulai KBM Sekarang</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* 🛡️ Banner Aturan KBM: Sesi Selesai / Mode Rekap Arsip */}
+          {isReportMode && (
+            <div className="max-w-5xl mx-auto mb-3 p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center gap-3 text-slate-300 shadow-md">
+              <CheckCircle2 className="text-emerald-400 shrink-0" size={18} />
+              <div>
+                <h4 className="font-bold text-slate-200 text-xs sm:text-sm">Mode Rekap Presensi</h4>
+                <p className="text-[11px] text-slate-400">
+                  Sesi KBM ini telah {isFinished ? 'selesai' : 'terlewat'}. Data kehadiran siswa berstatus arsip (hanya lihat).
+                </p>
+              </div>
+            </div>
+          )}
+
           {loadingPresensi && studentRecords.length === 0 ? (
             <div className="py-24 text-center space-y-3">
               <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin mx-auto" />
@@ -619,10 +721,12 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                       {/* 1. HADIR */}
                       <button
                         type="button"
-                        disabled={isPendingThis}
+                        disabled={isPendingThis || !canMarkAttendance}
+                        title={!isStartedByTeacher ? "Sesi belum dibuka oleh Guru" : isReportMode ? "Sesi telah selesai" : "Tandai Hadir"}
                         onClick={() => handleUpdateStatus(studentId, 'HADIR')}
                         className={cn(
                           "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
+                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-700",
                           record.status === 'HADIR'
                             ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-950/40"
                             : "bg-slate-800 hover:bg-slate-700 text-emerald-400 border-slate-700 hover:border-emerald-500/50"
@@ -634,10 +738,12 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                       {/* 2. SAKIT */}
                       <button
                         type="button"
-                        disabled={isPendingThis}
+                        disabled={isPendingThis || !canMarkAttendance}
+                        title={!isStartedByTeacher ? "Sesi belum dibuka oleh Guru" : isReportMode ? "Sesi telah selesai" : "Tandai Sakit"}
                         onClick={() => handleUpdateStatus(studentId, 'SAKIT')}
                         className={cn(
                           "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
+                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-700",
                           record.status === 'SAKIT'
                             ? "bg-amber-600 hover:bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-950/40"
                             : "bg-slate-800 hover:bg-slate-700 text-amber-400 border-slate-700 hover:border-amber-500/50"
@@ -649,10 +755,12 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                       {/* 3. IZIN */}
                       <button
                         type="button"
-                        disabled={isPendingThis}
+                        disabled={isPendingThis || !canMarkAttendance}
+                        title={!isStartedByTeacher ? "Sesi belum dibuka oleh Guru" : isReportMode ? "Sesi telah selesai" : "Tandai Izin"}
                         onClick={() => handleUpdateStatus(studentId, 'IZIN')}
                         className={cn(
                           "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
+                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-700",
                           record.status === 'IZIN'
                             ? "bg-blue-600 hover:bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-950/40"
                             : "bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700 hover:border-blue-500/50"
@@ -664,10 +772,12 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                       {/* 4. DISPEN */}
                       <button
                         type="button"
-                        disabled={isPendingThis}
+                        disabled={isPendingThis || !canMarkAttendance}
+                        title={!isStartedByTeacher ? "Sesi belum dibuka oleh Guru" : isReportMode ? "Sesi telah selesai" : "Tandai Dispen"}
                         onClick={() => handleUpdateStatus(studentId, 'DISPEN')}
                         className={cn(
                           "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
+                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-700",
                           record.status === 'DISPEN'
                             ? "bg-purple-600 hover:bg-purple-500 text-white border-purple-500 shadow-md shadow-purple-950/40"
                             : "bg-slate-800 hover:bg-slate-700 text-purple-400 border-slate-700 hover:border-purple-500/50"
@@ -679,10 +789,12 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                       {/* 5. ALPA */}
                       <button
                         type="button"
-                        disabled={isPendingThis}
+                        disabled={isPendingThis || !canMarkAttendance}
+                        title={!isStartedByTeacher ? "Sesi belum dibuka oleh Guru" : isReportMode ? "Sesi telah selesai" : "Tandai Alpa"}
                         onClick={() => handleUpdateStatus(studentId, 'ALPA')}
                         className={cn(
                           "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
+                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-700",
                           record.status === 'ALPA'
                             ? "bg-rose-600 hover:bg-rose-500 text-white border-rose-500 shadow-md shadow-rose-950/40"
                             : "bg-slate-800 hover:bg-slate-700 text-rose-400 border-slate-700 hover:border-rose-500/50"

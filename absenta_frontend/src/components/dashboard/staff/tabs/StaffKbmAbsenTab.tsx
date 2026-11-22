@@ -622,6 +622,7 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
           timelineItem={workspaceItem}
           guruId={guruId}
           guruNama={guruNama}
+          onOpenPhotoModal={handleOpenPhotoModal}
           onOpenJournalModal={(it) => {
             const sId = it.session?.id || it.id;
             handleOpenJournalModal({ id: sId });

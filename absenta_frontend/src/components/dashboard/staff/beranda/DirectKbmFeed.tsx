@@ -412,6 +412,7 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
           timelineItem={workspaceItem}
           guruId={guruId}
           guruNama={guruNama}
+          onOpenPhotoModal={handleOpenPhotoModal}
           onOpenJournalModal={(it) => {
             handleOpenJournalModal(it);
           }}
