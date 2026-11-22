@@ -120,7 +120,8 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
 
   // Pisahkan Siswa Selesai berdasarkan KKTP
   const { finishedPeserta, belowKktp, aboveKktp } = useMemo(() => {
-    const finished = pesertaList.filter((p) => p.status === 'FINISHED' || p.nilai_akhir != null);
+    // Kritis: Hanya siswa yang benar-benar berstatus FINISHED yang berhak masuk radar remedial!
+    const finished = pesertaList.filter((p) => p.status === 'FINISHED');
     const below = finished.filter((p) => Number(p.nilai_akhir || 0) < kktpThreshold);
     const above = finished.filter((p) => Number(p.nilai_akhir || 0) >= kktpThreshold);
     return { finishedPeserta: finished, belowKktp: below, aboveKktp: above };
@@ -428,8 +429,19 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
             {isLoadingPeserta ? (
               <div className="p-6 text-center text-xs text-slate-400">Memuat peserta...</div>
             ) : displayedStudents.length === 0 ? (
-              <div className="p-6 text-center text-xs text-slate-400">
-                Tidak ada siswa yang sesuai filter
+              <div className="p-6 text-center text-xs text-slate-400 space-y-1">
+                {finishedPeserta.length === 0 ? (
+                  <>
+                    <p className="font-bold text-amber-600 dark:text-amber-400">
+                      Belum ada siswa yang berstatus selesai (FINISHED)
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Sesi remedial hanya dapat diterbitkan untuk siswa yang telah menyelesaikan pengerjaan sesi ujian reguler.
+                    </p>
+                  </>
+                ) : (
+                  <p>Tidak ada siswa yang sesuai filter</p>
+                )}
               </div>
             ) : (
               displayedStudents.map((p, idx) => {

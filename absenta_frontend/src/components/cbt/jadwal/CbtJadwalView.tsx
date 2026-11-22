@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Card,
@@ -24,6 +24,10 @@ import {
   Check,
   ArrowRightLeft,
   Lock,
+  ChevronDown,
+  ChevronUp,
+  CornerDownRight,
+  Sparkles,
 } from 'lucide-react';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -124,6 +128,124 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
 
   const items = data?.items || [];
   const pagination = data?.pagination;
+
+  const [sessionFilter, setSessionFilter] = useState<'all' | 'main' | 'remedial'>('all');
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+  const [hasInitializedExpanded, setHasInitializedExpanded] = useState(false);
+
+  // Auto-expand all parents that have remedial children on data load
+  useEffect(() => {
+    if (!hasInitializedExpanded && items.length > 0) {
+      const parentIdsWithRemedial = new Set<string>();
+      items.forEach((item) => {
+        const isRemedial = Boolean((item.setting_keamanan as any)?.is_remedial || item.nama_sesi?.startsWith('[REMEDIAL]'));
+        if (isRemedial) {
+          const pId = (item.setting_keamanan as any)?.parent_jadwal_id;
+          if (pId) parentIdsWithRemedial.add(pId);
+        }
+      });
+      if (parentIdsWithRemedial.size > 0) {
+        setExpandedParents(parentIdsWithRemedial);
+      }
+      setHasInitializedExpanded(true);
+    }
+  }, [items, hasInitializedExpanded]);
+
+  const toggleExpandParent = (parentId: string) => {
+    setExpandedParents((prev) => {
+      const next = new Set(prev);
+      if (next.has(parentId)) next.delete(parentId);
+      else next.add(parentId);
+      return next;
+    });
+  };
+
+  // SSOT Struktur Hirarki Tree (Sesi Utama -> Anak Sesi Remedial)
+  const { flattenedData, totalMainCount, totalRemedialCount } = useMemo(() => {
+    const childrenMap = new Map<string, CbtJadwalUjian[]>();
+    const childIds = new Set<string>();
+    let remedialCount = 0;
+
+    // 1. Petakan sesi remedial ke sesi induknya
+    items.forEach((item) => {
+      const isRemedial = Boolean((item.setting_keamanan as any)?.is_remedial || item.nama_sesi?.startsWith('[REMEDIAL]'));
+      if (isRemedial) {
+        remedialCount++;
+        const parentId = (item.setting_keamanan as any)?.parent_jadwal_id;
+        if (parentId && items.some((p) => p.id === parentId)) {
+          if (!childrenMap.has(parentId)) childrenMap.set(parentId, []);
+          childrenMap.get(parentId)!.push(item);
+          childIds.add(item.id);
+          return;
+        }
+
+        // Fallback matching: Cocokkan via bank_soal_id dan nama bersih
+        const cleanName = item.nama_sesi.replace(/^\[REMEDIAL\]\s*/i, '').trim();
+        const matchedParent = items.find(
+          (p) =>
+            !childIds.has(p.id) &&
+            p.id !== item.id &&
+            !p.nama_sesi?.startsWith('[REMEDIAL]') &&
+            !(p.setting_keamanan as any)?.is_remedial &&
+            (p.nama_sesi === cleanName || p.bank_soal_id === item.bank_soal_id)
+        );
+        if (matchedParent) {
+          if (!childrenMap.has(matchedParent.id)) childrenMap.set(matchedParent.id, []);
+          childrenMap.get(matchedParent.id)!.push(item);
+          childIds.add(item.id);
+          return;
+        }
+      }
+    });
+
+    // 2. Bangun urutan baris bertingkat (Sesi Utama langsung diikuti anak remedialnya)
+    const result: any[] = [];
+    let mainCount = 0;
+
+    items.forEach((item) => {
+      if (childIds.has(item.id)) return; // Sesi anak akan dirender di bawah induknya
+
+      const children = childrenMap.get(item.id) || [];
+      const hasChildren = children.length > 0;
+      const isExpanded = expandedParents.has(item.id);
+      mainCount++;
+
+      result.push({
+        ...item,
+        _isParent: hasChildren,
+        _childCount: children.length,
+        _isExpanded: isExpanded,
+      });
+
+      if (hasChildren && isExpanded) {
+        children.forEach((child, childIdx) => {
+          result.push({
+            ...child,
+            _isChildRow: true,
+            _parentId: item.id,
+            _parentName: item.nama_sesi,
+            _isLastChild: childIdx === children.length - 1,
+          });
+        });
+      }
+    });
+
+    return {
+      flattenedData: result,
+      totalMainCount: mainCount,
+      totalRemedialCount: remedialCount,
+    };
+  }, [items, expandedParents]);
+
+  const displayData = useMemo(() => {
+    if (sessionFilter === 'main') {
+      return flattenedData.filter((d: any) => !d._isChildRow && !(d.setting_keamanan as any)?.is_remedial);
+    }
+    if (sessionFilter === 'remedial') {
+      return flattenedData.filter((d: any) => d._isChildRow || (d.setting_keamanan as any)?.is_remedial);
+    }
+    return flattenedData;
+  }, [flattenedData, sessionFilter]);
 
   // Copy token helper
   const handleCopyToken = (token: string) => {
@@ -251,12 +373,69 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           const pengawas1Nama = row.setting_keamanan?.pengawas_1_nama;
           const proktorNama = row.setting_keamanan?.proktor_nama || row.setting_keamanan?.pengawas_2_nama;
 
+          if (row._isChildRow) {
+            return (
+              <div className="flex items-start gap-2 pl-3 sm:pl-5 py-0.5">
+                <div className="flex items-center text-purple-600 dark:text-purple-400 font-mono text-xs select-none shrink-0 font-bold pt-0.5">
+                  <span>└──</span>
+                  <CornerDownRight size={13} className="ml-0.5" />
+                </div>
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200 border border-purple-200 dark:border-purple-700">
+                      <Sparkles size={9} />
+                      <span>ANAK SESI REMEDIAL</span>
+                    </span>
+                    <span className="font-bold text-xs text-purple-950 dark:text-purple-100 line-clamp-1">
+                      {row.nama_sesi}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px] text-purple-700/80 dark:text-purple-300/80 flex-wrap">
+                    <span>Menginduk: <strong>{row._parentName}</strong></span>
+                    {row.setting_keamanan?.target_siswa_ids && (
+                      <>
+                        <span>•</span>
+                        <span>{row.setting_keamanan.target_siswa_ids.length} Siswa Terdaftar</span>
+                      </>
+                    )}
+                    {row.setting_keamanan?.remedial_policy && (
+                      <>
+                        <span>•</span>
+                        <span className="capitalize">
+                          Kebijakan Nilai: {String(row.setting_keamanan.remedial_policy).replace('_', ' ')}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-bold text-xs text-slate-900 dark:text-slate-100 line-clamp-1">
                   {row.nama_sesi}
                 </span>
+
+                {/* Indikator & Toggle Buka/Tutup Anak Sesi Remedial */}
+                {row._isParent && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleExpandParent(row.id);
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/70 dark:hover:bg-purple-900/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 cursor-pointer transition-all shadow-2xs"
+                    title={row._isExpanded ? "Tutup Tampilan Sesi Remedial" : "Buka Tampilan Sesi Remedial"}
+                  >
+                    <Sparkles size={10} className="text-purple-600 dark:text-purple-400" />
+                    <span>{row._childCount} Anak Remedial</span>
+                    {row._isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                  </button>
+                )}
+
                 {isProktorDuty && (
                   <span
                     className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
@@ -350,26 +529,35 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         title: 'Token Masuk',
         label: 'Token Masuk',
         className: 'min-w-[130px] text-center',
-        render: (_val: unknown, row: CbtJadwalUjian) => (
-          <div className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
-            <span className="font-mono text-xs font-black tracking-widest text-indigo-700 dark:text-indigo-300">
-              {row.token_ujian}
-            </span>
-            <button
-              type="button"
-              onClick={() => handleCopyToken(row.token_ujian)}
-              className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors p-0.5"
-              title="Salin Token"
-              aria-label={`Salin token ${row.token_ujian}`}
-            >
-              {copiedToken === row.token_ujian ? (
-                <Check size={13} className="text-emerald-500" />
-              ) : (
-                <Copy size={13} />
-              )}
-            </button>
-          </div>
-        ),
+        render: (_val: unknown, row: any) => {
+          if (row._isChildRow && row.setting_keamanan?.tokenless) {
+            return (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                <span>Bebas Token</span>
+              </span>
+            );
+          }
+          return (
+            <div className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+              <span className="font-mono text-xs font-black tracking-widest text-indigo-700 dark:text-indigo-300">
+                {row.token_ujian}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleCopyToken(row.token_ujian)}
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors p-0.5 cursor-pointer"
+                title="Salin Token"
+                aria-label={`Salin token ${row.token_ujian}`}
+              >
+                {copiedToken === row.token_ujian ? (
+                  <Check size={13} className="text-emerald-500" />
+                ) : (
+                  <Copy size={13} />
+                )}
+              </button>
+            </div>
+          );
+        },
       },
       {
         key: 'status',
@@ -443,11 +631,20 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         title: 'Peserta Ujian',
         label: 'Peserta Ujian',
         className: 'min-w-[110px] text-center',
-        render: (_val: unknown, row: CbtJadwalUjian) => (
-          <span className="font-bold text-xs text-slate-700 dark:text-slate-300">
-            {row._count?.Peserta || 0} Siswa
-          </span>
-        ),
+        render: (_val: unknown, row: any) => {
+          if (row._isChildRow && row.setting_keamanan?.target_siswa_ids) {
+            return (
+              <span className="font-bold text-xs text-purple-700 dark:text-purple-300">
+                {row.setting_keamanan.target_siswa_ids.length} Siswa
+              </span>
+            );
+          }
+          return (
+            <span className="font-bold text-xs text-slate-700 dark:text-slate-300">
+              {row._count?.Peserta || 0} Siswa
+            </span>
+          );
+        },
       },
       {
         key: 'aksi',
@@ -723,10 +920,64 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         </div>
       )}
 
+      {/* Filter Kategori: Sesi Utama vs Sesi Remedial Bertingkat */}
+      {totalRemedialCount > 0 && (
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl w-fit border border-slate-200/60 dark:border-slate-700/60 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setSessionFilter('all')}
+            className={cn(
+              'px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+              sessionFilter === 'all'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-black'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            )}
+          >
+            <span>Semua Sesi</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 font-bold">
+              {items.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSessionFilter('main')}
+            className={cn(
+              'px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+              sessionFilter === 'main'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-black'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            )}
+          >
+            <span>Sesi Utama</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 font-bold">
+              {totalMainCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSessionFilter('remedial')}
+            className={cn(
+              'px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+              sessionFilter === 'remedial'
+                ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-2xs font-black'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            )}
+          >
+            <Sparkles size={12} className="text-purple-500" />
+            <span>Sesi Remedial</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 font-black">
+              {totalRemedialCount}
+            </span>
+          </button>
+        </div>
+      )}
+
       {isMobile ? (
         <MobileAcademicList
           title="Jadwal Ujian CBT"
-          data={items}
+          data={displayData}
           isLoading={isLoading}
           totalItems={pagination?.totalItems || 0}
           emptyMessage="Belum ada jadwal ujian dibuat"
@@ -734,6 +985,51 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           badgeKey="status"
           subtitleKey="display_mapel"
           metaKey="token_ujian"
+          renderCard={(item: any) => {
+            if (item._isChildRow) {
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => handleOpenMonitor(item.id)}
+                  className="ml-4 p-3.5 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/70 border-l-4 border-l-purple-500 shadow-2xs space-y-2 cursor-pointer transition-all active:scale-[0.99]"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
+                        <Sparkles size={9} />
+                        <span>ANAK SESI REMEDIAL</span>
+                      </span>
+                      <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold truncate max-w-[170px]">
+                        Menginduk: {item._parentName}
+                      </span>
+                    </div>
+                    <Badge variant={item.status === 'ACTIVE' ? 'success' : item.status === 'PAUSED' ? 'warning' : 'outline'} className="text-[10px]">
+                      {item.status}
+                    </Badge>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-black text-purple-950 dark:text-purple-100 line-clamp-1">
+                      {item.nama_sesi}
+                    </h4>
+                    <p className="text-[11px] text-purple-800/80 dark:text-purple-300/80 truncate">
+                      {item.BankSoal?.judul || item.display_mapel} • {item.durasi_menit} Menit
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1.5 border-t border-purple-200/60 dark:border-purple-800/50 text-[11px]">
+                    <span className="text-purple-700 dark:text-purple-300 font-semibold">
+                      {item.setting_keamanan?.tokenless ? 'Bebas Token' : `Token: ${item.token_ujian}`}
+                    </span>
+                    <span className="text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center gap-1">
+                      Buka Monitor ➔
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+            return undefined;
+          }}
           pagination={{
             currentPage: page,
             totalPages: pagination?.totalPages || 1,
@@ -747,11 +1043,20 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
           <Table
-            data={items}
+            data={displayData}
             columns={columns}
             loading={isLoading}
             hoverable={true}
             emptyMessage="Belum ada jadwal ujian dibuat"
+            rowClassName={(row: any) => {
+              if (row._isChildRow) {
+                return 'bg-purple-50/50 dark:bg-purple-950/25 hover:bg-purple-100/60 dark:hover:bg-purple-900/30 transition-colors border-l-[3.5px] border-l-purple-500 shadow-2xs';
+              }
+              if (row._isParent && row._isExpanded) {
+                return 'bg-slate-50/40 dark:bg-slate-800/20';
+              }
+              return '';
+            }}
             pagination={{
               currentPage: page,
               totalPages: pagination?.totalPages || 1,

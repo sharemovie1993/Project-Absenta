@@ -1291,16 +1291,37 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             </button>
           )}
 
-          {/* 7. Sesi Remedial Terarah CBT (Hanya saat sesi aktif, selesai, atau panitia) */}
-          {activeJadwal && (activeJadwal.status === 'ACTIVE' || activeJadwal.status === 'COMPLETED' || isPanitiaView) && (
+          {/* 7. Sesi Remedial Terarah CBT (Hanya untuk sesi reguler jika ada siswa selesai atau sesi selesai) */}
+          {activeJadwal && !(activeJadwal.setting_keamanan as any)?.is_remedial && (activeJadwal.status === 'ACTIVE' || activeJadwal.status === 'COMPLETED' || isPanitiaView) && (
             <button
               type="button"
-              onClick={() => setIsRemedialModalOpen(true)}
-              className="h-7 px-2.5 rounded-lg border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100/80 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shrink-0"
-              title="Terbitkan Sesi Ujian Remedial CBT Khusus Siswa Belum Tuntas"
+              disabled={finished === 0 && activeJadwal.status !== 'COMPLETED'}
+              onClick={() => {
+                if (finished === 0 && activeJadwal.status !== 'COMPLETED') {
+                  toast.error('Belum ada siswa yang berstatus selesai (FINISHED)');
+                  return;
+                }
+                setIsRemedialModalOpen(true);
+              }}
+              className={cn(
+                "h-7 px-2.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition-all shrink-0",
+                finished > 0 || activeJadwal.status === 'COMPLETED'
+                  ? "border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100/80 cursor-pointer active:scale-95"
+                  : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600 bg-slate-50/50 dark:bg-slate-900/40 cursor-not-allowed opacity-60"
+              )}
+              title={
+                finished === 0 && activeJadwal.status !== 'COMPLETED'
+                  ? "Belum ada siswa yang berstatus selesai (FINISHED)"
+                  : "Terbitkan Sesi Ujian Remedial CBT Khusus Siswa Belum Tuntas"
+              }
             >
-              <Sparkles size={12} className="text-amber-600" />
+              <Sparkles size={12} className={finished > 0 ? "text-amber-600" : "text-slate-400"} />
               <span>Remedial</span>
+              {finished > 0 && (
+                <span className="text-[10px] px-1 rounded-full bg-amber-200/80 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200 font-black">
+                  {finished}
+                </span>
+              )}
             </button>
           )}
 
