@@ -26,6 +26,7 @@ import {
   Sparkles,
   Trash2,
   Lock,
+  Unlock,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtPesertaUjian } from '@/types/cbt.types';
@@ -263,9 +264,9 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     }) => cbtApi.resetPeserta(jadwalId, siswaId, mode),
     onSuccess: async (_data, variables) => {
       if (variables.mode === 'retake') {
-        toast.success('Ujian siswa berhasil di-reset dari nol. Siswa dapat mengulang tes.');
+        toast.success('Ujian berhasil diulang dari nol. Seluruh jawaban sebelumnya telah dibersihkan.');
       } else {
-        toast.success('Sesi login siswa di-reset. Siswa dapat login kembali.');
+        toast.success('Sesi login dibuka. Siswa dapat login kembali (jawaban tersimpan aman).');
       }
       await queryClient.invalidateQueries({
         queryKey: cbtQueryKeys.pesertaList(selectedJadwalId),
@@ -414,10 +415,23 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   };
 
   const handleReset = async (peserta: CbtPesertaUjian) => {
+    const isDisqualified = peserta.status === 'DISQUALIFIED';
+    const jwbCount = Array.isArray(peserta.jawaban_json)
+      ? peserta.jawaban_json.filter((j: any) => Boolean(j.jawaban_siswa)).length
+      : 0;
+
     const isConfirmed = await confirm({
-      title: 'Reset Login Siswa?',
-      message: `Reset sesi "${peserta.Siswa?.nama_lengkap || 'Siswa'}"? Sesi dibersihkan agar siswa dapat login kembali. Jawaban yang sudah tersimpan aman.`,
-      confirmText: 'Reset Login',
+      title: isDisqualified ? 'Buka Blokir & Izinkan Lanjut Ujian?' : 'Izinkan Siswa Masuk Kembali?',
+      message: isDisqualified
+        ? `Buka blokir ujian untuk "${peserta.Siswa?.nama_lengkap || 'Siswa'}"?\n\n` +
+          `• JAWABAN AMAN: ${jwbCount} butir jawaban yang telah dikerjakan TETAP TERSIMPAN dan tidak akan hilang.\n` +
+          `• Sisa waktu ujian dilanjutkan saat siswa login kembali.\n` +
+          `• Riwayat peringatan pelanggaran dibersihkan agar siswa dapat menyelesaikan ujian.`
+        : `Buka sesi login untuk "${peserta.Siswa?.nama_lengkap || 'Siswa'}"?\n\n` +
+          `• JAWABAN AMAN: ${jwbCount > 0 ? `${jwbCount} butir jawaban yang sudah diisi` : 'Seluruh jawaban'} TETAP AMAN dan tidak akan hilang.\n` +
+          `• Gunakan jika HP siswa mati, baterai habis, koneksi terputus, atau ingin berganti perangkat.\n` +
+          `• Sisa waktu ujian akan melanjutkan sisa waktu sebelumnya saat siswa memasukkan token.`,
+      confirmText: isDisqualified ? 'Buka Blokir (Jawaban Aman)' : 'Izinkan Masuk (Jawaban Aman)',
       cancelText: 'Batal',
       style: 'warning',
     });
@@ -427,10 +441,18 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   };
 
   const handleRetake = async (peserta: CbtPesertaUjian) => {
+    const jwbCount = Array.isArray(peserta.jawaban_json)
+      ? peserta.jawaban_json.filter((j: any) => Boolean(j.jawaban_siswa)).length
+      : 0;
+
     const isConfirmed = await confirm({
-      title: 'Ujian Ulang Siswa (Retake)?',
-      message: `Mulai ulang tes untuk "${peserta.Siswa?.nama_lengkap || 'Siswa'}"? Seluruh jawaban dan skor sebelumnya akan dibersihkan agar siswa dapat mengulang ujian secara penuh dari awal.`,
-      confirmText: 'Ulangi Tes dari Nol',
+      title: 'Mulai Ulang Ujian dari Nol (Hapus Jawaban)?',
+      message: `PERINGATAN KERAS: Tindakan ini akan MENGHAPUS TOTAL ujian untuk "${peserta.Siswa?.nama_lengkap || 'Siswa'}".\n\n` +
+        `• HAPUS JAWABAN: Sebanyak ${jwbCount} butir jawaban yang pernah diisi akan DIHAPUS PERMANEN.\n` +
+        `• Nilai di-reset ke 0 dan seluruh riwayat pelanggaran dibersihkan.\n` +
+        `• Siswa akan memulai kembali dari nomor 1 dengan durasi penuh baru.\n\n` +
+        `Gunakan HANYA jika siswa mendapat remedial resmi atau diizinkan mengulang total!`,
+      confirmText: 'Hapus Semua & Ulang dari Nol',
       cancelText: 'Batal',
       style: 'danger',
     });
@@ -713,26 +735,44 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
         }
 
         return (
-          <div className="inline-flex items-center gap-1 justify-end">
+          <div className="inline-flex items-center gap-1.5 justify-end">
             {(row.status === 'FINISHED' || row.status === 'DISQUALIFIED') && (
               <button
                 type="button"
                 onClick={() => handleRetake(row)}
-                className="text-[11px] h-7 px-2 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/70 hover:bg-rose-100 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95"
-                title="Ulangi ujian dari awal (Retake)"
+                className="text-[11px] h-7 px-2.5 rounded-lg border border-rose-300 text-rose-700 bg-rose-50/70 hover:bg-rose-100 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95 shrink-0"
+                title="Hapus seluruh jawaban dan mulai ulang dari nol"
               >
                 <RotateCcw size={11} />
-                <span>Ulang</span>
+                <span>Ulang dari Nol</span>
               </button>
             )}
             <button
               type="button"
               onClick={() => handleReset(row)}
-              className="text-[11px] h-7 px-2.5 rounded-lg border border-amber-300 text-amber-800 bg-amber-50/70 hover:bg-amber-100 font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95"
-              title="Reset Sesi Login (Perangkat mati/koneksi terputus)"
+              className={cn(
+                "text-[11px] h-7 px-2.5 rounded-lg border font-bold transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95 shrink-0",
+                row.status === 'DISQUALIFIED'
+                  ? "border-emerald-300 text-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-300 dark:bg-emerald-950/60"
+                  : "border-amber-300 text-amber-800 bg-amber-50/70 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:bg-amber-950/60"
+              )}
+              title={
+                row.status === 'DISQUALIFIED'
+                  ? "Buka blokir agar siswa dapat melanjutkan ujian (Jawaban Tersimpan Aman)"
+                  : "Izinkan siswa login kembali jika HP mati atau logout (Jawaban Tersimpan Aman)"
+              }
             >
-              <RotateCw size={11} />
-              <span>Reset</span>
+              {row.status === 'DISQUALIFIED' ? (
+                <>
+                  <Unlock size={11} className="text-emerald-700 dark:text-emerald-400" />
+                  <span>Buka Blokir</span>
+                </>
+              ) : (
+                <>
+                  <RotateCw size={11} className="text-amber-700 dark:text-amber-400" />
+                  <span>Izinkan Masuk</span>
+                </>
+              )}
             </button>
           </div>
         );
@@ -1290,21 +1330,39 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                         <button
                           type="button"
                           onClick={() => handleRetake(p)}
-                          className="text-[11px] h-7 px-2 border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 font-bold rounded-lg cursor-pointer flex items-center gap-1"
-                          title="Ulangi ujian dari awal (Retake)"
+                          className="text-[11px] h-7 px-2 border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0"
+                          title="Hapus seluruh jawaban dan mulai ulang dari nol"
                         >
                           <RotateCcw size={11} />
-                          <span>Ulang</span>
+                          <span>Ulang Nol</span>
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => handleReset(p)}
-                        className="text-[11px] h-7 px-2 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold rounded-lg cursor-pointer flex items-center gap-1"
-                        title="Reset Sesi Login"
+                        className={cn(
+                          "text-[11px] h-7 px-2 border font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0",
+                          p.status === 'DISQUALIFIED'
+                            ? "border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100"
+                            : "border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100"
+                        )}
+                        title={
+                          p.status === 'DISQUALIFIED'
+                            ? "Buka blokir agar siswa dapat melanjutkan ujian (Jawaban Aman)"
+                            : "Izinkan siswa login kembali jika HP mati atau logout (Jawaban Aman)"
+                        }
                       >
-                        <RotateCw size={11} />
-                        <span>Reset</span>
+                        {p.status === 'DISQUALIFIED' ? (
+                          <>
+                            <Unlock size={11} className="text-emerald-700" />
+                            <span>Buka Blokir</span>
+                          </>
+                        ) : (
+                          <>
+                            <RotateCw size={11} className="text-amber-700" />
+                            <span>Izinkan Masuk</span>
+                          </>
+                        )}
                       </button>
                     </>
                   )}

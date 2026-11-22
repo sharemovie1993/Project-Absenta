@@ -1295,6 +1295,7 @@ export class CbtJadwalService {
       data: {
         status: 'STANDBY',
         status_sinkron: 'IDLE',
+        ...(peserta.status === 'DISQUALIFIED' ? { log_pelanggaran_json: [] } : {}),
       },
     });
   }
