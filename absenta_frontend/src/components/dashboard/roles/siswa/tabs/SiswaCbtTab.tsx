@@ -31,6 +31,7 @@ import {
   ShieldAlert,
   BookOpen,
   MapPin,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
@@ -405,7 +406,12 @@ export const SiswaCbtTab: React.FC = () => {
   const [denahHighlightRoom, setDenahHighlightRoom] = useState<string | null>(null);
   const [denahHighlightLabel, setDenahHighlightLabel] = useState<string>('Ruang Ujian Anda');
   const [denahEventName, setDenahEventName] = useState<string>('Ujian CBT');
+  const [expandedHistoryMap, setExpandedHistoryMap] = useState<Record<string, boolean>>({});
   const didAutoSelectTab = useRef(false);
+
+  const toggleHistoryExpanded = (id: string) => {
+    setExpandedHistoryMap((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const handleOpenDenah = (item: CbtStudentExamItem) => {
     const roomInfo = resolveRoomInfo(item);
@@ -431,14 +437,78 @@ export const SiswaCbtTab: React.FC = () => {
     refetchOnWindowFocus: false,
   });
 
+  // ── PARENT-CHILD STRUCTURE UNTUK RIWAYAT UJIAN (BEST PRACTICE KURIKULUM MERDEKA) ──
+  const structuredHistory = useMemo(() => {
+    const historyList = exams.filter(isHistory);
+    const isRemedialItem = (item: CbtStudentExamItem) =>
+      Boolean(item.is_remedial) || (item.nama_sesi || '').toUpperCase().includes('[REMEDIAL');
+
+    const parents: (CbtStudentExamItem & { children: CbtStudentExamItem[] })[] = [];
+    const childrenToAttach: CbtStudentExamItem[] = [];
+
+    historyList.forEach((item) => {
+      if (isRemedialItem(item)) {
+        childrenToAttach.push(item);
+      } else {
+        parents.push({ ...item, children: [] });
+      }
+    });
+
+    const orphanedChildren: (CbtStudentExamItem & { children: CbtStudentExamItem[] })[] = [];
+
+    childrenToAttach.forEach((child) => {
+      let parentMatch = child.parent_jadwal_id
+        ? parents.find((p) => p.id === child.parent_jadwal_id)
+        : null;
+
+      if (!parentMatch) {
+        parentMatch = parents.find(
+          (p) =>
+            (p.mapel && child.mapel && p.mapel.trim().toUpperCase() === child.mapel.trim().toUpperCase()) ||
+            (p.mapel_induk && child.mapel_induk && p.mapel_induk.trim().toUpperCase() === child.mapel_induk.trim().toUpperCase()) ||
+            (p.kode_mapel && child.kode_mapel && p.kode_mapel === child.kode_mapel)
+        ) || null;
+      }
+
+      if (parentMatch) {
+        parentMatch.children.push(child);
+      } else {
+        orphanedChildren.push({ ...child, children: [] });
+      }
+    });
+
+    const combined = [...parents, ...orphanedChildren];
+
+    return combined.sort((a, b) => {
+      const timeA = new Date(b.waktu_selesai || b.tanggal_selesai).getTime();
+      const timeB = new Date(a.waktu_selesai || a.tanggal_selesai).getTime();
+      return timeA - timeB;
+    });
+  }, [exams]);
+
+  const getEffectiveScore = useCallback(
+    (item: CbtStudentExamItem & { children?: CbtStudentExamItem[] }) => {
+      if (!item.children || item.children.length === 0) {
+        return item.hasil?.nilai_akhir ?? null;
+      }
+      const validChildren = item.children.filter((c) => c.hasil?.nilai_akhir != null);
+      if (validChildren.length === 0) {
+        return item.hasil?.nilai_akhir ?? null;
+      }
+      const latestChild = validChildren[validChildren.length - 1];
+      return latestChild.hasil?.nilai_akhir ?? item.hasil?.nilai_akhir ?? null;
+    },
+    []
+  );
+
   const counts = useMemo(
     () => ({
       aktif: exams.filter(isActionable).length,
       mendatang: exams.filter(isUpcoming).length,
-      riwayat: exams.filter(isHistory).length,
+      riwayat: structuredHistory.length,
       semua: exams.length,
     }),
-    [exams]
+    [exams, structuredHistory.length]
   );
 
   // Otomatis tampilkan tab Mendatang atau Riwayat jika tidak ada ujian aktif
@@ -456,10 +526,10 @@ export const SiswaCbtTab: React.FC = () => {
   }, [isLoading, exams.length, counts.aktif, counts.mendatang, counts.riwayat]);
 
   const filtered = useMemo(() => {
-    let list = exams;
+    let list: (CbtStudentExamItem & { children?: CbtStudentExamItem[] })[] = exams;
     if (filter === 'aktif') list = exams.filter(isActionable);
     else if (filter === 'mendatang') list = exams.filter(isUpcoming);
-    else if (filter === 'riwayat') list = exams.filter(isHistory);
+    else if (filter === 'riwayat') return structuredHistory;
 
     // Urutkan jadwal mendatang secara kronologis terdekat (Senin Sesi 1 duluan)
     if (filter === 'mendatang') {
@@ -467,14 +537,8 @@ export const SiswaCbtTab: React.FC = () => {
         (a, b) => new Date(a.tanggal_mulai).getTime() - new Date(b.tanggal_mulai).getTime()
       );
     }
-    // Urutkan riwayat secara terbalik (terbaru selesai di atas)
-    if (filter === 'riwayat') {
-      return [...list].sort(
-        (a, b) => new Date(b.tanggal_selesai).getTime() - new Date(a.tanggal_selesai).getTime()
-      );
-    }
     return list;
-  }, [exams, filter]);
+  }, [exams, filter, structuredHistory]);
 
   // ── PENGELOMPOKAN JADWAL PER HARI UNTUK SISWA (STANDAR DESAIN PENGAWAS) ──
   const groupedStudentDays = useMemo(() => {
@@ -580,23 +644,31 @@ export const SiswaCbtTab: React.FC = () => {
   };
 
   const finishedCount = useMemo(
-    () => exams.filter((e) => e.status_peserta === 'FINISHED').length,
-    [exams]
+    () => structuredHistory.length,
+    [structuredHistory]
   );
 
-  const finishedWithScore = useMemo(() => exams.filter((e) => e.hasil), [exams]);
-
   const avgScore = useMemo(() => {
-    if (finishedWithScore.length === 0) return null;
-    const sum = finishedWithScore.reduce((acc, e) => acc + (e.hasil?.nilai_akhir || 0), 0);
-    return Math.round((sum / finishedWithScore.length) * 10) / 10;
-  }, [finishedWithScore]);
+    const scores: number[] = [];
+    structuredHistory.forEach((item) => {
+      const score = getEffectiveScore(item);
+      if (score !== null) scores.push(score);
+    });
+    if (scores.length === 0) return null;
+    const sum = scores.reduce((acc, e) => acc + e, 0);
+    return Math.round((sum / scores.length) * 10) / 10;
+  }, [structuredHistory, getEffectiveScore]);
 
   const highestScore = useMemo(() => {
-    if (finishedWithScore.length === 0) return null;
-    const max = Math.max(...finishedWithScore.map((e) => e.hasil?.nilai_akhir || 0));
+    const scores: number[] = [];
+    structuredHistory.forEach((item) => {
+      const score = getEffectiveScore(item);
+      if (score !== null) scores.push(score);
+    });
+    if (scores.length === 0) return null;
+    const max = Math.max(...scores);
     return Math.round(max * 10) / 10;
-  }, [finishedWithScore]);
+  }, [structuredHistory, getEffectiveScore]);
 
   const goToExamRoom = useCallback(
     (item?: CbtStudentExamItem) => {
@@ -1015,7 +1087,22 @@ export const SiswaCbtTab: React.FC = () => {
               const isPaused = item.status_jadwal === 'PAUSED';
               const isResume = item.status_peserta === 'IN_PROGRESS';
               const isFinished = item.status_peserta === 'FINISHED';
-              const predikat = item.hasil ? getPredikatMeta(item.hasil.nilai_akhir) : null;
+
+              const hasRemedialChild = Boolean(item.children && item.children.length > 0);
+              const latestRemedialChild = hasRemedialChild
+                ? item.children!.find((c) => c.hasil?.nilai_akhir != null) || item.children![item.children!.length - 1]
+                : null;
+              const effectiveScore = hasRemedialChild && latestRemedialChild?.hasil
+                ? latestRemedialChild.hasil.nilai_akhir
+                : item.hasil?.nilai_akhir ?? null;
+              const displayScore = effectiveScore ?? item.hasil?.nilai_akhir ?? null;
+              const predikat = displayScore !== null ? getPredikatMeta(displayScore) : (item.hasil ? getPredikatMeta(item.hasil.nilai_akhir) : null);
+              const isRemedialTuntas = Boolean(
+                hasRemedialChild &&
+                latestRemedialChild?.hasil &&
+                latestRemedialChild.hasil.nilai_akhir >= (latestRemedialChild.kktp_threshold || 75)
+              );
+
               const accuracyPct =
                 item.hasil && item.total_soal > 0
                   ? Math.round((item.hasil.jumlah_benar / item.total_soal) * 100)
@@ -1306,8 +1393,36 @@ export const SiswaCbtTab: React.FC = () => {
 
                   {/* Baris 3 (Footer): Hasil Nilai atau Status Menunggu Rilis (Menyatu Ramping) */}
                   {isFinished && (
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs">
-                      {item.hasil && predikat ? (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col gap-2 text-xs">
+                      {hasRemedialChild && latestRemedialChild?.hasil ? (
+                        <div className="flex items-center justify-between w-full flex-wrap gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={cn('text-lg sm:text-xl font-black leading-none', predikat?.scoreClass)}>
+                              {formatScore(effectiveScore!)}
+                            </span>
+                            <span className={cn('px-2 py-0.5 rounded-md text-[10px] font-bold border', predikat?.badgeClass)}>
+                              {predikat?.label}
+                            </span>
+                            <span className={cn(
+                              'px-2 py-0.5 rounded-md text-[10px] font-black border',
+                              isRemedialTuntas
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300'
+                                : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300'
+                            )}>
+                              {isRemedialTuntas ? '✨ TUNTAS KKTP (Remedial)' : '🔄 Perbaikan Remedial'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-[11px] text-slate-500 font-semibold">
+                            <span className="text-emerald-600 dark:text-emerald-400">{latestRemedialChild.hasil.jumlah_benar} Benar</span>
+                            <span>•</span>
+                            <span className="text-rose-600 dark:text-rose-400">{latestRemedialChild.hasil.jumlah_salah} Salah</span>
+                            <span className="text-slate-400 dark:text-slate-500 font-normal">
+                              (Awal: {item.hasil ? formatScore(item.hasil.nilai_akhir) : '-'})
+                            </span>
+                          </div>
+                        </div>
+                      ) : item.hasil && predikat ? (
                         <div className="flex items-center justify-between w-full">
                           <div className="flex items-center gap-2">
                             <span className={cn('text-lg sm:text-xl font-black leading-none', predikat.scoreClass)}>
@@ -1348,6 +1463,93 @@ export const SiswaCbtTab: React.FC = () => {
                             <span>Detail Sesi</span>
                             <ChevronRight size={12} />
                           </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Sub-Accordion Child: Riwayat Remedial & Percobaan */}
+                  {hasRemedialChild && (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleHistoryExpanded(item.id);
+                        }}
+                        className="w-full flex items-center justify-between py-1.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer select-none"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <History size={13} className="text-indigo-500" />
+                          <span>Riwayat Percobaan &amp; Remedial ({item.children!.length + 1} Sesi)</span>
+                        </span>
+                        <ChevronDown
+                          size={14}
+                          className={cn("transition-transform duration-200 text-slate-400", expandedHistoryMap[item.id] && "rotate-180")}
+                        />
+                      </button>
+
+                      {expandedHistoryMap[item.id] && (
+                        <div className="mt-2.5 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 space-y-2.5 text-xs">
+                          {/* 1. Sesi Induk (Percobaan 1) */}
+                          <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-slate-400" />
+                                <span className="font-bold text-slate-800 dark:text-slate-200">
+                                  Percobaan 1 (Ujian Reguler)
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 pl-3.5">
+                                {formatExamDateIndo(item.tanggal_mulai)} • {item.waktu_mulai ? `${formatTimeOnly(item.waktu_mulai)}–${item.waktu_selesai ? formatTimeOnly(item.waktu_selesai) : ''}` : ''} • Ruang: {resolveRoomInfo(item).display}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-black text-slate-700 dark:text-slate-300 text-sm">
+                                {item.hasil ? formatScore(item.hasil.nilai_akhir) : '-'}
+                              </span>
+                              <span className="block text-[10px] text-slate-400 font-medium">Nilai Awal</span>
+                            </div>
+                          </div>
+
+                          {/* 2. Sesi Anak (Percobaan 2, dst) */}
+                          {item.children!.map((child, cIdx) => {
+                            const childScore = child.hasil?.nilai_akhir ?? null;
+                            const childKktp = child.kktp_threshold || 75;
+                            const isLulus = childScore !== null && childScore >= childKktp;
+
+                            return (
+                              <div key={child.id} className="flex items-start justify-between gap-2 pt-1">
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                                      Percobaan {cIdx + 2} (Remedial &amp; Susulan)
+                                    </span>
+                                    <span className={cn(
+                                      "text-[9px] font-black px-1.5 py-0.2 rounded",
+                                      isLulus
+                                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300"
+                                        : "bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300"
+                                    )}>
+                                      {isLulus ? 'TUNTAS KKTP' : 'REMEDIAL'}
+                                    </span>
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 pl-3.5">
+                                    {formatExamDateIndo(child.tanggal_mulai)} • {child.waktu_mulai ? `${formatTimeOnly(child.waktu_mulai)}–${child.waktu_selesai ? formatTimeOnly(child.waktu_selesai) : ''}` : ''} • {child.ruang_ujian || 'Ruang Remedial'}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                                    {childScore !== null ? formatScore(childScore) : '-'}
+                                  </span>
+                                  <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                    Nilai Akhir Diakui
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
