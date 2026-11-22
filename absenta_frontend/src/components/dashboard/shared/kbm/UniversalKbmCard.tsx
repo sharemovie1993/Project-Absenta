@@ -717,15 +717,23 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 <Button
                   type="button"
                   size="sm"
-                  disabled={isOverdue || isFinished}
+                  disabled={isOverdue || isFinished || (!isTeacherPresent && !isLive)}
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpenScanModal(item.id);
                   }}
-                  title={isOverdue ? "Sesi KBM telah terlewat (Scan RFID terkunci)" : isFinished ? "Sesi KBM telah selesai" : "Buka Terminal Scan Kartu RFID / QR Siswa"}
+                  title={
+                    isOverdue 
+                      ? "Sesi KBM telah terlewat (Scan RFID terkunci)" 
+                      : isFinished 
+                      ? "Sesi KBM telah selesai" 
+                      : (!isTeacherPresent && !isLive)
+                      ? "Sesi KBM belum dibuka (Ambil Foto Guru terlebih dahulu)"
+                      : "Buka Terminal Scan Kartu RFID / QR Siswa"
+                  }
                   className={cn(
                     "h-8 px-3 rounded-xl text-xs font-black border flex items-center gap-1.5 cursor-pointer transition-all",
-                    isOverdue || isFinished
+                    isOverdue || isFinished || (!isTeacherPresent && !isLive)
                       ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60"
                       : "bg-emerald-600 hover:bg-emerald-500 text-white border-transparent shadow-xs shadow-emerald-600/30"
                   )}

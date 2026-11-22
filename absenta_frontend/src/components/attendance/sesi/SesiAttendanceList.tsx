@@ -5,7 +5,7 @@ import { CatatanAbsensiModal } from '../modals/CatatanAbsensiModal';
 import { getTimezone, formatLocalTimeFromISO, getVirtualDate, formatLocalDateTime } from '../../../utils/attendance/time';
 import { 
   BookOpen, CheckCircle2, Users, Search, 
-  RefreshCw
+  RefreshCw, AlertCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -59,6 +59,8 @@ export interface SesiDetail {
   guru_id?: string;
   nama_guru?: string;
   guru_status?: string;
+  foto_kegiatan?: string | null;
+  isLive?: boolean;
   waktu_tap_guru?: string | null;
   Guru?: GuruDetail;
   JamPelajaran?: {
@@ -86,12 +88,14 @@ const SesiAttendanceRow = React.memo(({
   record,
   sesi,
   isReportMode,
+  isStartedByTeacher = true,
   isPending,
   onUpdateStatus
 }: {
   record: SesiAttendanceRecord;
   sesi?: SesiDetail;
   isReportMode: boolean;
+  isStartedByTeacher?: boolean;
   isPending: boolean;
   onUpdateStatus: (siswaAkademikId: string, status: string) => void;
 }) => {
@@ -249,13 +253,18 @@ const SesiAttendanceRow = React.memo(({
           <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-end">
             {isPiketOut && record.status !== 'HADIR' && (
               <button
-                disabled={isPending}
+                disabled={isPending || !isStartedByTeacher}
                 onClick={() => {
                   onUpdateStatus(studentId, 'HADIR');
                   toast.success(`Konfirmasi kembali: Status ${record.Siswa?.nama_siswa || 'siswa'} diubah ke HADIR & Piket diselesaikan`);
                 }}
-                className="h-6.5 sm:h-7.5 px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider shadow-xs flex items-center gap-1 transition-all active:scale-95"
-                title="Siswa sudah kembali ke kelas — ubah status ke HADIR & selesaikan Izin Piket"
+                className={cn(
+                  "h-6.5 sm:h-7.5 px-2 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider shadow-xs flex items-center gap-1 transition-all",
+                  !isStartedByTeacher
+                    ? "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-50"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95 cursor-pointer"
+                )}
+                title={!isStartedByTeacher ? "Sesi KBM belum dibuka (Ambil Foto Guru terlebih dahulu)" : "Siswa sudah kembali ke kelas — ubah status ke HADIR & selesaikan Izin Piket"}
               >
                 <CheckCircle2 size={10} />
                 <span>Balik</span>
@@ -265,13 +274,16 @@ const SesiAttendanceRow = React.memo(({
             {/* 1. HADIR */}
             <button
               type="button"
-              disabled={isPending}
+              disabled={isPending || !isStartedByTeacher}
+              title={!isStartedByTeacher ? "Sesi KBM belum dibuka (Ambil Foto Guru terlebih dahulu)" : "Tandai Hadir"}
               onClick={() => onUpdateStatus(studentId, 'HADIR')}
               className={cn(
-                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center shrink-0",
-                record.status === 'HADIR'
-                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-                  : "bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all flex items-center justify-center shrink-0",
+                !isStartedByTeacher
+                  ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-50"
+                  : record.status === 'HADIR'
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer"
+                  : "bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
               )}
             >
               Hadir
@@ -280,13 +292,16 @@ const SesiAttendanceRow = React.memo(({
             {/* 2. SAKIT */}
             <button
               type="button"
-              disabled={isPending}
+              disabled={isPending || !isStartedByTeacher}
+              title={!isStartedByTeacher ? "Sesi KBM belum dibuka (Ambil Foto Guru terlebih dahulu)" : "Tandai Sakit"}
               onClick={() => onUpdateStatus(studentId, 'SAKIT')}
               className={cn(
-                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center shrink-0",
-                record.status === 'SAKIT'
-                  ? "bg-amber-500 hover:bg-amber-600 text-white shadow-xs"
-                  : "bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all flex items-center justify-center shrink-0",
+                !isStartedByTeacher
+                  ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-50"
+                  : record.status === 'SAKIT'
+                  ? "bg-amber-500 hover:bg-amber-600 text-white shadow-xs cursor-pointer"
+                  : "bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer"
               )}
             >
               Sakit
@@ -295,13 +310,16 @@ const SesiAttendanceRow = React.memo(({
             {/* 3. IZIN */}
             <button
               type="button"
-              disabled={isPending}
+              disabled={isPending || !isStartedByTeacher}
+              title={!isStartedByTeacher ? "Sesi KBM belum dibuka (Ambil Foto Guru terlebih dahulu)" : "Tandai Izin"}
               onClick={() => onUpdateStatus(studentId, 'IZIN')}
               className={cn(
-                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center shrink-0",
-                record.status === 'IZIN'
-                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
-                  : "bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all flex items-center justify-center shrink-0",
+                !isStartedByTeacher
+                  ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-50"
+                  : record.status === 'IZIN'
+                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer"
+                  : "bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer"
               )}
             >
               Izin
@@ -310,13 +328,16 @@ const SesiAttendanceRow = React.memo(({
             {/* 4. DISPEN */}
             <button
               type="button"
-              disabled={isPending}
+              disabled={isPending || !isStartedByTeacher}
+              title={!isStartedByTeacher ? "Sesi KBM belum dibuka (Ambil Foto Guru terlebih dahulu)" : "Tandai Dispen"}
               onClick={() => onUpdateStatus(studentId, 'DISPEN')}
               className={cn(
-                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center shrink-0",
-                record.status === 'DISPEN'
-                  ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
-                  : "bg-white dark:bg-slate-900 border border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all flex items-center justify-center shrink-0",
+                !isStartedByTeacher
+                  ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-50"
+                  : record.status === 'DISPEN'
+                  ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs cursor-pointer"
+                  : "bg-white dark:bg-slate-900 border border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer"
               )}
             >
               Dispen
@@ -325,13 +346,16 @@ const SesiAttendanceRow = React.memo(({
             {/* 5. ALPA */}
             <button
               type="button"
-              disabled={isPending}
+              disabled={isPending || !isStartedByTeacher}
+              title={!isStartedByTeacher ? "Sesi KBM belum dibuka (Ambil Foto Guru terlebih dahulu)" : "Tandai Alpa"}
               onClick={() => onUpdateStatus(studentId, 'ALPA')}
               className={cn(
-                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center shrink-0",
-                record.status === 'ALPA'
-                  ? "bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
-                  : "bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all flex items-center justify-center shrink-0",
+                !isStartedByTeacher
+                  ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-50"
+                  : record.status === 'ALPA'
+                  ? "bg-rose-600 hover:bg-rose-700 text-white shadow-xs cursor-pointer"
+                  : "bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
               )}
             >
               Alpa
@@ -348,6 +372,13 @@ SesiAttendanceRow.displayName = 'SesiAttendanceRow';
 export function SesiAttendanceList({ records, sesi, sesiId, isReportMode = false }: Props) {
   const queryClient = useQueryClient();
   const effectiveSesiId = sesiId || sesi?.id;
+
+  const isStartedByTeacher = Boolean(
+    sesi?.foto_kegiatan ||
+    (sesi as any)?.foto_masuk ||
+    (sesi?.guru_status && sesi?.guru_status !== 'BELUM_TAP' && sesi?.guru_status !== 'BELUM_HADIR' && sesi?.guru_status !== 'ALPA' && sesi?.guru_status !== 'MENDATANG') ||
+    (sesi as any)?.isLive
+  );
 
   // Auto-fetch jika records tidak di-passing langsung
   const { data: fetchedRes, isLoading: isFetching } = useQuery({
@@ -730,6 +761,15 @@ export function SesiAttendanceList({ records, sesi, sesiId, isReportMode = false
         </div>
 
         {/* List Records */}
+        {!isStartedByTeacher && !isReportMode && (
+          <div className="p-3 sm:p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 flex items-center gap-2.5 text-xs mb-2">
+            <AlertCircle size={18} className="text-amber-600 dark:text-amber-400 shrink-0" />
+            <div>
+              <span className="font-black">Sesi KBM Belum Dibuka:</span> Presensi siswa terkunci sampai Guru atau Petugas Kelas membuka sesi (mengambil Foto Guru).
+            </div>
+          </div>
+        )}
+
         {filteredRecords.length === 0 ? (
           <div className="py-8 text-center bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
             <p className="text-xs font-semibold text-gray-400">Tidak ada siswa pada kategori status ini.</p>
@@ -750,6 +790,7 @@ export function SesiAttendanceList({ records, sesi, sesiId, isReportMode = false
                         record={r}
                         sesi={sesi}
                         isReportMode={isReportMode}
+                        isStartedByTeacher={isStartedByTeacher}
                         isPending={
                           updateAttendanceMutation.isPending && 
                           updateAttendanceMutation.variables?.siswaAkademikId === rowId

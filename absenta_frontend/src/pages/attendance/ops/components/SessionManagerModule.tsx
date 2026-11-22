@@ -208,9 +208,22 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
     }
   }, [deletingSesiId, invalidateAllKbmQueries]);
   const handleOpenScan = useCallback((id: string) => {
+    const targetSession = activeSessionsList.find(s => s.id === id);
+    if (targetSession) {
+      const isTeacherPresent = Boolean(
+        targetSession.foto_kegiatan ||
+        targetSession.foto_masuk ||
+        (targetSession.guru_status && targetSession.guru_status !== 'BELUM_TAP' && targetSession.guru_status !== 'BELUM_HADIR' && targetSession.guru_status !== 'ALPA' && targetSession.guru_status !== 'MENDATANG') ||
+        targetSession.isLive
+      );
+      if (!isTeacherPresent) {
+        toast.error('Sesi KBM belum dibuka oleh Guru/Petugas. Silakan ambil Foto Guru terlebih dahulu sebelum membuka Terminal Scan RFID.', { duration: 3000 });
+        return;
+      }
+    }
     setInputModalSesiId(id);
     setInputModalOpen(true);
-  }, []);
+  }, [activeSessionsList]);
   const handleOpenJournal = useCallback((session: Record<string, unknown>) => {
     setJournalSesiId(session.id as string);
     setJournalInitialData((session.ProgresMateri as Record<string, unknown>) || null);

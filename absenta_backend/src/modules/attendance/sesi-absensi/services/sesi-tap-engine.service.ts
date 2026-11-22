@@ -52,7 +52,8 @@ export class SesiTapEngineService {
     let sesi: any = await prisma.sesiAbsensi.findFirst({
       where: { id: sesi_id, tenant_id: tenantId },
       include: {
-        JadwalKBM: { select: { id: true, jam_mulai: true, jam_selesai: true } }
+        JadwalKBM: { select: { id: true, jam_mulai: true, jam_selesai: true } },
+        AbsenGuru: { select: { id: true, status: true } }
       }
     });
 
@@ -78,7 +79,8 @@ export class SesiTapEngineService {
             tanggal: { gte: startOfDay, lte: endOfDay }
           },
           include: {
-            JadwalKBM: { select: { id: true, jam_mulai: true, jam_selesai: true } }
+            JadwalKBM: { select: { id: true, jam_mulai: true, jam_selesai: true } },
+            AbsenGuru: { select: { id: true, status: true } }
           }
         });
 
@@ -96,6 +98,12 @@ export class SesiTapEngineService {
             },
             include: { GuruInval: true }
           }) : null;
+
+          const isSystemOp = ['GATE_PROPAGATION', 'SYSTEM_AUTO_PULL', 'RECONCILIATION'].includes(_userId);
+          // 🛡️ Sesi virtual yang belum pernah dibuka oleh Guru maupun Petugas TIDAK BOLEH menerima tap presensi siswa
+          if (!activeLeave && !isSystemOp) {
+            throw new Error('Sesi KBM belum dibuka oleh Guru atau Petugas Kelas. Silakan buka sesi terlebih dahulu (ambil Foto Guru).');
+          }
 
           const initialGuruStatus = activeLeave 
             ? (activeLeave.status === 'DISETUJUI' ? (activeLeave.GuruInval ? 'PENUGASAN' : (activeLeave.tipe_izin === 'DINAS_LUAR' ? 'DINAS_LUAR' : (activeLeave.tipe_izin === 'SAKIT' ? 'SAKIT' : 'IZIN'))) : 'PENDING_IZIN')
@@ -177,14 +185,28 @@ export class SesiTapEngineService {
       throw new Error('Sesi KBM telah selesai. Presensi sudah ditutup.');
     }
 
+    // 🛡️ 1. Cek Sesi KBM Sudah Dibuka oleh Guru / Petugas
+    // Jika sesi jenis KBM belum memiliki foto_kegiatan dan guru belum check-in:
+    // Presensi HADIR siswa ditolak sampai sesi resmi dibuka oleh Guru/Petugas.
+    const isSystemOp = ['GATE_PROPAGATION', 'SYSTEM_AUTO_PULL', 'RECONCILIATION'].includes(_userId);
+    if (!isSystemOp && status === 'HADIR' && sesi.jenis_kegiatan === 'KBM') {
+      const hasTeacherCheckInOrPhoto = Boolean(sesi.foto_kegiatan) ||
+        Boolean(sesi.AbsenGuru?.some((ag: any) => 
+          ag.status && ag.status !== 'BELUM_TAP' && ag.status !== 'BELUM_HADIR' && ag.status !== 'ALPA' && ag.status !== 'MENDATANG'
+        ));
+
+      if (!hasTeacherCheckInOrPhoto) {
+        throw new Error('Sesi KBM belum dibuka oleh Guru atau Petugas Kelas. Silakan buka sesi terlebih dahulu (ambil Foto Guru).');
+      }
+    }
+
     const tapTime = waktu_tap ? new Date(waktu_tap) : new Date();
 
-    // 🛡️ Time-Window Validation:
-    // Cegah siswa mengabsenkan sesi jam siang/sore di pagi hari sekaligus.
-    // Presensi HADIR mandiri hanya diizinkan mulai dari 15 menit sebelum waktu_mulai sesi.
-    // Bypass: Operasi sistem (GATE_PROPAGATION, AUTO_PULL), Guru/Petugas manual, atau status non-HADIR (IZIN, SAKIT, DISPEN).
-    const isSystemOrManualOp = ['GATE_PROPAGATION', 'SYSTEM_AUTO_PULL', 'RECONCILIATION'].includes(_userId) || Boolean(siswa_akademik_id) || status !== 'HADIR';
-    if (!isSystemOrManualOp && status === 'HADIR' && sesi.waktu_mulai) {
+    // 🛡️ 2. Time-Window Validation:
+    // Cegah siswa/petugas mengabsenkan sesi jam siang/sore di pagi hari sekaligus.
+    // Presensi HADIR hanya diizinkan mulai dari 15 menit sebelum waktu_mulai sesi.
+    // Bypass: Operasi sistem (GATE_PROPAGATION, AUTO_PULL), atau status non-HADIR (IZIN, SAKIT, DISPEN).
+    if (!isSystemOp && status === 'HADIR' && sesi.waktu_mulai) {
       const tz = await getTenantTimezone(tenantId);
       const tzLabel = getTimezoneLabel(tz);
       const EARLY_TOLERANCE_MS = 15 * 60 * 1000; // 15 menit sebelum jam mulai
@@ -193,7 +215,7 @@ export class SesiTapEngineService {
         const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: tz });
         const openTimeStr = fmt(earliestAllowed);
         const startTimeStr = fmt(sesi.waktu_mulai);
-        throw new Error(`Sesi KBM belum dibuka. Presensi sesi ini (jam ${startTimeStr}) baru dapat dilakukan mulai pukul ${openTimeStr} ${tzLabel} (15 menit sebelum jam mulai).`);
+        throw new Error(`Sesi KBM belum dimulai. Presensi sesi ini (jam ${startTimeStr}) baru dapat dilakukan mulai pukul ${openTimeStr} ${tzLabel} (15 menit sebelum jam mulai).`);
       }
     }
 
