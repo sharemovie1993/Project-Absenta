@@ -30,6 +30,7 @@ import {
   CornerDownRight,
   Sparkles,
   Users,
+  GitBranch,
 } from 'lucide-react';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -380,36 +381,35 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           const proktorNama = row.setting_keamanan?.proktor_nama || row.setting_keamanan?.pengawas_2_nama;
 
           if (row._isChildRow) {
+            const isSusulanChild = (row.nama_sesi || '').toLowerCase().includes('susulan');
+            const targetCount = row.setting_keamanan?.target_siswa_ids?.length || (row as any)._count?.Peserta || 0;
+            const policyText = row.setting_keamanan?.remedial_policy
+              ? String(row.setting_keamanan.remedial_policy).replace('_', ' ')
+              : 'Max KKTP';
+
             return (
-              <div className="flex items-start gap-2 pl-3 sm:pl-5 py-0.5">
-                <div className="flex items-center text-purple-600 dark:text-purple-400 font-mono text-xs select-none shrink-0 font-bold pt-0.5">
-                  <span>└──</span>
-                  <CornerDownRight size={13} className="ml-0.5" />
+              <div className="flex items-start gap-2.5 pl-3 sm:pl-6 py-0.5">
+                <div className="flex items-center text-slate-400 dark:text-slate-500 select-none shrink-0 pt-0.5">
+                  <CornerDownRight size={13} className="text-slate-400 dark:text-slate-500" />
                 </div>
-                <div className="space-y-1 min-w-0">
+                <div className="space-y-0.5 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200 border border-purple-200 dark:border-purple-700">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80">
                       <Sparkles size={9} />
-                      <span>ANAK SESI REMEDIAL</span>
+                      <span>{isSusulanChild ? 'Remedial & Susulan' : 'Sesi Remedial'}</span>
                     </span>
-                    <span className="font-bold text-xs text-purple-950 dark:text-purple-100 line-clamp-1">
+                    <span className="font-semibold text-xs text-slate-800 dark:text-slate-200 line-clamp-1">
                       {row.nama_sesi}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-purple-700/80 dark:text-purple-300/80 flex-wrap">
-                    <span>Menginduk: <strong>{row._parentName}</strong></span>
-                    {row.setting_keamanan?.target_siswa_ids && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
+                    <span>{targetCount} Siswa Terdaftar</span>
+                    <span>•</span>
+                    <span className="capitalize">Kebijakan: {policyText}</span>
+                    {row.setting_keamanan?.ruang_ujian && (
                       <>
                         <span>•</span>
-                        <span>{row.setting_keamanan.target_siswa_ids.length} Siswa Terdaftar</span>
-                      </>
-                    )}
-                    {row.setting_keamanan?.remedial_policy && (
-                      <>
-                        <span>•</span>
-                        <span className="capitalize">
-                          Kebijakan Nilai: {String(row.setting_keamanan.remedial_policy).replace('_', ' ')}
-                        </span>
+                        <span>{row.setting_keamanan.ruang_ujian}</span>
                       </>
                     )}
                   </div>
@@ -425,7 +425,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                   {row.nama_sesi}
                 </span>
 
-                {/* Indikator & Toggle Buka/Tutup Anak Sesi Remedial */}
+                {/* Indikator & Toggle Buka/Tutup Anak Sesi Remedial / Susulan */}
                 {row._isParent && (
                   <button
                     type="button"
@@ -433,12 +433,20 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                       e.stopPropagation();
                       toggleExpandParent(row.id);
                     }}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/70 dark:hover:bg-purple-900/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 cursor-pointer transition-all shadow-2xs"
-                    title={row._isExpanded ? "Tutup Tampilan Sesi Remedial" : "Buka Tampilan Sesi Remedial"}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border cursor-pointer transition-all shadow-2xs",
+                      row._isExpanded
+                        ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 dark:border-slate-700"
+                    )}
+                    title={row._isExpanded ? "Sembunyikan Sesi Lanjutan" : "Tampilkan Sesi Lanjutan (Remedial & Susulan)"}
                   >
-                    <Sparkles size={10} className="text-purple-600 dark:text-purple-400" />
-                    <span>{row._childCount} Anak Remedial</span>
-                    {row._isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                    <GitBranch size={10} className="text-indigo-500 shrink-0" />
+                    <span>{row._childCount} Sesi Lanjutan</span>
+                    <ChevronDown
+                      size={11}
+                      className={cn("transition-transform duration-200 text-slate-400", row._isExpanded && "rotate-180")}
+                    />
                   </button>
                 )}
 
@@ -641,7 +649,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         render: (_val: unknown, row: any) => {
           if (row._isChildRow && row.setting_keamanan?.target_siswa_ids) {
             return (
-              <span className="font-bold text-xs text-purple-700 dark:text-purple-300">
+              <span className="font-semibold text-xs text-slate-700 dark:text-slate-300">
                 {row.setting_keamanan.target_siswa_ids.length} Siswa
               </span>
             );
@@ -996,13 +1004,13 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
             className={cn(
               'px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
               sessionFilter === 'remedial'
-                ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-2xs font-black'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-black'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             )}
           >
-            <Sparkles size={12} className="text-purple-500" />
-            <span>Sesi Remedial</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 font-black">
+            <GitBranch size={12} className="text-indigo-500" />
+            <span>Sesi Lanjutan</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300 font-bold">
               {totalRemedialCount}
             </span>
           </button>
@@ -1018,20 +1026,22 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           emptyMessage="Belum ada jadwal ujian dibuat"
           renderCard={(item: any) => {
             if (item._isChildRow) {
+              const isSusulanChild = (item.nama_sesi || '').toLowerCase().includes('susulan');
+              const targetCount = item.setting_keamanan?.target_siswa_ids?.length || (item as any)._count?.Peserta || 0;
               return (
                 <div
                   key={item.id}
                   onClick={() => handleOpenMonitor(item.id)}
-                  className="ml-3 sm:ml-4 p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/70 border-l-4 border-l-purple-500 shadow-2xs space-y-2 cursor-pointer transition-all active:scale-[0.99]"
+                  className="ml-3 sm:ml-5 p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800 border-l-2 border-l-indigo-500 shadow-2xs space-y-2 cursor-pointer transition-all active:scale-[0.99]"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
-                        <Sparkles size={9} />
-                        <span>ANAK SESI REMEDIAL</span>
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80">
+                        <CornerDownRight size={9} />
+                        <span>{isSusulanChild ? 'Remedial & Susulan' : 'Sesi Remedial'}</span>
                       </span>
-                      <span className="text-[10px] text-purple-700 dark:text-purple-300 font-bold truncate max-w-[170px]">
-                        Menginduk: {item._parentName}
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                        {targetCount} Siswa Terdaftar
                       </span>
                     </div>
                     <Badge
@@ -1043,19 +1053,19 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                   </div>
 
                   <div>
-                    <h4 className="text-xs font-black text-purple-950 dark:text-purple-100 line-clamp-1">
+                    <h4 className="text-xs font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">
                       {item.nama_sesi}
                     </h4>
-                    <p className="text-[11px] text-purple-800/80 dark:text-purple-300/80 truncate">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                       {item.BankSoal?.judul || item.display_mapel} • {item.durasi_menit} Menit
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1.5 border-t border-purple-200/60 dark:border-purple-800/50 text-[11px]">
-                    <span className="text-purple-700 dark:text-purple-300 font-semibold">
+                  <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/60 dark:border-slate-800/50 text-[11px]">
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">
                       {item.setting_keamanan?.tokenless ? 'Bebas Token' : `Token: ${item.token_ujian}`}
                     </span>
-                    <span className="text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center gap-1">
+                    <span className="text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center gap-1">
                       Buka Monitor ➔
                     </span>
                   </div>
@@ -1194,7 +1204,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                   </div>
                 </div>
 
-                {/* Sub-sesi Remedial Expander (jika sesi ini memiliki anak remedial) */}
+                {/* Sub-sesi Remedial / Susulan Expander */}
                 {item._isParent && (
                   <button
                     type="button"
@@ -1202,11 +1212,16 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                       e.stopPropagation();
                       toggleExpandParent(item.id);
                     }}
-                    className="w-full flex items-center justify-between p-2 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/70 dark:border-purple-800/60 text-xs font-bold text-purple-700 dark:text-purple-300 cursor-pointer"
+                    className={cn(
+                      "w-full flex items-center justify-between p-2 rounded-xl text-xs font-semibold cursor-pointer border transition-all",
+                      item._isExpanded
+                        ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+                    )}
                   >
                     <div className="flex items-center gap-1.5">
-                      <Sparkles size={12} />
-                      <span>{item._childCount} Anak Sesi Remedial Terkait</span>
+                      <GitBranch size={12} className="text-indigo-500" />
+                      <span>{item._childCount} Sesi Lanjutan (Remedial &amp; Susulan)</span>
                     </div>
                     {item._isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </button>
@@ -1314,7 +1329,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
             emptyMessage="Belum ada jadwal ujian dibuat"
             rowClassName={(row: any) => {
               if (row._isChildRow) {
-                return 'bg-purple-50/50 dark:bg-purple-950/25 hover:bg-purple-100/60 dark:hover:bg-purple-900/30 transition-colors border-l-[3.5px] border-l-purple-500 shadow-2xs';
+                return 'bg-slate-50/70 dark:bg-slate-900/40 hover:bg-slate-100/70 dark:hover:bg-slate-800/40 transition-colors border-l-2 border-l-indigo-400 dark:border-l-indigo-500/80';
               }
               if (row._isParent && row._isExpanded) {
                 return 'bg-slate-50/40 dark:bg-slate-800/20';
