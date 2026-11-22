@@ -1,0 +1,794 @@
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  ArrowLeft, 
+  BookOpen, 
+  CheckCircle2, 
+  Clock, 
+  FileText, 
+  Layers, 
+  Search, 
+  Sparkles, 
+  Users, 
+  X, 
+  AlertTriangle, 
+  CheckCheck, 
+  RefreshCw,
+  SlidersHorizontal,
+  ChevronRight,
+  ShieldCheck,
+  Check
+} from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
+
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui';
+import { getPresensiTerpaduSesi } from '@/api/attendanceGerbang.api';
+import { requestWithFallback, formatErrorMessage } from '@/api/apiUtils';
+import { CatatanAbsensiModal } from '@/components/attendance/modals/CatatanAbsensiModal';
+import { 
+  formatLocalDateTime, 
+  getVirtualDate, 
+  getTimezone, 
+  formatLocalTimeFromISO,
+  toLocalDate 
+} from '@/utils/attendance/time';
+import type { TimelineItem } from '../tabs/StaffKbmAbsenTab';
+import type { SesiAttendanceRecord } from '@/components/attendance/sesi/SesiAttendanceList';
+
+export interface TeacherKbmLiveWorkspaceModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  timelineItem: TimelineItem | null;
+  guruId?: string;
+  guruNama?: string;
+  onOpenJournalModal?: (item: TimelineItem) => void;
+  onOpenBahanAjar?: (item: TimelineItem) => void;
+  onSessionFinished?: () => void;
+}
+
+export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModalProps> = ({
+  isOpen,
+  onClose,
+  timelineItem,
+  guruId,
+  guruNama,
+  onOpenJournalModal,
+  onOpenBahanAjar,
+  onSessionFinished,
+}) => {
+  const queryClient = useQueryClient();
+
+  const sesi = timelineItem?.session;
+  const effectiveSesiId = sesi?.id || (timelineItem?.id && !String(timelineItem.id).startsWith('sched_') ? timelineItem.id : undefined);
+
+  // ── 1. ACTIVE ATTENDANCE QUERY ──
+  const { data: presensiRes, isLoading: loadingPresensi, refetch: refetchAttendance } = useQuery({
+    queryKey: ['sesi-detail-attendance', effectiveSesiId],
+    queryFn: () => getPresensiTerpaduSesi(effectiveSesiId!),
+    enabled: Boolean(isOpen && effectiveSesiId),
+    refetchInterval: isOpen ? 12000 : false,
+  });
+
+  const rawRecords: SesiAttendanceRecord[] = useMemo(() => {
+    const raw = presensiRes?.data || presensiRes;
+    return Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw) ? raw : []);
+  }, [presensiRes]);
+
+  // Exclude teacher row from student workspace to keep attendance focused on students
+  const studentRecords = useMemo(() => {
+    return rawRecords.filter(r => !r.is_guru && (r as any).nisn !== 'GURU' && (r as any)._type !== 'guru');
+  }, [rawRecords]);
+
+  // Local optimistic state
+  const [localRecords, setLocalRecords] = useState<SesiAttendanceRecord[]>(studentRecords);
+  useEffect(() => {
+    setLocalRecords(studentRecords);
+  }, [studentRecords]);
+
+  // ── 2. SEARCH & FILTERING ──
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'BELUM_TAP' | 'HADIR' | 'IZIN_SAKIT' | 'ALPA' | 'DISPEN'>('ALL');
+
+  // Note Modal State
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [noteTarget, setNoteTarget] = useState<{ siswaAkademikId: string; studentName: string; status: 'SAKIT' | 'IZIN' | 'DISPEN' } | null>(null);
+
+  // Finish Confirmation Dialog State
+  const [isFinishConfirmOpen, setIsFinishConfirmOpen] = useState(false);
+
+  // ── 3. REAL-TIME COUNTDOWN ──
+  const [remainingTimeText, setRemainingTimeText] = useState<string>('');
+  const [isTimeOver, setIsTimeOver] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !timelineItem?.jam_selesai) return;
+
+    const calculateRemaining = () => {
+      const now = getVirtualDate();
+      const [endH, endM] = timelineItem.jam_selesai.split(':').map(Number);
+      const endDate = new Date(now);
+      endDate.setHours(endH || 0, endM || 0, 0, 0);
+
+      const diffMs = endDate.getTime() - now.getTime();
+      if (diffMs <= 0) {
+        setRemainingTimeText('Waktu KBM Selesai');
+        setIsTimeOver(true);
+      } else {
+        const totalMinutes = Math.floor(diffMs / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        if (hours > 0) {
+          setRemainingTimeText(`${hours}j ${minutes}m tersisa`);
+        } else {
+          setRemainingTimeText(`${minutes} menit tersisa`);
+        }
+        setIsTimeOver(false);
+      }
+    };
+
+    calculateRemaining();
+    const interval = setInterval(calculateRemaining, 30000);
+    return () => clearInterval(interval);
+  }, [isOpen, timelineItem?.jam_selesai]);
+
+  // ── 4. STATS COMPUTATION ──
+  const stats = useMemo(() => {
+    const total = localRecords.length;
+    const hadir = localRecords.filter(r => r.status === 'HADIR').length;
+    const sakit = localRecords.filter(r => r.status === 'SAKIT').length;
+    const izin = localRecords.filter(r => r.status === 'IZIN').length;
+    const alpa = localRecords.filter(r => r.status === 'ALPA').length;
+    const dispen = localRecords.filter(r => r.status === 'DISPEN' || r.catatan?.includes('DISPENSASI')).length;
+    const belum = localRecords.filter(r => !r.status || r.status === 'BELUM_TAP').length;
+    const percentHadir = total > 0 ? Math.round((hadir / total) * 100) : 0;
+
+    return { total, hadir, sakit, izin, alpa, dispen, belum, percentHadir };
+  }, [localRecords]);
+
+  // Filtered Students
+  const filteredStudents = useMemo(() => {
+    return localRecords.filter(record => {
+      const studentName = record.Siswa?.nama_siswa || (record as any).nama_siswa || (record as any).nama || '';
+      const nisn = record.Siswa?.nis || (record as any).nis || '';
+      const matchesSearch = studentName.toLowerCase().includes(searchTerm.toLowerCase()) || nisn.includes(searchTerm);
+      if (!matchesSearch) return false;
+
+      if (statusFilter === 'ALL') return true;
+      if (statusFilter === 'BELUM_TAP') return !record.status || record.status === 'BELUM_TAP';
+      if (statusFilter === 'HADIR') return record.status === 'HADIR';
+      if (statusFilter === 'IZIN_SAKIT') return record.status === 'IZIN' || record.status === 'SAKIT';
+      if (statusFilter === 'ALPA') return record.status === 'ALPA';
+      if (statusFilter === 'DISPEN') return record.status === 'DISPEN' || record.catatan?.includes('DISPENSASI');
+      return true;
+    });
+  }, [localRecords, searchTerm, statusFilter]);
+
+  // ── 5. MUTATION: UPDATE INDIVIDUAL ATTENDANCE ──
+  const updateAttendanceMutation = useMutation({
+    mutationFn: async ({ siswaAkademikId, status, catatan, waktu_tap }: { siswaAkademikId: string; status: string; catatan?: string; waktu_tap?: string }) => {
+      if (!effectiveSesiId) throw new Error('Sesi belum dibuka');
+      return requestWithFallback('post', `/attendance/sesi-absensi/${effectiveSesiId}/tap-siswa`, {
+        data: {
+          siswa_akademik_id: siswaAkademikId,
+          status,
+          waktu_tap,
+          catatan
+        }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance', effectiveSesiId] });
+      queryClient.invalidateQueries({ queryKey: ['staff-timeline-unified'] });
+      queryClient.invalidateQueries({ queryKey: ['guru-monitoring-unified'] });
+    },
+    onError: (err: any) => {
+      setLocalRecords(studentRecords);
+      const msg = formatErrorMessage(err);
+      toast.error('Gagal memperbarui status: ' + msg);
+    }
+  });
+
+  const handleUpdateStatus = (siswaAkademikId: string, status: string, catatan?: string) => {
+    if (['SAKIT', 'IZIN', 'DISPEN'].includes(status) && catatan === undefined) {
+      const rec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.id) === siswaAkademikId);
+      const studentName = rec?.Siswa?.nama_siswa || (rec as any)?.nama_siswa || 'Siswa';
+      setNoteTarget({ siswaAkademikId, studentName, status: status as any });
+      setNoteModalOpen(true);
+      return;
+    }
+
+    const tenantNowISO = formatLocalDateTime(getVirtualDate());
+    const targetRec = localRecords.find(r => (r.siswa_akademik_id || r.siswa_id || r.id) === siswaAkademikId);
+    const historicalTap = targetRec?.original_waktu_tap || (targetRec?.status === 'HADIR' ? targetRec?.waktu_tap : null);
+    const effectiveTap = status === 'HADIR' ? (historicalTap || tenantNowISO) : null;
+
+    // Optimistic Update
+    setLocalRecords(prev =>
+      prev.map(r => {
+        const rowId = r.siswa_akademik_id || r.siswa_id || r.id;
+        if (rowId !== siswaAkademikId) return r;
+        return {
+          ...r,
+          status,
+          catatan: catatan !== undefined ? catatan : r.catatan,
+          waktu_tap: effectiveTap,
+          original_waktu_tap: historicalTap || effectiveTap,
+          is_terlambat: false
+        };
+      })
+    );
+
+    updateAttendanceMutation.mutate({
+      siswaAkademikId,
+      status,
+      catatan,
+      waktu_tap: effectiveTap || undefined
+    });
+  };
+
+  const handleNoteSubmit = async (catatan: string) => {
+    if (!noteTarget) return;
+    const { siswaAkademikId, status } = noteTarget;
+    handleUpdateStatus(siswaAkademikId, status, catatan);
+  };
+
+  // ── 6. MUTATION: BULK TANDAI SEMUA HADIR (LIGHTNING ATTENDANCE) ──
+  const [isBulkPending, setIsBulkPending] = useState(false);
+
+  const handleMarkAllPresent = async () => {
+    const uncommittedStudents = localRecords.filter(r => !r.status || r.status === 'BELUM_TAP');
+    if (uncommittedStudents.length === 0) {
+      toast('Seluruh siswa sudah memiliki status kehadiran', { icon: 'ℹ️' });
+      return;
+    }
+
+    setIsBulkPending(true);
+    const tenantNowISO = formatLocalDateTime(getVirtualDate());
+
+    // Instant Optimistic Update
+    setLocalRecords(prev =>
+      prev.map(r => {
+        if (!r.status || r.status === 'BELUM_TAP') {
+          return {
+            ...r,
+            status: 'HADIR',
+            waktu_tap: tenantNowISO,
+            original_waktu_tap: tenantNowISO,
+            is_terlambat: false
+          };
+        }
+        return r;
+      })
+    );
+
+    try {
+      // Execute in parallel batches of 5 to avoid server socket saturation
+      const batchSize = 6;
+      for (let i = 0; i < uncommittedStudents.length; i += batchSize) {
+        const slice = uncommittedStudents.slice(i, i + batchSize);
+        await Promise.all(
+          slice.map(s => {
+            const sid = s.siswa_akademik_id || s.siswa_id || s.id;
+            return requestWithFallback('post', `/attendance/sesi-absensi/${effectiveSesiId}/tap-siswa`, {
+              data: {
+                siswa_akademik_id: sid,
+                status: 'HADIR',
+                waktu_tap: tenantNowISO
+              }
+            });
+          })
+        );
+      }
+
+      toast.success(`⚡ Berhasil! ${uncommittedStudents.length} siswa ditandai Hadir.`);
+      queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance', effectiveSesiId] });
+      queryClient.invalidateQueries({ queryKey: ['staff-timeline-unified'] });
+      queryClient.invalidateQueries({ queryKey: ['guru-monitoring-unified'] });
+    } catch (err: any) {
+      toast.error('Sebagian presensi gagal disimpan. Silakan periksa kembali.');
+      refetchAttendance();
+    } finally {
+      setIsBulkPending(false);
+    }
+  };
+
+  // ── 7. MUTATION: SELESAIKAN SESI KBM ──
+  const finishSessionMutation = useMutation({
+    mutationFn: async () => {
+      if (!effectiveSesiId) throw new Error('Sesi tidak valid');
+      return requestWithFallback('patch', `/attendance/sesi-absensi/${effectiveSesiId}/status`, {
+        data: { status: 'SELESAI' }
+      });
+    },
+    onSuccess: () => {
+      toast.success('🎉 Sesi KBM Berhasil Dituntaskan!');
+      setIsFinishConfirmOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['staff-timeline-unified'] });
+      queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance', effectiveSesiId] });
+      queryClient.invalidateQueries({ queryKey: ['guru-monitoring-unified'] });
+      if (onSessionFinished) onSessionFinished();
+      onClose();
+    },
+    onError: (err: any) => {
+      const msg = formatErrorMessage(err);
+      toast.error('Gagal menyelesaikan sesi: ' + msg);
+    }
+  });
+
+  if (!isOpen || !timelineItem) return null;
+
+  const kelasNama = timelineItem.kelas_nama || (timelineItem as any).kelas || 'Kelas';
+  const mapelNama = timelineItem.kegiatan || timelineItem.mapel_nama || (timelineItem as any).mapel || 'Mata Pelajaran';
+  const jamKe = timelineItem.jam_label || (timelineItem.slot_index != null ? `Jam ${timelineItem.slot_index}` : '');
+  const jamRentang = `${timelineItem.jam_mulai || ''} - ${timelineItem.jam_selesai || ''} WIB`;
+
+  return createPortal(
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex flex-col bg-slate-950/80 backdrop-blur-md overflow-hidden select-none">
+        {/* ── TOP IMMERSIVE HEADER (ZEN WORKSPACE NAVBAR) ── */}
+        <header className="h-16 px-4 sm:px-6 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-3 shrink-0 text-white shadow-lg">
+          {/* Left: Back & Class Identity */}
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={onClose}
+              title="Tutup Meja Kerja Kelas & Kembali ke Dashboard"
+              className="h-10 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white flex items-center gap-1.5 text-xs font-bold transition-all border border-slate-700 active:scale-95 cursor-pointer shrink-0"
+            >
+              <ArrowLeft size={16} />
+              <span className="hidden sm:inline">Dashboard</span>
+            </button>
+
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs sm:text-sm font-black tracking-wide shrink-0">
+                {kelasNama}
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-xs sm:text-sm font-black text-white truncate max-w-xs sm:max-w-md">
+                  {mapelNama}
+                </h2>
+                <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                  <span>{jamKe}</span>
+                  <span>•</span>
+                  <span>{jamRentang}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Real-time Countdown & Primary Actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Timer Badge */}
+            {remainingTimeText && (
+              <div className={cn(
+                "hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono font-bold",
+                isTimeOver
+                  ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                  : "bg-indigo-500/15 text-indigo-300 border-indigo-500/30"
+              )}>
+                <Clock size={14} className={isTimeOver ? "text-rose-400 animate-pulse" : "text-indigo-400"} />
+                <span>{remainingTimeText}</span>
+              </div>
+            )}
+
+            {/* Quick Button: Bahan Ajar */}
+            {onOpenBahanAjar && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => onOpenBahanAjar(timelineItem)}
+                className="h-9 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <BookOpen size={14} />
+                <span className="hidden md:inline">Bahan Ajar</span>
+              </Button>
+            )}
+
+            {/* Quick Button: Jurnal KBM */}
+            {onOpenJournalModal && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => onOpenJournalModal(timelineItem)}
+                className="h-9 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm shadow-blue-900/30 border-none"
+              >
+                <FileText size={14} />
+                <span>Jurnal</span>
+              </Button>
+            )}
+
+            {/* Finish Session Button */}
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setIsFinishConfirmOpen(true)}
+              className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-900/40 border-none"
+            >
+              <CheckCircle2 size={14} />
+              <span className="hidden sm:inline">Selesaikan Sesi</span>
+              <span className="sm:hidden">Selesai</span>
+            </Button>
+          </div>
+        </header>
+
+        {/* ── SUB-HEADER: SUMMARY STRIP & ACTION BAR ── */}
+        <div className="px-4 sm:px-6 py-3 bg-slate-900/90 border-b border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
+          {/* Quick Metrics Bar */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+            <div className="px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-300 flex items-center gap-2 text-xs shrink-0">
+              <Users size={14} className="text-slate-400" />
+              <span>Total: <strong className="text-white font-black">{stats.total}</strong> Siswa</span>
+            </div>
+
+            <div className="px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center gap-2 text-xs shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>Hadir: <strong className="text-white font-black">{stats.hadir}</strong> ({stats.percentHadir}%)</span>
+            </div>
+
+            {stats.belum > 0 && (
+              <div className="px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 flex items-center gap-2 text-xs shrink-0 animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span>Belum Absen: <strong className="text-white font-black">{stats.belum}</strong></span>
+              </div>
+            )}
+
+            {stats.izin + stats.sakit > 0 && (
+              <div className="px-3 py-1.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 flex items-center gap-2 text-xs shrink-0">
+                <span>Izin/Sakit: <strong className="text-white font-black">{stats.izin + stats.sakit}</strong></span>
+              </div>
+            )}
+
+            {stats.alpa > 0 && (
+              <div className="px-3 py-1.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 flex items-center gap-2 text-xs shrink-0">
+                <span>Alpa: <strong className="text-white font-black">{stats.alpa}</strong></span>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Actions: Lightning Mark All Present + Search */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            {stats.belum > 0 && (
+              <button
+                type="button"
+                disabled={isBulkPending}
+                onClick={handleMarkAllPresent}
+                title="Tandai semua siswa yang belum absen sebagai HADIR"
+                className="h-9 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-md shadow-emerald-950/40 flex items-center gap-1.5 border-none cursor-pointer transition-all active:scale-95 disabled:opacity-50 shrink-0"
+              >
+                {isBulkPending ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : (
+                  <Sparkles size={14} className="text-amber-300" />
+                )}
+                <span>⚡ Tandai Semua Hadir ({stats.belum})</span>
+              </button>
+            )}
+
+            <div className="relative min-w-[180px] sm:min-w-[220px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Cari nama atau NIS..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-9 pl-8 pr-3 rounded-xl bg-slate-800 text-white placeholder-slate-400 text-xs border border-slate-700 focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── FILTER PILLS ── */}
+        <div className="px-4 sm:px-6 py-2 bg-slate-900 border-b border-slate-800/60 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+          {[
+            { key: 'ALL', label: 'Semua Siswa', count: stats.total },
+            { key: 'BELUM_TAP', label: 'Belum Absen', count: stats.belum, highlight: stats.belum > 0 },
+            { key: 'HADIR', label: 'Hadir', count: stats.hadir },
+            { key: 'IZIN_SAKIT', label: 'Izin / Sakit', count: stats.izin + stats.sakit },
+            { key: 'DISPEN', label: 'Dispen', count: stats.dispen },
+            { key: 'ALPA', label: 'Alpa', count: stats.alpa },
+          ].map(f => {
+            const isActive = statusFilter === f.key;
+            return (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setStatusFilter(f.key as any)}
+                className={cn(
+                  "h-7 px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer border",
+                  isActive
+                    ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
+                    : f.highlight
+                    ? "bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20"
+                    : "bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200"
+                )}
+              >
+                <span>{f.label}</span>
+                <span className={cn(
+                  "px-1.5 py-0.2 rounded-full text-[10px] font-mono font-black",
+                  isActive ? "bg-white/20 text-white" : "bg-slate-700 text-slate-300"
+                )}>
+                  {f.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── MAIN WORKSPACE CONTENT: ERGONOMIC ATTENDANCE LIST ── */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-950 space-y-2">
+          {loadingPresensi && studentRecords.length === 0 ? (
+            <div className="py-24 text-center space-y-3">
+              <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin mx-auto" />
+              <p className="text-sm font-bold text-slate-400">Memuat Roster Presensi Siswa...</p>
+            </div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="py-20 text-center space-y-2 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800 p-8 max-w-md mx-auto">
+              <Search className="w-10 h-10 text-slate-600 mx-auto" />
+              <h4 className="text-sm font-bold text-slate-300">Tidak Ada Siswa Ditemukan</h4>
+              <p className="text-xs text-slate-500">
+                {searchTerm ? `Pencarian "${searchTerm}" tidak cocok dengan data siswa.` : 'Tidak ada siswa pada filter ini.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-w-5xl mx-auto">
+              {filteredStudents.map((record, index) => {
+                const studentId = record.siswa_akademik_id || record.siswa_id || record.id || '';
+                const namaSiswa = record.Siswa?.nama_siswa || (record as any).nama_siswa || (record as any).nama || 'Siswa';
+                const nisn = record.Siswa?.nis || (record as any).nis || (record as any).nisn || '';
+                const isLate = Boolean(record.is_terlambat) && record.status === 'HADIR';
+                const isPendingThis = updateAttendanceMutation.isPending && updateAttendanceMutation.variables?.siswaAkademikId === studentId;
+
+                const rawTap = record.waktu_tap;
+                const tapDisplay = rawTap ? formatLocalTimeFromISO(rawTap) || String(rawTap).slice(11, 16) : null;
+
+                return (
+                  <div
+                    key={studentId || index}
+                    className={cn(
+                      "p-3 sm:p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3",
+                      record.status === 'HADIR'
+                        ? "bg-slate-900/90 border-emerald-500/30 hover:border-emerald-500/50"
+                        : record.status === 'SAKIT'
+                        ? "bg-slate-900/90 border-amber-500/30 hover:border-amber-500/50"
+                        : record.status === 'IZIN'
+                        ? "bg-slate-900/90 border-blue-500/30 hover:border-blue-500/50"
+                        : record.status === 'ALPA'
+                        ? "bg-slate-900/90 border-rose-500/40 hover:border-rose-500/60"
+                        : record.status === 'DISPEN'
+                        ? "bg-slate-900/90 border-purple-500/30 hover:border-purple-500/50"
+                        : "bg-slate-900/60 border-slate-800 hover:border-slate-700"
+                    )}
+                  >
+                    {/* Student Info Left */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-slate-800 text-slate-300 font-mono font-bold text-xs flex items-center justify-center shrink-0 border border-slate-700">
+                        {index + 1}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-xs sm:text-sm font-black text-white truncate" title={namaSiswa}>
+                            {namaSiswa}
+                          </h4>
+                          {nisn && (
+                            <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-1.5 py-0.2 rounded border border-slate-700">
+                              {nisn}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400 font-mono flex-wrap">
+                          {tapDisplay ? (
+                            <span className="text-emerald-400 font-semibold">
+                              Tap: {tapDisplay} WIB
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">Belum tap</span>
+                          )}
+
+                          {isLate && (
+                            <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold uppercase text-[9px]">
+                              Terlambat
+                            </span>
+                          )}
+
+                          {record.catatan && (
+                            <span className="text-indigo-400 italic font-sans truncate max-w-xs">
+                              • {record.catatan}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Touch Buttons: [Hadir] [Sakit] [Izin] [Dispen] [Alpa] */}
+                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto flex-wrap justify-end">
+                      {/* 1. HADIR */}
+                      <button
+                        type="button"
+                        disabled={isPendingThis}
+                        onClick={() => handleUpdateStatus(studentId, 'HADIR')}
+                        className={cn(
+                          "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
+                          record.status === 'HADIR'
+                            ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-950/40"
+                            : "bg-slate-800 hover:bg-slate-700 text-emerald-400 border-slate-700 hover:border-emerald-500/50"
+                        )}
+                      >
+                        Hadir
+                      </button>
+
+                      {/* 2. SAKIT */}
+                      <button
+                        type="button"
+                        disabled={isPendingThis}
+                        onClick={() => handleUpdateStatus(studentId, 'SAKIT')}
+                        className={cn(
+                          "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
+                          record.status === 'SAKIT'
+                            ? "bg-amber-600 hover:bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-950/40"
+                            : "bg-slate-800 hover:bg-slate-700 text-amber-400 border-slate-700 hover:border-amber-500/50"
+                        )}
+                      >
+                        Sakit
+                      </button>
+
+                      {/* 3. IZIN */}
+                      <button
+                        type="button"
+                        disabled={isPendingThis}
+                        onClick={() => handleUpdateStatus(studentId, 'IZIN')}
+                        className={cn(
+                          "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
+                          record.status === 'IZIN'
+                            ? "bg-blue-600 hover:bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-950/40"
+                            : "bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700 hover:border-blue-500/50"
+                        )}
+                      >
+                        Izin
+                      </button>
+
+                      {/* 4. DISPEN */}
+                      <button
+                        type="button"
+                        disabled={isPendingThis}
+                        onClick={() => handleUpdateStatus(studentId, 'DISPEN')}
+                        className={cn(
+                          "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
+                          record.status === 'DISPEN'
+                            ? "bg-purple-600 hover:bg-purple-500 text-white border-purple-500 shadow-md shadow-purple-950/40"
+                            : "bg-slate-800 hover:bg-slate-700 text-purple-400 border-slate-700 hover:border-purple-500/50"
+                        )}
+                      >
+                        Dispen
+                      </button>
+
+                      {/* 5. ALPA */}
+                      <button
+                        type="button"
+                        disabled={isPendingThis}
+                        onClick={() => handleUpdateStatus(studentId, 'ALPA')}
+                        className={cn(
+                          "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
+                          record.status === 'ALPA'
+                            ? "bg-rose-600 hover:bg-rose-500 text-white border-rose-500 shadow-md shadow-rose-950/40"
+                            : "bg-slate-800 hover:bg-slate-700 text-rose-400 border-slate-700 hover:border-rose-500/50"
+                        )}
+                      >
+                        Alpa
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── FOOTER BAR: SUMMARY & BOTTOM ACTIONS ── */}
+        <footer className="h-14 px-4 sm:px-6 bg-slate-900 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 shrink-0">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={16} className="text-emerald-400" />
+            <span className="hidden sm:inline font-semibold">Tersinkronisasi Otomatis ke Server Absenta SSOT</span>
+            <span className="sm:hidden font-semibold">Tersinkronisasi SSOT</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all cursor-pointer"
+            >
+              Kembali ke Dashboard
+            </button>
+          </div>
+        </footer>
+
+        {/* ── MODAL: CATATAN ABSENSI (IZIN/SAKIT/DISPEN) ── */}
+        <CatatanAbsensiModal
+          isOpen={noteModalOpen}
+          onClose={() => { setNoteModalOpen(false); setNoteTarget(null); }}
+          studentName={noteTarget?.studentName || 'Siswa'}
+          status={noteTarget?.status || 'SAKIT'}
+          onSubmit={handleNoteSubmit}
+        />
+
+        {/* ── MODAL: CONFIRM FINISH SESSION ── */}
+        {isFinishConfirmOpen && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+            <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl text-white space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/30">
+                <CheckCircle2 size={24} />
+              </div>
+
+              <div className="text-center space-y-1.5">
+                <h3 className="text-base font-black text-white">Selesaikan Sesi KBM Ini?</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Anda akan menyelesaikan sesi KBM untuk kelas <strong className="text-white">{kelasNama}</strong> mata pelajaran <strong className="text-white">{mapelNama}</strong>.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700 text-xs space-y-1.5">
+                <div className="flex justify-between text-slate-300">
+                  <span>Hadir:</span>
+                  <strong className="text-emerald-400 font-black">{stats.hadir} Siswa</strong>
+                </div>
+                <div className="flex justify-between text-slate-300">
+                  <span>Izin / Sakit / Dispen:</span>
+                  <strong className="text-blue-400 font-black">{stats.izin + stats.sakit + stats.dispen} Siswa</strong>
+                </div>
+                <div className="flex justify-between text-slate-300">
+                  <span>Alpa:</span>
+                  <strong className="text-rose-400 font-black">{stats.alpa} Siswa</strong>
+                </div>
+                {stats.belum > 0 && (
+                  <div className="flex justify-between text-amber-400 font-bold border-t border-slate-700/80 pt-1.5">
+                    <span>Belum Diabsen:</span>
+                    <span>{stats.belum} Siswa</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsFinishConfirmOpen(false)}
+                  className="flex-1 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={finishSessionMutation.isPending}
+                  onClick={() => finishSessionMutation.mutate()}
+                  className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/40"
+                >
+                  {finishSessionMutation.isPending ? (
+                    <RefreshCw size={14} className="animate-spin" />
+                  ) : (
+                    <CheckCheck size={16} />
+                  )}
+                  <span>Ya, Selesaikan</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </AnimatePresence>,
+    document.body
+  );
+};

@@ -27,6 +27,7 @@ import { RekapJurnalPanel } from '../kbm/RekapJurnalPanel';
 import { PerangkatAjarPanel } from '../kbm/PerangkatAjarPanel';
 import { JadwalInvalPanel } from '../kbm/JadwalInvalPanel';
 import { BahanAjarReaderModal } from '../../../kurikulum/bahan-ajar/BahanAjarReaderModal';
+import { TeacherKbmLiveWorkspaceModal } from '../modals/TeacherKbmLiveWorkspaceModal';
 import { UniversalEcosystemTopbar } from '@/components/dashboard/roles/common';
 import { useSessionWindowAlert, getSessionAlertDetails } from '../../../../hooks/attendance/useSessionWindowAlert';
 import { 
@@ -188,6 +189,7 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
   });
 
   const studentRecords: SesiAttendanceRecord[] = presensiRes?.data || [];
+  const [workspaceItem, setWorkspaceItem] = useState<TimelineItem | null>(null);
 
   // Mutation: Buka Sesi KBM baru dengan foto
   const openSessionMutation = useMutation({
@@ -210,7 +212,7 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
         foto_kegiatan: foto,
       } as any);
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (res: any, variables) => {
       const namaKegiatan = variables.jadwal.mapel_nama || (variables.jadwal as any).mapel || variables.jadwal.kegiatan || (variables.jadwal as any).Mapel?.nama_mapel || 'Mata Pelajaran';
       toast.success(`Sesi KBM ${namaKegiatan} berhasil dibuka!`);
       setPhotoModalOpen(false);
@@ -219,6 +221,15 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
       queryClient.invalidateQueries({ queryKey: ['sesi-absensi'] });
       queryClient.invalidateQueries({ queryKey: ['guru-monitoring-unified'] });
       if (onRefreshTimeline) onRefreshTimeline();
+
+      // 🎯 Auto-launch Meja Kerja Kelas saat sesi berhasil dibuka
+      if (res?.data) {
+        setWorkspaceItem({
+          ...variables.jadwal,
+          session: res.data,
+          isLive: true
+        });
+      }
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Terjadi kesalahan';
@@ -439,6 +450,7 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
                   item={item}
                   isExpanded={canExpand && isExpanded}
                   onToggleExpand={canExpand ? () => setExpandedScheduleId(isExpanded ? null : item.id) : undefined}
+                  onOpenWorkspace={(it) => setWorkspaceItem(it)}
                   onOpenPhotoModal={handleOpenPhotoModal}
                   onOpenBahanAjar={handleOpenBahanAjar}
                   onViewPhoto={(it) => {
@@ -599,6 +611,27 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
               id: activeSesiId || targetJadwal?.id || '',
               progres: { materi: jurnalData.judul_materi, deskripsi: jurnalData.deskripsi }
             });
+          }}
+        />
+      )}
+      {/* MODAL 5: MEJA KERJA KELAS (ZEN LIVE WORKSPACE) */}
+      {workspaceItem && (
+        <TeacherKbmLiveWorkspaceModal
+          isOpen={Boolean(workspaceItem)}
+          onClose={() => setWorkspaceItem(null)}
+          timelineItem={workspaceItem}
+          guruId={guruId}
+          guruNama={guruNama}
+          onOpenJournalModal={(it) => {
+            const sId = it.session?.id || it.id;
+            handleOpenJournalModal({ id: sId });
+          }}
+          onOpenBahanAjar={(it) => {
+            handleOpenBahanAjar(it);
+          }}
+          onSessionFinished={() => {
+            setWorkspaceItem(null);
+            if (onRefreshTimeline) onRefreshTimeline();
           }}
         />
       )}

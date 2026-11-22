@@ -23,6 +23,7 @@ import { BukaSesiFotoModal } from '../modals/BukaSesiFotoModal';
 import { PhotoPreviewModal } from '@/components/dashboard/shared/kbm/PhotoPreviewModal';
 import { BahanAjarReaderModal } from '@/components/kurikulum/bahan-ajar/BahanAjarReaderModal';
 import { JurnalKbmModal } from '@/components/kurikulum/JurnalKbmModal';
+import { TeacherKbmLiveWorkspaceModal } from '../modals/TeacherKbmLiveWorkspaceModal';
 
 export interface DirectKbmFeedProps {
   timelineItems: TimelineItem[];
@@ -86,6 +87,7 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
   // ── 3. MUTATION: BUKA SESI KBM DENGAN FOTO SELFIE ──
   const [targetJadwal, setTargetJadwal] = useState<TimelineItem | null>(null);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [workspaceItem, setWorkspaceItem] = useState<TimelineItem | null>(null);
 
   const openSessionMutation = useMutation({
     mutationFn: async (payload: { jadwal: TimelineItem; fotoDataUrl: string }) => {
@@ -107,7 +109,7 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
         foto_kegiatan: foto,
       } as any);
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (res: any, variables) => {
       const namaKegiatan = variables.jadwal.mapel_nama || (variables.jadwal as any).mapel || variables.jadwal.kegiatan || (variables.jadwal as any).Mapel?.nama_mapel || 'Mata Pelajaran';
       toast.success(`Sesi KBM ${namaKegiatan} berhasil dibuka!`);
       setPhotoModalOpen(false);
@@ -116,6 +118,15 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
       queryClient.invalidateQueries({ queryKey: ['sesi-absensi'] });
       queryClient.invalidateQueries({ queryKey: ['guru-monitoring-unified'] });
       if (onRefreshTimeline) onRefreshTimeline();
+
+      // 🎯 Auto-launch Meja Kerja Kelas saat sesi berhasil dibuka
+      if (res?.data) {
+        setWorkspaceItem({
+          ...variables.jadwal,
+          session: res.data,
+          isLive: true
+        });
+      }
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message || err?.message || 'Terjadi kesalahan';
@@ -253,6 +264,7 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
               item={item}
               isExpanded={canExpand && isExpanded}
               onToggleExpand={canExpand ? () => setExpandedScheduleId(isExpanded ? null : item.id) : undefined}
+              onOpenWorkspace={(it) => setWorkspaceItem(it)}
               onOpenPhotoModal={handleOpenPhotoModal}
               onOpenBahanAjar={handleOpenBahanAjar}
               onViewPhoto={(it) => {
@@ -389,6 +401,26 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
             if (activeTimelineItem) {
               handleOpenJournalModal(activeTimelineItem);
             }
+          }}
+        />
+      )}
+      {/* ── MODAL 5: MEJA KERJA KELAS (ZEN LIVE WORKSPACE) ── */}
+      {workspaceItem && (
+        <TeacherKbmLiveWorkspaceModal
+          isOpen={Boolean(workspaceItem)}
+          onClose={() => setWorkspaceItem(null)}
+          timelineItem={workspaceItem}
+          guruId={guruId}
+          guruNama={guruNama}
+          onOpenJournalModal={(it) => {
+            handleOpenJournalModal(it);
+          }}
+          onOpenBahanAjar={(it) => {
+            handleOpenBahanAjar(it);
+          }}
+          onSessionFinished={() => {
+            setWorkspaceItem(null);
+            if (onRefreshTimeline) onRefreshTimeline();
           }}
         />
       )}

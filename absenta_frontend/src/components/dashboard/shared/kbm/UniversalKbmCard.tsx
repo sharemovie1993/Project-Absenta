@@ -43,6 +43,7 @@ export interface UniversalKbmCardProps {
   onToggleExpand?: () => void;
   
   // Role Action Callbacks
+  onOpenWorkspace?: (item: any) => void;
   onOpenPhotoModal?: (item: any) => void;
   onOpenJournalModal?: (item: any) => void;
   onOpenBahanAjar?: (item: any) => void;
@@ -74,6 +75,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   item,
   isExpanded = false,
   onToggleExpand,
+  onOpenWorkspace,
   onOpenPhotoModal,
   onOpenJournalModal,
   onOpenBahanAjar,
@@ -323,6 +325,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   const handleClick = (e: React.MouseEvent) => {
     if (onSelectSession) {
       onSelectSession(item);
+    } else if (mode === 'GURU' && (isLive || isTeacherPresent) && onOpenWorkspace) {
+      onOpenWorkspace(item);
     } else if (mode === 'GURU' && isReadyToOpen && !isLive && !isFinished && !isOverdue && onOpenPhotoModal) {
       onOpenPhotoModal(item);
     } else if (onToggleExpand) {
@@ -759,6 +763,41 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 >
                   <Camera size={13} />
                   <span>{isSesiKegiatan ? `Mulai ${kegiatanNamaLabel}` : "Mulai KBM"}</span>
+                </Button>
+              )}
+
+              {/* 🎯 MEJA KERJA KELAS (ZEN LIVE WORKSPACE) */}
+              {onOpenWorkspace && (isLive || (isTeacherPresent && !isOverdue && !isFinished)) && (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenWorkspace(item);
+                  }}
+                  title="Buka Meja Kerja Kelas (Ruang Fokus Presensi Siswa)"
+                  className="h-8 px-3.5 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-950/30 active:scale-95 transition-all animate-pulse"
+                >
+                  <Sparkles size={13} className="text-amber-300" />
+                  <span>🎯 Meja Kerja Kelas</span>
+                </Button>
+              )}
+
+              {/* 📋 REKAP KELAS (JIKA SESI TELAH SELESAI / TERLEWAT) */}
+              {onOpenWorkspace && (isFinished || isOverdue) && Boolean(item.session || item.id) && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenWorkspace(item);
+                  }}
+                  title="Lihat Rekap Presensi Siswa di Meja Kerja Kelas"
+                  className="h-8 px-3 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer border border-slate-300 dark:border-slate-700"
+                >
+                  <Users size={13} className="text-slate-500" />
+                  <span>Rekap Kelas</span>
                 </Button>
               )}
 
