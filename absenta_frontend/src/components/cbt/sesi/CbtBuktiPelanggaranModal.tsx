@@ -48,6 +48,7 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
   const [activeTab, setActiveTab] = useState<'preview' | 'print'>('print');
   const [showLogoDaerah, setShowLogoDaerah] = useState<boolean>(true);
   const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
+  const [includeKepsekSignature, setIncludeKepsekSignature] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   // Data Sekolah & Kop Surat
@@ -476,7 +477,17 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 cursor-pointer select-none hover:bg-slate-50 transition-colors shadow-2xs">
+              <input
+                type="checkbox"
+                checked={includeKepsekSignature}
+                onChange={(e) => setIncludeKepsekSignature(e.target.checked)}
+                className="w-3.5 h-3.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+              />
+              <span>Sertakan TTD Kepala Sekolah</span>
+            </label>
+
             {isDisqualified ? (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200">
                 <AlertTriangle size={12} className="text-rose-600" />
@@ -1110,30 +1121,50 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
               Surat Bukti Forensik ini dicetak secara otomatis dari rekaman server sistem CBT Absenta dan bersifat final serta mengikat sebagai alat bukti otentik yang sah dalam menjawab sanggahan hasil penilaian asesmen.
             </p>
 
-            {/* 9. TANDA TANGAN RESMI 3-PILLAR */}
+            {/* 9. TANDA TANGAN RESMI (DEFAULT: 2 TTD, OPSIONAL: 3 TTD DENGAN KEPSEK) */}
             <div className="mt-3 pt-1 w-full">
-              <UniversalDocumentSignatures
-                layout="triangle_cbt"
-                titimangsaCity={kotaSekolah}
-                titimangsaDate={tanggalTitimangsa}
-                customSigners={{
-                  pengawas2Ujian: {
+              {includeKepsekSignature ? (
+                <UniversalDocumentSignatures
+                  layout="triangle_cbt"
+                  titimangsaCity={kotaSekolah}
+                  titimangsaDate={tanggalTitimangsa}
+                  customSigners={{
+                    pengawas2Ujian: {
+                      roleTitle: 'Guru Pengampu Mata Pelajaran,',
+                      personName: guruNama,
+                    },
+                    pengawasUjian: {
+                      roleTitle: 'Pengawas Ruang Ujian,',
+                      personName: pengawasNama,
+                      nip: pengawasNip,
+                    },
+                    kepsek: {
+                      roleTitle: 'Mengetahui / Mengesahkan,\nKepala Sekolah',
+                      personName: kepsekNama,
+                      nip: kepsekNip,
+                    },
+                  }}
+                  spacingHeightMm={10}
+                />
+              ) : (
+                <UniversalDocumentSignatures
+                  layout="dual_custom"
+                  titimangsaCity={kotaSekolah}
+                  titimangsaDate={tanggalTitimangsa}
+                  signerLeft={{
                     roleTitle: 'Guru Pengampu Mata Pelajaran,',
                     personName: guruNama,
-                  },
-                  pengawasUjian: {
+                    isAssigned: Boolean(guruNama),
+                  }}
+                  signerRight={{
                     roleTitle: 'Pengawas Ruang Ujian,',
                     personName: pengawasNama,
                     nip: pengawasNip,
-                  },
-                  kepsek: {
-                    roleTitle: 'Mengetahui / Mengesahkan,\nKepala Sekolah',
-                    personName: kepsekNama,
-                    nip: kepsekNip,
-                  },
-                }}
-                spacingHeightMm={10}
-              />
+                    isAssigned: Boolean(pengawasNama),
+                  }}
+                  spacingHeightMm={14}
+                />
+              )}
             </div>
           </PrintDocumentSheet>
         </div>
