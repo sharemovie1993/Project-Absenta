@@ -25,6 +25,8 @@ import {
 import { renderApiValue } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { changePassword } from '@/api/auth.api';
+import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
+import type { CbtStudentExamItem } from '@/types/cbt.types';
 import { DEFAULT_CONFIG } from '@/components/academic/student-card/constants';
 import { calculateProfileCompleteness, type SectionEditType } from '@/components/academic/siswa/profileCompleteness';
 import { useGerbangAttendanceData } from '@/hooks/attendance/useGerbangAttendanceData';
@@ -77,6 +79,10 @@ const AbsensiPklView = lazy(() =>
 
 const SiswaOnboardingModal = lazy(() =>
   import('@/components/academic/siswa/SiswaOnboardingModal').then((m) => ({ default: m.SiswaOnboardingModal }))
+);
+
+const SiswaExamDispatchModal = lazy(() =>
+  import('@/components/cbt/sesi/SiswaExamDispatchModal').then((m) => ({ default: m.SiswaExamDispatchModal }))
 );
 
 export const SiswaDashboard: React.FC = () => {
@@ -243,8 +249,54 @@ export const SiswaDashboard: React.FC = () => {
     enabled: showBelumAbsenModal,
   });
 
-  // Onboarding auto prompt
+  // Deteksi Event Ujian CBT Aktif Siswa (SSOT cbtApi.getMyExams)
+  const { data: studentExams = [] } = useQuery<CbtStudentExamItem[]>({
+    queryKey: cbtQueryKeys.myExams(),
+    queryFn: cbtApi.getMyExams,
+    staleTime: 45 * 1000,
+  });
+
+  const activeStudentExams = useMemo(() => {
+    if (!studentExams || studentExams.length === 0) return [];
+    const now = Date.now();
+    return studentExams.filter((item) => {
+      if (item.status_peserta === 'FINISHED' || item.status_peserta === 'DISQUALIFIED') return false;
+      if (item.status_jadwal === 'ACTIVE' || item.status_jadwal === 'PAUSED') return true;
+      if (item.status_jadwal !== 'COMPLETED' && item.status_jadwal !== 'ARCHIVED' && item.status_jadwal !== 'DRAFT') {
+        const start = new Date(item.tanggal_mulai).getTime();
+        const end = new Date(item.tanggal_selesai).getTime();
+        return now >= start && now <= end;
+      }
+      return false;
+    });
+  }, [studentExams]);
+
+  const hasActiveStudentExam = activeStudentExams.length > 0;
+  const [showExamDispatchModal, setShowExamDispatchModal] = useState(false);
+
+  // Deteksi & Buka Modal Pengarahan Ujian jika ada ujian beririsan
   useEffect(() => {
+    if (hasActiveStudentExam) {
+      // Supresi penuh modal onboarding jika sedang ada event ujian
+      setShowOnboardingModal(false);
+
+      const allDismissed = activeStudentExams.every((exam) =>
+        sessionStorage.getItem(`cbt_student_dispatch_${exam.id}`) === 'true'
+      );
+      if (!allDismissed) {
+        setShowExamDispatchModal(true);
+      }
+    } else {
+      setShowExamDispatchModal(false);
+    }
+  }, [hasActiveStudentExam, activeStudentExams]);
+
+  // Onboarding auto prompt (Disupresi penuh saat ada ujian aktif)
+  useEffect(() => {
+    if (hasActiveStudentExam) {
+      setShowOnboardingModal(false);
+      return;
+    }
     if (data.siswaProfile) {
       const comp = calculateProfileCompleteness(data.siswaProfile);
       const hasDismissed = sessionStorage.getItem(`onboarding_dismissed_${data.user?.siswa_id || data.user?.id}`);
@@ -252,7 +304,7 @@ export const SiswaDashboard: React.FC = () => {
         setShowOnboardingModal(true);
       }
     }
-  }, [data.siswaProfile, data.user]);
+  }, [data.siswaProfile, data.user, hasActiveStudentExam]);
 
   // Tab items config & categories
   const categories: UniversalSubtabCategory[] = useMemo(() => [
@@ -878,6 +930,20 @@ export const SiswaDashboard: React.FC = () => {
         qrCodeDataUrl={data.qrCodeDataUrl}
         dynamicRules="Gunakan QR Code ini untuk scan Tap Presensi Gerbang Sekolah & Akses Perpustakaan Digital."
       />
+
+      {/* Modal Pengarahan Sesi Ujian CBT Aktif Siswa (Prioritas Utama saat Ada Ujian) */}
+      <Suspense fallback={null}>
+        {showExamDispatchModal && (
+          <SiswaExamDispatchModal
+            isOpen={showExamDispatchModal}
+            onClose={() => setShowExamDispatchModal(false)}
+            activeExams={activeStudentExams}
+            studentName={data.studentName}
+            classNameTitle={data.currentClassName}
+            onGoToCbtTab={() => handleTabChange('cbt')}
+          />
+        )}
+      </Suspense>
 
       <Suspense fallback={null}>
         {showOnboardingModal && (

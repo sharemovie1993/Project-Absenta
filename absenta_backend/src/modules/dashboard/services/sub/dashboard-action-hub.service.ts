@@ -48,7 +48,7 @@ export interface ActionRoleGroup {
  * (mis. KURIKULUM, WALIKELAS, KESISWAAN).
  */
 const ROLE_GROUP_RULES: Array<{ prefixes: string[]; group: ActionRoleGroup }> = [
-  { prefixes: ['kbm_journal_', 'perangkat_', 'rapor_task_', 'cbt_bank_soal_'], group: { key: 'GURU', label: 'Sebagai Guru', order: 1 } },
+  { prefixes: ['kbm_journal_', 'perangkat_', 'rapor_task_', 'cbt_bank_soal_', 'cbt_author_live_'], group: { key: 'GURU', label: 'Sebagai Guru', order: 1 } },
   { prefixes: ['kaprog_'], group: { key: 'KAPROG', label: 'Sebagai Kajur', order: 2 } },
   { prefixes: ['kurikulum_'], group: { key: 'KURIKULUM', label: 'Sebagai Kurikulum', order: 3 } },
   { prefixes: ['walas_'], group: { key: 'WALIKELAS', label: 'Sebagai Wali Kelas', order: 4 } },
@@ -119,6 +119,7 @@ export class DashboardActionHubService {
       this.detectSarprasLoanTasks(tenantId, userId, startOfDay),
       guruId ? this.detectPerangkatAjarTasks(tenantId, guruId) : Promise.resolve([]),
       guruId ? this.detectCbtBankSoalTasks(tenantId, guruId) : Promise.resolve([]),
+      guruId ? this.detectCbtLiveAuthorTasks(tenantId, guruId) : Promise.resolve([]),
       guruId ? this.detectCbtPengawasTasks(tenantId, guruId) : Promise.resolve([]),
       this.detectKaprogTpDudiTasks(tenantId, userId, guruId),
     ]);
@@ -1467,6 +1468,87 @@ export class DashboardActionHubService {
           entityId: guruId,
         },
       }];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /**
+   * 10. Deteksi Bank Soal Guru yang Sedang Digunakan Live dalam Ujian CBT
+   */
+  private async detectCbtLiveAuthorTasks(tenantId: string, guruId: string): Promise<UnifiedActionItem[]> {
+    try {
+      const liveSchedules = await prisma.cbtJadwalUjian.findMany({
+        where: {
+          tenant_id: tenantId,
+          status: { in: ['ACTIVE', 'PAUSED'] },
+          BankSoal: {
+            OR: [
+              { guru_id: guruId },
+              { Kontributor: { some: { guru_id: guruId } } },
+            ],
+          },
+        },
+        select: {
+          id: true,
+          nama_sesi: true,
+          status: true,
+          durasi_menit: true,
+          tanggal_mulai: true,
+          tanggal_selesai: true,
+          setting_keamanan: true,
+          BankSoal: {
+            select: {
+              id: true,
+              judul: true,
+              Mapel: { select: { nama_mapel: true } },
+            },
+          },
+          Peserta: {
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+        },
+        orderBy: { tanggal_mulai: 'asc' },
+      });
+
+      if (!liveSchedules || liveSchedules.length === 0) return [];
+
+      return liveSchedules.map((schedule) => {
+        const totalPeserta = schedule.Peserta?.length || 0;
+        const selesaiCount = schedule.Peserta?.filter((p) => p.status === 'FINISHED').length || 0;
+        const sedangCount = schedule.Peserta?.filter((p) => p.status === 'IN_PROGRESS').length || 0;
+        const mapelNama = schedule.BankSoal?.Mapel?.nama_mapel || schedule.BankSoal?.judul || 'Mata Pelajaran';
+        const percent = totalPeserta > 0 ? Math.round((selesaiCount / totalPeserta) * 100) : 0;
+        const statusLabel = schedule.status === 'PAUSED' ? ' (Sesi Dijeda)' : '';
+
+        return {
+          id: `cbt_author_live_${schedule.id}`,
+          division: 'CBT',
+          urgency: 'CRITICAL',
+          title: `🔴 Soal Anda Live: ${mapelNama}${statusLabel}`,
+          subtitle: `Sesi ${schedule.nama_sesi} • Bank Soal "${schedule.BankSoal?.judul || '-'}" • ${sedangCount} sedang mengerjakan, ${selesaiCount} selesai (${totalPeserta} siswa)`,
+          badgeText: '🔴 SOAL LIVE BERLANGSUNG',
+          progress: {
+            current: selesaiCount,
+            total: totalPeserta > 0 ? totalPeserta : 1,
+            percent,
+            label: `${selesaiCount}/${totalPeserta} Siswa Selesai (${percent}%)`,
+            variant: 'rose',
+          },
+          action: {
+            label: 'Pantau Sesi Ujian ➔',
+            type: 'NAVIGATE',
+            target: `/dashboard?tab=ringkasan&subtab=cbt&mode=sesi&sesi_id=${schedule.id}`,
+          },
+          sourceModule: {
+            table: 'CbtJadwalUjian',
+            entityId: schedule.id,
+          },
+        };
+      });
     } catch (e) {
       return [];
     }

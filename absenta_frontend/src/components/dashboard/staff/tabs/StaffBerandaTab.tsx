@@ -105,6 +105,9 @@ const CbtJadwalView = lazy(() =>
 const CbtPengawasTeacherView = lazy(() =>
   import('@/components/cbt/sesi/CbtPengawasTeacherView').then((m) => ({ default: m.CbtPengawasTeacherView }))
 );
+const CbtPengawasDispatchModal = lazy(() =>
+  import('@/components/cbt/sesi/CbtPengawasDispatchModal').then((m) => ({ default: m.CbtPengawasDispatchModal }))
+);
 
 // Lazy load GateInputModule untuk satpam
 const GateInputModule = lazy(() =>
@@ -154,7 +157,19 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
   const [showIzinModal, setShowIzinModal] = useState(false);
   const [isScanSosialisasiOpen, setIsScanSosialisasiOpen] = useState(false);
   const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
-  const [teacherCbtMode, setTeacherCbtMode] = useState<'bank' | 'sesi'>('bank');
+  const [teacherCbtMode, setTeacherCbtMode] = useState<'bank' | 'sesi'>(() => {
+    const m = searchParams.get('mode');
+    if (m === 'sesi' || searchParams.has('sesi_id')) return 'sesi';
+    return 'bank';
+  });
+
+  // Sinkronisasi mode sesi jika terdapat parameter URL
+  useEffect(() => {
+    const m = searchParams.get('mode');
+    if (m === 'sesi' || searchParams.has('sesi_id')) {
+      setTeacherCbtMode('sesi');
+    }
+  }, [searchParams]);
   const { isOrkestrasi, eventName } = useCbtOperationMode();
 
   // User Profil & Avatar Data untuk Mobile Topbar Header
@@ -329,7 +344,49 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     ...(isPengujiSidang ? ['sidang_guru' as const] : []),
   ], [isPengujiSidang]);
 
-  const [selectedPengawasJadwalId, setSelectedPengawasJadwalId] = useState<string | undefined>(undefined);
+  const [selectedPengawasJadwalId, setSelectedPengawasJadwalId] = useState<string | undefined>(() => {
+    return searchParams.get('pengawas_jadwal_id') || searchParams.get('sesi_id') || undefined;
+  });
+
+  // Filter jadwal pengawasan live / beririsan
+  const livePengawasSchedules = useMemo(() => {
+    if (!myPengawasCbtData || myPengawasCbtData.length === 0) return [];
+    const now = Date.now();
+    return myPengawasCbtData.filter((item) => {
+      if (item.status === 'COMPLETED' || item.status === 'ARCHIVED') return false;
+      if (item.status === 'ACTIVE' || item.status === 'PAUSED') return true;
+      const start = new Date(item.tanggal_mulai).getTime();
+      const end = new Date(item.tanggal_selesai).getTime();
+      return now >= start && now <= end;
+    });
+  }, [myPengawasCbtData]);
+
+  const [showPengawasDispatchModal, setShowPengawasDispatchModal] = useState(false);
+
+  // Auto prompt modal pengarahan menuju meja pengawas saat ada event ujian live
+  useEffect(() => {
+    if (activeSubTab === 'pengawas_cbt') {
+      setShowPengawasDispatchModal(false);
+      return;
+    }
+
+    if (livePengawasSchedules.length > 0) {
+      const allDismissed = livePengawasSchedules.every((s) =>
+        sessionStorage.getItem(`cbt_pengawas_dispatch_${s.id}`) === 'true'
+      );
+      if (!allDismissed) {
+        setShowPengawasDispatchModal(true);
+      }
+    } else {
+      setShowPengawasDispatchModal(false);
+    }
+  }, [livePengawasSchedules, activeSubTab]);
+
+  const handleEnterMejaPengawas = useCallback((jadwalId: string) => {
+    setSelectedPengawasJadwalId(jadwalId);
+    setShowPengawasDispatchModal(false);
+    handleSubTabChange('pengawas_cbt');
+  }, [handleSubTabChange]);
 
   const activeSubTab = validSubTabs.includes(subTabParam) ? subTabParam : 'agenda';
 
@@ -1163,6 +1220,19 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
             <GateInputModule />
           </Suspense>
         </div>
+      )}
+
+      {/* Modal Pengarahan Menuju Meja Pengawas CBT saat Sesi Live Aktif */}
+      {showPengawasDispatchModal && (
+        <Suspense fallback={null}>
+          <CbtPengawasDispatchModal
+            isOpen={showPengawasDispatchModal}
+            onClose={() => setShowPengawasDispatchModal(false)}
+            liveSchedules={livePengawasSchedules}
+            guruNama={guruNama || displayName}
+            onEnterMejaPengawas={handleEnterMejaPengawas}
+          />
+        </Suspense>
       )}
 
       {/* Modal Pengajuan Izin Mandiri Guru */}
