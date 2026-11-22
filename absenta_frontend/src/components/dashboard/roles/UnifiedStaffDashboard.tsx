@@ -1285,7 +1285,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
       const fallback = tabs.some(t => t.id === defaultTabId) ? defaultTabId : tabs[0].id;
       setSearchParams({ tab: fallback }, { replace: true });
     }
-  }, [tabs, activeTab, defaultTabId, setSearchParams, isWaliKelas, waliKelasId, isKaprog, isTUKepala, isTUPersuratan, isTUKepegawaian, isTUKeuangan, isTUSarpras, isTU, isAdminRole, isPembimbingPkl, isPiketGuruActual, isPureGerbangStaff]);
+  }, [tabs, activeTab, defaultTabId, setSearchParams, isWaliKelas, waliKelasId, isKaprog, isBpbk, isTUKepala, isTUPersuratan, isTUKepegawaian, isTUKeuangan, isTUSarpras, isTU, isAdminRole, isPembimbingPkl, isPiketGuruActual, isPureGerbangStaff]);
 
   // ── 6. Quick Actions ──────────────────────────────────────────────────────────
   const quickActions = useMemo(() => {
