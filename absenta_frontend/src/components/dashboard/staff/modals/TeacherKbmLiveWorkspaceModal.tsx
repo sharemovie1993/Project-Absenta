@@ -373,30 +373,30 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
 
   return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex flex-col bg-slate-950/80 backdrop-blur-md overflow-hidden select-none">
+      <div className="fixed inset-0 z-[100] flex flex-col bg-slate-100/95 dark:bg-slate-950/95 backdrop-blur-md overflow-hidden select-none">
         {/* ── TOP IMMERSIVE HEADER (ZEN WORKSPACE NAVBAR) ── */}
-        <header className="h-16 px-4 sm:px-6 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-3 shrink-0 text-white shadow-lg">
+        <header className="h-14 sm:h-16 px-3 sm:px-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 sm:gap-3 shrink-0 text-slate-900 dark:text-white shadow-xs">
           {/* Left: Back & Class Identity */}
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               type="button"
               onClick={onClose}
               title="Tutup Meja Kerja Kelas & Kembali ke Dashboard"
-              className="h-10 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white flex items-center gap-1.5 text-xs font-bold transition-all border border-slate-700 active:scale-95 cursor-pointer shrink-0"
+              className="h-9 px-2 sm:px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white flex items-center gap-1.5 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 active:scale-95 cursor-pointer shrink-0"
             >
               <ArrowLeft size={16} />
               <span className="hidden sm:inline">Dashboard</span>
             </button>
 
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs sm:text-sm font-black tracking-wide shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30 text-[11px] sm:text-sm font-black tracking-wide shrink-0">
                 {kelasNama}
               </span>
               <div className="min-w-0">
-                <h2 className="text-xs sm:text-sm font-black text-white truncate max-w-xs sm:max-w-md">
+                <h2 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate max-w-[130px] xs:max-w-[190px] sm:max-w-md">
                   {mapelNama}
                 </h2>
-                <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate">
                   <span>{jamKe}</span>
                   <span>•</span>
                   <span>{jamRentang}</span>
@@ -406,16 +406,16 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
           </div>
 
           {/* Right: Real-time Countdown & Primary Actions */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Timer Badge */}
             {remainingTimeText && (
               <div className={cn(
-                "hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono font-bold",
+                "hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-mono font-bold",
                 isTimeOver
-                  ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
-                  : "bg-indigo-500/15 text-indigo-300 border-indigo-500/30"
+                  ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/30"
+                  : "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:border-indigo-500/30"
               )}>
-                <Clock size={14} className={isTimeOver ? "text-rose-400 animate-pulse" : "text-indigo-400"} />
+                <Clock size={13} className={isTimeOver ? "text-rose-600 dark:text-rose-400 animate-pulse" : "text-indigo-600 dark:text-indigo-400"} />
                 <span>{remainingTimeText}</span>
               </div>
             )}
@@ -427,7 +427,8 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                 size="sm"
                 variant="secondary"
                 onClick={() => onOpenBahanAjar(timelineItem)}
-                className="h-9 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                className="h-8 sm:h-9 px-2 sm:px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                title="Buka Bahan Ajar / Perangkat Pembelajaran"
               >
                 <BookOpen size={14} />
                 <span className="hidden md:inline">Bahan Ajar</span>
@@ -440,7 +441,8 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                 type="button"
                 size="sm"
                 onClick={() => onOpenJournalModal(timelineItem)}
-                className="h-9 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm shadow-blue-900/30 border-none"
+                className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black flex items-center gap-1 cursor-pointer shadow-xs border-none"
+                title="Isi Jurnal KBM Kelas Ini"
               >
                 <FileText size={14} />
                 <span>Jurnal</span>
@@ -453,10 +455,12 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                 type="button"
                 size="sm"
                 onClick={() => onOpenPhotoModal(timelineItem)}
-                className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-900/40 border-none animate-pulse"
+                className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs border-none animate-pulse"
+                title="Ambil foto buka sesi mengajar (Mulai KBM)"
               >
                 <Camera size={14} />
-                <span>Mulai KBM</span>
+                <span className="hidden xs:inline">Mulai KBM</span>
+                <span className="xs:hidden">Buka</span>
               </Button>
             )}
 
@@ -466,7 +470,8 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                 type="button"
                 size="sm"
                 onClick={() => setIsFinishConfirmOpen(true)}
-                className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-900/40 border-none"
+                className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs border-none"
+                title="Selesaikan sesi KBM hari ini"
               >
                 <CheckCircle2 size={14} />
                 <span className="hidden sm:inline">Selesaikan Sesi</span>
@@ -477,41 +482,41 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
         </header>
 
         {/* ── SUB-HEADER: SUMMARY STRIP & ACTION BAR ── */}
-        <div className="px-4 sm:px-6 py-3 bg-slate-900/90 border-b border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
+        <div className="px-3 sm:px-6 py-2.5 sm:py-3 bg-slate-50/95 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
           {/* Quick Metrics Bar */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
-            <div className="px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700 text-slate-300 flex items-center gap-2 text-xs shrink-0">
-              <Users size={14} className="text-slate-400" />
-              <span>Total: <strong className="text-white font-black">{stats.total}</strong> Siswa</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
+            <div className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-1.5 text-xs shrink-0 shadow-2xs">
+              <Users size={13} className="text-slate-500 dark:text-slate-400" />
+              <span>Total: <strong className="text-slate-900 dark:text-white font-black">{stats.total}</strong></span>
             </div>
 
-            <div className="px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center gap-2 text-xs shrink-0">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span>Hadir: <strong className="text-white font-black">{stats.hadir}</strong> ({stats.percentHadir}%)</span>
+            <div className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-500/15 dark:border-emerald-500/30 dark:text-emerald-300 flex items-center gap-1.5 text-xs shrink-0 font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+              <span>Hadir: <strong className="text-emerald-950 dark:text-white font-black">{stats.hadir}</strong> ({stats.percentHadir}%)</span>
             </div>
 
             {stats.belum > 0 && (
-              <div className="px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 flex items-center gap-2 text-xs shrink-0 animate-pulse">
-                <span className="w-2 h-2 rounded-full bg-amber-400" />
-                <span>Belum Absen: <strong className="text-white font-black">{stats.belum}</strong></span>
+              <div className="px-2.5 py-1 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-500/15 dark:border-amber-500/30 dark:text-amber-300 flex items-center gap-1.5 text-xs shrink-0 font-bold animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400" />
+                <span>Belum: <strong className="text-amber-950 dark:text-white font-black">{stats.belum}</strong></span>
               </div>
             )}
 
             {stats.izin + stats.sakit > 0 && (
-              <div className="px-3 py-1.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 flex items-center gap-2 text-xs shrink-0">
-                <span>Izin/Sakit: <strong className="text-white font-black">{stats.izin + stats.sakit}</strong></span>
+              <div className="px-2.5 py-1 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-500/15 dark:border-blue-500/30 dark:text-blue-300 flex items-center gap-1.5 text-xs shrink-0">
+                <span>Izin/Sakit: <strong className="text-blue-950 dark:text-white font-black">{stats.izin + stats.sakit}</strong></span>
               </div>
             )}
 
             {stats.alpa > 0 && (
-              <div className="px-3 py-1.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 flex items-center gap-2 text-xs shrink-0">
-                <span>Alpa: <strong className="text-white font-black">{stats.alpa}</strong></span>
+              <div className="px-2.5 py-1 rounded-xl bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-500/15 dark:border-rose-500/30 dark:text-rose-300 flex items-center gap-1.5 text-xs shrink-0">
+                <span>Alpa: <strong className="text-rose-950 dark:text-white font-black">{stats.alpa}</strong></span>
               </div>
             )}
           </div>
 
           {/* Quick Actions: Lightning Mark All Present + Search */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
             {stats.belum > 0 && (
               <button
                 type="button"
@@ -519,7 +524,7 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                 onClick={handleMarkAllPresent}
                 title={!isStartedByTeacher ? "Sesi belum dibuka oleh Guru" : isReportMode ? "Sesi telah selesai" : "Tandai semua siswa yang belum absen sebagai HADIR"}
                 className={cn(
-                  "h-9 px-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-md shadow-emerald-950/40 flex items-center gap-1.5 border-none cursor-pointer transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0",
+                  "w-full sm:w-auto h-9 sm:h-10 px-3.5 sm:px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-sm shadow-emerald-950/20 flex items-center justify-center gap-1.5 border-none cursor-pointer transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0",
                   !canMarkAttendance && "opacity-40 cursor-not-allowed pointer-events-none"
                 )}
               >
@@ -532,20 +537,20 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
               </button>
             )}
 
-            <div className="relative min-w-[180px] sm:min-w-[220px]">
+            <div className="relative w-full sm:w-auto sm:min-w-[200px] md:min-w-[240px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Cari nama atau NIS..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full h-9 pl-8 pr-3 rounded-xl bg-slate-800 text-white placeholder-slate-400 text-xs border border-slate-700 focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full h-9 sm:h-10 pl-8 pr-3 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 text-xs border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 shadow-2xs transition-colors"
               />
               {searchTerm && (
                 <button
                   type="button"
                   onClick={() => setSearchTerm('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
                 >
                   <X size={12} />
                 </button>
@@ -555,7 +560,7 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
         </div>
 
         {/* ── FILTER PILLS ── */}
-        <div className="px-4 sm:px-6 py-2 bg-slate-900 border-b border-slate-800/60 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+        <div className="px-3 sm:px-6 py-2 bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800/60 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
           {[
             { key: 'ALL', label: 'Semua Siswa', count: stats.total },
             { key: 'BELUM_TAP', label: 'Belum Absen', count: stats.belum, highlight: stats.belum > 0 },
@@ -571,18 +576,18 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                 type="button"
                 onClick={() => setStatusFilter(f.key as any)}
                 className={cn(
-                  "h-7 px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer border",
+                  "h-7.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer border",
                   isActive
-                    ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
                     : f.highlight
-                    ? "bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20"
-                    : "bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200"
+                    ? "bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30 hover:bg-amber-100"
+                    : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                 )}
               >
                 <span>{f.label}</span>
                 <span className={cn(
                   "px-1.5 py-0.2 rounded-full text-[10px] font-mono font-black",
-                  isActive ? "bg-white/20 text-white" : "bg-slate-700 text-slate-300"
+                  isActive ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
                 )}>
                   {f.count}
                 </span>
@@ -592,15 +597,15 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
         </div>
 
         {/* ── MAIN WORKSPACE CONTENT: ERGONOMIC ATTENDANCE LIST ── */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-950 space-y-2">
+        <div className="flex-1 overflow-y-auto p-2.5 sm:p-6 bg-slate-100/70 dark:bg-slate-950 space-y-2.5 pb-24 sm:pb-8">
           {/* 🛡️ Banner Aturan KBM: Sesi Belum Dibuka Oleh Guru */}
           {!isStartedByTeacher && !isReportMode && (
-            <div className="max-w-5xl mx-auto mb-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-200 shadow-lg">
+            <div className="max-w-5xl mx-auto mb-3 p-3.5 sm:p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-900 dark:text-amber-200 shadow-xs">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="text-amber-400 shrink-0 mt-0.5" size={20} />
+                <AlertTriangle className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" size={20} />
                 <div>
-                  <h4 className="font-bold text-amber-300 text-sm">Sesi KBM Belum Dibuka Oleh Guru</h4>
-                  <p className="text-xs text-amber-200/80 mt-0.5">
+                  <h4 className="font-bold text-amber-950 dark:text-amber-300 text-xs sm:text-sm">Sesi KBM Belum Dibuka Oleh Guru</h4>
+                  <p className="text-[11px] sm:text-xs text-amber-800/90 dark:text-amber-200/80 mt-0.5">
                     Presensi siswa terkunci. Sesuai aturan KBM, Guru pengampu wajib membuka sesi (ambil foto Mulai KBM) terlebih dahulu sebelum dapat mengabsenkan siswa.
                   </p>
                 </div>
@@ -609,7 +614,7 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                 <button
                   type="button"
                   onClick={() => onOpenPhotoModal(timelineItem)}
-                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all active:scale-95 shrink-0"
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all active:scale-95 shrink-0"
                 >
                   <Camera size={15} />
                   <span>📸 Mulai KBM Sekarang</span>
@@ -620,11 +625,11 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
 
           {/* 🛡️ Banner Aturan KBM: Sesi Selesai / Mode Rekap Arsip */}
           {isReportMode && (
-            <div className="max-w-5xl mx-auto mb-3 p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center gap-3 text-slate-300 shadow-md">
-              <CheckCircle2 className="text-emerald-400 shrink-0" size={18} />
+            <div className="max-w-5xl mx-auto mb-3 p-3.5 rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center gap-3 text-slate-700 dark:text-slate-300 shadow-2xs">
+              <CheckCircle2 className="text-emerald-600 dark:text-emerald-400 shrink-0" size={18} />
               <div>
-                <h4 className="font-bold text-slate-200 text-xs sm:text-sm">Mode Rekap Presensi</h4>
-                <p className="text-[11px] text-slate-400">
+                <h4 className="font-bold text-slate-900 dark:text-slate-200 text-xs sm:text-sm">Mode Rekap Presensi</h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Sesi KBM ini telah {isFinished ? 'selesai' : 'terlewat'}. Data kehadiran siswa berstatus arsip (hanya lihat).
                 </p>
               </div>
@@ -633,19 +638,19 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
 
           {loadingPresensi && studentRecords.length === 0 ? (
             <div className="py-24 text-center space-y-3">
-              <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin mx-auto" />
-              <p className="text-sm font-bold text-slate-400">Memuat Roster Presensi Siswa...</p>
+              <RefreshCw className="w-8 h-8 text-indigo-600 dark:text-indigo-400 animate-spin mx-auto" />
+              <p className="text-sm font-bold text-slate-600 dark:text-slate-400">Memuat Roster Presensi Siswa...</p>
             </div>
           ) : filteredStudents.length === 0 ? (
-            <div className="py-20 text-center space-y-2 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800 p-8 max-w-md mx-auto">
-              <Search className="w-10 h-10 text-slate-600 mx-auto" />
-              <h4 className="text-sm font-bold text-slate-300">Tidak Ada Siswa Ditemukan</h4>
+            <div className="py-20 text-center space-y-2 bg-white dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-8 max-w-md mx-auto shadow-2xs">
+              <Search className="w-10 h-10 text-slate-400 dark:text-slate-600 mx-auto" />
+              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-300">Tidak Ada Siswa Ditemukan</h4>
               <p className="text-xs text-slate-500">
                 {searchTerm ? `Pencarian "${searchTerm}" tidak cocok dengan data siswa.` : 'Tidak ada siswa pada filter ini.'}
               </p>
             </div>
           ) : (
-            <div className="space-y-2 max-w-5xl mx-auto">
+            <div className="space-y-2.5 max-w-5xl mx-auto">
               {filteredStudents.map((record, index) => {
                 const studentId = record.siswa_akademik_id || record.siswa_id || record.id || '';
                 const namaSiswa = record.Siswa?.nama_siswa || (record as any).nama_siswa || (record as any).nama || 'Siswa';
@@ -660,55 +665,55 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                   <div
                     key={studentId || index}
                     className={cn(
-                      "p-3 sm:p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3",
+                      "p-3 sm:p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shadow-2xs",
                       record.status === 'HADIR'
-                        ? "bg-slate-900/90 border-emerald-500/30 hover:border-emerald-500/50"
+                        ? "bg-emerald-50/70 border-emerald-300/80 dark:bg-slate-900/90 dark:border-emerald-500/30"
                         : record.status === 'SAKIT'
-                        ? "bg-slate-900/90 border-amber-500/30 hover:border-amber-500/50"
+                        ? "bg-amber-50/70 border-amber-300/80 dark:bg-slate-900/90 dark:border-amber-500/30"
                         : record.status === 'IZIN'
-                        ? "bg-slate-900/90 border-blue-500/30 hover:border-blue-500/50"
+                        ? "bg-blue-50/70 border-blue-300/80 dark:bg-slate-900/90 dark:border-blue-500/30"
                         : record.status === 'ALPA'
-                        ? "bg-slate-900/90 border-rose-500/40 hover:border-rose-500/60"
+                        ? "bg-rose-50/70 border-rose-300/80 dark:bg-slate-900/90 dark:border-rose-500/40"
                         : record.status === 'DISPEN'
-                        ? "bg-slate-900/90 border-purple-500/30 hover:border-purple-500/50"
-                        : "bg-slate-900/60 border-slate-800 hover:border-slate-700"
+                        ? "bg-purple-50/70 border-purple-300/80 dark:bg-slate-900/90 dark:border-purple-500/30"
+                        : "bg-white border-slate-200/90 dark:bg-slate-900/60 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
                     )}
                   >
                     {/* Student Info Left */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-slate-800 text-slate-300 font-mono font-bold text-xs flex items-center justify-center shrink-0 border border-slate-700">
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
                         {index + 1}
                       </div>
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="text-xs sm:text-sm font-black text-white truncate" title={namaSiswa}>
+                          <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate" title={namaSiswa}>
                             {namaSiswa}
                           </h4>
                           {nisn && (
-                            <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-1.5 py-0.2 rounded border border-slate-700">
+                            <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded border border-slate-200 dark:border-slate-700">
                               {nisn}
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400 font-mono flex-wrap">
+                        <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 font-mono flex-wrap">
                           {tapDisplay ? (
-                            <span className="text-emerald-400 font-semibold">
+                            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
                               Tap: {tapDisplay} WIB
                             </span>
                           ) : (
-                            <span className="text-slate-500">Belum tap</span>
+                            <span className="text-slate-400 dark:text-slate-500">Belum tap</span>
                           )}
 
                           {isLate && (
-                            <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold uppercase text-[9px]">
+                            <span className="px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/30 font-bold uppercase text-[9px]">
                               Terlambat
                             </span>
                           )}
 
                           {record.catatan && (
-                            <span className="text-indigo-400 italic font-sans truncate max-w-xs">
+                            <span className="text-indigo-600 dark:text-indigo-400 italic font-sans truncate max-w-xs">
                               • {record.catatan}
                             </span>
                           )}
@@ -716,8 +721,8 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                       </div>
                     </div>
 
-                    {/* Touch Buttons: [Hadir] [Sakit] [Izin] [Dispen] [Alpa] */}
-                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto flex-wrap justify-end">
+                    {/* Touch Buttons: 5-Column Grid on Mobile, Flex on Desktop */}
+                    <div className="grid grid-cols-5 gap-1 sm:gap-1.5 w-full sm:w-auto sm:flex sm:items-center shrink-0">
                       {/* 1. HADIR */}
                       <button
                         type="button"
@@ -725,11 +730,11 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                         title={!isStartedByTeacher ? "Sesi belum dibuka oleh Guru" : isReportMode ? "Sesi telah selesai" : "Tandai Hadir"}
                         onClick={() => handleUpdateStatus(studentId, 'HADIR')}
                         className={cn(
-                          "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
-                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-700",
+                          "h-9 sm:h-8 w-full sm:w-auto sm:min-w-[58px] px-1 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border active:scale-95",
+                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-300 dark:hover:border-slate-700",
                           record.status === 'HADIR'
-                            ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-950/40"
-                            : "bg-slate-800 hover:bg-slate-700 text-emerald-400 border-slate-700 hover:border-emerald-500/50"
+                            ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600 shadow-xs"
+                            : "bg-white hover:bg-emerald-50 text-emerald-700 border-slate-200 hover:border-emerald-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-emerald-400 dark:border-slate-700 dark:hover:border-emerald-500/50"
                         )}
                       >
                         Hadir
@@ -742,11 +747,11 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                         title={!isStartedByTeacher ? "Sesi belum dibuka oleh Guru" : isReportMode ? "Sesi telah selesai" : "Tandai Sakit"}
                         onClick={() => handleUpdateStatus(studentId, 'SAKIT')}
                         className={cn(
-                          "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
-                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-700",
+                          "h-9 sm:h-8 w-full sm:w-auto sm:min-w-[58px] px-1 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border active:scale-95",
+                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-300 dark:hover:border-slate-700",
                           record.status === 'SAKIT'
-                            ? "bg-amber-600 hover:bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-950/40"
-                            : "bg-slate-800 hover:bg-slate-700 text-amber-400 border-slate-700 hover:border-amber-500/50"
+                            ? "bg-amber-500 hover:bg-amber-400 text-slate-950 font-black border-amber-500 shadow-xs"
+                            : "bg-white hover:bg-amber-50 text-amber-700 border-slate-200 hover:border-amber-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-amber-400 dark:border-slate-700 dark:hover:border-amber-500/50"
                         )}
                       >
                         Sakit
@@ -759,11 +764,11 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                         title={!isStartedByTeacher ? "Sesi belum dibuka oleh Guru" : isReportMode ? "Sesi telah selesai" : "Tandai Izin"}
                         onClick={() => handleUpdateStatus(studentId, 'IZIN')}
                         className={cn(
-                          "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
-                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-700",
+                          "h-9 sm:h-8 w-full sm:w-auto sm:min-w-[58px] px-1 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border active:scale-95",
+                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-300 dark:hover:border-slate-700",
                           record.status === 'IZIN'
-                            ? "bg-blue-600 hover:bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-950/40"
-                            : "bg-slate-800 hover:bg-slate-700 text-blue-400 border-slate-700 hover:border-blue-500/50"
+                            ? "bg-blue-600 hover:bg-blue-500 text-white border-blue-600 shadow-xs"
+                            : "bg-white hover:bg-blue-50 text-blue-700 border-slate-200 hover:border-blue-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-blue-400 dark:border-slate-700 dark:hover:border-blue-500/50"
                         )}
                       >
                         Izin
@@ -776,11 +781,11 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                         title={!isStartedByTeacher ? "Sesi belum dibuka oleh Guru" : isReportMode ? "Sesi telah selesai" : "Tandai Dispen"}
                         onClick={() => handleUpdateStatus(studentId, 'DISPEN')}
                         className={cn(
-                          "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
-                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-700",
+                          "h-9 sm:h-8 w-full sm:w-auto sm:min-w-[58px] px-1 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border active:scale-95",
+                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-300 dark:hover:border-slate-700",
                           record.status === 'DISPEN'
-                            ? "bg-purple-600 hover:bg-purple-500 text-white border-purple-500 shadow-md shadow-purple-950/40"
-                            : "bg-slate-800 hover:bg-slate-700 text-purple-400 border-slate-700 hover:border-purple-500/50"
+                            ? "bg-purple-600 hover:bg-purple-500 text-white border-purple-600 shadow-xs"
+                            : "bg-white hover:bg-purple-50 text-purple-700 border-slate-200 hover:border-purple-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-purple-400 dark:border-slate-700 dark:hover:border-purple-500/50"
                         )}
                       >
                         Dispen
@@ -793,11 +798,11 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                         title={!isStartedByTeacher ? "Sesi belum dibuka oleh Guru" : isReportMode ? "Sesi telah selesai" : "Tandai Alpa"}
                         onClick={() => handleUpdateStatus(studentId, 'ALPA')}
                         className={cn(
-                          "h-8 min-w-[50px] sm:min-w-[58px] px-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border",
-                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-700",
+                          "h-9 sm:h-8 w-full sm:w-auto sm:min-w-[58px] px-1 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center border active:scale-95",
+                          !canMarkAttendance && "opacity-40 cursor-not-allowed hover:border-slate-300 dark:hover:border-slate-700",
                           record.status === 'ALPA'
-                            ? "bg-rose-600 hover:bg-rose-500 text-white border-rose-500 shadow-md shadow-rose-950/40"
-                            : "bg-slate-800 hover:bg-slate-700 text-rose-400 border-slate-700 hover:border-rose-500/50"
+                            ? "bg-rose-600 hover:bg-rose-500 text-white border-rose-600 shadow-xs"
+                            : "bg-white hover:bg-rose-50 text-rose-700 border-slate-200 hover:border-rose-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-rose-400 dark:border-slate-700 dark:hover:border-rose-500/50"
                         )}
                       >
                         Alpa
@@ -811,18 +816,18 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
         </div>
 
         {/* ── FOOTER BAR: SUMMARY & BOTTOM ACTIONS ── */}
-        <footer className="h-14 px-4 sm:px-6 bg-slate-900 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 shrink-0">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={16} className="text-emerald-400" />
+        <footer className="h-12 sm:h-14 px-3 sm:px-6 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 shrink-0 shadow-2xs">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <ShieldCheck size={15} className="text-emerald-600 dark:text-emerald-400" />
             <span className="hidden sm:inline font-semibold">Tersinkronisasi Otomatis ke Server Absenta SSOT</span>
-            <span className="sm:hidden font-semibold">Tersinkronisasi SSOT</span>
+            <span className="sm:hidden font-semibold text-[11px]">Tersinkronisasi SSOT</span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all cursor-pointer"
+              className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 cursor-pointer active:scale-95"
             >
               Kembali ke Dashboard
             </button>
@@ -840,45 +845,45 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
 
         {/* ── MODAL: CONFIRM FINISH SESSION ── */}
         {isFinishConfirmOpen && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-            <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl text-white space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/30">
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn">
+            <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl text-slate-900 dark:text-white space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto border border-emerald-200 dark:border-emerald-500/30">
                 <CheckCircle2 size={24} />
               </div>
 
-              <div className="text-center space-y-1.5">
-                <h3 className="text-base font-black text-white">Selesaikan Sesi KBM Ini?</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Anda akan menyelesaikan sesi KBM untuk kelas <strong className="text-white">{kelasNama}</strong> mata pelajaran <strong className="text-white">{mapelNama}</strong>.
+              <div className="text-center space-y-1">
+                <h3 className="text-base font-black text-slate-900 dark:text-white">Selesaikan Sesi KBM Ini?</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Anda akan menyelesaikan sesi KBM untuk kelas <strong className="text-slate-900 dark:text-white">{kelasNama}</strong> mata pelajaran <strong className="text-slate-900 dark:text-white">{mapelNama}</strong>.
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700 text-xs space-y-1.5">
-                <div className="flex justify-between text-slate-300">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs space-y-1.5">
+                <div className="flex justify-between text-slate-700 dark:text-slate-300">
                   <span>Hadir:</span>
-                  <strong className="text-emerald-400 font-black">{stats.hadir} Siswa</strong>
+                  <strong className="text-emerald-600 dark:text-emerald-400 font-black">{stats.hadir} Siswa</strong>
                 </div>
-                <div className="flex justify-between text-slate-300">
+                <div className="flex justify-between text-slate-700 dark:text-slate-300">
                   <span>Izin / Sakit / Dispen:</span>
-                  <strong className="text-blue-400 font-black">{stats.izin + stats.sakit + stats.dispen} Siswa</strong>
+                  <strong className="text-blue-600 dark:text-blue-400 font-black">{stats.izin + stats.sakit + stats.dispen} Siswa</strong>
                 </div>
-                <div className="flex justify-between text-slate-300">
+                <div className="flex justify-between text-slate-700 dark:text-slate-300">
                   <span>Alpa:</span>
-                  <strong className="text-rose-400 font-black">{stats.alpa} Siswa</strong>
+                  <strong className="text-rose-600 dark:text-rose-400 font-black">{stats.alpa} Siswa</strong>
                 </div>
                 {stats.belum > 0 && (
-                  <div className="flex justify-between text-amber-400 font-bold border-t border-slate-700/80 pt-1.5">
+                  <div className="flex justify-between text-amber-700 dark:text-amber-400 font-bold border-t border-slate-200 dark:border-slate-700/80 pt-1.5">
                     <span>Belum Diabsen:</span>
                     <span>{stats.belum} Siswa</span>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setIsFinishConfirmOpen(false)}
-                  className="flex-1 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+                  className="flex-1 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
                 >
                   Batal
                 </button>
@@ -886,7 +891,7 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                   type="button"
                   disabled={finishSessionMutation.isPending}
                   onClick={() => finishSessionMutation.mutate()}
-                  className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/40"
+                  className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-950/20"
                 >
                   {finishSessionMutation.isPending ? (
                     <RefreshCw size={14} className="animate-spin" />
@@ -899,6 +904,11 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
             </div>
           </div>
         )}
+      </div>
+    </AnimatePresence>,
+    document.body
+  );
+};
       </div>
     </AnimatePresence>,
     document.body
