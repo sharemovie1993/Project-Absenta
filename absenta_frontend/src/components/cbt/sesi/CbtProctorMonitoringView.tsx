@@ -37,6 +37,7 @@ import { CbtRemedialModal } from '../jadwal/CbtRemedialModal';
 import { CbtBeritaAcaraPrintModal } from '../jadwal/CbtBeritaAcaraPrintModal';
 import { CbtDaftarHadirPrintModal } from '../jadwal/CbtDaftarHadirPrintModal';
 import { CbtDenahModal } from '../jadwal/CbtDenahModal';
+import { CbtBuktiPelanggaranModal } from './CbtBuktiPelanggaranModal';
 import { DigitalSignaturePadModal } from '@/components/ui/DigitalSignaturePadModal';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
@@ -122,6 +123,8 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
   const [isDenahModalOpen, setIsDenahModalOpen] = useState(false);
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
+  const [selectedForensicPeserta, setSelectedForensicPeserta] = useState<CbtPesertaUjian | null>(null);
+  const [isForensicModalOpen, setIsForensicModalOpen] = useState(false);
 
   // Sync bila initialJadwalId berubah dari luar
   useEffect(() => {
@@ -760,9 +763,28 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
       label: 'Aksi',
       className: 'min-w-[130px] text-right',
       render: (_val: unknown, row: CbtPesertaUjian) => {
+        // Tombol Bukti Forensik (Dapat dilihat oleh Guru Mapel, Pengawas, maupun Panitia untuk klarifikasi sanggahan)
+        const canViewForensic = row.status !== 'STANDBY';
+
+        const forensicButton = canViewForensic ? (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedForensicPeserta(row);
+              setIsForensicModalOpen(true);
+            }}
+            className="text-[10px] h-6 px-1.5 rounded-md border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/40 hover:bg-indigo-100 font-semibold transition-all cursor-pointer inline-flex items-center gap-1 shrink-0"
+            title="Lihat Bukti Digital Forensik Pelanggaran & Lembar Jawaban Siswa"
+          >
+            <FileText size={11} />
+            <span>Bukti</span>
+          </button>
+        ) : null;
+
         if (isSpectatorOnly) {
           return (
-            <div className="text-right">
+            <div className="inline-flex items-center gap-1.5 justify-end">
+              {forensicButton}
               <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 italic bg-slate-50 dark:bg-slate-800/60 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700/60" title="Aksi intervensi peserta hanya dapat dilakukan oleh Pengawas Ruang atau Panitia">
                 Pengawas Ruang
               </span>
@@ -800,6 +822,7 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
         if (row.status === 'FINISHED') {
           return (
             <div className="inline-flex items-center gap-1.5 justify-end">
+              {forensicButton}
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                 <Check size={11} className="text-emerald-600" />
                 <span>Tuntas</span>
@@ -817,10 +840,11 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
           );
         }
 
-        // 2. Siswa DIDISKUALIFIKASI (DISQUALIFIED): Tampilkan Buka Blokir atau Ulang dari Nol
+        // 2. Siswa DIDISKUALIFIKASI (DISQUALIFIED): Tampilkan Buka Blokir atau Ulang dari Nol + Tombol Bukti
         if (row.status === 'DISQUALIFIED') {
           return (
             <div className="inline-flex items-center gap-1.5 justify-end">
+              {forensicButton}
               <button
                 type="button"
                 onClick={() => handleReset(row)}
@@ -843,9 +867,10 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
           );
         }
 
-        // 3. Siswa SEDANG UJIAN (IN_PROGRESS): Hanya butuh tombol Izinkan Masuk jika HP mati/logout
+        // 3. Siswa SEDANG UJIAN (IN_PROGRESS): Tombol Bukti + Izinkan Masuk jika HP mati/logout
         return (
           <div className="inline-flex items-center gap-1.5 justify-end">
+            {forensicButton}
             <button
               type="button"
               onClick={() => handleReset(row)}
@@ -1426,6 +1451,18 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                       })()
                     ) : p.status === 'FINISHED' ? (
                       <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedForensicPeserta(p);
+                            setIsForensicModalOpen(true);
+                          }}
+                          className="text-[10px] h-6 px-1.5 border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold rounded-md cursor-pointer flex items-center gap-0.5"
+                          title="Lihat Bukti Forensik & Rekap Jawaban"
+                        >
+                          <FileText size={10} />
+                          <span>Bukti</span>
+                        </button>
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                           <Check size={10} className="text-emerald-600" />
                           <span>Tuntas</span>
@@ -1442,6 +1479,18 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                       </div>
                     ) : p.status === 'DISQUALIFIED' ? (
                       <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedForensicPeserta(p);
+                            setIsForensicModalOpen(true);
+                          }}
+                          className="text-[10px] h-7 px-1.5 border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold rounded-lg cursor-pointer flex items-center gap-0.5 shrink-0"
+                          title="Lihat Bukti Digital Forensik Pelanggaran"
+                        >
+                          <FileText size={11} />
+                          <span>Bukti</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleReset(p)}
@@ -1462,19 +1511,47 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
                         </button>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleReset(p)}
-                        className="text-[11px] h-7 px-2 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0"
-                        title="Izinkan siswa login kembali jika HP mati atau logout (Jawaban Aman)"
-                      >
-                        <RotateCw size={11} className="text-amber-700" />
-                        <span>Izinkan Masuk</span>
-                      </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedForensicPeserta(p);
+                            setIsForensicModalOpen(true);
+                          }}
+                          className="text-[10px] h-7 px-1.5 border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold rounded-lg cursor-pointer flex items-center gap-0.5 shrink-0"
+                          title="Lihat Rekap Pengerjaan Siswa"
+                        >
+                          <FileText size={11} />
+                          <span>Bukti</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleReset(p)}
+                          className="text-[11px] h-7 px-2 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold rounded-lg cursor-pointer flex items-center gap-1 shrink-0"
+                          title="Izinkan siswa login kembali jika HP mati atau logout (Jawaban Aman)"
+                        >
+                          <RotateCw size={11} className="text-amber-700" />
+                          <span>Izinkan Masuk</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 ) : (
-                  <div className="shrink-0 text-right">
+                  <div className="shrink-0 flex items-center gap-1 justify-end">
+                    {p.status !== 'STANDBY' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedForensicPeserta(p);
+                          setIsForensicModalOpen(true);
+                        }}
+                        className="text-[10px] h-6 px-2 border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold rounded-md cursor-pointer flex items-center gap-1 shadow-2xs"
+                        title="Lihat Bukti Digital Forensik Siswa"
+                      >
+                        <FileText size={10} />
+                        <span>Bukti</span>
+                      </button>
+                    )}
                     <span className="text-[10px] font-semibold text-slate-400 italic bg-slate-50 dark:bg-slate-800/60 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700/60">
                       Pengawas
                     </span>
@@ -1557,6 +1634,19 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
           onClose={() => setIsRemedialModalOpen(false)}
           jadwal={activeJadwal}
           pesertaList={pesertaList}
+        />
+      )}
+
+      {/* Modal Bukti Otentik Forensik Pelanggaran & Lembar Jawaban Siswa */}
+      {isForensicModalOpen && selectedForensicPeserta && activeJadwal && (
+        <CbtBuktiPelanggaranModal
+          isOpen={isForensicModalOpen}
+          onClose={() => {
+            setIsForensicModalOpen(false);
+            setSelectedForensicPeserta(null);
+          }}
+          peserta={selectedForensicPeserta}
+          jadwal={activeJadwal}
         />
       )}
     </div>
