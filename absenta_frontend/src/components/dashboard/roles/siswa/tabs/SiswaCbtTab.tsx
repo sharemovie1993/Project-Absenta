@@ -440,14 +440,19 @@ export const SiswaCbtTab: React.FC = () => {
   // ── PARENT-CHILD STRUCTURE UNTUK RIWAYAT UJIAN (BEST PRACTICE KURIKULUM MERDEKA) ──
   const structuredHistory = useMemo(() => {
     const historyList = exams.filter(isHistory);
-    const isRemedialItem = (item: CbtStudentExamItem) =>
-      !item.is_susulan && (Boolean(item.is_remedial) || (item.nama_sesi || '').toUpperCase().includes('[REMEDIAL'));
+    // Seluruh sesi perbaikan, remedial, maupun susulan diperlakukan sebagai child dari sesi induknya
+    const isChildItem = (item: CbtStudentExamItem) =>
+      Boolean(item.is_remedial) ||
+      Boolean(item.is_susulan) ||
+      Boolean(item.parent_jadwal_id) ||
+      (item.nama_sesi || '').toUpperCase().includes('[REMEDIAL') ||
+      (item.nama_sesi || '').toUpperCase().includes('SUSULAN');
 
     const parents: (CbtStudentExamItem & { children: CbtStudentExamItem[] })[] = [];
     const childrenToAttach: CbtStudentExamItem[] = [];
 
     historyList.forEach((item) => {
-      if (isRemedialItem(item)) {
+      if (isChildItem(item)) {
         childrenToAttach.push(item);
       } else {
         parents.push({ ...item, children: [] });
@@ -1082,7 +1087,6 @@ export const SiswaCbtTab: React.FC = () => {
           <ul className="p-3 sm:p-4 space-y-3 bg-slate-50/70 dark:bg-slate-950/40">
             {filtered.map((item) => {
               const meta = getStatusMeta(item);
-              const StatusIcon = meta.icon;
               const actionable = isActionable(item);
               const isPaused = item.status_jadwal === 'PAUSED';
               const isResume = item.status_peserta === 'IN_PROGRESS';
@@ -1092,6 +1096,9 @@ export const SiswaCbtTab: React.FC = () => {
               const latestRemedialChild = hasRemedialChild
                 ? item.children!.find((c) => c.hasil?.nilai_akhir != null) || item.children![item.children!.length - 1]
                 : null;
+              const isChildFinished = Boolean(latestRemedialChild?.status_peserta === 'FINISHED' || latestRemedialChild?.hasil);
+              const isSusulanChild = Boolean(latestRemedialChild?.is_susulan || latestRemedialChild?.tipe_peserta === 'SUSULAN');
+
               const effectiveScore = hasRemedialChild && latestRemedialChild?.hasil
                 ? latestRemedialChild.hasil.nilai_akhir
                 : item.hasil?.nilai_akhir ?? null;
@@ -1103,14 +1110,33 @@ export const SiswaCbtTab: React.FC = () => {
                 latestRemedialChild.hasil.nilai_akhir >= (latestRemedialChild.kktp_threshold || 75)
               );
 
+              // Resolusi Status Badge: Jika sesi utama tidak hadir tapi sudah selesai susulan/remedial
+              const resolvedMeta = (hasRemedialChild && isChildFinished)
+                ? {
+                    label: isSusulanChild ? 'Selesai (Susulan)' : 'Selesai Dikerjakan',
+                    className: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900',
+                    icon: CheckCircle2,
+                  }
+                : meta;
+              const StatusIcon = resolvedMeta.icon;
+
+              const activeWaktuMulai = item.waktu_mulai || latestRemedialChild?.waktu_mulai;
+              const activeWaktuSelesai = item.waktu_selesai || latestRemedialChild?.waktu_selesai;
+              const activeDurasi = item.durasi_pengerjaan_menit || latestRemedialChild?.durasi_pengerjaan_menit;
+
               const accuracyPct =
-                item.hasil && item.total_soal > 0
+                (hasRemedialChild && latestRemedialChild?.hasil && (latestRemedialChild.total_soal > 0 || latestRemedialChild.hasil.jumlah_benar + latestRemedialChild.hasil.jumlah_salah > 0))
+                  ? Math.round((latestRemedialChild.hasil.jumlah_benar / (latestRemedialChild.total_soal || (latestRemedialChild.hasil.jumlah_benar + latestRemedialChild.hasil.jumlah_salah))) * 100)
+                  : item.hasil && item.total_soal > 0
                   ? Math.round((item.hasil.jumlah_benar / item.total_soal) * 100)
                   : null;
               const pelanggaranCount = item.pelanggaran_count ?? 0;
+              const totalSoalDisplay = latestRemedialChild?.total_soal || item.total_soal;
               const jumlahTerjawab =
                 item.jumlah_terjawab && item.jumlah_terjawab > 0
                   ? item.jumlah_terjawab
+                  : latestRemedialChild?.hasil
+                  ? latestRemedialChild.hasil.jumlah_benar + latestRemedialChild.hasil.jumlah_salah
                   : item.hasil
                   ? item.hasil.jumlah_benar + item.hasil.jumlah_salah
                   : 0;
@@ -1338,11 +1364,11 @@ export const SiswaCbtTab: React.FC = () => {
                     <span
                       className={cn(
                         'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black shrink-0 border shadow-2xs',
-                        meta.className
+                        resolvedMeta.className
                       )}
                     >
                       <StatusIcon size={11} />
-                      <span>{meta.label}</span>
+                      <span>{resolvedMeta.label}</span>
                     </span>
                   </div>
 
@@ -1356,12 +1382,12 @@ export const SiswaCbtTab: React.FC = () => {
                     <span>•</span>
 
                     {/* Info Waktu Pelaksanaan / Pengerjaan */}
-                    {item.waktu_mulai && item.waktu_selesai ? (
+                    {activeWaktuMulai && activeWaktuSelesai ? (
                       <span className="inline-flex items-center gap-1">
                         <Clock size={11} className="text-slate-400 shrink-0" />
                         <span>
-                          {formatTimeOnly(item.waktu_mulai)}–{formatTimeOnly(item.waktu_selesai)}
-                          {item.durasi_pengerjaan_menit ? ` (${item.durasi_pengerjaan_menit} mnt)` : ''}
+                          {formatTimeOnly(activeWaktuMulai)}–{formatTimeOnly(activeWaktuSelesai)}
+                          {activeDurasi ? ` (${activeDurasi} mnt)` : ''}
                         </span>
                       </span>
                     ) : (
@@ -1374,13 +1400,13 @@ export const SiswaCbtTab: React.FC = () => {
                     <span>•</span>
 
                     <span>
-                      {isFinished && item.total_soal > 0
-                        ? `${jumlahTerjawab}/${item.total_soal} Soal`
+                      {(isFinished || isChildFinished) && totalSoalDisplay > 0
+                        ? `${jumlahTerjawab}/${totalSoalDisplay} Soal`
                         : `${item.total_soal} Soal`}
                     </span>
 
                     {/* Peringatan Keamanan: HANYA jika ada pelanggaran > 0 (Zero-Noise jika tertib) */}
-                    {isFinished && pelanggaranCount > 0 && (
+                    {(isFinished || isChildFinished) && pelanggaranCount > 0 && (
                       <>
                         <span>•</span>
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200/80 dark:border-amber-800">
@@ -1392,7 +1418,7 @@ export const SiswaCbtTab: React.FC = () => {
                   </div>
 
                   {/* Baris 3 (Footer): Hasil Nilai atau Status Menunggu Rilis (Menyatu Ramping) */}
-                  {isFinished && (
+                  {(isFinished || (hasRemedialChild && latestRemedialChild?.hasil != null)) && (
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col gap-2 text-xs">
                       {hasRemedialChild && latestRemedialChild?.hasil ? (
                         <div className="flex items-center justify-between w-full flex-wrap gap-2">
@@ -1405,11 +1431,17 @@ export const SiswaCbtTab: React.FC = () => {
                             </span>
                             <span className={cn(
                               'px-2 py-0.5 rounded-md text-[10px] font-black border',
-                              isRemedialTuntas
+                              isSusulanChild
+                                ? 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950/80 dark:text-indigo-300'
+                                : isRemedialTuntas
                                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300'
                                 : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300'
                             )}>
-                              {isRemedialTuntas ? '✨ TUNTAS KKTP (Remedial)' : '🔄 Perbaikan Remedial'}
+                              {isSusulanChild
+                                ? '📋 Susulan (Nilai Murni)'
+                                : isRemedialTuntas
+                                ? '✨ TUNTAS KKTP (Remedial)'
+                                : '🔄 Perbaikan Remedial'}
                             </span>
                           </div>
 
@@ -1417,9 +1449,21 @@ export const SiswaCbtTab: React.FC = () => {
                             <span className="text-emerald-600 dark:text-emerald-400">{latestRemedialChild.hasil.jumlah_benar} Benar</span>
                             <span>•</span>
                             <span className="text-rose-600 dark:text-rose-400">{latestRemedialChild.hasil.jumlah_salah} Salah</span>
-                            <span className="text-slate-400 dark:text-slate-500 font-normal">
-                              (Awal: {item.hasil ? formatScore(item.hasil.nilai_akhir) : '-'})
-                            </span>
+                            {accuracyPct !== null && (
+                              <>
+                                <span>•</span>
+                                <span className="text-slate-400">Akurasi {accuracyPct}%</span>
+                              </>
+                            )}
+                            {item.hasil ? (
+                              <span className="text-slate-400 dark:text-slate-500 font-normal">
+                                (Awal: {formatScore(item.hasil.nilai_akhir)})
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 dark:text-slate-500 font-normal">
+                                (Sesi Utama: Sakit/Izin)
+                              </span>
+                            )}
                           </div>
                         </div>
                       ) : item.hasil && predikat ? (
@@ -1486,7 +1530,7 @@ export const SiswaCbtTab: React.FC = () => {
                       >
                         <span className="flex items-center gap-1.5">
                           <History size={13} className="text-indigo-500" />
-                          <span>Riwayat Percobaan &amp; Remedial ({item.children!.length + 1} Sesi)</span>
+                          <span>Riwayat Percobaan &amp; {isSusulanChild ? 'Susulan' : 'Remedial'} ({item.children!.length + 1} Sesi)</span>
                         </span>
                         <ChevronDown
                           size={14}
@@ -1504,16 +1548,23 @@ export const SiswaCbtTab: React.FC = () => {
                                 <span className="font-bold text-slate-800 dark:text-slate-200">
                                   Percobaan 1 (Ujian Reguler)
                                 </span>
+                                {item.status_peserta !== 'FINISHED' && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                    Tidak Mengikuti (Sakit/Izin)
+                                  </span>
+                                )}
                               </div>
                               <div className="text-[11px] text-slate-500 dark:text-slate-400 pl-3.5">
-                                {formatExamDateIndo(item.tanggal_mulai)} • {item.waktu_mulai ? `${formatTimeOnly(item.waktu_mulai)}–${item.waktu_selesai ? formatTimeOnly(item.waktu_selesai) : ''}` : ''} • Ruang: {resolveRoomInfo(item).display}
+                                {formatExamDateIndo(item.tanggal_mulai)} • {item.waktu_mulai ? `${formatTimeOnly(item.waktu_mulai)}–${item.waktu_selesai ? formatTimeOnly(item.waktu_selesai) : ''}` : `${item.durasi_menit} mnt`} • Ruang: {resolveRoomInfo(item).display}
                               </div>
                             </div>
                             <div className="text-right">
                               <span className="font-black text-slate-700 dark:text-slate-300 text-sm">
                                 {item.hasil ? formatScore(item.hasil.nilai_akhir) : '-'}
                               </span>
-                              <span className="block text-[10px] text-slate-400 font-medium">Nilai Awal</span>
+                              <span className="block text-[10px] text-slate-400 font-medium">
+                                {item.hasil ? 'Nilai Awal' : 'Tidak Hadir'}
+                              </span>
                             </div>
                           </div>
 
@@ -1522,6 +1573,7 @@ export const SiswaCbtTab: React.FC = () => {
                             const childScore = child.hasil?.nilai_akhir ?? null;
                             const childKktp = child.kktp_threshold || 75;
                             const isLulus = childScore !== null && childScore >= childKktp;
+                            const isChildSusulan = Boolean(child.is_susulan || child.tipe_peserta === 'SUSULAN');
 
                             return (
                               <div key={child.id} className="flex items-start justify-between gap-2 pt-1">
@@ -1529,19 +1581,21 @@ export const SiswaCbtTab: React.FC = () => {
                                   <div className="flex items-center gap-1.5">
                                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                     <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                                      Percobaan {cIdx + 2} (Remedial &amp; Susulan)
+                                      Percobaan {cIdx + 2} ({isChildSusulan ? 'Ujian Susulan' : 'Remedial'})
                                     </span>
                                     <span className={cn(
                                       "text-[9px] font-black px-1.5 py-0.2 rounded",
-                                      isLulus
+                                      isChildSusulan
+                                        ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                                        : isLulus
                                         ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300"
                                         : "bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300"
                                     )}>
-                                      {isLulus ? 'TUNTAS KKTP' : 'REMEDIAL'}
+                                      {isChildSusulan ? '✨ SUSULAN (MURNI)' : isLulus ? 'TUNTAS KKTP' : 'REMEDIAL'}
                                     </span>
                                   </div>
                                   <div className="text-[11px] text-slate-500 dark:text-slate-400 pl-3.5">
-                                    {formatExamDateIndo(child.tanggal_mulai)} • {child.waktu_mulai ? `${formatTimeOnly(child.waktu_mulai)}–${child.waktu_selesai ? formatTimeOnly(child.waktu_selesai) : ''}` : ''} • {child.ruang_ujian || 'Ruang Remedial'}
+                                    {formatExamDateIndo(child.tanggal_mulai)} • {child.waktu_mulai ? `${formatTimeOnly(child.waktu_mulai)}–${child.waktu_selesai ? formatTimeOnly(child.waktu_selesai) : ''}` : ''} • {child.ruang_ujian || 'Ruang Remedial & Susulan'}
                                   </div>
                                 </div>
                                 <div className="text-right">
@@ -1549,7 +1603,7 @@ export const SiswaCbtTab: React.FC = () => {
                                     {childScore !== null ? formatScore(childScore) : '-'}
                                   </span>
                                   <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                                    Nilai Akhir Diakui
+                                    {isChildSusulan ? 'Nilai Murni' : 'Nilai Akhir Diakui'}
                                   </span>
                                 </div>
                               </div>
