@@ -203,13 +203,13 @@ export const SatpamDashboard: React.FC = () => {
 
   const satpamStats: SatpamStats = useMemo(() => {
     return {
-      totalMasuk: statsRes?.hadir_hari_ini ?? 642,
-      tepatWaktu: statsRes?.tepat_waktu ?? 618,
-      terlambat: statsRes?.terlambat ?? 24,
-      belumHadir: statsRes?.belum_hadir ?? 38,
-      tamuDiSekolah: 2,
-      izinKeluarAktif: 1,
-      persentaseKehadiran: statsRes?.persentase ?? 94,
+      totalMasuk: statsRes?.hadir_hari_ini ?? statsRes?.total_masuk ?? 0,
+      tepatWaktu: statsRes?.tepat_waktu ?? 0,
+      terlambat: statsRes?.terlambat ?? 0,
+      belumHadir: statsRes?.belum_hadir ?? 0,
+      tamuDiSekolah: statsRes?.tamu_di_sekolah ?? 0,
+      izinKeluarAktif: statsRes?.izin_keluar_aktif ?? 0,
+      persentaseKehadiran: statsRes?.persentase ?? 0,
     };
   }, [statsRes]);
 
@@ -339,7 +339,10 @@ export const SatpamDashboard: React.FC = () => {
       {/* ── 3. TAB CONTENT PANELS ──────────────────────────── */}
       <div className="animate-in fade-in duration-150">
         {currentTab === 'scan' && (
-          <SatpamScanGerbangTab recentTaps={MOCK_RECENT_TAPS} />
+          <SatpamScanGerbangTab
+            initialActivities={statsRes?.recent_activities}
+            onTapSuccess={() => refetch()}
+          />
         )}
 
         {currentTab === 'buku_tamu' && (

@@ -207,7 +207,7 @@ export async function dashboardRoleRoutes(fastify: any) {
 
   // Gerbang Stats
   fastify.get('/gerbang/stats', {
-    preHandler: [requireCapability('attendance.reports.view'), determineDataScope()],
+    preHandler: [requireCapability(['attendance.reports.view', 'attendance.scan', 'attendance.gate.tap.entry', 'dashboard.view.overview']), determineDataScope()],
     schema: {
       description: 'Get Gerbang/Gate statistics',
       tags: ['Dashboard'],
@@ -218,25 +218,7 @@ export async function dashboardRoleRoutes(fastify: any) {
             success: { type: 'boolean' },
             data: {
               type: 'object',
-              properties: {
-                total_taps_today: { type: 'number' },
-                total_masuk: { type: 'number' },
-                total_keluar: { type: 'number' },
-                active_devices: { type: 'number' },
-                last_activity: { type: 'string' },
-                recent_activities: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'string' },
-                      siswa: { type: 'string' },
-                      arah: { type: 'string' },
-                      waktu: { type: 'string' }
-                    }
-                  }
-                }
-              }
+              additionalProperties: true
             }
           }
         }

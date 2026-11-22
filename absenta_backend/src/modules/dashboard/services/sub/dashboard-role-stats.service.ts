@@ -544,7 +544,7 @@ export class DashboardRoleStatsService {
   async getGerbangStats(tenantId: string) {
     const { startOfDay: today, endOfDay } = await this.resolveDayRange(tenantId);
 
-    const [totalTaps, masukCount, keluarCount] = await Promise.all([
+    const [totalTaps, masukCount, keluarCount, terlambatCount, totalSiswa, tamuCount, izinCount] = await Promise.all([
       prisma.absenGerbangSiswa.count({
         where: {
           tenant_id: tenantId,
@@ -564,29 +564,87 @@ export class DashboardRoleStatsService {
           arah: 'GERBANG_PULANG',
           created_at: { gte: today, lte: endOfDay }
         }
-      })
+      }),
+      prisma.absenGerbangSiswa.count({
+        where: {
+          tenant_id: tenantId,
+          arah: 'GERBANG_DATANG',
+          is_terlambat: true,
+          created_at: { gte: today, lte: endOfDay }
+        }
+      }),
+      prisma.siswa.count({
+        where: {
+          tenant_id: tenantId,
+          status: 'AKTIF'
+        }
+      }).catch(() => 0),
+      prisma.logAksesGerbang.count({
+        where: {
+          tenant_id: tenantId,
+          arah: 'MASUK',
+          status: 'BERKUNJUNG',
+          created_at: { gte: today, lte: endOfDay }
+        }
+      }).catch(() => 0),
+      prisma.izinKeluarSiswa.count({
+        where: {
+          tenant_id: tenantId,
+          status: 'DI_LUAR',
+          created_at: { gte: today, lte: endOfDay }
+        }
+      }).catch(() => 0)
     ]);
 
     const lastActivities = await prisma.absenGerbangSiswa.findMany({
-      where: { tenant_id: tenantId },
+      where: {
+        tenant_id: tenantId,
+        created_at: { gte: today, lte: endOfDay }
+      },
       include: {
-        Siswa: { select: { nama_siswa: true } }
+        Siswa: {
+          select: {
+            id: true,
+            nama_siswa: true,
+            nisn: true,
+            nis: true,
+            foto: true,
+            Kelas: { select: { nama_kelas: true } }
+          }
+        }
       },
       orderBy: { created_at: 'desc' },
-      take: 5
+      take: 20
     });
+
+    const tepatWaktu = Math.max(0, masukCount - terlambatCount);
+    const belumHadir = Math.max(0, (totalSiswa || 0) - masukCount);
+    const persentase = totalSiswa > 0 ? Math.round((masukCount / totalSiswa) * 100) : 0;
 
     return {
       total_taps_today: totalTaps,
       total_masuk: masukCount,
       total_keluar: keluarCount,
-      active_devices: 1, // Placeholder until device monitoring implemented
-      last_activity: lastActivities[0]?.created_at || new Date().toISOString(),
+      hadir_hari_ini: masukCount,
+      tepat_waktu: tepatWaktu,
+      terlambat: terlambatCount,
+      belum_hadir: belumHadir,
+      total_siswa: totalSiswa,
+      tamu_di_sekolah: tamuCount,
+      izin_keluar_aktif: izinCount,
+      persentase: persentase,
+      active_devices: 1,
+      last_activity: lastActivities[0]?.created_at?.toISOString() || new Date().toISOString(),
       recent_activities: lastActivities.map(l => ({
         id: l.id,
-        siswa: l.Siswa.nama_siswa,
-        arah: l.arah,
-        waktu: l.created_at.toISOString()
+        siswa_id: l.siswa_id,
+        nama: l.Siswa?.nama_siswa || 'Siswa',
+        nisn: l.Siswa?.nisn || l.Siswa?.nis || '-',
+        kelas: l.Siswa?.Kelas?.nama_kelas || l.kelas_nama_snapshot || '-',
+        status: l.is_terlambat ? 'TERLAMBAT' : (l.arah === 'GERBANG_PULANG' ? 'PULANG' : 'HADIR'),
+        jam: new Date(l.waktu_tap || l.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        gate: 'Pos Gerbang Utama 1',
+        foto: l.Siswa?.foto || undefined
       }))
     };
   }
