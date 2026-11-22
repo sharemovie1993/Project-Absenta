@@ -329,7 +329,6 @@ export async function registerRoutes(fastify: any, prisma: any) {
       await fastify.register(superadminIntelligenceRoutes, { prefix: '/superadmin/intelligence' });
 
       fastify.get('/me/tenant', {
-        preHandler: [requireCapability('core.sekolah.view.profile')],
         handler: async (request: any, reply: any) => {
           const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id ?? null;
           if (!tenantId) {

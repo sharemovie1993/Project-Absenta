@@ -4,7 +4,8 @@ import { Card, Button, Badge } from '../ui';
 import { Clock, Plus, BookOpen, User, Edit2, Trash2, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
-import { getMyTenant } from '../../api/tenants.api';
+import { getMyTenant, getTenantById } from '../../api/tenants.api';
+import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../lib/utils';
 import { getSlotsForDay } from './jam-kbm/JamKBMTypes';
 
@@ -49,18 +50,22 @@ export const JadwalGrid: React.FC<JadwalGridProps> = React.memo(({
 }) => {
   
   // Shift config states
+  const { user } = useAuthStore();
   const [shiftJamPelajaran, setShiftJamPelajaran] = useState<any>(null);
   const [hariSekolah, setHariSekolah] = useState<string[]>(['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU']);
 
   useEffect(() => {
     const fetchTenantShift = async () => {
       try {
-        const tenantRes = await getMyTenant();
-        if (tenantRes?.success) {
-          if (tenantRes.data?.shift_jam_pelajaran) {
+        let tenantRes = await getMyTenant().catch(() => null);
+        if (!tenantRes?.data && user?.tenant_id) {
+          tenantRes = await getTenantById(user.tenant_id).catch(() => null);
+        }
+        if (tenantRes?.data) {
+          if (tenantRes.data.shift_jam_pelajaran) {
             setShiftJamPelajaran(tenantRes.data.shift_jam_pelajaran);
           }
-          if (Array.isArray(tenantRes.data?.hari_sekolah) && tenantRes.data.hari_sekolah.length > 0) {
+          if (Array.isArray(tenantRes.data.hari_sekolah) && tenantRes.data.hari_sekolah.length > 0) {
             const order = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
             const sortedDays = [...tenantRes.data.hari_sekolah].sort((a, b) => order.indexOf(a) - order.indexOf(b));
             setHariSekolah(sortedDays);
@@ -71,7 +76,11 @@ export const JadwalGrid: React.FC<JadwalGridProps> = React.memo(({
       }
     };
     fetchTenantShift();
-  }, []);
+
+    const handleSettingsUpdated = () => fetchTenantShift();
+    window.addEventListener('absenta-tenant-settings-updated', handleSettingsUpdated);
+    return () => window.removeEventListener('absenta-tenant-settings-updated', handleSettingsUpdated);
+  }, [user?.tenant_id]);
 
   // Resolve slot time dynamically based on day and class shift assignment
   const resolveSlotTime = (day: string, targetKelasId: string, slotIndex: number): { start: string; end: string } => {

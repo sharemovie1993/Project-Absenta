@@ -31,7 +31,7 @@ import { getMapelColor } from '../../utils/mapelColorHelper';
 import { listGuruMapel, listUnitPengajaran } from '../../api/kurikulum/guru-mapel.api';
 import type { UnitPengajaran } from '../../types/academic';
 import { type DropdownOption } from '../../api/dropdown.api';
-import { getMyTenant } from '../../api/tenants.api';
+import { getMyTenant, getTenantById } from '../../api/tenants.api';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../lib/utils';
 import { toast } from 'react-hot-toast';
@@ -548,20 +548,42 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   const bebanGuruList = useMemo(() => bebanGuruRes?.data || [], [bebanGuruRes]);
 
   // ── useQuery: Tenant Shift & Day Config ────────────────────────────────────
-  const { data: tenantRes } = useQuery({
-    queryKey: ['my-tenant'],
-    queryFn: () => getMyTenant().catch(() => null),
-    staleTime: 10 * 60 * 1000,
+  const { data: tenantRes, refetch: refetchTenant } = useQuery({
+    queryKey: ['my-tenant', user?.tenant_id],
+    queryFn: async () => {
+      try {
+        const res = await getMyTenant();
+        if (res?.data) return res;
+      } catch {}
+      if (user?.tenant_id) {
+        try {
+          return await getTenantById(user.tenant_id);
+        } catch {}
+      }
+      return null;
+    },
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
   });
+
+  // Sinkronkan seketika jika admin/kurikulum baru saja mengubah aturan hari sekolah
+  useEffect(() => {
+    const handleSettingsUpdated = () => {
+      refetchTenant();
+    };
+    window.addEventListener('absenta-tenant-settings-updated', handleSettingsUpdated);
+    return () => window.removeEventListener('absenta-tenant-settings-updated', handleSettingsUpdated);
+  }, [refetchTenant]);
 
   const shiftJamPelajaran = useMemo(() => {
     return tenantRes?.data?.shift_jam_pelajaran || null;
   }, [tenantRes]);
 
   const hariSekolah = useMemo(() => {
-    if (Array.isArray(tenantRes?.data?.hari_sekolah) && tenantRes.data.hari_sekolah.length > 0) {
+    const raw = tenantRes?.data?.hari_sekolah;
+    if (Array.isArray(raw) && raw.length > 0) {
       const order = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
-      return [...tenantRes.data.hari_sekolah].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      return [...raw].sort((a, b) => order.indexOf(a) - order.indexOf(b));
     }
     return ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
   }, [tenantRes]);

@@ -54,7 +54,7 @@ export default React.memo(function JamKBMShiftPanel({
   );
 
   // ── Day Pattern state ──
-  type DayKey = 'SENIN' | 'SELASA' | 'RABU' | 'KAMIS' | 'JUMAT' | 'SABTU';
+  type DayKey = 'SENIN' | 'SELASA' | 'RABU' | 'KAMIS' | 'JUMAT' | 'SABTU' | 'MINGGU';
   const [selectedDayPattern, setSelectedDayPattern] = useState<DayKey>('SENIN');
 
   const activePattern = useMemo(() => {
@@ -489,6 +489,7 @@ export default React.memo(function JamKBMShiftPanel({
             { key: 'KAMIS', label: 'Kamis' },
             { key: 'JUMAT', label: 'Jumat' },
             { key: 'SABTU', label: 'Sabtu' },
+            { key: 'MINGGU', label: 'Minggu' },
           ].map(pattern => (
             <button
               key={pattern.key}

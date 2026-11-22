@@ -45,6 +45,14 @@ export const JadwalPelajaranPrintModal: React.FC<JadwalPelajaranPrintModalProps>
   const { options: kelasOptions, rawList: rawKelas } = useKelasOptions();
   const { options: guruOptions, rawList: rawGuru } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
 
+  const activeHariCols = useMemo(() => {
+    if (tenantInfo?.hari_sekolah && Array.isArray(tenantInfo.hari_sekolah) && tenantInfo.hari_sekolah.length > 0) {
+      const order = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
+      return [...tenantInfo.hari_sekolah].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    }
+    return HARI_COLS;
+  }, [tenantInfo?.hari_sekolah]);
+
   // Query Schedule
   const { data: rawJadwal, isLoading } = useQuery({
     queryKey: ['print-jadwal-kbm', semesterId, tahunPelajaranId],
@@ -226,7 +234,7 @@ export const JadwalPelajaranPrintModal: React.FC<JadwalPelajaranPrintModalProps>
             <thead>
               <tr className="bg-slate-100 border-b border-black font-bold">
                 <th className="border border-black p-1.5 w-12">Jam Ke</th>
-                {HARI_COLS.map((hari) => (
+                {activeHariCols.map((hari) => (
                   <th key={hari} className="border border-black p-1.5 uppercase">
                     {hari}
                   </th>
@@ -237,7 +245,7 @@ export const JadwalPelajaranPrintModal: React.FC<JadwalPelajaranPrintModalProps>
               {Array.from({ length: MAX_JAM_KE }, (_, i) => i + 1).map((jam) => (
                 <tr key={jam} className="border-b border-black">
                   <td className="border border-black font-bold p-1 bg-slate-50">{jam}</td>
-                  {HARI_COLS.map((hari) => {
+                  {activeHariCols.map((hari) => {
                     const item = matrixData.get(`${hari}_${jam}`);
                     return (
                       <td key={hari} className="border border-black p-1 text-left align-top h-10">

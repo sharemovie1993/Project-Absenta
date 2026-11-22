@@ -546,6 +546,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.teaching.rekap',
 
     // Tahun Ajaran, Semester, & Struktur Sekolah
+    'core.sekolah.view.profile', 'core.sekolah.update.profile',
     'academic.years.view.list', 'academic.years.view.detail', 'academic.years.create', 'academic.years.update', 'academic.years.delete', 'academic.years.set.active', 'academic.years.manage',
     'academic.semesters.view.list', 'academic.semesters.view.detail', 'academic.semesters.create', 'academic.semesters.update', 'academic.semesters.delete', 'academic.semesters.set.active',
     'academic.promotions.manage', 'academic.transitions.manage',

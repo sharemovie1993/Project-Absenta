@@ -110,6 +110,14 @@ const TenantAttendanceFormComponent: React.FC<UniversalAttendanceSettingsViewPro
         queryClient.invalidateQueries({ queryKey: ['tenant-info'] });
         queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
         queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
+        queryClient.invalidateQueries({ queryKey: ['my-tenant'] });
+        queryClient.invalidateQueries({ queryKey: ['tenant'] });
+        queryClient.invalidateQueries({ queryKey: ['jadwal-kbm'] });
+        queryClient.invalidateQueries({ queryKey: ['jadwal-pelajaran-grid'] });
+        queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-all-builder'] });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('absenta-tenant-settings-updated', { detail: updateData }));
+        }
         onSaveSuccess?.();
       } else {
         toast.error(response.message || 'Gagal menyimpan pengaturan');

@@ -14,6 +14,7 @@ const DEFAULT_DAYS = [
   { key: 'KAMIS', label: 'Kamis', defaultJp: 12 },
   { key: 'JUMAT', label: 'Jumat', defaultJp: 6 },
   { key: 'SABTU', label: 'Sabtu', defaultJp: 6 },
+  { key: 'MINGGU', label: 'Minggu', defaultJp: 6 },
 ];
 
 export const JamKBMDailyMaxJpPanel: React.FC<JamKBMDailyMaxJpPanelProps> = ({
