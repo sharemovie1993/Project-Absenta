@@ -70,7 +70,7 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
   // 3. States Form Remedial
   const [kktpThreshold, setKktpThreshold] = useState<number>(75);
   const [selectedSiswaIds, setSelectedSiswaIds] = useState<string[]>([]);
-  const [studentTabFilter, setStudentTabFilter] = useState<'below' | 'all' | 'above'>('below');
+  const [studentTabFilter, setStudentTabFilter] = useState<'action' | 'below' | 'susulan' | 'all' | 'above'>('action');
   const [searchStudent, setSearchStudent] = useState('');
 
   const [useOriginalBank, setUseOriginalBank] = useState<boolean>(true);
@@ -94,6 +94,28 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
     return res;
   };
 
+  // Pisahkan Siswa berdasarkan Status Ujian dan Ambang KKTP
+  const { finishedPeserta, belowKktp, aboveKktp, susulanPeserta, actionRequiredPeserta } = useMemo(() => {
+    // 1. Siswa yang sudah menyelesaikan ujian
+    const finished = pesertaList.filter((p) => p.status === 'FINISHED' || p.nilai_akhir != null);
+    const below = finished.filter((p) => Number(p.nilai_akhir || 0) < kktpThreshold);
+    const above = finished.filter((p) => Number(p.nilai_akhir || 0) >= kktpThreshold);
+
+    // 2. Siswa yang belum mengikuti ujian (STANDBY / belum submit saat sesi ditutup pengawas)
+    const susulan = pesertaList.filter((p) => p.status !== 'FINISHED' && p.nilai_akhir == null);
+
+    // 3. Seluruh siswa yang membutuhkan tindakan (Remedial + Susulan)
+    const actionRequired = [...below, ...susulan];
+
+    return {
+      finishedPeserta: finished,
+      belowKktp: below,
+      aboveKktp: above,
+      susulanPeserta: susulan,
+      actionRequiredPeserta: actionRequired,
+    };
+  }, [pesertaList, kktpThreshold]);
+
   // Reset & Inisialisasi Default Form Saat Modal Dibuka
   useEffect(() => {
     if (isOpen && jadwal) {
@@ -103,8 +125,14 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
       setCustomToken(generateRemedialToken());
 
       const originalName = jadwal.nama_sesi || 'Sesi Ujian';
-      const cleanOriginal = originalName.replace(/^\[REMEDIAL\]\s*/i, '');
-      setSessionName(`[REMEDIAL] ${cleanOriginal}`);
+      const cleanOriginal = originalName.replace(/^\[(REMEDIAL|SUSULAN|REMEDIAL & SUSULAN)\]\s*/i, '');
+      const prefix =
+        susulanPeserta.length > 0 && belowKktp.length > 0
+          ? '[REMEDIAL & SUSULAN]'
+          : susulanPeserta.length > 0
+          ? '[SUSULAN]'
+          : '[REMEDIAL]';
+      setSessionName(`${prefix} ${cleanOriginal}`);
 
       // Default waktu: mulai sekarang, berakhir besok
       const now = new Date();
@@ -116,29 +144,22 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
       setStartDateInput(formatInputDate(now));
       setEndDateInput(formatInputDate(tomorrow));
     }
-  }, [isOpen, jadwal]);
+  }, [isOpen, jadwal, susulanPeserta.length, belowKktp.length]);
 
-  // Pisahkan Siswa Selesai berdasarkan KKTP
-  const { finishedPeserta, belowKktp, aboveKktp } = useMemo(() => {
-    // Kritis: Hanya siswa yang benar-benar berstatus FINISHED yang berhak masuk radar remedial!
-    const finished = pesertaList.filter((p) => p.status === 'FINISHED');
-    const below = finished.filter((p) => Number(p.nilai_akhir || 0) < kktpThreshold);
-    const above = finished.filter((p) => Number(p.nilai_akhir || 0) >= kktpThreshold);
-    return { finishedPeserta: finished, belowKktp: below, aboveKktp: above };
-  }, [pesertaList, kktpThreshold]);
-
-  // Otomatis centang seluruh siswa di bawah KKTP saat modal dibuka atau saat ambang KKTP berubah
+  // Otomatis centang seluruh siswa yang membutuhkan tindakan (Remedial + Susulan) saat modal dibuka
   useEffect(() => {
-    if (isOpen) {
-      setSelectedSiswaIds(belowKktp.map((p) => p.siswa_id));
+    if (isOpen && actionRequiredPeserta.length > 0) {
+      setSelectedSiswaIds(actionRequiredPeserta.map((p) => p.siswa_id));
     }
-  }, [isOpen, belowKktp]);
+  }, [isOpen, actionRequiredPeserta]);
 
   // Filter Tampilan Siswa
   const displayedStudents = useMemo(() => {
-    let list = finishedPeserta;
+    let list = actionRequiredPeserta;
     if (studentTabFilter === 'below') list = belowKktp;
+    if (studentTabFilter === 'susulan') list = susulanPeserta;
     if (studentTabFilter === 'above') list = aboveKktp;
+    if (studentTabFilter === 'all') list = pesertaList;
 
     if (searchStudent) {
       const q = searchStudent.toLowerCase();
@@ -150,7 +171,7 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
       );
     }
     return list;
-  }, [finishedPeserta, belowKktp, aboveKktp, studentTabFilter, searchStudent]);
+  }, [actionRequiredPeserta, belowKktp, susulanPeserta, aboveKktp, pesertaList, studentTabFilter, searchStudent]);
 
   const toggleSelectSiswa = (siswaId: string) => {
     setSelectedSiswaIds((prev) =>
@@ -158,9 +179,19 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
     );
   };
 
+  const handleSelectAllAction = () => {
+    const actionIds = actionRequiredPeserta.map((p) => p.siswa_id);
+    setSelectedSiswaIds((prev) => Array.from(new Set([...prev, ...actionIds])));
+  };
+
   const handleSelectAllBelow = () => {
     const belowIds = belowKktp.map((p) => p.siswa_id);
     setSelectedSiswaIds((prev) => Array.from(new Set([...prev, ...belowIds])));
+  };
+
+  const handleSelectAllSusulan = () => {
+    const susulanIds = susulanPeserta.map((p) => p.siswa_id);
+    setSelectedSiswaIds((prev) => Array.from(new Set([...prev, ...susulanIds])));
   };
 
   const handleDeselectAll = () => {
@@ -213,8 +244,8 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
           remedial_policy: scorePolicy,
           target_siswa_ids: selectedSiswaIds,
           tokenless: isTokenless,
-          ruang_ujian: 'Ruang Remedial',
-          ruang_ujian_nama: 'Ruang Remedial / Mandiri',
+          ruang_ujian: 'Ruang Remedial & Susulan',
+          ruang_ujian_nama: 'Ruang Remedial & Susulan / Mandiri',
           pengawas_1_id: guruMapelId,
           pengawas_1_nama: guruMapelNama,
           pengawas_1_nip: guruMapelNip,
@@ -232,7 +263,7 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
     onSuccess: async (res) => {
       const modeText = isTokenless ? 'Bebas Token (Langsung Masuk)' : `Token: ${res.token_ujian}`;
       toast.success(
-        `Sesi Remedial aktif! ${modeText} untuk ${selectedSiswaIds.length} Siswa`,
+        `Sesi Remedial & Susulan aktif! ${modeText} untuk ${selectedSiswaIds.length} Siswa`,
         { duration: 5000 }
       );
       await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
@@ -261,7 +292,7 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Penerbitan Sesi Remedial CBT"
+      title="Penerbitan Sesi Remedial & Susulan CBT"
       size="3xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -277,7 +308,7 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
                   Ingin Aktifkan Sekaligus untuk Seluruh Rombel Binaan?
                 </div>
                 <div className="text-[11px] text-slate-600 dark:text-slate-400">
-                  Agregasi otomatis siswa di bawah KKTP dari seluruh kelas yang Anda ampu dalam 1 sesi remedial terpadu.
+                  Agregasi otomatis siswa remedial &amp; siswa susulan dari seluruh kelas yang Anda ampu dalam 1 sesi terpadu.
                 </div>
               </div>
             </div>
@@ -292,26 +323,27 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
           </div>
         )}
 
-        {/* ── 1. BANNER INFORMASI SESI ASAL & KKTP THRESHOLD ── */}
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-indigo-500/10 border border-amber-200/80 dark:border-amber-900/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* ── 1. BANNER INFORMASI SESI ASAL & PENGATURAN KKTP ── */}
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-amber-500/5 to-rose-500/10 border border-slate-200/80 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs">
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-600 text-white shadow-2xs">
-                Asesmen Remedial
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-600 to-indigo-600 text-white shadow-2xs">
+                Asesmen Remedial &amp; Susulan
               </span>
               <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">
                 {mapelName}
               </h3>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-              Sumber: {jadwal.nama_sesi} • Total {finishedPeserta.length} Peserta Selesai
+              Sumber: {jadwal.nama_sesi} • Total {pesertaList.length} Siswa ({finishedPeserta.length} Selesai, {susulanPeserta.length} Belum Ujian)
             </p>
           </div>
 
-          {/* Pengatur KKTP / KKM */}
-          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2 rounded-xl border border-amber-200/90 dark:border-amber-800/80 shadow-2xs shrink-0">
-            <div className="text-left">
-              <label htmlFor="kktp-input" className="text-[10px] font-bold text-slate-400 uppercase tracking-tight block">
+          {/* Pengatur KKTP & Ringkasan Siswa Terjaring */}
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs shrink-0">
+            {/* Input KKTP */}
+            <div className="text-left pr-2">
+              <label htmlFor="kktp-input" className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tight block">
                 Target KKTP / KKM
               </label>
               <div className="flex items-center gap-1.5 mt-0.5">
@@ -326,61 +358,109 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
                 />
                 <span className="text-xs font-bold text-slate-500">Poin</span>
               </div>
+              <span className="text-[9px] text-slate-400 block mt-0.5 leading-none">
+                Batas remedial siswa ujian
+              </span>
             </div>
 
-            <div className="h-8 w-px bg-slate-100 dark:bg-slate-800" />
+            <div className="h-10 w-px bg-slate-100 dark:bg-slate-800" />
 
-            <div className="text-right pl-1">
-              <div className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase">
-                Perlu Remedial
+            {/* Kolom Indikator Remedial */}
+            <div className="text-center px-1.5">
+              <div className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase">
+                Remedial
               </div>
               <div className="text-sm font-black text-rose-700 dark:text-rose-300">
-                {belowKktp.length} Siswa
+                {belowKktp.length} <span className="text-[10px] font-medium text-slate-400">Siswa</span>
               </div>
+              <span className="text-[9px] text-rose-500/80 font-bold">&lt; KKTP</span>
+            </div>
+
+            <div className="h-10 w-px bg-slate-100 dark:bg-slate-800" />
+
+            {/* Kolom Indikator Susulan */}
+            <div className="text-center pl-1.5">
+              <div className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase">
+                Susulan
+              </div>
+              <div className="text-sm font-black text-amber-700 dark:text-amber-300">
+                {susulanPeserta.length} <span className="text-[10px] font-medium text-slate-400">Siswa</span>
+              </div>
+              <span className="text-[9px] text-amber-500/80 font-bold">Belum Ujian</span>
             </div>
           </div>
         </div>
 
-        {/* ── 2. SELEKSI SISWA PESERTA REMEDIAL ── */}
+        {/* ── 2. SELEKSI SISWA PESERTA REMEDIAL & SUSULAN ── */}
         <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
           {/* Header Tab Filter Siswa */}
           <div className="p-2.5 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl">
+            <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-x-auto max-w-full">
+              <button
+                type="button"
+                onClick={() => setStudentTabFilter('action')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
+                  studentTabFilter === 'action'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-800'
+                )}
+              >
+                <span>Perlu Tindakan</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-black">
+                  {actionRequiredPeserta.length}
+                </span>
+              </button>
               <button
                 type="button"
                 onClick={() => setStudentTabFilter('below')}
                 className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
                   studentTabFilter === 'below'
                     ? 'bg-white dark:bg-slate-900 text-rose-600 shadow-2xs font-black'
                     : 'text-slate-500 hover:text-slate-800'
                 )}
               >
-                <span>Perlu Remedial</span>
+                <span>Remedial (&lt;KKTP)</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 font-black">
                   {belowKktp.length}
                 </span>
               </button>
               <button
                 type="button"
+                onClick={() => setStudentTabFilter('susulan')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
+                  studentTabFilter === 'susulan'
+                    ? 'bg-white dark:bg-slate-900 text-amber-600 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-800'
+                )}
+              >
+                <span>Susulan (Belum Ujian)</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 font-black">
+                  {susulanPeserta.length}
+                </span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setStudentTabFilter('all')}
                 className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
                   studentTabFilter === 'all'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-2xs font-black'
+                    ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-2xs font-black'
                     : 'text-slate-500 hover:text-slate-800'
                 )}
               >
                 <span>Semua</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold">
-                  {finishedPeserta.length}
+                  {pesertaList.length}
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => setStudentTabFilter('above')}
                 className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap',
                   studentTabFilter === 'above'
                     ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-2xs font-black'
                     : 'text-slate-500 hover:text-slate-800'
@@ -394,8 +474,8 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
             </div>
 
             {/* Quick Actions & Search */}
-            <div className="flex items-center gap-2">
-              <div className="relative w-44 sm:w-52">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative w-40 sm:w-48">
                 <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
@@ -406,21 +486,31 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
                 />
               </div>
 
-              <button
-                type="button"
-                onClick={handleSelectAllBelow}
-                className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer whitespace-nowrap"
-              >
-                Pilih Semua &lt;KKTP
-              </button>
-              <span className="text-slate-300">•</span>
-              <button
-                type="button"
-                onClick={handleDeselectAll}
-                className="text-[11px] font-medium text-slate-400 hover:text-slate-600 cursor-pointer whitespace-nowrap"
-              >
-                Kosongkan
-              </button>
+              <div className="flex items-center gap-1.5 text-[11px]">
+                <button
+                  type="button"
+                  onClick={handleSelectAllAction}
+                  className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer whitespace-nowrap"
+                >
+                  Pilih Semua Tindakan
+                </button>
+                <span className="text-slate-300">•</span>
+                <button
+                  type="button"
+                  onClick={handleSelectAllSusulan}
+                  className="font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer whitespace-nowrap"
+                >
+                  Susulan Saja
+                </button>
+                <span className="text-slate-300">•</span>
+                <button
+                  type="button"
+                  onClick={handleDeselectAll}
+                  className="font-medium text-slate-400 hover:text-slate-600 cursor-pointer whitespace-nowrap"
+                >
+                  Kosongkan
+                </button>
+              </div>
             </div>
           </div>
 
@@ -430,24 +520,14 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
               <div className="p-6 text-center text-xs text-slate-400">Memuat peserta...</div>
             ) : displayedStudents.length === 0 ? (
               <div className="p-6 text-center text-xs text-slate-400 space-y-1">
-                {finishedPeserta.length === 0 ? (
-                  <>
-                    <p className="font-bold text-amber-600 dark:text-amber-400">
-                      Belum ada siswa yang berstatus selesai (FINISHED)
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      Sesi remedial hanya dapat diterbitkan untuk siswa yang telah menyelesaikan pengerjaan sesi ujian reguler.
-                    </p>
-                  </>
-                ) : (
-                  <p>Tidak ada siswa yang sesuai filter</p>
-                )}
+                <p>Tidak ada siswa yang sesuai filter</p>
               </div>
             ) : (
               displayedStudents.map((p, idx) => {
                 const isSelected = selectedSiswaIds.includes(p.siswa_id);
-                const score = Number(p.nilai_akhir || 0);
-                const isBelow = score < kktpThreshold;
+                const isSusulan = p.status !== 'FINISHED' && p.nilai_akhir == null;
+                const score = p.nilai_akhir != null ? Number(p.nilai_akhir) : null;
+                const isBelow = score !== null && score < kktpThreshold;
 
                 return (
                   <div
@@ -480,26 +560,39 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <div
-                        className={cn(
-                          'px-2 py-0.5 rounded-lg text-xs font-black border',
-                          isBelow
-                            ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-300'
-                            : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-900 dark:text-emerald-300'
-                        )}
-                      >
-                        {score.toFixed(1)}
-                      </div>
-                      <span
-                        className={cn(
-                          'text-[10px] font-bold px-1.5 py-0.2 rounded',
-                          isBelow
-                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                        )}
-                      >
-                        {isBelow ? 'Remedial' : 'Tuntas'}
-                      </span>
+                      {isSusulan ? (
+                        <>
+                          <div className="px-2 py-0.5 rounded-lg text-xs font-black border bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
+                            SUSULAN
+                          </div>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                            Belum Ujian (Standby)
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <div
+                            className={cn(
+                              'px-2 py-0.5 rounded-lg text-xs font-black border',
+                              isBelow
+                                ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-300'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-900 dark:text-emerald-300'
+                            )}
+                          >
+                            {score !== null ? score.toFixed(1) : '-'}
+                          </div>
+                          <span
+                            className={cn(
+                              'text-[10px] font-bold px-1.5 py-0.2 rounded',
+                              isBelow
+                                ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                                : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            )}
+                          >
+                            {isBelow ? 'Remedial' : 'Tuntas'}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -507,12 +600,17 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
             )}
           </div>
 
-          <div className="p-2 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-slate-500 text-right pr-4">
-            Terpilih:{' '}
-            <strong className="text-indigo-600 dark:text-indigo-400 font-black">
-              {selectedSiswaIds.length}
-            </strong>{' '}
-            dari {finishedPeserta.length} siswa selesai
+          <div className="p-2 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-slate-500 flex items-center justify-between px-4">
+            <span className="text-slate-400">
+              {belowKktp.length} Remedial (&lt;KKTP) • {susulanPeserta.length} Susulan (Belum Ujian)
+            </span>
+            <span>
+              Terpilih:{' '}
+              <strong className="text-indigo-600 dark:text-indigo-400 font-black">
+                {selectedSiswaIds.length}
+              </strong>{' '}
+              dari {pesertaList.length} siswa total
+            </span>
           </div>
         </div>
 

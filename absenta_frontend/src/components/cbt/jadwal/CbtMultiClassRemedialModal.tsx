@@ -49,6 +49,7 @@ interface AggregatedStudentItem {
   nilaiAwal: number | null;
   statusUjian: string;
   isFinished: boolean;
+  isSusulan: boolean;
 }
 
 export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProps> = ({
@@ -100,7 +101,7 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
   const [kktpThreshold, setKktpThreshold] = useState<number>(75);
   const [selectedSiswaIds, setSelectedSiswaIds] = useState<string[]>([]);
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('ALL');
-  const [studentTabFilter, setStudentTabFilter] = useState<'below' | 'all' | 'above'>('below');
+  const [studentTabFilter, setStudentTabFilter] = useState<'action' | 'below' | 'susulan' | 'all' | 'above'>('action');
   const [searchStudent, setSearchStudent] = useState<string>('');
 
   const [sessionName, setSessionName] = useState<string>('');
@@ -121,33 +122,13 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
     return res;
   };
 
-  // Reset & Inisialisasi Default Form Saat Modal Dibuka
-  useEffect(() => {
-    if (isOpen && bankSoal) {
-      setDurasiMenit(bankSoal.alokasi_menit || 60);
-      setCustomToken(generateRemedialToken());
-
-      const cleanJudul = bankSoal.judul.replace(/^\[REMEDIAL[^\]]*\]\s*/i, '');
-      setSessionName(`[REMEDIAL AKBAR] ${cleanJudul}`);
-
-      // Default waktu: mulai sekarang, berakhir 3 hari kemudian (toleransi 7 hari)
-      const now = new Date();
-      const threeDaysLater = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const formatInputDate = (d: Date) =>
-        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-
-      setStartDateInput(formatInputDate(now));
-      setEndDateInput(formatInputDate(threeDaysLater));
-    }
-  }, [isOpen, bankSoal]);
-
   // 4. Agregasi & Deduplikasi Siswa dari Seluruh Sesi
   const aggregatedStudents: AggregatedStudentItem[] = useMemo(() => {
     const map = new Map<string, AggregatedStudentItem>();
 
     allPeserta.forEach((p) => {
       if (!p.siswa_id || !p.Siswa) return;
+      const isFin = p.status === 'FINISHED' || p.nilai_akhir != null;
       const currentVal: AggregatedStudentItem = {
         pesertaId: p.id,
         jadwalId: p.jadwal_ujian_id,
@@ -158,7 +139,8 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
         namaKelas: p.Siswa.Kelas?.nama_kelas || 'Kelas Binaan',
         nilaiAwal: p.nilai_akhir != null ? Number(p.nilai_akhir) : null,
         statusUjian: p.status,
-        isFinished: p.status === 'FINISHED' || p.nilai_akhir != null,
+        isFinished: isFin,
+        isSusulan: !isFin,
       };
 
       // Jika siswa tercatat di beberapa sesi, simpan data terbaru/tervalid
@@ -179,9 +161,52 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
     });
   }, [allPeserta]);
 
+  // Kategorisasi Siswa berdasarkan Ambang KKTP & Status Susulan
+  const { finishedStudents, belowKktpStudents, aboveKktpStudents, susulanStudents, actionRequiredStudents } = useMemo(() => {
+    const finished = aggregatedStudents.filter((st) => st.isFinished);
+    const below = finished.filter((st) => st.nilaiAwal !== null && st.nilaiAwal < kktpThreshold);
+    const above = finished.filter((st) => st.nilaiAwal !== null && st.nilaiAwal >= kktpThreshold);
+    const susulan = aggregatedStudents.filter((st) => st.isSusulan);
+    const actionRequired = [...below, ...susulan];
+    return {
+      finishedStudents: finished,
+      belowKktpStudents: below,
+      aboveKktpStudents: above,
+      susulanStudents: susulan,
+      actionRequiredStudents: actionRequired,
+    };
+  }, [aggregatedStudents, kktpThreshold]);
+
+  // Reset & Inisialisasi Default Form Saat Modal Dibuka
+  useEffect(() => {
+    if (isOpen && bankSoal) {
+      setDurasiMenit(bankSoal.alokasi_menit || 60);
+      setCustomToken(generateRemedialToken());
+
+      const cleanJudul = bankSoal.judul.replace(/^\[(REMEDIAL|SUSULAN|REMEDIAL & SUSULAN)[^\]]*\]\s*/i, '');
+      const prefix =
+        susulanStudents.length > 0 && belowKktpStudents.length > 0
+          ? '[REMEDIAL & SUSULAN AKBAR]'
+          : susulanStudents.length > 0
+          ? '[SUSULAN AKBAR]'
+          : '[REMEDIAL AKBAR]';
+      setSessionName(`${prefix} ${cleanJudul}`);
+
+      // Default waktu: mulai sekarang, berakhir 3 hari kemudian (toleransi 7 hari)
+      const now = new Date();
+      const threeDaysLater = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const formatInputDate = (d: Date) =>
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+      setStartDateInput(formatInputDate(now));
+      setEndDateInput(formatInputDate(threeDaysLater));
+    }
+  }, [isOpen, bankSoal, susulanStudents.length, belowKktpStudents.length]);
+
   // Daftar Kelas yang Terdeteksi
   const detectedClasses = useMemo(() => {
-    const classMap = new Map<string, { id: string; name: string; total: number; belowKktp: number }>();
+    const classMap = new Map<string, { id: string; name: string; total: number; belowKktp: number; susulan: number }>();
 
     aggregatedStudents.forEach((st) => {
       const isBelow = st.isFinished && st.nilaiAwal !== null && st.nilaiAwal < kktpThreshold;
@@ -191,37 +216,33 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
           name: st.namaKelas,
           total: 1,
           belowKktp: isBelow ? 1 : 0,
+          susulan: st.isSusulan ? 1 : 0,
         });
       } else {
         const existing = classMap.get(st.kelasId)!;
         existing.total += 1;
         if (isBelow) existing.belowKktp += 1;
+        if (st.isSusulan) existing.susulan += 1;
       }
     });
 
     return Array.from(classMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [aggregatedStudents, kktpThreshold]);
 
-  // Kategorisasi Siswa berdasarkan Ambang KKTP
-  const { finishedStudents, belowKktpStudents, aboveKktpStudents } = useMemo(() => {
-    const finished = aggregatedStudents.filter((st) => st.isFinished);
-    const below = finished.filter((st) => st.nilaiAwal !== null && st.nilaiAwal < kktpThreshold);
-    const above = finished.filter((st) => st.nilaiAwal !== null && st.nilaiAwal >= kktpThreshold);
-    return { finishedStudents: finished, belowKktpStudents: below, aboveKktpStudents: above };
-  }, [aggregatedStudents, kktpThreshold]);
-
-  // Otomatis centang seluruh siswa < KKTP saat data pertama kali dimuat atau ambang KKTP berubah
+  // Otomatis centang seluruh siswa yang membutuhkan tindakan (Remedial + Susulan) saat modal dibuka
   useEffect(() => {
-    if (isOpen && belowKktpStudents.length > 0) {
-      setSelectedSiswaIds(belowKktpStudents.map((st) => st.siswaId));
+    if (isOpen && actionRequiredStudents.length > 0) {
+      setSelectedSiswaIds(actionRequiredStudents.map((st) => st.siswaId));
     }
-  }, [isOpen, belowKktpStudents.length, kktpThreshold]);
+  }, [isOpen, actionRequiredStudents.length, kktpThreshold]);
 
   // Siswa yang Ditampilkan Sesuai Filter Kelas & Tab
   const displayedStudents = useMemo(() => {
-    let list = aggregatedStudents;
+    let list = actionRequiredStudents;
     if (studentTabFilter === 'below') list = belowKktpStudents;
+    if (studentTabFilter === 'susulan') list = susulanStudents;
     if (studentTabFilter === 'above') list = aboveKktpStudents;
+    if (studentTabFilter === 'all') list = aggregatedStudents;
 
     if (selectedClassFilter !== 'ALL') {
       list = list.filter((st) => st.kelasId === selectedClassFilter);
@@ -238,7 +259,7 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
     }
 
     return list;
-  }, [aggregatedStudents, belowKktpStudents, aboveKktpStudents, studentTabFilter, selectedClassFilter, searchStudent]);
+  }, [actionRequiredStudents, belowKktpStudents, susulanStudents, aboveKktpStudents, aggregatedStudents, studentTabFilter, selectedClassFilter, searchStudent]);
 
   // Toggle Siswa Satuan
   const toggleSelectSiswa = (siswaId: string) => {
@@ -247,10 +268,31 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
     );
   };
 
+  // Pilih Seluruh Siswa yang Membutuhkan Tindakan (Remedial + Susulan)
+  const handleSelectAllAction = () => {
+    const list = selectedClassFilter === 'ALL'
+      ? actionRequiredStudents
+      : actionRequiredStudents.filter((st) => st.kelasId === selectedClassFilter);
+    const ids = list.map((st) => st.siswaId);
+    setSelectedSiswaIds((prev) => Array.from(new Set([...prev, ...ids])));
+  };
+
   // Pilih Seluruh Siswa di Bawah KKTP
   const handleSelectAllBelow = () => {
-    const belowIds = belowKktpStudents.map((st) => st.siswaId);
+    const list = selectedClassFilter === 'ALL'
+      ? belowKktpStudents
+      : belowKktpStudents.filter((st) => st.kelasId === selectedClassFilter);
+    const belowIds = list.map((st) => st.siswaId);
     setSelectedSiswaIds((prev) => Array.from(new Set([...prev, ...belowIds])));
+  };
+
+  // Pilih Seluruh Siswa Susulan (Belum Ujian)
+  const handleSelectAllSusulan = () => {
+    const list = selectedClassFilter === 'ALL'
+      ? susulanStudents
+      : susulanStudents.filter((st) => st.kelasId === selectedClassFilter);
+    const susulanIds = list.map((st) => st.siswaId);
+    setSelectedSiswaIds((prev) => Array.from(new Set([...prev, ...susulanIds])));
   };
 
   // Pilih Semua Siswa di Tampilan Saat Ini
@@ -331,8 +373,8 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
           remedial_policy: scorePolicy,
           target_siswa_ids: selectedSiswaIds,
           tokenless: isTokenless,
-          ruang_ujian: 'Ruang Remedial Terpadu',
-          ruang_ujian_nama: 'Ruang Remedial Terpadu (Multi-Rombel)',
+          ruang_ujian: 'Ruang Remedial & Susulan Akbar',
+          ruang_ujian_nama: 'Ruang Remedial & Susulan Akbar (Multi-Rombel)',
           pengawas_1_id: guruMapelId,
           pengawas_1_nama: guruMapelNama,
           pengawas_1_nip: guruMapelNip,
@@ -352,7 +394,7 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
     onSuccess: async (res) => {
       const modeText = isTokenless ? 'Bebas Token (Langsung Masuk)' : `Token: ${res.token_ujian}`;
       toast.success(
-        `Sesi Remedial Akbar Terpadu Aktif! ${modeText} untuk ${selectedSiswaIds.length} Siswa di ${activeSelectedKelasIds.length} Rombel`,
+        `Sesi Remedial & Susulan Akbar Terpadu Aktif! ${modeText} untuk ${selectedSiswaIds.length} Siswa di ${activeSelectedKelasIds.length} Rombel`,
         { duration: 6000 }
       );
       await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
@@ -377,7 +419,7 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Sesi Remedial Terpadu Multi-Rombel (1-Click)"
+      title="Sesi Remedial & Susulan Terpadu Multi-Rombel (1-Click)"
       size="4xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
@@ -521,15 +563,15 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
                     <GraduationCap size={14} className="text-emerald-500" />
                     Siswa Terpilih
                   </span>
-                  <span className="font-black text-rose-600 dark:text-rose-400">
+                  <span className="font-black text-indigo-600 dark:text-indigo-400">
                     {selectedSiswaIds.length} Siswa
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-600 dark:text-slate-400">
-                  Dari {aggregatedStudents.length} total peserta terdata
+                  {belowKktpStudents.length} Remedial (&lt;KKTP) • {susulanStudents.length} Susulan
                 </div>
                 <p className="text-[10px] text-slate-500">
-                  Siswa ≥ KKTP aman terlindungi (tidak masuk remedial)
+                  Dari {aggregatedStudents.length} total peserta di {detectedClasses.length} rombel
                 </p>
               </div>
             </div>
@@ -568,7 +610,7 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
                       )}
                     >
                       <span>{cls.name}</span>
-                      {cls.belowKktp > 0 && (
+                      {(cls.belowKktp > 0 || cls.susulan > 0) && (
                         <span
                           className={cn(
                             'px-1.5 py-0.2 rounded-full text-[10px] font-black',
@@ -577,7 +619,7 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
                               : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
                           )}
                         >
-                          {cls.belowKktp}
+                          {cls.belowKktp + cls.susulan}
                         </span>
                       )}
                     </button>
@@ -589,15 +631,39 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
                   <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 w-full sm:w-auto overflow-x-auto custom-scrollbar">
                     <button
                       type="button"
+                      onClick={() => setStudentTabFilter('action')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                        studentTabFilter === 'action'
+                          ? 'bg-indigo-600 text-white shadow-2xs font-black'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      )}
+                    >
+                      Perlu Tindakan ({actionRequiredStudents.length})
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setStudentTabFilter('below')}
                       className={cn(
                         'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
                         studentTabFilter === 'below'
-                          ? 'bg-rose-600 text-white shadow-2xs'
+                          ? 'bg-rose-600 text-white shadow-2xs font-black'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                       )}
                     >
-                      Perlu Remedial ({belowKktpStudents.length})
+                      Remedial (&lt;KKTP) ({belowKktpStudents.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStudentTabFilter('susulan')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
+                        studentTabFilter === 'susulan'
+                          ? 'bg-amber-600 text-white shadow-2xs font-black'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      )}
+                    >
+                      Susulan ({susulanStudents.length})
                     </button>
                     <button
                       type="button"
@@ -605,7 +671,7 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
                       className={cn(
                         'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
                         studentTabFilter === 'all'
-                          ? 'bg-indigo-600 text-white shadow-2xs'
+                          ? 'bg-slate-700 text-white shadow-2xs font-black'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                       )}
                     >
@@ -617,7 +683,7 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
                       className={cn(
                         'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
                         studentTabFilter === 'above'
-                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          ? 'bg-emerald-600 text-white shadow-2xs font-black'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                       )}
                     >
@@ -626,13 +692,20 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
                   </div>
 
                   {/* Quick Select Actions */}
-                  <div className="flex items-center gap-1.5 text-xs w-full sm:w-auto justify-end">
+                  <div className="flex items-center gap-1.5 text-xs w-full sm:w-auto justify-end flex-wrap">
                     <button
                       type="button"
-                      onClick={handleSelectAllBelow}
-                      className="px-2 py-1 rounded-lg text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 font-bold hover:bg-rose-100 transition-colors cursor-pointer text-[11px]"
+                      onClick={handleSelectAllAction}
+                      className="px-2 py-1 rounded-lg text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 font-bold hover:bg-indigo-100 transition-colors cursor-pointer text-[11px]"
                     >
-                      Pilih Semua &lt; KKTP
+                      Pilih Semua Tindakan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSelectAllSusulan}
+                      className="px-2 py-1 rounded-lg text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 font-bold hover:bg-amber-100 transition-colors cursor-pointer text-[11px]"
+                    >
+                      Susulan Saja
                     </button>
                     <button
                       type="button"
@@ -701,23 +774,34 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          <div className="text-right">
-                            <div
-                              className={cn(
-                                'font-black text-xs font-mono',
-                                st.nilaiAwal === null
-                                  ? 'text-slate-400'
-                                  : isBelow
-                                  ? 'text-rose-600 dark:text-rose-400'
-                                  : 'text-emerald-600 dark:text-emerald-400'
-                              )}
-                            >
-                              {st.nilaiAwal !== null ? `${st.nilaiAwal}` : 'Belum Ada'}
+                          {st.isSusulan ? (
+                            <div className="text-right">
+                              <div className="px-2 py-0.5 rounded-lg text-xs font-black border bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300">
+                                SUSULAN
+                              </div>
+                              <div className="text-[9px] sm:text-[9.5px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                                Belum Ujian (Standby)
+                              </div>
                             </div>
-                            <div className="text-[9px] sm:text-[9.5px] font-bold text-slate-400">
-                              {isBelow ? 'Di Bawah KKTP' : st.nilaiAwal !== null ? 'Tuntas' : 'Belum Ujian'}
+                          ) : (
+                            <div className="text-right">
+                              <div
+                                className={cn(
+                                  'font-black text-xs font-mono',
+                                  st.nilaiAwal === null
+                                    ? 'text-slate-400'
+                                    : isBelow
+                                    ? 'text-rose-600 dark:text-rose-400'
+                                    : 'text-emerald-600 dark:text-emerald-400'
+                                )}
+                              >
+                                {st.nilaiAwal !== null ? `${st.nilaiAwal}` : '-'}
+                              </div>
+                              <div className="text-[9px] sm:text-[9.5px] font-bold text-slate-400">
+                                {isBelow ? 'Di Bawah KKTP' : 'Tuntas'}
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     );
