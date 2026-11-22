@@ -909,8 +909,3 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
     document.body
   );
 };
-      </div>
-    </AnimatePresence>,
-    document.body
-  );
-};
