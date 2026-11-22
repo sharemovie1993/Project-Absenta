@@ -280,6 +280,7 @@ export const transferNilaiRaporSchema = z.object({
   semester_id: z.string().uuid('ID Semester tidak valid'),
   mapel_id: z.string().uuid('ID Mapel tidak valid').optional(),
   kelas_ids: z.array(z.string().uuid()).optional(),
+  siswa_ids: z.array(z.string().uuid()).optional(),
   overwrite_existing: z.boolean().default(true),
   round_integer: z.boolean().default(true),
 });

@@ -1483,6 +1483,7 @@ export class CbtJadwalService {
       semester_id: string;
       mapel_id?: string;
       kelas_ids?: string[];
+      siswa_ids?: string[];
       overwrite_existing?: boolean;
       round_integer?: boolean;
     }
@@ -1540,6 +1541,9 @@ export class CbtJadwalService {
         status: 'FINISHED',
         ...(payload.kelas_ids && payload.kelas_ids.length > 0
           ? { Siswa: { kelas_id: { in: payload.kelas_ids } } }
+          : {}),
+        ...(payload.siswa_ids && payload.siswa_ids.length > 0
+          ? { siswa_id: { in: payload.siswa_ids } }
           : {}),
       },
       include: {

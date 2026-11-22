@@ -302,6 +302,7 @@ export interface CbtTransferNilaiPayload {
   semester_id: string;
   mapel_id?: string;
   kelas_ids?: string[];
+  siswa_ids?: string[];
   overwrite_existing?: boolean;
   round_integer?: boolean;
 }
