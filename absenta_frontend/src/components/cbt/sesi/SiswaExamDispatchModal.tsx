@@ -39,10 +39,6 @@ export const SiswaExamDispatchModal: React.FC<SiswaExamDispatchModalProps> = ({
     : 'Siswa';
 
   const handleEnterExam = (exam: CbtStudentExamItem) => {
-    try {
-      sessionStorage.setItem(`cbt_student_dispatch_${exam.id}`, 'true');
-    } catch (_) {}
-
     const url = `/cbt/ruang-ujian?jadwal_id=${encodeURIComponent(exam.id)}${
       exam.token_ujian ? `&token=${encodeURIComponent(exam.token_ujian)}` : ''
     }`;
@@ -50,11 +46,6 @@ export const SiswaExamDispatchModal: React.FC<SiswaExamDispatchModalProps> = ({
   };
 
   const handleDismiss = () => {
-    try {
-      activeExams.forEach((exam) => {
-        sessionStorage.setItem(`cbt_student_dispatch_${exam.id}`, 'true');
-      });
-    } catch (_) {}
     onClose();
   };
 

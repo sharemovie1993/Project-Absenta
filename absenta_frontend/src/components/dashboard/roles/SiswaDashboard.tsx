@@ -250,10 +250,10 @@ export const SiswaDashboard: React.FC = () => {
   });
 
   // Deteksi Event Ujian CBT Aktif Siswa (SSOT cbtApi.getMyExams)
-  const { data: studentExams = [] } = useQuery<CbtStudentExamItem[]>({
+  const { data: studentExams = [], isLoading: isExamsLoading } = useQuery<CbtStudentExamItem[]>({
     queryKey: cbtQueryKeys.myExams(),
     queryFn: cbtApi.getMyExams,
-    staleTime: 45 * 1000,
+    staleTime: 30 * 1000,
   });
 
   const activeStudentExams = useMemo(() => {
@@ -273,27 +273,29 @@ export const SiswaDashboard: React.FC = () => {
 
   const hasActiveStudentExam = activeStudentExams.length > 0;
   const [showExamDispatchModal, setShowExamDispatchModal] = useState(false);
+  const [isExamDismissedByUser, setIsExamDismissedByUser] = useState(false);
 
-  // Deteksi & Buka Modal Pengarahan Ujian jika ada ujian beririsan
+  // 1. Deteksi & Buka Modal Pengarahan Ujian (Prioritas Utama saat Ada Ujian Aktif)
   useEffect(() => {
-    if (hasActiveStudentExam) {
-      // Supresi penuh modal onboarding jika sedang ada event ujian
+    // ── GUARD ANTI-FLICKER: Tunggu query ujian selesai loading sebelum menentukan modal! ──
+    if (isExamsLoading) return;
+
+    if (hasActiveStudentExam && activeTab !== 'cbt') {
+      // Pastikan modal onboarding profil selalu ditutup rapat saat ada ujian aktif
       setShowOnboardingModal(false);
 
-      const allDismissed = activeStudentExams.every((exam) =>
-        sessionStorage.getItem(`cbt_student_dispatch_${exam.id}`) === 'true'
-      );
-      if (!allDismissed) {
+      if (!isExamDismissedByUser) {
         setShowExamDispatchModal(true);
       }
     } else {
       setShowExamDispatchModal(false);
     }
-  }, [hasActiveStudentExam, activeStudentExams]);
+  }, [hasActiveStudentExam, isExamsLoading, activeTab, isExamDismissedByUser]);
 
-  // Onboarding auto prompt (Disupresi penuh saat ada ujian aktif)
+  // 2. Onboarding auto prompt profil (Hanya jika TIDAK sedang loading dan TIDAK ada ujian aktif)
   useEffect(() => {
-    if (hasActiveStudentExam) {
+    // ── GUARD ANTI-FLICKER: Jangan munculkan onboarding jika sedang loading atau ada ujian aktif ──
+    if (isExamsLoading || hasActiveStudentExam) {
       setShowOnboardingModal(false);
       return;
     }
@@ -304,7 +306,7 @@ export const SiswaDashboard: React.FC = () => {
         setShowOnboardingModal(true);
       }
     }
-  }, [data.siswaProfile, data.user, hasActiveStudentExam]);
+  }, [data.siswaProfile, data.user, hasActiveStudentExam, isExamsLoading]);
 
   // Tab items config & categories
   const categories: UniversalSubtabCategory[] = useMemo(() => [
@@ -936,7 +938,10 @@ export const SiswaDashboard: React.FC = () => {
         {showExamDispatchModal && (
           <SiswaExamDispatchModal
             isOpen={showExamDispatchModal}
-            onClose={() => setShowExamDispatchModal(false)}
+            onClose={() => {
+              setShowExamDispatchModal(false);
+              setIsExamDismissedByUser(true);
+            }}
             activeExams={activeStudentExams}
             studentName={data.studentName}
             classNameTitle={data.currentClassName}
