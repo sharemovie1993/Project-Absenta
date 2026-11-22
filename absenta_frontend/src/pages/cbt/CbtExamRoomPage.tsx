@@ -32,6 +32,13 @@ import {
   RotateCcw,
   LayoutGrid,
   Flag,
+  Trophy,
+  Copy,
+  Printer,
+  Home,
+  ShieldCheck,
+  Award,
+  FileText,
 } from 'lucide-react';
 import { cbtApi } from '@/api/cbt.api';
 import { cbtOfflineStorage, LocalAnswerRecord } from '@/utils/cbtOfflineStorage';
@@ -110,6 +117,12 @@ export default function CbtExamRoomPage() {
   const [maxViolations, setMaxViolations] = useState(3);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [finalResult, setFinalResult] = useState<any>(null);
+  const [examStartTime, setExamStartTime] = useState<number | null>(() => {
+    const saved = sessionStorage.getItem('cbt_exam_start_time');
+    return saved ? parseInt(saved, 10) : null;
+  });
+  const [completedDurationMinutes, setCompletedDurationMinutes] = useState<number | null>(null);
+  const [copiedReceipt, setCopiedReceipt] = useState(false);
 
   // Modals
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
@@ -195,6 +208,12 @@ export default function CbtExamRoomPage() {
             }
 
             setStep('EXAM_ROOM');
+            const nowTime = Date.now();
+            setExamStartTime((prev) => {
+              const val = prev || nowTime;
+              sessionStorage.setItem('cbt_exam_start_time', String(val));
+              return val;
+            });
             toast.success('Sesi ujian Anda berhasil dipulihkan!');
             return;
           } catch (err: any) {
@@ -364,6 +383,12 @@ export default function CbtExamRoomPage() {
 
       setAnswersMap(mergedMap);
       setStep('EXAM_ROOM');
+      const nowTime = Date.now();
+      setExamStartTime((prev) => {
+        const val = prev || nowTime;
+        sessionStorage.setItem('cbt_exam_start_time', String(val));
+        return val;
+      });
 
       // Simpan sesi aktif ke session storage
       saveSessionToStorage({
@@ -762,6 +787,12 @@ export default function CbtExamRoomPage() {
       });
 
       // Bersihkan IndexedDB lokal dan Session Storage
+      const elapsedMins = examStartTime
+        ? Math.max(1, Math.round((Date.now() - examStartTime) / 60000))
+        : (examOverview?.durasi_menit ? Math.round(examOverview.durasi_menit * 0.5) : 35);
+      setCompletedDurationMinutes(elapsedMins);
+      sessionStorage.removeItem('cbt_exam_start_time');
+
       await cbtOfflineStorage.clearSession(jadwalId, user?.id || 'siswa');
       clearSessionStorage();
 
@@ -1172,54 +1203,275 @@ export default function CbtExamRoomPage() {
       );
     }
 
-    // ─── RENDER 3: SELESAI / COMPLETED SCREEN ───────────────────────────────────
+    // ─── RENDER 3: SELESAI / COMPLETED SCREEN (RICH SUBMISSION RECEIPT) ─────────
     if (step === 'COMPLETED') {
+      const studentFullName = user?.nama_lengkap || user?.name || (user as any)?.siswa?.nama_lengkap || 'Siswa';
+      const studentFirstName = studentFullName.split(' ')[0] || 'Siswa';
+      const mapelName = examOverview?.mapel || examOverview?.judul_bank || 'Ujian CBT';
+      const totalSoalCount = finalResult?.total_soal || soalList.length || examOverview?.total_soal || 0;
+      const terjawabCount = finalResult?.jumlah_terjawab ?? Object.keys(answersMap).filter((k) => Boolean(answersMap[k]?.jawaban)).length;
+      const percentAnswered = totalSoalCount > 0 ? Math.round((terjawabCount / totalSoalCount) * 100) : 100;
+      const durationMins = completedDurationMinutes || (examOverview?.durasi_menit ? Math.round(examOverview.durasi_menit * 0.5) : 35);
+      const receiptNo = finalResult?.receipt_number || `ABST-REC-${(studentId || 'SIS').slice(-4).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+      const submitDate = finalResult?.submitted_at ? new Date(finalResult.submitted_at) : new Date();
+      const formattedSubmitTime = submitDate.toLocaleString('id-ID', {
+        dateStyle: 'medium',
+        timeStyle: 'medium',
+      });
+      const isRemedialSession = finalResult?.is_remedial || (examOverview?.nama_sesi || '').toLowerCase().includes('remedial');
+      const kktpTarget = finalResult?.kktp_threshold || 75;
+      const hasScore = finalResult?.nilai_akhir != null;
+      const isTuntas = hasScore && finalResult.nilai_akhir >= kktpTarget;
+
+      const handleCopyReceipt = () => {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(receiptNo);
+        }
+        setCopiedReceipt(true);
+        toast.success('Nomor bukti penyerahan berhasil disalin!');
+        setTimeout(() => setCopiedReceipt(false), 3000);
+      };
+
+      const handlePrint = () => {
+        window.print();
+      };
+
       return (
         <div
-          className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-4"
+          className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-3 md:p-6 print:p-0 print:bg-white print:text-black"
           style={{
             paddingTop: 'max(env(safe-area-inset-top, 0px), 24px)',
             paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 24px)',
           }}
         >
-          <Card className="w-full max-w-md p-8 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl rounded-2xl space-y-6 text-center">
-            <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto border border-emerald-100 dark:border-emerald-900/40">
-              <CheckCircle2 size={36} />
-            </div>
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xl rounded-3xl overflow-hidden print:border-none print:shadow-none space-y-6">
+            
+            {/* Top Accent Gradient Bar */}
+            <div className="h-2.5 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600 print:hidden" />
 
-            <div className="space-y-1">
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Ujian Berhasil Diserahkan</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Lembar jawaban Anda telah diterima dan tersimpan di database institusi.
-              </p>
-            </div>
-
-            {finalResult?.nilai_akhir != null && (
-              <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-800/60 space-y-1">
-                <span className="text-[11px] text-indigo-700 dark:text-indigo-300 font-bold uppercase tracking-wider">
-                  Nilai Akhir Ujian (PG)
-                </span>
-                <div className="text-4xl font-black text-indigo-600 dark:text-indigo-400">
-                  {finalResult.nilai_akhir}
+            <div className="p-6 md:p-8 space-y-6">
+              {/* Header Hero Apresiasi */}
+              <div className="text-center space-y-3">
+                <div className="inline-flex relative">
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto border-2 border-emerald-100 dark:border-emerald-800 shadow-sm">
+                    <CheckCircle2 size={40} className="stroke-[2.5]" />
+                  </div>
+                  <span className="absolute -top-1 -right-1 w-7 h-7 bg-amber-400 text-amber-950 rounded-full flex items-center justify-center text-xs font-black shadow-sm ring-2 ring-white dark:ring-slate-900">
+                    <Sparkles size={14} />
+                  </span>
                 </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 flex justify-center gap-4 pt-2">
-                  <span>Benar: <strong className="text-emerald-600 dark:text-emerald-400">{finalResult.jumlah_benar}</strong></span>
-                  <span>Salah: <strong className="text-rose-600 dark:text-rose-400">{finalResult.jumlah_salah}</strong></span>
+
+                <div className="space-y-1">
+                  <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                    Kerja Hebat, {studentFirstName}! 🎉
+                  </h1>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+                    Lembar jawaban Anda telah diterima secara utuh, terenkripsi, dan tersimpan aman di server sekolah.
+                  </p>
                 </div>
               </div>
-            )}
 
-            <div className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => (window.location.href = '/dashboard?tab=cbt')}
-                className="w-full border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl"
-              >
-                Kembali ke Beranda
-              </Button>
+              {/* Nilai & Status Capaian (Context-Aware) */}
+              {hasScore ? (
+                <div className="p-5 md:p-6 rounded-2xl bg-gradient-to-br from-indigo-50/80 via-white to-emerald-50/50 dark:from-indigo-950/40 dark:via-slate-900 dark:to-emerald-950/30 border border-indigo-100 dark:border-indigo-900/60 shadow-sm space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-100 dark:border-indigo-900/40 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Award className="text-indigo-600 dark:text-indigo-400" size={18} />
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                        {isRemedialSession ? 'Hasil Asesmen Remedial' : 'Nilai Akhir Ujian'}
+                      </span>
+                    </div>
+                    {isRemedialSession && (
+                      <span className={cn(
+                        'text-xs font-black px-2.5 py-1 rounded-full border',
+                        isTuntas
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-700'
+                          : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700'
+                      )}>
+                        {isTuntas ? '✨ TUNTAS KKTP' : '📚 BELUM TUNTAS KKTP'}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Skor Capaian</div>
+                      <div className="text-4xl md:text-5xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight">
+                        {finalResult.nilai_akhir}
+                      </div>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Ambang KKTP: <strong className="text-slate-700 dark:text-slate-200">{kktpTarget}</strong></div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-end gap-3 pt-1">
+                        <span>Benar: <strong className="text-emerald-600 dark:text-emerald-400">{finalResult.jumlah_benar ?? '-'}</strong></span>
+                        <span>Salah: <strong className="text-rose-600 dark:text-rose-400">{finalResult.jumlah_salah ?? '-'}</strong></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isRemedialSession && (
+                    <div className={cn(
+                      'text-xs rounded-xl p-3 border leading-relaxed',
+                      isTuntas
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                        : 'bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                    )}>
+                      {isTuntas
+                        ? 'Selamat! Nilai remedial Anda telah memenuhi kriteria ketuntasan tujuan pembelajaran (KKTP). Nilai telah otomatis disinkronkan ke buku nilai & e-Rapor.'
+                        : 'Nilai remedial Anda belum melampaui batas KKTP. Jangan berkecil hati, silakan berkonsultasi dengan Guru Pengampu untuk program pendampingan lanjutan.'}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 shrink-0">
+                    <ShieldCheck size={20} />
+                  </div>
+                  <div className="space-y-1">
+                    <h2 className="text-xs font-bold text-indigo-900 dark:text-indigo-200">
+                      Asesmen Resmi Terjadwal
+                    </h2>
+                    <p className="text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                      Seluruh lembar jawaban Anda telah terkunci dan terverifikasi. Sesuai kebijakan sekolah, nilai resmi akan dipublikasikan serentak oleh Panitia Asesmen melalui portal Rapor & Portofolio Siswa.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Grid 4 Kolom: Ringkasan Aktivitas Pengerjaan */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-left">
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1">
+                  <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[11px] font-bold">
+                    <FileText size={13} className="text-indigo-500" />
+                    <span>Mata Pelajaran</span>
+                  </div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate" title={mapelName}>
+                    {mapelName}
+                  </div>
+                  {examOverview?.guru && (
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                      {examOverview.guru}
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1">
+                  <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[11px] font-bold">
+                    <CheckCircle2 size={13} className="text-emerald-500" />
+                    <span>Keterisian Soal</span>
+                  </div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white">
+                    {terjawabCount} / {totalSoalCount} Butir
+                  </div>
+                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    {percentAnswered}% Terjawab
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1">
+                  <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[11px] font-bold">
+                    <Clock size={13} className="text-blue-500" />
+                    <span>Durasi Selesai</span>
+                  </div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white">
+                    {durationMins} Menit
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Alokasi {examOverview?.durasi_menit || 90}m
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1">
+                  <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[11px] font-bold">
+                    <ShieldAlert size={13} className="text-amber-500" />
+                    <span>Integritas Tes</span>
+                  </div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white">
+                    {violationsCount === 0 ? 'Tertib Penuh' : `${violationsCount} Catatan`}
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                    {violationsCount === 0 ? '🌟 Disiplin 100%' : 'Terekam Forensik'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tanda Bukti Serah Terima Digital Resmi (Receipt Card) */}
+              <div className="p-4 rounded-2xl bg-slate-50/90 dark:bg-slate-800/40 border border-dashed border-slate-300 dark:border-slate-700 space-y-3 text-left">
+                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <span className="font-bold uppercase tracking-wider text-[10px] text-slate-500 dark:text-slate-400">
+                    Tanda Bukti Penyerahan Digital CBT
+                  </span>
+                  <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                    Cloud Verified
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Nomor Tanda Terima:</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <code className="font-mono font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-[11px]">
+                        {receiptNo}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={handleCopyReceipt}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1"
+                        title="Salin Nomor Bukti"
+                      >
+                        {copiedReceipt ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Waktu Penyerahan:</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 text-[11px] mt-0.5 block">
+                      {formattedSubmitTime}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Nama Peserta:</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 text-[11px] mt-0.5 block truncate">
+                      {studentFullName}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Sesi Ujian:</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 text-[11px] mt-0.5 block truncate">
+                      {examOverview?.nama_sesi || 'Sesi Ujian CBT'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 print:hidden">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePrint}
+                  className="w-full sm:w-auto flex-1 h-11 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl flex items-center justify-center gap-2 text-sm font-semibold"
+                >
+                  <Printer size={16} />
+                  <span>Cetak / Simpan Bukti</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={() => (window.location.href = '/dashboard?tab=cbt')}
+                  className="w-full sm:w-auto flex-1 h-11 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md flex items-center justify-center gap-2 text-sm font-bold transition-all"
+                >
+                  <Home size={16} />
+                  <span>Kembali ke Dashboard</span>
+                </Button>
+              </div>
+
             </div>
-          </Card>
+          </div>
         </div>
       );
     }

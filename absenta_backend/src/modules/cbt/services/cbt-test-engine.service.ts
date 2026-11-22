@@ -1415,14 +1415,23 @@ export class CbtTestEngineService {
       });
     });
 
-    const showInstant = (peserta.JadwalUjian.setting_keamanan as any)?.show_result_instant ?? false;
+    const kktpThreshold = Number(sec.kktp_threshold) || 75;
+    const showInstant = ((peserta.JadwalUjian.setting_keamanan as any)?.show_result_instant ?? false) || isRemedial;
+    const receiptNumber = `ABST-REC-${(siswaId || 'SIS').slice(-4).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+    const submittedAt = new Date().toISOString();
+    const isLulusKktp = isRemedial ? nilaiAkhir >= kktpThreshold : undefined;
 
     return {
       success: true,
       message: 'Ujian berhasil diserahkan.',
       status: 'FINISHED',
+      receipt_number: receiptNumber,
+      submitted_at: submittedAt,
       total_soal: totalSoal,
       jumlah_terjawab: payload.jawaban_final.filter((j) => Boolean(j.jawaban_siswa)).length,
+      is_remedial: isRemedial,
+      kktp_threshold: isRemedial ? kktpThreshold : undefined,
+      is_lulus_kktp: isLulusKktp,
       ...(showInstant
         ? {
             nilai_akhir: nilaiAkhir,
