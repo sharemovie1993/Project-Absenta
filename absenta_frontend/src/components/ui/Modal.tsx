@@ -26,7 +26,7 @@ export function ConfirmModal({
   confirmText = 'Konfirmasi',
   cancelText = 'Batal',
   variant = 'primary',
-  zIndex = 150
+  zIndex = 200
 }: ConfirmModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="sm" title={title} zIndex={zIndex}>

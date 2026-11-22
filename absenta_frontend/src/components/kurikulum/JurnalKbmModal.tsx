@@ -17,6 +17,7 @@ interface JurnalKbmModalProps {
   initialData?: any;
   onSuccess?: () => void;
   readOnly?: boolean;
+  zIndex?: number;
 }
 
 export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
@@ -26,7 +27,8 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
   sesi,
   initialData,
   onSuccess,
-  readOnly = false
+  readOnly = false,
+  zIndex = 160
 }) => {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
@@ -110,7 +112,7 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        zIndex={80}
+        zIndex={zIndex}
         size="xl"
         className="max-h-[92vh] max-w-2xl w-full flex flex-col rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xl overflow-hidden"
         title={

@@ -43,6 +43,7 @@ interface BahanAjarReaderModalProps {
   tingkat?: number;
   fase?: string;
   onOpenJurnal?: (data: { judul_materi: string; deskripsi: string }) => void;
+  zIndex?: number;
 }
 
 export type ProjectorTab = 'ALL' | 'PEMANTIK' | 'MATERI' | 'LKPD' | 'REFLEKSI';
@@ -56,7 +57,8 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
   kelasNama,
   tingkat,
   fase,
-  onOpenJurnal
+  onOpenJurnal,
+  zIndex = 150
 }) => {
   const [activePertemuanIdx, setActivePertemuanIdx] = useState<number>(0);
   const [isProjectorMode, setIsProjectorMode] = useState<boolean>(false);
@@ -262,7 +264,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
         }
         onClose();
       }}
-      zIndex={85}
+      zIndex={zIndex}
       size="full"
       className={cn(
         "h-[98vh] max-h-[98vh] flex flex-col rounded-3xl border shadow-2xl overflow-hidden transition-all duration-300",
