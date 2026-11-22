@@ -4,12 +4,12 @@ import {
   Clock,
   MapPin,
   KeyRound,
-  AlertTriangle,
   ArrowRight,
   X,
   Sparkles,
   BookOpen,
-  CheckCircle2,
+  FileText,
+  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CbtStudentExamItem } from '@/types/cbt.types';
@@ -33,10 +33,12 @@ export const SiswaExamDispatchModal: React.FC<SiswaExamDispatchModalProps> = ({
 }) => {
   if (!isOpen || !activeExams || activeExams.length === 0) return null;
 
-  const primaryExam = activeExams[0];
+  // Nama panggilan ramah siswa (first name)
+  const firstName = studentName
+    ? studentName.trim().split(' ')[0].toLowerCase().replace(/^\w/, (c) => c.toUpperCase())
+    : 'Siswa';
 
   const handleEnterExam = (exam: CbtStudentExamItem) => {
-    // Record dismiss so modal doesn't immediately reappear on navigation back
     try {
       sessionStorage.setItem(`cbt_student_dispatch_${exam.id}`, 'true');
     } catch (_) {}
@@ -56,52 +58,35 @@ export const SiswaExamDispatchModal: React.FC<SiswaExamDispatchModalProps> = ({
     onClose();
   };
 
-  const formatScheduleTime = (startStr?: string, endStr?: string) => {
-    if (!startStr) return '';
-    try {
-      const d1 = new Date(startStr);
-      const t1 = d1.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-      if (!endStr) return t1;
-      const d2 = new Date(endStr);
-      const t2 = d2.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-      return `${t1} - ${t2} WIB`;
-    } catch {
-      return '';
-    }
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Glow Accent Top Bar */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-rose-500 to-amber-500" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Soft Accent Line */}
+        <div className="h-1 w-full bg-gradient-to-r from-indigo-500 via-sky-400 to-emerald-400" />
 
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-start justify-between gap-3 bg-gradient-to-b from-indigo-50/50 dark:from-indigo-950/20 to-transparent">
-          <div className="flex items-start gap-3">
-            <div className="relative p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/25 shrink-0">
-              <Laptop size={22} className="animate-pulse" />
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500" />
-              </span>
+        {/* Header - Friendly & Calming */}
+        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900/50">
+              <Laptop size={22} />
             </div>
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                  🔴 UJIAN LIVE BERLANGSUNG
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Sesi Ujian Aktif
                 </span>
                 {activeExams.length > 1 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
-                    {activeExams.length} Sesi Terjadwal
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    {activeExams.length} Sesi
                   </span>
                 )}
               </div>
-              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-1">
-                Panggilan Sesi Ujian CBT
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-0.5">
+                Semangat Ujian, {firstName}! ✨
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {studentName ? `Halo ${studentName}, sesi` : 'Sesi'} ujian sekolah telah dibuka dan siap dikerjakan.
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Sesi ujianmu sudah dibuka dan siap untuk dikerjakan.
               </p>
             </div>
           </div>
@@ -117,112 +102,97 @@ export const SiswaExamDispatchModal: React.FC<SiswaExamDispatchModalProps> = ({
         </div>
 
         {/* Scrollable Body */}
-        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto custom-scrollbar">
-          {/* Greeting Card */}
-          <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 text-xs text-slate-700 dark:text-slate-300 space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-indigo-900 dark:text-indigo-200">
-              <Sparkles size={14} className="text-indigo-500" />
-              <span>Prioritas Asesmen Diaktifkan</span>
-            </div>
-            <p className="leading-relaxed text-slate-600 dark:text-slate-400">
-              Formulir onboarding profil siswa sementara dinonaktifkan agar Anda dapat langsung fokus mengikuti ujian CBT tepat waktu tanpa hambatan.
-            </p>
-          </div>
-
+        <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto custom-scrollbar">
           {/* Exam Cards */}
           <div className="space-y-3">
             {activeExams.map((exam, idx) => {
-              const isFirst = idx === 0;
               const isInProgress = exam.status_peserta === 'IN_PROGRESS';
-              const timeRange = formatScheduleTime(exam.tanggal_mulai, exam.tanggal_selesai);
-              const room = exam.ruang_ujian || exam.ruang_ujian_nama || 'Ruang CBT';
+              const isRemedial = Boolean(
+                exam.nama_sesi?.toUpperCase()?.includes('REMEDIAL') ||
+                exam.nama_sesi?.toUpperCase()?.includes('SUSULAN')
+              );
+              const room = exam.ruang_ujian || exam.ruang_ujian_nama || 'Ruang Kelas';
 
               return (
                 <div
                   key={exam.id}
-                  className={cn(
-                    'p-4 rounded-2xl border transition-all',
-                    isFirst
-                      ? 'bg-gradient-to-b from-white to-slate-50/60 dark:from-slate-850 dark:to-slate-900 border-indigo-300 dark:border-indigo-700/60 shadow-sm'
-                      : 'bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-800'
-                  )}
+                  className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all space-y-3"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                          {exam.nama_sesi || `Sesi #${idx + 1}`}
-                        </span>
-                        {isInProgress ? (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300">
-                            Sedang Berjalan
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
-                            Siap Dikerjakan
-                          </span>
-                        )}
-                        {exam.is_tokenless && (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300">
-                            Bebas Token
-                          </span>
-                        )}
-                      </div>
-
-                      <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-                        {exam.mapel || exam.judul_bank}
-                      </h4>
-                      {exam.judul_bank && exam.judul_bank !== exam.mapel && (
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                          {exam.judul_bank}
-                        </p>
+                  {/* Badge Tipe & Status */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span
+                      className={cn(
+                        'px-2.5 py-0.5 rounded-md text-[11px] font-semibold tracking-wide',
+                        isRemedial
+                          ? 'bg-amber-100/80 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/80'
+                          : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60'
                       )}
-                    </div>
+                    >
+                      {isRemedial ? '⏱️ Remedial & Susulan' : '📝 Asesmen Sumatif CBT'}
+                    </span>
 
-                    <div className="text-right shrink-0">
-                      <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                        {exam.durasi_menit} Menit
-                      </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                        {exam.total_soal} Butir Soal
-                      </div>
-                    </div>
+                    {isInProgress ? (
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300">
+                        Sedang Berjalan
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300">
+                        Siap Mulai
+                      </span>
+                    )}
                   </div>
 
-                  {/* Metadata Grid */}
-                  <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
-                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-                      <MapPin size={13} className="text-slate-400 shrink-0" />
-                      <span className="truncate">{room}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-                      <Clock size={13} className="text-slate-400 shrink-0" />
-                      <span className="truncate">{timeRange || `${exam.durasi_menit} Menit`}</span>
-                    </div>
+                  {/* Judul Mata Pelajaran */}
+                  <div>
+                    <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
+                      {exam.mapel || exam.judul_bank || exam.nama_sesi}
+                    </h4>
+                    {exam.judul_bank && exam.judul_bank !== exam.mapel && !isRemedial && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                        {exam.judul_bank}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Token Row (if required) */}
-                  {!exam.is_tokenless && (
-                    <div className="mt-2.5 p-2 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-                        <KeyRound size={13} className="text-amber-500" />
-                        <span>Token Masuk:</span>
-                      </div>
-                      {exam.token_ujian ? (
-                        <span className="font-mono font-black text-slate-900 dark:text-white tracking-widest text-xs px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                          {exam.token_ujian}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                          Tanyakan ke Pengawas Ruang
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  {/* Ringkasan Metadata: Pills Bersih & Jelas */}
+                  <div className="flex items-center gap-2 flex-wrap text-xs text-slate-600 dark:text-slate-300">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 font-medium">
+                      <Clock size={13} className="text-indigo-500 shrink-0" />
+                      <span>{exam.durasi_menit} Menit</span>
+                    </span>
 
-                  {/* Action Button for Card */}
-                  <div className="mt-3.5">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 font-medium">
+                      <FileText size={13} className="text-sky-500 shrink-0" />
+                      <span>{exam.total_soal} Butir Soal</span>
+                    </span>
+
+                    {exam.is_tokenless ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-medium">
+                        <KeyRound size={13} className="text-emerald-500 shrink-0" />
+                        <span>Bebas Token</span>
+                      </span>
+                    ) : exam.token_ujian ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white">
+                        <KeyRound size={13} className="text-amber-500 shrink-0" />
+                        <span>Token: {exam.token_ujian}</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-medium">
+                        <KeyRound size={13} className="text-amber-500 shrink-0" />
+                        <span>Token Pengawas</span>
+                      </span>
+                    )}
+
+                    {room && !room.includes('Ruang CBT') && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-medium">
+                        <MapPin size={13} className="shrink-0" />
+                        <span className="truncate max-w-[150px]">{room}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Tombol Aksi Utama */}
+                  <div className="pt-1">
                     <button
                       type="button"
                       onClick={() => handleEnterExam(exam)}
@@ -233,8 +203,8 @@ export const SiswaExamDispatchModal: React.FC<SiswaExamDispatchModalProps> = ({
                           : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20'
                       )}
                     >
-                      <span>{isInProgress ? '⚡ Lanjutkan Pengerjaan Ujian' : '🚀 Masuk ke Ruang Ujian CBT Sekarang'}</span>
-                      <ArrowRight size={15} />
+                      <span>{isInProgress ? '⚡ Lanjutkan Pengerjaan Ujian' : 'Mulai Kerjakan Ujian Sekarang'}</span>
+                      <ArrowRight size={16} />
                     </button>
                   </div>
                 </div>
@@ -242,26 +212,30 @@ export const SiswaExamDispatchModal: React.FC<SiswaExamDispatchModalProps> = ({
             })}
           </div>
 
-          {/* Forensic / Exam Readiness Notice */}
-          <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
-            <AlertTriangle size={15} className="shrink-0 mt-0.5 text-amber-600" />
-            <div className="space-y-0.5 leading-relaxed">
-              <strong className="font-black">Tata Tertib &amp; Rekam Forensik Layar:</strong>
-              <p>
-                Sistem secara otomatis mendeteksi dan mencatat perpindahan tab, screenshot, dan durasi pengerjaan tiap butir. Kerjakan secara mandiri dan jujur.
+          {/* Friendly Tips & Kejujuran (Calming & Encouraging) */}
+          <div className="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
+              <ShieldCheck size={16} />
+            </div>
+            <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed space-y-1">
+              <p className="font-semibold text-slate-800 dark:text-slate-200">
+                Kerjakan dengan tenang, percaya diri, dan jujur ya! 🌟
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Pastikan tetap berada di layar ujian dan hindari berpindah aplikasi agar sesimu berjalan lancar.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-3.5 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col-reverse sm:flex-row items-center justify-between gap-2.5">
+        {/* Footer - Sederhana & Tenang */}
+        <div className="p-3 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={handleDismiss}
-            className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800 transition-colors"
+            className="px-3.5 py-1.5 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
-            Nanti Saja (Tutup Pengarahan)
+            Nanti Saja
           </button>
 
           {onGoToCbtTab && (
@@ -271,10 +245,10 @@ export const SiswaExamDispatchModal: React.FC<SiswaExamDispatchModalProps> = ({
                 handleDismiss();
                 onGoToCbtTab();
               }}
-              className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 transition-colors flex items-center justify-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors flex items-center gap-1.5"
             >
-              <BookOpen size={14} />
-              <span>Buka Menu Tab Ujian CBT</span>
+              <BookOpen size={13} />
+              <span>Buka Menu CBT</span>
             </button>
           )}
         </div>
