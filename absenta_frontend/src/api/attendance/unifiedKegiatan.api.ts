@@ -42,6 +42,9 @@ export interface UnifiedGuardStatus {
   jadwal_waktu_mulai: string | null;
   jadwal_waktu_selesai: string | null;
   hari_aktif: string[];
+  jadwal_hari_spesifik?: string[];
+  siklus_aktif?: string;
+  siklus_pilar_label?: string;
   today_hari?: string;
   is_today_scheduled_day?: boolean;
   is_within_time_window?: boolean;

@@ -199,7 +199,10 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
   };
 
   const hariAktifLabel = useMemo(() => {
-    const list = guard?.hari_aktif || (guard as any)?.jadwal_hari || [];
+    const list =
+      guard?.is_today_scheduled_day && guard?.jadwal_hari_spesifik?.length
+        ? guard.jadwal_hari_spesifik
+        : guard?.hari_aktif || (guard as any)?.jadwal_hari || [];
     if (!list.length) return null;
     return list.map((h: string) => HARI_LABEL[h] || h).join(', ');
   }, [guard]);

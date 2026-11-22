@@ -29,29 +29,37 @@ export class UnifiedKegiatanService {
   }
 
   /**
-   * Helper: Dapatkan tanggal YYYY-MM-DD hari ini
+   * Helper: Dapatkan tanggal YYYY-MM-DD hari ini berbasis timezone Asia/Jakarta (WIB)
    */
-  public getTodayDateStr(): string {
-    const d = new Date();
-    return d.toISOString().split('T')[0];
+  public getTodayDateStr(timezone: string = 'Asia/Jakarta'): string {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return formatter.format(new Date());
   }
 
   /**
-   * Helper: Dapatkan enum Hari Prisma dari string tanggal (YYYY-MM-DD)
+   * Helper: Dapatkan enum Hari Prisma dari string tanggal (YYYY-MM-DD) berbasis timezone Asia/Jakarta (WIB)
    */
-  public getHariEnum(dateStr?: string): Hari {
-    const d = dateStr ? new Date(dateStr) : new Date();
-    const dayIndex = d.getDay();
-    const map: Record<number, Hari> = {
-      0: 'MINGGU',
-      1: 'SENIN',
-      2: 'SELASA',
-      3: 'RABU',
-      4: 'KAMIS',
-      5: 'JUMAT',
-      6: 'SABTU',
+  public getHariEnum(dateStr?: string, timezone: string = 'Asia/Jakarta'): Hari {
+    const d = dateStr ? new Date(`${dateStr.slice(0, 10)}T12:00:00+07:00`) : new Date();
+    const dayName = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'short',
+    }).format(d);
+    const map: Record<string, Hari> = {
+      Sun: 'MINGGU',
+      Mon: 'SENIN',
+      Tue: 'SELASA',
+      Wed: 'RABU',
+      Thu: 'KAMIS',
+      Fri: 'JUMAT',
+      Sat: 'SABTU',
     };
-    return map[dayIndex] || 'SENIN';
+    return map[dayName] || 'SENIN';
   }
 
   /**
