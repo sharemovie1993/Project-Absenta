@@ -39,6 +39,7 @@ import {
   ShieldCheck,
   Award,
   FileText,
+  BookOpen,
 } from 'lucide-react';
 import { cbtApi } from '@/api/cbt.api';
 import { cbtOfflineStorage, LocalAnswerRecord } from '@/utils/cbtOfflineStorage';
@@ -1290,95 +1291,35 @@ export default function CbtExamRoomPage() {
                 </div>
               </div>
 
-              {/* Nilai & Status Capaian (Context-Aware) */}
-              {hasScore ? (
-                <div className="p-5 md:p-6 rounded-2xl bg-gradient-to-br from-indigo-50/80 via-white to-emerald-50/50 dark:from-indigo-950/40 dark:via-slate-900 dark:to-emerald-950/30 border border-indigo-100 dark:border-indigo-900/60 shadow-sm space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-100 dark:border-indigo-900/40 pb-3">
-                    <div className="flex items-center gap-2">
-                      <Award className="text-indigo-600 dark:text-indigo-400" size={18} />
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                        {isSusulan ? 'Hasil Asesmen Susulan' : isRemedialSession ? 'Hasil Asesmen Remedial' : 'Nilai Akhir Ujian'}
-                      </span>
-                    </div>
-                    {isSusulan && (
-                      <span className={cn(
-                        'text-xs font-black px-2.5 py-1 rounded-full border',
-                        isTuntas
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-700'
-                          : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700'
-                      )}>
-                        {isTuntas ? '✨ TUNTAS KKTP (Susulan)' : '📚 BELUM TUNTAS KKTP'}
-                      </span>
-                    )}
-                    {isRemedialSession && (
-                      <span className={cn(
-                        'text-xs font-black px-2.5 py-1 rounded-full border',
-                        isTuntas
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-700'
-                          : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700'
-                      )}>
-                        {isTuntas ? '✨ TUNTAS KKTP' : '📚 BELUM TUNTAS KKTP'}
-                      </span>
-                    )}
+              {/* Status Penyerahan Lembar Jawaban (Sesuai SOP: Nilai Akhir Diolah Guru ke e-Rapor) */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/80 via-white to-emerald-50/50 dark:from-indigo-950/40 dark:via-slate-900 dark:to-emerald-950/30 border border-indigo-100 dark:border-indigo-900/60 shadow-xs space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-100 dark:border-indigo-900/40 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="text-emerald-600 dark:text-emerald-400" size={18} />
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                      Status Penyerahan Lembar Jawaban
+                    </span>
                   </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Skor Capaian</div>
-                      <div className="text-4xl md:text-5xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight">
-                        {finalResult.nilai_akhir}
-                      </div>
-                    </div>
-                    <div className="text-right space-y-1">
-                      <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Ambang KKTP: <strong className="text-slate-700 dark:text-slate-200">{kktpTarget}</strong></div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-end gap-3 pt-1">
-                        <span>Benar: <strong className="text-emerald-600 dark:text-emerald-400">{finalResult.jumlah_benar ?? '-'}</strong></span>
-                        <span>Salah: <strong className="text-rose-600 dark:text-rose-400">{finalResult.jumlah_salah ?? '-'}</strong></span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {isSusulan && (
-                    <div className={cn(
-                      'text-xs rounded-xl p-3 border leading-relaxed',
-                      isTuntas
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                        : 'bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                    )}>
-                      {isTuntas
-                        ? `Selamat! Anda telah menyelesaikan ujian susulan dengan predikat Tuntas. Hak nilai murni Anda (${finalResult.nilai_akhir}) telah tervalidasi penuh dan disinkronkan ke buku nilai e-Rapor.`
-                        : `Ujian susulan telah selesai diserahkan. Nilai murni Anda (${finalResult.nilai_akhir}) telah dicatat dan disinkronkan ke buku nilai e-Rapor.`}
-                    </div>
-                  )}
-
-                  {isRemedialSession && (
-                    <div className={cn(
-                      'text-xs rounded-xl p-3 border leading-relaxed',
-                      isTuntas
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                        : 'bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                    )}>
-                      {isTuntas
-                        ? 'Selamat! Nilai remedial Anda telah memenuhi kriteria ketuntasan tujuan pembelajaran (KKTP). Nilai telah otomatis disinkronkan ke buku nilai & e-Rapor.'
-                        : 'Nilai remedial Anda belum melampaui batas KKTP. Jangan berkecil hati, silakan berkonsultasi dengan Guru Pengampu untuk program pendampingan lanjutan.'}
-                    </div>
-                  )}
+                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-700 inline-flex items-center gap-1">
+                    <ShieldCheck size={12} />
+                    <span>SUKSES TERSIMPAN</span>
+                  </span>
                 </div>
-              ) : (
-                <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 flex items-start gap-3">
-                  <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 shrink-0">
-                    <ShieldCheck size={20} />
+
+                <div className="flex items-start gap-3 pt-0.5">
+                  <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5">
+                    <BookOpen size={18} />
                   </div>
-                  <div className="space-y-1">
-                    <h2 className="text-xs font-bold text-indigo-900 dark:text-indigo-200">
-                      Asesmen Resmi Terjadwal
-                    </h2>
-                    <p className="text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed">
-                      Seluruh lembar jawaban Anda telah terkunci dan terverifikasi. Sesuai kebijakan sekolah, nilai resmi akan dipublikasikan serentak oleh Panitia Asesmen melalui portal Rapor & Portofolio Siswa.
+                  <div className="space-y-1 text-left">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                      Pengolahan Nilai oleh Guru Pengampu
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                      Seluruh lembar jawaban Anda telah diterima lengkap dan tersimpan aman di server sekolah. Nilai ujian CBT merupakan nilai mentah yang akan diolah oleh Guru Pengampu bersama komponen penilaian lain (tugas harian, sikap, dan portofolio) pada <strong>Buku Nilai &amp; e-Rapor resmi sekolah</strong>.
                     </p>
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* Grid 4 Kolom: Ringkasan Aktivitas Pengerjaan */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-left">

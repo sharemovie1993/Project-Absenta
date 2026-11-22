@@ -710,7 +710,7 @@ export const SiswaCbtTab: React.FC = () => {
       )}
 
       {/* 1-Row Compact Stats Strip */}
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 p-1.5 sm:p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
         {/* Stat 1: Berlangsung */}
         <button
           type="button"
@@ -767,16 +767,6 @@ export const SiswaCbtTab: React.FC = () => {
             {finishedCount}
           </span>
         </button>
-
-        {/* Stat 4: Rata-Rata */}
-        <div className="p-1.5 sm:p-2 text-center rounded-xl flex flex-col items-center justify-center min-w-0 bg-slate-50/70 dark:bg-slate-800/40 border border-transparent">
-          <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 truncate w-full">
-            Rata-Rata
-          </span>
-          <span className="text-base sm:text-lg font-black text-amber-600 dark:text-amber-400 leading-tight">
-            {avgScore !== null ? formatScore(avgScore) : '-'}
-          </span>
-        </div>
       </div>
 
       {/* Daftar Ujian Card Container */}
@@ -1426,103 +1416,27 @@ export const SiswaCbtTab: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Baris 3 (Footer): Hasil Nilai atau Status Menunggu Rilis (Menyatu Ramping) */}
-                  {(isFinished || (hasRemedialChild && latestRemedialChild?.hasil != null)) && (
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col gap-2 text-xs">
-                      {hasRemedialChild && latestRemedialChild?.hasil ? (
-                        <div className="flex items-center justify-between w-full flex-wrap gap-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={cn('text-lg sm:text-xl font-black leading-none', predikat?.scoreClass)}>
-                              {formatScore(effectiveScore!)}
-                            </span>
-                            <span className={cn('px-2 py-0.5 rounded-md text-[10px] font-bold border', predikat?.badgeClass)}>
-                              {predikat?.label}
-                            </span>
-                            <span className={cn(
-                              'px-2 py-0.5 rounded-md text-[10px] font-black border',
-                              isSusulanChild
-                                ? 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950/80 dark:text-indigo-300'
-                                : isRemedialTuntas
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300'
-                                : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300'
-                            )}>
-                              {isSusulanChild
-                                ? '📋 Susulan (Nilai Murni)'
-                                : isRemedialTuntas
-                                ? '✨ TUNTAS KKTP (Remedial)'
-                                : '🔄 Perbaikan Remedial'}
-                            </span>
-                          </div>
+                  {/* Baris 3 (Footer): Status Selesai & Penyerahan Lembar Jawaban (Sesuai SOP: Nilai Mentah Disembunyikan) */}
+                  {(isFinished || isChildFinished) && (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between w-full flex-wrap gap-2 text-xs">
+                      <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-medium">
+                        <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                        <span className="text-[11px]">
+                          Jawaban tersimpan aman • Nilai resmi diolah guru &amp; tercantum di e-Rapor
+                        </span>
+                      </div>
 
-                          <div className="flex items-center gap-2 text-[11px] text-slate-500 font-semibold">
-                            <span className="text-emerald-600 dark:text-emerald-400">{latestRemedialChild.hasil.jumlah_benar} Benar</span>
-                            <span>•</span>
-                            <span className="text-rose-600 dark:text-rose-400">{latestRemedialChild.hasil.jumlah_salah} Salah</span>
-                            {accuracyPct !== null && (
-                              <>
-                                <span>•</span>
-                                <span className="text-slate-400">Akurasi {accuracyPct}%</span>
-                              </>
-                            )}
-                            {item.hasil ? (
-                              <span className="text-slate-400 dark:text-slate-500 font-normal">
-                                (Awal: {formatScore(item.hasil.nilai_akhir)})
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 dark:text-slate-500 font-normal">
-                                (Sesi Utama: Sakit/Izin)
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ) : item.hasil && predikat ? (
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={cn('text-lg sm:text-xl font-black leading-none', predikat.scoreClass)}>
-                              {formatScore(item.hasil.nilai_akhir)}
-                            </span>
-                            <span className={cn('px-2 py-0.5 rounded-md text-[10px] font-bold border', predikat.badgeClass)}>
-                              {predikat.label}
-                            </span>
-                            {item.is_susulan && (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-black border bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950/80 dark:text-indigo-300">
-                                📋 Susulan (Nilai Murni)
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2 text-[11px] text-slate-500 font-semibold">
-                            <span className="text-emerald-600 dark:text-emerald-400">{item.hasil.jumlah_benar} Benar</span>
-                            <span>•</span>
-                            <span className="text-rose-600 dark:text-rose-400">{item.hasil.jumlah_salah} Salah</span>
-                            {accuracyPct !== null && (
-                              <>
-                                <span>•</span>
-                                <span className="text-slate-400">Akurasi {accuracyPct}%</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between w-full">
-                          <span className="text-[11px] text-slate-400 dark:text-slate-500 italic flex items-center gap-1">
-                            <Clock size={11} />
-                            <span>Nilai menunggu rilis guru</span>
-                          </span>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedDetailItem(item);
-                            }}
-                            className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 cursor-pointer"
-                          >
-                            <span>Detail Sesi</span>
-                            <ChevronRight size={12} />
-                          </button>
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDetailItem(item);
+                        }}
+                        className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 cursor-pointer ml-auto"
+                      >
+                        <span>Detail Sesi</span>
+                        <ChevronRight size={12} />
+                      </button>
                     </div>
                   )}
 
@@ -1574,11 +1488,13 @@ export const SiswaCbtTab: React.FC = () => {
                               </div>
                             </div>
                             <div className="text-right">
-                              <span className="font-black text-slate-700 dark:text-slate-300 text-sm">
-                                {item.hasil ? formatScore(item.hasil.nilai_akhir) : '-'}
-                              </span>
-                              <span className="block text-[10px] text-slate-400 font-medium">
-                                {item.hasil ? 'Nilai Awal' : 'Tidak Hadir'}
+                              <span className={cn(
+                                "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border",
+                                item.status_peserta === 'FINISHED'
+                                  ? "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+                                  : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900"
+                              )}>
+                                {item.status_peserta === 'FINISHED' ? 'Tersimpan' : 'Tidak Hadir'}
                               </span>
                             </div>
                           </div>
@@ -1619,11 +1535,9 @@ export const SiswaCbtTab: React.FC = () => {
                                   </div>
                                 </div>
                                 <div className="text-right">
-                                  <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">
-                                    {childScore !== null ? formatScore(childScore) : '-'}
-                                  </span>
-                                  <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                                    {isChildSusulan ? 'Nilai Murni' : 'Nilai Akhir Diakui'}
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900">
+                                    <CheckCircle2 size={10} />
+                                    <span>Tersimpan</span>
                                   </span>
                                 </div>
                               </div>
