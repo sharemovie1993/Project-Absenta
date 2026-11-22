@@ -262,7 +262,9 @@ export const recordViolationSchema = z.object({
   tipe_pelanggaran: z.enum(['TAB_SWITCH', 'FULLSCREEN_EXIT', 'DEVTOOLS_OPEN', 'BLUR_WINDOW', 'SUSPICIOUS_KEY']),
   detail: z.string().optional(),
   waktu: z.string().datetime().default(() => new Date().toISOString()),
-});
+  soal_nomor: z.number().int().optional(),
+  soal_id: z.string().optional(),
+}).passthrough();
 
 export const submitExamFinalSchema = z.object({
   jawaban_final: z.array(syncAnswerItemSchema),

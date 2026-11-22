@@ -598,11 +598,20 @@ export default function CbtExamRoomPage() {
   const triggerViolation = async (tipe: string, detail: string) => {
     const nextCount = violationsCount + 1;
     setViolationsCount(nextCount);
-    setWarningMessage(`PERINGATAN: ${detail}! (Pelanggaran ${nextCount} dari ${maxViolations})`);
+    const nomorSoalAktif = currentIdx + 1;
+    setWarningMessage(
+      `PERINGATAN: ${detail}! (Pelanggaran ${nextCount} dari ${maxViolations} - Terjadi pada Soal No. ${nomorSoalAktif})`
+    );
     setIsWarningModalOpen(true);
 
     try {
-      await cbtApi.recordViolation(jadwalId, { tipe_pelanggaran: tipe, detail });
+      const currentSoal = soalList[currentIdx];
+      await cbtApi.recordViolation(jadwalId, {
+        tipe_pelanggaran: tipe,
+        detail: `${detail} (Saat membuka Soal No. ${nomorSoalAktif})`,
+        soal_nomor: nomorSoalAktif,
+        soal_id: currentSoal?.id,
+      });
     } catch {}
 
     if (nextCount >= maxViolations) {

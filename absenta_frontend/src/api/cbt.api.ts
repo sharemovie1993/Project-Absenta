@@ -358,6 +358,8 @@ export const cbtApi = {
       tipe_pelanggaran: string;
       detail?: string;
       waktu?: string;
+      soal_nomor?: number;
+      soal_id?: string;
     }
   ) => {
     const res = await api.post(`/cbt/engine/jadwal/${jadwalId}/violation`, payload);
