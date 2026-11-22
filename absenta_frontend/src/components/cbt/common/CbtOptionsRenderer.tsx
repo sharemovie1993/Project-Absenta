@@ -168,10 +168,14 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
 
   return (
     <div className={cn(gridClass, className)}>
-      {safeOptions.map((opt) => {
+      {safeOptions.map((opt, index) => {
+        // Pada mode ujian siswa: label visual selalu berurutan A, B, C, D, E
+        // sementara opt.kode asli dikirim sebagai jawaban (misal: 'B') agar sinkron dengan kunci jawaban backend
+        const displayLabel = isExam ? String.fromCharCode(65 + index) : opt.kode;
         const isCorrectKey = kunciJawaban === opt.kode;
         const isSelected = selectedAnswer === opt.kode;
-        const badgeColorClass = getOptionBadgeColor(opt.kode, isCorrectKey, isSelected, isExam);
+        const badgeColorClass = getOptionBadgeColor(displayLabel, isCorrectKey, isSelected, isExam);
+        const cardStyle = getOptionCardStyle(displayLabel, isSelected);
 
         // ── MODE 1: UJIAN SISWA (EXAM ROOM - THEME ADAPTIVE: LIGHT & DARK) ──
         if (isExam) {
@@ -184,7 +188,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                 disabled={readOnly}
                 className={cn(
                   'p-2 sm:p-2.5 rounded-xl border flex items-center justify-center gap-1.5 transition-all duration-150 select-none text-center min-w-0 cursor-pointer active:scale-95 shadow-2xs',
-                  getOptionCardStyle(opt.kode, isSelected)
+                  cardStyle
                 )}
               >
                 <div
@@ -193,7 +197,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                     badgeColorClass
                   )}
                 >
-                  {opt.kode}
+                  {displayLabel}
                 </div>
                 <span className="text-xs sm:text-sm font-bold break-words whitespace-normal leading-tight">
                   {opt.teks || '-'}
@@ -210,7 +214,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                 className={cn(
                   'p-2.5 sm:p-3.5 rounded-xl border flex items-start gap-2.5 transition-all duration-150 select-none min-w-0 shadow-2xs',
                   !readOnly && 'cursor-pointer active:scale-[0.99]',
-                  getOptionCardStyle(opt.kode, isSelected)
+                  cardStyle
                 )}
               >
                 <div
@@ -219,7 +223,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                     badgeColorClass
                   )}
                 >
-                  {opt.kode}
+                  {displayLabel}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 leading-snug break-words whitespace-normal">
@@ -238,7 +242,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
               className={cn(
                 'p-3 sm:p-4 rounded-xl border flex items-start gap-3 transition-all duration-150 select-none min-w-0 shadow-2xs',
                 !readOnly && 'cursor-pointer active:scale-[0.99]',
-                getOptionCardStyle(opt.kode, isSelected)
+                cardStyle
               )}
             >
               <div
@@ -247,7 +251,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                   badgeColorClass
                 )}
               >
-                {opt.kode}
+                {displayLabel}
               </div>
               <div className="flex-1 min-w-0 space-y-2 pt-0.5">
                 {(opt.teks?.trim() || !opt.gambar_url) && (
@@ -258,7 +262,7 @@ export const CbtOptionsRenderer: React.FC<CbtOptionsRendererProps> = React.memo(
                 {opt.gambar_url && (
                   <img
                     src={resolveProfilePhotoUrl(opt.gambar_url)}
-                    alt={`Opsi ${opt.kode}`}
+                    alt={`Opsi ${displayLabel}`}
                     decoding="async"
                     className="max-h-36 object-contain rounded-lg border border-slate-200 dark:border-slate-700 bg-white p-1"
                   />

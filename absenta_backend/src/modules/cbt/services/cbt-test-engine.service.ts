@@ -4,6 +4,53 @@ import { Prisma } from '@prisma/client';
 import { CbtJadwalService } from './cbt-jadwal.service';
 
 export class CbtTestEngineService {
+  /**
+   * MurmurHash3 / Cyrb53 53-bit fast hash algorithm
+   * Menghasilkan integer 53-bit unik dari string input seed.
+   */
+  private static cyrb53(str: string, seed = 0): number {
+    let h1 = 0xdeadbeef ^ seed,
+      h2 = 0x41c6ce57 ^ seed;
+    for (let i = 0, ch: number; i < str.length; i++) {
+      ch = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+    h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+    h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+  }
+
+  /**
+   * Mulberry32 fast deterministic PRNG generator
+   */
+  private static mulberry32(a: number): () => number {
+    return function () {
+      let t = (a += 0x6d2b79f5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /**
+   * Fisher-Yates Shuffle deterministik berbasis seed (pure, non-mutating)
+   * Menjamin konsistensi urutan antar-reload untuk siswa yang sama dan teracak unik antar-siswa.
+   */
+  private static seededShuffle<T>(array: T[], seedStr: string): T[] {
+    if (!array || array.length <= 1) return array ? [...array] : [];
+    const seed = CbtTestEngineService.cyrb53(seedStr);
+    const rand = CbtTestEngineService.mulberry32(seed);
+    const result = [...array];
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
+  }
+
   // In-memory cache untuk master data (Denah, Kelas, GuruMapel) guna mengeliminasi 6.000+ query DB saat 2.000 siswa polling
   private static denahCache = new Map<string, { data: any[]; exp: number }>();
   private static classesCache = new Map<string, { data: any[]; exp: number }>();
@@ -1045,6 +1092,40 @@ export class CbtTestEngineService {
       jawabanSaved = peserta.jawaban_json as any[];
     }
 
+    // ── SHUFFLE ENGINE BERSTANDAR ANBK / CAT BKN (DETERMINISTIK PER SISWA) ──
+    // Pengacakan butir soal dan opsi jawaban bersifat deterministik berdasarkan kombinasi siswaId + jadwalId / soalId.
+    // Keunggulan:
+    // 1. Setiap siswa di lab komputer memiliki urutan soal & posisi opsi yang unik (anti-contek).
+    // 2. Jika siswa reload (F5) / reconnect, urutan soal & opsi dijamin 100% konsisten sama persis.
+    // 3. Scoring kunci jawaban tetap 100% valid karena kode opsi asli ('A','B',...) tetap terjaga.
+    const sec = (jadwal.setting_keamanan as any) || {};
+    const shouldShuffleQuestions = sec.shuffle_questions !== false;
+    const shouldShuffleOptions = sec.shuffle_options !== false;
+
+    let studentQuestions: any[] = bundleData.soal ? [...bundleData.soal] : [];
+
+    if (shouldShuffleQuestions && studentQuestions.length > 1) {
+      studentQuestions = CbtTestEngineService.seededShuffle(
+        studentQuestions,
+        `${siswaId}:${jadwalId}:questions`
+      );
+    }
+
+    if (shouldShuffleOptions) {
+      studentQuestions = studentQuestions.map((s: any) => {
+        if (Array.isArray(s.opsi_jawaban_json) && s.opsi_jawaban_json.length > 1) {
+          return {
+            ...s,
+            opsi_jawaban_json: CbtTestEngineService.seededShuffle(
+              s.opsi_jawaban_json,
+              `${siswaId}:${s.id}:options`
+            ),
+          };
+        }
+        return s;
+      });
+    }
+
     return {
       peserta_id: peserta.id,
       jadwal_id: jadwal.id,
@@ -1053,7 +1134,7 @@ export class CbtTestEngineService {
       sisa_waktu_detik: peserta.sisa_waktu_detik,
       waktu_mulai: peserta.waktu_mulai,
       setting_keamanan: jadwal.setting_keamanan,
-      soal: bundleData.soal,
+      soal: studentQuestions,
       jawaban_tersimpan: jawabanSaved,
     };
   }

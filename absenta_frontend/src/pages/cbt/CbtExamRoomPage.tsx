@@ -1498,7 +1498,15 @@ export default function CbtExamRoomPage() {
                       <span>{idx + 1}</span>
                       {hasAnswer && !isRagu && (
                         <span className="absolute bottom-1 right-1.5 text-[8px] font-mono text-indigo-200">
-                          {ans.jawaban}
+                          {(() => {
+                            if (Array.isArray(soal.opsi_jawaban_json) && ans?.jawaban) {
+                              const optIdx = soal.opsi_jawaban_json.findIndex((o: any) => o.kode === ans.jawaban);
+                              if (optIdx !== -1) {
+                                return String.fromCharCode(65 + optIdx);
+                              }
+                            }
+                            return ans.jawaban;
+                          })()}
                         </span>
                       )}
                     </button>
@@ -1654,7 +1662,15 @@ export default function CbtExamRoomPage() {
                     <span>{idx + 1}</span>
                     {hasAnswer && !isRagu && (
                       <span className="absolute bottom-1 right-1.5 text-[8px] font-mono text-indigo-200">
-                        {ans.jawaban}
+                        {(() => {
+                          if (Array.isArray(soal.opsi_jawaban_json) && ans?.jawaban) {
+                            const optIdx = soal.opsi_jawaban_json.findIndex((o: any) => o.kode === ans.jawaban);
+                            if (optIdx !== -1) {
+                              return String.fromCharCode(65 + optIdx);
+                            }
+                          }
+                          return ans.jawaban;
+                        })()}
                       </span>
                     )}
                   </button>
