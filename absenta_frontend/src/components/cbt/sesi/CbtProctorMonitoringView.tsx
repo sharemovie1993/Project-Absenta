@@ -1176,7 +1176,8 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             </button>
           )}
 
-          {canControlSession && activeJadwal?.status === 'ACTIVE' && (
+          {/* 1. Kontrol Siklus Sesi (Jeda / Selesaikan Sesi Global - HANYA PANITIA CBT RESMI) */}
+          {isPanitia && activeJadwal?.status === 'ACTIVE' && (
             <>
               <button
                 type="button"

@@ -479,9 +479,10 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           const canOpenMonitor = isPrivilegedPanitia || isAssignedProctor || isSubjectTeacherOwner || isSessionUsed;
 
           // KONTROL OPERASIONAL SESI (JEDA, SELESAIKAN, AKTIFKAN, REGENERATE TOKEN):
-          // HANYA Panitia CBT atau Pengawas Ruang/Proktor yang sah diploting di sesi ini!
-          // Guru Mapel biasa murni Spectator, DILARANG KERAS memegang kendali operasional ini demi keamanan pelaksanaan ujian!
-          const canControlSession = !readOnly && (isPrivilegedPanitia || isAssignedProctor);
+          // HANYA Panitia CBT / Admin resmi di tingkat manajemen sekolah.
+          // Di tab Sesi Ujian Kelas Binaan (kacamata Guru), tombol ini MUTLAK DITIADAKAN
+          // bahkan jika guru tersebut kebetulan adalah pengawas ruang pada mapel tersebut.
+          const canControlSession = !readOnly && isPrivilegedPanitia && !guruId;
 
           // Transfer Nilai ke Rapor: Guru Mapel pemilik Bank Soal atau Panitia, ketika sesi aktif/selesai & ada peserta
           const canTransferRapor = !readOnly && (isPrivilegedPanitia || isSubjectTeacherOwner) && isSessionUsed;
