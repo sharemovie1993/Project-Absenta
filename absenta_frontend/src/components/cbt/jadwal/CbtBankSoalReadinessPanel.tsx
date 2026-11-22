@@ -916,6 +916,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
           }}
           onNudgeWhatsApp={handleNudgeForMatrixCell}
           tenantId={tenantId}
+          eventName={eventName}
         />
       )}
 

@@ -55,6 +55,7 @@ const RABCalculatorPage = lazy(() => import('./pages/billing/RABCalculatorPage')
 const SIPLaHAuditVerifyPage = lazy(() => import('./pages/public/SIPLaHAuditVerifyPage'));
 const PublicPortalPage = lazy(() => import('./pages/public/portal/PublicPortalPage'));
 const PublicArticleDetailPage = lazy(() => import('./pages/public/portal/PublicArticleDetailPage').then(m => ({ default: m.PublicArticleDetailPage })));
+const CbtPublicMatrixPage = lazy(() => import('./pages/public/CbtPublicMatrixPage'));
 const AttendanceOpsPage = lazy(() => import('./pages/attendance/ops/AttendanceOpsPage'));
 const MonitoringKbmPage = lazy(() => import('./pages/attendance/monitoring/MonitoringKbmPage'));
 // Removed GerbangPage import
@@ -558,6 +559,12 @@ function App() {
                 <Route path="/p" element={<PublicPortalPage />} />
                 <Route path="/p/:tenantSlug" element={<PublicPortalPage />} />
                 <Route path="/p/:tenantSlug/berita/:articleSlug" element={<PublicArticleDetailPage />} />
+
+                {/* Public CBT Matrix Kesiapan Bank Soal (Shareable to WhatsApp) */}
+                <Route path="/cbt/public-matrix" element={<CbtPublicMatrixPage />} />
+                <Route path="/cbt/public-matrix/:tenantSlug" element={<CbtPublicMatrixPage />} />
+                <Route path="/cbt/matriks-publik" element={<CbtPublicMatrixPage />} />
+                <Route path="/cbt/matriks-publik/:tenantSlug" element={<CbtPublicMatrixPage />} />
                 
                 {/* Error Routes */}
                 <Route path="/403" element={<ForbiddenPage />} />

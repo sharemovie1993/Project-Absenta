@@ -13,6 +13,9 @@ import {
   User,
   Clock,
   ShieldAlert,
+  Share2,
+  Copy,
+  Check,
 } from 'lucide-react';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import type { ClassSubjectMatrixResult, MatrixCellData } from './cbtClassSubjectMatrixHelper';
@@ -21,6 +24,7 @@ import { getNudgeHistory, formatNudgeMinutesAgo } from './cbtMgmpHelper';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 interface CbtClassSubjectMatrixTableProps {
   matrixResult: ClassSubjectMatrixResult;
@@ -28,6 +32,8 @@ interface CbtClassSubjectMatrixTableProps {
   onPeriksaButir?: (bank: CbtBankSoal) => void;
   onNudgeWhatsApp?: (cell: MatrixCellData) => void;
   tenantId?: string;
+  eventName?: string;
+  schoolName?: string;
 }
 
 export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProps> = ({
@@ -36,12 +42,16 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
   onPeriksaButir,
   onNudgeWhatsApp,
   tenantId = 'default',
+  eventName,
+  schoolName,
 }) => {
   const { classes, subjects, cellMap, totalCellsCovered, totalCellsRequired, overallPercentage } = matrixResult;
 
   // View mode: 'fit' (Muat 20 kelas dalam 1 layar tanpa horizontal scroll) atau 'detailed' (Lebar + scroll horizontal)
   const [viewMode, setViewMode] = useState<'fit' | 'detailed'>('fit');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Modal info sel yang belum ada soal & aksi Colek WA
   const [selectedMissingCell, setSelectedMissingCell] = useState<MatrixCellData | null>(null);
@@ -174,6 +184,17 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
             title={isFullscreen ? 'Keluar dari Layar Penuh (Esc)' : 'Tampilan Layar Penuh (Fullscreen)'}
           >
             {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+          </button>
+
+          {/* Share to WhatsApp Button */}
+          <button
+            type="button"
+            onClick={() => setIsShareModalOpen(true)}
+            className="px-2.5 py-1.2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
+            title="Bagikan Tautan Matriks ke Grup WhatsApp"
+          >
+            <MessageSquare size={13} />
+            <span className="hidden sm:inline">Bagikan ke WA</span>
           </button>
 
           {/* Legend */}
@@ -720,6 +741,90 @@ export const CbtClassSubjectMatrixTable: React.FC<CbtClassSubjectMatrixTableProp
               )}
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* ── Modal Bagikan Matriks ke WhatsApp ── */}
+      {isShareModalOpen && (
+        <Modal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          title="Bagikan Tautan Matriks ke WhatsApp"
+          size="md"
+        >
+          {(() => {
+            const currentTingkat = classes[0]?.tingkat || 10;
+            const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+            const publicLink = `${currentOrigin}/cbt/public-matrix?tingkat=${currentTingkat}`;
+            const targetEvent = eventName || 'Asesmen CBT';
+            const targetSchool = schoolName || 'Sekolah';
+            const tingkatRomawi = formatTingkatRomawi(currentTingkat);
+
+            const waText = `📢 *MATRIKS KESIAPAN BANK SOAL CBT*\n🏛️ *${targetSchool}*\n📝 *${targetEvent}*\n\n📊 *Progres Tingkat ${tingkatRomawi} (Kelas ${currentTingkat}):*\n- Terisi: *${totalCellsCovered}* dari *${totalCellsRequired}* slot (${overallPercentage}%)\n- Rombel: *${classes.length} Kelas*\n- Mata Pelajaran: *${subjects.length} Mapel*\n\nBapak/Ibu Guru dapat memeriksa status kesiapan butir soal dan kelengkapan mapel rombel masing-masing melalui tautan resmi Meja Panitia:\n👉 ${publicLink}\n\n_Mohon kerja samanya untuk melengkapi butir soal sebelum batas waktu penjadwalan._\n— *Panitia Pelaksana CBT*`;
+
+            const handleCopy = () => {
+              navigator.clipboard.writeText(publicLink);
+              setCopiedLink(true);
+              toast.success('Tautan berhasil disalin ke clipboard!');
+              setTimeout(() => setCopiedLink(false), 2000);
+            };
+
+            const handleOpenWa = () => {
+              const url = `https://wa.me/?text=${encodeURIComponent(waText)}`;
+              window.open(url, '_blank');
+            };
+
+            return (
+              <div className="space-y-4 text-xs">
+                <p className="text-slate-600 dark:text-slate-400">
+                  Tautan ini dapat diakses secara publik oleh seluruh Dewan Guru tanpa perlu login untuk memantau kelengkapan soal:
+                </p>
+
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                  <input
+                    type="text"
+                    readOnly
+                    value={publicLink}
+                    className="flex-1 bg-transparent border-none text-slate-700 dark:text-slate-300 font-mono text-[11px] focus:outline-none select-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-bold text-[11px] flex items-center gap-1 transition-all shrink-0 cursor-pointer"
+                  >
+                    {copiedLink ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                    <span>{copiedLink ? 'Tersalin' : 'Salin'}</span>
+                  </button>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-[10.5px] leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap select-all max-h-48 overflow-y-auto">
+                  {waText}
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsShareModalOpen(false)}
+                    className="text-xs h-8 px-3 font-medium"
+                  >
+                    Tutup
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={handleOpenWa}
+                    className="text-xs h-8 px-3.5 font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <MessageSquare size={13} />
+                    <span>Kirim ke Grup WhatsApp</span>
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </Modal>
       )}
     </div>

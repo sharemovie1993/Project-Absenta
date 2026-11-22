@@ -149,6 +149,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
         const { publicRapatRoutes } = await import('../modules/academic/rapat/routes/rapat.routes');
         await fastify.register(publicRapatRoutes, { prefix: '/public/rapat' });
 
+        // Public CBT Matrix Kesiapan Bank Soal (Untuk disebarkan ke grup WhatsApp tanpa login)
+        const { publicCbtRoutes } = await import('../modules/cbt/routes/cbt-public.routes');
+        await fastify.register(publicCbtRoutes, { prefix: '/public/cbt' });
+
         // Public Kalender iCal Export (Sync for Google/Apple Calendar)
         fastify.get('/kurikulum/kalender/export', async (request: any, reply: any) => {
           const { KalenderAkademikController } = await import('../modules/kurikulum/controllers/kalender-akademik.controller');

@@ -432,4 +432,35 @@ export const cbtApi = {
     });
     return (res.data?.data || {}) as Record<string, { sent_at: string; sent_by: string }>;
   },
+
+  // ==========================================
+  // 7. MATRIKS KESIAPAN BANK SOAL PUBLIK (WA SHAREABLE)
+  // ==========================================
+  getPublicMatrix: async (tenantSlug?: string) => {
+    const url = tenantSlug ? `/public/cbt/${tenantSlug}/matriks-soal` : '/public/cbt/matriks-soal';
+    const res = await api.get(url);
+    return res.data?.data as {
+      tenant: {
+        id: string;
+        nama_sekolah: string;
+        logo_url: string | null;
+        subdomain: string | null;
+      };
+      activeEvent: CbtEventItem | null;
+      allEvents: CbtEventItem[];
+      activeTp: { id: string; tahun: string } | null;
+      rawGuruMapel: any[];
+      bankList: CbtBankSoal[];
+      nudgeHistory: Record<string, { sent_at: string; sent_by: string }>;
+    };
+  },
+
+  recordPublicNudge: async (targetKey: string, senderName?: string, tenantSlug?: string) => {
+    const url = tenantSlug ? `/public/cbt/${tenantSlug}/nudge` : '/public/cbt/nudge';
+    const res = await api.post(url, {
+      target_key: targetKey,
+      sender_name: senderName,
+    });
+    return (res.data?.data || {}) as Record<string, { sent_at: string; sent_by: string }>;
+  },
 };
