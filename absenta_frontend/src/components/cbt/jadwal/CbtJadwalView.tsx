@@ -26,8 +26,10 @@ import {
   Lock,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   CornerDownRight,
   Sparkles,
+  Users,
 } from 'lucide-react';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -1010,20 +1012,16 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         <MobileAcademicList
           title="Jadwal Ujian CBT"
           data={displayData}
-          isLoading={isLoading}
+          loading={isLoading}
           totalItems={pagination?.totalItems || 0}
           emptyMessage="Belum ada jadwal ujian dibuat"
-          titleKey="nama_sesi"
-          badgeKey="status"
-          subtitleKey="display_mapel"
-          metaKey="token_ujian"
           renderCard={(item: any) => {
             if (item._isChildRow) {
               return (
                 <div
                   key={item.id}
                   onClick={() => handleOpenMonitor(item.id)}
-                  className="ml-4 p-3.5 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/70 border-l-4 border-l-purple-500 shadow-2xs space-y-2 cursor-pointer transition-all active:scale-[0.99]"
+                  className="ml-3 sm:ml-4 p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/70 border-l-4 border-l-purple-500 shadow-2xs space-y-2 cursor-pointer transition-all active:scale-[0.99]"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -1063,7 +1061,237 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                 </div>
               );
             }
-            return undefined;
+
+            // ── REGULAR PARENT EXAM SESSION CARD (MOBILE) ──
+            const pesertaCount = item._count?.Peserta || 0;
+            const sec = (item.setting_keamanan as any) || {};
+            const p1Id = sec.pengawas_1_id || sec.pengawas_1_guru_id;
+            const p2Id = sec.pengawas_2_id || sec.pengawas_2_guru_id;
+            const proktorId = sec.proktor_id || sec.pengawas_guru_id;
+
+            const isAssignedProctor = Boolean(
+              (currentGuruId && (p1Id === currentGuruId || p2Id === currentGuruId || proktorId === currentGuruId)) ||
+              (currentUserId && (p1Id === currentUserId || p2Id === currentUserId || proktorId === currentUserId))
+            );
+
+            const isSubjectTeacherOwner = Boolean(
+              currentGuruId &&
+              (item.BankSoal?.guru_id === currentGuruId || sec.created_by_guru_id === currentGuruId)
+            );
+
+            const isSessionUsed = item.status !== 'DRAFT' || pesertaCount > 0;
+            const canOpenMonitor = isPrivilegedPanitia || isAssignedProctor || isSubjectTeacherOwner || isSessionUsed;
+            const canControlSession = !readOnly && isPrivilegedPanitia && !guruId;
+            const canTransferRapor = !readOnly && (isPrivilegedPanitia || isSubjectTeacherOwner) && isSessionUsed;
+            const canPublishRemedial =
+              !readOnly &&
+              !item._isChildRow &&
+              !(item.setting_keamanan as any)?.is_remedial &&
+              (isPrivilegedPanitia || isSubjectTeacherOwner || Boolean(guruId)) &&
+              (item.status === 'ACTIVE' || item.status === 'COMPLETED') &&
+              pesertaCount > 0;
+
+            const tgl = new Date(item.tanggal_mulai);
+            const tz = getTimezone();
+            const tzLabel = getTimezoneLabel(tz);
+            const jamMulai = formatLocalTimeFromISO(item.tanggal_mulai);
+            const jamSelesai = formatLocalTimeFromISO(item.tanggal_selesai);
+            const mapelLabel =
+              item.BankSoal?.MataPelajaran?.nama_mapel ||
+              item.display_mapel ||
+              item.BankSoal?.display_mapel ||
+              item.BankSoal?.Mapel?.nama_mapel ||
+              '-';
+
+            return (
+              <div
+                key={item.id}
+                className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3 transition-all"
+              >
+                {/* Header: Mapel & Status Badge */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <span className="font-bold text-xs text-indigo-600 dark:text-indigo-400 line-clamp-1">
+                      {mapelLabel}
+                    </span>
+                    <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 line-clamp-2 mt-0.5">
+                      {item.nama_sesi}
+                    </h4>
+                    {item.deskripsi_ruang && (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                        {item.deskripsi_ruang}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Status Badge */}
+                  <div className="shrink-0">
+                    {item.status === 'ACTIVE' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                        <span>AKTIF</span>
+                      </span>
+                    ) : item.status === 'COMPLETED' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100/90 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 shadow-2xs">
+                        <CheckCircle size={10} className="stroke-[2.5] text-emerald-600 dark:text-emerald-400" />
+                        <span>SELESAI</span>
+                      </span>
+                    ) : item.status === 'PAUSED' ? (
+                      <Badge variant="warning" className="text-[10px] font-bold">
+                        DIJEDA
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] font-bold">
+                        DRAFT
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Meta Grid: Token, Peserta, Tanggal */}
+                <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 text-xs">
+                  {/* Token Masuk */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-slate-400">Token:</span>
+                    <div className="inline-flex items-center gap-1">
+                      <span className="font-mono text-xs font-black tracking-wider text-indigo-700 dark:text-indigo-300">
+                        {item.token_ujian || '-'}
+                      </span>
+                      {item.token_ujian && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyToken(item.token_ujian);
+                          }}
+                          className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+                          title="Salin Token"
+                        >
+                          {copiedToken === item.token_ujian ? (
+                            <Check size={12} className="text-emerald-500" />
+                          ) : (
+                            <Copy size={12} />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Peserta */}
+                  <div className="flex items-center justify-end gap-1.5 text-slate-600 dark:text-slate-300">
+                    <Users size={12} className="text-slate-400 shrink-0" />
+                    <span className="font-bold">{pesertaCount} Siswa</span>
+                  </div>
+
+                  {/* Jadwal & Durasi */}
+                  <div className="col-span-2 flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
+                    <Clock size={11} className="shrink-0 text-slate-400" />
+                    <span>
+                      {tgl.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: tz })}
+                      {jamMulai && jamSelesai ? ` • ${jamMulai}–${jamSelesai} ${tzLabel}` : ''} • {item.durasi_menit} mnt
+                    </span>
+                  </div>
+                </div>
+
+                {/* Sub-sesi Remedial Expander (jika sesi ini memiliki anak remedial) */}
+                {item._isParent && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleExpandParent(item.id);
+                    }}
+                    className="w-full flex items-center justify-between p-2 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/70 dark:border-purple-800/60 text-xs font-bold text-purple-700 dark:text-purple-300 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles size={12} />
+                      <span>{item._childCount} Anak Sesi Remedial Terkait</span>
+                    </div>
+                    {item._isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </button>
+                )}
+
+                {/* Action Buttons Footer */}
+                <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-100 dark:border-slate-800 flex-wrap">
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedJadwal(item);
+                        setIsPrintModalOpen(true);
+                      }}
+                      className="text-xs h-7 px-2 text-slate-600 hover:text-slate-900"
+                      title="Cetak Berita Acara"
+                    >
+                      <Printer size={13} className="mr-1" />
+                      <span>Cetak</span>
+                    </Button>
+
+                    {canControlSession && item.status === 'ACTIVE' && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleComplete(item)}
+                        className="text-xs h-7 px-2 text-slate-600 hover:text-slate-900"
+                      >
+                        <CheckCircle size={13} className="mr-1" />
+                        <span>Selesai</span>
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    {canTransferRapor && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedJadwal(item);
+                          setIsTransferModalOpen(true);
+                        }}
+                        className="text-xs h-7 px-2 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 font-bold bg-indigo-50/60 hover:bg-indigo-100"
+                      >
+                        <ArrowRightLeft size={12} className="mr-1" />
+                        <span>Transfer Rapor</span>
+                      </Button>
+                    )}
+
+                    {canPublishRemedial && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setRemedialJadwal(item);
+                          setIsRemedialModalOpen(true);
+                        }}
+                        className="text-xs h-7 px-2 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700 font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40"
+                      >
+                        <Sparkles size={12} className="mr-1 text-amber-600 dark:text-amber-400" />
+                        <span>Remedial</span>
+                      </Button>
+                    )}
+
+                    {canOpenMonitor && (
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleOpenMonitor(item.id)}
+                        className="text-xs h-7 px-2.5 font-bold"
+                      >
+                        <Activity size={12} className="mr-1" />
+                        <span>Monitor</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
           }}
           pagination={{
             currentPage: page,
