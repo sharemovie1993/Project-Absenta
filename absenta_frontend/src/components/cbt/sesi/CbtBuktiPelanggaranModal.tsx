@@ -25,6 +25,7 @@ import {
 import type { CbtJadwalUjian, CbtPesertaUjian } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { formatLocalTimeFromISO, getTimezone, getTimezoneLabel } from '@/utils/attendance/time';
+import { cn } from '@/lib/utils';
 
 export interface CbtBuktiPelanggaranModalProps {
   isOpen: boolean;
@@ -41,7 +42,8 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
 }) => {
   const sheetContainerRef = useRef<HTMLDivElement>(null);
 
-  const [activeTab, setActiveTab] = useState<'preview' | 'print'>('preview');
+  // Standar Universal Document: Default selalu ke lembar cetak A4 fisik ('print')
+  const [activeTab, setActiveTab] = useState<'preview' | 'print'>('print');
   const [showLogoDaerah, setShowLogoDaerah] = useState<boolean>(true);
   const [showLogoSekolah, setShowLogoSekolah] = useState<boolean>(true);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
@@ -165,10 +167,24 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
   }, [normalizedViolations, totalJawabanTerisi, totalSoal, peserta.status]);
 
   const handleBrowserPrint = () => {
-    window.print();
+    if (activeTab !== 'print') {
+      setActiveTab('print');
+      setTimeout(() => {
+        window.print();
+      }, 250);
+    } else {
+      window.print();
+    }
   };
 
   const handleDownloadPdf = async () => {
+    if (activeTab !== 'print') {
+      setActiveTab('print');
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+
+    const deskCanvas = document.getElementById('print-desk-canvas-area');
+    const prevZoom = deskCanvas ? deskCanvas.style.zoom : '';
     const container = sheetContainerRef.current;
     const sheetElement = (container?.querySelector('.print-sheet') as HTMLElement | null) || container;
 
@@ -177,13 +193,33 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
       return;
     }
 
-    const toastId = toast.loading('Menyiapkan Lembar Bukti Forensik PDF...');
+    const toastId = toast.loading('Menyiapkan Lembar Bukti Forensik PDF (True WYSIWYG)...');
     try {
       setIsExportingPdf(true);
+
+      // Reset CSS zoom sebelum html2canvas capture (standar True WYSIWYG)
+      if (deskCanvas) {
+        deskCanvas.style.zoom = '1';
+        deskCanvas.style.transform = 'none';
+        void deskCanvas.offsetHeight;
+      }
+
       if (document.fonts?.ready) {
         await document.fonts.ready;
       }
       await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Pastikan seluruh gambar (kop surat & logo) telah termuat utuh
+      const imgs = Array.from(sheetElement.querySelectorAll('img'));
+      await Promise.all(
+        imgs.map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        })
+      );
 
       const html2canvas = (await import('html2canvas-pro')).default;
       const { jsPDF } = await import('jspdf');
@@ -204,16 +240,36 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
       });
 
       const pdfWidth = 210;
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(297, pdfHeight));
+      const pdfHeight = 297;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      if (imgHeight <= pdfHeight) {
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight, undefined, 'FAST');
+      } else {
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pdfHeight;
+
+        while (heightLeft > 0) {
+          position -= pdfHeight;
+          pdf.addPage('a4', 'portrait');
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight, undefined, 'FAST');
+          heightLeft -= pdfHeight;
+        }
+      }
 
       const cleanName = siswaNama.replace(/[^a-zA-Z0-9]/g, '_');
-      pdf.save(`Bukti_Forensik_CBT_${cleanName}_${peserta.siswa_id.slice(0, 6)}.pdf`);
-      toast.success('Bukti Forensik PDF berhasil diunduh', { id: toastId });
+      pdf.save(`Bukti_Forensik_CBT_${cleanName}_${jadwal.token_ujian}.pdf`);
+      toast.success('Bukti Forensik PDF berhasil diunduh (True WYSIWYG)', { id: toastId });
     } catch (err: any) {
-      console.error('PDF export error:', err);
-      toast.error('Gagal mencetak dokumen: ' + (err.message || 'Unknown error'), { id: toastId });
+      console.error('[CBT Bukti Forensik PDF Error]', err);
+      toast.error('Gagal mengunduh dokumen: ' + (err.message || 'Unknown error'), { id: toastId });
     } finally {
+      if (deskCanvas) {
+        deskCanvas.style.zoom = prevZoom;
+      }
       setIsExportingPdf(false);
     }
   };
@@ -229,42 +285,60 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
       isOpen={isOpen}
       onClose={onClose}
       title="Lembar Bukti Forensik & Rekap Jawaban Ujian"
-      description={`Audit Trail otentik verifikasi nilai & riwayat pelanggaran untuk ${siswaNama}`}
-      size="5xl"
+      subtitle={
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground font-medium">Siswa:</span>
+          <span className="text-xs font-bold text-foreground bg-primary/10 text-primary px-2 py-0.5 rounded-md">
+            {siswaNama} ({siswaNis})
+          </span>
+          <span className="text-[11px] text-muted-foreground hidden sm:inline">
+            • {jadwal.BankSoal?.Mapel?.nama_mapel || 'CBT'} • Sesi: {jadwal.nama_sesi} • Token: {jadwal.token_ujian}
+          </span>
+        </div>
+      }
+      orientation="portrait"
+      allowOrientationToggle={false}
       allowLogoToggles={true}
       showLogoDaerah={showLogoDaerah}
       showLogoSekolah={showLogoSekolah}
-      onToggleLogoDaerah={() => setShowLogoDaerah(!showLogoDaerah)}
-      onToggleLogoSekolah={() => setShowLogoSekolah(!showLogoSekolah)}
+      onToggleLogoDaerah={setShowLogoDaerah}
+      onToggleLogoSekolah={setShowLogoSekolah}
       onPrint={handleBrowserPrint}
       onDownloadPdf={handleDownloadPdf}
-      isExportingPdf={isExportingPdf}
-      topSlot={
-        <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 mb-3">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('preview')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeTab === 'preview'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs border border-indigo-200 dark:border-indigo-800'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              <Eye size={13} />
-              <span>Pratinjau Layar &amp; Matriks Jawaban</span>
-            </button>
+      downloadPdfText={isExportingPdf ? 'Memproses PDF...' : 'Unduh PDF'}
+      printButtonText="Cetak Dokumen"
+      size="5xl"
+      allowSendWa={true}
+      defaultWaFilename={`Bukti_Forensik_CBT_${siswaNama.replace(/[^a-zA-Z0-9]/g, '_')}_${jadwal.token_ujian}.pdf`}
+      defaultWaCaption={`Yth. Orang Tua / Wali Siswa *${siswaNama}*,\n\nBerikut terlampir Surat Keterangan Bukti Forensik Pelaksanaan CBT (${jadwal.BankSoal?.Mapel?.nama_mapel || 'Asesmen CBT'} - Sesi: ${jadwal.nama_sesi}) dengan Token Ujian *${jadwal.token_ujian}* beserta riwayat pengerjaan dan rekaman audit sistem.`}
+      subHeader={
+        <div className="flex flex-wrap items-center justify-between gap-2.5 p-2 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => setActiveTab('print')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
                 activeTab === 'print'
-                  ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs border border-emerald-200 dark:border-emerald-800'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 border border-slate-200 dark:border-slate-600'
+              )}
             >
               <Printer size={13} />
-              <span>Format Cetak A4 Resmi (True WYSIWYG)</span>
+              <span>📄 Lembar A4 Resmi (True WYSIWYG)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('preview')}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
+                activeTab === 'preview'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 border border-slate-200 dark:border-slate-600'
+              )}
+            >
+              <Eye size={13} />
+              <span>🖥️ Dashboard Audit &amp; Matriks Interaktif</span>
             </button>
           </div>
 
@@ -272,7 +346,7 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
             {isDisqualified ? (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200">
                 <AlertTriangle size={12} className="text-rose-600" />
-                <span>Terdeteksi {normalizedViolations.length}x Pelanggaran</span>
+                <span>Terdeteksi {normalizedViolations.length}x Pelanggaran Layar</span>
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200">
@@ -286,7 +360,7 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
     >
       {/* ── TAB 1: PRATINJAU INTERAKTIF LAYAR (SCREEN DASHBOARD VIEW) ── */}
       {activeTab === 'preview' && (
-        <div className="space-y-4">
+        <div className="space-y-4 print:hidden max-w-4xl mx-auto py-2">
           {/* 1. Header Identitas Siswa */}
           <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
@@ -509,9 +583,14 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
       )}
 
       {/* ── TAB 2: LEMBAR A4 RESMI STANDAR TRUE WYSIWYG (PRINT & PDF VIEW) ── */}
-      {activeTab === 'print' && (
-        <div ref={sheetContainerRef} className="overflow-x-auto pb-6">
-          <PrintDocumentSheet
+      <div
+        ref={sheetContainerRef}
+        className={cn(
+          'overflow-x-auto pb-6 transition-all',
+          activeTab === 'preview' ? 'hidden print:block' : 'block'
+        )}
+      >
+        <PrintDocumentSheet
             orientation="portrait"
             pageNumber={1}
             totalPages={1}
@@ -721,7 +800,6 @@ export const CbtBuktiPelanggaranModal: React.FC<CbtBuktiPelanggaranModalProps> =
             </div>
           </PrintDocumentSheet>
         </div>
-      )}
     </UniversalDocumentModal>
   );
 };
