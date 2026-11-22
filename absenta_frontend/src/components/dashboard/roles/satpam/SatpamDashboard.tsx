@@ -172,6 +172,8 @@ export const SatpamDashboard: React.FC = () => {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
+          const parentTab = prev.get('tab') || 'satpam';
+          next.set('tab', parentTab);
           if (tabId === 'scan') {
             next.delete('subtab');
           } else {

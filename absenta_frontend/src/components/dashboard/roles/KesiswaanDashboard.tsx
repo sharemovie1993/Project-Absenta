@@ -109,6 +109,8 @@ export const KesiswaanDashboard: React.FC<KesiswaanDashboardProps> = ({ user }) 
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
+            const parentTab = prev.get('tab') || 'kesiswaan';
+            next.set('tab', parentTab);
             if (tabId === 'ringkasan') {
               next.delete('subtab');
             } else {

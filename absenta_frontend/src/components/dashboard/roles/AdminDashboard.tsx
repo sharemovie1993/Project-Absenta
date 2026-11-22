@@ -176,6 +176,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user: propUser }
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
+            const parentTab = prev.get('tab') || 'admin';
+            next.set('tab', parentTab);
             if (tabId === 'ringkasan') {
               next.delete('subtab');
             } else {

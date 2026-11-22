@@ -291,6 +291,8 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
+            const parentTab = prev.get('tab') || 'koperasi';
+            next.set('tab', parentTab);
             if (tabId === 'ringkasan') {
               next.delete('subtab');
             } else {

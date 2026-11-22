@@ -258,6 +258,8 @@ export const TataUsahaDashboard: React.FC<TataUsahaDashboardProps> = ({ user: pr
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
+            const parentTab = prev.get('tab') || 'tu';
+            next.set('tab', parentTab);
             if (tabId === 'beranda') {
               next.delete('subtab');
             } else {

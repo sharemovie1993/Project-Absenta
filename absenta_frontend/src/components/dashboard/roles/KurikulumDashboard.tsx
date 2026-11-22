@@ -165,6 +165,8 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
+            const parentTab = prev.get('tab') || 'kurikulum';
+            next.set('tab', parentTab);
             if (tabId === 'ringkasan') {
               next.delete('subtab');
             } else {

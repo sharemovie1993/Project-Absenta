@@ -116,6 +116,8 @@ export const HubinDashboard: React.FC<HubinDashboardProps> = () => {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
+          const parentTab = prev.get('tab') || 'hubin';
+          next.set('tab', parentTab);
           const currentSubtab = next.get('subtab') || 'ringkasan';
           if (currentSubtab === tabId) return prev;
           if (tabId === 'ringkasan') {

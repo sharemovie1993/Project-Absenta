@@ -90,6 +90,8 @@ export const ToolmanDashboard: React.FC<ToolmanDashboardProps> = () => {
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
+            const parentTab = prev.get('tab') || 'toolman';
+            next.set('tab', parentTab);
             if (tabId === 'ringkasan') {
               next.delete('subtab');
             } else {

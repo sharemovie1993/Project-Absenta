@@ -106,6 +106,8 @@ export const SarprasDashboard: React.FC<SarprasDashboardProps> = ({ user }) => {
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
+            const parentTab = prev.get('tab') || 'sarpras';
+            next.set('tab', parentTab);
             if (tabId === 'ringkasan') {
               next.delete('subtab');
             } else {

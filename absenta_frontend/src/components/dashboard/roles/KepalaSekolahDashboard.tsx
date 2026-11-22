@@ -113,6 +113,8 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
+            const parentTab = prev.get('tab') || 'kepsek';
+            next.set('tab', parentTab);
             if (tabId === 'ringkasan') {
               next.delete('subtab');
             } else {

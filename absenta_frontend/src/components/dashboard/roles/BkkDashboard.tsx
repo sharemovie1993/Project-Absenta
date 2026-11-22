@@ -100,6 +100,8 @@ export const BkkDashboard: React.FC<BkkDashboardProps> = () => {
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
+            const parentTab = prev.get('tab') || 'bkk';
+            next.set('tab', parentTab);
             if (tabId === 'ringkasan') {
               next.delete('subtab');
             } else {
@@ -311,38 +313,67 @@ export const BkkDashboard: React.FC<BkkDashboardProps> = () => {
               variant="sidebar"
             />
 
-            {/* Desktop Vertical Nav Menu */}
-            <nav className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
-              {navTabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
+            {/* Desktop Vertical Nav Menu (Terkelompok Kategori SSOT ala Kaprog & Kurikulum) */}
+            <nav className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
+              {BKK_CATEGORIES.map((cat, idx) => {
+                const catTabs = navTabs.filter((t) => t.category === cat.id);
+                if (catTabs.length === 0) return null;
+                const CatIcon = cat.icon;
+
                 return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => handleTabSelect(tab.id)}
-                    className={cn(
-                      'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
-                      isActive
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  <React.Fragment key={cat.id}>
+                    {idx > 0 && (
+                      <div className="border-t border-slate-100 dark:border-slate-800/80 mx-1.5" />
                     )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon className="w-4 h-4 shrink-0" />
-                      <span>{tab.label}</span>
+
+                    <div className="space-y-0.5">
+                      {/* Header Kategori */}
+                      <div className="px-2.5 pt-1 pb-1 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        <span className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400">
+                          <CatIcon className="w-3 h-3" />
+                          {cat.label}
+                        </span>
+                      </div>
+
+                      {/* Tombol Sub-tab dalam Kategori */}
+                      {catTabs.map((tab) => {
+                        const Icon = tab.icon;
+                        const isActive = activeTab === tab.id;
+
+                        return (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => handleTabSelect(tab.id)}
+                            className={cn(
+                              'w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
+                              isActive
+                                ? 'bg-gradient-to-r from-orange-600 to-amber-700 text-white shadow-xs font-bold'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            )}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <Icon className="w-4 h-4 shrink-0" />
+                              <span className="truncate">{tab.label}</span>
+                            </div>
+
+                            {tab.badge !== undefined && (
+                              <span
+                                className={cn(
+                                  'px-2 py-0.5 rounded-full text-[10px] font-bold min-w-5 text-center transition-colors shrink-0',
+                                  isActive
+                                    ? 'bg-white/20 text-white'
+                                    : tab.badgeColor || 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                )}
+                              >
+                                {tab.badge}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
-                    {tab.badge && (
-                      <span
-                        className={cn(
-                          'px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none',
-                          isActive ? 'bg-white/20 text-white' : tab.badgeColor || 'bg-slate-200 text-slate-700'
-                        )}
-                      >
-                        {tab.badge}
-                      </span>
-                    )}
-                  </button>
+                  </React.Fragment>
                 );
               })}
             </nav>
@@ -422,6 +453,17 @@ export const BkkDashboard: React.FC<BkkDashboardProps> = () => {
                 className={cn('w-full min-w-0', activeTab === 'rekap' ? 'block' : 'hidden')}
               >
                 <BkkRekapTab />
+              </div>
+            )}
+
+            {/* TAB 7: STRUKTUR ORGANISASI BKK */}
+            {visitedTabs.has('struktur_organisasi') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'struktur_organisasi'}
+                className={cn('w-full min-w-0', activeTab === 'struktur_organisasi' ? 'block' : 'hidden')}
+              >
+                <DivisiStrukturOrganisasiView divisiKey="BKK" divisiNama="Bursa Kerja Khusus" />
               </div>
             )}
           </main>

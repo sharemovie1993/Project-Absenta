@@ -517,6 +517,8 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     if (currentSubtab !== tabId) {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
+        const parentTab = prev.get('tab') || 'kaprog';
+        next.set('tab', parentTab);
         if (tabId === 'beranda') {
           next.delete('subtab');
         } else {

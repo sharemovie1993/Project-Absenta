@@ -104,6 +104,8 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
     if (currentSubtab !== tabId) {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
+        const parentTab = prev.get('tab') || 'binaan';
+        next.set('tab', parentTab);
         if (tabId === 'ringkasan') {
           next.delete('subtab');
         } else {
