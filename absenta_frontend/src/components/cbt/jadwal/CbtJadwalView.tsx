@@ -585,9 +585,10 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           }
           if (row.status === 'COMPLETED') {
             return (
-              <Badge variant="outline" className="text-[10px] font-bold text-slate-500">
-                SELESAI
-              </Badge>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100/90 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 shadow-2xs">
+                <CheckCircle size={11} className="stroke-[2.5] text-emerald-600 dark:text-emerald-400" />
+                <span>SELESAI</span>
+              </span>
             );
           }
           return (
@@ -1034,8 +1035,11 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                         Menginduk: {item._parentName}
                       </span>
                     </div>
-                    <Badge variant={item.status === 'ACTIVE' ? 'success' : item.status === 'PAUSED' ? 'warning' : 'outline'} className="text-[10px]">
-                      {item.status}
+                    <Badge
+                      variant={item.status === 'ACTIVE' || item.status === 'COMPLETED' ? 'success' : item.status === 'PAUSED' ? 'warning' : 'outline'}
+                      className="text-[10px] font-bold"
+                    >
+                      {item.status === 'COMPLETED' ? 'SELESAI' : item.status}
                     </Badge>
                   </div>
 
