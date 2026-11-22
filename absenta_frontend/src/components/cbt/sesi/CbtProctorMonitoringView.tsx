@@ -432,10 +432,39 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     }
     const isConfirmed = await confirm({
       title: 'Aktifkan Sesi Ujian?',
-      message: `Aktifkan sesi "${activeJadwal.nama_sesi}"? Siswa dapat mulai masuk menggunakan token "${activeJadwal.token_ujian}".`,
+      style: 'primary',
       confirmText: 'Aktifkan Sekarang',
       cancelText: 'Batal',
-      style: 'primary',
+      message: (
+        <div className="space-y-3 pt-1 text-xs">
+          <div>
+            <div className="font-bold text-slate-800 dark:text-slate-200 line-clamp-1">
+              {activeJadwal.nama_sesi}
+            </div>
+            <div className="text-[11px] text-slate-500">
+              Ruang {activeInfo.roomCode || 'Ujian'} • Durasi: {activeJadwal.durasi_menit || 90} Menit
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                Token Masuk Siswa
+              </div>
+              <div className="font-mono text-base font-black tracking-widest text-emerald-800 dark:text-emerald-200">
+                {activeJadwal.token_ujian || '------'}
+              </div>
+            </div>
+            <div className="text-right text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
+              Bagikan token ini ke siswa di ruangan
+            </div>
+          </div>
+
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-[11px]">
+            Setelah diaktifkan, siswa di ruangan dapat langsung memasukkan token untuk memulai pengerjaan soal.
+          </p>
+        </div>
+      ),
     });
     if (isConfirmed) {
       activateMutation.mutate(activeJadwal.id);
@@ -455,10 +484,27 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
     if (!isPanitia && !hasSignature) {
       const wantToSign = await confirm({
         title: 'Tanda Tangan Pengawas Diperlukan',
-        message: 'Pengawas ruang wajib membubuhkan Tanda Tangan Digital pada Berita Acara sebelum sesi ujian ruangan ini resmi diselesaikan. Bubuhkan tanda tangan Anda sekarang?',
-        confirmText: 'Tanda Tangani Sekarang',
-        cancelText: 'Nanti Dulu',
-        style: 'primary',
+        style: 'warning',
+        confirmText: 'Tanda Tangani Berita Acara',
+        cancelText: 'Kembali',
+        message: (
+          <div className="space-y-3 pt-1 text-xs">
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+              Sebagai kepatuhan SOP resmi, Pengawas Ruang wajib membubuhkan <strong>Tanda Tangan Digital</strong> sebelum sesi ujian ruangan ini resmi diselesaikan.
+            </p>
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 space-y-1">
+              <div className="font-bold text-xs text-amber-950 dark:text-amber-100 flex items-center gap-1.5">
+                <span>Dokumen Berita Acara Pelaksanaan</span>
+              </div>
+              <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
+                Tanda tangan Anda akan langsung tertera pada lembar cetak Berita Acara dan Daftar Hadir resmi untuk arsip kurikulum & panitia.
+              </p>
+            </div>
+            <p className="text-[11px] text-slate-500 italic">
+              Klik &quot;Tanda Tangani Berita Acara&quot; untuk langsung membuka pad tanda tangan digital.
+            </p>
+          </div>
+        ),
       });
       if (wantToSign) {
         setIsSignModalOpen(true);
@@ -466,22 +512,117 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
       return;
     }
 
+    const finishedCount = pesertaList.filter((p) => p.status === 'FINISHED').length;
     const inProgressCount = pesertaList.filter((p) => p.status === 'IN_PROGRESS').length;
     const standbyCount = pesertaList.filter((p) => p.status === 'STANDBY').length;
-
-    let warningMsg = `Akhiri sesi "${activeJadwal.nama_sesi}"? Siswa di ruangan ini tidak dapat lagi login atau mengirimkan jawaban baru.`;
-    if (inProgressCount > 0) {
-      warningMsg = `PERHATIAN: Masih ada ${inProgressCount} siswa yang sedang aktif mengerjakan ujian! Mengakhiri sesi sekarang akan otomatis mengunci dan mengumpulkan lembar jawaban mereka saat ini. Apakah Anda yakin ingin menyelesaikan sesi ruangan ini?`;
-    } else if (standbyCount > 0) {
-      warningMsg = `Catatan: Terdapat ${standbyCount} siswa yang belum hadir / belum mengerjakan ujian. Mengakhiri sesi ini akan menutup ujian ruangan ini dan siswa yang belum hadir dapat dialihkan ke sesi susulan. Lanjutkan selesaikan ujian?`;
-    }
+    const totalCount = pesertaList.length;
 
     const isConfirmed = await confirm({
-      title: inProgressCount > 0 ? 'Peringatan: Siswa Sedang Mengerjakan!' : 'Selesaikan Sesi Ujian?',
-      message: warningMsg,
-      confirmText: 'Selesaikan Sekarang',
+      title: inProgressCount > 0 ? 'Peringatan: Selesaikan Sesi Ujian?' : 'Konfirmasi Selesaikan Sesi',
+      style: inProgressCount > 0 ? 'danger' : 'warning',
+      confirmText: inProgressCount > 0 ? 'Tetap Selesaikan Sesi' : 'Ya, Selesaikan Sesi',
       cancelText: 'Batal',
-      style: 'danger',
+      message: (
+        <div className="space-y-3 pt-1 text-xs">
+          <div>
+            <div className="font-bold text-slate-800 dark:text-slate-200 line-clamp-1">
+              {activeJadwal.nama_sesi}
+            </div>
+            <div className="text-[11px] text-slate-500">
+              Ruang {activeInfo.roomCode || 'Ujian'} • Token: {activeJadwal.token_ujian || '-'}
+            </div>
+          </div>
+
+          {/* Stat Cards Ringkas */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-center">
+              <div className="text-base font-black text-emerald-700 dark:text-emerald-300">
+                {finishedCount}
+              </div>
+              <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                Selesai
+              </div>
+            </div>
+
+            <div
+              className={cn(
+                'p-2 rounded-xl border text-center',
+                inProgressCount > 0
+                  ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/50'
+                  : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
+              )}
+            >
+              <div
+                className={cn(
+                  'text-base font-black',
+                  inProgressCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'
+                )}
+              >
+                {inProgressCount}
+              </div>
+              <div
+                className={cn(
+                  'text-[10px] font-bold',
+                  inProgressCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'
+                )}
+              >
+                Mengerjakan
+              </div>
+            </div>
+
+            <div
+              className={cn(
+                'p-2 rounded-xl border text-center',
+                standbyCount > 0
+                  ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50'
+                  : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
+              )}
+            >
+              <div
+                className={cn(
+                  'text-base font-black',
+                  standbyCount > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-slate-400'
+                )}
+              >
+                {standbyCount}
+              </div>
+              <div
+                className={cn(
+                  'text-[10px] font-bold',
+                  standbyCount > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-slate-400'
+                )}
+              >
+                Belum Hadir
+              </div>
+            </div>
+          </div>
+
+          {/* Conditional Alert Boxes */}
+          {inProgressCount > 0 ? (
+            <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-900 dark:text-rose-200 space-y-1">
+              <div className="font-bold text-[11px] text-rose-800 dark:text-rose-300 flex items-center gap-1">
+                <span>⚠️ Perhatian: Siswa Masih Mengerjakan</span>
+              </div>
+              <p className="text-[11px] text-rose-700 dark:text-rose-300/90 leading-relaxed">
+                Mengakhiri sesi sekarang akan <strong>mengunci dan mengumpulkan otomatis</strong> lembar jawaban {inProgressCount} siswa yang sedang aktif. Tindakan ini tidak dapat dibatalkan.
+              </p>
+            </div>
+          ) : standbyCount > 0 ? (
+            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 space-y-1">
+              <div className="font-bold text-[11px] text-amber-800 dark:text-amber-300">
+                ℹ️ Catatan Peserta Belum Hadir / Sakit
+              </div>
+              <p className="text-[11px] text-amber-700 dark:text-amber-300/90 leading-relaxed">
+                Terdapat <strong>{standbyCount} siswa</strong> yang belum hadir / belum mengerjakan ujian. Siswa yang belum hadir dapat dialihkan ke <strong>Sesi Ujian Susulan</strong>.
+              </p>
+            </div>
+          ) : (
+            <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200 text-[11px] leading-relaxed">
+              Seluruh peserta ({totalCount} siswa) telah selesai mengerjakan. Sesi ujian siap difinalisasi dan ditutup resmi.
+            </div>
+          )}
+        </div>
+      ),
     });
     if (isConfirmed) {
       completeMutation.mutate(activeJadwal.id);
