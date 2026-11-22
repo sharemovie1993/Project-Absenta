@@ -1287,7 +1287,7 @@ export class CbtJadwalService {
         jawaban_json: null,
         jumlah_benar: 0,
         jumlah_salah: 0,
-        nilai_akhir: 0,
+        nilai_akhir: null,
         log_pelanggaran_json: null,
         metadata_perangkat: null,
         created_at: jadwal?.tanggal_mulai || now,

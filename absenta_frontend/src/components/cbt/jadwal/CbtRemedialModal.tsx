@@ -96,13 +96,17 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
 
   // Pisahkan Siswa berdasarkan Status Ujian dan Ambang KKTP
   const { finishedPeserta, belowKktp, aboveKktp, susulanPeserta, actionRequiredPeserta } = useMemo(() => {
-    // 1. Siswa yang sudah menyelesaikan ujian
-    const finished = pesertaList.filter((p) => p.status === 'FINISHED' || p.nilai_akhir != null);
+    // 1. Siswa yang belum mengikuti ujian (STANDBY / IN_PROGRESS / Belum Submit)
+    const susulan = pesertaList.filter(
+      (p) => p.status === 'STANDBY' || p.status === 'IN_PROGRESS' || String(p.id).startsWith('standby-')
+    );
+
+    // 2. Siswa yang sudah menyelesaikan ujian / ada hasil akhir (FINISHED / DISQUALIFIED)
+    const finished = pesertaList.filter(
+      (p) => !susulan.some((s) => s.siswa_id === p.siswa_id)
+    );
     const below = finished.filter((p) => Number(p.nilai_akhir || 0) < kktpThreshold);
     const above = finished.filter((p) => Number(p.nilai_akhir || 0) >= kktpThreshold);
-
-    // 2. Siswa yang belum mengikuti ujian (STANDBY / belum submit saat sesi ditutup pengawas)
-    const susulan = pesertaList.filter((p) => p.status !== 'FINISHED' && p.nilai_akhir == null);
 
     // 3. Seluruh siswa yang membutuhkan tindakan (Remedial + Susulan)
     const actionRequired = [...below, ...susulan];
@@ -525,9 +529,12 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
             ) : (
               displayedStudents.map((p, idx) => {
                 const isSelected = selectedSiswaIds.includes(p.siswa_id);
-                const isSusulan = p.status !== 'FINISHED' && p.nilai_akhir == null;
-                const score = p.nilai_akhir != null ? Number(p.nilai_akhir) : null;
-                const isBelow = score !== null && score < kktpThreshold;
+                const isSusulan =
+                  p.status === 'STANDBY' ||
+                  p.status === 'IN_PROGRESS' ||
+                  String(p.id).startsWith('standby-');
+                const score = !isSusulan && p.nilai_akhir != null ? Number(p.nilai_akhir) : null;
+                const isBelow = !isSusulan && (score === null || score < kktpThreshold);
 
                 return (
                   <div

@@ -128,19 +128,23 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
 
     allPeserta.forEach((p) => {
       if (!p.siswa_id || !p.Siswa) return;
-      const isFin = p.status === 'FINISHED' || p.nilai_akhir != null;
+      const isSus =
+        p.status === 'STANDBY' ||
+        p.status === 'IN_PROGRESS' ||
+        String(p.id).startsWith('standby-');
+      const isFin = !isSus && (p.status === 'FINISHED' || p.status === 'DISQUALIFIED');
       const currentVal: AggregatedStudentItem = {
         pesertaId: p.id,
         jadwalId: p.jadwal_ujian_id,
         siswaId: p.siswa_id,
         nis: p.Siswa.nis || '',
-        namaSiswa: p.Siswa.nama_lengkap || 'Siswa',
+        namaSiswa: p.Siswa.nama_lengkap || p.Siswa.nama_siswa || 'Siswa',
         kelasId: p.Siswa.Kelas?.id || 'UNKNOWN',
         namaKelas: p.Siswa.Kelas?.nama_kelas || 'Kelas Binaan',
-        nilaiAwal: p.nilai_akhir != null ? Number(p.nilai_akhir) : null,
+        nilaiAwal: !isSus && p.nilai_akhir != null ? Number(p.nilai_akhir) : null,
         statusUjian: p.status,
         isFinished: isFin,
-        isSusulan: !isFin,
+        isSusulan: isSus,
       };
 
       // Jika siswa tercatat di beberapa sesi, simpan data terbaru/tervalid
