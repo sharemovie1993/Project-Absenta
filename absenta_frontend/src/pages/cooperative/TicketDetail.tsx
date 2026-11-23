@@ -38,10 +38,21 @@ interface TicketDetailData {
   createdAt: string;
 }
 
-export const TicketDetail: React.FC = React.memo(() => {
+export interface TicketDetailProps {
+  ticketId?: string;
+  hideLayout?: boolean;
+  onBack?: () => void;
+}
+
+export const TicketDetail: React.FC<TicketDetailProps> = React.memo(({
+  ticketId,
+  hideLayout = false,
+  onBack,
+}) => {
   const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
-  const { id } = useParams<{ id: string }>();
+  const { id: paramId } = useParams<{ id: string }>();
+  const id = ticketId || paramId;
   const navigate = useNavigate();
 
   // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
@@ -145,10 +156,149 @@ export const TicketDetail: React.FC = React.memo(() => {
 
   if (!ticket) {
     return (
-      <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs text-slate-400">
-        Tiket tidak ditemukan atau telah dihapus.
+      <div className="space-y-3">
+        {onBack && (
+          <div className="flex items-center justify-start">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onBack}
+              className="flex items-center gap-1.5 font-bold rounded-xl"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Kembali ke Daftar Tiket
+            </Button>
+          </div>
+        )}
+        <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs text-slate-400">
+          Tiket tidak ditemukan atau telah dihapus.
+        </div>
       </div>
     );
+  }
+
+  const detailContent = (
+    <div className={hideLayout ? "w-full space-y-4 animate-in fade-in duration-150" : "max-w-4xl mx-auto w-full space-y-4"}>
+      {hideLayout && (
+        <div className="flex items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => (onBack ? onBack() : navigate('/cooperative/tickets'))}
+            className="flex items-center gap-1.5 font-bold text-xs rounded-xl cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Kembali ke Daftar Tiket</span>
+          </Button>
+          <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            Ruang Diskusi &amp; Penyelesaian Aduan
+          </span>
+        </div>
+      )}
+
+      {/* Ticket Subject Card */}
+      <Card noPadding className="p-4 sm:p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                {ticket.subject}
+              </h3>
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                ticket.status === 'OPEN' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300' :
+                ticket.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+              }`}>
+                {ticket.status === 'OPEN' ? 'Terbuka' : ticket.status === 'IN_PROGRESS' ? 'Diproses' : 'Selesai'}
+              </span>
+            </div>
+            <div className="flex items-center text-xs text-slate-400 gap-2 mt-1">
+              <User size={14} className="text-slate-400" />
+              <span className="font-bold text-slate-700 dark:text-slate-300">{ticket.member?.name || 'Anggota'}</span>
+              <span>• {formatDate(ticket.createdAt, { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+            </div>
+          </div>
+
+          {hasListPermission && (
+            <div className="w-48">
+              <SearchableSelect
+                id="ticket-status-select"
+                aria-label="Pilih status tiket"
+                value={ticket.status}
+                onValueChange={(val) => changeTicketStatusMutation.mutate(val)}
+                options={[
+                  { value: 'OPEN', label: 'Status: Open' },
+                  { value: 'IN_PROGRESS', label: 'Status: In Progress' },
+                  { value: 'CLOSED', label: 'Status: Closed' },
+                ]}
+                placeholder="Status Tiket"
+              />
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Messages Discussion Box */}
+      <div className="min-h-[320px] max-h-[460px] overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800">
+        {messages.length === 0 ? (
+          <p className="text-center text-slate-400 text-xs py-12">Belum ada percakapan pada tiket ini.</p>
+        ) : (
+          messages?.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex ${msg.isStaff ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm text-xs ${
+                  msg.isStaff
+                    ? 'bg-emerald-600 text-white rounded-tr-none'
+                    : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-100 dark:border-slate-700 rounded-tl-none'
+                }`}
+              >
+                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                <p className={`text-[10px] mt-1 text-right font-medium ${msg.isStaff ? 'text-emerald-100' : 'text-slate-400'}`}>
+                  {formatDate(msg.createdAt, { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Reply Box */}
+      <Card noPadding className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
+        <form onSubmit={handleReply} className="flex gap-2">
+          <Input
+            id="ticket-reply-input"
+            aria-label="Tulis pesan balasan tiket"
+            type="text"
+            placeholder="Tulis pesan balasan..."
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+            disabled={ticket.status === 'CLOSED'}
+            className="flex-1 text-xs rounded-xl"
+          />
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={!reply.trim() || ticket.status === 'CLOSED' || replyMutation.isPending}
+            className="flex items-center gap-1.5 font-bold rounded-xl"
+          >
+            <Send size={14} />
+            {replyMutation.isPending ? 'Mengirim...' : 'Kirim'}
+          </Button>
+        </form>
+        {ticket.status === 'CLOSED' && (
+          <p className="text-center text-[10px] text-slate-400 mt-2 font-medium">
+            Tiket ini telah ditutup. Anda tidak dapat membalas lagi.
+          </p>
+        )}
+      </Card>
+    </div>
+  );
+
+  if (hideLayout) {
+    return detailContent;
   }
 
   return (
@@ -168,7 +318,7 @@ export const TicketDetail: React.FC = React.memo(() => {
               <Button
                 variant="toolbarOutline"
                 size="toolbar"
-                onClick={() => navigate('/cooperative/tickets')}
+                onClick={() => (onBack ? onBack() : navigate('/cooperative/tickets'))}
                 className="flex items-center gap-1.5 font-bold rounded-xl"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
@@ -187,97 +337,7 @@ export const TicketDetail: React.FC = React.memo(() => {
           }}
         >
           <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
-            <div className="max-w-4xl mx-auto w-full space-y-4">
-              {/* Ticket Subject Card */}
-              <Card className="p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                      {ticket.subject}
-                    </h3>
-                    <div className="flex items-center text-xs text-slate-400 gap-2 mt-1">
-                      <User size={14} className="text-slate-400" />
-                      <span className="font-bold text-slate-700 dark:text-slate-300">{ticket.member?.name || 'Anggota'}</span>
-                      <span>• {formatDate(ticket.createdAt, { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                    </div>
-                  </div>
-
-                  {hasListPermission && (
-                    <div className="w-48">
-                      <SearchableSelect
-                        id="ticket-status-select"
-                        aria-label="Pilih status tiket"
-                        value={ticket.status}
-                        onValueChange={(val) => changeTicketStatusMutation.mutate(val)}
-                        options={[
-                          { value: 'OPEN', label: 'Status: Open' },
-                          { value: 'IN_PROGRESS', label: 'Status: In Progress' },
-                          { value: 'CLOSED', label: 'Status: Closed' },
-                        ]}
-                        placeholder="Status Tiket"
-                      />
-                    </div>
-                  )}
-                </div>
-              </Card>
-
-              {/* Messages Discussion Box */}
-              <div className="min-h-[360px] max-h-[460px] overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800">
-                {messages.length === 0 ? (
-                  <p className="text-center text-slate-400 text-xs py-12">Belum ada percakapan pada tiket ini.</p>
-                ) : (
-                  messages?.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex ${msg.isStaff ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm text-xs ${
-                          msg.isStaff
-                            ? 'bg-emerald-600 text-white rounded-tr-none'
-                            : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-100 dark:border-slate-700 rounded-tl-none'
-                        }`}
-                      >
-                        <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                        <p className={`text-[10px] mt-1 text-right font-medium ${msg.isStaff ? 'text-emerald-100' : 'text-slate-400'}`}>
-                          {formatDate(msg.createdAt, { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Reply Box */}
-              <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
-                <form onSubmit={handleReply} className="flex gap-2">
-                  <Input
-                    id="ticket-reply-input"
-                    aria-label="Tulis pesan balasan tiket"
-                    type="text"
-                    placeholder="Tulis pesan balasan..."
-                    value={reply}
-                    onChange={(e) => setReply(e.target.value)}
-                    disabled={ticket.status === 'CLOSED'}
-                    className="flex-1 text-xs rounded-xl"
-                  />
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    disabled={!reply.trim() || ticket.status === 'CLOSED' || replyMutation.isPending}
-                    className="flex items-center gap-1.5 font-bold rounded-xl"
-                  >
-                    <Send size={14} />
-                    {replyMutation.isPending ? 'Mengirim...' : 'Kirim'}
-                  </Button>
-                </form>
-                {ticket.status === 'CLOSED' && (
-                  <p className="text-center text-[10px] text-slate-400 mt-2 font-medium">
-                    Tiket ini telah ditutup. Anda tidak dapat membalas lagi.
-                  </p>
-                )}
-              </Card>
-            </div>
+            {detailContent}
           </SectionCard>
         </AcademicPageLayout>
       </InfraErrorBoundary>

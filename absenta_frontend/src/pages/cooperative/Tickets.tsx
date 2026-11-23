@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
 import { Button, Input, SearchableSelect, Table, SectionCard, Card } from '@/components/ui';
 import type { Column } from '@/components/ui/Table';
@@ -33,6 +33,7 @@ import { MobileAcademicList } from '../../components/academic/shared/MobileAcade
 import { COOP_QUERY_KEYS, invalidateTicketCaches } from '../../lib/coopQueryKeys';
 
 const Modal = lazy(() => import('../../components/cooperative/ui/Modal').then(m => ({ default: m.Modal })));
+const TicketDetail = lazy(() => import('./TicketDetail').then(m => ({ default: m.TicketDetail })));
 
 // Zod Schema Validation Guard (Pilar 25)
 const ticketFormSchema = z.object({
@@ -61,6 +62,7 @@ export const Tickets: React.FC<TicketsProps> = React.memo(({ hideLayout = false 
   const { subscription } = useAuthStore();
   const isMobile = useIsMobile();
   const [showModal, setShowModal] = useState(false);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
@@ -242,12 +244,15 @@ export const Tickets: React.FC<TicketsProps> = React.memo(({ hideLayout = false 
             </span>
           </div>
 
-          <Link to={`/cooperative/tickets/${row.id}`}>
-            <Button size="sm" variant="outline" className="font-bold text-xs inline-flex items-center gap-1">
-              <Eye size={13} />
-              <span>Detail</span>
-            </Button>
-          </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSelectedTicketId(row.id)}
+            className="font-bold text-xs inline-flex items-center gap-1 cursor-pointer"
+          >
+            <Eye size={13} />
+            <span>Detail</span>
+          </Button>
         </div>
       </div>
     );
@@ -322,12 +327,15 @@ export const Tickets: React.FC<TicketsProps> = React.memo(({ hideLayout = false 
         key: 'actions',
         label: 'Aksi',
         render: (_val: unknown, row: Ticket) => (
-          <Link to={`/cooperative/tickets/${row.id}`}>
-            <Button size="xs" variant="outline" className="flex items-center gap-1 font-bold">
-              <Eye size={12} />
-              Lihat Percakapan
-            </Button>
-          </Link>
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => setSelectedTicketId(row.id)}
+            className="flex items-center gap-1 font-bold cursor-pointer"
+          >
+            <Eye size={12} />
+            Lihat Percakapan
+          </Button>
         )
       }
     );
@@ -388,6 +396,20 @@ export const Tickets: React.FC<TicketsProps> = React.memo(({ hideLayout = false 
           }}
         >
           <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0 space-y-5">
+            {selectedTicketId ? (
+              <Suspense fallback={
+                <div className="py-16 text-center text-xs text-slate-400">
+                  Memuat percakapan tiket...
+                </div>
+              }>
+                <TicketDetail
+                  ticketId={selectedTicketId}
+                  hideLayout={true}
+                  onBack={() => setSelectedTicketId(null)}
+                />
+              </Suspense>
+            ) : (
+              <>
             {/* Context View Tab Switcher for Pengurus */}
             {canManage && (
               <div className="w-full">
@@ -568,6 +590,8 @@ export const Tickets: React.FC<TicketsProps> = React.memo(({ hideLayout = false 
                 />
               )}
             </div>
+              </>
+            )}
           </SectionCard>
         </AcademicPageLayout>
 
