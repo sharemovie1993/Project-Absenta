@@ -68,16 +68,16 @@ export const tenantEntitlementService = {
       const mid = normalizeFeature(plan?.module_id);
       if (mid) featureSet.add(mid);
 
-      // Special: Jika paket adalah PAKET_LENGKAP, aktifkan seluruh ekosistem modul & EASY_TUNNEL
+      // Special: Jika paket adalah PAKET_LENGKAP, aktifkan seluruh ekosistem modul sekolah & EASY_TUNNEL
+      // CATATAN ARSITEKTUR: KOPERASI terpisah dari sekolah ("punya dapur sendiri"), sehingga DIKECUALIKAN dari Paket Lengkap
       const sCode = normalizeFeature((sub as any).service_code);
       const pName = String(plan?.name || '').toUpperCase();
-      if (mid === 'PAKET_LENGKAP' || sCode === 'PAKET_LENGKAP' || pName.includes('PAKET LENGKAP')) {
+      const isPaketLengkap = mid === 'PAKET_LENGKAP' || sCode === 'PAKET_LENGKAP' || pName.includes('PAKET LENGKAP');
+      if (isPaketLengkap) {
         featureSet.add('PAKET_LENGKAP');
         featureSet.add('EASY_TUNNEL');
         featureSet.add('ABSENSI');
         featureSet.add('ATTENDANCE');
-        featureSet.add('KOPERASI');
-        featureSet.add('COOPERATIVE');
         featureSet.add('SARPRAS');
         featureSet.add('INVENTORY');
         featureSet.add('HUBIN');
@@ -91,6 +91,10 @@ export const tenantEntitlementService = {
       if (!Array.isArray(raw)) continue;
       for (const f of raw) {
         const nf = normalizeFeature(f);
+        // Pastikan Koperasi tidak bocor lewat features_json bawaan Paket Lengkap
+        if (isPaketLengkap && (nf === 'KOPERASI' || nf === 'COOPERATIVE' || nf === 'COOP')) {
+          continue;
+        }
         if (nf) featureSet.add(nf);
       }
     }

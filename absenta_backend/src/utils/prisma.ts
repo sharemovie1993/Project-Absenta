@@ -93,11 +93,11 @@ prisma.$use(async (params, next) => {
 
         if (mid) activeFeatures.add(mid);
 
-        // Jika berlangganan PAKET_LENGKAP, buka seluruh akses modul ekosistem
-        if (mid === 'PAKET_LENGKAP' || sCode === 'PAKET_LENGKAP' || pName.includes('PAKET LENGKAP')) {
+        // Jika berlangganan PAKET_LENGKAP, buka modul sekolah (Koperasi mandiri dikecualikan)
+        const isPaketLengkap = mid === 'PAKET_LENGKAP' || sCode === 'PAKET_LENGKAP' || pName.includes('PAKET LENGKAP');
+        if (isPaketLengkap) {
           activeFeatures.add('PAKET_LENGKAP');
           activeFeatures.add('ABSENSI');
-          activeFeatures.add('KOPERASI');
           activeFeatures.add('HUBIN');
           activeFeatures.add('SARPRAS');
           activeFeatures.add('WHATSAPP');
@@ -107,6 +107,9 @@ prisma.$use(async (params, next) => {
           sub.Plan.features_json.forEach((f: any) => {
             if (typeof f === 'string') {
               const feat = f.toUpperCase().trim();
+              if (isPaketLengkap && (feat === 'KOPERASI' || feat.startsWith('KOPERASI') || feat === 'COOPERATIVE')) {
+                return;
+              }
               activeFeatures.add(feat);
               // Dukung varian sub-fitur (misal: ABSENSI-MULTI_SESI, ABSENSI-SIMPLE -> modul ABSENSI)
               if (feat.startsWith('ABSENSI')) activeFeatures.add('ABSENSI');

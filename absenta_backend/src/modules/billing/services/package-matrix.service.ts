@@ -59,8 +59,8 @@ const STANDARD_BUNDLE_MAP: Record<string, string[]> = {
   Micro: ['ABSENSI', 'ACADEMIC', 'KESISWAAN'],
   Small: ['ABSENSI', 'ACADEMIC', 'KESISWAAN', 'SARPRAS'],
   Medium: ['ABSENSI', 'ACADEMIC', 'KESISWAAN', 'SARPRAS', 'HUBIN', 'WHATSAPP'],
-  Large: ['ABSENSI', 'ACADEMIC', 'KESISWAAN', 'SARPRAS', 'HUBIN', 'KOPERASI', 'WHATSAPP', 'EASY_TUNNEL'],
-  Enterprise: ['ABSENSI', 'ACADEMIC', 'KESISWAAN', 'SARPRAS', 'HUBIN', 'KOPERASI', 'WHATSAPP', 'EASY_TUNNEL']
+  Large: ['ABSENSI', 'ACADEMIC', 'KESISWAAN', 'SARPRAS', 'HUBIN', 'WHATSAPP', 'EASY_TUNNEL'],
+  Enterprise: ['ABSENSI', 'ACADEMIC', 'KESISWAAN', 'SARPRAS', 'HUBIN', 'WHATSAPP', 'EASY_TUNNEL']
 };
 
 const TIER_DETAILS: { tier: 'Micro' | 'Small' | 'Medium' | 'Large' | 'Enterprise'; capacity: string; badge?: string; desc: string }[] = [

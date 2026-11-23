@@ -82,8 +82,18 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
     const fromSnap: string[] = Array.isArray(snap?.features_json) ? snap.features_json : [];
     const fromPlan: string[] = Array.isArray((s as any).Plan?.features_json) ? ((s as any).Plan.features_json as string[]) : [];
     const merged = fromSnap.length > 0 ? fromSnap : fromPlan;
+    const serviceCode = (s as any).Plan?.service_code || (s as any).plan_snapshot?.service_code || (s as any).service_code;
+    const mid = (s as any).Plan?.module_id || (s as any).plan_snapshot?.module_id;
+    const planName = String((s as any).Plan?.name || (s as any).plan_snapshot?.name || '').toUpperCase();
+    const scUpper = String(serviceCode || '').toUpperCase();
+    const midUpper = String(mid || '').toUpperCase();
+    const isPaketLengkap = scUpper === 'PAKET_LENGKAP' || midUpper === 'PAKET_LENGKAP' || planName.includes('PAKET LENGKAP') || planName.includes('ALL-IN-ONE');
+
     for (const f of merged) {
       const uf = String(f).toUpperCase();
+      if (isPaketLengkap && (uf === 'KOPERASI' || uf.startsWith('KOPERASI') || uf === 'COOPERATIVE' || uf === 'COOP')) {
+        continue;
+      }
       featureSet.add(uf);
       // Auto-extract compound features (misal ABSENSI-MULTI_SESI -> ABSENSI)
       if (uf.includes('-') || uf.includes('_')) {
@@ -92,25 +102,15 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
       }
     }
     // Also add the service_code & module_id as feature identifiers
-    const serviceCode = (s as any).Plan?.service_code || (s as any).plan_snapshot?.service_code || (s as any).service_code;
     if (serviceCode) {
       featureSet.add(String(serviceCode).toUpperCase());
     }
-    const mid = (s as any).Plan?.module_id || (s as any).plan_snapshot?.module_id;
     if (mid) {
       featureSet.add(String(mid).toUpperCase());
     }
 
     // Auto-inject complete ecosystem for PAKET LENGKAP / ALL-IN-ONE
-    const planName = String((s as any).Plan?.name || (s as any).plan_snapshot?.name || '').toUpperCase();
-    const scUpper = String(serviceCode || '').toUpperCase();
-    const midUpper = String(mid || '').toUpperCase();
-    if (
-      scUpper === 'PAKET_LENGKAP' ||
-      midUpper === 'PAKET_LENGKAP' ||
-      planName.includes('PAKET LENGKAP') ||
-      planName.includes('ALL-IN-ONE')
-    ) {
+    if (isPaketLengkap) {
       const ALL_ECOSYSTEM_FEATURES = [
         'PAKET_LENGKAP',
         'ALL-IN-ONE',
@@ -119,9 +119,7 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
         'ATTENDANCE_OPS',
         'ABSENSI-MULTI_SESI',
         'ABSENSI-SIMPLE',
-        'KOPERASI',
-        'COOPERATIVE',
-        'COOP',
+        // KOPERASI DIKECUALIKAN dari Paket Lengkap (Koperasi memiliki dapur & entitas mandiri)
         'SARPRAS',
         'INVENTORY',
         'ASSET',

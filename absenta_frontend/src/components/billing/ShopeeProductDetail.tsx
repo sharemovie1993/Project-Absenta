@@ -209,10 +209,10 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
       addFeature('Academic Core TU & Guru', 'Jurnal mengajar GTK, kalender akademik, dan olah kurikulum.');
       addFeature('Kesiswaan & Disiplin Siswa', 'Poin pelanggaran, catatan konseling BK, dan prestasi siswa.');
 
-      // 2. Jika Paket Lengkap: Otomatis tambahkan seluruh suite resmi + Easy Tunnel
+      // 2. Jika Paket Lengkap: Otomatis tambahkan seluruh suite resmi sekolah + Easy Tunnel
+      // CATATAN: KOPERASI adalah entitas terpisah dari sekolah ("punya dapur sendiri") sehingga tidak termasuk Paket Lengkap
       if (isCompleteBundle) {
         addFeature('Presensi Digital Multi-Sesi', 'Absensi RFID, Geofencing GPS, multi-shift, & magang DUDI.');
-        addFeature('Koperasi & POS Kasir Digital', 'Kasir minimarket/kantin, tabungan siswa, & laporan SHU.');
         addFeature('Manajemen Sarana & Prasarana', 'Inventaris aset sekolah, cetak barcode QR, & peminjaman alat.');
         addFeature('Hubungan Industri & PKL (BKK)', 'Kemitraan DUDI, jurnal magang digital, & Tracer Study alumni.');
         addFeature('WhatsApp Gateway Notifikasi', 'Broadcast instan presensi kehadiran, tagihan, & pengumuman.');
@@ -364,7 +364,8 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
     return ALL_PILLARS.map(p => {
       let isIncluded = false;
       if (isCompleteBundle) {
-        isIncluded = true;
+        // KOPERASI dikecualikan dari Paket Lengkap
+        isIncluded = p.id !== 'KOPERASI';
       } else if (p.isBase) {
         isIncluded = true;
       } else if (p.serviceCodes && p.serviceCodes.some(c => currentCode.includes(c))) {

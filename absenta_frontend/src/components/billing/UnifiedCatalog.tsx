@@ -325,7 +325,7 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
           moduleName = 'PAKET LENGKAP';
           cleanBaseName = 'Paket Lengkap All-in-One Platform Absenta';
           imageUrl = '/assets/modules/absensi.png';
-          cleanDescription = 'Bundling komplit seluruh modul: Presensi Multi-Sesi, POS Koperasi, Hubin PKL, Sarpras, & WA Gateway.';
+          cleanDescription = 'Bundling komplit seluruh modul sekolah: Presensi Multi-Sesi, Hubin PKL, Sarpras, BP/BK & WA Gateway (tidak termasuk Koperasi mandiri).';
           highlightBadge = 'Semua Modul Termasuk';
         } else if (groupKey === 'SAAS_GROUP_BPBK') {
           categoryKey = 'BPBK';
@@ -761,18 +761,14 @@ const ProductCatalogCard: React.FC<ProductCatalogCardProps> = ({
 
   // Lowest starting price in the group
   const lowestPrice = useMemo(() => {
-    const monthlyVariants = !isHardware
-      ? group.variants.filter((v: any) => {
-          const p = String(v.billing_period || '').toUpperCase();
-          return p === 'MONTH' || p === 'MONTHLY';
-        })
-      : [];
-    const targetVariants = monthlyVariants.length > 0 ? monthlyVariants : group.variants;
-    const prices = targetVariants.map((v: any) =>
-      (v.price_onetime && v.price_onetime > 0) ? v.price_onetime : (v.price_monthly || v.price_yearly || 0)
-    ).filter((p: number) => p > 0);
+    const prices = (group.variants || []).map((v: any) => {
+      if (v.price_onetime && v.price_onetime > 0) return v.price_onetime;
+      if (v.price_monthly && v.price_monthly > 0) return v.price_monthly;
+      if (v.price_yearly && v.price_yearly > 0) return Math.round(v.price_yearly / 12);
+      return 0;
+    }).filter((p: number) => p > 0);
     return prices.length > 0 ? Math.min(...prices) : 0;
-  }, [group.variants, isHardware]);
+  }, [group.variants]);
 
   const IconComp = getServiceIcon(group.service_code, group.icon);
 

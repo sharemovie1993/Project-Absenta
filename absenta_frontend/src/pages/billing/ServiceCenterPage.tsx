@@ -69,10 +69,10 @@ const UnifiedCatalog = lazy(() => import('@/components/billing/UnifiedCatalog').
 
 /**
  * Pemetaan kategori katalog -> moduleKey layanan yang relevan.
- * PAKET_LENGKAP selalu disertakan karena mencakup seluruh modul.
+ * KOPERASI memiliki dapur & entitas mandiri sehingga dikecualikan dari PAKET_LENGKAP.
  */
 const CATEGORY_MODULE_KEYS: Record<string, string[]> = {
-  KOPERASI: ['KOPERASI', 'PAKET_LENGKAP'],
+  KOPERASI: ['KOPERASI'],
   ABSENSI: ['ABSENSI', 'PAKET_LENGKAP'],
   HUBIN: ['HUBIN', 'PAKET_LENGKAP'],
   SARPRAS: ['SARPRAS', 'PAKET_LENGKAP'],
@@ -371,7 +371,7 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
       if (found) return found;
     }
     const activeSubs = services.filter(s => s.status === 'ACTIVE' || s.status === 'TRIAL');
-    const paketLengkap = activeSubs.find(s => 
+    const paketLengkap = lockedCategory === 'KOPERASI' ? null : activeSubs.find(s => 
       s.service_code === 'PAKET_LENGKAP' || 
       (s.Plan?.service_code === 'PAKET_LENGKAP') ||
       String(s.Plan?.name || '').toUpperCase().includes('PAKET LENGKAP')
