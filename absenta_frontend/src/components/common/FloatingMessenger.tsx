@@ -44,6 +44,25 @@ export default function FloatingMessenger() {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [newModalTab, setNewModalTab] = useState<'DIRECT' | 'DISPOSISI' | 'BROADCAST'>('BROADCAST');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messengerContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handlePointerDownOutside = (event: MouseEvent | TouchEvent) => {
+      if (isNewModalOpen) return;
+      const target = event.target as Node | null;
+      if (messengerContainerRef.current && target && !messengerContainerRef.current.contains(target)) {
+        setIsOpen(false);
+        setIncomingBanner(null);
+      }
+    };
+    document.addEventListener('mousedown', handlePointerDownOutside);
+    document.addEventListener('touchstart', handlePointerDownOutside);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDownOutside);
+      document.removeEventListener('touchstart', handlePointerDownOutside);
+    };
+  }, [isOpen, isNewModalOpen]);
 
   const isCommunicationPage = location.pathname.startsWith('/komunikasi');
 
@@ -283,7 +302,7 @@ export default function FloatingMessenger() {
 
   return (
     <>
-      <div className="fixed bottom-20 right-4 lg:bottom-4 lg:right-6 z-50 flex flex-col items-end">
+      <div ref={messengerContainerRef} className="fixed bottom-20 right-4 lg:bottom-4 lg:right-6 z-50 flex flex-col items-end">
         {/* ── POPUP MESSENGER WINDOW (WhatsApp Style: List View -> Click Row to Open Chat) ── */}
         {isOpen && (
           <div className="mb-2.5 w-[345px] sm:w-[385px] h-[500px] bg-white dark:bg-[#111b21] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
