@@ -1254,7 +1254,7 @@ export class UnifiedKegiatanService {
           },
         },
         data: {
-          status: isLate ? 'TERLAMBAT' : 'HADIR',
+          status: 'HADIR',
           is_terlambat: isLate,
           menit_keterlambatan: isLate ? menitTerlambat : 0,
           waktu_tap: now,
@@ -1269,7 +1269,7 @@ export class UnifiedKegiatanService {
           sesi_id: studentSesi.id,
           siswa_id: siswa.id,
           siswa_akademik_id: finalSaId,
-          status: isLate ? 'TERLAMBAT' : 'HADIR',
+          status: 'HADIR',
           is_terlambat: isLate,
           menit_keterlambatan: isLate ? menitTerlambat : 0,
           waktu_tap: now,
@@ -1286,7 +1286,7 @@ export class UnifiedKegiatanService {
       success: true,
       action: 'HADIR_SISWA',
       entity_type: 'SISWA',
-      status: isLate ? 'TERLAMBAT' : 'HADIR',
+      status: 'HADIR',
       is_terlambat: isLate,
       synced_kbm: false,
       message: isLate

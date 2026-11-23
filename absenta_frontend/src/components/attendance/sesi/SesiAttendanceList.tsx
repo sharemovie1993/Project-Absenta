@@ -161,7 +161,7 @@ const SesiAttendanceRow = React.memo(({
     return Number(record.menit_keterlambatan) || 0;
   }, [record.menit_keterlambatan, rawWaktuTap, sesi?.waktu_mulai, sesi?.jam_mulai, (sesi as any)?.JamPelajaran?.jam_mulai]);
 
-  const isLate = (Boolean(record.is_terlambat) || lateMinutes > 0) && record.status === 'HADIR';
+  const isLate = (Boolean(record.is_terlambat) || lateMinutes > 0 || record.status === 'TERLAMBAT') && (record.status === 'HADIR' || record.status === 'TERLAMBAT');
 
   return (
     <motion.div 
@@ -222,7 +222,7 @@ const SesiAttendanceRow = React.memo(({
       <div className="shrink-0 flex items-center justify-end">
         {isReportMode ? (
           <div className="flex items-center gap-1.5 shrink-0">
-            {record.status === 'HADIR' ? (
+            {record.status === 'HADIR' || record.status === 'TERLAMBAT' ? (
               <span className="h-6.5 sm:h-7.5 px-2.5 rounded-md bg-emerald-600 text-white text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider shadow-xs flex items-center gap-1">
                 <CheckCircle2 size={11} className="text-white" />
                 <span>Hadir</span>
@@ -281,7 +281,7 @@ const SesiAttendanceRow = React.memo(({
                 "h-6.5 sm:h-7.5 min-w-[36px] sm:min-w-[46px] px-1.5 sm:px-2.5 rounded-md text-[8.5px] sm:text-[9.5px] font-black uppercase tracking-wider transition-all flex items-center justify-center shrink-0",
                 !isStartedByTeacher
                   ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-50"
-                  : record.status === 'HADIR'
+                  : (record.status === 'HADIR' || record.status === 'TERLAMBAT')
                   ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer"
                   : "bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
               )}

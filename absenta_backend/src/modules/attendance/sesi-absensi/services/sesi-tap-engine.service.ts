@@ -797,6 +797,8 @@ export class SesiTapEngineService {
     if (siswaAkademikList.length > 0) {
       mergedStudents = siswaAkademikList.map(sa => {
         const a = absenMap.get(sa.id) || absenMap.get(sa.siswa_id);
+        const isPresent = a?.status === 'HADIR' || a?.status === 'TERLAMBAT';
+        const isLate = isPresent && (Boolean(a?.is_terlambat) || a?.status === 'TERLAMBAT');
         return {
           id: a?.id || `temp-${sa.id}`,
           siswa_akademik_id: sa.id,
@@ -804,11 +806,11 @@ export class SesiTapEngineService {
           nama_siswa: sa.siswa?.nama_siswa || '-',
           nisn: sa.siswa?.nisn || '-',
           is_guru: false,
-          status: a?.status || (sesi.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP'),
-          is_terlambat: a?.status === 'HADIR' ? (a?.is_terlambat || false) : false,
-          menit_keterlambatan: a?.status === 'HADIR' ? (a?.menit_keterlambatan || 0) : 0,
+          status: isPresent ? 'HADIR' : (a?.status || (sesi.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP')),
+          is_terlambat: isLate,
+          menit_keterlambatan: isPresent ? (a?.menit_keterlambatan || 0) : 0,
           poin_kehadiran: a?.poin_kehadiran || 0,
-          waktu_tap: (a?.status === 'HADIR' && a?.waktu_tap) ? a.waktu_tap.toISOString() : null,
+          waktu_tap: (isPresent && a?.waktu_tap) ? a.waktu_tap.toISOString() : null,
           original_waktu_tap: a?.waktu_tap ? a.waktu_tap.toISOString() : null,
           catatan: a?.catatan || null,
           Siswa: {
@@ -821,6 +823,8 @@ export class SesiTapEngineService {
     } else {
       mergedStudents = directStudents.map(s => {
         const a = absenMap.get(s.id);
+        const isPresent = a?.status === 'HADIR' || a?.status === 'TERLAMBAT';
+        const isLate = isPresent && (Boolean(a?.is_terlambat) || a?.status === 'TERLAMBAT');
         return {
           id: a?.id || `temp-${s.id}`,
           siswa_akademik_id: s.id,
@@ -828,11 +832,11 @@ export class SesiTapEngineService {
           nama_siswa: s.nama_siswa || '-',
           nisn: s.nisn || s.nis || '-',
           is_guru: false,
-          status: a?.status || (sesi.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP'),
-          is_terlambat: a?.status === 'HADIR' ? (a?.is_terlambat || false) : false,
-          menit_keterlambatan: a?.status === 'HADIR' ? (a?.menit_keterlambatan || 0) : 0,
+          status: isPresent ? 'HADIR' : (a?.status || (sesi.status === 'SELESAI' ? 'ALPA' : 'BELUM_TAP')),
+          is_terlambat: isLate,
+          menit_keterlambatan: isPresent ? (a?.menit_keterlambatan || 0) : 0,
           poin_kehadiran: a?.poin_kehadiran || 0,
-          waktu_tap: (a?.status === 'HADIR' && a?.waktu_tap) ? a.waktu_tap.toISOString() : null,
+          waktu_tap: (isPresent && a?.waktu_tap) ? a.waktu_tap.toISOString() : null,
           original_waktu_tap: a?.waktu_tap ? a.waktu_tap.toISOString() : null,
           catatan: a?.catatan || null,
           Siswa: {
