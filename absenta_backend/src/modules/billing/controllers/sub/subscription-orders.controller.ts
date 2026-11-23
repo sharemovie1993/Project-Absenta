@@ -261,6 +261,20 @@ export const subscriptionOrdersController = {
       const remoteInvoice = response.data.data;
       const checkoutUrl = remoteInvoice.qr_url || remoteInvoice.checkout_url || remoteInvoice.payment_url || remoteInvoice.pay_url;
 
+      let resolvedInstructions = remoteInvoice.payment_instructions || remoteInvoice.instructions || [];
+      if (typeof resolvedInstructions === 'string') {
+        try {
+          const parsed = JSON.parse(resolvedInstructions);
+          resolvedInstructions = Array.isArray(parsed) ? parsed : (parsed?.instructions || []);
+        } catch (e) {
+          resolvedInstructions = [];
+        }
+      } else if (resolvedInstructions && typeof resolvedInstructions === 'object' && !Array.isArray(resolvedInstructions)) {
+        if (Array.isArray(resolvedInstructions.instructions)) {
+          resolvedInstructions = resolvedInstructions.instructions;
+        }
+      }
+
       reply.status(200);
       return {
         success: true,
@@ -273,13 +287,17 @@ export const subscriptionOrdersController = {
           checkout_url: checkoutUrl,
           qr_url: remoteInvoice.qr_url,
           pay_code: remoteInvoice.pay_code,
-          payment_instructions: remoteInvoice.payment_instructions,
+          payment_instructions: resolvedInstructions,
+          instructions: resolvedInstructions,
+          expired_time: remoteInvoice.expired_time || null,
           total_amount: remoteInvoice.amount || targetPrice,
           payment_method: remoteInvoice.payment_method || payment_method || 'QRIS2',
           active_transaction: {
             qr_url: remoteInvoice.qr_url,
             pay_code: remoteInvoice.pay_code,
-            payment_instructions: remoteInvoice.payment_instructions
+            payment_instructions: resolvedInstructions,
+            instructions: resolvedInstructions,
+            expired_time: remoteInvoice.expired_time || null
           },
           checkout: {
             public_token: remoteInvoice.invoice_number,

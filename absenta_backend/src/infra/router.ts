@@ -425,16 +425,28 @@ export async function registerRoutes(fastify: any, prisma: any) {
                 }
               }
               let instructions: any[] = [];
-              if (typeof inv.payment_instructions === 'string') {
-                try { instructions = JSON.parse(inv.payment_instructions); } catch (e) { instructions = []; }
-              } else if (Array.isArray(inv.payment_instructions)) {
-                instructions = inv.payment_instructions;
+              const rawInst = inv.payment_instructions || inv.paymentInstructions || inv.instructions;
+              if (typeof rawInst === 'string') {
+                try {
+                  const parsed = JSON.parse(rawInst);
+                  instructions = Array.isArray(parsed) ? parsed : (parsed?.instructions || []);
+                } catch (e) {
+                  instructions = [];
+                }
+              } else if (Array.isArray(rawInst)) {
+                instructions = rawInst;
+              } else if (rawInst && typeof rawInst === 'object') {
+                if (Array.isArray(rawInst.instructions)) {
+                  instructions = rawInst.instructions;
+                }
               }
 
               const url = mappedStatus === 'PAID' 
                 ? `${LICENSE_SERVER_URL}/api/license/print-invoice/${invoiceId}`
                 : (inv.qr_url || `${LICENSE_SERVER_URL}/api/license/print-invoice/${invoiceId}`);
               
+              const resolvedExpiredTime = inv.expired_time || inv.expiredTime || null;
+
               return reply.send({
                 success: true,
                 message: 'Invoice link resolved',
@@ -445,7 +457,8 @@ export async function registerRoutes(fastify: any, prisma: any) {
                   total_amount: Number(inv.amount || 0),
                   currency: 'IDR',
                   status: mappedStatus,
-                  due_date: inv.expired_time ? (typeof inv.expired_time === 'number' ? new Date(inv.expired_time * 1000).toISOString() : inv.expired_time) : null,
+                  due_date: resolvedExpiredTime ? (typeof resolvedExpiredTime === 'number' ? new Date(resolvedExpiredTime * 1000).toISOString() : resolvedExpiredTime) : null,
+                  expired_time: resolvedExpiredTime,
                   created_at: inv.created_at,
                   paid_at: inv.paid_at,
                   plan_title: inv.plan_title || inv.planTitle || 'Layanan Absenta',
@@ -453,6 +466,8 @@ export async function registerRoutes(fastify: any, prisma: any) {
                   payment_method: inv.payment_method || 'TRIPAY',
                   pay_code: inv.pay_code || '',
                   qr_url: inv.qr_url || '',
+                  instructions: instructions,
+                  payment_instructions: instructions,
                   url: url,
                   active_transaction: mappedStatus === 'PAID' ? null : {
                     status: 'PENDING',
@@ -460,7 +475,9 @@ export async function registerRoutes(fastify: any, prisma: any) {
                     payment_method: inv.payment_method || 'TRIPAY',
                     pay_code: inv.pay_code || '',
                     qr_url: inv.qr_url || '',
-                    instructions: instructions
+                    instructions: instructions,
+                    payment_instructions: instructions,
+                    expired_time: resolvedExpiredTime
                   }
                 }
               });

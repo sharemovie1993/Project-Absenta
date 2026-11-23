@@ -32,7 +32,7 @@ interface CheckoutDetailStepProps {
   setSelectedChannel: (val: string) => void;
   isDropdownOpen: boolean;
   setIsDropdownOpen: (val: boolean) => void;
-  expiryDate: string;
+  expiryDate: string | Date;
   gatewayFee: number;
   cycle: 'MONTH' | 'YEAR';
   totalPrice: number;
@@ -270,7 +270,7 @@ export const CheckoutDetailStep: React.FC<CheckoutDetailStepProps> = React.memo(
               <div>
                 <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Estimasi Masa Aktif</div>
                 <div className="text-[12px] font-bold text-slate-700 dark:text-slate-200 tracking-tight">
-                  s.d {formatDate(expiryDate)}
+                  s.d {typeof expiryDate === 'string' && expiryDate.includes(' ') ? expiryDate : formatDate(expiryDate)} • {cycle === 'YEAR' ? '1 Tahun' : '1 Bulan'}
                 </div>
               </div>
             </div>
@@ -287,14 +287,18 @@ export const CheckoutDetailStep: React.FC<CheckoutDetailStepProps> = React.memo(
               <span className="text-[11px] font-bold text-green-600 uppercase tracking-wider bg-green-50 dark:bg-green-900/20 px-2.5 py-1 rounded-md">Gratis</span>
             </div>
 
-            {gatewayFee > 0 && (
-              <div className="flex justify-between items-center px-1">
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Biaya Transaksi</span>
+            <div className="flex justify-between items-center px-1">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Biaya Transaksi</span>
+              {gatewayFee > 0 ? (
                 <span className="text-sm font-bold text-slate-900 dark:text-white">
                   {formatCurrency(gatewayFee)}
                 </span>
-              </div>
-            )}
+              ) : (
+                <span className="text-[11px] font-bold text-green-600 uppercase tracking-wider bg-green-50 dark:bg-green-900/20 px-2.5 py-1 rounded-md">
+                  Gratis
+                </span>
+              )}
+            </div>
             
             <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-2">

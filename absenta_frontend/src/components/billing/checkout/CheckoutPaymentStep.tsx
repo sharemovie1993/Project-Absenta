@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   AlertCircle, 
   Clock, 
   RefreshCw, 
-  Copy 
+  Copy,
+  BookOpen,
+  ChevronDown
 } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { formatCurrency } from '@/api/plans.api';
@@ -40,6 +42,100 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
 }) => {
   const inv = invoiceDetails?.data || (invoiceDetails?.invoice_number ? invoiceDetails : null);
   const activeTx = inv?.active_transaction;
+  const [openInstructionIdx, setOpenInstructionIdx] = useState<number | null>(0);
+
+  const instructions: Array<{ title: string; steps: string[] }> = useMemo(() => {
+    const raw = activeTx?.instructions || 
+      activeTx?.payment_instructions || 
+      inv?.payment_instructions || 
+      inv?.instructions;
+    
+    let parsedRaw = raw;
+    if (typeof raw === 'string') {
+      try {
+        parsedRaw = JSON.parse(raw);
+      } catch {
+        parsedRaw = [];
+      }
+    }
+    if (parsedRaw && typeof parsedRaw === 'object' && !Array.isArray(parsedRaw)) {
+      if (Array.isArray(parsedRaw.instructions)) {
+        parsedRaw = parsedRaw.instructions;
+      }
+    }
+
+    if (Array.isArray(parsedRaw) && parsedRaw.length > 0) {
+      return parsedRaw.map((item: any) => {
+        if (typeof item === 'string') {
+          return { title: 'Langkah Pembayaran', steps: [item] };
+        }
+        const title = item.title || item.name || 'Petunjuk Pembayaran';
+        let steps = item.steps || item.description || [];
+        if (typeof steps === 'string') {
+          steps = [steps];
+        } else if (!Array.isArray(steps)) {
+          steps = [];
+        }
+        return { title, steps };
+      });
+    }
+
+    // Smart Fallback jika payment gateway belum mengembalikan instructions array
+    const payCode = activeTx?.pay_code || inv?.pay_code;
+
+    if (activeTx?.qr_url) {
+      return [
+        {
+          title: 'Cara Pembayaran via QRIS (Semua Bank & E-Wallet)',
+          steps: [
+            'Buka aplikasi e-wallet (GoPay, OVO, Dana, LinkAja, ShopeePay) atau Mobile Banking berlogo QRIS (BCA, Mandiri, BRI, BNI, Permata, dll).',
+            'Pilih menu "Bayar" atau "Scan QR".',
+            'Arahkan kamera ke kode QRIS yang tampil di layar.',
+            'Periksa nama merchant dan pastikan jumlah pembayaran sudah sesuai.',
+            'Masukkan PIN transaksi Anda untuk menyelesaikan pembayaran.'
+          ]
+        }
+      ];
+    }
+
+    if (payCode) {
+      return [
+        {
+          title: 'Transfer via Mobile Banking (M-Banking)',
+          steps: [
+            'Buka aplikasi Mobile Banking pada smartphone Anda dan lakukan login.',
+            'Pilih menu Transfer atau Pembayaran > Virtual Account / Tagihan.',
+            `Masukkan Nomor Virtual Account: ${payCode}.`,
+            'Pastikan nama penerima dan nominal transfer persis sesuai tagihan.',
+            'Konfirmasi transaksi dan masukkan PIN Mobile Banking Anda untuk menyelesaikan.'
+          ]
+        },
+        {
+          title: 'Transfer via ATM',
+          steps: [
+            'Masukkan kartu ATM dan PIN Anda pada mesin ATM.',
+            'Pilih menu Transaksi Lainnya > Pembayaran > Virtual Account.',
+            `Masukkan Nomor Virtual Account: ${payCode}.`,
+            'Periksa rincian pembayaran di layar ATM.',
+            'Tekan Ya / Benar untuk memproses transaksi dan simpan struk bukti transfer.'
+          ]
+        },
+        {
+          title: 'Transfer Antar-Bank (ATM Bersama / Prima / ALTO)',
+          steps: [
+            'Buka aplikasi perbankan atau ATM bank lain.',
+            'Pilih menu Transfer Antar-Bank.',
+            'Pilih bank tujuan sesuai nama Virtual Account di atas.',
+            `Masukkan nomor rekening tujuan dengan nomor Virtual Account: ${payCode}.`,
+            'Masukkan nominal transfer persis sesuai jumlah tagihan hingga digit terakhir.',
+            'Selesaikan transaksi hingga bukti transfer berhasil diterbitkan.'
+          ]
+        }
+      ];
+    }
+
+    return [];
+  }, [activeTx, inv]);
 
   if (!inv) {
     return (
@@ -153,6 +249,64 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
               <span className="text-[10px] text-slate-400 block mt-2 font-medium">
                 Gunakan kode VA di atas untuk melakukan transfer melalui ATM/M-Banking.
               </span>
+            </div>
+          )}
+
+          {/* Payment Instructions Accordion */}
+          {instructions.length > 0 && (
+            <div className="space-y-3 pt-5 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <BookOpen size={14} className="text-blue-600 dark:text-blue-400" />
+                  <span>Petunjuk Pembayaran</span>
+                </h4>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {instructions.length} Pilihan Metode
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {instructions.map((inst, idx) => {
+                  const isOpen = openInstructionIdx === idx;
+                  return (
+                    <div 
+                      key={idx}
+                      className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 overflow-hidden shadow-2xs transition-all"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setOpenInstructionIdx(isOpen ? null : idx)}
+                        className="w-full p-3.5 px-4 flex items-center justify-between text-left hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${isOpen ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
+                            {idx + 1}
+                          </div>
+                          <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            {inst.title}
+                          </span>
+                        </div>
+                        <ChevronDown size={16} className={`text-slate-400 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180 text-blue-600 dark:text-blue-400' : ''}`} />
+                      </button>
+
+                      {isOpen && (
+                        <div className="p-4 pt-2 pb-4 bg-slate-50/50 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800/60 animate-in fade-in duration-150">
+                          <ol className="space-y-2.5 text-xs text-slate-600 dark:text-slate-300">
+                            {inst.steps.map((step, sIdx) => (
+                              <li key={sIdx} className="flex items-start gap-2.5 leading-relaxed">
+                                <span className="w-4 h-4 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">
+                                  {sIdx + 1}
+                                </span>
+                                <span className="flex-1 text-[11.5px]" dangerouslySetInnerHTML={{ __html: step }} />
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 

@@ -79,8 +79,52 @@ function CheckoutContent() {
     planName?: string 
   } | null>(null);
 
-  const countdown = useMemo(() => ({ dd: 0, hh: 0, mm: 0, ss: 0 }), []);
-  const expiredLocal = false;
+  const targetExpiryTimestamp = useMemo(() => {
+    const raw = (invoiceDetails?.data as any)?.active_transaction?.expired_time || 
+      (invoiceDetails?.data as any)?.expired_time || 
+      (invoiceDetails?.data as any)?.due_date ||
+      (invoiceDetails as any)?.expired_time;
+    if (!raw) return null;
+    if (typeof raw === 'number') {
+      return raw < 1e11 ? raw * 1000 : raw;
+    }
+    const num = Number(raw);
+    if (!isNaN(num) && num > 0) {
+      return num < 1e11 ? num * 1000 : num;
+    }
+    const parsed = new Date(raw).getTime();
+    return isNaN(parsed) ? null : parsed;
+  }, [invoiceDetails]);
+
+  const [countdown, setCountdown] = useState({ dd: 0, hh: 24, mm: 0, ss: 0 });
+  const [expiredLocal, setExpiredLocal] = useState(false);
+
+  React.useEffect(() => {
+    if (step !== 'payment') return;
+
+    const targetTime = targetExpiryTimestamp || (Date.now() + 24 * 3600 * 1000);
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const diff = targetTime - now;
+      if (diff <= 0) {
+        setExpiredLocal(true);
+        setCountdown({ dd: 0, hh: 0, mm: 0, ss: 0 });
+      } else {
+        const totalSec = Math.floor(diff / 1000);
+        const dd = Math.floor(totalSec / 86400);
+        const hh = Math.floor((totalSec % 86400) / 3600);
+        const mm = Math.floor((totalSec % 3600) / 60);
+        const ss = totalSec % 60;
+        setCountdown({ dd, hh, mm, ss });
+        setExpiredLocal(false);
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [step, targetExpiryTimestamp]);
 
   // React Query Fetching (Pilar 31)
   const { data: plan, isLoading: loadingPlan, isError: isPlanError } = useQuery<Plan | null>({
@@ -116,11 +160,9 @@ function CheckoutContent() {
     return cycle === 'YEAR' ? (plan.price_yearly || plan.price_monthly * 12) : plan.price_monthly;
   }, [plan, cycle]);
 
-  const gatewayFee = useMemo(() => {
-    return selectedChannel === 'QRIS2' ? 0 : 4500;
-  }, [selectedChannel]);
-
-  const totalPrice = price + gatewayFee;
+  // Biaya transaksi / gateway fee gratis (diserap oleh sistem sehingga nominal pas dengan transfer gateway)
+  const gatewayFee = 0;
+  const totalPrice = price;
 
   const expiryDate = useMemo(() => {
     const d = new Date();
@@ -129,7 +171,7 @@ function CheckoutContent() {
     } else {
       d.setMonth(d.getMonth() + 1);
     }
-    return formatDate(d, { day: '2-digit', month: 'short', year: 'numeric' });
+    return d;
   }, [cycle]);
 
   const features = useMemo(() => {
@@ -192,15 +234,21 @@ function CheckoutContent() {
           sessionStorage.setItem('active_checkout_token', token);
         } catch {}
         navigate(`/billing/checkout?plan_id=${plan.id}&token=${token}&cycle=${cycle}`, { replace: true });
+        const resolvedInst = invData.payment_instructions || invData.instructions || invData.active_transaction?.payment_instructions || invData.active_transaction?.instructions;
         setInvoiceDetails({
           success: true,
           data: {
             invoice_number: invData.invoice_number || token,
             total_amount: invData.total_amount || totalPrice,
+            expired_time: invData.expired_time || invData.active_transaction?.expired_time,
+            payment_instructions: resolvedInst,
+            instructions: resolvedInst,
             active_transaction: {
               qr_url: invData.qr_url || invData.active_transaction?.qr_url || (invData.checkout_url?.includes('tripay.co.id/qr') ? invData.checkout_url : null),
               pay_code: invData.pay_code || invData.active_transaction?.pay_code,
-              payment_instructions: invData.payment_instructions || invData.active_transaction?.payment_instructions
+              payment_instructions: resolvedInst,
+              instructions: resolvedInst,
+              expired_time: invData.expired_time || invData.active_transaction?.expired_time
             }
           }
         });
