@@ -187,7 +187,11 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
   // Lawan bicara
   const otherUser = thread.participants?.find(p => p.user_id !== thread.created_by) || thread.participants?.[0];
   const interlocutorName = thread.title || otherUser?.name || 'Kontak Sekolah';
-  const interlocutorRole = otherUser?.role_label || otherUser?.role || 'GTK';
+  const rawInterlocutorRole = otherUser?.role_label || otherUser?.role;
+  const interlocutorRole =
+    typeof rawInterlocutorRole === 'object'
+      ? String((rawInterlocutorRole as any)?.name || 'GTK')
+      : String(rawInterlocutorRole || 'GTK');
 
   return (
     <div className="flex flex-col h-full bg-[#efeae2] dark:bg-[#0b141a] relative select-none">

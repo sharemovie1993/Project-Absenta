@@ -87,6 +87,13 @@ export default function CommunicationCenterPage() {
     };
   }, [socket]);
 
+  const resolvedUserRole = useMemo(() => {
+    const raw = (user as any)?.role;
+    if (!raw) return (user as any)?.roleName || 'Staff';
+    if (typeof raw === 'object') return String(raw.name || raw.label || 'Staff');
+    return String(raw);
+  }, [user]);
+
   // ── WebRTC Calling Hook ───────────────────────────────────────────────────
   const {
     callState,
@@ -108,7 +115,7 @@ export default function CommunicationCenterPage() {
     socket,
     currentUserId: user?.id,
     currentUserName: user?.full_name || 'Guru/Staff',
-    currentUserRole: user?.role
+    currentUserRole: resolvedUserRole
   });
 
   // ── React Query: Threads List (Pilar 31) ──────────────────────────────────
@@ -241,7 +248,7 @@ export default function CommunicationCenterPage() {
                       {user?.full_name || 'Staff User'}
                     </p>
                     <p className="text-[10px] text-slate-400 truncate">
-                      {user?.role || 'Staff'}
+                      {resolvedUserRole}
                     </p>
                   </div>
                 </div>
@@ -421,7 +428,7 @@ export default function CommunicationCenterPage() {
           roomId={meetingRoomId}
           userId={user?.id || 'guest-staff'}
           userName={user?.full_name || 'Staff User'}
-          userRole={user?.role || 'Staff'}
+          userRole={resolvedUserRole}
         />
       )}
 

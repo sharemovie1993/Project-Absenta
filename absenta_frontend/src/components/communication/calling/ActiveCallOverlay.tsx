@@ -135,7 +135,7 @@ export const ActiveCallOverlay: React.FC<ActiveCallOverlayProps> = ({
               {targetUser.name}
             </h3>
             <p className="text-xs text-[#00a884] font-medium">
-              {targetUser.role || 'GTK'} • {callState === 'CALLING' ? 'Menghubungkan...' : formatDuration(callDuration)}
+              {typeof targetUser.role === 'object' ? (targetUser.role as any)?.name || 'GTK' : (targetUser.role || 'GTK')} • {callState === 'CALLING' ? 'Menghubungkan...' : formatDuration(callDuration)}
             </p>
           </div>
 
