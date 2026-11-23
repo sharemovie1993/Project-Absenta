@@ -381,10 +381,49 @@ export class SesiGuard {
         const guru = await prisma.guru.findFirst({ where: { tenant_id: tenantId, OR: [{ user_id: userId }, { id: userId }] }, select: { id: true } });
         if (guru) {
             const org = request.organizationalScope;
-            const hasPrivilegedStructure = org?.tenant_wide === true || (org?.positions || []).some((p: any) => p.code === 'PETUGAS_KELAS');
+            const positions = org?.positions || [];
             const forceOnlyMe = request.query.only_me === 'true' || request.query.only_me === true || request.query.guru_id === 'me';
 
-            if (!hasPrivilegedStructure || forceOnlyMe) {
+            // Cek kelas binaan resmi Wali Kelas dari OrganizationalAssignment
+            const walasAssignments = await prisma.organizationalAssignment.findMany({
+                where: {
+                    user_id: userId,
+                    is_active: true,
+                    Position: { code: 'WALIKELAS' },
+                    OR: [
+                        { tahun_pelajaran_id: null },
+                        { TahunPelajaran: { is_active: true } }
+                    ]
+                },
+                select: { kelas_id: true }
+            });
+            const walasKelasIds = Array.from(
+                new Set(walasAssignments.map((a: any) => String(a.kelas_id || '')).filter(Boolean))
+            );
+
+            const isViewingOwnWalasKelas =
+                !forceOnlyMe &&
+                walasKelasIds.length > 0 &&
+                (
+                    (kelas_id && walasKelasIds.includes(String(kelas_id))) ||
+                    !kelas_id
+                );
+
+            const hasPiketOrPetugas =
+                positions.some((p: any) => p.code === 'PETUGAS_KELAS' || p.code === 'GURU_PIKET' || p.code === 'STAFF_PIKET');
+
+            if (isViewingOwnWalasKelas) {
+                if (!kelas_id) {
+                    request.query.allowedKelasIds = walasKelasIds;
+                    if (walasKelasIds.length === 1) {
+                        request.query.kelas_id = walasKelasIds[0];
+                    }
+                }
+                // Wali Kelas berhak melihat seluruh sesi (Kegiatan & KBM) di kelas binaannya secara Read-Only
+                return;
+            }
+
+            if (!hasPiketOrPetugas || forceOnlyMe) {
                 request.query.guruIdFilter = guru.id;
             }
         }

@@ -23,7 +23,7 @@ export const AttendanceOpsPage: React.FC = React.memo(() => {
   const { user } = useAuthStore();
   const { tenantId } = useTenant();
 
-  // 🛡️ Universal Role-Ready Guard: Siswa Petugas Kelas tetap di dalam SiswaDashboard (In-Place View)
+  // 🛡️ Universal Role-Ready Guard: Siswa Petugas Kelas & Wali Kelas tetap di dalam Dashboard masing-masing (In-Place View)
   React.useEffect(() => {
     const roleName = String(user?.role?.name || (user as any)?.roleName || (user as any)?.role || '').toUpperCase();
     const isSiswa = roleName === 'SISWA' || Boolean((user as any)?.siswa_profile) || Boolean((user as any)?.Siswa) || Boolean((user as any)?.siswa);
@@ -31,6 +31,19 @@ export const AttendanceOpsPage: React.FC = React.memo(() => {
       const searchParams = new URLSearchParams(window.location.search);
       const subtab = searchParams.get('subtab') || 'kbm';
       navigate(`/dashboard?tab=presensi-kelas&subtab=${subtab}`, { replace: true });
+      return;
+    }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const tabParam = (searchParams.get('tab') || '').toLowerCase();
+    const subtabParam = (searchParams.get('subtab') || '').toLowerCase();
+    const hasWalasClass = Boolean(
+      (user as any)?.guru_profile?.wali_kelas_di ||
+      (user as any)?.walikelas_kelas?.id ||
+      (Array.isArray((user as any)?.position_codes) && (user as any).position_codes.includes('WALIKELAS'))
+    );
+    if (roleName === 'GURU' && hasWalasClass && tabParam === 'sesi' && subtabParam === 'kegiatan') {
+      navigate('/dashboard?tab=binaan&subtab=kegiatan', { replace: true });
     }
   }, [user, navigate]);
 

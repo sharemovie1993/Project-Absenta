@@ -45,6 +45,10 @@ import {
 } from './walikelas/walasNavigation.config';
 import { cn } from '@/lib/utils';
 
+const SessionManagerModule = React.lazy(() =>
+  import('@/pages/attendance/ops/components/SessionManagerModule').then((m) => ({ default: m.SessionManagerModule }))
+);
+
 export interface WaliKelasDashboardProps {
   waliKelasNama?: string;
   kelasId?: string;
@@ -65,7 +69,7 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
   const subtabParam = searchParams.get('subtab') as WaliKelasTabId | null;
 
   const validTabs: WaliKelasTabId[] = [
-    'ringkasan', 'siswa', 'cek-dapodik', 'struktur', 'presensi', 'deteksi', 'ketuntasan', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rapor'
+    'ringkasan', 'siswa', 'cek-dapodik', 'struktur', 'presensi', 'kegiatan', 'deteksi', 'ketuntasan', 'jurnal', 'izin', 'disiplin', 'prestasi', 'rapor'
   ];
 
   // Mobile Filter Collapsible State
@@ -444,6 +448,54 @@ export const WaliKelasDashboard: React.FC<WaliKelasDashboardProps> = ({
                     onOpenRujukanModal={() => handleTabSelect('disiplin')}
                     onNavigateToDeteksi={() => handleTabSelect('deteksi')}
                   />
+                </div>
+              )}
+
+              {visitedTabs.has('kegiatan') && (
+                <div
+                  key="tab-kegiatan"
+                  className={cn('w-full space-y-4', activeTab === 'kegiatan' ? 'block animate-in fade-in duration-100' : 'hidden')}
+                >
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20">
+                        <CalendarCheck className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                            Pemantauan Sesi Kegiatan &amp; KBM Kelas {activeKelasNama || ''}
+                          </h4>
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60">
+                            Read-Only (Wali Kelas)
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
+                          Wali Kelas dapat memantau kartu sesi kegiatan (Apel, Upacara, Ketarunaan, Pembiasaan) serta rincian kehadiran siswa kelas binaan secara langsung.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <React.Suspense
+                    fallback={
+                      <div className="h-64 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                    }
+                  >
+                    <SessionManagerModule
+                      selectedKelasId={activeKelasId || ''}
+                      setSelectedKelasId={() => {}}
+                      kelasOptions={activeKelasId ? [{ label: activeKelasNama || 'Kelas Binaan', value: activeKelasId }] : []}
+                      isPetugasSiswa={false}
+                      canCreateSession={false}
+                      managedKelasIds={activeKelasId ? [activeKelasId] : []}
+                      user={user as any}
+                      hideLayout={true}
+                      hideKelas={true}
+                      defaultTab="KEGIATAN"
+                      readOnly={true}
+                    />
+                  </React.Suspense>
                 </div>
               )}
 

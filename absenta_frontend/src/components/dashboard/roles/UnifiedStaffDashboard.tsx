@@ -1551,7 +1551,14 @@ export const UnifiedStaffDashboard: React.FC = () => {
           {(isWaliKelas || isPetugasKelas) && (
             <button
               type="button"
-              onClick={() => navigate('/attendance/ops?tab=sesi&subtab=kegiatan')}
+              onClick={() => {
+                if (isWaliKelas) {
+                  useMobileSubtabSidebarStore.getState().close();
+                  setSearchParams({ tab: 'binaan', subtab: 'kegiatan' }, { replace: true });
+                } else {
+                  navigate('/attendance/ops?tab=sesi&subtab=kegiatan');
+                }
+              }}
               className="group relative px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-black text-xs flex items-center gap-2.5 shrink-0 self-start sm:self-auto shadow-md shadow-amber-950/30 border border-amber-300/30 transition-all duration-200 active:scale-95 cursor-pointer"
             >
               <div className="p-1.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/20 group-hover:scale-110 transition-transform">

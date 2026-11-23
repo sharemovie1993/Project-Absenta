@@ -47,6 +47,8 @@ export interface SessionManagerModuleProps {
   hideKelas?: boolean;
   isModal?: boolean;
   onClose?: () => void;
+  defaultTab?: 'KBM' | 'KEGIATAN';
+  readOnly?: boolean;
 }
 export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.memo(({
   selectedKelasId,
@@ -60,6 +62,8 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
   hideKelas = false,
   isModal = false,
   onClose,
+  defaultTab,
+  readOnly = false,
 }) => {
   const authUser = useAuthStore((s) => s.user);
   const user = userProp || (authUser as unknown as Record<string, unknown>);
@@ -67,7 +71,7 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAdmin, isStudent, isKepalaSekolah, isKurikulum, isKesiswaan, can } = useCapabilities();
   const { playBeep } = useAudioFeedback();
-  const isReadOnlyExecutive = isKepalaSekolah || isKurikulum || isKesiswaan;
+  const isReadOnlyExecutive = isKepalaSekolah || isKurikulum || isKesiswaan || readOnly;
   const invalidateAllKbmQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['unified-kbm-sessions'] });
     queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
@@ -78,25 +82,28 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
   const [filterGuruId, setFilterGuruId] = useState<string>('');
   const subtabParam = (searchParams.get('subtab') || '').toLowerCase();
   const [activeTab, setActiveTab] = useState<'KBM' | 'KEGIATAN'>(
-    subtabParam === 'kegiatan' ? 'KEGIATAN' : 'KBM'
+    defaultTab || (subtabParam === 'kegiatan' ? 'KEGIATAN' : 'KBM')
   );
 
   useEffect(() => {
+    if (defaultTab && hideLayout) return;
     if (subtabParam === 'kegiatan') {
       setActiveTab('KEGIATAN');
     } else if (subtabParam === 'kbm') {
       setActiveTab('KBM');
     }
-  }, [subtabParam]);
+  }, [subtabParam, defaultTab, hideLayout]);
 
   const handleTabChange = useCallback((nextTab: 'KBM' | 'KEGIATAN') => {
     setActiveTab(nextTab);
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      next.set('subtab', nextTab === 'KEGIATAN' ? 'kegiatan' : 'kbm');
-      return next;
-    }, { replace: true });
-  }, [setSearchParams]);
+    if (!hideLayout) {
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.set('subtab', nextTab === 'KEGIATAN' ? 'kegiatan' : 'kbm');
+        return next;
+      }, { replace: true });
+    }
+  }, [setSearchParams, hideLayout]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -426,10 +433,10 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
             guruOptions={guruOptions}
             onRefresh={fetchSessions}
             loading={loading}
-            onOpenCreateModal={() => setShowCreateSessionForm(true)}
-            onSyncSchedule={handleGenerateFromTemplate}
+            onOpenCreateModal={isReadOnlyExecutive ? undefined : () => setShowCreateSessionForm(true)}
+            onSyncSchedule={isReadOnlyExecutive ? undefined : handleGenerateFromTemplate}
             syncLoading={generatingTemplate}
-            canCreateSession={canCreateSession}
+            canCreateSession={isReadOnlyExecutive ? false : canCreateSession}
             hideKelas={hideKelas}
             isPetugasSiswa={isPetugasSiswa}
           />

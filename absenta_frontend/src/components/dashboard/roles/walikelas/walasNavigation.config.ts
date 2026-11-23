@@ -11,6 +11,7 @@ import {
   FileSpreadsheet,
   Printer,
   GitCompare,
+  Flag,
   type LucideIcon,
 } from 'lucide-react';
 import type { WaliKelasTabId } from './types';
@@ -68,6 +69,7 @@ export const WALAS_SUBTABS_BASE: WalasTabDefinition[] = [
 
   // 🛡️ KATEGORI 2: PRESENSI & DISIPLIN
   { id: 'presensi', label: 'Presensi', shortLabel: 'Presensi', category: 'pembinaan', icon: CalendarCheck, targetPath: '/dashboard?tab=binaan&subtab=presensi', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
+  { id: 'kegiatan', label: 'Sesi Kegiatan', shortLabel: 'Kegiatan', category: 'pembinaan', icon: Flag, targetPath: '/dashboard?tab=binaan&subtab=kegiatan', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'deteksi', label: 'Deteksi', shortLabel: 'Deteksi', category: 'pembinaan', icon: ShieldAlert, targetPath: '/dashboard?tab=binaan&subtab=deteksi', color: 'bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400' },
   { id: 'izin', label: 'Izin', shortLabel: 'Izin', category: 'pembinaan', icon: FileCheck2, targetPath: '/dashboard?tab=binaan&subtab=izin', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
   { id: 'disiplin', label: 'Disiplin', shortLabel: 'Disiplin', category: 'pembinaan', icon: ShieldAlert, targetPath: '/dashboard?tab=binaan&subtab=disiplin', color: 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400' },

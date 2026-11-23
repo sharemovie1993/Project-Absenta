@@ -203,7 +203,7 @@ export const SessionTimelineList: React.FC<Props> = React.memo(({
                     <SesiExpandedContent 
                       sesiId={session.id as string} 
                       sesi={session as unknown as SesiDetail} 
-                      isReportMode={Boolean(isReportOnly || isSessionOverdue)}
+                      isReportMode={Boolean(isReportOnly || isSessionOverdue || !canManageSession)}
                     />
                   </div>
                 </motion.div>
