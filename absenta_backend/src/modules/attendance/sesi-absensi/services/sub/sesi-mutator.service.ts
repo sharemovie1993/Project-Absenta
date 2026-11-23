@@ -204,6 +204,30 @@ export class SesiMutatorService {
       include: { Role: true }
     }) : null;
     const isSiswa = user?.Role?.name === 'SISWA';
+    const isGuru = user?.Role?.name === 'GURU';
+    const isAdmin = user?.Role?.name === 'ADMIN' || user?.Role?.name === 'SUPERADMIN';
+
+    // 🛡️ Defense-in-depth: Guru yang bukan pengajar dan bukan piket dilarang mengubah status sesi guru lain
+    if (isGuru && !isAdmin) {
+      const guruRecord = await prisma.guru.findFirst({
+        where: { user_id: userId, tenant_id: tenantId },
+        select: { id: true }
+      });
+      const isAssigned = guruRecord && (
+        String(sesi.guru_id) === String(guruRecord.id) ||
+        String(sesi.guru_pelaksana_id) === String(guruRecord.id)
+      );
+      if (!isAssigned) {
+        const todayDays = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
+        const hariIni = todayDays[new Date().getDay()];
+        const isPiket = await (prisma as any).jadwalPiketGuru.findFirst({
+          where: { guru_id: guruRecord?.id || '', hari: hariIni as any, tenant_id: tenantId }
+        });
+        if (!isPiket) {
+          throw new Error('Forbidden: Anda bukan guru pengajar pada sesi ini dan tidak berhak mengubah status sesi.');
+        }
+      }
+    }
 
     const updatePayload: any = {
       status: targetStatus,
@@ -254,6 +278,30 @@ export class SesiMutatorService {
       include: { Role: true }
     }) : null;
     const isSiswa = user?.Role?.name === 'SISWA';
+    const isGuru = user?.Role?.name === 'GURU';
+    const isAdmin = user?.Role?.name === 'ADMIN' || user?.Role?.name === 'SUPERADMIN';
+
+    // 🛡️ Defense-in-depth: Guru yang bukan pengajar dan bukan piket dilarang mengubah status sesi guru lain
+    if (isGuru && !isAdmin) {
+      const guruRecord = await prisma.guru.findFirst({
+        where: { user_id: userId, tenant_id: tenantId },
+        select: { id: true }
+      });
+      const isAssigned = guruRecord && (
+        String(sesi.guru_id) === String(guruRecord.id) ||
+        String(sesi.guru_pelaksana_id) === String(guruRecord.id)
+      );
+      if (!isAssigned) {
+        const todayDays = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
+        const hariIni = todayDays[new Date().getDay()];
+        const isPiket = await (prisma as any).jadwalPiketGuru.findFirst({
+          where: { guru_id: guruRecord?.id || '', hari: hariIni as any, tenant_id: tenantId }
+        });
+        if (!isPiket) {
+          throw new Error('Forbidden: Anda bukan guru pengajar pada sesi ini dan tidak berhak mengubah status sesi.');
+        }
+      }
+    }
 
     // ⚡ Konversi dan upload Base64 foto bukti kegiatan jika dikirim oleh petugas kelas / guru
     let finalFotoUrl = data.foto_kegiatan || data.foto_bukti_url;

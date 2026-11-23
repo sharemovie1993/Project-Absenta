@@ -30,6 +30,7 @@ type Props = {
   onOpenPhotoModal?: (item: any) => void;
   onViewPhoto?: (item: any) => void;
   hideKelas?: boolean;
+  mode?: 'GURU' | 'SISWA' | 'PETUGAS' | 'MONITORING';
 };
 
 export const SesiCard = React.memo(function SesiCard({
@@ -45,6 +46,7 @@ export const SesiCard = React.memo(function SesiCard({
   onViewPhoto,
   canManage = true,
   hideKelas = false,
+  mode = 'MONITORING',
 }: Props) {
   // Enrich sesi with counts if provided
   const enrichedItem = {
@@ -54,7 +56,7 @@ export const SesiCard = React.memo(function SesiCard({
 
   return (
     <UniversalKbmCard
-      mode="PETUGAS"
+      mode={mode}
       item={enrichedItem}
       isExpanded={isExpanded}
       onToggleExpand={onToggleExpand}

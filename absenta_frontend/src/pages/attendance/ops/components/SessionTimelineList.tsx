@@ -53,6 +53,8 @@ interface Props {
   isStudent: boolean;
   isReadOnlyExecutive: boolean;
   can: (perm: string) => boolean;
+  managedKelasIds?: string[];
+  user?: any;
 }
 
 export const SessionTimelineList: React.FC<Props> = React.memo(({
@@ -72,9 +74,12 @@ export const SessionTimelineList: React.FC<Props> = React.memo(({
   isAdmin,
   isStudent,
   isReadOnlyExecutive,
-  can
+  can,
+  managedKelasIds,
+  user
 }) => {
   const queryClient = useQueryClient();
+  const currentGuruId = (user as any)?.guru_profile?.id || (user as any)?.guru_id || (user as any)?.Guru?.id;
 
   const handlePhotoClick = useCallback((item: Record<string, unknown>) => {
     const pUrl = (item.foto_kegiatan || item.foto_masuk) as string;
@@ -104,6 +109,32 @@ export const SessionTimelineList: React.FC<Props> = React.memo(({
       );
       const isSessionFinished = session.status === 'SELESAI';
       const isReportOnly = isReadOnlyExecutive || isSessionFinished || (isPetugasSiswa && isSessionOverdue);
+
+      const isSessionTeacher = Boolean(
+        currentGuruId && (
+          String(session.guru_id) === String(currentGuruId) ||
+          String(session.guru_pelaksana_id) === String(currentGuruId)
+        )
+      );
+
+      const isClassOfficer = Boolean(
+        isPetugasSiswa && (
+          managedKelasIds?.includes(String(session.kelas_id)) ||
+          String((user as any)?.kelas_id) === String(session.kelas_id) ||
+          String((user as any)?.siswa_profile?.kelas_id) === String(session.kelas_id)
+        )
+      );
+
+      const canManageSession = !isReportOnly && (isAdmin || isSessionTeacher || isClassOfficer);
+
+      let cardMode: 'GURU' | 'SISWA' | 'PETUGAS' | 'MONITORING' = 'MONITORING';
+      if (isSessionTeacher) {
+        cardMode = 'GURU';
+      } else if (isClassOfficer || isAdmin) {
+        cardMode = 'PETUGAS';
+      } else {
+        cardMode = 'MONITORING';
+      }
 
       const rawStatus = (session.guru_status || 'BELUM_HADIR') as string;
       const teacherMeta = getTeacherStatusMeta(rawStatus);
@@ -137,12 +168,13 @@ export const SessionTimelineList: React.FC<Props> = React.memo(({
               counts={(session.summary as Record<string, number>) || {}}
               guruStatusText={teacherMeta.label}
               guruStatusVariant={teacherMeta.badgePropsVariant}
-              canFinish={String(session.status) !== 'SELESAI' && !isSessionOverdue}
+              canFinish={String(session.status) !== 'SELESAI' && !isSessionOverdue && canManageSession}
               onToggleExpand={() => toggleExpand(session.id as string)}
-              onFinish={() => handleFinishSesi(session.id as string)}
-              onDelete={() => handleDeleteSesi(session.id as string)}
-              onScan={() => handleOpenScan(session.id as string)}
-              isGuru={isPetugasSiswa}
+              onFinish={canManageSession ? () => handleFinishSesi(session.id as string) : undefined}
+              onDelete={isAdmin ? () => handleDeleteSesi(session.id as string) : undefined}
+              onScan={canManageSession ? () => handleOpenScan(session.id as string) : undefined}
+              isGuru={isSessionTeacher}
+              mode={cardMode}
               jenisBadgeVariant="secondary"
               Icon={BookOpen}
               iconClass="w-4 h-4"
@@ -150,11 +182,11 @@ export const SessionTimelineList: React.FC<Props> = React.memo(({
               guruLabel={getGuruLabel}
               waktuMulaiText={formatLocalTimeFromISO(session.waktu_mulai as string) || ''}
               waktuSelesaiText={formatLocalTimeFromISO(session.waktu_selesai as string) || ''}
-              showScanGuru={!isReadOnlyExecutive && !isSessionOverdue}
+              showScanGuru={!isReadOnlyExecutive && !isSessionOverdue && canManageSession}
               showScanSiswa={!isReadOnlyExecutive && !isSessionOverdue}
-              canManage={!isReportOnly && (isAdmin || can('attendance.sessions.update') || (isStudent && isPetugasSiswa))}
+              canManage={canManageSession}
               onOpenJournal={() => handleOpenJournal(session)}
-              onOpenPhotoModal={() => handleOpenPhotoGuruModal(session)}
+              onOpenPhotoModal={canManageSession ? () => handleOpenPhotoGuruModal(session) : undefined}
               onViewPhoto={handlePhotoClick}
               hideKelas={false}
             />

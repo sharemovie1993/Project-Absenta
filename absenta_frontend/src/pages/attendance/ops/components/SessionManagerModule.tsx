@@ -239,6 +239,27 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
     setJournalModalOpen(true);
   }, []);
   const handleOpenPhotoGuruModal = useCallback((item: Record<string, unknown>) => {
+    // 🛡️ RBAC / ABAC Guard: Cegah guru lain / wali kelas membuka sesi guru pengajar lain
+    const currentGuruId = (user as any)?.guru_profile?.id || (user as any)?.guru_id || (user as any)?.Guru?.id;
+    const isSessionTeacher = Boolean(
+      currentGuruId && (
+        String(item.guru_id) === String(currentGuruId) ||
+        String(item.guru_pelaksana_id) === String(currentGuruId)
+      )
+    );
+    const isClassOfficer = Boolean(
+      isPetugasSiswa && (
+        managedKelasIds?.includes(String(item.kelas_id)) ||
+        String((user as any)?.kelas_id) === String(item.kelas_id) ||
+        String((user as any)?.siswa_profile?.kelas_id) === String(item.kelas_id)
+      )
+    );
+
+    if (!isAdmin && !isSessionTeacher && !isClassOfficer) {
+      toast.error('Pelanggaran Otorisasi: Anda bukan guru pengajar pada sesi ini dan tidak memiliki hak membuka sesi kelas guru lain.');
+      return;
+    }
+
     const isKegiatan = Boolean(item.jenis_kegiatan && String(item.jenis_kegiatan).toUpperCase() !== 'KBM');
     const kegiatanLabel = (item.kegiatan as string) || (item.nama_kegiatan as string) || (item.nama as string) || (item.jenis_kegiatan as string) || 'Kegiatan';
     setPhotoGuruTarget({
@@ -250,7 +271,7 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
       activityName: isKegiatan ? kegiatanLabel : undefined,
     });
     setPhotoGuruModalOpen(true);
-  }, [getKelasLabel, getMapelLabel, getGuruLabel]);
+  }, [getKelasLabel, getMapelLabel, getGuruLabel, user, isPetugasSiswa, managedKelasIds, isAdmin]);
 
   // Jalur 1: Buka Sesi Langsung Tanpa Foto (Khusus Petugas Kelas)
   const handleOpenSessionWithoutPhoto = useCallback(async () => {
@@ -477,6 +498,8 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
                 isStudent={isStudent}
                 isReadOnlyExecutive={isReadOnlyExecutive}
                 can={can}
+                managedKelasIds={managedKelasIds}
+                user={user}
               />
             </Suspense>
           )}

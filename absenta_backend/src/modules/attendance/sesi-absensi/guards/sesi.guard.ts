@@ -136,7 +136,7 @@ export class SesiGuard {
 
     // 🏛️ Pimpinan (Kurikulum/Kesiswaan/Kepsek) & Petugas Piket memiliki kewenangan penuh
     // untuk menentukan status kehadiran guru (IZIN, SAKIT, PENUGASAN, ALPA) dan Guru Inval di Meja Piket.
-    if (isAbsenGuruRoute && (isManagement || isPiketAuthorized || org?.tenant_wide)) {
+    if (isAbsenGuruRoute && (isManagement || isPiketAuthorized)) {
       return; // Allowed for Management / Piket
     }
 
@@ -235,6 +235,11 @@ export class SesiGuard {
             String(sesi.guru_pelaksana_id || '') === String(guruRecord.id) ||
             String(sesi.UnitPengajaran?.guru_id || '') === String(guruRecord.id))
         ) {
+          // Jika memanggil /absen-guru/:guru_id, guru hanya boleh mencatat kehadiran dirinya sendiri
+          if (isAbsenGuruRoute && request.params?.guru_id && String(request.params.guru_id) !== String(guruRecord.id)) {
+            reply.status(403).send({ success: false, message: 'Forbidden: Anda tidak dapat mengubah data presensi guru lain.' });
+            return;
+          }
           return; // Allowed
         }
 

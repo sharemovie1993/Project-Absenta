@@ -52,9 +52,8 @@ export const AttendanceOpsPage: React.FC = React.memo(() => {
   const { isAdmin, isTeacher, can } = useCapabilities();
   const isPetugasClassOrAdmin = 
     isAdmin || 
-    isTeacher || 
     isPetugasSiswaHook || 
-    petugasLabel === 'Aktif' ||
+    (user?.role?.name === 'SISWA' && petugasLabel === 'Aktif') ||
     can('attendance.gate.tap.exit') || 
     can('attendance.sessions.create') ||
     can('attendance.scan');
@@ -65,7 +64,7 @@ export const AttendanceOpsPage: React.FC = React.memo(() => {
   const sharedProps = {
     user,
     absensiMode,
-    isPetugasSiswa: isPetugasClassOrAdmin,
+    isPetugasSiswa: isPetugasSiswaHook,
     isPetugasGuru: isTeacher || can('attendance.sessions.view.list') || isPetugasGuruHook,
     kelasLabel: kelasNama,
     roleLabel,
