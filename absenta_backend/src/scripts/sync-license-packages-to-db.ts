@@ -2,7 +2,7 @@ import { prisma } from '../utils/prisma';
 import { resolvePlanAbsensiMode } from '../utils/attendanceModeHelper';
 import axios from 'axios';
 
-async function syncLicensePackages() {
+export async function syncLicensePackages(client: any = prisma) {
   const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
   console.log(`[SyncPackages] Mengambil paket resmi dari ${LICENSE_SERVER_URL}/api/license/packages?product_id=cakola ...`);
 
@@ -25,7 +25,7 @@ async function syncLicensePackages() {
 
       // Pastikan Module induk ada di database
       if (moduleId) {
-        await prisma.module.upsert({
+        await client.module.upsert({
           where: { id: moduleId },
           update: {
             name: moduleId === 'PAKET_LENGKAP' ? 'PAKET LENGKAP' : moduleId,
@@ -50,7 +50,7 @@ async function syncLicensePackages() {
       const period = pkg.billing_period === 'YEAR' ? 'YEAR' : 'MONTH';
 
       // Upsert ke tabel Plan
-      const existing = await prisma.plan.findUnique({ where: { id: planId } });
+      const existing = await client.plan.findUnique({ where: { id: planId } });
       const planData: any = {
         name: planName,
         code: planId,
@@ -71,13 +71,13 @@ async function syncLicensePackages() {
       };
 
       if (existing) {
-        await prisma.plan.update({
+        await client.plan.update({
           where: { id: planId },
           data: planData
         });
         updatedCount++;
       } else {
-        await prisma.plan.create({
+        await client.plan.create({
           data: {
             id: planId,
             ...planData
@@ -90,9 +90,11 @@ async function syncLicensePackages() {
     console.log(`[SyncPackages] ✅ Sukses! Dibuat: ${createdCount}, Diperbarui: ${updatedCount}, Total: ${packages.length} paket.`);
   } catch (err: any) {
     console.error(`[SyncPackages] ❌ Gagal:`, err.message);
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
-syncLicensePackages();
+if (require.main === module) {
+  syncLicensePackages().finally(async () => {
+    await prisma.$disconnect();
+  });
+}

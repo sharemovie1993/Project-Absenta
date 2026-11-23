@@ -23,6 +23,7 @@ import { seedBahanAjarPresets } from './seed_bahan_ajar_modul1';
 
 import { strukturOrganisasiService } from '../../modules/academic/struktur-organisasi/services/struktur-organisasi.service';
 import { seedDefaultJenisKegiatanForTenant } from '../../modules/academic/jenis-kegiatan-master/services/jenis-kegiatan-master.service';
+import { syncLicensePackages } from '../../scripts/sync-license-packages-to-db';
 
 const prisma = new PrismaClient();
 
@@ -829,7 +830,13 @@ async function main() {
     }
   }
 
-  console.log('ℹ️ Seeding untuk katalog Plan Premium dilewati. Plan Premium sekarang dikelola secara terpusat oleh License Server.');
+  // 7.2. Sync Official Commercial Plans from Central SSOT License Server (Termasuk Koperasi harga baru & Paket Lengkap tanpa Koperasi)
+  try {
+    console.log('🔄 Menyelaraskan paket katalog resmi dari Central License Server (SSOT)...');
+    await syncLicensePackages(prisma);
+  } catch (err: any) {
+    console.warn('⚠️ Gagal sinkronisasi dari License Server, melewati paket premium:', err?.message || err);
+  }
 
   // 8️⃣ Seed Struktur Organisasi & Master Presets for all active tenants
   console.log('🌱 Seeding Struktur Organisasi for all active tenants...');
