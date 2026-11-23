@@ -32,7 +32,7 @@ export default function FloatingMessenger() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [listFilter, setListFilter] = useState<'ALL' | 'UNREAD' | 'GROUP' | 'BROADCAST'>('ALL');
+  const [listFilter, setListFilter] = useState<'ALL' | 'UNREAD' | 'GROUP' | 'KELAS_BINAAN' | 'BROADCAST'>('ALL');
   const [replyText, setReplyText] = useState('');
   const [incomingBanner, setIncomingBanner] = useState<{
     threadId: string;
@@ -116,8 +116,12 @@ export default function FloatingMessenger() {
       const isGrp =
         t.type === 'GROUP' ||
         Boolean((t as any)?.context_ref?.isAutoGroup);
+      const isKelasBinaan =
+        t.type === 'GROUP' &&
+        (t as any)?.context_ref?.groupScope === 'KELAS';
       if (listFilter === 'UNREAD' && !t.isUnread) return false;
       if (listFilter === 'GROUP' && !isGrp) return false;
+      if (listFilter === 'KELAS_BINAAN' && !isKelasBinaan) return false;
       if (listFilter === 'BROADCAST' && !isBc) return false;
 
       if (searchQuery.trim()) {
@@ -436,6 +440,9 @@ export default function FloatingMessenger() {
                       { id: 'ALL' as const, label: 'Semua' },
                       { id: 'UNREAD' as const, label: `Belum Dibaca${unreadCount > 0 ? ` (${unreadCount})` : ''}` },
                       { id: 'GROUP' as const, label: '👥 Grup' },
+                      ...(String((user as any)?.role?.name || user?.role || '').toUpperCase() !== 'SISWA'
+                        ? [{ id: 'KELAS_BINAAN' as const, label: '🏫 Kelas Binaan' }]
+                        : []),
                       { id: 'BROADCAST' as const, label: '📢 Siaran' },
                     ].map((f) => (
                       <button

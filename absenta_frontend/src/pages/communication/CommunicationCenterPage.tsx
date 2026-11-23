@@ -52,7 +52,7 @@ export default function CommunicationCenterPage() {
   const { user } = useAuthStore();
 
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<'ALL' | 'UNREAD' | 'GROUP' | 'DISPOSISI' | 'DIRECT'>('ALL');
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'UNREAD' | 'GROUP' | 'KELAS_BINAAN' | 'DISPOSISI' | 'DIRECT'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isNewModalOpen, setIsNewModalOpen] = useState<boolean>(false);
   const [newModalTab, setNewModalTab] = useState<'DIRECT' | 'DISPOSISI' | 'BROADCAST'>('DIRECT');
@@ -142,13 +142,13 @@ export default function CommunicationCenterPage() {
   } = useQuery({
     queryKey: communicationKeys.threadList({ 
       category: activeFilter === 'DISPOSISI' ? 'DISPOSISI' : undefined,
-      type: activeFilter === 'DIRECT' ? 'DIRECT' : activeFilter === 'GROUP' ? 'GROUP' : undefined,
+      type: activeFilter === 'DIRECT' ? 'DIRECT' : (activeFilter === 'GROUP' || activeFilter === 'KELAS_BINAAN') ? 'GROUP' : undefined,
       is_unread: activeFilter === 'UNREAD' ? true : undefined,
       search: searchQuery || undefined
     }),
     queryFn: () => internalCommunicationApi.getThreads({
       category: activeFilter === 'DISPOSISI' ? 'DISPOSISI' : undefined,
-      type: activeFilter === 'DIRECT' ? 'DIRECT' : activeFilter === 'GROUP' ? 'GROUP' : undefined,
+      type: activeFilter === 'DIRECT' ? 'DIRECT' : (activeFilter === 'GROUP' || activeFilter === 'KELAS_BINAAN') ? 'GROUP' : undefined,
       is_unread: activeFilter === 'UNREAD' ? true : undefined,
       search: searchQuery || undefined
     }),
@@ -363,7 +363,7 @@ export default function CommunicationCenterPage() {
                 </div>
 
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                  {(['ALL', 'UNREAD', 'GROUP', 'DISPOSISI', 'DIRECT'] as const)?.map((filterKey) => (
+                  {(['ALL', 'UNREAD', 'GROUP', 'KELAS_BINAAN', 'DISPOSISI', 'DIRECT'] as const)?.map((filterKey) => (
                     <button
                       key={filterKey}
                       type="button"
@@ -376,7 +376,8 @@ export default function CommunicationCenterPage() {
                     >
                       {filterKey === 'ALL' && 'Semua'}
                       {filterKey === 'UNREAD' && 'Belum Dibaca'}
-                      {filterKey === 'GROUP' && '👥 Grup Kelas & Jabatan'}
+                      {filterKey === 'GROUP' && '👥 Grup'}
+                      {filterKey === 'KELAS_BINAAN' && '🏫 Kelas Binaan'}
                       {filterKey === 'DISPOSISI' && 'Disposisi'}
                       {filterKey === 'DIRECT' && 'Langsung'}
                     </button>
@@ -391,12 +392,18 @@ export default function CommunicationCenterPage() {
                     <div className="animate-spin rounded-full h-6 w-6 border-2 border-emerald-500 border-t-transparent mx-auto mb-2" />
                     Memuat percakapan...
                   </div>
-                ) : threads.length === 0 ? (
+                ) : (activeFilter === 'KELAS_BINAAN'
+                    ? threads.filter((t) => t.type === 'GROUP' && (t as any)?.context_ref?.groupScope === 'KELAS')
+                    : threads
+                  ).length === 0 ? (
                   <div className="p-8 text-center text-xs text-slate-400">
                     Tidak ada percakapan ditemukan.
                   </div>
                 ) : (
-                  threads?.map((t) => {
+                  (activeFilter === 'KELAS_BINAAN'
+                    ? threads.filter((t) => t.type === 'GROUP' && (t as any)?.context_ref?.groupScope === 'KELAS')
+                    : threads
+                  )?.map((t) => {
                     const isSelected = t.id === selectedThreadId;
                     return (
                       <div
