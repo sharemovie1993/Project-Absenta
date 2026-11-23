@@ -157,6 +157,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   const needsReminder = isReadyToOpen && !isLive && !isFinished && !isOverdue && !isTeacherExcused && !isTeacherAlreadyPresent;
   const canChangeStatus = (isReadyToOpen || isOverdue || isTeacherExcused) && !isFinished && !isLive;
   const isTeacherPresent = isTeacherAlreadyPresent;
+  const fotoKegiatanUrl = item.foto_kegiatan || item.foto_masuk || item.session?.foto_kegiatan || item.session?.foto_masuk || item.AbsenGuru?.[0]?.foto_masuk || null;
   const isSessionActive = Boolean(
     isLive || 
     item.session?.status === 'BERLANGSUNG' || 
@@ -326,7 +327,6 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     ?? (item.counts?.TOTAL ?? item.counts?.total ?? 0);
 
   const hasJournal = Boolean(item.ProgresMateri || item.progres_materi || item.session?.ProgresMateri);
-  const fotoKegiatanUrl = item.foto_kegiatan || item.foto_masuk || item.session?.foto_kegiatan || item.session?.foto_masuk || item.AbsenGuru?.[0]?.foto_masuk || null;
   const isOtomatis = Boolean(item.is_otomatis ?? item.is_virtual ?? item.isVirtual ?? (item.id && String(item.id).startsWith('sched_')));
 
   const handleClick = (e: React.MouseEvent) => {
