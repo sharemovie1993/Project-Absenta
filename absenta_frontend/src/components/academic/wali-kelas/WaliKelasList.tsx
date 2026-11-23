@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import useConfirm from '../../../hooks/useConfirm';
 import { Search, RefreshCw, User, School, Plus, Edit, Power, CheckCircle2, Download, FileText, Network, ChevronRight, Printer, Copy, Calendar, Loader2, Trash2 } from 'lucide-react';
-import { Table, Button, Modal, Switch, Input, Badge, SectionCard } from '../../ui';
+import { Table, Button, Modal, Switch, Input, Badge, SectionCard, DebouncedSearchInput } from '../../ui';
 import { MethodPickerModal } from '../../common/MethodPickerModal';
 import { getWaliKelasStrukturList, assignWaliKelasStruktur, nonaktifWaliKelasStruktur, deleteWaliKelasStruktur, copyWaliKelasFromPreviousYear } from '../../../api/kurikulum/waliKelas.api';
 import { getTahunPelajaranList, academicQueryKeys } from '../../../api/academic/tahunPelajaran.api';
@@ -539,14 +539,15 @@ const WaliKelasList = React.memo<Props>(({
         )}
 
         {externalSearchQuery === undefined && (
-          <div className="flex-1 relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <Input
+          <div className="flex-1 w-full">
+            <DebouncedSearchInput
               placeholder="Cari guru atau kelas..."
               aria-label="Cari Guru atau Kelas"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
+              onChange={setSearchTerm}
+              isLoading={loading}
+              className="w-full"
+              inputClassName="h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
             />
           </div>
         )}

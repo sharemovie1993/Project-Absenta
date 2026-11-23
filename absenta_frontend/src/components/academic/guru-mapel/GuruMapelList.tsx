@@ -6,6 +6,7 @@ import { Loader } from '../../ui/Loader';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Input } from '../../ui/Input';
 import { SectionCard } from '../../ui/SectionCard';
+import { DebouncedSearchInput } from '../../ui/DebouncedSearchInput';
 import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download, Layers, Calendar, ChevronDown, Clock, Lock, Unlock } from 'lucide-react';
 import { listGuruMapel, removeGuruMapel, assignGuruMapel, getKurikulumPolicy, updateKurikulumPolicy, clearGuruMapelByContext } from '../../../api/kurikulum/guru-mapel.api';
 import { GuruMapelUnitModal } from './GuruMapelUnitModal';
@@ -818,14 +819,15 @@ const GuruMapelList = React.memo<Props>(({
     <div className="flex flex-col">
       {/* Toolbar Baris Kedua - Filter & Search */}
       <div className="flex flex-col md:flex-row flex-wrap lg:flex-nowrap gap-3 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
-        <div className="flex-1 min-w-[200px] relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input
+        <div className="flex-1 min-w-[200px] w-full">
+          <DebouncedSearchInput
             placeholder="Cari guru atau mapel..."
             aria-label="Cari Guru atau Mata Pelajaran"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
+            onChange={setSearch}
+            isLoading={loading}
+            className="w-full"
+            inputClassName="h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
           />
         </div>
         <div className="w-full md:w-44 lg:w-48 shrink-0">

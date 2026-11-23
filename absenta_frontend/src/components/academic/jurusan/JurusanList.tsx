@@ -23,7 +23,8 @@ import {
   Badge, 
   Loader,
   Checkbox,
-  Skeleton
+  Skeleton,
+  DebouncedSearchInput
 } from '../../ui';
 
 // Lazy load Table to improve mobile performance (TBT)
@@ -67,7 +68,6 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
   }, [queryClient]);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 400);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState('1');
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -76,7 +76,7 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
   useEffect(() => {
     setCurrentPage(1);
     setPageInput('1');
-  }, [debouncedSearchTerm]);
+  }, [searchTerm]);
   
   const [deleting, setDeleting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -86,8 +86,8 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
 
   // Queries using React Query
   const { data: listRes, isLoading: loading, refetch } = useQuery({
-    queryKey: jurusanQueryKeys.list({ page: currentPage, limit: itemsPerPage, search: debouncedSearchTerm }),
-    queryFn: () => getJurusanList(currentPage, itemsPerPage, debouncedSearchTerm),
+    queryKey: jurusanQueryKeys.list({ page: currentPage, limit: itemsPerPage, search: searchTerm }),
+    queryFn: () => getJurusanList(currentPage, itemsPerPage, searchTerm),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -365,26 +365,16 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
     <div className="flex flex-col">
       {/* Toolbar Baris Kedua - Filter & Search (Desktop Only) */}
       <div className="hidden md:flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
-        <div className="flex-1 relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input
+        <div className="flex-1 w-full">
+          <DebouncedSearchInput
             placeholder="Cari jurusan..."
             aria-label="Cari Jurusan"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 shadow-sm pl-9 pr-9"
+            onChange={setSearchTerm}
+            isLoading={loading}
+            className="w-full"
+            inputClassName="h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 shadow-sm"
           />
-          {searchTerm && (
-            <button
-              type="button"
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
-              title="Hapus pencarian"
-              aria-label="Hapus kata kunci pencarian"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
         </div>
       </div>
       
@@ -393,27 +383,16 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
           <div className="p-4 space-y-4">
             {/* Mobile Search & Filter Section */}
             <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  type="text"
+              <div className="w-full">
+                <DebouncedSearchInput
                   placeholder="Cari jurusan / konsentrasi keahlian..."
                   aria-label="Cari jurusan"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-9 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                  onChange={setSearchTerm}
+                  isLoading={loading}
+                  className="w-full"
+                  inputClassName="h-10 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                 />
-                {searchTerm && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchTerm('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                    title="Hapus pencarian"
-                    aria-label="Hapus kata kunci pencarian"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
               </div>
 
               {/* Action Buttons on Mobile */}

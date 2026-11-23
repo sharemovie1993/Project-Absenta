@@ -7,6 +7,7 @@ import { Table } from '../../components/ui/Table';
 import type { Column } from '../../components/ui/Table';
 import { Label } from '../../components/ui/Label';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { DebouncedSearchInput } from '../../components/ui/DebouncedSearchInput';
 import toast from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
 import { kesiswaanApi, kesiswaanQueryKeys } from '../../api/kesiswaan.api';
@@ -45,6 +46,20 @@ export default React.memo(function JenisPelanggaranPage({ hideLayout = false }: 
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterKategori, setFilterKategori] = useState('');
+
+  const kategoriOptions = useMemo(() => [
+    { label: 'Semua Kategori', value: '' },
+    { label: 'Pelanggaran Ringan', value: 'Pelanggaran Ringan' },
+    { label: 'Pelanggaran Sedang', value: 'Pelanggaran Sedang' },
+    { label: 'Pelanggaran Berat', value: 'Pelanggaran Berat' },
+  ], []);
+
+  // Reset page saat filter/search berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterKategori]);
 
   const [formData, setFormData] = useState({
     kategori: 'Pelanggaran Ringan',
@@ -60,13 +75,30 @@ export default React.memo(function JenisPelanggaranPage({ hideLayout = false }: 
   });
 
   const listData = useMemo(() => rawRes?.data || [], [rawRes]);
-  const totalItems = listData.length;
+
+  const filteredListData = useMemo(() => {
+    let result = listData;
+    if (filterKategori) {
+      result = result.filter(item => item.kategori === filterKategori);
+    }
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase().trim();
+      result = result.filter(item => 
+        (item.nama_pelanggaran && item.nama_pelanggaran.toLowerCase().includes(q)) ||
+        (item.kategori && item.kategori.toLowerCase().includes(q)) ||
+        String(item.poin).includes(q)
+      );
+    }
+    return result;
+  }, [listData, filterKategori, searchTerm]);
+
+  const totalItems = filteredListData.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 
   const data = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return listData.slice(start, start + itemsPerPage);
-  }, [listData, currentPage, itemsPerPage]);
+    return filteredListData.slice(start, start + itemsPerPage);
+  }, [filteredListData, currentPage, itemsPerPage]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -248,17 +280,38 @@ export default React.memo(function JenisPelanggaranPage({ hideLayout = false }: 
     <>
       <Card className="rounded-2xl border-none shadow-sm overflow-hidden">
         {isMobile ? (
-          <div className="p-4 space-y-4">
-            <div className="flex justify-between items-center">
-              <Button 
-                variant="toolbarPrimary"
-                size="toolbar"
-                onClick={() => { resetForm(); setModalOpen(true); }}
-                className="w-full sm:w-auto"
-              >
-                <Plus className="w-3.5 h-3.5 mr-1.5" />
-                Tambah Kategori Pelanggaran
-              </Button>
+          <div className="p-4 space-y-3">
+            <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <DebouncedSearchInput
+                placeholder="Cari jenis pelanggaran..."
+                aria-label="Cari Jenis Pelanggaran"
+                value={searchTerm}
+                onChange={setSearchTerm}
+                isLoading={loading}
+                className="w-full"
+                inputClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+              />
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <SearchableSelect
+                    value={filterKategori}
+                    onValueChange={setFilterKategori}
+                    options={kategoriOptions}
+                    placeholder="Semua Kategori"
+                    searchPlaceholder="Cari Kategori..."
+                    triggerClassName="h-8.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                  />
+                </div>
+                <Button 
+                  variant="toolbarPrimary"
+                  size="toolbar"
+                  onClick={() => { resetForm(); setModalOpen(true); }}
+                  className="shrink-0 h-8.5 text-xs"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  Tambah
+                </Button>
+              </div>
             </div>
 
             <MobileAcademicList
@@ -291,11 +344,33 @@ export default React.memo(function JenisPelanggaranPage({ hideLayout = false }: 
             sortOrder={sortOrder}
             onSort={handleSort}
             toolbarLeft={
-              <div className="p-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 w-full">
+                <div className="flex-1 min-w-[220px]">
+                  <DebouncedSearchInput
+                    placeholder="Cari jenis pelanggaran atau poin..."
+                    aria-label="Cari Jenis Pelanggaran"
+                    value={searchTerm}
+                    onChange={setSearchTerm}
+                    isLoading={loading}
+                    className="w-full"
+                    inputClassName="h-9 text-xs rounded-xl"
+                  />
+                </div>
+                <div className="w-full sm:w-48">
+                  <SearchableSelect
+                    value={filterKategori}
+                    onValueChange={setFilterKategori}
+                    options={kategoriOptions}
+                    placeholder="Semua Kategori"
+                    searchPlaceholder="Cari Kategori..."
+                    triggerClassName="h-9 text-xs rounded-xl"
+                  />
+                </div>
                 <Button 
                   variant="toolbarPrimary"
                   size="toolbar"
                   onClick={() => { resetForm(); setModalOpen(true); }}
+                  className="shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5 mr-1.5" />
                   Tambah Data

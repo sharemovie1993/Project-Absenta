@@ -23,7 +23,8 @@ import {
   Badge, 
   Loader,
   SearchableSelect,
-  CleanDeckCard
+  CleanDeckCard,
+  DebouncedSearchInput
 } from '../../ui';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { BookOpen } from 'lucide-react';
@@ -67,12 +68,11 @@ const MapelList = React.memo<MapelListProps>(({
 
   const confirm = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 400);
 
   // Reset pagination saat search term berubah
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm]);
+  }, [searchTerm]);
   const [filterTingkat, setFilterTingkat] = useState<string>('ALL');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -98,8 +98,8 @@ const MapelList = React.memo<MapelListProps>(({
 
   // Queries using React Query
   const { data: listRes, isLoading: loading, refetch } = useQuery({
-    queryKey: mapelQueryKeys.list({ page: currentPage, limit: itemsPerPage, search: debouncedSearchTerm, tingkat: filterTingkat }),
-    queryFn: () => getMapelList(currentPage, itemsPerPage, debouncedSearchTerm, filterTingkat),
+    queryKey: mapelQueryKeys.list({ page: currentPage, limit: itemsPerPage, search: searchTerm, tingkat: filterTingkat }),
+    queryFn: () => getMapelList(currentPage, itemsPerPage, searchTerm, filterTingkat),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -396,26 +396,16 @@ const MapelList = React.memo<MapelListProps>(({
 
         {/* Search + Filter Row */}
         <div className="flex flex-col md:flex-row gap-3 items-center">
-          <div className="flex-1 relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <Input
+          <div className="flex-1 w-full">
+            <DebouncedSearchInput
               placeholder="Cari mata pelajaran..."
               aria-label="Cari Mata Pelajaran"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-9 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9 pr-9"
+              onChange={setSearchTerm}
+              isLoading={loading}
+              className="w-full"
+              inputClassName="h-9 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
             />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                title="Hapus pencarian"
-                aria-label="Hapus kata kunci pencarian"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
           <div className="w-full md:w-48">
             <SearchableSelect

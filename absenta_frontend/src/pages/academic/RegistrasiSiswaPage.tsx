@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Table, type Column } from '@/components/ui/Table';
 import { Input } from '@/components/ui/Input';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { DebouncedSearchInput } from '@/components/ui/DebouncedSearchInput';
 import { Loader } from '@/components/ui/Loader';
 import Tooltip from '@/components/ui/Tooltip';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
@@ -636,17 +637,18 @@ export const RegistrasiSiswaPage: React.FC = () => {
         />
       </div>
 
-      <div className="relative w-60">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-        <Input
-          type="text"
+      <div className="w-60">
+        <DebouncedSearchInput
+          placeholder="Cari NIS, NISN, Nama..."
+          aria-label="Cari Siswa"
           value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
+          onChange={(val) => {
+            setSearchTerm(val);
             setCurrentPage(1);
           }}
-          placeholder="Cari NIS, NISN, Nama..."
-          className="pl-8 h-9 text-xs rounded-xl"
+          isLoading={loading}
+          className="w-full"
+          inputClassName="h-9 text-xs rounded-xl"
         />
       </div>
 
