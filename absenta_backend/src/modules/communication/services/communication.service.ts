@@ -155,7 +155,7 @@ export class CommunicationService {
     }
 
     // Hitung unread count per thread
-    return threads.map((t: any) => {
+    const mappedThreads = threads.map((t: any) => {
       const myLastReadRaw = myReadMap.has(t.id)
         ? myReadMap.get(t.id)
         : t.Participants?.find((p: any) => p.user_id === userId)?.last_read_at;
@@ -220,6 +220,31 @@ export class CommunicationService {
           avatar: otherParticipant.User?.Guru?.foto || otherParticipant.User?.Siswa?.foto || null
         } : null
       };
+    });
+
+    // Mode WhatsApp Murni:
+    // 1. Thread yang sudah ada pesan chat nyata (non-system_event) di paling atas urut waktu terbaru
+    // 2. Jika belum ada chat sama sekali: Grup Jabatan di atas, lalu Grup Kelas (masing-masing urut abjad)
+    const getSortRank = (item: any): number => {
+      const hasRealChat = Boolean(item.lastMessage && !item.lastMessage.is_system_event);
+      if (hasRealChat) return 0;
+      if (item.type === InternalThreadType.GROUP && item.context_ref?.groupScope === 'JABATAN') return 1;
+      if (item.type === InternalThreadType.GROUP && item.context_ref?.groupScope === 'KELAS') return 2;
+      return 3;
+    };
+
+    return mappedThreads.sort((a: any, b: any) => {
+      const rankA = getSortRank(a);
+      const rankB = getSortRank(b);
+      if (rankA !== rankB) return rankA - rankB;
+
+      if (rankA === 0) {
+        return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
+      }
+      if (rankA === 1 || rankA === 2) {
+        return String(a.title || '').localeCompare(String(b.title || ''));
+      }
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     });
   }
 
@@ -1136,13 +1161,22 @@ export class CommunicationService {
         });
       } else {
         updatedGroups += 1;
-        await (prisma as any).internalThread.update({
-          where: { id: threadId },
-          data: {
-            title: opts.title,
-            context_ref: contextPayload,
-          },
-        });
+        const prevCtx = existing?.context_ref || {};
+        const needsThreadUpdate =
+          existing?.title !== opts.title ||
+          prevCtx.groupScope !== opts.groupScope ||
+          prevCtx.groupKey !== opts.groupKey ||
+          prevCtx.memberCount !== opts.members.size ||
+          prevCtx.tahunPelajaranId !== opts.extraMeta?.tahunPelajaranId;
+        if (needsThreadUpdate) {
+          await (prisma as any).internalThread.update({
+            where: { id: threadId },
+            data: {
+              title: opts.title,
+              context_ref: contextPayload,
+            },
+          });
+        }
       }
 
       // Sinkronkan seluruh anggota ke InternalParticipant (skipDuplicates menjaga last_read_at anggota lama!)
