@@ -197,7 +197,7 @@ export class SesiCreatorService {
       where: { id: userId },
       include: { Role: true }
     }) : null;
-    const isSiswaUser = user?.Role?.name === RoleName.SISWA;
+    const isSiswaUser = user?.Role?.name === 'SISWA';
 
     const isPetugasOpening = Boolean(
       isSiswaUser ||
