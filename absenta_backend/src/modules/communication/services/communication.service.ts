@@ -1241,7 +1241,7 @@ export class CommunicationService {
         title: 'Grp. Kurikulum',
         category: InternalThreadCategory.KURIKULUM,
         welcome: '[SISTEM] Ruang koordinasi Tim Kurikulum.',
-        matcher: (u, userAssigns) => {
+        matcher: (_u, userAssigns) => {
           const pos = matchOrgPosition(userAssigns, ['KURIKULUM', 'KBM', 'PENGAJARAN', 'CBT', 'UJIAN', 'KAPROG']);
           if (pos) return pos.Position?.name || 'Tim Kurikulum';
           return null;
@@ -1252,7 +1252,7 @@ export class CommunicationService {
         title: 'Grp. Kesiswaan',
         category: InternalThreadCategory.KESISWAAN,
         welcome: '[SISTEM] Ruang koordinasi Tim Kesiswaan.',
-        matcher: (u, userAssigns) => {
+        matcher: (_u, userAssigns) => {
           const pos = matchOrgPosition(userAssigns, ['KESISWAAN', 'DISIPLIN', 'KETARUNAAN', 'OSIS', 'EKSKUL', 'PIKET']);
           if (pos) return pos.Position?.name || 'Tim Kesiswaan';
           return null;
@@ -1263,7 +1263,7 @@ export class CommunicationService {
         title: 'Grp. Walas',
         category: InternalThreadCategory.WALIKELAS,
         welcome: '[SISTEM] Ruang koordinasi seluruh Wali Kelas aktif.',
-        matcher: (u, userAssigns) => {
+        matcher: (_u, userAssigns) => {
           const pos = userAssigns.find((a) => {
             const codeName = `${a.Position?.code || ''} ${a.Position?.name || ''} ${a.custom_title || ''}`.toUpperCase();
             return Boolean(a.kelas_id) || codeName.includes('WALIKELAS') || codeName.includes('WALI KELAS') || codeName.includes('WALI_KELAS');
@@ -1279,7 +1279,7 @@ export class CommunicationService {
         title: 'Grp. BK',
         category: InternalThreadCategory.BK,
         welcome: '[SISTEM] Ruang koordinasi Guru Bimbingan Konseling (BP/BK).',
-        matcher: (u, userAssigns) => {
+        matcher: (_u, userAssigns) => {
           const pos = matchOrgPosition(userAssigns, ['BPBK', 'KONSELING', 'GURU BK', 'BK']);
           if (pos) return pos.Position?.name || 'Tim BP/BK';
           return null;
@@ -1290,7 +1290,7 @@ export class CommunicationService {
         title: 'Grp. Hubin',
         category: InternalThreadCategory.UMUM,
         welcome: '[SISTEM] Ruang koordinasi Tim Hubin & PKL.',
-        matcher: (u, userAssigns) => {
+        matcher: (_u, userAssigns) => {
           const pos = matchOrgPosition(userAssigns, ['HUBIN', 'HUMAS', 'PKL', 'PRAKERIN', 'BKK', 'DUDI']);
           if (pos) return pos.Position?.name || 'Tim Hubin';
           return null;
@@ -1301,7 +1301,7 @@ export class CommunicationService {
         title: 'Grp. Sarpras',
         category: InternalThreadCategory.SARPRAS,
         welcome: '[SISTEM] Ruang koordinasi Tim Sarpras & Inventaris.',
-        matcher: (u, userAssigns) => {
+        matcher: (_u, userAssigns) => {
           const pos = matchOrgPosition(userAssigns, ['SARPRAS', 'SARANA', 'ASET', 'LAB', 'BENGKEL', 'TEKNISI']);
           if (pos) return pos.Position?.name || 'Tim Sarpras';
           return null;
