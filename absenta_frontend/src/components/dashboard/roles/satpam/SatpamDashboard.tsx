@@ -91,68 +91,6 @@ const MOCK_RECENT_TAPS: RecentScanRecord[] = [
   },
 ];
 
-const MOCK_GUESTS: GuestLogRecord[] = [
-  {
-    id: 'g-1',
-    nama_tamu: 'Drs. Supriyadi, M.Pd.',
-    instansi: 'Pengawas Cabang Dinas Pendidikan',
-    keperluan: 'Monitoring KBM & Kordinasi Kurikulum Merdeka',
-    menemui: 'Kepala Sekolah',
-    no_telepon: '081289123891',
-    nomor_kartu_tamu: 'V-01',
-    jam_masuk: '08:15',
-    status: 'BERKUNJUNG',
-  },
-  {
-    id: 'g-2',
-    nama_tamu: 'Ibu Linda Susanti',
-    instansi: 'Orang Tua Siswa (Daffa Rizky)',
-    keperluan: 'Menyerahkan surat keterangan dokter',
-    menemui: 'Guru Piket / Wali Kelas',
-    no_telepon: '085718293012',
-    nomor_kartu_tamu: 'V-02',
-    jam_masuk: '08:40',
-    status: 'BERKUNJUNG',
-  },
-  {
-    id: 'g-3',
-    nama_tamu: 'Bpk. Surya Wijaya',
-    instansi: 'PT Tera Data Indonusa (Axioo)',
-    keperluan: 'Kunjungan sinkronisasi kurikulum industri',
-    menemui: 'Waka Hubin & Kaprog TKJ',
-    no_telepon: '081399887766',
-    nomor_kartu_tamu: 'V-03',
-    jam_masuk: '09:00',
-    jam_keluar: '10:30',
-    status: 'SELESAI',
-  },
-];
-
-const MOCK_PERMITS: StudentGatePermit[] = [
-  {
-    id: 'p-1',
-    siswa_id: 's-101',
-    nama_siswa: 'Muhammad Alif',
-    kelas: 'XII RPL 2',
-    alasan: 'Mewakili sekolah lomba LKS tingkat kota',
-    jam_keluar_rencana: '09:00',
-    jam_kembali_rencana: '15:00',
-    guru_piket_nama: 'Ibu Ratna Dewi, S.Pd.',
-    status: 'DI_LUAR',
-    jam_keluar_aktual: '09:05',
-  },
-  {
-    id: 'p-2',
-    siswa_id: 's-102',
-    nama_siswa: 'Zahra Amelia',
-    kelas: 'XI AKL 1',
-    alasan: 'Sakit mendadak (demam tinggi) dijemput orang tua',
-    jam_keluar_rencana: '09:30',
-    guru_piket_nama: 'Bpk. Bambang P.',
-    status: 'DISETUJUI',
-  },
-];
-
 const VALID_SATPAM_TABS: SatpamTabType[] = ['scan', 'buku_tamu', 'izin_keluar', 'pelanggaran', 'traffic'];
 
 export const SatpamDashboard: React.FC = () => {
@@ -346,11 +284,11 @@ export const SatpamDashboard: React.FC = () => {
         )}
 
         {currentTab === 'buku_tamu' && (
-          <SatpamBukuTamuTab guestLogs={MOCK_GUESTS} />
+          <SatpamBukuTamuTab onGuestChange={() => refetch()} />
         )}
 
         {currentTab === 'izin_keluar' && (
-          <SatpamIzinKeluarTab permits={MOCK_PERMITS} />
+          <SatpamIzinKeluarTab onPermitChange={() => refetch()} />
         )}
 
         {currentTab === 'pelanggaran' && (
@@ -358,7 +296,7 @@ export const SatpamDashboard: React.FC = () => {
         )}
 
         {currentTab === 'traffic' && (
-          <SatpamTrafficTab stats={satpamStats} />
+          <SatpamTrafficTab stats={satpamStats} onRefreshStats={() => refetch()} />
         )}
       </div>
     </div>
