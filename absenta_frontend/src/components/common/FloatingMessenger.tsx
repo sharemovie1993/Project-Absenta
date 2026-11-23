@@ -13,10 +13,12 @@ import {
   ArrowTopRightOnSquareIcon,
   MegaphoneIcon,
   PlusIcon,
-  MinusIcon
+  MinusIcon,
+  ArrowLeftIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
 import { playNotificationSound } from '@/utils/audioUtils';
 import { NewConversationModal } from '@/components/communication/NewConversationModal';
 
@@ -29,6 +31,8 @@ export default function FloatingMessenger() {
 
   const [isOpen, setIsOpen] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [listFilter, setListFilter] = useState<'ALL' | 'UNREAD' | 'BROADCAST'>('ALL');
   const [replyText, setReplyText] = useState('');
   const [incomingBanner, setIncomingBanner] = useState<{
     threadId: string;
@@ -94,20 +98,47 @@ export default function FloatingMessenger() {
     staleTime: 5 * 1000
   });
 
-  // Auto-pilih thread pertama jika belum ada yang dipilih
+  // Auto scroll ke pesan paling bawah saat berada di dalam ruang chat
   useEffect(() => {
-    if (isOpen && threads.length > 0 && !selectedThreadId) {
-      setSelectedThreadId(threads[0].id);
-    }
-  }, [isOpen, threads, selectedThreadId]);
-
-  // Auto scroll ke pesan paling bawah
-  useEffect(() => {
-    if (isOpen) {
+    if (isOpen && selectedThreadId) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       queryClient.invalidateQueries({ queryKey: communicationKeys.unreadCount() });
+      queryClient.invalidateQueries({ queryKey: communicationKeys.allThreads });
     }
-  }, [activeThreadDetail?.messages, isOpen, queryClient]);
+  }, [activeThreadDetail?.messages, isOpen, selectedThreadId, queryClient]);
+
+  // Filter daftar percakapan vertikal ala WhatsApp
+  const filteredThreads = useMemo(() => {
+    return threads.filter((t) => {
+      const isBc =
+        Boolean((t as any)?.context_ref?.isBroadcast) ||
+        String(t.title || '').startsWith('📢');
+      if (listFilter === 'UNREAD' && !t.isUnread) return false;
+      if (listFilter === 'BROADCAST' && !isBc) return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const titleMatch = String(t.title || '').toLowerCase().includes(q);
+        const lastMsgMatch = String((t as any).last_message || t.lastMessage?.content || '')
+          .toLowerCase()
+          .includes(q);
+        return titleMatch || lastMsgMatch;
+      }
+      return true;
+    });
+  }, [threads, listFilter, searchQuery]);
+
+  const formatRowTime = (dateStr?: string | null) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      if (isToday(d)) return format(d, 'HH:mm');
+      if (isYesterday(d)) return 'Kemarin';
+      return format(d, 'dd/MM/yy');
+    } catch {
+      return '';
+    }
+  };
 
   // ── 4. Send Message Mutation ──────────────────────────────────────────────
   const sendMessageMutation = useMutation({
@@ -140,7 +171,6 @@ export default function FloatingMessenger() {
       queryClient.invalidateQueries({ queryKey: communicationKeys.unreadCount() });
       if (tid) {
         queryClient.invalidateQueries({ queryKey: communicationKeys.messages(tid) });
-        setSelectedThreadId(tid);
       }
 
       if (senderId && senderId !== user.id) {
@@ -154,7 +184,7 @@ export default function FloatingMessenger() {
           content: data?.message?.content || '',
           isBroadcast: true,
         });
-        // Auto-open Messenger window at bottom-right so recipient immediately sees the broadcast!
+        // Auto-open Messenger window (menampilkan daftar chat vertikal dengan siaran terbaru di paling atas)
         setIsOpen(true);
       }
     };
@@ -173,9 +203,6 @@ export default function FloatingMessenger() {
         try {
           playNotificationSound();
         } catch {}
-        if (tid) {
-          setSelectedThreadId(tid);
-        }
         setIncomingBanner({
           threadId: tid,
           title: data?.title || data?.message?.sender_name || 'Pesan Baru Masuk',
@@ -249,36 +276,58 @@ export default function FloatingMessenger() {
   return (
     <>
       <div className="fixed bottom-20 right-4 lg:bottom-4 lg:right-6 z-50 flex flex-col items-end">
-        {/* ── POPUP MESSENGER WINDOW (Docked Bottom-Right Messenger Style) ── */}
+        {/* ── POPUP MESSENGER WINDOW (WhatsApp Style: List View -> Click Row to Open Chat) ── */}
         {isOpen && (
-          <div className="mb-2.5 w-[335px] sm:w-[375px] h-[480px] bg-[#efeae2] dark:bg-[#0b141a] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div className="mb-2.5 w-[345px] sm:w-[385px] h-[500px] bg-white dark:bg-[#111b21] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
             {/* Messenger Top Header Bar */}
-            <div className="px-3.5 py-2.5 bg-gradient-to-r from-[#075e54] to-[#008069] dark:from-[#1f2c34] dark:to-[#111b21] text-white flex items-center justify-between shrink-0 shadow-xs">
-              <div className="flex items-center gap-2.5 min-w-0">
+            <div className="px-3.5 py-2.5 bg-gradient-to-r from-[#075e54] to-[#008069] dark:from-[#202c33] dark:to-[#111b21] text-white flex items-center justify-between shrink-0 shadow-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                {selectedThreadId ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedThreadId(null)}
+                    title="Kembali ke Daftar Chat"
+                    className="p-1.5 -ml-1 rounded-full hover:bg-white/20 text-white transition-colors cursor-pointer shrink-0"
+                  >
+                    <ArrowLeftIcon className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                ) : null}
+
                 <div className="relative w-8 h-8 rounded-full bg-white/15 text-white flex items-center justify-center text-xs font-extrabold shrink-0 shadow-xs">
-                  {isBroadcastThread ? (
-                    <span>📢</span>
+                  {selectedThreadId ? (
+                    isBroadcastThread ? (
+                      <span>📢</span>
+                    ) : (
+                      activeThread?.title ? activeThread.title.slice(0, 2).toUpperCase() : 'CH'
+                    )
                   ) : (
-                    activeThread?.title ? activeThread.title.slice(0, 2).toUpperCase() : 'MS'
+                    <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
+                      <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z" />
+                    </svg>
                   )}
                   <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#25d366] border-2 border-[#075e54]" />
                 </div>
+
                 <div className="min-w-0">
                   <h4 className="font-bold text-xs truncate">
-                    {activeThread?.title || 'Messenger Sekolah'}
+                    {selectedThreadId
+                      ? activeThread?.title || activeThreadDetail?.thread?.title || 'Percakapan'
+                      : 'Messenger Sekolah'}
                   </h4>
                   <p className="text-[10px] text-emerald-100 dark:text-[#8696a0] truncate">
-                    {isBroadcastThread
-                      ? 'Siaran Pengumuman Resmi'
-                      : activeThread?.type === 'DISPOSISI'
-                      ? 'Disposisi & Koordinasi'
-                      : 'Messenger Aktif'}
+                    {selectedThreadId
+                      ? isBroadcastThread
+                        ? 'Siaran Pengumuman Resmi'
+                        : activeThread?.type === 'DISPOSISI'
+                        ? 'Disposisi & Koordinasi'
+                        : 'Online'
+                      : `${threads.length} Percakapan${unreadCount > 0 ? ` • ${unreadCount} Belum Dibaca` : ''}`}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-0.5 shrink-0">
-                {canBroadcast && (
+                {canBroadcast && !selectedThreadId && (
                   <button
                     type="button"
                     onClick={() => {
@@ -292,17 +341,19 @@ export default function FloatingMessenger() {
                     <span>Broadcast</span>
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNewModalTab('DIRECT');
-                    setIsNewModalOpen(true);
-                  }}
-                  title="Chat Baru"
-                  className="p-1.5 rounded-lg hover:bg-white/20 text-white transition-colors cursor-pointer"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                </button>
+                {!selectedThreadId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewModalTab('DIRECT');
+                      setIsNewModalOpen(true);
+                    }}
+                    title="Mulai Chat Baru"
+                    className="p-1.5 rounded-lg hover:bg-white/20 text-white transition-colors cursor-pointer"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -328,21 +379,32 @@ export default function FloatingMessenger() {
               </div>
             </div>
 
-            {/* Incoming Broadcast Alert Banner inside Messenger */}
+            {/* Incoming Broadcast / Message Alert Banner (Clickable to open that conversation) */}
             {incomingBanner && (
-              <div className="px-3 py-2 bg-amber-50 dark:bg-amber-950/60 border-b border-amber-200 dark:border-amber-800/60 flex items-center justify-between gap-2 text-[11px]">
+              <div
+                onClick={() => {
+                  if (incomingBanner.threadId) {
+                    setSelectedThreadId(incomingBanner.threadId);
+                  }
+                  setIncomingBanner(null);
+                }}
+                className="px-3 py-2 bg-amber-50 hover:bg-amber-100/80 dark:bg-amber-950/60 border-b border-amber-200 dark:border-amber-800/60 flex items-center justify-between gap-2 text-[11px] cursor-pointer transition-colors"
+              >
                 <div className="min-w-0">
                   <span className="font-extrabold text-amber-800 dark:text-amber-300 block truncate">
                     {incomingBanner.isBroadcast ? '📢 Siaran Baru: ' : '💬 Pesan Baru: '}
                     {incomingBanner.title}
                   </span>
                   <span className="text-[10px] text-amber-700 dark:text-amber-400 truncate block">
-                    Dari: {incomingBanner.senderName}
+                    Dari: {incomingBanner.senderName} • Klik untuk membaca
                   </span>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIncomingBanner(null)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIncomingBanner(null);
+                  }}
                   className="text-amber-600 hover:text-amber-800 p-0.5 cursor-pointer shrink-0"
                 >
                   <XMarkIcon className="w-3.5 h-3.5" />
@@ -350,153 +412,276 @@ export default function FloatingMessenger() {
               </div>
             )}
 
-            {/* Quick Thread Selector Tabs */}
-            {threads.length > 0 && (
-              <div className="px-2.5 py-1.5 bg-[#f0f2f5] dark:bg-[#111b21] border-b border-[#e9edef] dark:border-[#202c33] flex gap-1.5 overflow-x-auto no-scrollbar shrink-0">
-                {threads.slice(0, 8).map((t: InternalThreadItem) => {
-                  const active = selectedThreadId === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setSelectedThreadId(t.id)}
-                      className={`px-2.5 py-1 text-[10.5px] font-bold rounded-lg whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 ${
-                        active
-                          ? 'bg-[#00a884] text-white shadow-2xs'
-                          : 'bg-white dark:bg-[#202c33] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-[#00a884]'
-                      }`}
-                    >
-                      <span className="max-w-[120px] truncate">{t.title}</span>
-                      {t.isUnread && !active && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Messages Area */}
-            <div 
-              className="flex-1 overflow-y-auto p-3 space-y-2 text-xs"
-              style={{
-                backgroundImage: `radial-gradient(#00a88410 1px, transparent 1px)`,
-                backgroundSize: '16px 16px'
-              }}
-            >
-              {isLoadingMessages ? (
-                <div className="text-center text-[#667781] dark:text-[#8696a0] py-8">Memuat obrolan...</div>
-              ) : !activeThreadDetail?.messages || activeThreadDetail.messages.length === 0 ? (
-                <div className="text-center text-[#667781] dark:text-[#8696a0] py-12 space-y-2">
-                  <p className="font-semibold">Belum ada percakapan aktif</p>
-                  <div className="flex items-center justify-center gap-2">
-                    {canBroadcast && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNewModalTab('BROADCAST');
-                          setIsNewModalOpen(true);
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700 cursor-pointer"
-                      >
-                        📢 Buat Broadcast
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNewModalTab('DIRECT');
-                        setIsNewModalOpen(true);
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold hover:bg-slate-50 cursor-pointer"
-                    >
-                      + Chat Baru
-                    </button>
+            {/* ── SCREEN 1: WHATSAPP VERTICAL CONVERSATION LIST (1 Row ke Bawah) ── */}
+            {!selectedThreadId ? (
+              <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-[#111b21]">
+                {/* Search & Filter Bar ala WhatsApp */}
+                <div className="p-2.5 border-b border-slate-100 dark:border-[#202c33] space-y-2 shrink-0 bg-slate-50/50 dark:bg-[#111b21]">
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Cari kontak atau isi obrolan..."
+                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-[#202c33] border border-slate-200/80 dark:border-slate-700/80 text-slate-800 dark:text-slate-100 placeholder-slate-400 outline-hidden focus:ring-1 focus:ring-[#00a884]"
+                    />
                   </div>
-                </div>
-              ) : (
-                activeThreadDetail.messages.map((m: any) => {
-                  const isMe = m.is_me;
-                  const roleStr =
-                    typeof m.sender_role === 'object'
-                      ? (m.sender_role as any)?.name
-                      : m.sender_role;
-                  return (
-                    <div key={m.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      <div
-                        className={`max-w-[86%] rounded-xl px-3 py-2 text-xs shadow-2xs ${
-                          isMe
-                            ? 'bg-[#d9fdd3] dark:bg-[#005c4b] text-[#111b21] dark:text-[#e9edef] rounded-tr-none'
-                            : 'bg-white dark:bg-[#202c33] text-[#111b21] dark:text-[#e9edef] rounded-tl-none border border-slate-200/60 dark:border-slate-700'
+                  <div className="flex items-center gap-1.5">
+                    {[
+                      { id: 'ALL' as const, label: 'Semua' },
+                      { id: 'UNREAD' as const, label: `Belum Dibaca${unreadCount > 0 ? ` (${unreadCount})` : ''}` },
+                      { id: 'BROADCAST' as const, label: '📢 Siaran' },
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setListFilter(f.id)}
+                        className={`px-2.5 py-1 rounded-full text-[10.5px] font-bold transition-colors cursor-pointer ${
+                          listFilter === f.id
+                            ? 'bg-[#d9fdd3] text-[#008069] dark:bg-[#00a884]/25 dark:text-[#00a884]'
+                            : 'bg-slate-100 dark:bg-[#202c33] text-slate-500 dark:text-[#8696a0] hover:bg-slate-200/70'
                         }`}
                       >
-                        {!isMe && m.sender_name && (
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="text-[10.5px] font-extrabold text-[#008069] dark:text-[#00a884]">
-                              {m.sender_name}
-                            </span>
-                            {roleStr && (
-                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 font-bold">
-                                {roleStr}
-                              </span>
-                            )}
-                          </div>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Vertical Conversation Rows (1 Row per Conversation) */}
+                <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-[#202c33]">
+                  {filteredThreads.length === 0 ? (
+                    <div className="text-center text-[#667781] dark:text-[#8696a0] py-14 px-4 space-y-2.5">
+                      <p className="text-xs font-semibold">
+                        {searchQuery ? 'Tidak ada obrolan yang cocok' : 'Belum ada riwayat percakapan'}
+                      </p>
+                      <div className="flex items-center justify-center gap-2">
+                        {canBroadcast && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewModalTab('BROADCAST');
+                              setIsNewModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700 cursor-pointer"
+                          >
+                            📢 Buat Broadcast
+                          </button>
                         )}
-                        <p className="leading-relaxed whitespace-pre-wrap break-words text-[12px]">
-                          {m.content}
-                        </p>
-                        <span className="block text-[9px] text-right mt-1 text-[#667781] dark:text-[#8696a0]">
-                          {m.created_at ? format(new Date(m.created_at), 'HH:mm') : ''}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewModalTab('DIRECT');
+                            setIsNewModalOpen(true);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#202c33] text-slate-700 dark:text-slate-200 text-[11px] font-bold hover:bg-slate-200 cursor-pointer"
+                        >
+                          + Mulai Chat Baru
+                        </button>
                       </div>
                     </div>
-                  );
-                })
-              )}
-              <div ref={messagesEndRef} />
-            </div>
+                  ) : (
+                    filteredThreads.map((t: any) => {
+                      const isBc =
+                        Boolean(t?.context_ref?.isBroadcast) ||
+                        String(t.title || '').startsWith('📢');
+                      const lastPreview =
+                        t.last_message ||
+                        t.lastMessage?.content ||
+                        'Klik untuk membuka percakapan';
+                      const lastTime = formatRowTime(
+                        t.last_message_at || t.lastMessage?.created_at || t.updated_at
+                      );
+                      const roleBadge = isBc
+                        ? 'SIARAN'
+                        : t.otherUser?.role || t.otherUser?.role_label || '';
 
-            {/* Input Footer (One-Way Read-Only Lock for Broadcast Recipients vs Reply Input) */}
-            {isBroadcastThread && !canPostInBroadcast ? (
-              <div className="p-2.5 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-[#e9edef] dark:border-[#2a3942] flex items-center justify-between gap-2 shrink-0">
-                <span className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400 truncate">
-                  🔒 Saluran Siaran Resmi Satu Arah
-                </span>
-                {broadcastSenderId && broadcastSenderId !== user?.id && (
-                  <button
-                    type="button"
-                    onClick={handleReplyPrivatelyToSender}
-                    className="px-2.5 py-1.5 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white text-[10.5px] font-bold shadow-xs transition-all shrink-0 cursor-pointer"
-                  >
-                    💬 Balas Pribadi
-                  </button>
-                )}
+                      return (
+                        <div
+                          key={t.id}
+                          onClick={() => setSelectedThreadId(t.id)}
+                          className={`px-3.5 py-3 flex items-center gap-3 cursor-pointer transition-colors ${
+                            t.isUnread
+                              ? 'bg-emerald-50/40 dark:bg-[#202c33]/70 hover:bg-emerald-50/80 dark:hover:bg-[#202c33]'
+                              : 'hover:bg-slate-50 dark:hover:bg-[#202c33]/50'
+                          }`}
+                        >
+                          {/* Avatar Bulat di Kiri */}
+                          <div
+                            className={`relative w-11 h-11 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 shadow-2xs ${
+                              isBc
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-[#00a884] text-white'
+                            }`}
+                          >
+                            {isBc ? (
+                              <span className="text-base">📢</span>
+                            ) : (
+                              String(t.title || 'CH')
+                                .replace(/^📢\s*/, '')
+                                .slice(0, 2)
+                                .toUpperCase()
+                            )}
+                          </div>
+
+                          {/* Nama, Waktu, & Preview Pesan Terakhir (1 Row ke Bawah ala WhatsApp) */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span
+                                  className={`text-[13px] truncate ${
+                                    t.isUnread
+                                      ? 'font-extrabold text-slate-900 dark:text-white'
+                                      : 'font-bold text-slate-800 dark:text-[#e9edef]'
+                                  }`}
+                                >
+                                  {t.title}
+                                </span>
+                                {roleBadge && (
+                                  <span
+                                    className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold shrink-0 ${
+                                      isBc
+                                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                                    }`}
+                                  >
+                                    {typeof roleBadge === 'object' ? (roleBadge as any)?.name : roleBadge}
+                                  </span>
+                                )}
+                              </div>
+                              <span
+                                className={`text-[10.5px] shrink-0 ${
+                                  t.isUnread
+                                    ? 'font-bold text-[#00a884]'
+                                    : 'text-slate-400 dark:text-[#8696a0]'
+                                }`}
+                              >
+                                {lastTime}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2 mt-0.5">
+                              <p
+                                className={`text-[11.5px] truncate ${
+                                  t.isUnread
+                                    ? 'font-semibold text-slate-800 dark:text-slate-200'
+                                    : 'text-slate-500 dark:text-[#8696a0]'
+                                }`}
+                              >
+                                {t.lastMessage?.sender_name && isBc
+                                  ? `${t.lastMessage.sender_name}: ${lastPreview}`
+                                  : lastPreview}
+                              </p>
+                              {t.isUnread && (
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#25d366] shrink-0 shadow-2xs" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             ) : (
-              <form onSubmit={handleSend} className="p-2 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-[#e9edef] dark:border-[#2a3942] flex items-center gap-1.5 shrink-0">
-                <input
-                  type="text"
-                  placeholder={
-                    isBroadcastThread
-                      ? 'Kirim pengumuman susulan ke siaran ini...'
-                      : selectedThreadId
-                      ? 'Balas pesan di Messenger...'
-                      : 'Pilih percakapan...'
-                  }
-                  value={replyText}
-                  disabled={!selectedThreadId}
-                  onChange={e => setReplyText(e.target.value)}
-                  className="flex-1 px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#2a3942] text-[#111b21] dark:text-[#e9edef] placeholder-[#8696a0] outline-hidden shadow-2xs"
-                />
-                <button
-                  type="submit"
-                  disabled={!replyText.trim() || sendMessageMutation.isPending || !selectedThreadId}
-                  className="p-2 bg-[#00a884] hover:bg-[#008f6f] disabled:opacity-40 text-white rounded-xl shadow-xs transition-all shrink-0 cursor-pointer"
-                  title="Kirim Balasan"
+              /* ── SCREEN 2: ACTIVE CHAT ROOM (Dibuka Saat Salah Satu Baris Diklik) ── */
+              <>
+                <div 
+                  className="flex-1 overflow-y-auto p-3 space-y-2 text-xs bg-[#efeae2] dark:bg-[#0b141a]"
+                  style={{
+                    backgroundImage: `radial-gradient(#00a88410 1px, transparent 1px)`,
+                    backgroundSize: '16px 16px'
+                  }}
                 >
-                  <PaperAirplaneIcon className="w-4 h-4" />
-                </button>
-              </form>
+                  {isLoadingMessages ? (
+                    <div className="text-center text-[#667781] dark:text-[#8696a0] py-8">Memuat obrolan...</div>
+                  ) : !activeThreadDetail?.messages || activeThreadDetail.messages.length === 0 ? (
+                    <div className="text-center text-[#667781] dark:text-[#8696a0] py-12">
+                      <p className="font-semibold">Belum ada pesan dalam obrolan ini</p>
+                    </div>
+                  ) : (
+                    activeThreadDetail.messages.map((m: any) => {
+                      const isMe = m.is_me;
+                      const roleStr =
+                        typeof m.sender_role === 'object'
+                          ? (m.sender_role as any)?.name
+                          : m.sender_role;
+                      return (
+                        <div key={m.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          <div
+                            className={`max-w-[86%] rounded-xl px-3 py-2 text-xs shadow-2xs ${
+                              isMe
+                                ? 'bg-[#d9fdd3] dark:bg-[#005c4b] text-[#111b21] dark:text-[#e9edef] rounded-tr-none'
+                                : 'bg-white dark:bg-[#202c33] text-[#111b21] dark:text-[#e9edef] rounded-tl-none border border-slate-200/60 dark:border-slate-700'
+                            }`}
+                          >
+                            {!isMe && m.sender_name && (
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className="text-[10.5px] font-extrabold text-[#008069] dark:text-[#00a884]">
+                                  {m.sender_name}
+                                </span>
+                                {roleStr && (
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 font-bold">
+                                    {roleStr}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            <p className="leading-relaxed whitespace-pre-wrap break-words text-[12px]">
+                              {m.content}
+                            </p>
+                            <span className="block text-[9px] text-right mt-1 text-[#667781] dark:text-[#8696a0]">
+                              {m.created_at ? format(new Date(m.created_at), 'HH:mm') : ''}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input Footer (One-Way Read-Only Lock for Broadcast Recipients vs Reply Input) */}
+                {isBroadcastThread && !canPostInBroadcast ? (
+                  <div className="p-2.5 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-[#e9edef] dark:border-[#2a3942] flex items-center justify-between gap-2 shrink-0">
+                    <span className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400 truncate">
+                      🔒 Saluran Siaran Resmi Satu Arah
+                    </span>
+                    {broadcastSenderId && broadcastSenderId !== user?.id && (
+                      <button
+                        type="button"
+                        onClick={handleReplyPrivatelyToSender}
+                        className="px-2.5 py-1.5 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white text-[10.5px] font-bold shadow-xs transition-all shrink-0 cursor-pointer"
+                      >
+                        💬 Balas Pribadi
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <form onSubmit={handleSend} className="p-2 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-[#e9edef] dark:border-[#2a3942] flex items-center gap-1.5 shrink-0">
+                    <input
+                      type="text"
+                      placeholder={
+                        isBroadcastThread
+                          ? 'Kirim pengumuman susulan ke siaran ini...'
+                          : 'Ketik pesan...'
+                      }
+                      value={replyText}
+                      onChange={e => setReplyText(e.target.value)}
+                      className="flex-1 px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#2a3942] text-[#111b21] dark:text-[#e9edef] placeholder-[#8696a0] outline-hidden shadow-2xs"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!replyText.trim() || sendMessageMutation.isPending}
+                      className="p-2 bg-[#00a884] hover:bg-[#008f6f] disabled:opacity-40 text-white rounded-xl shadow-xs transition-all shrink-0 cursor-pointer"
+                      title="Kirim Balasan"
+                    >
+                      <PaperAirplaneIcon className="w-4 h-4" />
+                    </button>
+                  </form>
+                )}
+              </>
             )}
           </div>
         )}
