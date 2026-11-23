@@ -190,7 +190,14 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
     return isCompleteBundlePlan(group) || isCompleteBundlePlan(selectedPlan);
   }, [group, selectedPlan]);
 
-  const isTargetSingleModule = !isHardware && !isCompleteBundle;
+  const isKoperasi = useMemo(() => {
+    const sCode = String(group?.service_code || group?.module || selectedPlan?.service_code || '').toUpperCase();
+    const name = String(group?.baseName || group?.name || selectedPlan?.name || '').toUpperCase();
+    return sCode === 'KOPERASI' || sCode === 'COOPERATIVE' || name.includes('KOPERASI');
+  }, [group, selectedPlan]);
+
+  // KOPERASI adalah entitas mandiri ("punya dapur sendiri") sehingga tidak dianggap single-module yang ter-cover Paket Lengkap
+  const isTargetSingleModule = !isHardware && !isCompleteBundle && !isKoperasi;
 
   const detailedFeatures = useMemo(() => {
     const list: { title: string; description: string; isHighlight?: boolean }[] = [];
@@ -205,9 +212,11 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
     };
 
     if (!isHardware) {
-      // 1. Core Platform Base
-      addFeature('Academic Core TU & Guru', 'Jurnal mengajar GTK, kalender akademik, dan olah kurikulum.');
-      addFeature('Kesiswaan & Disiplin Siswa', 'Poin pelanggaran, catatan konseling BK, dan prestasi siswa.');
+      // 1. Core Platform Base Sekolah (Hanya untuk modul sekolah, Koperasi tidak menyertakan modul akademik)
+      if (!isKoperasi) {
+        addFeature('Academic Core TU & Guru', 'Jurnal mengajar GTK, kalender akademik, dan olah kurikulum.');
+        addFeature('Kesiswaan & Disiplin Siswa', 'Poin pelanggaran, catatan konseling BK, dan prestasi siswa.');
+      }
 
       // 2. Jika Paket Lengkap: Otomatis tambahkan seluruh suite resmi sekolah + Easy Tunnel
       // CATATAN: KOPERASI adalah entitas terpisah dari sekolah ("punya dapur sendiri") sehingga tidak termasuk Paket Lengkap
@@ -289,12 +298,12 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
         const formattedTitle = rawItem
           .replace(/[_-]/g, ' ')
           .replace(/\b([a-z])/g, (_, c) => c.toUpperCase());
-        addFeature(formattedTitle, 'Fasilitas resmi pendukung operasional sekolah.');
+        addFeature(formattedTitle, isKoperasi ? 'Fasilitas resmi operasional unit koperasi mandiri.' : 'Fasilitas resmi pendukung operasional sekolah.');
       }
     });
 
     return list;
-  }, [isHardware, isCompleteBundle, featuresList]);
+  }, [isHardware, isCompleteBundle, isKoperasi, featuresList]);
 
   // Ecosystem Pillars for SaaS Level Transparency
   const ecosystemPillars = useMemo(() => {
@@ -460,8 +469,8 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
 
         <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[10px] sm:text-[11px] font-semibold shrink-0">
           <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-          <span className="hidden xs:inline">Terverifikasi Resmi SIPLaH / ARKAS</span>
-          <span className="xs:hidden">Resmi SIPLaH</span>
+          <span className="hidden xs:inline">{isKoperasi ? 'Unit Usaha Koperasi Mandiri' : 'Terverifikasi Resmi SIPLaH / ARKAS'}</span>
+          <span className="xs:hidden">{isKoperasi ? 'Koperasi Mandiri' : 'Resmi SIPLaH'}</span>
         </div>
       </div>
 
@@ -498,11 +507,11 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
             <div className="flex sm:grid sm:grid-cols-2 items-center justify-between sm:justify-start gap-1.5 sm:gap-2 text-[10px] text-slate-600 dark:text-slate-400 font-medium">
               <div className="flex items-center gap-1">
                 <Check size={11} className="text-emerald-500 font-bold shrink-0" />
-                <span className="truncate">Siap BOS ARKAS</span>
+                <span className="truncate">{isKoperasi ? 'Struk Thermal & QR' : 'Siap BOS ARKAS'}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Check size={11} className="text-emerald-500 font-bold shrink-0" />
-                <span className="truncate">Faktur Pajak 11%</span>
+                <span className="truncate">{isKoperasi ? 'Laporan Omzet & SHU' : 'Faktur Pajak 11%'}</span>
               </div>
               <div className="hidden sm:flex items-center gap-1">
                 <Check size={11} className="text-emerald-500 font-bold shrink-0" />
@@ -510,7 +519,7 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
               </div>
               <div className="hidden sm:flex items-center gap-1">
                 <Check size={11} className="text-emerald-500 font-bold shrink-0" />
-                <span className="truncate">Bimbingan Teknis</span>
+                <span className="truncate">{isKoperasi ? 'Kartu Cashless Siswa' : 'Bimbingan Teknis'}</span>
               </div>
             </div>
           </div>
@@ -527,7 +536,7 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
               <div className="flex items-center gap-1 text-[10.5px] sm:text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-lg border border-amber-200/60 dark:border-amber-800/60">
                 <span>★ 5.0</span>
                 <span className="text-slate-400 font-normal">
-                  | <span className="hidden sm:inline">100% Puas (Sekolah Negeri &amp; Swasta)</span>
+                  | <span className="hidden sm:inline">{isKoperasi ? '100% Puas (Koperasi & POS Sekolah)' : '100% Puas (Sekolah Negeri & Swasta)'}</span>
                   <span className="sm:hidden">100% Puas</span>
                 </span>
               </div>
@@ -560,18 +569,18 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
                 )}
               </div>
 
-              {/* School Unit Cost Breakdown */}
+              {/* School / Cooperative Unit Cost Breakdown */}
               {!isHardware && currentTierInfo && (
                 <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-100/80 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] sm:text-[11px] font-bold border border-emerald-300/60 dark:border-emerald-800">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Setara <strong>{formatCurrency(perStudentPerMonth)} / siswa / bln</strong></span>
+                  <span>Setara <strong>{formatCurrency(perStudentPerMonth)} / {isKoperasi ? 'anggota' : 'siswa'} / bln</strong></span>
                 </div>
               )}
             </div>
 
             {!isHardware && currentTierInfo && (
               <div className="text-[10.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Kapasitas {currentTierInfo.capacityLabel} • Cocok untuk {currentTierInfo.suitableFor}
+                Kapasitas {isKoperasi ? currentTierInfo.capacityLabel.replace('Siswa', 'Anggota') : currentTierInfo.capacityLabel} • Cocok untuk {isKoperasi ? 'Koperasi Unit Mandiri' : currentTierInfo.suitableFor}
               </div>
             )}
           </div>
@@ -595,15 +604,15 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
             </div>
           )}
 
-          {/* ── LEVEL 1: PILIHAN EDISI KAPASITAS SISWA (RESPONSIVE 2-COL / FLEX) ── */}
+          {/* ── LEVEL 1: PILIHAN EDISI KAPASITAS (RESPONSIVE 2-COL / FLEX) ── */}
           {groupedVariants.length > 0 && !isHardware && (
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                  1. Edisi Kapasitas Siswa:
+                  {isKoperasi ? '1. Edisi Kapasitas Anggota:' : '1. Edisi Kapasitas Siswa:'}
                 </span>
                 <span className="text-[10px] sm:text-[10.5px] text-slate-400 font-medium">
-                  Sesuai siswa aktif
+                  {isKoperasi ? 'Sesuai anggota aktif' : 'Sesuai siswa aktif'}
                 </span>
               </div>
 
@@ -636,7 +645,9 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-black tracking-wide truncate">{sizeLabel}</div>
                         <div className={"text-[9.5px] sm:text-[10px] truncate " + (isSelected ? "text-indigo-100 font-medium" : "text-slate-400 dark:text-slate-500")}>
-                          {tierMeta.capacityLabel.replace('s.d ', '≤ ')}
+                          {isKoperasi 
+                            ? tierMeta.capacityLabel.replace('s.d ', '≤ ').replace('Siswa', 'Anggota') 
+                            : tierMeta.capacityLabel.replace('s.d ', '≤ ')}
                         </div>
                       </div>
                       {isSelected && <CheckCircle2 size={13} className="text-white shrink-0" />}
@@ -729,7 +740,7 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
                       </span>
                     </div>
                     <div className={"text-[9.5px] sm:text-[10px] font-semibold truncate " + (selectedPeriod === 'YEAR' ? "text-amber-200" : "text-emerald-600 dark:text-emerald-400")}>
-                      SPJ BOS ARKAS
+                      {isKoperasi ? 'Diskon 20% / Thn' : 'SPJ BOS ARKAS'}
                     </div>
                   </div>
                   {selectedPeriod === 'YEAR' && <CheckCircle2 size={14} className="text-white shrink-0 ml-1" />}
@@ -788,18 +799,20 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
             <span>Fitur &amp; Modul Termasuk</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('bos_guide')}
-            className={"px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 " + (
-              activeTab === 'bos_guide'
-                ? "bg-indigo-600 text-white shadow-xs"
-                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-            )}
-          >
-            <Building2 size={13} />
-            <span>Panduan SPJ BOS &amp; SIPLaH</span>
-          </button>
+          {!isKoperasi && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('bos_guide')}
+              className={"px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 " + (
+                activeTab === 'bos_guide'
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+              )}
+            >
+              <Building2 size={13} />
+              <span>Panduan SPJ BOS &amp; SIPLaH</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -823,35 +836,41 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
               <div className={"p-3.5 sm:p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 " + (
                 isCompleteBundle
                   ? "bg-gradient-to-r from-emerald-500/10 via-indigo-500/10 to-purple-500/10 border-emerald-500/30 dark:border-emerald-800"
+                  : isKoperasi
+                  ? "bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-indigo-500/10 border-emerald-500/30 dark:border-emerald-800"
                   : "bg-gradient-to-r from-amber-500/10 via-slate-500/5 to-indigo-500/10 border-amber-500/30 dark:border-amber-800"
               )}>
                 <div className="flex items-center gap-3">
                   <div className={"w-9 h-9 rounded-xl flex items-center justify-center font-black text-base shadow-xs shrink-0 " + (
-                    isCompleteBundle ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"
+                    isCompleteBundle ? "bg-emerald-600 text-white" : isKoperasi ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"
                   )}>
-                    {isCompleteBundle ? '👑' : '🏷️'}
+                    {isCompleteBundle ? '👑' : isKoperasi ? '🏪' : '🏷️'}
                   </div>
                   <div>
                     <div className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
-                      <span>{isCompleteBundle ? 'Tingkat Kelengkapan: Full Suite (All-in-One)' : `Tingkat Kelengkapan: Modul Spesifik (${group.baseName})`}</span>
+                      <span>{isCompleteBundle ? 'Tingkat Kelengkapan: Full Suite (All-in-One)' : isKoperasi ? `Tingkat Kelengkapan: Modul Otonom (${group.baseName})` : `Tingkat Kelengkapan: Modul Spesifik (${group.baseName})`}</span>
                       <span className={"px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider " + (
                         isCompleteBundle
                           ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300"
+                          : isKoperasi
+                          ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300"
                           : "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300"
                       )}>
-                        {isCompleteBundle ? '100% Seluruh Modul Terbuka' : 'Fokus Operasional Satuan'}
+                        {isCompleteBundle ? '100% Seluruh Modul Terbuka' : isKoperasi ? 'Unit Usaha Mandiri' : 'Fokus Operasional Satuan'}
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
                       {isCompleteBundle
                         ? 'Mencakup seluruh 8 pilar ekosistem Absenta, domain tunnel resmi, dan WhatsApp gateway tanpa lisensi terpisah.'
+                        : isKoperasi
+                        ? 'Mencakup manajemen anggota koperasi, kasir POS ritel, simpan pinjam, dan smartcard cashless secara mandiri terpisah dari sekolah.'
                         : `Mencakup modul ${group.module || group.baseName} & Platform Akademik. Modul lain dalam ekosistem belum termasuk.`
                       }
                     </div>
                   </div>
                 </div>
 
-                {!isCompleteBundle && (
+                {!isCompleteBundle && !isKoperasi && (
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold shrink-0 self-start sm:self-center">
                     <Sparkles size={13} className="text-amber-500" />
                     <span>Tersedia Upgrade ke Paket Lengkap</span>
@@ -913,8 +932,8 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
               </div>
             </div>
 
-            {/* ── C. STATUS MODUL EKOSISTEM LAIN (KHUSUS SAAS SATUAN) ── */}
-            {!isHardware && !isCompleteBundle && (
+            {/* ── C. STATUS MODUL EKOSISTEM LAIN (KHUSUS SAAS SATUAN SEKOLAH, TIDAK DITAMPILKAN PADA KOPERASI MANDIRI) ── */}
+            {!isHardware && !isCompleteBundle && !isKoperasi && (
               <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">

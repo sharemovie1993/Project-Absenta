@@ -758,6 +758,8 @@ const ProductCatalogCard: React.FC<ProductCatalogCardProps> = ({
   const [imgError, setImgError] = useState(false);
 
   const isHardware = Boolean(group.isHardware);
+  const isKoperasi = String(group.service_code || group.module || '').toUpperCase() === 'KOPERASI' ||
+    String(group.baseName || '').toUpperCase().includes('KOPERASI');
 
   // Lowest starting price in the group
   const lowestPrice = useMemo(() => {
@@ -817,7 +819,7 @@ const ProductCatalogCard: React.FC<ProductCatalogCardProps> = ({
               <CheckCircle2 size={9} />
               <span>Aktif</span>
             </span>
-          ) : hasActiveBundle && !isHardware && !isCompleteBundlePlan(group) ? (
+          ) : hasActiveBundle && !isHardware && !isCompleteBundlePlan(group) && !isKoperasi ? (
             <span className="bg-indigo-600 text-white font-bold text-[8px] sm:text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md sm:rounded-lg shadow-2xs flex items-center gap-0.5">
               <Sparkles size={9} />
               <span>Termasuk di Paket Lengkap</span>

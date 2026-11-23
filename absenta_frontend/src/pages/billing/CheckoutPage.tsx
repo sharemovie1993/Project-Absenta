@@ -167,7 +167,9 @@ function CheckoutContent() {
 
   const isTargetSingleModule = useMemo(() => {
     if (!plan) return false;
-    return !isCompleteBundlePlan(plan) && plan.service_code !== 'HARDWARE';
+    const isKoperasi = String(plan.service_code || '').toUpperCase() === 'KOPERASI' ||
+      String(plan.name || '').toUpperCase().includes('KOPERASI');
+    return !isCompleteBundlePlan(plan) && plan.service_code !== 'HARDWARE' && !isKoperasi;
   }, [plan]);
 
   const executeProceedToPayment = useCallback(async () => {

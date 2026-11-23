@@ -345,7 +345,10 @@ export function ServiceDetailContent() {
   const isTargetSingleModule = useMemo(() => {
     if (!product) return false;
     const groupKey = resolveServiceCatalogGroupKey(product);
-    return groupKey !== 'SAAS_GROUP_PAKET_LENGKAP';
+    const isKoperasi = groupKey === 'SAAS_GROUP_KOPERASI' ||
+      String(product.service_code || '').toUpperCase() === 'KOPERASI' ||
+      String(product.name || '').toUpperCase().includes('KOPERASI');
+    return groupKey !== 'SAAS_GROUP_PAKET_LENGKAP' && !isKoperasi;
   }, [product]);
 
   const proceedCheckout = useCallback(() => {
