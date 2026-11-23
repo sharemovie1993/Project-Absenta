@@ -67,7 +67,11 @@ const fmt = (n: number) => `Rp ${Math.round(n).toLocaleString('id-ID')}`;
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-const LaporanInventori: React.FC = React.memo(() => {
+export interface LaporanInventoriProps {
+  hideLayout?: boolean;
+}
+
+const LaporanInventori: React.FC<LaporanInventoriProps> = React.memo(({ hideLayout = false }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'stock' | 'valuation' | 'purchases'>('stock');
 
@@ -260,16 +264,18 @@ const LaporanInventori: React.FC = React.memo(() => {
   return (
     <PremiumFeatureGate moduleName="KOPERASI" featureName="Laporan Inventori">
       <AcademicPageLayout
-        title="Laporan Persediaan Koperasi"
-        description="Laporan stok barang, nilai persediaan, dan rekap transaksi barang masuk."
+        title={hideLayout ? undefined : "Laporan Persediaan Koperasi"}
+        description={hideLayout ? undefined : "Laporan stok barang, nilai persediaan, dan rekap transaksi barang masuk."}
         hardeningModuleKey="coop_laporaninventori"
-        breadcrumbs={breadcrumbs}
+        breadcrumbs={hideLayout ? undefined : breadcrumbs}
         topSlot={
-          <div className="flex items-center justify-end w-full sm:w-auto">
-            <CoopFiscalYearSelector />
-          </div>
+          hideLayout ? undefined : (
+            <div className="flex items-center justify-end w-full sm:w-auto">
+              <CoopFiscalYearSelector />
+            </div>
+          )
         }
-        instruction={{
+        instruction={hideLayout ? undefined : {
           title: 'Panduan Laporan Persediaan',
           description: 'Gunakan laporan ini untuk memantau kondisi stok, nilai modal persediaan, dan riwayat pengadaan barang koperasi.',
           items: [
@@ -283,6 +289,7 @@ const LaporanInventori: React.FC = React.memo(() => {
           <div className="space-y-6 print:space-y-4">
 
             {/* Back shortcut */}
+            {!hideLayout && (
             <div className="flex items-center">
               <button
                 onClick={() => navigate('/cooperative/products')}
@@ -292,6 +299,7 @@ const LaporanInventori: React.FC = React.memo(() => {
               Kembali ke Katalog Barang
             </button>
           </div>
+          )}
 
           {/* Summary Cards — always visible */}
           {activeTab === 'stock' && stockSummary && (

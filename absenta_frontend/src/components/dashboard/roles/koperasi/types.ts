@@ -4,15 +4,23 @@ import type { CoopManagementStats } from '@/components/cooperative/dashboard/typ
 export type KoperasiTabId =
   | 'ringkasan'
   | 'pos'
+  | 'anggota'
   | 'simpanan'
   | 'pinjaman'
-  | 'anggota'
+  | 'pemasok'
   | 'produk'
-  | 'shu'
-  | 'akuntansi'
+  | 'voucher'
+  | 'laporan_penjualan'
+  | 'laporan_stok'
+  | 'kas_bank'
+  | 'coa'
   | 'aset'
+  | 'akuntansi'
+  | 'shu'
   | 'rat'
-  | 'tiket';
+  | 'pengumuman'
+  | 'tiket'
+  | 'pengaturan';
 
 export interface KoperasiNavTabItem {
   id: KoperasiTabId;
@@ -21,6 +29,7 @@ export interface KoperasiNavTabItem {
   icon: React.ComponentType<{ className?: string; size?: number }>;
   badge?: string | number | null;
   badgeColor?: string;
+  dividerBefore?: boolean;
 }
 
 export type { CoopManagementStats as KoperasiStats };

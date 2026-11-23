@@ -116,15 +116,16 @@ const memberInstruction = {
 
 export interface VouchersProps {
   hideLayout?: boolean;
+  mode?: 'manage' | 'member';
 }
 
-const Vouchers: React.FC<VouchersProps> = React.memo(({ hideLayout = false }) => {
+const Vouchers: React.FC<VouchersProps> = React.memo(({ hideLayout = false, mode }) => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { user, subscription } = useAuthStore();
   const confirm = useConfirm();
   const location = useLocation();
-  const isManageRoute = location.pathname.endsWith('/manage');
+  const isManageRoute = mode ? mode === 'manage' : location.pathname.endsWith('/manage');
   const [formData, setFormData] = useState({
     code: '',
     description: '',
@@ -148,13 +149,16 @@ const Vouchers: React.FC<VouchersProps> = React.memo(({ hideLayout = false }) =>
   const { isLocked } = useModuleAccess('KOPERASI');
 
   const hasManageAccess = useMemo(() => {
-    return user?.capabilities?.includes('cooperative.vouchers.manage') || false;
+    const posCodes: string[] = (user as { position_codes?: string[] })?.position_codes || [];
+    const isHeadOrStore = posCodes.includes('KETUA_KOPERASI') || posCodes.includes('MANAJER_TOKO_KOPERASI') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN';
+    return isHeadOrStore || user?.capabilities?.includes('cooperative.vouchers.manage') || false;
   }, [user]);
 
   const hasViewListAccess = useMemo(() => {
-    return user?.capabilities?.includes('cooperative.vouchers.view.list') || 
+    return hasManageAccess ||
+           user?.capabilities?.includes('cooperative.vouchers.view.list') || 
            user?.capabilities?.includes('cooperative.vouchers.manage') || false;
-  }, [user]);
+  }, [user, hasManageAccess]);
 
   const { subscribe, unsubscribe, isConnected } = useSocket();
 

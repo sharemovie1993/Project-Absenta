@@ -724,7 +724,7 @@ export const UniversalCoopMemberView: React.FC<UniversalCoopMemberViewProps> = R
               className={cn('w-full min-w-0', activeTab === 'voucher' ? 'block' : 'hidden')}
             >
               <Suspense fallback={<TabLoadingSkeleton />}>
-                <Vouchers hideLayout={true} />
+                <Vouchers hideLayout={true} mode="member" />
               </Suspense>
             </div>
           )}

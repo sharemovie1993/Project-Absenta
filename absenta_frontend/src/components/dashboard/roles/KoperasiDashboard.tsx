@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import api from '@/lib/axiosInstance';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
@@ -37,6 +38,23 @@ import { KoperasiAkuntansiTab } from './koperasi/tabs/KoperasiAkuntansiTab';
 import { KoperasiAsetTab } from './koperasi/tabs/KoperasiAsetTab';
 import { KoperasiRatTab } from './koperasi/tabs/KoperasiRatTab';
 import { KoperasiTiketTab } from './koperasi/tabs/KoperasiTiketTab';
+
+// Lazy-loaded Additional Management Subtabs (Aligned with Single-Page Cooperative Menu)
+const SuppliersPage = lazy(() => import('@/pages/cooperative/Suppliers').then((m) => ({ default: m.default })));
+const VouchersPage = lazy(() => import('@/pages/cooperative/Vouchers').then((m) => ({ default: m.default })));
+const SalesReportPage = lazy(() => import('@/pages/cooperative/SalesReportPage').then((m) => ({ default: m.default })));
+const LaporanInventoriPage = lazy(() => import('@/pages/cooperative/LaporanInventori').then((m) => ({ default: m.default })));
+const CashBankPage = lazy(() => import('@/pages/cooperative/CashBankPage').then((m) => ({ default: m.default })));
+const ChartOfAccountsPage = lazy(() => import('@/pages/cooperative/ChartOfAccountsPage').then((m) => ({ default: m.default })));
+const AnnouncementsPage = lazy(() => import('@/pages/cooperative/Announcements').then((m) => ({ default: m.default })));
+const SettingsPage = lazy(() => import('@/pages/cooperative/Settings').then((m) => ({ default: m.default })));
+
+const SubtabFallbackSkeleton: React.FC = () => (
+  <div className="space-y-4 w-full animate-pulse p-4">
+    <Skeleton className="h-12 w-full rounded-2xl" />
+    <Skeleton className="h-64 w-full rounded-2xl" />
+  </div>
+);
 import {
   UniversalMobileSubtabSidebar,
   useMobileSubtabSidebar,
@@ -68,8 +86,46 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
   } = useCapabilities();
 
   const canCoopCap = useCallback(
-    (capability: string) => isAdmin || can(capability),
-    [isAdmin, can]
+    (capability: string) => {
+      if (isAdmin) return true;
+      if (can(capability)) return true;
+      // SSOT Role Fallback: Ketua Koperasi memiliki akses penuh ke seluruh subtab manajemen, keuangan, ritel, laporan & pengaturan (selain kasir POS)
+      if (isKoperasiHead && capability !== 'cooperative.store.orders.manage' && capability !== 'coop.pos.access') {
+        return true;
+      }
+      if (
+        isKoperasiFinance &&
+        (capability.startsWith('cooperative.savings.') ||
+          capability.startsWith('cooperative.loans.') ||
+          capability.startsWith('cooperative.reports.') ||
+          capability.startsWith('cooperative.shu.') ||
+          capability.startsWith('cooperative.settings.') ||
+          capability.startsWith('cooperative.setup.'))
+      ) {
+        return true;
+      }
+      if (
+        isKoperasiSecretary &&
+        (capability.startsWith('cooperative.members.') ||
+          capability.startsWith('cooperative.assets.') ||
+          capability.startsWith('cooperative.announcements.') ||
+          capability.startsWith('cooperative.tickets.') ||
+          capability.startsWith('cooperative.rat.'))
+      ) {
+        return true;
+      }
+      if (
+        isKoperasiStore &&
+        (capability.startsWith('cooperative.store.') ||
+          capability.startsWith('cooperative.suppliers.') ||
+          capability.startsWith('cooperative.vouchers.') ||
+          capability === 'coop.pos.access')
+      ) {
+        return true;
+      }
+      return false;
+    },
+    [isAdmin, can, isKoperasiHead, isKoperasiFinance, isKoperasiSecretary, isKoperasiStore]
   );
 
   // Identitas Jabatan Koperasi Dinamis (1 Unified Capability-Driven Shell)
@@ -438,32 +494,36 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => handleTabSelect(tab.id)}
-                    className={cn(
-                      'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
-                      isActive
-                        ? 'bg-gradient-to-r from-emerald-700 to-green-800 text-white shadow-xs font-bold'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  <React.Fragment key={tab.id}>
+                    {tab.dividerBefore && (
+                      <div className="my-1.5 border-t border-slate-200/70 dark:border-slate-800" />
                     )}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Icon className="w-4 h-4 shrink-0" />
-                      <span className="truncate">{tab.label}</span>
-                    </div>
-                    {tab.badge && (
-                      <span
-                        className={cn(
-                          'px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none shrink-0',
-                          isActive ? 'bg-white/20 text-white' : tab.badgeColor || 'bg-slate-200 text-slate-700'
-                        )}
-                      >
-                        {tab.badge}
-                      </span>
-                    )}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTabSelect(tab.id)}
+                      className={cn(
+                        'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
+                        isActive
+                          ? 'bg-gradient-to-r from-emerald-700 to-green-800 text-white shadow-xs font-bold'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{tab.label}</span>
+                      </div>
+                      {tab.badge && (
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none shrink-0',
+                            isActive ? 'bg-white/20 text-white' : tab.badgeColor || 'bg-slate-200 text-slate-700'
+                          )}
+                        >
+                          {tab.badge}
+                        </span>
+                      )}
+                    </button>
+                  </React.Fragment>
                 );
               })}
             </nav>
@@ -619,6 +679,110 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
                 className={cn('w-full min-w-0', activeTab === 'tiket' ? 'block' : 'hidden')}
               >
                 <KoperasiTiketTab />
+              </div>
+            )}
+
+            {/* TAB 12: DATA PEMASOK / SUPPLIER */}
+            {allowedTabIds.has('pemasok') && visitedTabs.has('pemasok') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'pemasok'}
+                className={cn('w-full min-w-0', activeTab === 'pemasok' ? 'block' : 'hidden')}
+              >
+                <Suspense fallback={<SubtabFallbackSkeleton />}>
+                  <SuppliersPage hideLayout={true} />
+                </Suspense>
+              </div>
+            )}
+
+            {/* TAB 13: VOUCHER & PROMO */}
+            {allowedTabIds.has('voucher') && visitedTabs.has('voucher') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'voucher'}
+                className={cn('w-full min-w-0', activeTab === 'voucher' ? 'block' : 'hidden')}
+              >
+                <Suspense fallback={<SubtabFallbackSkeleton />}>
+                  <VouchersPage hideLayout={true} mode="manage" />
+                </Suspense>
+              </div>
+            )}
+
+            {/* TAB 14: LAPORAN PENJUALAN */}
+            {allowedTabIds.has('laporan_penjualan') && visitedTabs.has('laporan_penjualan') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'laporan_penjualan'}
+                className={cn('w-full min-w-0', activeTab === 'laporan_penjualan' ? 'block' : 'hidden')}
+              >
+                <Suspense fallback={<SubtabFallbackSkeleton />}>
+                  <SalesReportPage hideLayout={true} />
+                </Suspense>
+              </div>
+            )}
+
+            {/* TAB 15: LAPORAN STOK / PERSEDIAAN */}
+            {allowedTabIds.has('laporan_stok') && visitedTabs.has('laporan_stok') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'laporan_stok'}
+                className={cn('w-full min-w-0', activeTab === 'laporan_stok' ? 'block' : 'hidden')}
+              >
+                <Suspense fallback={<SubtabFallbackSkeleton />}>
+                  <LaporanInventoriPage hideLayout={true} />
+                </Suspense>
+              </div>
+            )}
+
+            {/* TAB 16: KAS & BANK */}
+            {allowedTabIds.has('kas_bank') && visitedTabs.has('kas_bank') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'kas_bank'}
+                className={cn('w-full min-w-0', activeTab === 'kas_bank' ? 'block' : 'hidden')}
+              >
+                <Suspense fallback={<SubtabFallbackSkeleton />}>
+                  <CashBankPage hideLayout={true} />
+                </Suspense>
+              </div>
+            )}
+
+            {/* TAB 17: BAGAN AKUN (COA) */}
+            {allowedTabIds.has('coa') && visitedTabs.has('coa') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'coa'}
+                className={cn('w-full min-w-0', activeTab === 'coa' ? 'block' : 'hidden')}
+              >
+                <Suspense fallback={<SubtabFallbackSkeleton />}>
+                  <ChartOfAccountsPage hideLayout={true} />
+                </Suspense>
+              </div>
+            )}
+
+            {/* TAB 18: PENGUMUMAN */}
+            {allowedTabIds.has('pengumuman') && visitedTabs.has('pengumuman') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'pengumuman'}
+                className={cn('w-full min-w-0', activeTab === 'pengumuman' ? 'block' : 'hidden')}
+              >
+                <Suspense fallback={<SubtabFallbackSkeleton />}>
+                  <AnnouncementsPage hideLayout={true} />
+                </Suspense>
+              </div>
+            )}
+
+            {/* TAB 19: PENGATURAN KOPERASI */}
+            {allowedTabIds.has('pengaturan') && visitedTabs.has('pengaturan') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'pengaturan'}
+                className={cn('w-full min-w-0', activeTab === 'pengaturan' ? 'block' : 'hidden')}
+              >
+                <Suspense fallback={<SubtabFallbackSkeleton />}>
+                  <SettingsPage hideLayout={true} />
+                </Suspense>
               </div>
             )}
           </main>

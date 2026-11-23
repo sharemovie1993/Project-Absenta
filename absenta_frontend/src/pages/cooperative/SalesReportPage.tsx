@@ -118,7 +118,11 @@ interface ReceiptSale {
   }[];
 }
 
-const SalesReportPage: React.FC = React.memo(() => {
+export interface SalesReportPageProps {
+  hideLayout?: boolean;
+}
+
+const SalesReportPage: React.FC<SalesReportPageProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabType>('transactions');
@@ -492,12 +496,12 @@ const SalesReportPage: React.FC = React.memo(() => {
   return (
     <PremiumFeatureGate moduleName="KOPERASI" featureName="Laporan Penjualan Toko">
       <AcademicPageLayout
-        title="Laporan Penjualan Toko Koperasi"
-        description="Rekapitulasi penjualan ritel, transaksi kasir POS harian, omset, dan analisis produk terlaris minimarket sekolah"
+        title={hideLayout ? undefined : "Laporan Penjualan Toko Koperasi"}
+        description={hideLayout ? undefined : "Rekapitulasi penjualan ritel, transaksi kasir POS harian, omset, dan analisis produk terlaris minimarket sekolah"}
         hardeningModuleKey="coop_sales_report"
-        breadcrumbs={breadcrumbs}
-        topSlot={<WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />}
-        instruction={{
+        breadcrumbs={hideLayout ? undefined : breadcrumbs}
+        topSlot={hideLayout ? undefined : <WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />}
+        instruction={hideLayout ? undefined : {
           title: 'Panduan Operasional Laporan Penjualan',
           description: 'Kelola dan audit transaksi kasir, analisis produk fast-moving, dan lakukan rekonsiliasi kas riil toko.',
           items: [

@@ -10,7 +10,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { ChartOfAccountsSection } from '../../components/cooperative/accounting/ChartOfAccountsSection';
 
-export const ChartOfAccountsPage: React.FC = React.memo(() => {
+export interface ChartOfAccountsPageProps {
+  hideLayout?: boolean;
+}
+
+export const ChartOfAccountsPage: React.FC<ChartOfAccountsPageProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const { isKoperasiFinance, isKoperasiHead, isAdmin, isSuperAdmin } = useCapabilities();
   const canManage = isKoperasiFinance || isKoperasiHead || isAdmin || isSuperAdmin;
@@ -56,15 +60,15 @@ export const ChartOfAccountsPage: React.FC = React.memo(() => {
     >
       <InfraErrorBoundary>
         <AcademicPageLayout
-          title="Bagan Akun (Chart of Accounts)"
-          subtitle="Kelola rekening pembukuan bertingkat standar akuntansi koperasi sekolah"
-          breadcrumbs={breadcrumbs}
-          instruction={instruction}
+          title={hideLayout ? undefined : "Bagan Akun (Chart of Accounts)"}
+          subtitle={hideLayout ? undefined : "Kelola rekening pembukuan bertingkat standar akuntansi koperasi sekolah"}
+          breadcrumbs={hideLayout ? undefined : breadcrumbs}
+          instruction={hideLayout ? undefined : instruction}
           activeSidebarItem="/cooperative/chart-of-accounts"
         >
           <div className="space-y-6">
             <ChartOfAccountsSection canManage={canManage} />
-            <WorkspaceAppLauncherCard />
+            {!hideLayout && <WorkspaceAppLauncherCard />}
           </div>
         </AcademicPageLayout>
       </InfraErrorBoundary>

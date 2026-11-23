@@ -81,7 +81,11 @@ interface SupplierFormData {
   notes: string;
 }
 
-export const Suppliers: React.FC = React.memo(() => {
+export interface SuppliersProps {
+  hideLayout?: boolean;
+}
+
+export const Suppliers: React.FC<SuppliersProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
 
@@ -468,9 +472,9 @@ export const Suppliers: React.FC = React.memo(() => {
     >
       <InfraErrorBoundary>
         <AcademicPageLayout
-          title="Manajemen Supplier & Pemasok"
-          description="Kelola data distributor resmi, kontak perwakilan, alamat gudang, dan riwayat faktur pembelian toko."
-          breadcrumbs={breadcrumbs}
+          title={hideLayout ? undefined : "Manajemen Supplier & Pemasok"}
+          description={hideLayout ? undefined : "Kelola data distributor resmi, kontak perwakilan, alamat gudang, dan riwayat faktur pembelian toko."}
+          breadcrumbs={hideLayout ? undefined : breadcrumbs}
           hardeningModuleKey="coop_suppliers"
           topSlot={
             <div className="flex items-center justify-end gap-2">
@@ -485,7 +489,7 @@ export const Suppliers: React.FC = React.memo(() => {
               </Button>
             </div>
           }
-          instruction={{
+          instruction={hideLayout ? undefined : {
             title: "Panduan Manajemen Supplier",
             description: "Gunakan modul ini untuk mengelola relasi mitra distributor dan histori pengadaan barang toko koperasi.",
             items: [

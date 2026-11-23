@@ -16,7 +16,11 @@ const ExpenseVoucherSection = lazy(() =>
   import('../../components/cooperative/accounting').then(m => ({ default: m.ExpenseVoucherSection }))
 );
 
-export const CashBankPage: React.FC = React.memo(() => {
+export interface CashBankPageProps {
+  hideLayout?: boolean;
+}
+
+export const CashBankPage: React.FC<CashBankPageProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const actionParam = searchParams.get('action') || searchParams.get('subTab');
@@ -72,13 +76,13 @@ export const CashBankPage: React.FC = React.memo(() => {
       featureName="Kas & Bank"
     >
       <AcademicPageLayout
-        title="Kas & Bank"
-        description="Pencatatan kas masuk (BKM), kas keluar (BKK), dan transfer dana operasional koperasi"
+        title={hideLayout ? undefined : "Kas & Bank"}
+        description={hideLayout ? undefined : "Pencatatan kas masuk (BKM), kas keluar (BKK), dan transfer dana operasional koperasi"}
         hardeningModuleKey="coop_cash_bank"
-        breadcrumbs={breadcrumbs}
-        topSlot={<WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />}
-        instruction={instruction}
-        actionButton={
+        breadcrumbs={hideLayout ? undefined : breadcrumbs}
+        topSlot={hideLayout ? undefined : <WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />}
+        instruction={hideLayout ? undefined : instruction}
+        actionButton={hideLayout ? undefined : (
           <Link
             to="/cooperative/chart-of-accounts"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors border border-slate-200 dark:border-slate-700"
@@ -86,7 +90,7 @@ export const CashBankPage: React.FC = React.memo(() => {
             <FolderTree className="w-3.5 h-3.5 text-indigo-500" />
             <span>Bagan Akun (COA)</span>
           </Link>
-        }
+        )}
       >
         <InfraErrorBoundary>
           <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">

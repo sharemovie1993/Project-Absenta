@@ -49,7 +49,11 @@ const PRESET_COLORS = ['#3B82F6',
 // Gray
 '#14B8A6' // Teal
 ];
-const Settings: React.FC = React.memo(() => {
+export interface SettingsProps {
+  hideLayout?: boolean;
+}
+
+const Settings: React.FC<SettingsProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const {
     user
@@ -372,7 +376,7 @@ const Settings: React.FC = React.memo(() => {
   ], [canEditProfile, canEditCategories, canManageShu]);
 
   if (loading) {
-    return <AcademicPageLayout title="Pengaturan Koperasi" description="Kelola identitas badan hukum dan kategori simpanan koperasi" breadcrumbs={breadcrumbs}>
+    return <AcademicPageLayout title={hideLayout ? undefined : "Pengaturan Koperasi"} description={hideLayout ? undefined : "Kelola identitas badan hukum dan kategori simpanan koperasi"} breadcrumbs={hideLayout ? undefined : breadcrumbs}>
         <div className="flex items-center justify-center min-h-[300px]">
           <div className="flex flex-col items-center gap-4">
             <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
@@ -384,7 +388,7 @@ const Settings: React.FC = React.memo(() => {
       </AcademicPageLayout>;
   }
   return <PremiumFeatureGate moduleName="KOPERASI" featureName="Pengaturan Koperasi">
-      <AcademicPageLayout title="Pengaturan Koperasi" description="Konfigurasi identitas badan hukum, alamat, jenis simpanan, dan kebijakan alokasi SHU secara dinamis" hardeningModuleKey="coop_settings" breadcrumbs={breadcrumbs} instruction={instruction}>
+      <AcademicPageLayout title={hideLayout ? undefined : "Pengaturan Koperasi"} description={hideLayout ? undefined : "Konfigurasi identitas badan hukum, alamat, jenis simpanan, dan kebijakan alokasi SHU secara dinamis"} hardeningModuleKey="coop_settings" breadcrumbs={hideLayout ? undefined : breadcrumbs} instruction={hideLayout ? undefined : instruction}>
         <SectionCard fullWidth noPadding className="border-0 shadow-none bg-transparent p-0 flex flex-col w-full min-w-0 space-y-6">
           {/* Dynamic Tab Switcher */}
           <div>
