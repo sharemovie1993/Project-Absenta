@@ -195,15 +195,30 @@ export class MemberService {
     // Digunakan oleh endpoint /me untuk GURU/SISWA memeriksa status anggota mereka
     static async getMemberByUserId(tenantId: string, userId: string) {
         const member = await prisma.member.findFirst({
-            where: { tenantId, userId, status: 'ACTIVE' },
+            where: {
+                tenantId,
+                status: 'ACTIVE',
+                OR: [
+                    { userId },
+                    { Siswa: { user_id: userId } },
+                    { Guru: { user_id: userId } }
+                ]
+            },
             select: {
                 id: true,
                 memberNo: true,
+                type: true,
                 status: true,
                 joinDate: true,
                 createdAt: true,
                 User: {
                     select: { id: true, email: true, full_name: true }
+                },
+                Guru: {
+                    select: { id: true, nama_guru: true, nip: true }
+                },
+                Siswa: {
+                    select: { id: true, nama_siswa: true, nis: true, Kelas: { select: { nama_kelas: true } } }
                 },
                 savings: {
                     select: {
@@ -215,7 +230,11 @@ export class MemberService {
                 }
             },
         });
-        return member ?? null;
+        if (!member) return null;
+        return {
+            ...member,
+            name: member.User?.full_name || member.Guru?.nama_guru || member.Siswa?.nama_siswa || 'Anggota Koperasi'
+        };
     }
 
     // Create new member (Supports external members with auto user creation & Idempotency Key Guard)

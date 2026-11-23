@@ -44,6 +44,7 @@ import {
   ClipboardList,
   ClipboardCheck,
   ShoppingCart,
+  ShoppingBag,
   HeartHandshake,
   X,
   QrCode,
@@ -100,6 +101,8 @@ const SarprasDashboard = React.lazy(() => import('./SarprasDashboard').then(m =>
 const HubinDashboard = React.lazy(() => import('./HubinDashboard').then(m => ({ default: m.HubinDashboard })));
 // Koperasi Dashboard — clean role-patterned architecture
 const KoperasiDashboard = React.lazy(() => import('./KoperasiDashboard').then(m => ({ default: m.KoperasiDashboard })));
+// Koperasi Member View — universal role-ready view untuk anggota koperasi (Guru / Staf)
+const UniversalCoopMemberView = React.lazy(() => import('@/components/cooperative/dashboard/UniversalCoopMemberView').then(m => ({ default: m.UniversalCoopMemberView })));
 // BPBK Dashboard — clean role-patterned architecture
 const BpbkDashboard = React.lazy(() => import('./BpbkDashboard').then(m => ({ default: m.BpbkDashboard })));
 // BKK Dashboard — clean role-patterned architecture
@@ -1080,12 +1083,19 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
-    // 4.6 Koperasi (Khusus Pengurus / Pengelola Koperasi / Admin)
-    if ((isKoperasi || isKoperasiHead || isKoperasiFinance || isKoperasiSecretary || isKoperasiAuditor || isKoperasiStore || (isAdminRole && !isKepsek) || can('coop.pos.access') || can('coop.manage')) && !isKepsek) {
+    // 4.6 Koperasi (Pengurus: Dashboard Koperasi, Non-Pengurus: Koperasi Saya)
+    const isPengurusKoperasi = Boolean((isKoperasi || isKoperasiHead || isKoperasiFinance || isKoperasiSecretary || isKoperasiAuditor || isKoperasiStore || (isAdminRole && !isKepsek) || can('coop.pos.access') || can('coop.manage')) && !isKepsek);
+    if (isPengurusKoperasi) {
       list.push({ 
         id: 'koperasi', 
         label: 'Dashboard Koperasi', 
         icon: ShoppingCart, 
+      });
+    } else if (!isKepsek) {
+      list.push({
+        id: 'koperasi-saya',
+        label: 'Koperasi Saya',
+        icon: ShoppingBag,
       });
     }
 
@@ -1276,6 +1286,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (activeTab === 'toolman' && (isToolman || isKabeng || isAdminRole || can('sarpras.view') || can('sarpras.manage'))) return;
     if (activeTab === 'ekskul' && (isPembinaEskul || isKesiswaan || isAdminRole || can('kesiswaan.view') || can('kesiswaan.manage'))) return;
     if (activeTab === 'koperasi' && (isKoperasi || isAdminRole || can('coop.pos.access') || can('coop.manage'))) return;
+    if (activeTab === 'koperasi-saya') return;
     if (activeTab === 'satpam' && (hasGerbangDuty || isGerbang || isPureGerbangStaff || isAdminRole || can('attendance.gate.scan'))) return;
 
     // Tunggu sampai tabs siap sebelum melakukan fallback
@@ -1610,6 +1621,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
                   case 'bpbk':
                     return { button: "bg-slate-900 text-purple-400 border border-purple-500/50 shadow-md shadow-purple-950/50", icon: "text-purple-400" };
                   case 'koperasi':
+                  case 'koperasi-saya':
                   case 'kurikulum':
                     return { button: "bg-slate-900 text-emerald-400 border border-emerald-500/50 shadow-md shadow-emerald-950/50", icon: "text-emerald-400" };
                   case 'admin':
@@ -1990,6 +2002,31 @@ export const UnifiedStaffDashboard: React.FC = () => {
               <KoperasiDashboard user={user} />
             </Suspense>
           </div>
+          </EcosystemProvider>
+        )}
+
+        {/* 🛍️ TAB KOPERASI SAYA: PORTAL ANGGOTA KOPERASI (GURU & STAF) */}
+        {visitedTabs.has('koperasi-saya') && (
+          <EcosystemProvider ecosystem='koperasi' as={React.Fragment}>
+            <div 
+              key="tab-koperasi-saya"
+              role="tabpanel"
+              aria-hidden={activeTab !== 'koperasi-saya'}
+              className={cn("w-full min-w-0", activeTab === 'koperasi-saya' ? "block" : "hidden")}
+            >
+              <Suspense fallback={
+                <div className="w-full space-y-4 py-4">
+                  <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="h-24 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+                    ))}
+                  </div>
+                </div>
+              }>
+                <UniversalCoopMemberView hideLayout={true} />
+              </Suspense>
+            </div>
           </EcosystemProvider>
         )}
 

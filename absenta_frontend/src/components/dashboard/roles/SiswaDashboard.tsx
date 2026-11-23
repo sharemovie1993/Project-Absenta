@@ -22,6 +22,7 @@ import {
   Calendar,
   X,
   ClipboardCheck,
+  ShoppingBag,
 } from 'lucide-react';
 import { renderApiValue } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -90,10 +91,14 @@ const SessionManagerModule = lazy(() =>
   import('@/pages/attendance/ops/components/SessionManagerModule').then((m) => ({ default: m.SessionManagerModule }))
 );
 
+const UniversalCoopMemberView = lazy(() =>
+  import('@/components/cooperative/dashboard/UniversalCoopMemberView').then((m) => ({ default: m.UniversalCoopMemberView }))
+);
+
 export const SiswaDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab') as SiswaTabId | null;
-  const validTabs: SiswaTabId[] = ['ringkasan', 'jadwal', 'ekskul', 'pkl', 'cbt', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil', 'presensi-kelas'];
+  const validTabs: SiswaTabId[] = ['ringkasan', 'jadwal', 'ekskul', 'pkl', 'cbt', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil', 'presensi-kelas', 'koperasi'];
   const activeTab: SiswaTabId = rawTab && validTabs.includes(rawTab) ? rawTab : 'ringkasan';
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -352,6 +357,7 @@ export const SiswaDashboard: React.FC = () => {
       { id: 'kehadiran', label: 'Presensi', shortLabel: 'Presensi', icon: CheckCircle2, category: 'operasional' },
       { id: 'catatan', label: 'Disiplin', shortLabel: 'Disiplin', icon: FileText, badge: data.pelanggaranCount, category: 'operasional' },
       { id: 'berkas', label: 'Dokumen', shortLabel: 'Dokumen', icon: FolderOpen, category: 'akademik' },
+      { id: 'koperasi', label: 'Koperasi Siswa', shortLabel: 'Koperasi', icon: ShoppingBag, category: 'layanan' },
       { id: 'portal', label: 'Portal', shortLabel: 'Portal', icon: LayoutGrid, category: 'layanan' },
       { id: 'profil', label: 'Profil', shortLabel: 'Profil', icon: User, category: 'layanan' }
     );
@@ -377,6 +383,7 @@ export const SiswaDashboard: React.FC = () => {
       case 'cbt': return 'Ujian Online (CBT)';
       case 'catatan': return 'Poin & Kedisiplinan';
       case 'berkas': return 'Berkas Akademik';
+      case 'koperasi': return 'Koperasi Siswa';
       case 'profil': return 'Profil Saya';
       default: return 'Portal Siswa';
     }
@@ -858,6 +865,24 @@ export const SiswaDashboard: React.FC = () => {
                   hideLayout={true}
                   hideKelas={true}
                 />
+              </Suspense>
+            </div>
+          )}
+
+          {/* 🛍️ TAB KOPERASI SISWA: PORTAL ANGGOTA KOPERASI SISWA */}
+          {visitedTabs.has('koperasi') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'koperasi'}
+              className={cn('w-full min-w-0', activeTab === 'koperasi' ? 'block' : 'hidden')}
+            >
+              <Suspense fallback={
+                <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
+                  <RefreshCw className="animate-spin text-emerald-500 mx-auto" size={24} />
+                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Memuat Portal Koperasi Siswa...</p>
+                </div>
+              }>
+                <UniversalCoopMemberView hideLayout={true} />
               </Suspense>
             </div>
           )}
