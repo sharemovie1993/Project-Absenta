@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef, Suspense, lazy, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
 import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, UserCheck, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, LogIn, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera, Wrench, Copy, ExternalLink, MessageSquare, SlidersHorizontal } from 'lucide-react';
 import { 
@@ -389,7 +389,13 @@ Terima kasih.
     return [{ label: 'Semua Kelas', value: '' }, ...list.map(k => ({ label: k.nama_kelas, value: k.id }))];
   }, [kelasList, filterTingkat]);
 
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const debouncedSearchTerm = useDebounce(searchTerm, 400);
+
+  // Reset pagination saat kata kunci pencarian berubah
+  useEffect(() => {
+    setCurrentPage(1);
+    setPageInput('1');
+  }, [debouncedSearchTerm]);
 
 
   const { user, isImpersonating, impersonateSiswaAction } = useAuthStore();
@@ -501,7 +507,7 @@ Terima kasih.
   }, [isWaliKelasMode, waliKelasData?.id, urlContext]);
 
   // ── useQuery: Fetch siswa list ────────────────────────────────────────────
-  const { data: listRes, isLoading: isListLoading, refetch } = useQuery({
+  const { data: listRes, isLoading: isListLoading, isFetching: isListFetching, refetch } = useQuery({
     queryKey: siswaQueryKeys.list({ 
       page: currentPage, 
       limit: itemsPerPage, 
@@ -529,6 +535,7 @@ Terima kasih.
       semesterId || '',
       filterAppInstalled !== 'ALL' ? (filterAppInstalled === 'INSTALLED') : undefined
     ),
+    placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -1387,7 +1394,7 @@ Terima kasih.
     </div>
   ), [onView, canImpersonate, handleImpersonate, impersonatingId]);
 
-  if (isListLoading) {
+  if (isListLoading && !listRes) {
     return (
       <div className="flex justify-center p-8">
         <Loader size="lg" />
@@ -1459,8 +1466,19 @@ Terima kasih.
                     aria-label="Cari siswa"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 pr-3 h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200/80 dark:border-slate-800"
+                    className="pl-9 pr-8 h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200/80 dark:border-slate-800"
                   />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                      title="Hapus pencarian"
+                      aria-label="Hapus kata kunci pencarian"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Tombol Filter Mini dengan Badge Counter */}
@@ -1622,7 +1640,7 @@ Terima kasih.
             <MobileAcademicList
               title="Direktori Siswa"
               data={siswas}
-              loading={isListLoading || loading}
+              loading={isListLoading || isListFetching || loading}
               totalItems={totalItems}
               onRefresh={() => refetch()}
               onAdd={onAdd}
@@ -1647,7 +1665,7 @@ Terima kasih.
               <Table 
               columns={columns} 
               data={siswas} 
-              loading={isListLoading || loading}
+              loading={isListLoading || isListFetching || loading}
               emptyMessage="Tidak ada data siswa"
               compact={true}
               pagination={{
@@ -1717,7 +1735,7 @@ Terima kasih.
 
                   {/* Row 1: Search & Filters */}
                   <div className="flex flex-col md:flex-row gap-4 items-center">
-                    <div className="flex-1 w-full">
+                    <div className="relative flex-1 w-full">
                       <Input
                         type="text"
                         placeholder="Cari siswa (NIS, Nama, RFID)..."
@@ -1725,8 +1743,19 @@ Terima kasih.
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         leftIcon={<Search className="h-4 w-4 text-gray-400" />}
-                        className="h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+                        className="h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pr-9"
                       />
+                      {searchTerm && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchTerm('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                          title="Hapus pencarian"
+                          aria-label="Hapus kata kunci pencarian"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                     
                     <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
