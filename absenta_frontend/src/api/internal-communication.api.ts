@@ -237,5 +237,60 @@ export const internalCommunicationApi = {
     } catch {
       return 0;
     }
+  },
+
+  /**
+   * Ambil profil lengkap thread / grup / siswa / wali kelas & seluruh anggota
+   */
+  async getThreadProfile(threadId: string): Promise<ThreadProfileResponse> {
+    const res = await requestWithFallback<{ success: boolean; data: ThreadProfileResponse }>(
+      'get',
+      `/communication/${threadId}/profile`
+    );
+    return (res as any)?.data;
   }
 };
+
+export interface ThreadProfileMember {
+  user_id: string;
+  name: string;
+  role: string;
+  role_label: string;
+  avatar?: string | null;
+  email?: string | null;
+  no_hp?: string | null;
+  nip?: string | null;
+  jabatan?: string | null;
+  nis?: string | null;
+  nisn?: string | null;
+  kelas?: string | null;
+  kelas_id?: string | null;
+  jenis_kelamin?: string | null;
+}
+
+export interface ThreadProfileResponse {
+  thread_id: string;
+  type: InternalThreadType;
+  title: string;
+  category: InternalThreadCategory;
+  groupScope?: 'KELAS' | 'JABATAN' | null;
+  isBroadcast?: boolean;
+  kelasInfo?: {
+    id: string;
+    nama_kelas: string;
+    tingkat?: string | null;
+    jurusan?: string | null;
+    tahun_pelajaran?: string | null;
+  } | null;
+  waliKelas?: {
+    user_id: string;
+    name: string;
+    nip?: string | null;
+    no_hp?: string | null;
+    jabatan?: string | null;
+    avatar?: string | null;
+  } | null;
+  targetUser?: ThreadProfileMember | null;
+  memberCount: number;
+  members: ThreadProfileMember[];
+}

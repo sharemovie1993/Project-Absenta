@@ -14,7 +14,8 @@ import {
   EllipsisVerticalIcon,
   MagnifyingGlassIcon,
   PhoneIcon,
-  VideoCameraIcon
+  VideoCameraIcon,
+  InformationCircleIcon
 } from '@heroicons/react/24/outline';
 import { 
   internalCommunicationApi,
@@ -26,6 +27,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { MessageBubble } from './MessageBubble';
 import { QuickTemplatesModal } from './QuickTemplatesModal';
+import { ThreadProfileModal } from './ThreadProfileModal';
 import { format, isToday, isYesterday } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { resolveProfilePhotoUrl } from '@/lib/utils';
@@ -118,6 +120,7 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
     }
   };
 
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -301,7 +304,11 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
     <div className="flex flex-col h-full bg-[#efeae2] dark:bg-[#0b141a] relative select-none">
       {/* ── WHATSAPP CHAT HEADER ─────────────────────────────────────────── */}
       <header className="px-4 py-2.5 bg-[#f0f2f5] dark:bg-[#202c33] border-b border-[#e9edef] dark:border-[#2a3942] flex items-center justify-between shrink-0 z-10 shadow-2xs">
-        <div className="flex items-center gap-3 min-w-0">
+        <div
+          onClick={() => setIsProfileOpen(true)}
+          className="flex items-center gap-3 min-w-0 cursor-pointer hover:opacity-85 transition-opacity"
+          title="Klik untuk melihat Profil / Anggota Grup"
+        >
           {/* Avatar Profile */}
           <div className="relative w-10 h-10 rounded-full bg-[#00a884] text-white flex items-center justify-center text-sm font-extrabold shrink-0 overflow-hidden shadow-2xs">
             {otherUser?.avatar ? (
@@ -347,6 +354,14 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
 
           <button 
             type="button" 
+            onClick={() => setIsProfileOpen(true)}
+            className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-[#54656f] dark:text-[#aebac1] hover:text-[#00a884]" 
+            title="Info Profil & Anggota Grup"
+          >
+            <InformationCircleIcon className="w-5 h-5" />
+          </button>
+          <button 
+            type="button" 
             onClick={() => {
               if (onStartCall) onStartCall('AUDIO');
               else if (onStartAudioCall && otherUser?.user_id) onStartAudioCall(otherUser.user_id, interlocutorName);
@@ -355,6 +370,14 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
             title="Panggilan Suara (Voice Call)"
           >
             <PhoneIcon className="w-5 h-5" />
+          </button>
+          <button 
+            type="button" 
+            onClick={() => setIsProfileOpen(true)}
+            className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-[#54656f] dark:text-[#aebac1] hover:text-[#00a884]" 
+            title="Info Profil & Anggota Grup"
+          >
+            <InformationCircleIcon className="w-5 h-5" />
           </button>
           <button 
             type="button" 
@@ -582,6 +605,14 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
           setIsTemplateModalOpen(false);
         }}
       />
+
+      {isProfileOpen && thread?.id && (
+        <ThreadProfileModal
+          threadId={thread.id}
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+        />
+      )}
     </div>
   );
 };

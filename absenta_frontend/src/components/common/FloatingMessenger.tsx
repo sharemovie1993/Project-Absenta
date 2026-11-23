@@ -15,12 +15,16 @@ import {
   PlusIcon,
   MinusIcon,
   ArrowLeftIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  SpeakerWaveIcon,
+  SpeakerXMarkIcon,
+  InformationCircleIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { format, isToday, isYesterday } from 'date-fns';
 import { playNotificationSound } from '@/utils/audioUtils';
 import { NewConversationModal } from '@/components/communication/NewConversationModal';
+import { ChatAvatar, ThreadProfileModal } from '@/components/communication/ThreadProfileModal';
 
 export default function FloatingMessenger() {
   const queryClient = useQueryClient();
@@ -43,13 +47,41 @@ export default function FloatingMessenger() {
   } | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [newModalTab, setNewModalTab] = useState<'DIRECT' | 'DISPOSISI' | 'BROADCAST'>('BROADCAST');
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isSoundMuted, setIsSoundMuted] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('absenta_chat_muted') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const isSoundMutedRef = useRef(isSoundMuted);
+  useEffect(() => {
+    isSoundMutedRef.current = isSoundMuted;
+  }, [isSoundMuted]);
+
+  const toggleSoundMute = () => {
+    setIsSoundMuted((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('absenta_chat_muted', next ? '1' : '0');
+      } catch {}
+      if (!next) {
+        try {
+          playNotificationSound();
+        } catch {}
+      }
+      return next;
+    });
+  };
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messengerContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     const handlePointerDownOutside = (event: MouseEvent | TouchEvent) => {
-      if (isNewModalOpen) return;
+      if (isNewModalOpen || isProfileOpen) return;
       const target = event.target as Node | null;
       if (messengerContainerRef.current && target && !messengerContainerRef.current.contains(target)) {
         setIsOpen(false);
@@ -62,7 +94,7 @@ export default function FloatingMessenger() {
       document.removeEventListener('mousedown', handlePointerDownOutside);
       document.removeEventListener('touchstart', handlePointerDownOutside);
     };
-  }, [isOpen, isNewModalOpen]);
+  }, [isOpen, isNewModalOpen, isProfileOpen]);
 
   const isCommunicationPage = location.pathname.startsWith('/komunikasi');
 
@@ -201,9 +233,11 @@ export default function FloatingMessenger() {
       }
 
       if (senderId && senderId !== user.id) {
-        try {
-          playNotificationSound();
-        } catch {}
+        if (!isSoundMutedRef.current) {
+          try {
+            playNotificationSound();
+          } catch {}
+        }
         setIncomingBanner({
           threadId: tid,
           title: data?.title || '📢 Siaran Pengumuman Sekolah',
@@ -227,9 +261,11 @@ export default function FloatingMessenger() {
       queryClient.invalidateQueries({ queryKey: communicationKeys.unreadCount() });
 
       if (senderId && senderId !== user.id) {
-        try {
-          playNotificationSound();
-        } catch {}
+        if (!isSoundMutedRef.current) {
+          try {
+            playNotificationSound();
+          } catch {}
+        }
         setIncomingBanner({
           threadId: tid,
           title: data?.title || data?.message?.sender_name || 'Pesan Baru Masuk',
@@ -320,40 +356,75 @@ export default function FloatingMessenger() {
                   </button>
                 ) : null}
 
-                <div className="relative w-8 h-8 rounded-full bg-white/15 text-white flex items-center justify-center text-xs font-extrabold shrink-0 shadow-xs">
+                <div
+                  onClick={() => {
+                    if (selectedThreadId) setIsProfileOpen(true);
+                  }}
+                  className={`flex items-center gap-2 min-w-0 ${
+                    selectedThreadId ? 'cursor-pointer hover:opacity-90' : ''
+                  }`}
+                  title={selectedThreadId ? 'Klik untuk melihat info & anggota profil' : undefined}
+                >
                   {selectedThreadId ? (
-                    isBroadcastThread ? (
-                      <span>📢</span>
-                    ) : (
-                      activeThread?.title ? activeThread.title.slice(0, 2).toUpperCase() : 'CH'
-                    )
+                    <ChatAvatar
+                      src={(activeThread as any)?.avatar || (activeThread as any)?.otherUser?.avatar}
+                      name={activeThread?.title || activeThreadDetail?.thread?.title || 'CH'}
+                      size="sm"
+                      isBroadcast={isBroadcastThread}
+                      isGroup={activeThread?.type === 'GROUP'}
+                      className="border-white/30"
+                    />
                   ) : (
-                    <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
-                      <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z" />
-                    </svg>
+                    <div className="relative w-8 h-8 rounded-full bg-white/15 text-white flex items-center justify-center text-xs font-extrabold shrink-0 shadow-xs">
+                      <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
+                        <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2z" />
+                      </svg>
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#25d366] border-2 border-[#075e54]" />
+                    </div>
                   )}
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#25d366] border-2 border-[#075e54]" />
-                </div>
 
-                <div className="min-w-0">
-                  <h4 className="font-bold text-xs truncate">
-                    {selectedThreadId
-                      ? activeThread?.title || activeThreadDetail?.thread?.title || 'Percakapan'
-                      : 'Messenger Sekolah'}
-                  </h4>
-                  <p className="text-[10px] text-emerald-100 dark:text-[#8696a0] truncate">
-                    {selectedThreadId
-                      ? isBroadcastThread
-                        ? 'Siaran Pengumuman Resmi'
-                        : activeThread?.type === 'DISPOSISI'
-                        ? 'Disposisi & Koordinasi'
-                        : 'Online'
-                      : `${threads.length} Percakapan${unreadCount > 0 ? ` • ${unreadCount} Belum Dibaca` : ''}`}
-                  </p>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-xs truncate">
+                      {selectedThreadId
+                        ? activeThread?.title || activeThreadDetail?.thread?.title || 'Percakapan'
+                        : 'Messenger Sekolah'}
+                    </h4>
+                    <p className="text-[10px] text-emerald-100 dark:text-[#8696a0] truncate">
+                      {selectedThreadId
+                        ? isBroadcastThread
+                          ? 'Siaran Pengumuman Resmi'
+                          : activeThread?.type === 'GROUP'
+                          ? 'Klik untuk lihat anggota & info grup'
+                          : 'Klik untuk lihat profil'
+                        : `${threads.length} Percakapan${unreadCount > 0 ? ` • ${unreadCount} Belum Dibaca` : ''}`}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-0.5 shrink-0">
+                {selectedThreadId && (
+                  <button
+                    type="button"
+                    onClick={() => setIsProfileOpen(true)}
+                    title="Lihat Profil / Anggota Grup"
+                    className="p-1.5 rounded-lg hover:bg-white/20 text-white transition-colors cursor-pointer"
+                  >
+                    <InformationCircleIcon className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={toggleSoundMute}
+                  title={isSoundMuted ? 'Aktifkan Suara Notifikasi' : 'Bisukan Suara Notifikasi'}
+                  className="p-1.5 rounded-lg hover:bg-white/20 text-white transition-colors cursor-pointer"
+                >
+                  {isSoundMuted ? (
+                    <SpeakerXMarkIcon className="w-4 h-4 text-rose-200" />
+                  ) : (
+                    <SpeakerWaveIcon className="w-4 h-4" />
+                  )}
+                </button>
                 {canBroadcast && !selectedThreadId && (
                   <button
                     type="button"
@@ -547,29 +618,30 @@ export default function FloatingMessenger() {
                               : 'hover:bg-slate-50 dark:hover:bg-[#202c33]/50'
                           }`}
                         >
-                          {/* Avatar Bulat di Kiri */}
-                          <div
-                            className={`relative w-11 h-11 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 shadow-2xs ${
-                              isBc
-                                ? 'bg-amber-500 text-white'
-                                : isGrp
-                                ? grpScope === 'KELAS'
+                          {/* Avatar Bulat di Kiri (Foto Profil layaknya WhatsApp) */}
+                          {isBc || isGrp ? (
+                            <div
+                              className={`relative w-11 h-11 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 shadow-2xs ${
+                                isBc
+                                  ? 'bg-amber-500 text-white'
+                                  : grpScope === 'KELAS'
                                   ? 'bg-indigo-600 text-white'
                                   : 'bg-teal-600 text-white'
-                                : 'bg-[#00a884] text-white'
-                            }`}
-                          >
-                            {isBc ? (
-                              <span className="text-base">📢</span>
-                            ) : isGrp ? (
-                              <span className="text-base">{grpScope === 'KELAS' ? '🏫' : '👥'}</span>
-                            ) : (
-                              String(t.title || 'CH')
-                                .replace(/^📢\s*/, '')
-                                .slice(0, 2)
-                                .toUpperCase()
-                            )}
-                          </div>
+                              }`}
+                            >
+                              {isBc ? (
+                                <span className="text-base">📢</span>
+                              ) : (
+                                <span className="text-base">{grpScope === 'KELAS' ? '🏫' : '👥'}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <ChatAvatar
+                              src={t.avatar || t.otherUser?.avatar}
+                              name={t.title}
+                              size="lg"
+                            />
+                          )}
 
                           {/* Nama, Waktu, & Preview Pesan Terakhir (1 Row ke Bawah ala WhatsApp) */}
                           <div className="flex-1 min-w-0">
@@ -654,9 +726,17 @@ export default function FloatingMessenger() {
                           ? (m.sender_role as any)?.name
                           : m.sender_role;
                       return (
-                        <div key={m.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                        <div key={m.id} className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          {!isMe && (
+                            <ChatAvatar
+                              src={m.sender_avatar}
+                              name={m.sender_name}
+                              size="xs"
+                              className="mb-0.5"
+                            />
+                          )}
                           <div
-                            className={`max-w-[86%] rounded-xl px-3 py-2 text-xs shadow-2xs ${
+                            className={`max-w-[82%] rounded-xl px-3 py-2 text-xs shadow-2xs ${
                               isMe
                                 ? 'bg-[#d9fdd3] dark:bg-[#005c4b] text-[#111b21] dark:text-[#e9edef] rounded-tr-none'
                                 : 'bg-white dark:bg-[#202c33] text-[#111b21] dark:text-[#e9edef] rounded-tl-none border border-slate-200/60 dark:border-slate-700'
@@ -756,6 +836,15 @@ export default function FloatingMessenger() {
           )}
         </button>
       </div>
+
+      {/* Modal Profil Kontak / Anggota Grup & Wali Kelas */}
+      {isProfileOpen && selectedThreadId && (
+        <ThreadProfileModal
+          threadId={selectedThreadId}
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+        />
+      )}
 
       {/* Modal Broadcast / Percakapan Baru langsung dari Floating Messenger */}
       {isNewModalOpen && (

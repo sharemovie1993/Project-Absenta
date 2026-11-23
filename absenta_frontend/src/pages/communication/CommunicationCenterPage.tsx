@@ -22,6 +22,7 @@ import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { ChatConversationPanel } from '@/components/communication/ChatConversationPanel';
 import { NewConversationModal } from '@/components/communication/NewConversationModal';
+import { ChatAvatar } from '@/components/communication/ThreadProfileModal';
 import { IncomingCallModal } from '@/components/communication/calling/IncomingCallModal';
 import { ActiveCallOverlay } from '@/components/communication/calling/ActiveCallOverlay';
 import { VirtualMeetingModal } from '@/components/communication/meeting/VirtualMeetingModal';
@@ -29,6 +30,7 @@ import { useWebRTCCall } from '@/hooks/communication/useWebRTCCall';
 import { useSocket } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/authStore';
 import { formatDate } from '@/utils/layoutUtils';
+import { playNotificationSound } from '@/utils/audioUtils';
 import { Button, SectionCard } from '@/components/ui';
 import toast from 'react-hot-toast';
 
@@ -177,8 +179,16 @@ export default function CommunicationCenterPage() {
   useEffect(() => {
     if (!socket) return;
 
-    const handleThreadUpdate = (data: { thread_id: string; message: unknown }) => {
+    const handleThreadUpdate = (data: any) => {
       queryClient.invalidateQueries({ queryKey: communicationKeys.allThreads });
+      const senderId = data?.senderId || data?.message?.sender_id;
+      if (senderId && senderId !== user?.id) {
+        try {
+          if (localStorage.getItem('absenta_chat_muted') !== '1') {
+            playNotificationSound();
+          }
+        } catch {}
+      }
     };
 
     socket.on('communication:thread_updated', handleThreadUpdate);
@@ -415,9 +425,13 @@ export default function CommunicationCenterPage() {
                             : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
                         }`}
                       >
-                        <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
-                          {t.title?.substring(0, 2).toUpperCase() || 'CH'}
-                        </div>
+                        <ChatAvatar
+                          src={(t as any).avatar || (t as any).otherUser?.avatar}
+                          name={t.title}
+                          size="md"
+                          isBroadcast={Boolean((t as any)?.context_ref?.isBroadcast) || String(t.title || '').startsWith('📢')}
+                          isGroup={t.type === 'GROUP'}
+                        />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">

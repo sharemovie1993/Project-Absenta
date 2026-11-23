@@ -127,8 +127,8 @@ export class CommunicationService {
                   email: true, 
                   no_hp: true,
                   Role: { select: { name: true } },
-                  Guru: { select: { id: true, nip: true, nama_guru: true, jabatan: true } },
-                  Siswa: { select: { id: true, nisn: true, nama_siswa: true, Kelas: { select: { nama_kelas: true } } } }
+                  Guru: { select: { id: true, nip: true, nama_guru: true, jabatan: true, foto: true } },
+                  Siswa: { select: { id: true, nisn: true, nama_siswa: true, foto: true, Kelas: { select: { nama_kelas: true } } } }
                 }
               }
             }
@@ -195,12 +195,18 @@ export class CommunicationService {
         } : null,
         isUnread: Boolean(isUnread),
         myLastReadAt: myLastReadRaw || null,
+        avatar:
+          t.type === InternalThreadType.DIRECT
+            ? otherParticipant?.User?.Guru?.foto || otherParticipant?.User?.Siswa?.foto || null
+            : null,
         participants: (t.Participants || []).map((p: any) => ({
           id: p.id,
           user_id: p.user_id,
           name: p.User?.full_name || p.User?.Guru?.nama_guru || p.User?.Siswa?.nama_siswa,
+          role: p.User?.Role?.name || 'Pengguna',
           role_label: p.role_label || p.User?.Role?.name || 'Pengguna',
-          kelas: p.User?.Siswa?.Kelas?.nama_kelas || null
+          kelas: p.User?.Siswa?.Kelas?.nama_kelas || null,
+          avatar: p.User?.Guru?.foto || p.User?.Siswa?.foto || null
         })),
         otherUser: otherParticipant ? {
           id: otherParticipant.User?.id,
@@ -208,7 +214,8 @@ export class CommunicationService {
           role: otherParticipant.User?.Role?.name,
           role_label: otherParticipant.role_label,
           kelas: otherParticipant.User?.Siswa?.Kelas?.nama_kelas,
-          phone_number: otherParticipant.User?.no_hp
+          phone_number: otherParticipant.User?.no_hp,
+          avatar: otherParticipant.User?.Guru?.foto || otherParticipant.User?.Siswa?.foto || null
         } : null
       };
     });
@@ -250,8 +257,8 @@ export class CommunicationService {
                 email: true,
                 no_hp: true,
                 Role: { select: { name: true } },
-                Guru: { select: { nip: true, nama_guru: true, jabatan: true } },
-                Siswa: { select: { nisn: true, nama_siswa: true, Kelas: { select: { nama_kelas: true } } } }
+                Guru: { select: { nip: true, nama_guru: true, jabatan: true, foto: true } },
+                Siswa: { select: { nisn: true, nama_siswa: true, foto: true, Kelas: { select: { nama_kelas: true } } } }
               }
             }
           }
@@ -273,7 +280,9 @@ export class CommunicationService {
             id: true,
             full_name: true,
             email: true,
-            Role: { select: { name: true } }
+            Role: { select: { name: true } },
+            Guru: { select: { foto: true } },
+            Siswa: { select: { foto: true } }
           }
         }
       },
@@ -304,7 +313,8 @@ export class CommunicationService {
           name: p.User?.full_name || p.User?.Guru?.nama_guru || p.User?.Siswa?.nama_siswa,
           role: p.User?.Role?.name,
           role_label: p.role_label,
-          kelas: p.User?.Siswa?.Kelas?.nama_kelas
+          kelas: p.User?.Siswa?.Kelas?.nama_kelas,
+          avatar: p.User?.Guru?.foto || p.User?.Siswa?.foto || null
         }))
       },
       messages: messages.map((m: any) => ({
@@ -313,6 +323,7 @@ export class CommunicationService {
         sender_id: m.sender_id,
         sender_name: m.Sender?.full_name,
         sender_role: m.Sender?.Role?.name,
+        sender_avatar: m.Sender?.Guru?.foto || m.Sender?.Siswa?.foto || null,
         is_me: m.sender_id === userId,
         content: m.content,
         attachments: m.attachments,
@@ -742,7 +753,7 @@ export class CommunicationService {
       },
       include: {
         Role: { select: { name: true } },
-        Guru: { select: { jabatan: true } }
+        Guru: { select: { jabatan: true, foto: true } }
       },
       orderBy: { full_name: 'asc' }
     });
@@ -764,7 +775,8 @@ export class CommunicationService {
         id: s.id,
         name: s.full_name,
         role_label: roleLabel,
-        group
+        group,
+        avatar: s.Guru?.foto || null
       };
     });
   }
@@ -1466,6 +1478,210 @@ export class CommunicationService {
       updatedGroups,
       kelasGroups: kelasGroupsCount,
       jabatanGroups: jabatanGroupsCount,
+    };
+  }
+
+  /**
+   * 10. Ambil Profil Lengkap Thread / Grup / Lawan Bicara (Siswa, Guru, Wali Kelas, & Daftar Anggota)
+   */
+  async getThreadProfile(tenantId: string, threadId: string, userId: string) {
+    const participant = await (prisma as any).internalParticipant.findFirst({
+      where: {
+        thread_id: threadId,
+        user_id: userId,
+      },
+    });
+
+    if (!participant) {
+      throw new Error('Anda tidak memiliki akses ke profil percakapan ini.');
+    }
+
+    const thread = await (prisma as any).internalThread.findFirst({
+      where: { id: threadId, tenant_id: tenantId },
+      include: {
+        Participants: {
+          include: {
+            User: {
+              select: {
+                id: true,
+                full_name: true,
+                email: true,
+                no_hp: true,
+                Role: { select: { name: true } },
+                Guru: {
+                  select: {
+                    id: true,
+                    nip: true,
+                    nama_guru: true,
+                    jabatan: true,
+                    no_hp: true,
+                    foto: true,
+                  },
+                },
+                Siswa: {
+                  select: {
+                    id: true,
+                    nis: true,
+                    nisn: true,
+                    nama_siswa: true,
+                    no_hp: true,
+                    jenis_kelamin: true,
+                    foto: true,
+                    kelas_id: true,
+                    Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!thread) {
+      throw new Error('Percakapan tidak ditemukan.');
+    }
+
+    const members = (thread.Participants || [])
+      .map((p: any) => {
+        const u = p.User;
+        const role = u?.Role?.name || 'Pengguna';
+        const avatar = u?.Guru?.foto || u?.Siswa?.foto || null;
+        return {
+          user_id: p.user_id,
+          name: u?.full_name || u?.Guru?.nama_guru || u?.Siswa?.nama_siswa || 'Pengguna',
+          role,
+          role_label: p.role_label || u?.Guru?.jabatan || role,
+          avatar,
+          email: u?.email || null,
+          no_hp: u?.no_hp || u?.Guru?.no_hp || u?.Siswa?.no_hp || null,
+          nip: u?.Guru?.nip || null,
+          jabatan: u?.Guru?.jabatan || null,
+          nis: u?.Siswa?.nis || null,
+          nisn: u?.Siswa?.nisn || null,
+          kelas: u?.Siswa?.Kelas?.nama_kelas || null,
+          kelas_id: u?.Siswa?.kelas_id || null,
+          jenis_kelamin: u?.Siswa?.jenis_kelamin || null,
+        };
+      })
+      .sort((a: any, b: any) => {
+        const aIsSiswa = a.role === 'SISWA' ? 1 : 0;
+        const bIsSiswa = b.role === 'SISWA' ? 1 : 0;
+        if (aIsSiswa !== bIsSiswa) return aIsSiswa - bIsSiswa;
+        return String(a.name).localeCompare(String(b.name));
+      });
+
+    const ctx = (thread.context_ref || {}) as Record<string, any>;
+    let waliKelas: any = null;
+    let kelasInfo: any = null;
+
+    if (thread.type === InternalThreadType.GROUP && ctx.groupScope === 'KELAS' && ctx.kelasId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        orderBy: { created_at: 'desc' },
+        select: { id: true, tahun: true },
+      });
+
+      const kelasData = await prisma.kelas.findUnique({
+        where: { id: ctx.kelasId },
+        select: {
+          id: true,
+          nama_kelas: true,
+          tingkat: true,
+          Jurusan: { select: { nama_jurusan: true } },
+          OrganizationalAssignments: {
+            where: {
+              is_active: true,
+              ...(activeTp ? { OR: [{ tahun_pelajaran_id: activeTp.id }, { tahun_pelajaran_id: null }] } : {}),
+            },
+            include: {
+              Position: { select: { code: true, name: true } },
+              User: {
+                select: {
+                  id: true,
+                  full_name: true,
+                  no_hp: true,
+                  Guru: { select: { nip: true, nama_guru: true, jabatan: true, no_hp: true, foto: true } },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (kelasData) {
+        kelasInfo = {
+          id: kelasData.id,
+          nama_kelas: kelasData.nama_kelas,
+          tingkat: kelasData.tingkat,
+          jurusan: kelasData.Jurusan?.nama_jurusan || null,
+          tahun_pelajaran: activeTp?.tahun || ctx.tahunPelajaran || null,
+        };
+        const walasAssign =
+          kelasData.OrganizationalAssignments.find((oa) =>
+            `${oa.Position?.code || ''} ${oa.Position?.name || ''}`.toUpperCase().includes('WALI')
+          ) || kelasData.OrganizationalAssignments[0];
+        if (walasAssign?.User) {
+          waliKelas = {
+            user_id: walasAssign.User.id,
+            name: walasAssign.User.full_name || walasAssign.User.Guru?.nama_guru,
+            nip: walasAssign.User.Guru?.nip || null,
+            no_hp: walasAssign.User.no_hp || walasAssign.User.Guru?.no_hp || null,
+            jabatan: walasAssign.Position?.name || 'Wali Kelas',
+            avatar: walasAssign.User.Guru?.foto || null,
+          };
+        }
+      }
+    }
+
+    // Untuk Direct Chat, cari lawan bicara & jika siswa cari wali kelasnya juga
+    let targetUser: any = null;
+    if (thread.type !== InternalThreadType.GROUP) {
+      targetUser = members.find((m: any) => m.user_id !== userId) || members[0] || null;
+      if (targetUser && targetUser.role === 'SISWA' && targetUser.kelas_id) {
+        const walasAssign = await (prisma as any).organizationalAssignment.findFirst({
+          where: {
+            tenant_id: tenantId,
+            kelas_id: targetUser.kelas_id,
+            is_active: true,
+          },
+          include: {
+            Position: { select: { name: true } },
+            User: {
+              select: {
+                id: true,
+                full_name: true,
+                no_hp: true,
+                Guru: { select: { nip: true, nama_guru: true, foto: true } },
+              },
+            },
+          },
+        });
+        if (walasAssign?.User) {
+          waliKelas = {
+            user_id: walasAssign.User.id,
+            name: walasAssign.User.full_name || walasAssign.User.Guru?.nama_guru,
+            nip: walasAssign.User.Guru?.nip || null,
+            no_hp: walasAssign.User.no_hp || null,
+            jabatan: walasAssign.Position?.name || 'Wali Kelas',
+            avatar: walasAssign.User.Guru?.foto || null,
+          };
+        }
+      }
+    }
+
+    return {
+      thread_id: thread.id,
+      type: thread.type,
+      title: thread.title,
+      category: thread.category,
+      groupScope: ctx.groupScope || null,
+      isBroadcast: Boolean(ctx.isBroadcast),
+      kelasInfo,
+      waliKelas,
+      targetUser,
+      memberCount: members.length,
+      members,
     };
   }
 }
