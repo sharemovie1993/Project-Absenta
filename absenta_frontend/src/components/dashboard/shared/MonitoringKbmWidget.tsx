@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSesiAbsensiList, getSesiAbsenSiswa, sendKbmReminderApi, updateAbsenGuru } from '../../../api/attendanceGerbang.api';
 import { normalizeFromSesiAbsensi, KbmItem, getKbmStatusKey } from '../../../utils/kbm-normalizer';
@@ -8,7 +8,7 @@ import { useSocket } from '../../../hooks/useSocket';
 import { Button } from '../../ui';
 import Card from '../../ui/Card';
 import { Modal, ModalFooter } from '../../ui/Modal';
-import { BookOpen, ShieldAlert, ArrowRight, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock, UserCheck, MessageSquare, Send, UserX, Printer, LayoutGrid } from 'lucide-react';
+import { BookOpen, ShieldAlert, ArrowRight, ArrowLeft, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock, UserCheck, MessageSquare, Send, UserX, Printer, LayoutGrid } from 'lucide-react';
 import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
 import { RekapSesiKbmPrintModal } from '../../kurikulum/rekap-kbm/RekapSesiKbmPrintModal';
 import { useAuthStore } from '../../../store/authStore';
@@ -118,6 +118,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
 
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'LIVE' | 'FINISHED' | 'UPCOMING' | 'JURNAL'>('ALL');
   const [viewMode, setViewMode] = useState<'GRID' | 'LIST' | 'TABLE'>('LIST');
+  const [isInlineCommandCenterOpen, setIsInlineCommandCenterOpen] = useState(false);
   const [selectedKelasId, setSelectedKelasId] = useState<string>('ALL');
   const [selectedJurusanId, setSelectedJurusanId] = useState<string>('ALL');
   const [teacherStatusFilter, setTeacherStatusFilter] = useState<string>(initialTeacherFilter);
@@ -636,7 +637,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
   return (
     <div className="space-y-6 relative rounded-2xl overflow-hidden min-h-[300px]">
       {/* ── LEVEL 1: EXECUTIVE KBM DIRECT STAT CARDS ── */}
-      {isExecutive ? (
+      {isExecutive && !isInlineCommandCenterOpen ? (
         <div className="space-y-4">
           {renderCategoryFilterBar()}
           {/* Header Bar */}
@@ -665,7 +666,14 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all">
+            <Card
+              onClick={() => {
+                setStatusFilter('LIVE');
+                setTeacherStatusFilter('ALL');
+                setIsInlineCommandCenterOpen(true);
+              }}
+              className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all cursor-pointer"
+            >
               <div className="flex items-start justify-between gap-1.5">
                 <div>
                   <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -684,8 +692,14 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
               </p>
             </Card>
 
-            <Card className={cn(
-              "rounded-2xl border shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all",
+            <Card
+              onClick={() => {
+                setStatusFilter('ALL');
+                setTeacherStatusFilter('BELUM_MASUK');
+                setIsInlineCommandCenterOpen(true);
+              }}
+              className={cn(
+              "rounded-2xl border shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all cursor-pointer",
               stats.teacherNotArrived > 0
                 ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-800/60"
                 : stats.teacherAlpa > 0
@@ -729,8 +743,14 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
               </p>
             </Card>
 
-            <Card className={cn(
-              "rounded-2xl border shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all",
+            <Card
+              onClick={() => {
+                setStatusFilter('ALL');
+                setTeacherStatusFilter('ALPA');
+                setIsInlineCommandCenterOpen(true);
+              }}
+              className={cn(
+              "rounded-2xl border shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all cursor-pointer",
               stats.teacherAlpa > 0
                 ? "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200/80 dark:border-rose-800/60"
                 : "bg-white dark:bg-slate-900/60 border-slate-100 dark:border-slate-800"
@@ -764,7 +784,14 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
               </p>
             </Card>
 
-            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all">
+            <Card
+              onClick={() => {
+                setStatusFilter('JURNAL');
+                setTeacherStatusFilter('ALL');
+                setIsInlineCommandCenterOpen(true);
+              }}
+              className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all cursor-pointer"
+            >
               <div className="flex items-start justify-between gap-1.5">
                 <div>
                   <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -837,25 +864,53 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
                 <Printer size={13} className="text-indigo-600 dark:text-indigo-400" />
                 <span>Cetak Rekap KBM</span>
               </button>
-              <Link
-                to="/dashboard?tab=kelola&subtab=GURU_KBM"
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('ALL');
+                  setTeacherStatusFilter('BELUM_MASUK');
+                  setIsInlineCommandCenterOpen(true);
+                }}
                 className="text-xs font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <span>Meja Piket (Guru Belum Masuk)</span>
                 <ArrowRight size={12} />
-              </Link>
-              <Link
-                to="/attendance/monitoring"
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('ALL');
+                  setTeacherStatusFilter('ALL');
+                  setIsInlineCommandCenterOpen(true);
+                }}
                 className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-slate-900 to-indigo-950 hover:from-slate-800 hover:to-indigo-900 text-white text-xs font-black shadow-sm transition-all cursor-pointer"
               >
                 <span>Buka Live KBM Command Center</span>
                 <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
+              </button>
             </div>
           </div>
         </div>
       ) : (
         <>
+          {isExecutive && isInlineCommandCenterOpen && (
+            <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-900 text-white border border-slate-800 shadow-sm">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="text-xs sm:text-sm font-black tracking-tight truncate">
+                  Live KBM Command Center — Mode Inline
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsInlineCommandCenterOpen(false)}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              >
+                <ArrowLeft size={13} />
+                <span>Kembali ke Ringkasan</span>
+              </button>
+            </div>
+          )}
           {renderCategoryFilterBar()}
 
           {/* 1. Analytic Overview Cards (Level 2) */}
