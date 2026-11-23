@@ -319,12 +319,22 @@ export class PelanggaranService {
       },
     };
 
-    // 2. Simpan ke Cache via cacheService (Cache WRITE dengan CACHE_TTL.DEFAULT)
-    try {
-      await cacheService.set(cacheKey, resultPayload, CACHE_TTL.DEFAULT);
-      console.log(`[PelanggaranService] 💾 Cache WRITE for key: ${cacheKey}`);
-    } catch (cacheErr) {
-      console.warn('[PelanggaranService] Non-blocking cache write notice:', (cacheErr as any)?.message);
+    // 2. Simpan ke Cache via cacheService (Hanya untuk query umum tanpa keyword pencarian bebas)
+    if (!cleanSearch) {
+      const cacheKey = CACHE_KEYS.KESISWAAN.PELANGGARAN_LIST(
+        tenantId,
+        page,
+        limit,
+        '',
+        ((query as any).kelas_id || jurusanId),
+        query.status
+      );
+      try {
+        await cacheService.set(cacheKey, resultPayload, CACHE_TTL.DEFAULT);
+        console.log(`[PelanggaranService] 💾 Cache WRITE for key: ${cacheKey}`);
+      } catch (cacheErr) {
+        console.warn('[PelanggaranService] Non-blocking cache write notice:', (cacheErr as any)?.message);
+      }
     }
 
     return resultPayload;
