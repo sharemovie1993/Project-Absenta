@@ -9,7 +9,7 @@ export async function communicationRoutes(fastify: any) {
    * 1. Ambil daftar percakapan aktif pengguna
    * GET /api/v1/communication
    */
-  fastify.get('/', { preHandler: [requireCapability('communication.messages.view'), determineDataScope()],
+  fastify.get('/', { preHandler: [determineDataScope()],
     handler: async (request: any, reply: any) => {
       try {
         const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id;
@@ -40,7 +40,7 @@ export async function communicationRoutes(fastify: any) {
    * 2. Ambil direktori kontak yang sah dihubungi (Terpandu Relasi Akademik)
    * GET /api/v1/communication/contacts
    */
-  fastify.get('/contacts', { preHandler: [requireCapability('communication.messages.view'), determineDataScope()],
+  fastify.get('/contacts', { preHandler: [determineDataScope()],
     handler: async (request: any, reply: any) => {
       try {
         const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id;

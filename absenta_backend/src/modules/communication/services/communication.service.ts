@@ -50,11 +50,14 @@ export class CommunicationService {
     filters?: { type?: string; category?: string; status?: string; search?: string }
   ) {
     const whereClause: any = {
-      tenant_id: tenantId,
       Participants: {
         some: { user_id: userId }
       }
     };
+
+    if (tenantId && tenantId !== 'system') {
+      whereClause.tenant_id = { in: [tenantId, 'system'] };
+    }
 
     if (filters?.type && filters.type !== 'ALL') {
       whereClause.type = filters.type as InternalThreadType;
@@ -87,44 +90,58 @@ export class CommunicationService {
       ];
     }
 
-    const threads = await (prisma as any).internalThread.findMany({
-      where: whereClause,
-      include: {
-        Creator: {
-          select: { id: true, full_name: true, role_id: true, Role: { select: { name: true } } }
-        },
-        Participants: {
-          include: {
-            User: {
-              select: { 
-                id: true, 
-                full_name: true, 
-                email: true, 
-                no_hp: true,
-                Role: { select: { name: true } },
-                Guru: { select: { id: true, nip: true, nama_guru: true, jabatan: true } },
-                Siswa: { select: { id: true, nisn: true, nama_siswa: true, Kelas: { select: { nama_kelas: true } } } }
+    const [myParticipantRows, threads] = await Promise.all([
+      (prisma as any).internalParticipant.findMany({
+        where: { user_id: userId },
+        select: { thread_id: true, last_read_at: true }
+      }),
+      (prisma as any).internalThread.findMany({
+        where: whereClause,
+        include: {
+          Creator: {
+            select: { id: true, full_name: true, role_id: true, Role: { select: { name: true } } }
+          },
+          Participants: {
+            take: 15,
+            include: {
+              User: {
+                select: { 
+                  id: true, 
+                  full_name: true, 
+                  email: true, 
+                  no_hp: true,
+                  Role: { select: { name: true } },
+                  Guru: { select: { id: true, nip: true, nama_guru: true, jabatan: true } },
+                  Siswa: { select: { id: true, nisn: true, nama_siswa: true, Kelas: { select: { nama_kelas: true } } } }
+                }
+              }
+            }
+          },
+          Messages: {
+            orderBy: { created_at: 'desc' },
+            take: 1,
+            include: {
+              Sender: {
+                select: { id: true, full_name: true }
               }
             }
           }
         },
-        Messages: {
-          orderBy: { created_at: 'desc' },
-          take: 1,
-          include: {
-            Sender: {
-              select: { id: true, full_name: true }
-            }
-          }
-        }
-      },
-      orderBy: { updated_at: 'desc' }
-    });
+        orderBy: { updated_at: 'desc' }
+      })
+    ]);
+
+    const myReadMap = new Map<string, Date | null>();
+    for (const mp of myParticipantRows) {
+      myReadMap.set(mp.thread_id, mp.last_read_at);
+    }
 
     // Hitung unread count per thread
     return threads.map((t: any) => {
-      const myParticipant = t.Participants?.find((p: any) => p.user_id === userId);
-      const lastReadAt = myParticipant?.last_read_at || new Date(0);
+      const myLastReadRaw = myReadMap.has(t.id)
+        ? myReadMap.get(t.id)
+        : t.Participants?.find((p: any) => p.user_id === userId)?.last_read_at;
+      const lastReadAt = myLastReadRaw || new Date(0);
       const lastMessage = t.Messages?.[0] || null;
       const isUnread = lastMessage && lastMessage.sender_id !== userId && new Date(lastMessage.created_at) > new Date(lastReadAt);
 
@@ -155,7 +172,7 @@ export class CommunicationService {
           is_system_event: lastMessage.is_system_event
         } : null,
         isUnread: Boolean(isUnread),
-        myLastReadAt: myParticipant?.last_read_at,
+        myLastReadAt: myLastReadRaw || null,
         participants: (t.Participants || []).map((p: any) => ({
           id: p.id,
           user_id: p.user_id,
@@ -182,7 +199,6 @@ export class CommunicationService {
     // Validasi apakah pengguna adalah peserta thread
     const participant = await (prisma as any).internalParticipant.findFirst({
       where: {
-        tenant_id: tenantId,
         thread_id: threadId,
         user_id: userId
       }
@@ -199,10 +215,11 @@ export class CommunicationService {
     });
 
     const thread = await (prisma as any).internalThread.findFirst({
-      where: { id: threadId, tenant_id: tenantId },
+      where: { id: threadId },
       include: {
         Creator: { select: { id: true, full_name: true } },
         Participants: {
+          take: 25,
           include: {
             User: {
               select: {
@@ -226,7 +243,6 @@ export class CommunicationService {
 
     const messages = await (prisma as any).internalMessage.findMany({
       where: {
-        tenant_id: tenantId,
         thread_id: threadId
       },
       include: {
@@ -381,7 +397,6 @@ export class CommunicationService {
     // Validasi peserta thread
     const participant = await (prisma as any).internalParticipant.findFirst({
       where: {
-        tenant_id: tenantId,
         thread_id: threadId,
         user_id: senderId
       }
@@ -394,7 +409,7 @@ export class CommunicationService {
     // Simpan pesan
     const message = await (prisma as any).internalMessage.create({
       data: {
-        tenant_id: tenantId,
+        tenant_id: participant.tenant_id || tenantId,
         thread_id: threadId,
         sender_id: senderId,
         content: dto.content?.trim() || '',
@@ -424,7 +439,7 @@ export class CommunicationService {
 
     // Broadcast ke seluruh peserta thread via WebSocket
     const allParticipants = await (prisma as any).internalParticipant.findMany({
-      where: { tenant_id: tenantId, thread_id: threadId },
+      where: { thread_id: threadId },
       select: { user_id: true }
     });
 
@@ -649,7 +664,7 @@ export class CommunicationService {
    */
   async getUnreadCount(tenantId: string, userId: string): Promise<number> {
     const participants = await (prisma as any).internalParticipant.findMany({
-      where: { tenant_id: tenantId, user_id: userId },
+      where: { user_id: userId },
       select: { thread_id: true, last_read_at: true }
     });
 
@@ -660,7 +675,6 @@ export class CommunicationService {
       const lastRead = p.last_read_at || new Date(0);
       const count = await (prisma as any).internalMessage.count({
         where: {
-          tenant_id: tenantId,
           thread_id: p.thread_id,
           sender_id: { not: userId },
           created_at: { gt: lastRead }
