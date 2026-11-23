@@ -12,6 +12,8 @@ export interface BukaSesiFotoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (photoDataUrl: string) => void;
+  onOpenWithoutPhoto?: () => void;
+  isPetugasSiswa?: boolean;
   kelasNama?: string;
   mapelNama?: string;
   guruNama?: string;
@@ -27,6 +29,8 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
+  onOpenWithoutPhoto,
+  isPetugasSiswa = false,
   kelasNama,
   mapelNama,
   guruNama,
@@ -67,10 +71,16 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
   const displayHeaderTitle = kelasNama || (isActivity ? 'Peleton / Seluruh Peserta' : 'Kelas');
   const displaySubject = mapelNama || displayActivityName;
   const displaySubtitle = `${displaySubject}${guruNama ? ` • ${guruNama}` : ''}`;
-  const instruction = instructionText || (isActivity 
-    ? 'Arahkan kamera ke barisan peleton / peserta kegiatan atau foto bersama pendamping.' 
-    : 'Arahkan kamera ke suasana kelas atau selfie bersama siswa.');
-  const buttonSubmitText = isActivity ? `Buka Sesi ${displayActivityName}` : 'Buka Sesi KBM';
+  const instruction = instructionText || (
+    isPetugasSiswa
+      ? 'Foto bersifat opsional untuk petugas kelas. Anda dapat memfoto suasana kelas, atau buka langsung tanpa foto.'
+      : isActivity 
+      ? 'Arahkan kamera ke barisan peleton / peserta kegiatan atau foto bersama pendamping.' 
+      : 'Arahkan kamera ke suasana kelas atau selfie bersama siswa.'
+  );
+  const buttonSubmitText = isPetugasSiswa
+    ? (isActivity ? `Buka Sesi ${displayActivityName} (Foto)` : 'Buka Sesi Kelas (Foto)')
+    : (isActivity ? `Buka Sesi ${displayActivityName}` : 'Buka Sesi KBM');
   const loadingOverlayTitle = isActivity ? `Membuka Sesi ${displayActivityName}...` : 'Membuka Sesi KBM...';
   const loadingOverlayDesc = isActivity 
     ? 'Menyimpan bukti foto kegiatan & menyinkronkan kehadiran pembina/guru ke sistem.'
@@ -400,8 +410,23 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
                   {instruction}
                 </p>
 
-                {/* Shutter Button in Center */}
+                {/* Shutter Button & Petugas Actions */}
                 <div className="flex items-center justify-center mx-auto sm:mr-0 gap-3">
+                  {isPetugasSiswa && onOpenWithoutPhoto && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={onOpenWithoutPhoto}
+                      disabled={isLoading}
+                      className="h-11 px-3.5 rounded-xl text-xs font-black bg-indigo-950/70 hover:bg-indigo-900/90 text-indigo-300 border border-indigo-700/80 flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                      title="Buka sesi langsung tanpa foto untuk mulai mencatat kehadiran siswa"
+                    >
+                      <Sparkles size={13} className="text-amber-400" />
+                      <span>Buka Sesi (Tanpa Foto)</span>
+                    </Button>
+                  )}
+
                   <Button
                     type="button"
                     variant="secondary"
@@ -416,7 +441,7 @@ export const BukaSesiFotoModal: React.FC<BukaSesiFotoModalProps> = ({
                     type="button"
                     onClick={handleCapturePhoto}
                     disabled={!isCameraActive || Boolean(cameraError)}
-                    title="Ambil Foto Bukti (Klik Shutter)"
+                    title={isPetugasSiswa ? "Ambil Foto Kelas (Opsional)" : "Ambil Foto Bukti (Klik Shutter)"}
                     className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-4 border-white/90 p-1 flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-xl disabled:opacity-40"
                   >
                     <div className="w-full h-full rounded-full bg-white hover:bg-emerald-300 active:bg-emerald-400 transition-colors shadow-inner flex items-center justify-center">

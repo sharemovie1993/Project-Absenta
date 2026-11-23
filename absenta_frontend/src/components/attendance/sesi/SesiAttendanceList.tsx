@@ -373,11 +373,13 @@ export function SesiAttendanceList({ records, sesi, sesiId, isReportMode = false
   const queryClient = useQueryClient();
   const effectiveSesiId = sesiId || sesi?.id;
 
-  const isStartedByTeacher = Boolean(
+  const isSessionOpen = Boolean(
+    (sesi as any)?.isLive ||
+    sesi?.status === 'BERLANGSUNG' ||
+    (sesi as any)?.status === 'BERLANGSUNG' ||
     sesi?.foto_kegiatan ||
     (sesi as any)?.foto_masuk ||
-    (sesi?.guru_status && sesi?.guru_status !== 'BELUM_TAP' && sesi?.guru_status !== 'BELUM_HADIR' && sesi?.guru_status !== 'ALPA' && sesi?.guru_status !== 'MENDATANG') ||
-    (sesi as any)?.isLive
+    (sesi?.guru_status && !['BELUM_TAP', 'BELUM_HADIR', 'ALPA', 'MENDATANG'].includes(sesi?.guru_status))
   );
 
   // Auto-fetch jika records tidak di-passing langsung
@@ -761,11 +763,11 @@ export function SesiAttendanceList({ records, sesi, sesiId, isReportMode = false
         </div>
 
         {/* List Records */}
-        {!isStartedByTeacher && !isReportMode && (
+        {!isSessionOpen && !isReportMode && (
           <div className="p-3 sm:p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 flex items-center gap-2.5 text-xs mb-2">
             <AlertCircle size={18} className="text-amber-600 dark:text-amber-400 shrink-0" />
             <div>
-              <span className="font-black">Sesi KBM Belum Dibuka:</span> Presensi siswa terkunci sampai Guru atau Petugas Kelas membuka sesi (mengambil Foto Guru).
+              <span className="font-black">Sesi KBM Belum Dibuka:</span> Presensi siswa terkunci sampai sesi dibuka oleh Guru atau Petugas Kelas. Klik tombol <strong>Buka Sesi Kelas</strong> pada kartu sesi untuk mulai mengabsenkan siswa.
             </div>
           </div>
         )}
@@ -790,7 +792,7 @@ export function SesiAttendanceList({ records, sesi, sesiId, isReportMode = false
                         record={r}
                         sesi={sesi}
                         isReportMode={isReportMode}
-                        isStartedByTeacher={isStartedByTeacher}
+                        isStartedByTeacher={isSessionOpen}
                         isPending={
                           updateAttendanceMutation.isPending && 
                           updateAttendanceMutation.variables?.siswaAkademikId === rowId

@@ -218,14 +218,15 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
   const handleOpenScan = useCallback((id: string) => {
     const targetSession = activeSessionsList.find(s => s.id === id);
     if (targetSession) {
-      const isTeacherPresent = Boolean(
+      const isSessionActive = Boolean(
         targetSession.foto_kegiatan ||
         targetSession.foto_masuk ||
-        (targetSession.guru_status && targetSession.guru_status !== 'BELUM_TAP' && targetSession.guru_status !== 'BELUM_HADIR' && targetSession.guru_status !== 'ALPA' && targetSession.guru_status !== 'MENDATANG') ||
-        targetSession.isLive
+        targetSession.status === 'BERLANGSUNG' ||
+        targetSession.isLive ||
+        (targetSession.guru_status && !['BELUM_TAP', 'BELUM_HADIR', 'ALPA', 'MENDATANG'].includes(targetSession.guru_status as string))
       );
-      if (!isTeacherPresent) {
-        toast.error('Sesi KBM belum dibuka oleh Guru/Petugas. Silakan ambil Foto Guru terlebih dahulu sebelum membuka Terminal Scan RFID.', { duration: 3000 });
+      if (!isSessionActive) {
+        toast.error('Sesi KBM belum dibuka. Silakan buka sesi terlebih dahulu (Bisa dengan atau tanpa foto) sebelum membuka Terminal Scan RFID.', { duration: 3500 });
         return;
       }
     }
@@ -251,25 +252,55 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
     setPhotoGuruModalOpen(true);
   }, [getKelasLabel, getMapelLabel, getGuruLabel]);
 
-  const handleConfirmPhotoGuru = useCallback(async (base64Photo: string) => {
+  // Jalur 1: Buka Sesi Langsung Tanpa Foto (Khusus Petugas Kelas)
+  const handleOpenSessionWithoutPhoto = useCallback(async () => {
     if (!photoGuruTarget?.sesiId) return;
     setScanLoading(true);
     try {
-      await updateAbsenGuru(photoGuruTarget.sesiId, {
-        foto_masuk: base64Photo,
-        status: 'HADIR',
-      });
-      toast.success('Foto bukti guru berhasil disimpan & sesi dimulai!');
+      await updateSesiStatus(photoGuruTarget.sesiId, 'BERLANGSUNG');
+      toast.success('Sesi KBM berhasil dibuka oleh Petugas Kelas! Anda dapat langsung mengabsenkan siswa.', { duration: 4000 });
       setPhotoGuruModalOpen(false);
       setPhotoGuruTarget(null);
       invalidateAllKbmQueries();
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } }; message?: string };
-      toast.error(err.response?.data?.message || err.message || 'Gagal menyimpan foto absensi guru');
+      toast.error(err.response?.data?.message || err.message || 'Gagal membuka sesi');
     } finally {
       setScanLoading(false);
     }
   }, [photoGuruTarget, invalidateAllKbmQueries]);
+
+  // Jalur 2: Buka Sesi dengan Foto / Ambil Foto Guru
+  const handleConfirmPhotoGuru = useCallback(async (base64Photo: string) => {
+    if (!photoGuruTarget?.sesiId) return;
+    setScanLoading(true);
+    try {
+      if (isPetugasSiswa) {
+        // Petugas kelas mengambil foto bukti awal suasana kelas:
+        // Simpan foto bukti kelas dan ubah status sesi ke BERLANGSUNG,
+        // Status guru tetap BELUM_HADIR sampai guru sendiri yang hadir/verifikasi
+        await updateSesiAbsensi(photoGuruTarget.sesiId, {
+          foto_kegiatan: base64Photo,
+          status: 'BERLANGSUNG',
+        } as any);
+        toast.success('Bukti awal kelas tersimpan & sesi KBM aktif!');
+      } else {
+        await updateAbsenGuru(photoGuruTarget.sesiId, {
+          foto_masuk: base64Photo,
+          status: 'HADIR',
+        });
+        toast.success('Foto bukti guru berhasil disimpan & sesi dimulai!');
+      }
+      setPhotoGuruModalOpen(false);
+      setPhotoGuruTarget(null);
+      invalidateAllKbmQueries();
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      toast.error(err.response?.data?.message || err.message || 'Gagal menyimpan foto absensi');
+    } finally {
+      setScanLoading(false);
+    }
+  }, [photoGuruTarget, isPetugasSiswa, invalidateAllKbmQueries]);
   const submitScan = useCallback(async (
     token?: string, 
     isGuruOrMode?: boolean | 'HADIR' | 'MASUK' | 'PULANG' | 'TERLAMBAT', 
@@ -493,6 +524,8 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
                   setPhotoGuruTarget(null);
                 }}
                 onConfirm={handleConfirmPhotoGuru}
+                onOpenWithoutPhoto={handleOpenSessionWithoutPhoto}
+                isPetugasSiswa={isPetugasSiswa}
                 kelasNama={photoGuruTarget.kelasNama}
                 mapelNama={photoGuruTarget.mapelNama}
                 guruNama={photoGuruTarget.guruNama}

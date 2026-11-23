@@ -71,11 +71,24 @@ export class ProgramKetarunaanService {
     });
 
     // 2. Ambil seluruh penugasan panitia aktif
+    // Termasuk posisi khusus ketarunaan DAN penugasan kesiswaan yang memiliki flag/title ketarunaan/tatib/disiplin
     const panitiaAssigns = await prisma.organizationalAssignment.findMany({
       where: {
         tenant_id: tenantId,
-        position_id: { in: [posKetua.id, posAnggota.id] },
         is_active: true,
+        OR: [
+          { position_id: { in: [posKetua.id, posAnggota.id] } },
+          { Position: { code: { in: ['KETUA_PEMBINA_TARUNA', 'PEMBINA_TARUNA', 'KETARUNAAN'] } } },
+          {
+            Position: { code: 'KESISWAAN' },
+            OR: [
+              { assignment_flag: { in: ['SUB_KEDISIPLINAN_TATIB', 'KETARUNAAN', 'PEMBINA_TARUNA', 'KETUA'] } },
+              { custom_title: { contains: 'disiplin', mode: 'insensitive' } },
+              { custom_title: { contains: 'tatib', mode: 'insensitive' } },
+              { custom_title: { contains: 'taruna', mode: 'insensitive' } },
+            ],
+          },
+        ],
       },
       include: {
         User: {
@@ -90,6 +103,25 @@ export class ProgramKetarunaanService {
         { created_at: 'asc' },
       ],
     });
+
+    // De-duplicate berdasarkan user_id (prioritaskan posisi KETUA_PEMBINA_TARUNA / PEMBINA_TARUNA daripada KESISWAAN generic)
+    const uniqueMap = new Map<string, typeof panitiaAssigns[0]>();
+    for (const a of panitiaAssigns) {
+      if (!a.user_id) continue;
+      const existing = uniqueMap.get(a.user_id);
+      if (!existing) {
+        uniqueMap.set(a.user_id, a);
+      } else {
+        if (existing.Position?.code === 'KESISWAAN' && a.Position?.code !== 'KESISWAAN') {
+          uniqueMap.set(a.user_id, a);
+        } else if (a.is_leader && !existing.is_leader) {
+          uniqueMap.set(a.user_id, a);
+        } else if (a.Position?.code === 'KETUA_PEMBINA_TARUNA') {
+          uniqueMap.set(a.user_id, a);
+        }
+      }
+    }
+    const deduplicatedPanitia = Array.from(uniqueMap.values());
 
     // 3. Ex-officio leaders: Kepala Sekolah (Penanggung Jawab) & Kesiswaan (Pengarah)
     const exOfficioAssigns = await prisma.organizationalAssignment.findMany({
@@ -106,13 +138,51 @@ export class ProgramKetarunaanService {
         },
         Position: true,
       },
+      orderBy: [
+        { is_leader: 'desc' },
+        { created_at: 'asc' },
+      ],
     });
 
-    const penanggungJawab = exOfficioAssigns.find(a => a.Position?.code === 'KEPALA_SEKOLAH');
-    const pengarah = exOfficioAssigns.find(a => a.Position?.code === 'KESISWAAN');
+    // Cari Kepala Sekolah aktif (jika kosong karena tahun berganti, fallback ke record kepala sekolah terakhir)
+    let penanggungJawab = exOfficioAssigns.find(a => a.Position?.code === 'KEPALA_SEKOLAH');
+    if (!penanggungJawab) {
+      penanggungJawab = await prisma.organizationalAssignment.findFirst({
+        where: {
+          tenant_id: tenantId,
+          Position: { code: 'KEPALA_SEKOLAH' },
+        },
+        include: {
+          User: {
+            include: { Guru: true },
+          },
+          Position: true,
+        },
+        orderBy: { updated_at: 'desc' },
+      }) as any;
+    }
 
-    const formattedPanitia = panitiaAssigns.map((a) => {
+    // Cari Waka Kesiswaan (prioritaskan is_leader atau tanpa assignment_flag sub-staff)
+    const pengarah = exOfficioAssigns.find(a => a.Position?.code === 'KESISWAAN' && (a.is_leader || !a.assignment_flag))
+      || exOfficioAssigns.find(a => a.Position?.code === 'KESISWAAN');
+
+    const formattedPanitia = deduplicatedPanitia.map((a) => {
       const guru = a.User?.Guru;
+      const isKetuaPos = a.Position?.code === 'KETUA_PEMBINA_TARUNA';
+      const isLeader = Boolean(a.is_leader) || isKetuaPos;
+
+      let flag = a.assignment_flag;
+      if (!flag) {
+        flag = isLeader ? 'KETUA' : 'PEMBINA_POS';
+      } else if (flag === 'SUB_KEDISIPLINAN_TATIB') {
+        flag = isLeader ? 'KETUA' : 'SEKSI_DISIPLIN';
+      }
+
+      let title = a.custom_title;
+      if (!title) {
+        title = isLeader ? 'Ketua Pembina Taruna' : 'Pembina Ketarunaan';
+      }
+
       return {
         id: a.id,
         user_id: a.user_id,
@@ -121,11 +191,11 @@ export class ProgramKetarunaanService {
         nip: guru?.nip || '-',
         no_hp: guru?.no_hp || null,
         position_id: a.position_id,
-        position_code: a.Position?.code || 'PEMBINA_TARUNA',
-        position_name: a.Position?.name || 'Pembina Ketarunaan',
-        is_leader: Boolean(a.is_leader),
-        assignment_flag: a.assignment_flag || (a.is_leader ? 'KETUA' : 'PEMBINA_POS'),
-        custom_title: a.custom_title || (a.is_leader ? 'Ketua Pembina Taruna' : 'Pembina Ketarunaan'),
+        position_code: a.Position?.code || (isLeader ? 'KETUA_PEMBINA_TARUNA' : 'PEMBINA_TARUNA'),
+        position_name: a.Position?.name || (isLeader ? 'Ketua Pembina Taruna' : 'Pembina Ketarunaan'),
+        is_leader: isLeader,
+        assignment_flag: flag,
+        custom_title: title,
         is_active: a.is_active,
         created_at: a.created_at,
       };
@@ -165,21 +235,37 @@ export class ProgramKetarunaanService {
     }
 
     const isLeader = payload.role_type === 'KETUA' || Boolean(payload.is_leader);
-    const posCode = isLeader ? 'KETUA_PEMBINA_TARUNA' : 'PEMBINA_TARUNA';
 
-    const position = await prisma.organizationalPosition.upsert({
-      where: { tenant_id_code: { tenant_id: tenantId, code: posCode } },
-      create: {
-        tenant_id: tenantId,
-        code: posCode,
-        name: isLeader ? 'Ketua Pembina Taruna' : 'Pembina Ketarunaan',
-        scope_type: 'global',
-        unit_type: 'student',
-        order: isLeader ? 50 : 51,
-        is_active: true,
-      },
-      update: {},
-    });
+    const [posKetua, posAnggota] = await Promise.all([
+      prisma.organizationalPosition.upsert({
+        where: { tenant_id_code: { tenant_id: tenantId, code: 'KETUA_PEMBINA_TARUNA' } },
+        create: {
+          tenant_id: tenantId,
+          code: 'KETUA_PEMBINA_TARUNA',
+          name: 'Ketua Pembina Taruna',
+          scope_type: 'global',
+          unit_type: 'student',
+          order: 50,
+          is_active: true,
+        },
+        update: {},
+      }),
+      prisma.organizationalPosition.upsert({
+        where: { tenant_id_code: { tenant_id: tenantId, code: 'PEMBINA_TARUNA' } },
+        create: {
+          tenant_id: tenantId,
+          code: 'PEMBINA_TARUNA',
+          name: 'Pembina Ketarunaan',
+          scope_type: 'global',
+          unit_type: 'student',
+          order: 51,
+          is_active: true,
+        },
+        update: {},
+      }),
+    ]);
+
+    const targetPosition = isLeader ? posKetua : posAnggota;
 
     const titleMap: Record<string, string> = {
       KETUA: 'Ketua Pembina Taruna',
@@ -194,10 +280,11 @@ export class ProgramKetarunaanService {
 
     const finalTitle = payload.custom_title?.trim() || titleMap[payload.role_type] || 'Pembina Ketarunaan';
 
+    // Cari penugasan existing guru ini di antara posisi ketarunaan
     const existing = await prisma.organizationalAssignment.findFirst({
       where: {
         tenant_id: tenantId,
-        position_id: position.id,
+        position_id: { in: [posKetua.id, posAnggota.id] },
         user_id: guru.user_id,
       },
     });
@@ -207,6 +294,7 @@ export class ProgramKetarunaanService {
       assignment = await prisma.organizationalAssignment.update({
         where: { id: existing.id },
         data: {
+          position_id: targetPosition.id,
           is_active: true,
           is_leader: isLeader,
           assignment_flag: payload.role_type,
@@ -218,7 +306,7 @@ export class ProgramKetarunaanService {
       assignment = await prisma.organizationalAssignment.create({
         data: {
           tenant_id: tenantId,
-          position_id: position.id,
+          position_id: targetPosition.id,
           user_id: guru.user_id,
           is_leader: isLeader,
           assignment_flag: payload.role_type,
@@ -242,14 +330,27 @@ export class ProgramKetarunaanService {
   async removePanitia(tenantId: string, assignmentId: string) {
     const existing = await prisma.organizationalAssignment.findFirst({
       where: { id: assignmentId, tenant_id: tenantId },
+      include: { Position: true },
     });
     if (!existing) {
       throw new Error('Penugasan panitia tidak ditemukan.');
     }
 
-    await prisma.organizationalAssignment.delete({
-      where: { id: existing.id },
-    });
+    // Jika posisi KESISWAAN umum, jangan hapus assignment induk guru, cukup bersihkan flag ketarunaan
+    if (existing.Position?.code === 'KESISWAAN') {
+      await prisma.organizationalAssignment.update({
+        where: { id: existing.id },
+        data: {
+          assignment_flag: null,
+          custom_title: null,
+          updated_at: new Date(),
+        },
+      });
+    } else {
+      await prisma.organizationalAssignment.delete({
+        where: { id: existing.id },
+      });
+    }
 
     try {
       if (existing.user_id) {

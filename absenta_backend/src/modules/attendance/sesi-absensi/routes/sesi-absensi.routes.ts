@@ -32,11 +32,11 @@ export async function sesiAbsensiRoutes(fastify: any) {
     handler: sesiAbsensiController.list,
   });
 
-  // 3. Update Status (Close Sesi) - GURU & OPERATOR ONLY
+  // 3. Update Status (Open / Close Sesi) - GURU, OPERATOR & SISWA PETUGAS
   fastify.patch('/:id/status', {
     preHandler: [
         requireMultiSesiMode, 
-        requireCapability('attendance.sessions.close', { exemptRoles: [RoleName.GURU, RoleName.ADMIN] }), 
+        requireCapability(['attendance.sessions.close', 'attendance.sessions.update', 'attendance.sessions.create'], { exemptRoles: [RoleName.GURU, RoleName.ADMIN, RoleName.SISWA] }), 
         organizationalScopeMiddleware,
         determineDataScope(),
         SesiGuard.validateSessionAccess
@@ -44,11 +44,11 @@ export async function sesiAbsensiRoutes(fastify: any) {
     handler: sesiAbsensiController.updateStatus,
   });
 
-  // 4. Update Sesi Details - GURU & OPERATOR ONLY
+  // 4. Update Sesi Details - GURU, OPERATOR & SISWA PETUGAS
   fastify.put('/:id', {
     preHandler: [
         requireMultiSesiMode, 
-        requireCapability('attendance.sessions.update', { exemptRoles: [RoleName.GURU, RoleName.ADMIN] }), 
+        requireCapability('attendance.sessions.update', { exemptRoles: [RoleName.GURU, RoleName.ADMIN, RoleName.SISWA] }), 
         organizationalScopeMiddleware,
         determineDataScope(),
         SesiGuard.validateSessionAccess

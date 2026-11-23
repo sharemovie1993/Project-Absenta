@@ -173,7 +173,14 @@ async function upsertTeacherAttendanceOnOpen(
 }
 
 export class SesiCreatorService {
-  async create(tenantId: string, _org: any, payload: any, userId: string) {
+  async create(tenantId: string, org: any, payload: any, userId: string) {
+    const isPetugasOpening = Boolean(
+      payload.opened_by_petugas ||
+      payload.opened_by === 'PETUGAS_KELAS' ||
+      org?.positions?.some((p: any) => p.code === 'PETUGAS_KELAS' || p.code === 'PETUGAS_ABSENSI') ||
+      payload.is_petugas_kelas
+    );
+
     const {
       kelas_id,
       mapel_id,
@@ -329,18 +336,20 @@ export class SesiCreatorService {
       // 🛡️ Centralized Time-Window & Cutoff Guard (Timezone-Aware)
       validateSessionTimeWindow(startTarget, endTarget, Boolean(finalFotoUrl), tz);
 
-      if (finalFotoUrl || waktu_mulai) {
+      if (finalFotoUrl || waktu_mulai || payload.status === 'BERLANGSUNG' || isPetugasOpening) {
         const updatedSesi = await prisma.sesiAbsensi.update({
           where: { id: existingSesi.id },
           data: {
-            ...(finalFotoUrl ? { foto_kegiatan: finalFotoUrl, status: 'BERLANGSUNG' } : {}),
+            status: 'BERLANGSUNG',
+            ...(finalFotoUrl ? { foto_kegiatan: finalFotoUrl } : {}),
             ...(waktu_mulai ? { waktu_mulai: parseSafeDate(waktu_mulai, tzOffset) } : {}),
             ...(endTarget ? { waktu_selesai: endTarget } : {}),
             updated_at: new Date()
           }
         });
 
-        if (guru_id && finalFotoUrl) {
+        // HANYA tandai guru hadir jika dibuka oleh Guru dengan foto resmi (bukan siswa petugas membuka kelas)
+        if (guru_id && finalFotoUrl && !isPetugasOpening) {
           await upsertTeacherAttendanceOnOpen(
             tenantId,
             existingSesi.id,
@@ -348,7 +357,7 @@ export class SesiCreatorService {
             startTarget,
             existingSesi.tahun_pelajaran_id,
             existingSesi.semester_id,
-            'Hadir saat pembukaan sesi KBM (Foto)',
+            'Hadir saat pembukaan sesi KBM (Foto Guru)',
             existingSesi.kelas_id
           );
         }
@@ -372,7 +381,7 @@ export class SesiCreatorService {
     validateSessionTimeWindow(parsedStart, parsedEnd, Boolean(finalFotoUrl), tz);
 
     const isFutureSchedule = parsedStart.getTime() - now.getTime() > 15 * 60 * 1000;
-    const initialStatus = finalFotoUrl ? 'BERLANGSUNG' : isFutureSchedule ? 'MENDATANG' : 'BERLANGSUNG';
+    const initialStatus = (finalFotoUrl || isPetugasOpening) ? 'BERLANGSUNG' : isFutureSchedule ? 'MENDATANG' : 'BERLANGSUNG';
 
     // jadwalKbmId & fallback times already resolved above
 
@@ -451,7 +460,7 @@ export class SesiCreatorService {
     // Evaluasi presensi guru pengajar riil di kelas (guru pelaksana jika delegasi, atau guru resmi)
     const effectiveAttendingGuruId = guruPelaksanaId || validGuruId;
 
-    if (effectiveAttendingGuruId && finalFotoUrl) {
+    if (effectiveAttendingGuruId && finalFotoUrl && !isPetugasOpening) {
       // ⚖️ Aturan KERAS: Guru dievaluasi dari jam jadwal resmi (JadwalKBM.jam_mulai),
       // BUKAN dari parsedStart (waktu fisik guru buka sesi).
       let teacherScheduledStart: Date = parsedStart;

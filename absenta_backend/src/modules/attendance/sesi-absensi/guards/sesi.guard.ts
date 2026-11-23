@@ -192,7 +192,7 @@ export class SesiGuard {
     }
 
     const isWaliKelas = positions.some((p: any) => p.code === 'WALIKELAS');
-    const isPetugasSesi = positions.some((p: any) => p.code === 'PETUGAS_KELAS');
+    const isPetugasSesi = positions.some((p: any) => p.code === 'PETUGAS_KELAS' || p.code === 'PETUGAS_ABSENSI' || p.code === 'PETUGAS_PIKET');
 
     const isGuru = await prisma.guru.count({ where: { user_id: userId, tenant_id: tenantId } });
     const siswa = await prisma.siswa.findFirst({
@@ -268,8 +268,14 @@ export class SesiGuard {
     if (siswa) {
         if (isPetugasSesi) {
             const kelasIds = Array.isArray(org?.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
+            if (siswa?.kelas_id && !kelasIds.includes(String(siswa.kelas_id))) {
+                kelasIds.push(String(siswa.kelas_id));
+            }
+            if ((siswa?.SiswaAkademik || []).some((sa: any) => sa.kelas_id && !kelasIds.includes(String(sa.kelas_id)))) {
+                (siswa.SiswaAkademik || []).forEach((sa: any) => { if (sa.kelas_id && !kelasIds.includes(String(sa.kelas_id))) kelasIds.push(String(sa.kelas_id)); });
+            }
             if (!kelasIds.includes(String(sesi.kelas_id))) {
-                reply.status(403).send({ success: false, message: 'Forbidden: not active PetugasAbsensi for this class' });
+                reply.status(403).send({ success: false, message: 'Forbidden: Petugas kelas hanya dapat mengelola sesi kelasnya sendiri.' });
                 return;
             }
             return;

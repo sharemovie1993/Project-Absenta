@@ -157,6 +157,13 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   const needsReminder = isReadyToOpen && !isLive && !isFinished && !isOverdue && !isTeacherExcused && !isTeacherAlreadyPresent;
   const canChangeStatus = (isReadyToOpen || isOverdue || isTeacherExcused) && !isFinished && !isLive;
   const isTeacherPresent = isTeacherAlreadyPresent;
+  const isSessionActive = Boolean(
+    isLive || 
+    item.session?.status === 'BERLANGSUNG' || 
+    item.status === 'BERLANGSUNG' || 
+    fotoKegiatanUrl || 
+    isTeacherPresent
+  );
 
   // 🛡️ Resolusi Status Pengingat WA & Cooldown Anti-Spam
   const reminderMeta = item.reminder_meta || item._summary?.reminder_meta || item.session?.reminder_meta || null;
@@ -673,7 +680,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                   <CheckCircle2 size={14} />
                 </button>
               )}
-              {onOpenPhotoModal && !isFinished && !isOverdue && (
+              {/* 1. Sesi BELUM DIBUKA: Petugas Kelas membuka sesi (Bisa dengan atau tanpa foto) */}
+              {!isSessionActive && !isFinished && !isOverdue && onOpenPhotoModal && (
                 <Button
                   type="button"
                   size="sm"
@@ -681,23 +689,51 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                     e.stopPropagation();
                     onOpenPhotoModal(item);
                   }}
-                  title={isSesiKegiatan ? `Ambil foto pembina/pendamping ${kegiatanNamaLabel}` : "Ambil foto Bapak/Ibu Guru yang sedang mengajar di depan kelas"}
-                  className={cn(
-                    "h-8 px-3 rounded-xl text-xs font-black border flex items-center gap-1.5 cursor-pointer transition-all",
-                    isTeacherPresent
-                      ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100"
-                      : "bg-amber-500 hover:bg-amber-400 text-slate-950 font-black border-transparent shadow-xs shadow-amber-500/30 animate-pulse"
-                  )}
+                  title={isSesiKegiatan ? `Buka sesi kegiatan ${kegiatanNamaLabel}` : "Buka sesi kelas (Bisa dengan atau tanpa foto) untuk mulai mengabsenkan siswa"}
+                  className="h-8 px-3.5 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-950/30 active:scale-95 transition-all animate-pulse"
                 >
-                  <Camera size={13} />
-                  <span>
-                    {isTeacherPresent 
-                      ? (isSesiKegiatan ? "Foto Pembina ✓" : "Foto Guru ✓") 
-                      : (isSesiKegiatan ? "Foto Pembina" : "Foto Guru")}
-                  </span>
+                  <Sparkles size={13} className="text-amber-300" />
+                  <span>{isSesiKegiatan ? `🚀 Buka ${kegiatanNamaLabel}` : "🚀 Buka Sesi Kelas"}</span>
                 </Button>
               )}
-              {isTeacherPresent && fotoKegiatanUrl && onViewPhoto && (
+
+              {/* 2. Sesi SUDAH AKTIF tapi Guru belum hadir: Sediakan tombol jika Guru baru tiba */}
+              {isSessionActive && !isTeacherPresent && !isFinished && !isOverdue && onOpenPhotoModal && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenPhotoModal(item);
+                  }}
+                  title={isSesiKegiatan ? `Ambil foto pembina/pendamping ${kegiatanNamaLabel}` : "Bapak/Ibu Guru baru tiba di kelas? Klik untuk mengambil foto verifikasi kehadiran guru"}
+                  className="h-8 px-2.5 rounded-xl text-xs font-black bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-xs"
+                >
+                  <Camera size={13} className="text-amber-600" />
+                  <span>{isSesiKegiatan ? "Foto Pembina" : "Foto Guru Hadir"}</span>
+                </Button>
+              )}
+
+              {/* 3. Sesi SUDAH AKTIF dan Guru SUDAH HADIR */}
+              {isSessionActive && isTeacherPresent && !isFinished && !isOverdue && onOpenPhotoModal && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenPhotoModal(item);
+                  }}
+                  title={isSesiKegiatan ? "Perbarui foto pembina/pendamping" : "Perbarui foto Bapak/Ibu Guru yang sedang mengajar"}
+                  className="h-8 px-2.5 rounded-xl text-xs font-black bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Camera size={13} className="text-emerald-600" />
+                  <span>{isSesiKegiatan ? "Foto Pembina ✓" : "Foto Guru ✓"}</span>
+                </Button>
+              )}
+
+              {fotoKegiatanUrl && onViewPhoto && (
                 <Button
                   type="button"
                   size="sm"
@@ -713,11 +749,12 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                   <span>Foto Kelas</span>
                 </Button>
               )}
+
               {onOpenScanModal && (
                 <Button
                   type="button"
                   size="sm"
-                  disabled={isOverdue || isFinished || (!isTeacherPresent && !isLive)}
+                  disabled={isOverdue || isFinished || !isSessionActive}
                   onClick={(e) => {
                     e.stopPropagation();
                     onOpenScanModal(item.id);
@@ -727,13 +764,13 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                       ? "Sesi KBM telah terlewat (Scan RFID terkunci)" 
                       : isFinished 
                       ? "Sesi KBM telah selesai" 
-                      : (!isTeacherPresent && !isLive)
-                      ? "Sesi KBM belum dibuka (Ambil Foto Guru terlebih dahulu)"
+                      : !isSessionActive
+                      ? "Sesi KBM belum dibuka (Klik tombol Buka Sesi Kelas terlebih dahulu)"
                       : "Buka Terminal Scan Kartu RFID / QR Siswa"
                   }
                   className={cn(
                     "h-8 px-3 rounded-xl text-xs font-black border flex items-center gap-1.5 cursor-pointer transition-all",
-                    isOverdue || isFinished || (!isTeacherPresent && !isLive)
+                    isOverdue || isFinished || !isSessionActive
                       ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60"
                       : "bg-emerald-600 hover:bg-emerald-500 text-white border-transparent shadow-xs shadow-emerald-600/30"
                   )}

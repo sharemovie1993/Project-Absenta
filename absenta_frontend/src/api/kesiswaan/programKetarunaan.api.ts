@@ -387,7 +387,7 @@ export interface KetarunaanKepanitiaanData {
   positions: Array<{ id: string; code: string; name: string }>;
 }
 
-export async function getKetarunaanKepanitiaan(): Promise<{ success: boolean; data: KetarunaanKepanitiaanData }> {
+export async function getKetarunaanKepanitiaan(): Promise<KetarunaanKepanitiaanData> {
   return requestWithFallback(
     'get',
     '/kesiswaan/program-ketarunaan/kepanitiaan',

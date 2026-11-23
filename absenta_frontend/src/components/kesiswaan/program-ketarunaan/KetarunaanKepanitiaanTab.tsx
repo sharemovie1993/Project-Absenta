@@ -95,8 +95,21 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
     staleTime: 60_000,
   });
 
-  const panitiaMembers = useMemo(() => kepanitiaanRes?.data?.panitia || [], [kepanitiaanRes?.data?.panitia]);
-  const exOfficioData = useMemo(() => kepanitiaanRes?.data?.ex_officio || { penanggung_jawab: null, pengarah: null }, [kepanitiaanRes?.data?.ex_officio]);
+  const panitiaMembers = useMemo(() => {
+    const raw: any = kepanitiaanRes;
+    if (!raw) return [];
+    if (Array.isArray(raw.panitia)) return raw.panitia;
+    if (Array.isArray(raw.data?.panitia)) return raw.data.panitia;
+    return [];
+  }, [kepanitiaanRes]);
+
+  const exOfficioData = useMemo(() => {
+    const raw: any = kepanitiaanRes;
+    if (!raw) return { penanggung_jawab: null, pengarah: null };
+    if (raw.ex_officio) return raw.ex_officio;
+    if (raw.data?.ex_officio) return raw.data.ex_officio;
+    return { penanggung_jawab: null, pengarah: null };
+  }, [kepanitiaanRes]);
 
   // Modal Ploting Form State
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
