@@ -58,6 +58,13 @@ export interface MonitoringKbmWidgetProps {
    */
   tahunPelajaranId?: string;
   semesterId?: string;
+  /**
+   * Callback jika parent dashboard memiliki subtab khusus Live KBM Command Center
+   */
+  onOpenCommandCenter?: (preset?: {
+    statusFilter?: 'ALL' | 'LIVE' | 'FINISHED' | 'UPCOMING' | 'JURNAL';
+    teacherStatusFilter?: string;
+  }) => void;
 }
 
 export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ 
@@ -65,6 +72,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
   defaultTeacherFilter,
   tahunPelajaranId,
   semesterId,
+  onOpenCommandCenter,
 }) => {
   const queryClient = useQueryClient();
   const { isConnected, subscribe, unsubscribe } = useSocket();
@@ -127,8 +135,25 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
     const p = searchParams.get('teacher_status') || searchParams.get('filter') || searchParams.get('status_guru');
     if (p) {
       setTeacherStatusFilter(p.toUpperCase());
+    } else if (defaultTeacherFilter) {
+      setTeacherStatusFilter(defaultTeacherFilter);
     }
-  }, [searchParams]);
+  }, [searchParams, defaultTeacherFilter]);
+
+  const triggerOpenCommandCenter = useCallback((preset?: {
+    statusFilter?: 'ALL' | 'LIVE' | 'FINISHED' | 'UPCOMING' | 'JURNAL';
+    teacherStatusFilter?: string;
+  }) => {
+    const nextStatus = preset?.statusFilter || 'ALL';
+    const nextTeacher = preset?.teacherStatusFilter || 'ALL';
+    setStatusFilter(nextStatus);
+    setTeacherStatusFilter(nextTeacher);
+    if (onOpenCommandCenter) {
+      onOpenCommandCenter({ statusFilter: nextStatus, teacherStatusFilter: nextTeacher });
+    } else {
+      setIsInlineCommandCenterOpen(true);
+    }
+  }, [onOpenCommandCenter]);
   const [kelasOptions, setKelasOptions] = useState<any[]>([]);
   const [jurusanOptions, setJurusanOptions] = useState<any[]>([]);
   const [selectedSesi, setSelectedSesi] = useState<any>(null);
@@ -667,11 +692,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
             <Card
-              onClick={() => {
-                setStatusFilter('LIVE');
-                setTeacherStatusFilter('ALL');
-                setIsInlineCommandCenterOpen(true);
-              }}
+              onClick={() => triggerOpenCommandCenter({ statusFilter: 'LIVE', teacherStatusFilter: 'ALL' })}
               className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all cursor-pointer"
             >
               <div className="flex items-start justify-between gap-1.5">
@@ -693,11 +714,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
             </Card>
 
             <Card
-              onClick={() => {
-                setStatusFilter('ALL');
-                setTeacherStatusFilter('BELUM_MASUK');
-                setIsInlineCommandCenterOpen(true);
-              }}
+              onClick={() => triggerOpenCommandCenter({ statusFilter: 'ALL', teacherStatusFilter: 'BELUM_MASUK' })}
               className={cn(
               "rounded-2xl border shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all cursor-pointer",
               stats.teacherNotArrived > 0
@@ -744,11 +761,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
             </Card>
 
             <Card
-              onClick={() => {
-                setStatusFilter('ALL');
-                setTeacherStatusFilter('ALPA');
-                setIsInlineCommandCenterOpen(true);
-              }}
+              onClick={() => triggerOpenCommandCenter({ statusFilter: 'ALL', teacherStatusFilter: 'ALPA' })}
               className={cn(
               "rounded-2xl border shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all cursor-pointer",
               stats.teacherAlpa > 0
@@ -785,11 +798,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
             </Card>
 
             <Card
-              onClick={() => {
-                setStatusFilter('JURNAL');
-                setTeacherStatusFilter('ALL');
-                setIsInlineCommandCenterOpen(true);
-              }}
+              onClick={() => triggerOpenCommandCenter({ statusFilter: 'JURNAL', teacherStatusFilter: 'ALL' })}
               className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all cursor-pointer"
             >
               <div className="flex items-start justify-between gap-1.5">
@@ -866,11 +875,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setStatusFilter('ALL');
-                  setTeacherStatusFilter('BELUM_MASUK');
-                  setIsInlineCommandCenterOpen(true);
-                }}
+                onClick={() => triggerOpenCommandCenter({ statusFilter: 'ALL', teacherStatusFilter: 'BELUM_MASUK' })}
                 className="text-xs font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <span>Meja Piket (Guru Belum Masuk)</span>
@@ -878,11 +883,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setStatusFilter('ALL');
-                  setTeacherStatusFilter('ALL');
-                  setIsInlineCommandCenterOpen(true);
-                }}
+                onClick={() => triggerOpenCommandCenter({ statusFilter: 'ALL', teacherStatusFilter: 'ALL' })}
                 className="group flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-slate-900 to-indigo-950 hover:from-slate-800 hover:to-indigo-900 text-white text-xs font-black shadow-sm transition-all cursor-pointer"
               >
                 <span>Buka Live KBM Command Center</span>

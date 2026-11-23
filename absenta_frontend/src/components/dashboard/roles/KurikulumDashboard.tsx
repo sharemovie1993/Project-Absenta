@@ -91,6 +91,9 @@ const KurikulumEvaluasiKinerjaTab = React.lazy(() => import('./kurikulum/tabs/Ku
 const RapatSosialisasiPanel = React.lazy(() =>
   import('@/components/management/compliance/RapatSosialisasiPanel').then((m) => ({ default: m.RapatSosialisasiPanel }))
 );
+const MonitoringKbmWidget = React.lazy(() =>
+  import('@/components/dashboard/shared/MonitoringKbmWidget').then((m) => ({ default: m.MonitoringKbmWidget }))
+);
 
 export interface KurikulumDashboardProps {
   user?: {
@@ -105,9 +108,11 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const subtabParam = searchParams.get('subtab') as KurikulumTabId | null;
+  const [kbmCommandCenterTeacherFilter, setKbmCommandCenterTeacherFilter] = useState<string>('ALL');
 
   const validTabs: KurikulumTabId[] = [
     'ringkasan',
+    'monitoring_kbm',
     'delegasi',
     'rekap_kbm',
     'perangkat',
@@ -684,7 +689,33 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
                 recentSup={recentSup}
                 loading={lStr || lSup || lPerangkat}
                 onTabSelect={handleTabSelect}
+                onOpenCommandCenter={(preset) => {
+                  if (preset?.teacherStatusFilter) {
+                    setKbmCommandCenterTeacherFilter(preset.teacherStatusFilter);
+                  } else {
+                    setKbmCommandCenterTeacherFilter('ALL');
+                  }
+                  handleTabSelect('monitoring_kbm');
+                }}
               />
+              </Suspense>
+            </div>
+          )}
+
+          {/* TAB 1B: LIVE KBM COMMAND CENTER */}
+          {visitedTabs.has('monitoring_kbm') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'monitoring_kbm'}
+              className={cn('w-full min-w-0', activeTab === 'monitoring_kbm' ? 'block' : 'hidden')}
+            >
+              <Suspense fallback={<TabFallback label="Memuat Live KBM Command Center..." />}>
+                <MonitoringKbmWidget
+                  isExecutive={false}
+                  defaultTeacherFilter={kbmCommandCenterTeacherFilter}
+                  tahunPelajaranId={resolvedTahunPelajaranId}
+                  semesterId={resolvedSemesterId}
+                />
               </Suspense>
             </div>
           )}

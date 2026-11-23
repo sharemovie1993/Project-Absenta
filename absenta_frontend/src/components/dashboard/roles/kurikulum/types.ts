@@ -2,6 +2,7 @@ import React from 'react';
 
 export type KurikulumTabId =
   | 'ringkasan'
+  | 'monitoring_kbm'
   | 'delegasi'
   | 'rekap_kbm'
   | 'perangkat'

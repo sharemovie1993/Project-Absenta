@@ -61,6 +61,10 @@ export interface KurikulumBerandaTabProps {
   recentSup: SupervisiRecentItem[];
   loading: boolean;
   onTabSelect: (tabId: KurikulumTabId) => void;
+  onOpenCommandCenter?: (preset?: {
+    statusFilter?: 'ALL' | 'LIVE' | 'FINISHED' | 'UPCOMING' | 'JURNAL';
+    teacherStatusFilter?: string;
+  }) => void;
   onOpenTvMode?: () => void;
 }
 
@@ -84,6 +88,7 @@ export const KurikulumBerandaTab: React.FC<KurikulumBerandaTabProps> = React.mem
   recentSup,
   loading,
   onTabSelect,
+  onOpenCommandCenter,
 }) => {
   const overload = useMemo(() => teachersLoad.filter((t) => t.jp > 24), [teachersLoad]);
   const underload = useMemo(() => teachersLoad.filter((t) => t.jp < 12), [teachersLoad]);
@@ -261,6 +266,13 @@ export const KurikulumBerandaTab: React.FC<KurikulumBerandaTabProps> = React.mem
           isExecutive={true}
           tahunPelajaranId={tahunPelajaranId}
           semesterId={semesterId}
+          onOpenCommandCenter={(preset) => {
+            if (onOpenCommandCenter) {
+              onOpenCommandCenter(preset);
+            } else {
+              onTabSelect('monitoring_kbm');
+            }
+          }}
         />
       </div>
 

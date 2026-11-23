@@ -17,6 +17,7 @@ import {
   Printer,
   Network,
   QrCode,
+  Activity,
   type LucideIcon,
 } from 'lucide-react';
 import type { KurikulumTabId, KurikulumNavTabItem } from './types';
@@ -59,7 +60,8 @@ export const KURIKULUM_CATEGORIES: UniversalSubtabCategory[] = [
 
 export const KURIKULUM_SUBTABS_BASE: KurikulumTabDefinition[] = [
   // ⚡ KATEGORI 1: OPERASIONAL
-  { id: 'ringkasan', label: 'Monitoring', shortLabel: 'Monitoring', category: 'operasional', icon: LayoutDashboard, targetPath: '/dashboard?tab=kurikulum&subtab=ringkasan', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
+  { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', category: 'operasional', icon: LayoutDashboard, targetPath: '/dashboard?tab=kurikulum&subtab=ringkasan', color: 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400' },
+  { id: 'monitoring_kbm', label: 'Live KBM', shortLabel: 'Live KBM', category: 'operasional', icon: Activity, targetPath: '/dashboard?tab=kurikulum&subtab=monitoring_kbm', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
   { id: 'delegasi', label: 'Delegasi', shortLabel: 'Delegasi', category: 'operasional', icon: ArrowRightLeft, targetPath: '/dashboard?tab=kurikulum&subtab=delegasi', color: 'bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400' },
   { id: 'rekap_kbm', label: 'Realisasi', shortLabel: 'Realisasi', category: 'operasional', icon: BarChart2, targetPath: '/dashboard?tab=kurikulum&subtab=rekap_kbm', color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400' },
   { id: 'perangkat', label: 'Perangkat', shortLabel: 'Perangkat', category: 'operasional', icon: FileText, targetPath: '/dashboard?tab=kurikulum&subtab=perangkat', color: 'bg-teal-50 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400' },
