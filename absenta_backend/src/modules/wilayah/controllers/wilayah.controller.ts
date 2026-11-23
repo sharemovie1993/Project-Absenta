@@ -319,7 +319,7 @@ export const wilayahController = {
         const exists = await prisma.refWilayah.findUnique({ where: { kode: k.kode } });
         if (!exists) {
           await prisma.refWilayah.create({
-            data: { kode: k.kode, nama: k.nama.toUpperCase(), tingkat: 2, parent_kode: k.provinsi_kode },
+            data: { kode: k.kode, nama: k.nama.toUpperCase(), tingkat: 2, parent_kode: k.parent_kode || null },
           });
           seededCount++;
         }
