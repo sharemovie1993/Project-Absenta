@@ -48,6 +48,7 @@ const CashBankPage = lazy(() => import('@/pages/cooperative/CashBankPage').then(
 const ChartOfAccountsPage = lazy(() => import('@/pages/cooperative/ChartOfAccountsPage').then((m) => ({ default: m.default })));
 const AnnouncementsPage = lazy(() => import('@/pages/cooperative/Announcements').then((m) => ({ default: m.default })));
 const SettingsPage = lazy(() => import('@/pages/cooperative/Settings').then((m) => ({ default: m.default })));
+const ServiceCenterView = lazy(() => import('@/pages/billing/ServiceCenterPage').then((m) => ({ default: m.ServiceCenterView })));
 
 const SubtabFallbackSkeleton: React.FC = () => (
   <div className="space-y-4 w-full animate-pulse p-4">
@@ -680,6 +681,23 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
                 className={cn('w-full min-w-0', activeTab === 'tiket' ? 'block' : 'hidden')}
               >
                 <KoperasiTiketTab />
+              </div>
+            )}
+
+            {/* TAB 11B: PAKET LANGGANAN (Universal Service Center, terfilter kategori KOPERASI) */}
+            {allowedTabIds.has('langganan') && visitedTabs.has('langganan') && (
+              <div
+                role="tabpanel"
+                aria-hidden={activeTab !== 'langganan'}
+                className={cn('w-full min-w-0', activeTab === 'langganan' ? 'block' : 'hidden')}
+              >
+                <Suspense fallback={<SubtabFallbackSkeleton />}>
+                  <ServiceCenterView
+                    hideLayout={true}
+                    lockedCategory="KOPERASI"
+                    embeddedTitle="Paket Langganan Koperasi & POS"
+                  />
+                </Suspense>
               </div>
             )}
 

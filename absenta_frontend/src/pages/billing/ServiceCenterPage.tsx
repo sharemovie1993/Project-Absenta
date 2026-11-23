@@ -65,11 +65,45 @@ const EmptySubscriptionOverview = lazy(() => import('@/components/billing/EmptyS
 const PackageComparisonModal = lazy(() => import('@/components/billing/service-center/PackageComparisonModal').then(m => ({ default: m.PackageComparisonModal })));
 const SubscriptionCycleHistoryModal = lazy(() => import('@/components/billing/service-center/SubscriptionCycleHistoryModal').then(m => ({ default: m.SubscriptionCycleHistoryModal })));
 const ServiceCardsGrid = lazy(() => import('@/components/billing/service-center/ServiceCardsGrid').then(m => ({ default: m.ServiceCardsGrid })));
+const UnifiedCatalog = lazy(() => import('@/components/billing/UnifiedCatalog').then(m => ({ default: m.UnifiedCatalog })));
 
-export const ServiceCenterPage: React.FC = React.memo(() => {
+/**
+ * Pemetaan kategori katalog -> moduleKey layanan yang relevan.
+ * PAKET_LENGKAP selalu disertakan karena mencakup seluruh modul.
+ */
+const CATEGORY_MODULE_KEYS: Record<string, string[]> = {
+  KOPERASI: ['KOPERASI', 'PAKET_LENGKAP'],
+  ABSENSI: ['ABSENSI', 'PAKET_LENGKAP'],
+  HUBIN: ['HUBIN', 'PAKET_LENGKAP'],
+  SARPRAS: ['SARPRAS', 'PAKET_LENGKAP'],
+  BPBK: ['KESISWAAN', 'PAKET_LENGKAP'],
+  WHATSAPP: ['WHATSAPP', 'PAKET_LENGKAP'],
+};
+
+export type ServiceCenterTabId = 'services' | 'catalog' | 'invoices';
+
+export interface UniversalServiceCenterViewProps {
+  /** True jika dirender sebagai Tab Dashboard Role (tanpa page header/breadcrumb) */
+  hideLayout?: boolean;
+  /** Kunci kategori katalog & filter lisensi (misal 'KOPERASI') */
+  lockedCategory?: string;
+  /** Tab awal saat dibuka */
+  defaultTab?: ServiceCenterTabId;
+  /** Judul ringkas untuk mode embedded */
+  embeddedTitle?: string;
+}
+
+export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = React.memo(({
+  hideLayout = false,
+  lockedCategory,
+  defaultTab,
+  embeddedTitle,
+}) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTabParam = searchParams.get('tab') || 'services';
+  // Saat embedded di dashboard, param `tab` milik dashboard → gunakan `inner_tab`
+  const tabParamKey = hideLayout ? 'inner_tab' : 'tab';
+  const activeTabParam = searchParams.get(tabParamKey) || defaultTab || 'services';
   
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [isAutoRenewModalOpen, setIsAutoRenewModalOpen] = useState(false);
@@ -139,8 +173,20 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
 
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
-    setSearchParams({ tab });
-  }, [setSearchParams]);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set(tabParamKey, tab);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams, tabParamKey]);
+
+  const openCatalog = useCallback(() => {
+    if (hideLayout) {
+      handleTabChange('catalog');
+    } else {
+      navigate('/catalog');
+    }
+  }, [hideLayout, handleTabChange, navigate]);
 
   // React Query Fetchers (Pilar 31 Data Fetching Optimization)
   const subQuery = useQuery({
@@ -299,7 +345,11 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
       }
     });
 
-    return Array.from(groups.values()).sort((a, b) => {
+    return Array.from(groups.values()).filter((g) => {
+      if (!lockedCategory) return true;
+      const allowed = CATEGORY_MODULE_KEYS[lockedCategory] || [lockedCategory];
+      return allowed.includes(g.moduleKey);
+    }).sort((a, b) => {
       if (a.isMasterPackage && !b.isMasterPackage) return -1;
       if (!a.isMasterPackage && b.isMasterPackage) return 1;
 
@@ -308,7 +358,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
 
       return new Date(b.latest.end_date || 0).getTime() - new Date(a.latest.end_date || 0).getTime();
     });
-  }, [subQuery.data]);
+  }, [subQuery.data, lockedCategory]);
 
   const services: ServiceSubscriptionItem[] = useMemo(() => {
     return (consolidatedServices ?? []).map(c => c.latest);
@@ -361,10 +411,14 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     }
   ], [services, activeAcademicTier, invoicesData, isLicenseServerOffline]);
 
-  const tabs = useMemo(() => [
-    { id: 'services', label: 'Status Lisensi', icon: LayoutGrid },
-    { id: 'invoices', label: 'Riwayat Tagihan', icon: History }
-  ], []);
+  const tabs = useMemo(() => {
+    const list = [{ id: 'services', label: 'Status Lisensi', icon: LayoutGrid }];
+    if (hideLayout) {
+      list.push({ id: 'catalog', label: 'Katalog Paket', icon: ShoppingBag });
+    }
+    list.push({ id: 'invoices', label: 'Riwayat Tagihan', icon: History });
+    return list;
+  }, [hideLayout]);
 
   const pendingInvoice = useMemo(() => {
     const list = invoicesData;
@@ -422,10 +476,15 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
   }, [confirm, invoicesQuery, subQuery, paymentsQuery]);
 
   const handleChangePlan = useCallback((item: ServiceSubscriptionItem, grp?: ConsolidatedServiceGroup) => {
+    if (hideLayout) {
+      // Mode embedded: tetap in-place, buka tab Katalog Paket
+      handleTabChange('catalog');
+      return;
+    }
     const payload = grp ? { ...item, ...grp } : item;
     const groupKey = resolveServiceCatalogGroupKey(payload);
     navigate(`/services/${groupKey}`);
-  }, [navigate]);
+  }, [navigate, hideLayout, handleTabChange]);
 
   const handleOpenAutoRenew = useCallback(() => {
     setIsAutoRenewModalOpen(true);
@@ -473,6 +532,8 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
           window.location.href = checkoutUrl;
         } else if (invId) {
           navigate(`/billing/checkout?invoice_id=${invId}`);
+        } else if (hideLayout) {
+          handleTabChange('invoices');
         } else {
           navigate('/service-center?tab=invoices');
         }
@@ -485,7 +546,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     } finally {
       setIsOrdering(false);
     }
-  }, [selectedOrder, navigate]);
+  }, [selectedOrder, navigate, hideLayout, handleTabChange]);
 
   const instructionData = useMemo(() => ({
     title: "Panduan Pusat Layanan & Lisensi",
@@ -497,36 +558,41 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     ]
   }), []);
 
-  return (
-    <InfraErrorBoundary>
-      <AcademicPageLayout
-        title="Pusat Layanan &amp; Lisensi"
-        description="Kelola seluruh lisensi modul, perpanjangan masa aktif, kapasitas institusi, dan tagihan sekolah Anda secara terpadu."
-        stats={stats}
-        instruction={instructionData}
-        breadcrumbs={[{ label: 'Pusat Layanan' }]}
-        hardeningModuleKey="servicecenterpage"
-        toolbar={
-          <Button
-            type="button"
-            variant="toolbarPrimary"
-            size="toolbar"
-            aria-label="Buka Katalog Pengadaan Modul"
-            onClick={() => navigate('/catalog')}
-            className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs"
-          >
-            <ShoppingBag size={14} />
-            <span className="hidden sm:inline">Katalog Pengadaan Modul</span>
-            <span className="sm:hidden">Katalog</span>
-          </Button>
-        }
-      >
+  const mainContent = (
+    <>
         <SectionCard fullWidth className="flex flex-col w-full max-w-full min-w-0 border-none shadow-none bg-transparent p-0">
-          <div className="space-y-6 w-full max-w-full min-w-0">
+          <div className={hideLayout ? "space-y-4 w-full max-w-full min-w-0" : "space-y-6 w-full max-w-full min-w-0"}>
+            {/* Embedded Header (Mode Dashboard Role) */}
+            {hideLayout && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-200/60 dark:border-indigo-800/60">
+                    <ShieldCheck size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">
+                      {embeddedTitle || 'Paket Langganan'}
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                      {stats[0].value} layanan aktif • Kapasitas {stats[1].value} • {stats[2].value} tagihan berjalan
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={openCatalog}
+                  className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs shrink-0"
+                >
+                  <ShoppingBag size={14} />
+                  <span>Lihat Katalog Paket</span>
+                </Button>
+              </div>
+            )}
             {/* Reusable TabSwitcher (Pilar 27 & Pilar 30) */}
             <TabSwitcher
               tabs={tabs}
-              activeTab={activeTab === 'catalog' ? 'services' : activeTab}
+              activeTab={activeTab === 'catalog' && !hideLayout ? 'services' : activeTab}
               onChange={handleTabChange}
             />
 
@@ -583,7 +649,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
             )}
 
             {/* Tab: Services (Option A: Interactive Card Grid) */}
-            {(activeTab === 'services' || activeTab === 'catalog') && (
+            {((activeTab === 'services') || (activeTab === 'catalog' && !hideLayout)) && (
               <div className="space-y-5 w-full max-w-full min-w-0">
                 {/* Unified Compact Capacity & Sync Control Banner */}
                 <Suspense fallback={<div className="p-4 text-center text-xs text-slate-400">Memuat kapasitas...</div>}>
@@ -628,6 +694,21 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                     />
                   </Suspense>
                 )}
+              </div>
+            )}
+
+            {/* Tab: Katalog Paket (Inline, Mode Dashboard Role) */}
+            {activeTab === 'catalog' && hideLayout && (
+              <div className="w-full max-w-full min-w-0">
+                <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat katalog paket...</div>}>
+                  <UnifiedCatalog
+                    mode="private"
+                    activeAcademicTier={activeAcademicTier}
+                    ownedServices={(subQuery.data?.services || subQuery.data?.all_subscriptions || []) as any[]}
+                    isLicenseServerOffline={isLicenseServerOffline}
+                    lockedCategory={lockedCategory}
+                  />
+                </Suspense>
               </div>
             )}
 
@@ -690,7 +771,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
             activePlanVariant={comparisonVariant}
             onUpgrade={() => {
               setShowComparisonModal(false);
-              navigate('/catalog');
+              openCatalog();
             }}
           />
         </Suspense>
@@ -705,9 +786,44 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
             historyItems={historyModal.historyItems}
           />
         </Suspense>
+    </>
+  );
+
+  if (hideLayout) {
+    return <InfraErrorBoundary>{mainContent}</InfraErrorBoundary>;
+  }
+
+  return (
+    <InfraErrorBoundary>
+      <AcademicPageLayout
+        title="Pusat Layanan &amp; Lisensi"
+        description="Kelola seluruh lisensi modul, perpanjangan masa aktif, kapasitas institusi, dan tagihan sekolah Anda secara terpadu."
+        stats={stats}
+        instruction={instructionData}
+        breadcrumbs={[{ label: 'Pusat Layanan' }]}
+        hardeningModuleKey="servicecenterpage"
+        toolbar={
+          <Button
+            type="button"
+            variant="toolbarPrimary"
+            size="toolbar"
+            aria-label="Buka Katalog Pengadaan Modul"
+            onClick={openCatalog}
+            className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs"
+          >
+            <ShoppingBag size={14} />
+            <span className="hidden sm:inline">Katalog Pengadaan Modul</span>
+            <span className="sm:hidden">Katalog</span>
+          </Button>
+        }
+      >
+        {mainContent}
       </AcademicPageLayout>
     </InfraErrorBoundary>
   );
 });
+
+/** Standalone Route Wrapper (/service-center) */
+export const ServiceCenterPage: React.FC = React.memo(() => <ServiceCenterView />);
 
 export default ServiceCenterPage;

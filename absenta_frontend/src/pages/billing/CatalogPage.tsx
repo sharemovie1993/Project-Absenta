@@ -10,20 +10,27 @@ import { useQuery } from '@tanstack/react-query';
 import { getMySubscription } from '@/api/mySubscription.api';
 import { getPublicPlans } from '@/api/plans.api';
 
-export const CatalogPage: React.FC = React.memo(() => {
+export interface UniversalCatalogViewProps {
+  /** True jika dirender di Tab Dashboard Role (tanpa page header) */
+  hideLayout?: boolean;
+  /** Kunci kategori katalog (misal 'KOPERASI') */
+  lockedCategory?: string;
+}
+
+export const CatalogView: React.FC<UniversalCatalogViewProps> = React.memo(({ hideLayout = false, lockedCategory }) => {
   const navigate = useNavigate();
 
   const subQuery = useQuery({
     queryKey: ['my-subscription-details'],
     queryFn: async () => {
       const res = await getMySubscription();
-      return res;
+      return res.data;
     },
     staleTime: 60 * 1000
   });
 
   const plansQuery = useQuery({
-    queryKey: ['public-plans'],
+    queryKey: ['public-plans-meta'],
     queryFn: async () => {
       const res = await getPublicPlans();
       return res;
@@ -31,15 +38,14 @@ export const CatalogPage: React.FC = React.memo(() => {
     staleTime: 60 * 1000
   });
 
-  const activeAcademicTier = subQuery.data?.data?.active_academic_tier || 'CORE_PLATFORM';
+  const activeAcademicTier = subQuery.data?.active_academic_tier || 'CORE_PLATFORM';
   const services = useMemo(() => {
-    const raw = subQuery.data?.data?.services || subQuery.data?.data?.all_subscriptions || [];
+    const raw = subQuery.data?.services || subQuery.data?.all_subscriptions || [];
     return Array.isArray(raw) ? raw : [];
   }, [subQuery.data]);
 
   const isLicenseServerOffline = Boolean(
-    subQuery.data?.is_license_server_offline || 
-    (subQuery.data?.data as any)?.is_license_server_offline ||
+    (subQuery.data as any)?.is_license_server_offline ||
     plansQuery.data?.is_license_server_offline
   );
 
@@ -52,6 +58,24 @@ export const CatalogPage: React.FC = React.memo(() => {
       { text: "Masukkan modul ke Keranjang Belanja untuk pengadaan multi-item sekaligus." }
     ]
   }), []);
+
+  const catalogContent = (
+    <UnifiedCatalog
+      mode="private"
+      activeAcademicTier={activeAcademicTier}
+      ownedServices={services}
+      isLicenseServerOffline={isLicenseServerOffline}
+      lockedCategory={lockedCategory}
+    />
+  );
+
+  if (hideLayout) {
+    return (
+      <InfraErrorBoundary>
+        <div className="w-full min-w-0 max-w-full">{catalogContent}</div>
+      </InfraErrorBoundary>
+    );
+  }
 
   return (
     <InfraErrorBoundary>
@@ -83,17 +107,15 @@ export const CatalogPage: React.FC = React.memo(() => {
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
           <div className="w-full min-w-0 max-w-full">
-            <UnifiedCatalog
-              mode="private"
-              activeAcademicTier={activeAcademicTier}
-              ownedServices={services}
-              isLicenseServerOffline={isLicenseServerOffline}
-            />
+            {catalogContent}
           </div>
         </SectionCard>
       </AcademicPageLayout>
     </InfraErrorBoundary>
   );
 });
+
+/** Standalone Route Wrapper (/catalog) */
+export const CatalogPage: React.FC = React.memo(() => <CatalogView />);
 
 export default CatalogPage;

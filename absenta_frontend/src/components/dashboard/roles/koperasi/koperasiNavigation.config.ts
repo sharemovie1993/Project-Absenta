@@ -18,6 +18,7 @@ import {
   Boxes,
   Bell,
   Settings,
+  CreditCard,
   type LucideIcon,
 } from 'lucide-react';
 import type { KoperasiTabId, KoperasiNavTabItem } from './types';
@@ -330,6 +331,20 @@ export const KOPERASI_SUBTABS_BASE: KoperasiTabDefinition[] = [
       'cooperative.tickets.view.list',
       'cooperative.tickets.manage',
       'cooperative.tickets.reply',
+    ],
+  },
+  {
+    id: 'langganan',
+    label: 'Paket Langganan',
+    shortLabel: 'Langganan',
+    category: 'organisasi',
+    icon: CreditCard,
+    targetPath: '/dashboard?tab=koperasi&subtab=langganan',
+    color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
+    anyOfCapabilities: [
+      'cooperative.settings.view',
+      'cooperative.settings.update',
+      'cooperative.setup.manage',
     ],
   },
   {

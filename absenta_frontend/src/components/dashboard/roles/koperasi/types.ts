@@ -20,6 +20,7 @@ export type KoperasiTabId =
   | 'rat'
   | 'pengumuman'
   | 'tiket'
+  | 'langganan'
   | 'pengaturan';
 
 export interface KoperasiNavTabItem {

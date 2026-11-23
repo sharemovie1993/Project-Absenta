@@ -48,6 +48,8 @@ interface UnifiedCatalogProps {
   onSelectPlan?: (plan: any) => void;
   activeAcademicTier?: string;
   isLicenseServerOffline?: boolean;
+  /** Kunci kategori katalog (misal 'KOPERASI') saat didistribusikan ke Dashboard Role */
+  lockedCategory?: string;
 }
 
 const CATEGORY_TABS = [
@@ -71,11 +73,13 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
   ownedServices = [],
   onSelectPlan,
   activeAcademicTier = 'Micro',
-  isLicenseServerOffline
+  isLicenseServerOffline,
+  lockedCategory,
 }) => {
   const navigate = useNavigate();
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [selectedCategoryState, setSelectedCategory] = useState<string>(lockedCategory || 'ALL');
+  const selectedCategory = lockedCategory || selectedCategoryState;
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isRABModalOpen, setIsRABModalOpen] = useState(false);
 
@@ -555,7 +559,7 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Category Pill Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 no-scrollbar flex-1 min-w-0">
-            {CATEGORY_TABS.map((cat) => {
+            {(lockedCategory ? CATEGORY_TABS.filter((c) => c.id === lockedCategory) : CATEGORY_TABS).map((cat) => {
               const isSelected = selectedCategory === cat.id;
               const Icon = cat.icon;
               return (
