@@ -24,7 +24,17 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { format, isToday, isYesterday } from 'date-fns';
 import { playNotificationSound } from '@/utils/audioUtils';
 import { NewConversationModal } from '@/components/communication/NewConversationModal';
-import { ChatAvatar, ThreadProfileModal } from '@/components/communication/ThreadProfileModal';
+import {
+  ChatAvatar,
+  ThreadProfileModal,
+  MemberQuickActionSheet,
+  UserProfileModal,
+  type QuickActionMember
+} from '@/components/communication/ThreadProfileModal';
+import { useWebRTCCall } from '@/hooks/communication/useWebRTCCall';
+import { IncomingCallModal } from '@/components/communication/calling/IncomingCallModal';
+import { ActiveCallOverlay } from '@/components/communication/calling/ActiveCallOverlay';
+import toast from 'react-hot-toast';
 
 export default function FloatingMessenger() {
   const queryClient = useQueryClient();
@@ -48,6 +58,8 @@ export default function FloatingMessenger() {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [newModalTab, setNewModalTab] = useState<'DIRECT' | 'DISPOSISI' | 'BROADCAST'>('BROADCAST');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [actionMember, setActionMember] = useState<QuickActionMember | null>(null);
+  const [infoUserId, setInfoUserId] = useState<string | null>(null);
   const [isSoundMuted, setIsSoundMuted] = useState<boolean>(() => {
     try {
       return localStorage.getItem('absenta_chat_muted') === '1';
@@ -81,7 +93,7 @@ export default function FloatingMessenger() {
   useEffect(() => {
     if (!isOpen) return;
     const handlePointerDownOutside = (event: MouseEvent | TouchEvent) => {
-      if (isNewModalOpen || isProfileOpen) return;
+      if (isNewModalOpen || isProfileOpen || actionMember || infoUserId) return;
       const target = event.target as Node | null;
       if (messengerContainerRef.current && target && !messengerContainerRef.current.contains(target)) {
         setIsOpen(false);
@@ -94,7 +106,7 @@ export default function FloatingMessenger() {
       document.removeEventListener('mousedown', handlePointerDownOutside);
       document.removeEventListener('touchstart', handlePointerDownOutside);
     };
-  }, [isOpen, isNewModalOpen, isProfileOpen]);
+  }, [isOpen, isNewModalOpen, isProfileOpen, actionMember, infoUserId]);
 
   const isCommunicationPage = location.pathname.startsWith('/komunikasi');
 
@@ -104,6 +116,47 @@ export default function FloatingMessenger() {
     if (typeof raw === 'object') return String(raw.name || '');
     return String(raw);
   }, [user]);
+
+  const {
+    callState,
+    incomingCall,
+    remoteUser,
+    isMuted: isCallMuted,
+    isVideoOff,
+    isScreenSharing,
+    localVideoRef,
+    remoteVideoRef,
+    initiateCall,
+    acceptCall,
+    rejectCall,
+    endCall,
+    toggleMute,
+    toggleVideo,
+    toggleScreenShare,
+  } = useWebRTCCall({
+    socket,
+    currentUserId: user?.id,
+    currentUserName: user?.full_name || 'Pengguna',
+    currentUserRole: userRoleName || 'GURU',
+  });
+
+  const handleMessageMember = async (member: QuickActionMember) => {
+    if (!member?.user_id || member.user_id === user?.id) return;
+    try {
+      const dmThread = await internalCommunicationApi.createThread({
+        type: 'DIRECT',
+        targetUserIds: [member.user_id],
+        category: 'UMUM',
+      });
+      if (dmThread?.id) {
+        await queryClient.invalidateQueries({ queryKey: communicationKeys.allThreads });
+        setSelectedThreadId(dmThread.id);
+        setIsOpen(true);
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Tidak dapat membuka obrolan pribadi dengan anggota ini');
+    }
+  };
 
   const canBroadcast = useMemo(() => {
     const r = userRoleName.toUpperCase();
@@ -725,15 +778,30 @@ export default function FloatingMessenger() {
                         typeof m.sender_role === 'object'
                           ? (m.sender_role as any)?.name
                           : m.sender_role;
+                      const openMemberAction = () => {
+                        if (!m.sender_id) return;
+                        setActionMember({
+                          user_id: m.sender_id,
+                          name: m.sender_name || 'Pengguna',
+                          role: roleStr,
+                          avatar: m.sender_avatar,
+                        });
+                      };
                       return (
                         <div key={m.id} className={`flex items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
                           {!isMe && (
-                            <ChatAvatar
-                              src={m.sender_avatar}
-                              name={m.sender_name}
-                              size="xs"
-                              className="mb-0.5"
-                            />
+                            <button
+                              type="button"
+                              onClick={openMemberAction}
+                              className="cursor-pointer hover:opacity-85 transition-opacity shrink-0 mb-0.5"
+                              title={`Klik untuk opsi ${m.sender_name || 'anggota'}`}
+                            >
+                              <ChatAvatar
+                                src={m.sender_avatar}
+                                name={m.sender_name}
+                                size="xs"
+                              />
+                            </button>
                           )}
                           <div
                             className={`max-w-[82%] rounded-xl px-3 py-2 text-xs shadow-2xs ${
@@ -744,7 +812,10 @@ export default function FloatingMessenger() {
                           >
                             {!isMe && m.sender_name && (
                               <div className="flex items-center gap-1.5 mb-0.5">
-                                <span className="text-[10.5px] font-extrabold text-[#008069] dark:text-[#00a884]">
+                                <span
+                                  onClick={openMemberAction}
+                                  className="text-[10.5px] font-extrabold text-[#008069] dark:text-[#00a884] cursor-pointer hover:underline"
+                                >
                                   {m.sender_name}
                                 </span>
                                 {roleStr && (
@@ -843,6 +914,61 @@ export default function FloatingMessenger() {
           threadId={selectedThreadId}
           isOpen={isProfileOpen}
           onClose={() => setIsProfileOpen(false)}
+          onSelectMember={(m) => setActionMember(m)}
+        />
+      )}
+
+      {/* Slide-Up Bottom Sheet ala WhatsApp Group (Kirim Pesan, Telepon, Video, Info) */}
+      <MemberQuickActionSheet
+        member={actionMember}
+        isOpen={Boolean(actionMember)}
+        onClose={() => setActionMember(null)}
+        onMessage={handleMessageMember}
+        onAudioCall={(m) =>
+          initiateCall({ recipientId: m.user_id, recipientName: m.name, callType: 'audio' })
+        }
+        onVideoCall={(m) =>
+          initiateCall({ recipientId: m.user_id, recipientName: m.name, callType: 'video' })
+        }
+        onViewInfo={(m) => setInfoUserId(m.user_id)}
+      />
+
+      {/* Modal Info Profil Lengkap Anggota */}
+      <UserProfileModal
+        userId={infoUserId}
+        isOpen={Boolean(infoUserId)}
+        onClose={() => setInfoUserId(null)}
+        onMessage={handleMessageMember}
+        onAudioCall={(m) =>
+          initiateCall({ recipientId: m.user_id, recipientName: m.name, callType: 'audio' })
+        }
+        onVideoCall={(m) =>
+          initiateCall({ recipientId: m.user_id, recipientName: m.name, callType: 'video' })
+        }
+      />
+
+      {incomingCall && (
+        <IncomingCallModal
+          callerName={incomingCall.callerName}
+          callType={incomingCall.callType}
+          onAccept={acceptCall}
+          onReject={rejectCall}
+        />
+      )}
+
+      {callState !== 'IDLE' && callState !== 'RINGING_INCOMING' && (
+        <ActiveCallOverlay
+          callState={callState}
+          remoteUserName={remoteUser?.name}
+          isMuted={isCallMuted}
+          isVideoOff={isVideoOff}
+          isScreenSharing={isScreenSharing}
+          localVideoRef={localVideoRef}
+          remoteVideoRef={remoteVideoRef}
+          onToggleMute={toggleMute}
+          onToggleVideo={toggleVideo}
+          onToggleScreenShare={toggleScreenShare}
+          onEndCall={endCall}
         />
       )}
 
