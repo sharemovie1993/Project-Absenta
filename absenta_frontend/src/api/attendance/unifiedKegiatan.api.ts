@@ -73,11 +73,24 @@ export interface UnifiedRfidTapPayload {
 }
 
 export interface UnifiedRfidTapResponse extends UnifiedTapResponse {
+  action?: string;
+  entity_type?: 'GURU' | 'SISWA';
+  status?: string;
+  is_terlambat?: boolean;
   guru?: {
     id: string;
     nama_guru: string;
     nip?: string | null;
     foto?: string | null;
+    jenis_ptk?: string | null;
+  };
+  siswa?: {
+    id: string;
+    nama_siswa: string;
+    nis?: string | null;
+    nisn?: string | null;
+    foto?: string | null;
+    nama_kelas?: string | null;
   };
 }
 

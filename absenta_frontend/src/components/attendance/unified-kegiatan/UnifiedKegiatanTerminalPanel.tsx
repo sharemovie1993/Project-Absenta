@@ -211,13 +211,16 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
             entityType = directInfo?.entityType === 'SISWA' ? 'SISWA' : 'GURU';
           }
 
+          const isLate = Boolean(res.is_terlambat || res.status === 'TERLAMBAT');
+          const tapStatus = isLate ? 'TERLAMBAT' : 'HADIR';
+
           const record: RecentUnifiedTapRecord = {
             id: `tap-kegiatan-${Date.now()}`,
             nama: personName,
             idNumber: personIdNumber,
             subLabel: personSubLabel,
             entityType,
-            status: 'HADIR',
+            status: tapStatus,
             jam: jamStr,
             foto: personFoto,
             syncedKbm: isKbm,
@@ -230,16 +233,21 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
           setFeedTaps((prev) => [record, ...prev.slice(0, 24)]);
 
           if (!isMuted) {
-            playBeep(isKbm ? 'kbm' : 'success');
+            playBeep(isLate ? 'error' : (isKbm ? 'kbm' : 'success'));
           }
 
-          if (isKbm) {
+          if (isLate) {
+            toast.error(`TERLAMBAT: ${personName} (${personSubLabel})`, {
+              icon: '⚠️',
+              position: 'bottom-center',
+            });
+          } else if (isKbm) {
             toast.success(`PRESENSI + KBM DIBUKA: ${personName}`, {
               icon: '⚡',
               position: 'bottom-center',
             });
           } else {
-            toast.success(`HADIR: ${personName}`, {
+            toast.success(`HADIR: ${personName} (${personSubLabel})`, {
               icon: '✅',
               position: 'bottom-center',
             });
@@ -829,12 +837,18 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
                         variant="default"
                         className={cn(
                           "text-[10px] font-black uppercase tracking-wider py-0 px-2",
-                          lastScanned.syncedKbm
+                          lastScanned.status === 'TERLAMBAT'
+                            ? "bg-rose-600 text-white"
+                            : lastScanned.syncedKbm
                             ? "bg-indigo-600 text-white"
                             : "bg-emerald-600 text-white"
                         )}
                       >
-                        {lastScanned.syncedKbm ? '⚡ 1-Tap 2-Record' : 'Hadir Lapangan'}
+                        {lastScanned.status === 'TERLAMBAT'
+                          ? 'Terlambat'
+                          : lastScanned.syncedKbm
+                          ? '⚡ 1-Tap 2-Record'
+                          : 'Hadir Lapangan'}
                       </Badge>
                     </div>
 
@@ -855,9 +869,25 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
                 </div>
 
                 <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                  <div className="p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 text-xs font-bold shadow-2xs">
-                    <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
-                    <span>Presensi Diterima</span>
+                  <div
+                    className={cn(
+                      "p-2.5 rounded-2xl border text-xs font-bold shadow-2xs flex items-center gap-1.5",
+                      lastScanned.status === 'TERLAMBAT'
+                        ? "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300"
+                        : "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300"
+                    )}
+                  >
+                    <CheckCircle2
+                      size={16}
+                      className={
+                        lastScanned.status === 'TERLAMBAT'
+                          ? "text-rose-600 dark:text-rose-400"
+                          : "text-emerald-600 dark:text-emerald-400"
+                      }
+                    />
+                    <span>
+                      {lastScanned.status === 'TERLAMBAT' ? 'Terlambat' : 'Presensi Diterima'}
+                    </span>
                   </div>
                 </div>
               </motion.div>

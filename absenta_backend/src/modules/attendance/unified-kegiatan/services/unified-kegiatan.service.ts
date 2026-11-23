@@ -1041,7 +1041,7 @@ export class UnifiedKegiatanService {
       throw new Error('Token RFID tidak boleh kosong');
     }
 
-    // Cari Guru berdasarkan id, no_rfid, NIP, atau NUPTK
+    // 1. Prioritas 1: Cari Guru / Pembina berdasarkan id, no_rfid, NIP, atau NUPTK
     const guru = await prisma.guru.findFirst({
       where: {
         tenant_id: tenantId,
@@ -1054,40 +1054,252 @@ export class UnifiedKegiatanService {
       },
     });
 
-    if (!guru) {
-      throw new Error(`Kartu RFID "${token}" tidak terdaftar sebagai Guru atau Pembina`);
-    }
+    if (guru) {
+      const jenis = payload.jenis_kegiatan || 'KETARUNAAN';
+      let sesiId = payload.sesi_id;
 
-    const jenis = payload.jenis_kegiatan || 'KETARUNAAN';
-    let sesiId = payload.sesi_id;
+      if (!sesiId) {
+        const todayStr = this.getTodayDateStr();
+        const sesiToday = await this.getSesiHariIni(tenantId, {
+          tanggal: todayStr,
+          jadwal_kegiatan_id: payload.jadwal_kegiatan_id,
+          jenis_kegiatan: jenis,
+        });
+        sesiId = sesiToday?.id;
+      }
 
-    if (!sesiId) {
-      const todayStr = this.getTodayDateStr();
-      const sesiToday = await this.getSesiHariIni(tenantId, {
-        tanggal: todayStr,
-        jadwal_kegiatan_id: payload.jadwal_kegiatan_id,
+      // Panggil engine 1 Tap 2 Record untuk Guru/Pembina
+      const tapResult = await this.tapPendamping(tenantId, {
+        guru_id: guru.id,
+        sesi_id: sesiId,
+        status: 'HADIR',
         jenis_kegiatan: jenis,
+        jadwal_kegiatan_id: payload.jadwal_kegiatan_id,
+        catatan: `Hadir via Scanner RFID Universal (${jenis})`,
       });
-      sesiId = sesiToday?.id;
+
+      return {
+        ...tapResult,
+        action: 'HADIR_GURU',
+        entity_type: 'GURU',
+        guru: {
+          id: guru.id,
+          nama_guru: guru.nama_guru,
+          nip: guru.nip,
+          foto: guru.foto || null,
+          jenis_ptk: (guru as any).jenis_ptk || null,
+        },
+      };
     }
 
-    // Panggil engine 1 Tap 2 Record
-    const tapResult = await this.tapPendamping(tenantId, {
-      guru_id: guru.id,
-      sesi_id: sesiId,
-      status: 'HADIR',
-      jenis_kegiatan: jenis,
-      jadwal_kegiatan_id: payload.jadwal_kegiatan_id,
-      catatan: `Hadir via Scanner RFID Universal (${jenis})`,
+    // 2. Prioritas 2: Cari Siswa / Taruna berdasarkan id, no_rfid, NIS, atau NISN
+    const siswa = await prisma.siswa.findFirst({
+      where: {
+        tenant_id: tenantId,
+        OR: [
+          { id: token },
+          { no_rfid: token },
+          { nis: token },
+          { nisn: token },
+        ],
+      },
+      include: {
+        Kelas: true,
+      },
     });
 
+    if (!siswa) {
+      throw new Error(`Kartu RFID atau identitas "${token}" tidak terdaftar di sistem (Guru maupun Siswa)`);
+    }
+
+    // Cari SiswaAkademik aktif siswa
+    const sa = await prisma.siswaAkademik.findFirst({
+      where: {
+        siswa_id: siswa.id,
+        status: 'AKTIF',
+      },
+      include: {
+        kelas: true,
+        tahunPelajaran: true,
+        semester: true,
+      },
+    });
+
+    const [activeTp, activeSem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+      prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+    ]);
+    const fallbackTp = activeTp || (await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId }, select: { id: true } }));
+    const fallbackSem = activeSem || (await prisma.semester.findFirst({ where: { tenant_id: tenantId }, select: { id: true } }));
+
+    const targetKelasId = sa?.kelas_id || siswa.kelas_id;
+    const targetKelasNama = sa?.kelas?.nama_kelas || siswa.Kelas?.nama_kelas || '-';
+    const targetTingkat = sa?.kelas?.tingkat || (siswa.Kelas as any)?.tingkat || null;
+    const targetTpId = sa?.tahun_pelajaran_id || fallbackTp?.id || 'default-tp';
+    const targetSemId = sa?.semester_id || fallbackSem?.id || 'default-sem';
+
+    const jenis = payload.jenis_kegiatan || 'KETARUNAAN';
+    const todayStr = this.getTodayDateStr();
+    const hariEnum = this.getHariEnum(todayStr);
+    const dateRange = this.getDateRange(todayStr);
+
+    // Resolusi siklus jadwal kegiatan hari ini (Upacara, Ketarunaan, Dhuha, Apel)
+    const resolvedSiklus = await this.resolveSiklusJadwal(tenantId, jenis, hariEnum);
+    const activeJadwal = resolvedSiklus.jadwal;
+    const effectiveJadwalId = activeJadwal?.id || payload.jadwal_kegiatan_id;
+
+    // Cari sesi kegiatan yang sesuai untuk kelas siswa tersebut hari ini
+    let studentSesi: any = null;
+    if (targetKelasId) {
+      studentSesi = await prisma.sesiAbsensi.findFirst({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: targetKelasId,
+          tanggal: { gte: dateRange.gte, lte: dateRange.lte },
+          OR: [
+            ...(effectiveJadwalId ? [{ jadwal_kegiatan_id: effectiveJadwalId }] : []),
+            { jenis_kegiatan: { contains: jenis, mode: 'insensitive' as const } },
+            ...(activeJadwal?.nama ? [{ jenis_kegiatan: { contains: activeJadwal.nama, mode: 'insensitive' as const } }] : []),
+            ...(activeJadwal?.nama ? [{ JadwalKegiatan: { nama: { contains: activeJadwal.nama, mode: 'insensitive' as const } } }] : []),
+          ],
+        },
+        orderBy: { waktu_mulai: 'asc' },
+      });
+    }
+
+    // Jika sesi kegiatan kelas ini belum ada hari ini, materialisasi otomatis dengan status BERLANGSUNG
+    if (!studentSesi && targetKelasId) {
+      const tz = await getTenantTimezone(tenantId);
+      const tzOffset = getTenantOffsetString(tz);
+      const startStr = (activeJadwal?.waktu_mulai || '06:30').slice(0, 5);
+      const endStr = (activeJadwal?.waktu_selesai || '08:00').slice(0, 5);
+      const sessionName = activeJadwal?.nama || (jenis.toUpperCase() === 'KETARUNAAN' ? 'Ketarunaan' : jenis);
+
+      studentSesi = await prisma.sesiAbsensi.create({
+        data: {
+          tenant_id: tenantId,
+          kelas_id: targetKelasId,
+          tahun_pelajaran_id: targetTpId,
+          semester_id: targetSemId,
+          tanggal: new Date(`${todayStr}T00:00:00.000${tzOffset}`),
+          waktu_mulai: new Date(`${todayStr}T${startStr}:00.000${tzOffset}`),
+          waktu_selesai: new Date(`${todayStr}T${endStr}:00.000${tzOffset}`),
+          jenis_kegiatan: sessionName,
+          jadwal_kegiatan_id: effectiveJadwalId || null,
+          status: 'BERLANGSUNG',
+          sumber_sesi: 'TEMPLATE',
+        },
+      });
+    } else if (!studentSesi && payload.sesi_id) {
+      studentSesi = await prisma.sesiAbsensi.findUnique({
+        where: { id: payload.sesi_id },
+      });
+    }
+
+    if (!studentSesi) {
+      throw new Error(`Sesi kegiatan ${jenis} untuk kelas ${targetKelasNama} belum dapat dibuat atau ditemukan.`);
+    }
+
+    // Buka sesi jika masih MENDATANG
+    if (studentSesi.status === 'MENDATANG' || studentSesi.status === 'BELUM_DIMULAI') {
+      studentSesi = await prisma.sesiAbsensi.update({
+        where: { id: studentSesi.id },
+        data: { status: 'BERLANGSUNG' },
+      });
+    }
+
+    // Hitung toleransi keterlambatan
+    const now = new Date();
+    const jamStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    let isLate = false;
+    let menitTerlambat = 0;
+
+    if (studentSesi.waktu_mulai) {
+      const TOLERANSI_KEGIATAN_MENIT = 15;
+      const diffMs = now.getTime() - studentSesi.waktu_mulai.getTime();
+      if (diffMs > TOLERANSI_KEGIATAN_MENIT * 60 * 1000) {
+        isLate = true;
+        menitTerlambat = Math.floor(diffMs / 60000);
+      }
+    }
+
+    // Ambil atau resolve SiswaAkademik aktif
+    let finalSaId = sa?.id;
+    if (!finalSaId) {
+      const fallbackSa = await prisma.siswaAkademik.findFirst({
+        where: { siswa_id: siswa.id },
+        select: { id: true },
+      });
+      finalSaId = fallbackSa?.id;
+    }
+
+    if (!finalSaId) {
+      throw new Error(`Data akademik siswa ${siswa.nama_siswa} tidak valid atau belum terdaftar.`);
+    }
+
+    // Upsert AbsenSiswa pada sesi kegiatan tersebut
+    const existingAbsen = await prisma.absenSiswa.findFirst({
+      where: {
+        sesi_id: studentSesi.id,
+        siswa_akademik_id: finalSaId,
+      },
+    });
+
+    if (existingAbsen) {
+      await prisma.absenSiswa.update({
+        where: {
+          id_created_at: {
+            id: existingAbsen.id,
+            created_at: (existingAbsen as any).created_at,
+          },
+        },
+        data: {
+          status: isLate ? 'TERLAMBAT' : 'HADIR',
+          is_terlambat: isLate,
+          menit_keterlambatan: isLate ? menitTerlambat : 0,
+          waktu_tap: now,
+          catatan: `Hadir via Terminal Kegiatan (${jenis})`,
+          updated_at: now,
+        },
+      });
+    } else {
+      await prisma.absenSiswa.create({
+        data: {
+          tenant_id: tenantId,
+          sesi_id: studentSesi.id,
+          siswa_id: siswa.id,
+          siswa_akademik_id: finalSaId,
+          status: isLate ? 'TERLAMBAT' : 'HADIR',
+          is_terlambat: isLate,
+          menit_keterlambatan: isLate ? menitTerlambat : 0,
+          waktu_tap: now,
+          kelas_id_snapshot: targetKelasId || undefined,
+          kelas_nama_snapshot: targetKelasNama,
+          tingkat_snapshot: targetTingkat,
+          tahun_pelajaran_id_snapshot: targetTpId || undefined,
+          catatan: `Hadir via Terminal Kegiatan (${jenis})`,
+        },
+      });
+    }
+
     return {
-      ...tapResult,
-      guru: {
-        id: guru.id,
-        nama_guru: guru.nama_guru,
-        nip: guru.nip,
-        foto: guru.foto || null,
+      success: true,
+      action: 'HADIR_SISWA',
+      entity_type: 'SISWA',
+      status: isLate ? 'TERLAMBAT' : 'HADIR',
+      is_terlambat: isLate,
+      synced_kbm: false,
+      message: isLate
+        ? `Presensi taruna terlambat: ${siswa.nama_siswa} (${targetKelasNama})`
+        : `Presensi taruna/siswa berhasil dicatat: ${siswa.nama_siswa} (${targetKelasNama})`,
+      jam: jamStr,
+      siswa: {
+        id: siswa.id,
+        nama_siswa: siswa.nama_siswa,
+        nis: siswa.nis,
+        nisn: siswa.nisn,
+        nama_kelas: targetKelasNama,
+        foto: (siswa as any).foto_profile_url || (siswa as any).foto || null,
       },
     };
   }
