@@ -3,7 +3,6 @@ import { getRedisConnection } from '@/queue/redis';
 import { getTenantTimezone, getTimezoneLabel, formatTenantTime } from '@/utils/timezone.utils';
 import { waGatewayService } from '@/services/wa-gateway.service';
 import { STRUKTUR_CODES } from '@/config/organization-structure';
-import { SesiLifecycleService } from './sesi-lifecycle.service';
 
 export interface SendKbmReminderPayload {
   method: 'GATEWAY' | 'PERSONAL_LINK';
@@ -30,7 +29,8 @@ export class SesiReminderService {
 
     const dateStr = new Date().toLocaleDateString('sv-SE', { timeZone: tz || 'Asia/Jakarta' });
 
-    // 1. Ambil detail sesi dari SesiLifecycleService
+    // 1. Ambil detail sesi dari SesiLifecycleService (lazy import to prevent circular dependency)
+    const { SesiLifecycleService } = await import('./sesi-lifecycle.service');
     const lifecycleRes = await SesiLifecycleService.getInstance().list(
       tenantId,
       {},

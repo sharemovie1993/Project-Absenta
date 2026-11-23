@@ -29,31 +29,46 @@ async function loadShiftConfig(tenantId: string): Promise<any | null> {
  */
 function resolveSlotTimeSesi(
   shiftConfig: any,
-  _kelasId: string,
+  kelasId: string,
   slotIndex: number,
   hariName: string
 ): { jam_mulai?: string; jam_selesai?: string } | null {
   if (!shiftConfig) return null;
-  const upperHari = hariName.toUpperCase();
+  const upperHari = (hariName || '').toUpperCase();
+
+  // Handle shifts array structure: { shifts: [...], class_assignments: {...} }
+  const shifts = Array.isArray(shiftConfig.shifts) ? shiftConfig.shifts : [shiftConfig];
+  const assignedShiftId = shiftConfig.class_assignments?.[kelasId] || 'pagi';
+  const shift = shifts.find((s: any) => s.id === assignedShiftId) || shifts[0];
+  if (!shift) return null;
 
   // Prioritaskan day_patterns[hari] jika punya slots
   const slots: any[] =
-    (shiftConfig.day_patterns?.[upperHari]?.slots?.length > 0)
-      ? shiftConfig.day_patterns[upperHari].slots
-      : (shiftConfig.slots || []);
+    (shift.day_patterns?.[upperHari]?.slots?.length > 0)
+      ? shift.day_patterns[upperHari].slots
+      : (shift.slots || []);
 
   if (slots.length === 0) return null;
 
-  // 1. Coba cari slot dengan index yang sama
-  const exactSlot = slots.find((s: any) => Number(s.index) === slotIndex || Number(s.jam_ke) === slotIndex);
-  if (exactSlot && exactSlot.jam_mulai && exactSlot.jam_selesai) {
-    return { jam_mulai: exactSlot.jam_mulai, jam_selesai: exactSlot.jam_selesai };
+  // 1. Coba cari slot dengan field slot, index, atau jam_ke yang cocok
+  const exactSlot = slots.find((s: any) => 
+    Number(s.slot) === slotIndex || 
+    Number(s.slot_index) === slotIndex || 
+    Number(s.index) === slotIndex || 
+    Number(s.jam_ke) === slotIndex
+  );
+  if (exactSlot) {
+    const start = exactSlot.start || exactSlot.jam_mulai;
+    const end = exactSlot.end || exactSlot.jam_selesai;
+    if (start && end) return { jam_mulai: start, jam_selesai: end };
   }
 
   // 2. Fallback: index berbasis urutan 1-based (slot ke-1 = index 0)
   const fallbackSlot = slots[slotIndex - 1];
-  if (fallbackSlot && fallbackSlot.jam_mulai && fallbackSlot.jam_selesai) {
-    return { jam_mulai: fallbackSlot.jam_mulai, jam_selesai: fallbackSlot.jam_selesai };
+  if (fallbackSlot) {
+    const start = fallbackSlot.start || fallbackSlot.jam_mulai;
+    const end = fallbackSlot.end || fallbackSlot.jam_selesai;
+    if (start && end) return { jam_mulai: start, jam_selesai: end };
   }
 
   return null;
@@ -735,9 +750,8 @@ export class SesiQueryService {
     unifiedList.forEach((item: any) => {
       const isActivity = !!item.jadwal_kegiatan_id || (item.jenis_kegiatan && String(item.jenis_kegiatan).toUpperCase() !== 'KBM');
       const normActivityName = String(item.jenis_kegiatan || item.nama || item.kegiatan || '').trim().toLowerCase();
-      const activityTime = item.jam_mulai || (item.waktu_mulai ? new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).format(new Date(item.waktu_mulai)) : '00:00');
       const key = isActivity
-        ? `activity_${item.kelas_id || 'all'}_${normActivityName}_${activityTime}`
+        ? `activity_${item.kelas_id || 'all'}_${normActivityName}`
         : `${item.kelas_id || 'no_kelas'}_${item.guru_id || 'no_guru'}_${item.mapel_id || 'no_mapel'}_${item.unit_pengajaran_id || 'no_unit'}`;
       if (!blockMap.has(key)) blockMap.set(key, []);
       blockMap.get(key)!.push(item);

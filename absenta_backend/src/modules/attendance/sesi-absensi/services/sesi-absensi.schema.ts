@@ -65,6 +65,9 @@ export const createSesiAbsensiSchema = z.object({
   foto_kegiatan: z.string().optional().nullable(),
   foto_bukti_url: z.string().optional().nullable(),
   tipe_kegiatan: z.string().optional().nullable(),
+  status: z.enum(['MENDATANG', 'BERLANGSUNG', 'SELESAI', 'TERLEWAT', 'BATAL']).optional(),
+  opened_by_petugas: z.boolean().optional(),
+  is_petugas_kelas: z.boolean().optional(),
   is_active: z.boolean().optional().default(true),
 });
 

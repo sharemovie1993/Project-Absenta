@@ -23,6 +23,15 @@ export const AttendanceOpsPage: React.FC = React.memo(() => {
   const { user } = useAuthStore();
   const { tenantId } = useTenant();
 
+  // 🛡️ Universal Role-Ready Guard: Siswa Petugas Kelas tetap di dalam SiswaDashboard (In-Place View)
+  React.useEffect(() => {
+    if (user?.role === 'SISWA') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const subtab = searchParams.get('subtab') || 'kbm';
+      navigate(`/dashboard?tab=presensi-kelas&subtab=${subtab}`, { replace: true });
+    }
+  }, [user, navigate]);
+
   const [selectedKelasId] = useState<string>('');
   const [catatModalOpen, setCatatModalOpen] = useState(false);
   const [tindakMasalModalOpen, setTindakMasalModalOpen] = useState(false);

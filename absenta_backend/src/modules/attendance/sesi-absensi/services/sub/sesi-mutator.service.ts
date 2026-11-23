@@ -30,31 +30,46 @@ async function loadShiftConfig(tenantId: string): Promise<any | null> {
  */
 function resolveSlotTimeSesi(
   shiftConfig: any,
-  _kelasId: string,
+  kelasId: string,
   slotIndex: number,
   hariName: string
 ): { jam_mulai?: string; jam_selesai?: string } | null {
   if (!shiftConfig) return null;
-  const upperHari = hariName.toUpperCase();
+  const upperHari = (hariName || '').toUpperCase();
+
+  // Handle shifts array structure: { shifts: [...], class_assignments: {...} }
+  const shifts = Array.isArray(shiftConfig.shifts) ? shiftConfig.shifts : [shiftConfig];
+  const assignedShiftId = shiftConfig.class_assignments?.[kelasId] || 'pagi';
+  const shift = shifts.find((s: any) => s.id === assignedShiftId) || shifts[0];
+  if (!shift) return null;
 
   // Prioritaskan day_patterns[hari] jika punya slots
   const slots: any[] =
-    (shiftConfig.day_patterns?.[upperHari]?.slots?.length > 0)
-      ? shiftConfig.day_patterns[upperHari].slots
-      : (shiftConfig.slots || []);
+    (shift.day_patterns?.[upperHari]?.slots?.length > 0)
+      ? shift.day_patterns[upperHari].slots
+      : (shift.slots || []);
 
   if (slots.length === 0) return null;
 
-  // 1. Coba cari slot dengan index yang sama
-  const exactSlot = slots.find((s: any) => Number(s.index) === slotIndex || Number(s.jam_ke) === slotIndex);
-  if (exactSlot && exactSlot.jam_mulai && exactSlot.jam_selesai) {
-    return { jam_mulai: exactSlot.jam_mulai, jam_selesai: exactSlot.jam_selesai };
+  // 1. Coba cari slot dengan field slot, index, atau jam_ke yang cocok
+  const exactSlot = slots.find((s: any) => 
+    Number(s.slot) === slotIndex || 
+    Number(s.slot_index) === slotIndex || 
+    Number(s.index) === slotIndex || 
+    Number(s.jam_ke) === slotIndex
+  );
+  if (exactSlot) {
+    const start = exactSlot.start || exactSlot.jam_mulai;
+    const end = exactSlot.end || exactSlot.jam_selesai;
+    if (start && end) return { jam_mulai: start, jam_selesai: end };
   }
 
   // 2. Fallback: index berbasis urutan 1-based (slot ke-1 = index 0)
   const fallbackSlot = slots[slotIndex - 1];
-  if (fallbackSlot && fallbackSlot.jam_mulai && fallbackSlot.jam_selesai) {
-    return { jam_mulai: fallbackSlot.jam_mulai, jam_selesai: fallbackSlot.jam_selesai };
+  if (fallbackSlot) {
+    const start = fallbackSlot.start || fallbackSlot.jam_mulai;
+    const end = fallbackSlot.end || fallbackSlot.jam_selesai;
+    if (start && end) return { jam_mulai: start, jam_selesai: end };
   }
 
   return null;
@@ -216,12 +231,45 @@ export class SesiMutatorService {
     });
     if (!sesi) throw new Error('Sesi tidak ditemukan');
 
+    // ⚡ Konversi dan upload Base64 foto bukti kegiatan jika dikirim oleh petugas kelas / guru
+    let finalFotoUrl = data.foto_kegiatan || data.foto_bukti_url;
+    if (finalFotoUrl && typeof finalFotoUrl === 'string' && finalFotoUrl.startsWith('data:image/')) {
+      try {
+        const commaIdx = finalFotoUrl.indexOf(',');
+        if (commaIdx !== -1) {
+          const header = finalFotoUrl.substring(0, commaIdx);
+          const base64Data = finalFotoUrl.substring(commaIdx + 1);
+          const mimeMatch = header.match(/data:([^;]+)/);
+          const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+          const buffer = Buffer.from(base64Data, 'base64');
+          const ext = mimeType.split('/')[1] || 'jpeg';
+          const fileName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+          const storageKey = `uploads/tenants/${tenantId}/sesi-kbm/${fileName}`;
+
+          await storageService.uploadBuffer(storageKey, buffer, { contentType: mimeType });
+          finalFotoUrl = `/api/${storageKey}`;
+        }
+      } catch (storageErr) {
+        console.error('[SesiMutatorService] Error uploading session photo to storage:', storageErr);
+      }
+    }
+
+    // Filter update data to match SesiAbsensi schema cleanly
+    const updatePayload: any = {
+      updated_at: new Date()
+    };
+    if (data.status) updatePayload.status = data.status;
+    if (finalFotoUrl) updatePayload.foto_kegiatan = finalFotoUrl;
+    if (data.keterangan !== undefined) updatePayload.keterangan = data.keterangan;
+    if (data.waktu_mulai) updatePayload.waktu_mulai = data.waktu_mulai;
+    if (data.waktu_selesai) updatePayload.waktu_selesai = data.waktu_selesai;
+    if (data.guru_id) updatePayload.guru_id = data.guru_id;
+    if (data.mapel_id) updatePayload.mapel_id = data.mapel_id;
+    if (data.unit_pengajaran_id) updatePayload.unit_pengajaran_id = data.unit_pengajaran_id;
+
     const updated = await prisma.sesiAbsensi.update({
       where: { id },
-      data: {
-        ...data,
-        updated_at: new Date()
-      }
+      data: updatePayload
     });
 
     const rawFoto = data.foto_kegiatan || data.foto_bukti_url;

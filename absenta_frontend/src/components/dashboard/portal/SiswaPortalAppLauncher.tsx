@@ -186,7 +186,7 @@ export const SiswaPortalAppLauncher: React.FC<SiswaPortalAppLauncherProps> = ({
         colorClass: 'text-emerald-600 dark:text-emerald-400',
         bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/60',
         badgeText: 'Petugas',
-        path: '/attendance/ops',
+        path: '/dashboard?tab=presensi-kelas',
       });
       actions.push({
         id: 'b1-presensi-rombel',
@@ -195,7 +195,7 @@ export const SiswaPortalAppLauncher: React.FC<SiswaPortalAppLauncherProps> = ({
         colorClass: 'text-amber-600 dark:text-amber-400',
         bgLightClass: 'bg-amber-50 dark:bg-amber-950/60',
         badgeText: 'Petugas',
-        path: '/attendance/ops?tab=sesi',
+        path: '/dashboard?tab=presensi-kelas&subtab=kbm',
       });
     }
 

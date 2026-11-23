@@ -144,25 +144,35 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     item.status || { isLive, isReadyToOpen, isFinished, isOverdue, isUpcoming }
   );
 
+  const fotoKegiatanUrl = item.foto_kegiatan || item.foto_masuk || item.session?.foto_kegiatan || item.session?.foto_masuk || item.AbsenGuru?.[0]?.foto_masuk || null;
+
   const rawTeacherStatus = item.guru_status 
     || item.status?.teacherStatus 
     || item._summary?.teacherStatus 
     || item.session?.guru_status 
     || item.AbsenGuru?.[0]?.status
-    || (item.session?.waktu_tap ? (item.session?.is_terlambat ? 'TERLAMBAT' : 'HADIR') : (isLive ? 'HADIR' : 'BELUM_TAP'));
+    || (item.session?.waktu_tap ? (item.session?.is_terlambat ? 'TERLAMBAT' : 'HADIR') : 'BELUM_TAP');
 
   const teacherMeta: TeacherStatusMeta = getTeacherStatusMeta(rawTeacherStatus);
   const isTeacherExcused = teacherMeta.key === 'IZIN' || teacherMeta.key === 'SAKIT' || teacherMeta.key === 'DINAS_LUAR' || teacherMeta.key === 'PENUGASAN' || teacherMeta.key === 'INVAL';
-  const isTeacherAlreadyPresent = isLive || rawTeacherStatus === 'HADIR' || rawTeacherStatus === 'TEPAT_WAKTU' || rawTeacherStatus === 'TERLAMBAT' || teacherMeta.key === 'HADIR';
+  const isTeacherAlreadyPresent = Boolean(
+    rawTeacherStatus === 'HADIR' || 
+    rawTeacherStatus === 'TEPAT_WAKTU' || 
+    rawTeacherStatus === 'TERLAMBAT' ||
+    item.session?.waktu_tap ||
+    item.AbsenGuru?.[0]?.waktu_tap ||
+    (fotoKegiatanUrl && !item.opened_by_petugas && !item.session?.opened_by_petugas)
+  );
   const needsReminder = isReadyToOpen && !isLive && !isFinished && !isOverdue && !isTeacherExcused && !isTeacherAlreadyPresent;
   const canChangeStatus = (isReadyToOpen || isOverdue || isTeacherExcused) && !isFinished && !isLive;
   const isTeacherPresent = isTeacherAlreadyPresent;
-  const fotoKegiatanUrl = item.foto_kegiatan || item.foto_masuk || item.session?.foto_kegiatan || item.session?.foto_masuk || item.AbsenGuru?.[0]?.foto_masuk || null;
   const isSessionActive = Boolean(
     isLive || 
     item.session?.status === 'BERLANGSUNG' || 
     item.status === 'BERLANGSUNG' || 
     fotoKegiatanUrl || 
+    item.opened_by_petugas ||
+    item.session?.opened_by_petugas ||
     isTeacherPresent
   );
 

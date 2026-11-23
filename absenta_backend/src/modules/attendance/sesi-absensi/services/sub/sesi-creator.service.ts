@@ -31,31 +31,46 @@ async function loadShiftConfig(tenantId: string): Promise<any | null> {
  */
 function resolveSlotTimeSesi(
   shiftConfig: any,
-  _kelasId: string,
+  kelasId: string,
   slotIndex: number,
   hariName: string
 ): { jam_mulai?: string; jam_selesai?: string } | null {
   if (!shiftConfig) return null;
-  const upperHari = hariName.toUpperCase();
+  const upperHari = (hariName || '').toUpperCase();
+
+  // Handle shifts array structure: { shifts: [...], class_assignments: {...} }
+  const shifts = Array.isArray(shiftConfig.shifts) ? shiftConfig.shifts : [shiftConfig];
+  const assignedShiftId = shiftConfig.class_assignments?.[kelasId] || 'pagi';
+  const shift = shifts.find((s: any) => s.id === assignedShiftId) || shifts[0];
+  if (!shift) return null;
 
   // Prioritaskan day_patterns[hari] jika punya slots
   const slots: any[] =
-    (shiftConfig.day_patterns?.[upperHari]?.slots?.length > 0)
-      ? shiftConfig.day_patterns[upperHari].slots
-      : (shiftConfig.slots || []);
+    (shift.day_patterns?.[upperHari]?.slots?.length > 0)
+      ? shift.day_patterns[upperHari].slots
+      : (shift.slots || []);
 
   if (slots.length === 0) return null;
 
-  // 1. Coba cari slot dengan index yang sama
-  const exactSlot = slots.find((s: any) => Number(s.index) === slotIndex || Number(s.jam_ke) === slotIndex);
-  if (exactSlot && exactSlot.jam_mulai && exactSlot.jam_selesai) {
-    return { jam_mulai: exactSlot.jam_mulai, jam_selesai: exactSlot.jam_selesai };
+  // 1. Coba cari slot dengan field slot, index, atau jam_ke yang cocok
+  const exactSlot = slots.find((s: any) => 
+    Number(s.slot) === slotIndex || 
+    Number(s.slot_index) === slotIndex || 
+    Number(s.index) === slotIndex || 
+    Number(s.jam_ke) === slotIndex
+  );
+  if (exactSlot) {
+    const start = exactSlot.start || exactSlot.jam_mulai;
+    const end = exactSlot.end || exactSlot.jam_selesai;
+    if (start && end) return { jam_mulai: start, jam_selesai: end };
   }
 
   // 2. Fallback: index berbasis urutan 1-based (slot ke-1 = index 0)
   const fallbackSlot = slots[slotIndex - 1];
-  if (fallbackSlot && fallbackSlot.jam_mulai && fallbackSlot.jam_selesai) {
-    return { jam_mulai: fallbackSlot.jam_mulai, jam_selesai: fallbackSlot.jam_selesai };
+  if (fallbackSlot) {
+    const start = fallbackSlot.start || fallbackSlot.jam_mulai;
+    const end = fallbackSlot.end || fallbackSlot.jam_selesai;
+    if (start && end) return { jam_mulai: start, jam_selesai: end };
   }
 
   return null;
@@ -86,9 +101,13 @@ function validateSessionTimeWindow(
   waktuMulai: Date | null,
   _waktuSelesai: Date | null,
   isLiveOpening: boolean,
-  tz: string = PLATFORM_TIMEZONE
+  tz: string = PLATFORM_TIMEZONE,
+  isPetugasOpening: boolean = false
 ) {
   if (!waktuMulai || isNaN(waktuMulai.getTime())) return;
+  // 🛡️ Jika sesi dibuka oleh Siswa Petugas Kelas, jangan blokir dengan validasi kehadiran guru
+  if (isPetugasOpening) return;
+
   const now = new Date();
   const EARLY_TOLERANCE_MS = 15 * 60 * 1000;
   const earliestAllowed = new Date(waktuMulai.getTime() - EARLY_TOLERANCE_MS);
@@ -174,7 +193,14 @@ async function upsertTeacherAttendanceOnOpen(
 
 export class SesiCreatorService {
   async create(tenantId: string, org: any, payload: any, userId: string) {
+    const user = userId ? await prisma.user.findUnique({
+      where: { id: userId },
+      include: { Role: true }
+    }) : null;
+    const isSiswaUser = user?.Role?.name === RoleName.SISWA;
+
     const isPetugasOpening = Boolean(
+      isSiswaUser ||
       payload.opened_by_petugas ||
       payload.opened_by === 'PETUGAS_KELAS' ||
       org?.positions?.some((p: any) => p.code === 'PETUGAS_KELAS' || p.code === 'PETUGAS_ABSENSI') ||
@@ -334,7 +360,7 @@ export class SesiCreatorService {
       const endTarget = latestMatchedSesi?.waktu_selesai || existingSesi.waktu_selesai || (waktu_selesai ? parseSafeDate(waktu_selesai, tzOffset) : null);
       
       // 🛡️ Centralized Time-Window & Cutoff Guard (Timezone-Aware)
-      validateSessionTimeWindow(startTarget, endTarget, Boolean(finalFotoUrl), tz);
+      validateSessionTimeWindow(startTarget, endTarget, Boolean(finalFotoUrl), tz, isPetugasOpening);
 
       if (finalFotoUrl || waktu_mulai || payload.status === 'BERLANGSUNG' || isPetugasOpening) {
         const updatedSesi = await prisma.sesiAbsensi.update({
@@ -378,7 +404,7 @@ export class SesiCreatorService {
     const now = new Date();
 
     // 🛡️ Centralized Time-Window & Cutoff Guard saat membuat sesi baru (Timezone-Aware)
-    validateSessionTimeWindow(parsedStart, parsedEnd, Boolean(finalFotoUrl), tz);
+    validateSessionTimeWindow(parsedStart, parsedEnd, Boolean(finalFotoUrl), tz, isPetugasOpening);
 
     const isFutureSchedule = parsedStart.getTime() - now.getTime() > 15 * 60 * 1000;
     const initialStatus = (finalFotoUrl || isPetugasOpening) ? 'BERLANGSUNG' : isFutureSchedule ? 'MENDATANG' : 'BERLANGSUNG';

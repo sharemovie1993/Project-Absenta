@@ -190,13 +190,16 @@ export class SesiTapEngineService {
     // Presensi HADIR siswa ditolak sampai sesi resmi dibuka oleh Guru/Petugas.
     const isSystemOp = ['GATE_PROPAGATION', 'SYSTEM_AUTO_PULL', 'RECONCILIATION'].includes(_userId);
     if (!isSystemOp && status === 'HADIR' && sesi.jenis_kegiatan === 'KBM') {
-      const hasTeacherCheckInOrPhoto = Boolean(sesi.foto_kegiatan) ||
-        Boolean(sesi.AbsenGuru?.some((ag: any) => 
+      const hasTeacherCheckInOrPhoto = Boolean(
+        sesi.status === 'BERLANGSUNG' ||
+        sesi.foto_kegiatan ||
+        sesi.AbsenGuru?.some((ag: any) => 
           ag.status && ag.status !== 'BELUM_TAP' && ag.status !== 'BELUM_HADIR' && ag.status !== 'ALPA' && ag.status !== 'MENDATANG'
-        ));
+        )
+      );
 
       if (!hasTeacherCheckInOrPhoto) {
-        throw new Error('Sesi KBM belum dibuka oleh Guru atau Petugas Kelas. Silakan buka sesi terlebih dahulu (ambil Foto Guru).');
+        throw new Error('Sesi KBM belum dibuka oleh Guru atau Petugas Kelas. Silakan buka sesi terlebih dahulu (ambil Foto Guru / Buka Sesi Kelas).');
       }
     }
 
@@ -205,8 +208,8 @@ export class SesiTapEngineService {
     // 🛡️ 2. Time-Window Validation:
     // Cegah siswa/petugas mengabsenkan sesi jam siang/sore di pagi hari sekaligus.
     // Presensi HADIR hanya diizinkan mulai dari 15 menit sebelum waktu_mulai sesi.
-    // Bypass: Operasi sistem (GATE_PROPAGATION, AUTO_PULL), atau status non-HADIR (IZIN, SAKIT, DISPEN).
-    if (!isSystemOp && status === 'HADIR' && sesi.waktu_mulai) {
+    // Bypass: Jika sesi SUDAH DIBUKA RESMI ('BERLANGSUNG'), operasi sistem (GATE_PROPAGATION, AUTO_PULL), atau status non-HADIR (IZIN, SAKIT, DISPEN).
+    if (!isSystemOp && status === 'HADIR' && sesi.status !== 'BERLANGSUNG' && sesi.waktu_mulai) {
       const tz = await getTenantTimezone(tenantId);
       const tzLabel = getTimezoneLabel(tz);
       const EARLY_TOLERANCE_MS = 15 * 60 * 1000; // 15 menit sebelum jam mulai

@@ -374,11 +374,13 @@ export function SesiAttendanceList({ records, sesi, sesiId, isReportMode = false
   const effectiveSesiId = sesiId || sesi?.id;
 
   const isSessionOpen = Boolean(
-    (sesi as any)?.isLive ||
     sesi?.status === 'BERLANGSUNG' ||
     (sesi as any)?.status === 'BERLANGSUNG' ||
     sesi?.foto_kegiatan ||
     (sesi as any)?.foto_masuk ||
+    (sesi as any)?.opened_by_petugas ||
+    (sesi as any)?.absenGuru?.status === 'HADIR' ||
+    (sesi as any)?.AbsenGuru?.[0]?.status === 'HADIR' ||
     (sesi?.guru_status && !['BELUM_TAP', 'BELUM_HADIR', 'ALPA', 'MENDATANG'].includes(sesi?.guru_status))
   );
 
