@@ -100,7 +100,12 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearch = useDebounce(searchTerm, 500);
+  const debouncedSearch = useDebounce(searchTerm, 400);
+
+  // Reset pagination saat search term berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
   const [selectedTahunPelajaranId, setSelectedTahunPelajaranId] = useState<string>('');
   const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
 
@@ -612,8 +617,19 @@ export default React.memo(function PelanggaranPage({ hideLayout = false }: Pelan
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           aria-label="Cari Siswa atau Kategori"
-          className="w-48 h-9 pl-9 text-[11px] font-medium rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm"
+          className="w-48 h-9 pl-9 pr-8 text-[11px] font-medium rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm"
         />
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={() => setSearchTerm('')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            title="Hapus pencarian"
+            aria-label="Hapus kata kunci pencarian"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
       <Button
         variant="toolbarPrimary"

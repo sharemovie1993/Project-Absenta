@@ -13,7 +13,8 @@ import {
   RefreshCw, 
   Download, 
   Upload,
-  AlertCircle 
+  AlertCircle,
+  X 
 } from 'lucide-react';
 import { 
   Button, 
@@ -66,11 +67,16 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
   }, [queryClient]);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 400);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState('1');
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // Reset pagination saat search term berubah
+  useEffect(() => {
+    setCurrentPage(1);
+    setPageInput('1');
+  }, [debouncedSearchTerm]);
   
   const [deleting, setDeleting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -366,8 +372,19 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
             aria-label="Cari Jurusan"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 shadow-sm pl-9"
+            className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 shadow-sm pl-9 pr-9"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+              title="Hapus pencarian"
+              aria-label="Hapus kata kunci pencarian"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
       
@@ -384,8 +401,19 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
                   aria-label="Cari jurusan"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                  className="pl-10 pr-9 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                 />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                    title="Hapus pencarian"
+                    aria-label="Hapus kata kunci pencarian"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
 
               {/* Action Buttons on Mobile */}

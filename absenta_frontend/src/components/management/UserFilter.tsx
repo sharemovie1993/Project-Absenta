@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
-import { Button, Input, SearchableSelect } from '../ui';
+import { Button, Input, SearchableSelect, DebouncedSearchInput } from '../ui';
 import { getRoles, getTenants, type RoleItem, type TenantItem } from '../../api/user.api';
 import { useAuthStore } from '../../store/authStore';
 import { isSystemSuperAdmin } from '../../utils/rbac';
@@ -77,14 +77,14 @@ const UserFilter: React.FC<UserFilterProps> = ({
     <div className="bg-transparent p-2 space-y-2">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         <div className="w-full">
-          <Input
-            type="text"
+          <DebouncedSearchInput
             placeholder="Cari nama, email, atau NIP..."
             aria-label="Cari Nama atau Email Pengguna"
             value={filters.search}
-            onChange={(e) => handleFilterChange('search', e.target.value)}
-            leftIcon={<Search className="h-3.5 w-3.5 text-gray-400" />}
-            className="h-9 text-[11px]"
+            onChange={(val) => handleFilterChange('search', val)}
+            size="sm"
+            className="w-full"
+            inputClassName="h-9 text-[11px]"
           />
         </div>
 

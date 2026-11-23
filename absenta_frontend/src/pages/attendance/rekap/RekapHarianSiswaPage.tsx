@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { z } from 'zod';
 import { SectionCard, Button, Input, Badge, Loader, Alert, AlertDescription, Table } from '../../../components/ui';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
@@ -107,6 +107,7 @@ export default React.memo(function RekapHarianSiswaPage() {
       return res.data as RekapHarianResponse || null;
     },
     enabled: !!siswaId && !!tanggal && !isLocked,
+    placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000
   });
   const data = rekapQuery.data || null;
@@ -201,7 +202,7 @@ export default React.memo(function RekapHarianSiswaPage() {
     label: 'Harian Siswa',
     path: '/attendance/rekap/siswa-harian'
   }], []);
-  if (loading) {
+  if (loading && !data) {
     return <div className="flex justify-center items-center py-20">
         <Loader size="lg" />
       </div>;

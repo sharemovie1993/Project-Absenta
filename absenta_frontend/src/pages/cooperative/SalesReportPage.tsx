@@ -8,7 +8,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../lib/axiosInstance';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { SectionCard, Table, Button, Badge } from '../../components/ui';
+import { SectionCard, Table, Button, Badge, DebouncedSearchInput } from '../../components/ui';
 import { AnalyticsCard } from '../../components/ui/AnalyticsCard';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
@@ -631,18 +631,19 @@ const SalesReportPage: React.FC<SalesReportPageProps> = React.memo(({ hideLayout
                 {activeTab === 'transactions' && (
                   <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                      <div className="relative flex-1 max-w-xs">
-                        <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
-                        <input
-                          type="text"
+                      <div className="flex-1 max-w-xs">
+                        <DebouncedSearchInput
+                          placeholder="Cari ID struk atau nama..."
                           aria-label="Cari struk atau nama pelanggan"
                           value={search}
-                          onChange={(e) => {
-                            setSearch(e.target.value);
+                          onChange={(val) => {
+                            setSearch(val);
                             setPage(1);
                           }}
-                          placeholder="Cari ID struk atau nama..."
-                          className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                          size="sm"
+                          isLoading={transactionsQuery.isLoading || transactionsQuery.isFetching}
+                          className="w-full"
+                          inputClassName="h-9 text-xs rounded-xl"
                         />
                       </div>
                       <span className="text-xs text-slate-500 dark:text-slate-400">

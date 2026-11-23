@@ -12,7 +12,8 @@ import {
   Upload,
   AlertCircle,
   Layers,
-  GraduationCap
+  GraduationCap,
+  X
 } from 'lucide-react';
 import { 
   Table, 
@@ -66,7 +67,12 @@ const MapelList = React.memo<MapelListProps>(({
 
   const confirm = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const debouncedSearchTerm = useDebounce(searchTerm, 400);
+
+  // Reset pagination saat search term berubah
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm]);
   const [filterTingkat, setFilterTingkat] = useState<string>('ALL');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -397,8 +403,19 @@ const MapelList = React.memo<MapelListProps>(({
               aria-label="Cari Mata Pelajaran"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-9 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
+              className="w-full h-9 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9 pr-9"
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                title="Hapus pencarian"
+                aria-label="Hapus kata kunci pencarian"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
           <div className="w-full md:w-48">
             <SearchableSelect

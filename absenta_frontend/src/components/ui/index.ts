@@ -2,6 +2,7 @@ export { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './
 export { default as Button } from './Button';
 export { default as Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './Card';
 export { default as Input } from './Input';
+export { default as DebouncedSearchInput, type DebouncedSearchInputProps } from './DebouncedSearchInput';
 export { default as ThemeToggle } from './ThemeToggle';
 
 // New UI Components

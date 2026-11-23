@@ -158,6 +158,12 @@ export class CommunicationService {
         status: t.status,
         is_confidential: t.is_confidential,
         context_ref: t.context_ref,
+        created_by: t.created_by_id,
+        creator: t.Creator ? {
+          id: t.Creator.id,
+          name: t.Creator.full_name,
+          role: t.Creator.Role?.name || 'ADMIN'
+        } : null,
         created_at: t.created_at,
         updated_at: t.updated_at,
         last_message: lastMessage?.content || null,
@@ -269,6 +275,11 @@ export class CommunicationService {
         status: thread.status,
         is_confidential: thread.is_confidential,
         context_ref: thread.context_ref,
+        created_by: thread.created_by_id,
+        creator: thread.Creator ? {
+          id: thread.Creator.id,
+          name: thread.Creator.full_name
+        } : null,
         created_at: thread.created_at,
         updated_at: thread.updated_at,
         participants: (thread.Participants || []).map((p: any) => ({
@@ -296,7 +307,7 @@ export class CommunicationService {
   }
 
   /**
-   * 3. Buat percakapan baru (Direct Chat atau Disposisi Tugas)
+   * 3. Buat percakapan baru (Direct Chat atau Disposisi Tugas) dengan Penegakan Batasan Role
    */
   async createThread(tenantId: string, creatorId: string, dto: CreateThreadDto, io?: any) {
     const targetUserIds = Array.from(new Set(dto.targetUserIds.filter(id => id && id !== creatorId)));
@@ -305,7 +316,37 @@ export class CommunicationService {
       throw new Error('Penerima percakapan wajib ditentukan minimal 1 orang.');
     }
 
-    const type = dto.type || (targetUserIds.length === 1 && !dto.title ? InternalThreadType.DIRECT : InternalThreadType.DISPOSISI);
+    const creator = await prisma.user.findUnique({
+      where: { id: creatorId },
+      include: { Role: { select: { name: true } } },
+    });
+    const creatorRole = (creator?.Role?.name || 'GURU').toUpperCase();
+
+    // ── PENEGAKAN BATASAN ROLE SISWA (Anti-Cheating CBT & Anti-Disposisi) ──
+    if (creatorRole === 'SISWA') {
+      if (dto.type === InternalThreadType.DISPOSISI || targetUserIds.length > 1) {
+        throw new Error('Akses ditolak: Siswa hanya diperkenankan membuat obrolan langsung (1-on-1) dengan Guru/Staf.');
+      }
+
+      const targetUsers = await prisma.user.findMany({
+        where: { id: { in: targetUserIds } },
+        include: { Role: { select: { name: true } } },
+      });
+
+      const hasStudentTarget = targetUsers.some(
+        (u) => (u.Role?.name || '').toUpperCase() === 'SISWA'
+      );
+      if (hasStudentTarget) {
+        throw new Error(
+          'Akses ditolak: Siswa tidak diperkenankan mengirim pesan ke sesama siswa. Anda hanya dapat menghubungi Wali Kelas, Guru Mapel, Guru BK, atau Admin Sekolah.'
+        );
+      }
+    }
+
+    const type =
+      creatorRole === 'SISWA'
+        ? InternalThreadType.DIRECT
+        : dto.type || (targetUserIds.length === 1 && !dto.title ? InternalThreadType.DIRECT : InternalThreadType.DISPOSISI);
 
     // Jika DIRECT chat 1-on-1, periksa apakah thread sebelumnya sudah pernah dibuat
     if (type === InternalThreadType.DIRECT && targetUserIds.length === 1) {
@@ -404,6 +445,35 @@ export class CommunicationService {
 
     if (!participant) {
       throw new Error('Anda bukan peserta dalam percakapan ini.');
+    }
+
+    // ── PENEGAKAN SALURAN SIARAN SATU ARAH (One-Way Broadcast Guard) ──
+    const [threadInfo, senderInfo] = await Promise.all([
+      (prisma as any).internalThread.findUnique({
+        where: { id: threadId },
+        select: { id: true, title: true, created_by_id: true, context_ref: true },
+      }),
+      prisma.user.findUnique({
+        where: { id: senderId },
+        include: { Role: { select: { name: true } } },
+      }),
+    ]);
+
+    const isBroadcastThread =
+      Boolean(threadInfo?.context_ref?.isBroadcast) ||
+      String(threadInfo?.title || '').startsWith('📢');
+
+    if (isBroadcastThread) {
+      const senderRole = (senderInfo?.Role?.name || '').toUpperCase();
+      const isBroadcastOwnerOrAdmin =
+        threadInfo?.created_by_id === senderId ||
+        ['SUPERADMIN', 'ADMIN', 'KEPALA_SEKOLAH'].includes(senderRole);
+
+      if (!isBroadcastOwnerOrAdmin) {
+        throw new Error(
+          'Saluran Siaran Resmi bersifat satu arah (Read-Only). Gunakan tombol "Balas Pribadi ke Pengirim" untuk menghubungi pengirim secara langsung.'
+        );
+      }
     }
 
     // Simpan pesan
@@ -617,6 +687,30 @@ export class CommunicationService {
         }
       });
 
+      // 4. Admin / Operator Sekolah & Kepala Sekolah
+      const schoolAdmins = await prisma.user.findMany({
+        where: {
+          tenant_id: tenantId,
+          status: 'ACTIVE',
+          Role: { name: { in: ['ADMIN', 'KEPALA_SEKOLAH', 'TU'] } },
+        },
+        include: { Role: { select: { name: true } } },
+        take: 10,
+      });
+
+      const existingIds = new Set(contacts.map((c) => c.id));
+      schoolAdmins.forEach((adm: any) => {
+        if (!existingIds.has(adm.id)) {
+          existingIds.add(adm.id);
+          contacts.push({
+            id: adm.id,
+            name: adm.full_name,
+            role_label: adm.Role?.name === 'KEPALA_SEKOLAH' ? 'Kepala Sekolah' : 'Administrator / Operator Sekolah',
+            group: 'Layanan Administrasi & Helpdesk',
+          });
+        }
+      });
+
       return contacts;
     }
 
@@ -708,11 +802,46 @@ export class CommunicationService {
 
     const sender = await prisma.user.findUnique({
       where: { id: senderId },
-      include: { Role: { select: { name: true } } },
+      include: {
+        Role: { select: { name: true } },
+        Guru: { select: { jabatan: true } },
+      },
     });
 
     const senderName = sender?.full_name || 'Administrator';
-    const senderRole = sender?.Role?.name || 'ADMIN';
+    const senderRole = (sender?.Role?.name || 'ADMIN').toUpperCase();
+
+    // ── PENEGAKAN BATASAN ROLE PENGIRIM BROADCAST ──
+    if (senderRole === 'SISWA') {
+      throw new Error('Akses ditolak: Siswa tidak diperkenankan mengirim siaran broadcast.');
+    }
+
+    const isTopAdmin = ['SUPERADMIN', 'ADMIN', 'KEPALA_SEKOLAH', 'TU'].includes(senderRole);
+    if (!isTopAdmin) {
+      // Jika role GURU, periksa apakah memiliki jabatan struktural (Waka / Kurikulum / Kesiswaan / Kaprog)
+      const guruJabatan = String((sender as any)?.Guru?.jabatan || '').toUpperCase();
+      const structuralTokens = ['KEPALA', 'WAKA', 'KURIKULUM', 'KESISWAAN', 'HUMAS', 'SARPRAS', 'KAPROG', 'KOORDINATOR'];
+      let hasStructuralRole = structuralTokens.some((tok) => guruJabatan.includes(tok));
+
+      if (!hasStructuralRole) {
+        try {
+          const activeAssigns = await (prisma as any).organizationalAssignment.findMany({
+            where: { user_id: senderId, is_active: true },
+            include: { position: { select: { code: true, name: true } } },
+          });
+          hasStructuralRole = (activeAssigns || []).some((a: any) => {
+            const code = String(a?.position?.code || a?.position?.name || '').toUpperCase();
+            return structuralTokens.some((tok) => code.includes(tok));
+          });
+        } catch {}
+      }
+
+      if (!hasStructuralRole) {
+        throw new Error(
+          'Akses ditolak: Hanya Administrator, Kepala Sekolah, TU, atau Pejabat Struktural (Waka/Kaprog) yang dapat mengirim siaran broadcast massal.'
+        );
+      }
+    }
 
     // Kumpulkan daftar user penerima berdasarkan targetAudience
     let targetUserIds: string[] = [];

@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useCallback, useMemo, lazy, Suspense, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/Card';
 import { Table, type Column } from '@/components/ui/Table';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { DebouncedSearchInput } from '@/components/ui/DebouncedSearchInput';
 import { Label } from '@/components/ui/Label';
 import { Loader } from '@/components/ui/Loader';
 import { Badge } from '@/components/ui/Badge';
@@ -36,7 +37,11 @@ export const SuratMasukView: React.FC<UniversalSuratMasukViewProps> = React.memo
   const [sortBy, setSortBy] = useState('tanggal_masuk');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 500);
+
+  // Reset pagination saat search berubah
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -77,12 +82,12 @@ export const SuratMasukView: React.FC<UniversalSuratMasukViewProps> = React.memo
   }, []);
 
   const suratMasukQuery = useQuery({
-    queryKey: ['surat-masuk-list', page, limit, debouncedSearch, statusFilter],
+    queryKey: ['surat-masuk-list', page, limit, search, statusFilter],
     queryFn: async () => {
       const res = await correspondenceApi.getSuratMasuk({
         page,
         limit,
-        search: debouncedSearch,
+        search,
         status: statusFilter || undefined,
       });
       return {
@@ -449,13 +454,15 @@ export const SuratMasukView: React.FC<UniversalSuratMasukViewProps> = React.memo
       <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-2xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 flex-1">
-            <div className="relative max-w-sm flex-1">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <Input
+            <div className="max-w-sm flex-1">
+              <DebouncedSearchInput
                 placeholder="Cari nomor, perihal, atau pengirim..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+                onChange={setSearch}
+                size="md"
+                isLoading={suratMasukQuery.isLoading || suratMasukQuery.isFetching}
+                className="w-full"
+                inputClassName="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
               />
             </div>
             <select

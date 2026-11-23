@@ -20,7 +20,7 @@ import { Badge } from '../ui/Badge';
 import { Label } from '../ui/Label';
 import { sarprasApi } from '../../api/sarpras.api';
 import type { Asset } from '../../api/sarpras.api';
-import { Loader, ConfirmDialog } from '../ui';
+import { Loader, ConfirmDialog, DebouncedSearchInput } from '../ui';
 import Tooltip from '../ui/Tooltip';
 import { AssetDetailModal } from './AssetDetailModal';
 import { cn } from '../../lib/utils';
@@ -45,7 +45,6 @@ const AssetList: React.FC<AssetListProps> = React.memo(({ onEdit, onView, onAdd,
   const { subscription } = useAuthStore();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -67,11 +66,10 @@ const AssetList: React.FC<AssetListProps> = React.memo(({ onEdit, onView, onAdd,
   const { options: categoryOptions } = useSarprasKategoriOptions();
   const { options: locationOptions } = useRuanganOptions();
 
-  // Debounce search
+  // Reset page saat debouncedSearch berubah
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 500);
-    return () => clearTimeout(timer);
-  }, [search]);
+    setPage(1);
+  }, [debouncedSearch]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['sarpras-assets', page, limit, debouncedSearch, filterCategory, filterLocation, filterCondition, refreshTrigger],
@@ -294,14 +292,15 @@ const AssetList: React.FC<AssetListProps> = React.memo(({ onEdit, onView, onAdd,
     <div className="space-y-4">
       {/* Filters & Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-        <div className="relative w-full sm:w-96">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
+        <div className="w-full sm:w-96">
+          <DebouncedSearchInput
             placeholder="Cari aset, kode, atau brand..."
-            className="pl-10 bg-slate-50 dark:bg-slate-800/50 border-none rounded-lg"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            className="w-full"
+            inputClassName="bg-slate-50 dark:bg-slate-800/50 border-none rounded-lg"
+            value={debouncedSearch}
+            onChange={setDebouncedSearch}
             aria-label="Cari Aset"
+            isLoading={isLoading}
           />
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">

@@ -91,7 +91,13 @@ const KelasList = React.memo<KelasListProps>(({
   }, [isMobile]);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const debouncedSearchTerm = useDebounce(searchTerm, 400);
+
+  // Reset pagination saat search term berubah
+  useEffect(() => {
+    setCurrentPage(1);
+    setPageInput('1');
+  }, [debouncedSearchTerm]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [pageInput, setPageInput] = useState('1');
@@ -536,8 +542,19 @@ const KelasList = React.memo<KelasListProps>(({
             aria-label="Cari Kelas"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
+            className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9 pr-9"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+              title="Hapus pencarian"
+              aria-label="Hapus kata kunci pencarian"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <div className="w-full md:w-52">
           <SearchableSelect 
@@ -713,8 +730,19 @@ const KelasList = React.memo<KelasListProps>(({
                     aria-label="Cari kelas"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                    className="pl-10 pr-9 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                   />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                      title="Hapus pencarian"
+                      aria-label="Hapus kata kunci pencarian"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
