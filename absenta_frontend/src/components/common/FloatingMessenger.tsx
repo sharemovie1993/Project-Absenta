@@ -298,8 +298,6 @@ export default function FloatingMessenger() {
           content: data?.message?.content || '',
           isBroadcast: true,
         });
-        // Auto-open Messenger window (menampilkan daftar chat vertikal dengan siaran terbaru di paling atas)
-        setIsOpen(true);
       }
     };
 
@@ -326,8 +324,6 @@ export default function FloatingMessenger() {
           content: data?.message?.content || '',
           isBroadcast: Boolean(data?.audienceLabel),
         });
-        // Auto-open Messenger dock when a new message arrives
-        setIsOpen(true);
       }
     };
 
@@ -391,10 +387,22 @@ export default function FloatingMessenger() {
 
   return (
     <>
+      {/* Backdrop Blur saat Floating Messenger dibuka agar fokus ke jendela chat */}
+      {isOpen && (
+        <div
+          onClick={() => {
+            setIsOpen(false);
+            setIncomingBanner(null);
+          }}
+          className="fixed inset-0 z-40 bg-slate-900/35 backdrop-blur-xs transition-opacity duration-200"
+          aria-hidden="true"
+        />
+      )}
+
       <div ref={messengerContainerRef} className="fixed bottom-20 right-4 lg:bottom-4 lg:right-6 z-50 flex flex-col items-end">
-        {/* ── POPUP MESSENGER WINDOW (WhatsApp Style: List View -> Click Row to Open Chat) ── */}
+        {/* ── POPUP MESSENGER WINDOW (Full-Page di HP, Floating Blur Backdrop di Desktop) ── */}
         {isOpen && (
-          <div className="mb-2.5 w-[345px] sm:w-[385px] h-[500px] bg-white dark:bg-[#111b21] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div className="fixed inset-0 sm:static sm:mb-2.5 w-full h-full sm:w-[390px] sm:h-[520px] bg-white dark:bg-[#111b21] rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in sm:slide-in-from-bottom-4 duration-200 z-50">
             {/* Messenger Top Header Bar */}
             <div className="px-3.5 py-2.5 bg-gradient-to-r from-[#075e54] to-[#008069] dark:from-[#202c33] dark:to-[#111b21] text-white flex items-center justify-between shrink-0 shadow-xs">
               <div className="flex items-center gap-2 min-w-0">
@@ -887,7 +895,7 @@ export default function FloatingMessenger() {
         <button
           type="button"
           onClick={() => setIsOpen(prev => !prev)}
-          className="relative flex items-center gap-2.5 px-3.5 py-2.5 rounded-full bg-gradient-to-r from-[#008069] to-[#25d366] hover:from-[#075e54] hover:to-[#20bd5a] text-white shadow-xl hover:shadow-2xl hover:scale-[1.03] active:scale-95 transition-all cursor-pointer border border-white/20"
+          className={`relative ${isOpen ? 'hidden sm:flex' : 'flex'} items-center gap-2.5 px-3.5 py-2.5 rounded-full bg-gradient-to-r from-[#008069] to-[#25d366] hover:from-[#075e54] hover:to-[#20bd5a] text-white shadow-xl hover:shadow-2xl hover:scale-[1.03] active:scale-95 transition-all cursor-pointer border border-white/20`}
           title="Buka Messenger Sekolah"
         >
           <span className="relative flex items-center justify-center">
