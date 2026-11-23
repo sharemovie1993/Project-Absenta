@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   MapPin,
@@ -15,6 +15,7 @@ import {
   FolderTree,
   X,
   ArrowLeft,
+  Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/axiosInstance';
@@ -94,6 +95,10 @@ export const WilayahPresetsPage: React.FC = React.memo(() => {
   // Modal Create / Edit
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingItem, setEditingItem] = useState<WilayahItem | null>(null);
+  const [modalProvKode, setModalProvKode] = useState<string>('');
+  const [modalKabKode, setModalKabKode] = useState<string>('');
+  const [modalKecKode, setModalKecKode] = useState<string>('');
+  const [isGeneratingCode, setIsGeneratingCode] = useState<boolean>(false);
   const [formData, setFormData] = useState<{
     kode: string;
     nama: string;
@@ -146,6 +151,66 @@ export const WilayahPresetsPage: React.FC = React.memo(() => {
     enabled: Boolean(selectedKabKode),
     staleTime: 5 * 60 * 1000,
   });
+
+  // Cascading Options inside Modal Form
+  const modalKabupatenOptionsQuery = useQuery<WilayahOption[]>({
+    queryKey: ['wilayah-modal-kabupaten', modalProvKode],
+    queryFn: async () => {
+      const res = await api.get('/wilayah/kabupaten', { params: { provinsi_kode: modalProvKode } });
+      return res.data?.data || [];
+    },
+    enabled: isModalOpen && Boolean(modalProvKode),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const modalKecamatanOptionsQuery = useQuery<WilayahOption[]>({
+    queryKey: ['wilayah-modal-kecamatan', modalKabKode],
+    queryFn: async () => {
+      const res = await api.get('/wilayah/kecamatan', { params: { kabupaten_kode: modalKabKode } });
+      return res.data?.data || [];
+    },
+    enabled: isModalOpen && Boolean(modalKabKode),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const fetchNextCode = useCallback(async (tingkat: number, parentKode: string) => {
+    if (tingkat > 1 && !parentKode) return;
+    setIsGeneratingCode(true);
+    try {
+      const res = await api.get('/wilayah/next-code', {
+        params: {
+          tingkat,
+          parent_kode: tingkat > 1 ? parentKode : undefined,
+        },
+      });
+      const suggested = res.data?.data?.next_kode;
+      if (suggested) {
+        setFormData((prev) => ({
+          ...prev,
+          kode: suggested,
+        }));
+      }
+    } catch {
+      // Fallback prefix if endpoint fails
+      if (parentKode) {
+        setFormData((prev) => ({ ...prev, kode: prev.kode || parentKode }));
+      }
+    } finally {
+      setIsGeneratingCode(false);
+    }
+  }, []);
+
+  // Auto-generate next code in Create mode whenever tingkat or parent_kode changes
+  useEffect(() => {
+    if (!isModalOpen || editingItem) return;
+    if (formData.tingkat === 1) {
+      fetchNextCode(1, '');
+    } else if (formData.parent_kode) {
+      fetchNextCode(formData.tingkat, formData.parent_kode);
+    } else {
+      setFormData((prev) => ({ ...prev, kode: '' }));
+    }
+  }, [isModalOpen, editingItem, formData.tingkat, formData.parent_kode, fetchNextCode]);
 
   // Effective parent_kode & tingkat based on drill-down or cascading dropdowns
   const effectiveParentKode = useMemo(() => {
@@ -255,34 +320,54 @@ export const WilayahPresetsPage: React.FC = React.memo(() => {
     },
   });
 
+  // Helper to derive cascading codes (Prov: 2 digit, Kab: 4 digit, Kec: 7 digit) from any parent_kode
+  const hydrateModalHierarchyFromParentKode = useCallback((parentKode: string, targetTingkat: number) => {
+    const clean = (parentKode || '').replace(/\D/g, '');
+    const prov = clean.length >= 2 ? clean.slice(0, 2) : selectedProvKode || '';
+    const kab = clean.length >= 4 ? clean.slice(0, 4) : selectedKabKode || '';
+    const kec = clean.length >= 6 ? clean : selectedKecKode || '';
+
+    setModalProvKode(targetTingkat >= 2 ? prov : '');
+    setModalKabKode(targetTingkat >= 3 ? kab : '');
+    setModalKecKode(targetTingkat >= 4 ? kec : '');
+  }, [selectedProvKode, selectedKabKode, selectedKecKode]);
+
   // Handlers
   const handleOpenCreate = useCallback(
     (parentItem?: WilayahItem) => {
       setEditingItem(null);
       if (parentItem) {
         const childTingkat = Math.min(4, parentItem.tingkat + 1);
+        hydrateModalHierarchyFromParentKode(parentItem.kode, childTingkat);
         setFormData({
-          kode: `${parentItem.kode}`,
+          kode: '',
           nama: '',
           tingkat: childTingkat,
           parent_kode: parentItem.kode,
         });
       } else {
         const defaultTingkat = effectiveTingkat ? Number(effectiveTingkat) : 1;
+        let inferredParent = '';
+        if (defaultTingkat === 2) inferredParent = selectedProvKode || (effectiveParentKode.length === 2 ? effectiveParentKode : '');
+        else if (defaultTingkat === 3) inferredParent = selectedKabKode || (effectiveParentKode.length === 4 ? effectiveParentKode : '');
+        else if (defaultTingkat === 4) inferredParent = selectedKecKode || (effectiveParentKode.length >= 6 ? effectiveParentKode : '');
+
+        hydrateModalHierarchyFromParentKode(inferredParent || effectiveParentKode, defaultTingkat);
         setFormData({
-          kode: effectiveParentKode || '',
+          kode: '',
           nama: '',
           tingkat: defaultTingkat,
-          parent_kode: defaultTingkat > 1 ? effectiveParentKode : '',
+          parent_kode: defaultTingkat > 1 ? inferredParent : '',
         });
       }
       setIsModalOpen(true);
     },
-    [effectiveTingkat, effectiveParentKode]
+    [effectiveTingkat, effectiveParentKode, selectedProvKode, selectedKabKode, selectedKecKode, hydrateModalHierarchyFromParentKode]
   );
 
   const handleOpenEdit = useCallback((item: WilayahItem) => {
     setEditingItem(item);
+    hydrateModalHierarchyFromParentKode(item.parent_kode || '', item.tingkat);
     setFormData({
       kode: item.kode,
       nama: item.nama,
@@ -290,7 +375,7 @@ export const WilayahPresetsPage: React.FC = React.memo(() => {
       parent_kode: item.parent_kode || '',
     });
     setIsModalOpen(true);
-  }, []);
+  }, [hydrateModalHierarchyFromParentKode]);
 
   const handleDelete = useCallback(
     async (item: WilayahItem) => {
@@ -788,10 +873,16 @@ export const WilayahPresetsPage: React.FC = React.memo(() => {
                 disabled={Boolean(editingItem)}
                 onChange={(e) => {
                   const newTingkat = Number(e.target.value);
+                  let nextParent = '';
+                  if (newTingkat === 2) nextParent = modalProvKode;
+                  else if (newTingkat === 3) nextParent = modalKabKode;
+                  else if (newTingkat === 4) nextParent = modalKecKode;
+
                   setFormData((prev) => ({
                     ...prev,
                     tingkat: newTingkat,
-                    parent_kode: newTingkat === 1 ? '' : prev.parent_kode,
+                    parent_kode: nextParent,
+                    kode: '',
                   }));
                 }}
                 className="w-full h-10 px-3 text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl"
@@ -803,40 +894,154 @@ export const WilayahPresetsPage: React.FC = React.memo(() => {
               </select>
             </div>
 
-            {formData.tingkat > 1 && (
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Kode Wilayah Induk (Parent Kode) <span className="text-rose-500">*</span>
-                </label>
-                <Input
-                  value={formData.parent_kode}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, parent_kode: e.target.value }))}
-                  placeholder={
-                    formData.tingkat === 2
-                      ? 'Contoh: 32 (Kode Provinsi Jawa Barat)'
-                      : formData.tingkat === 3
-                      ? 'Contoh: 3214 (Kode Kab. Purwakarta)'
-                      : 'Contoh: 3214050 (Kode Kec. Plered)'
-                  }
-                  required
-                />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Masukkan kode wilayah induk tingkat {formData.tingkat - 1} ({TINGKAT_META[formData.tingkat - 1]?.label}).
-                </p>
+            {/* Automated Cascading Parent Selectors */}
+            {formData.tingkat >= 2 && (
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                    Hierarki Wilayah Induk (Otomatis)
+                  </span>
+                  {formData.parent_kode && (
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                      Parent Kode: {formData.parent_kode}
+                    </span>
+                  )}
+                </div>
+
+                {/* Dropdown 1: Provinsi (Shown for Tingkat 2, 3, 4) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {formData.tingkat === 2 ? 'Pilih Provinsi Induk' : '1. Pilih Provinsi'}{' '}
+                    <span className="text-rose-500">*</span>
+                  </label>
+                  <SearchableSelect
+                    id="modal-wilayah-prov"
+                    value={modalProvKode}
+                    onValueChange={(val) => {
+                      const nextProv = val || '';
+                      setModalProvKode(nextProv);
+                      setModalKabKode('');
+                      setModalKecKode('');
+                      setFormData((prev) => ({
+                        ...prev,
+                        parent_kode: prev.tingkat === 2 ? nextProv : '',
+                        kode: prev.tingkat === 2 ? prev.kode : '',
+                      }));
+                    }}
+                    options={(provinsiOptionsQuery.data || []).map((p) => ({
+                      label: `${p.kode} - ${p.label}`,
+                      value: p.kode,
+                    }))}
+                    placeholder="Cari & pilih Provinsi..."
+                  />
+                </div>
+
+                {/* Dropdown 2: Kabupaten / Kota (Shown for Tingkat 3, 4) */}
+                {formData.tingkat >= 3 && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      {formData.tingkat === 3 ? '2. Pilih Kabupaten / Kota Induk' : '2. Pilih Kabupaten / Kota'}{' '}
+                      <span className="text-rose-500">*</span>
+                    </label>
+                    <SearchableSelect
+                      id="modal-wilayah-kab"
+                      value={modalKabKode}
+                      disabled={!modalProvKode}
+                      onValueChange={(val) => {
+                        const nextKab = val || '';
+                        setModalKabKode(nextKab);
+                        setModalKecKode('');
+                        setFormData((prev) => ({
+                          ...prev,
+                          parent_kode: prev.tingkat === 3 ? nextKab : '',
+                          kode: prev.tingkat === 3 ? prev.kode : '',
+                        }));
+                      }}
+                      options={(modalKabupatenOptionsQuery.data || []).map((k) => ({
+                        label: `${k.kode} - ${k.label}`,
+                        value: k.kode,
+                      }))}
+                      placeholder={
+                        !modalProvKode
+                          ? 'Pilih Provinsi terlebih dahulu...'
+                          : modalKabupatenOptionsQuery.isLoading
+                          ? 'Memuat Kabupaten/Kota...'
+                          : 'Cari & pilih Kabupaten/Kota...'
+                      }
+                    />
+                  </div>
+                )}
+
+                {/* Dropdown 3: Kecamatan (Shown for Tingkat 4) */}
+                {formData.tingkat === 4 && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      3. Pilih Kecamatan Induk <span className="text-rose-500">*</span>
+                    </label>
+                    <SearchableSelect
+                      id="modal-wilayah-kec"
+                      value={modalKecKode}
+                      disabled={!modalKabKode}
+                      onValueChange={(val) => {
+                        const nextKec = val || '';
+                        setModalKecKode(nextKec);
+                        setFormData((prev) => ({
+                          ...prev,
+                          parent_kode: nextKec,
+                        }));
+                      }}
+                      options={(modalKecamatanOptionsQuery.data || []).map((kc) => ({
+                        label: `${kc.kode} - ${kc.label}`,
+                        value: kc.kode,
+                      }))}
+                      placeholder={
+                        !modalKabKode
+                          ? 'Pilih Kabupaten/Kota terlebih dahulu...'
+                          : modalKecamatanOptionsQuery.isLoading
+                          ? 'Memuat Kecamatan...'
+                          : 'Cari & pilih Kecamatan Induk...'
+                      }
+                    />
+                  </div>
+                )}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Kode Wilayah (Kemendagri / BPS) <span className="text-rose-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Kode Wilayah (Kemendagri / BPS) <span className="text-rose-500">*</span>
+                </label>
+                {!editingItem && (
+                  <button
+                    type="button"
+                    disabled={isGeneratingCode || (formData.tingkat > 1 && !formData.parent_kode)}
+                    onClick={() => fetchNextCode(formData.tingkat, formData.parent_kode)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 disabled:opacity-40 cursor-pointer"
+                  >
+                    <Sparkles size={12} className={cn(isGeneratingCode && 'animate-spin')} />
+                    <span>{isGeneratingCode ? 'Menghitung kode...' : 'Generate Kode Otomatis'}</span>
+                  </button>
+                )}
+              </div>
               <Input
                 value={formData.kode}
                 disabled={Boolean(editingItem)}
                 onChange={(e) => setFormData((prev) => ({ ...prev, kode: e.target.value }))}
-                placeholder="Contoh: 32 / 3214 / 3214050 / 3214050001"
+                placeholder={
+                  isGeneratingCode
+                    ? 'Menghitung kode urut berikutnya...'
+                    : formData.tingkat > 1 && !formData.parent_kode
+                    ? `Pilih ${TINGKAT_META[formData.tingkat - 1]?.label} Induk di atas untuk auto-fill kode`
+                    : 'Contoh: 32 / 3214 / 3214050 / 3214050001'
+                }
                 required
               />
+              {!editingItem && (
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Kode wilayah terisi otomatis melanjutkan urutan kode terakhir di bawah induk terpilih (tetap dapat disesuaikan manual bila perlu).
+                </p>
+              )}
             </div>
 
             <div>
@@ -846,7 +1051,15 @@ export const WilayahPresetsPage: React.FC = React.memo(() => {
               <Input
                 value={formData.nama}
                 onChange={(e) => setFormData((prev) => ({ ...prev, nama: e.target.value }))}
-                placeholder="Contoh: JAWA BARAT / KABUPATEN PURWAKARTA / PLERED"
+                placeholder={
+                  formData.tingkat === 1
+                    ? 'Contoh: JAWA BARAT'
+                    : formData.tingkat === 2
+                    ? 'Contoh: KABUPATEN PURWAKARTA'
+                    : formData.tingkat === 3
+                    ? 'Contoh: PLERED'
+                    : 'Contoh: PLERED / BABAKANSARI'
+                }
                 required
               />
             </div>
@@ -863,7 +1076,7 @@ export const WilayahPresetsPage: React.FC = React.memo(() => {
               <Button
                 type="submit"
                 variant="primary"
-                disabled={saveMutation.isPending}
+                disabled={saveMutation.isPending || (formData.tingkat > 1 && !formData.parent_kode)}
                 className="rounded-xl text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
               >
                 {saveMutation.isPending ? 'Menyimpan...' : editingItem ? 'Simpan Perubahan' : 'Tambahkan Wilayah'}
