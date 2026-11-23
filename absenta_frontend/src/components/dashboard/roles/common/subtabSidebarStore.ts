@@ -86,7 +86,7 @@ export function checkScopeMatchesUrlTab(scope: string, currentTab: string): bool
     case 'satpam':
       return ['satpam', 'gerbang', 'ringkasan', 'kelola', 'scan', 'log', 'izin'].includes(currentTab);
     case 'koperasi':
-      return currentTab === 'koperasi';
+      return currentTab === 'koperasi' || currentTab === 'koperasi-saya' || !currentTab;
     case 'tu':
       return currentTab === 'tu' || currentTab === 'kepegawaian';
     case 'admin':

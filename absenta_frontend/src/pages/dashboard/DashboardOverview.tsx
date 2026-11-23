@@ -39,6 +39,7 @@ const PetugasDashboard = lazy(() => import("../../components/dashboard/roles/Pet
 const GerbangDashboard = lazy(() => import("../../components/dashboard/roles/GerbangDashboard").then(module => ({ default: module.GerbangDashboard })));
 const KepalaSekolahDashboard = lazy(() => import("../../components/dashboard/roles/KepalaSekolahDashboard").then(module => ({ default: module.KepalaSekolahDashboard })));
 const OrtuDashboard = lazy(() => import("../../apps/parent/pages/ParentDashboard"));
+const UniversalCoopMemberView = lazy(() => import("../../components/cooperative/dashboard/UniversalCoopMemberView").then(module => ({ default: module.UniversalCoopMemberView })));
 
 function LazyAttendanceChart({ data }: { data: ChartData | null }) {
   const [shouldRender, setShouldRender] = useState(false);
@@ -347,6 +348,13 @@ export default function DashboardOverview() {
     if (['ORTU', 'ORANG_TUA', 'PARENT', 'WALI_MURID'].includes(roleName || '')) {
        if (!views.find(v => v.id === 'ortu')) {
           views.push({ id: 'ortu', label: 'Dashboard Orang Tua', component: <OrtuDashboard /> });
+       }
+    }
+
+    // 6. ANGGOTA KOPERASI EKSTERNAL (Khusus pengguna pihak eksternal / mitra koperasi)
+    if (['ANGGOTA_KOPERASI_EXTERNAL', 'MEMBER_KOPERASI', 'ANGGOTA_KOPERASI'].includes((roleName || '').toUpperCase())) {
+       if (!views.find(v => v.id === 'coop_member')) {
+          views.push({ id: 'coop_member', label: 'Portal Anggota Koperasi', component: <UniversalCoopMemberView /> });
        }
     }
 

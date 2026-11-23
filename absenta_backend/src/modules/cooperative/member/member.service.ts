@@ -382,17 +382,20 @@ export class MemberService {
                         'cooperative.dashboard.view.overview',
                         'cooperative.announcements.view.list',
                         'cooperative.savings.view.history',
+                        'cooperative.savings.view.detail',
                         'cooperative.points.view',
+                        'cooperative.vouchers.redeem',
                         'cooperative.store.view.catalog',
                         'cooperative.loans.apply',
+                        'cooperative.loans.view.detail',
+                        'cooperative.rat.view',
+                        'cooperative.rat.vote',
+                        'cooperative.tickets.create',
+                        'cooperative.tickets.view.detail',
                         'notify.view.my',
                         'notify.view.preferences',
                         'notify.update.preferences',
                         'documents.view.list',
-                        'cooperative.savings.view.list',
-                        'cooperative.savings.view.detail',
-                        'cooperative.loans.view.list',
-                        'cooperative.loans.view.detail'
                     ];
 
                     const validPerms = await tx.permission.findMany({

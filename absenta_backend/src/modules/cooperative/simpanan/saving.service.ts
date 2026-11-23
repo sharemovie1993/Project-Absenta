@@ -39,7 +39,13 @@ export class SavingService {
     static async getSavings(tenantId: string, options?: { memberId?: string; userId?: string }) {
         const where: Record<string, unknown> = { member: { tenantId } };
         if (options?.memberId) where.memberId = options.memberId;
-        if (options?.userId) (where.member as Record<string, unknown>).userId = options.userId;
+        if (options?.userId) {
+            (where.member as Record<string, unknown>).OR = [
+                { userId: options.userId },
+                { Siswa: { user_id: options.userId } },
+                { Guru: { user_id: options.userId } },
+            ];
+        }
 
         let savings = await prisma.saving.findMany({
             where,
@@ -50,10 +56,19 @@ export class SavingService {
             },
         });
 
-        // Self-healing: jika query untuk memberId spesifik dan belum punya rekening simpanan, buatkan rekening default aktif
-        if (options?.memberId && savings.length === 0) {
+        // Self-healing: jika query untuk memberId atau userId spesifik dan belum punya rekening simpanan, buatkan rekening default aktif
+        if ((options?.memberId || options?.userId) && savings.length === 0) {
             const memberExists = await prisma.member.findFirst({
-                where: { id: options.memberId, tenantId }
+                where: options?.memberId
+                    ? { id: options.memberId, tenantId }
+                    : {
+                          tenantId,
+                          OR: [
+                              { userId: options?.userId },
+                              { Siswa: { user_id: options?.userId } },
+                              { Guru: { user_id: options?.userId } },
+                          ],
+                      },
             });
             if (memberExists) {
                 const { SavingCategoryService } = await import('./saving-category.service');

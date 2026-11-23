@@ -35,7 +35,11 @@ interface Announcement {
   createdAt: string;
 }
 
-const Announcements: React.FC = React.memo(() => {
+export interface AnnouncementsProps {
+  hideLayout?: boolean;
+}
+
+const Announcements: React.FC<AnnouncementsProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const confirm = useConfirm();
@@ -354,11 +358,11 @@ const Announcements: React.FC = React.memo(() => {
       featureName="Manajemen Pengumuman"
     >
       <AcademicPageLayout
-        title={layoutInfo.title}
-        description={layoutInfo.description}
+        title={hideLayout ? undefined : layoutInfo.title}
+        description={hideLayout ? undefined : layoutInfo.description}
         hardeningModuleKey="coop_announcements"
-        breadcrumbs={layoutInfo.breadcrumbs}
-        instruction={layoutInfo.instruction}
+        breadcrumbs={hideLayout ? undefined : layoutInfo.breadcrumbs}
+        instruction={hideLayout ? undefined : layoutInfo.instruction}
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0">
           {/* Tab Switcher for Pengurus */}

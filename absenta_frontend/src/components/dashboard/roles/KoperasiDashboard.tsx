@@ -472,6 +472,15 @@ export const KoperasiDashboard: React.FC<KoperasiDashboardProps> = () => {
             <div className="p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
               <button
                 type="button"
+                onClick={() => navigate('/dashboard?tab=koperasi-saya')}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
+                title="Buka Portal Koperasi Saya sebagai Anggota"
+              >
+                <ShieldCheck size={14} />
+                <span>Portal Anggota Saya</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => navigate('/cooperative/dashboard')}
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
                 title="Buka Mode TV Monitor Koperasi"

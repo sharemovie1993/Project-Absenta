@@ -392,24 +392,26 @@ export const SiswaDashboard: React.FC = () => {
   return (
     <div className="space-y-4 sm:space-y-5 pb-20 w-full max-w-full min-w-0">
       {/* 1. Universal Topbar Terkunci Ramping (Murni Judul + Kembali) */}
-      <UniversalEcosystemTopbar
-        ecosystem="siswa"
-        title={currentSubtabTitle}
-        icon={User}
-        onRefresh={handleManualRefresh}
-        isRefreshing={isRefreshing}
-        actions={
-          <button
-            type="button"
-            onClick={() => setShowDigitalCardModal(true)}
-            className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer shrink-0"
-            title="Buka Kartu Pelajar Digital"
-            aria-label="Kartu Digital"
-          >
-            <QrCode size={15} />
-          </button>
-        }
-      />
+      {activeTab !== 'koperasi' && (
+        <UniversalEcosystemTopbar
+          ecosystem="siswa"
+          title={currentSubtabTitle}
+          icon={User}
+          onRefresh={handleManualRefresh}
+          isRefreshing={isRefreshing}
+          actions={
+            <button
+              type="button"
+              onClick={() => setShowDigitalCardModal(true)}
+              className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer shrink-0"
+              title="Buka Kartu Pelajar Digital"
+              aria-label="Kartu Digital"
+            >
+              <QrCode size={15} />
+            </button>
+          }
+        />
+      )}
 
       {/* Dedicated Universal Mobile Subtab Sidebar Drawer */}
       <UniversalMobileSubtabSidebar
@@ -427,9 +429,15 @@ export const SiswaDashboard: React.FC = () => {
       />
 
       {/* 2. Desktop 2-Column Sidebar Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
+      <div className={cn(
+        "grid grid-cols-1 gap-6 items-start",
+        activeTab !== 'koperasi' && "lg:grid-cols-[230px_minmax(0,1fr)]"
+      )}>
         {/* Left Column: Sidebar Controls (Desktop sticky & independent scroll with elegant sleek scrollbar) */}
-        <aside className="hidden lg:block sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain role-dashboard-sidebar-scroll pr-1.5 space-y-3 pb-12">
+        <aside className={cn(
+          "hidden sticky top-20 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain role-dashboard-sidebar-scroll pr-1.5 space-y-3 pb-12",
+          activeTab !== 'koperasi' ? "lg:block" : "lg:hidden"
+        )}>
           {/* Identity Mini Card */}
           <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5">
             <div className="flex items-center gap-3">
@@ -608,8 +616,8 @@ export const SiswaDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* Header Identity Banner (Sembunyikan saat di Tab CBT agar langsung ke kartu ujian tanpa boros scrolling di HP) */}
-          {activeTab !== 'cbt' && (
+          {/* Header Identity Banner (Sembunyikan saat di Tab CBT & Koperasi agar tidak tumpuk) */}
+          {activeTab !== 'cbt' && activeTab !== 'koperasi' && (
             <SiswaHeaderBanner
               studentName={data.studentName}
               studentInitials={data.studentInitials}
@@ -882,7 +890,11 @@ export const SiswaDashboard: React.FC = () => {
                   <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Memuat Portal Koperasi Siswa...</p>
                 </div>
               }>
-                <UniversalCoopMemberView hideLayout={true} />
+                <UniversalCoopMemberView
+                  hideLayout={true}
+                  onBack={() => handleTabChange('ringkasan')}
+                  backLabel="Kembali ke Portal Siswa"
+                />
               </Suspense>
             </div>
           )}

@@ -34,7 +34,16 @@ export class LoanService {
 
     // Get loans by user_id
     static async getLoansByUserId(tenantId: string, userId: string) {
-        const member = await prisma.member.findFirst({ where: { tenantId, userId } });
+        const member = await prisma.member.findFirst({
+            where: {
+                tenantId,
+                OR: [
+                    { userId },
+                    { Siswa: { user_id: userId } },
+                    { Guru: { user_id: userId } },
+                ],
+            },
+        });
         if (!member) return [];
         return this.getLoans(tenantId, member.id);
     }

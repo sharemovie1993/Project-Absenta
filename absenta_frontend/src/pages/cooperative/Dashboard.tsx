@@ -29,6 +29,7 @@ export const coopDashboardKeys = {
 
 const CoopManagementSection = lazy(() => import('@/components/cooperative/dashboard/CoopManagementSection').then(m => ({ default: m.CoopManagementSection })));
 const CoopMemberSection = lazy(() => import('@/components/cooperative/dashboard/CoopMemberSection').then(m => ({ default: m.CoopMemberSection })));
+const UniversalCoopMemberView = lazy(() => import('@/components/cooperative/dashboard/UniversalCoopMemberView').then(m => ({ default: m.UniversalCoopMemberView })));
 const CoopTvMode = lazy(() => import('./components/CoopTvMode').then(m => ({ default: m.CoopTvMode })));
 const ReceiptModal = lazy(() => import('./components/ReceiptModal').then(m => ({ default: m.ReceiptModal })));
 import { KoperasiDashboard as KoperasiDashboardComponent } from '@/components/dashboard/roles/KoperasiDashboard';
@@ -365,18 +366,7 @@ const Dashboard: React.FC = React.memo(() => {
               <KoperasiDashboardComponent />
             ) : (
               <Suspense fallback={<div className="p-8 text-center text-slate-500 font-medium text-xs">Memuat Dashboard Anggota...</div>}>
-                <CoopMemberSection
-                  memberStatus={memberStatus}
-                  memberInfo={effectiveMemberInfo}
-                  user={user as CoopUserInfo | null}
-                  mySavingsSum={effectiveSavingsSum}
-                  myShuSum={effectiveShuSum}
-                  announcements={announcements}
-                  salesHistory={salesHistory}
-                  salesLoading={salesLoading}
-                  printReceipt={printReceipt}
-                  memberSummary={memberSummary}
-                />
+                <UniversalCoopMemberView hideLayout={true} />
               </Suspense>
             )}
           </div>

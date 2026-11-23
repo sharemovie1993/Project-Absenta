@@ -73,7 +73,14 @@ export default async function loanRoutes(fastify: any) {
             // Auto-resolve memberId jika tidak dikirim atau string kosong (pengajuan personal)
             if (!memberId || memberId.trim() === '') {
                 const selfMember = await prisma.member.findFirst({
-                    where: { tenantId, userId: user.id }
+                    where: {
+                        tenantId,
+                        OR: [
+                            { userId: user.id },
+                            { Siswa: { user_id: user.id } },
+                            { Guru: { user_id: user.id } }
+                        ]
+                    }
                 });
                 if (!selfMember) {
                     return reply.status(400).send({ 

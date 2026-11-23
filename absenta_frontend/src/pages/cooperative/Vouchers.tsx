@@ -114,7 +114,11 @@ const memberInstruction = {
   ]
 };
 
-const Vouchers: React.FC = React.memo(() => {
+export interface VouchersProps {
+  hideLayout?: boolean;
+}
+
+const Vouchers: React.FC<VouchersProps> = React.memo(({ hideLayout = false }) => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { user, subscription } = useAuthStore();
@@ -439,20 +443,20 @@ const Vouchers: React.FC = React.memo(() => {
       featureName="Manajemen Voucher & Promo"
     >
       <AcademicPageLayout
-        title={isManageRoute 
+        title={hideLayout ? undefined : (isManageRoute 
           ? (hasManageAccess ? "Manajemen Voucher & Promo" : "Audit & Daftar Voucher") 
-          : "Poin & Benefit Anggota"}
-        description={isManageRoute 
+          : "Poin & Benefit Anggota")}
+        description={hideLayout ? undefined : (isManageRoute 
           ? (hasManageAccess ? "Kelola kode voucher dan promo koperasi" : "Daftar dan audit seluruh kode voucher promo aktif koperasi") 
-          : "Kumpulkan poin dari simpanan Anda dan nikmati promo voucher menarik"}
+          : "Kumpulkan poin dari simpanan Anda dan nikmati promo voucher menarik")}
         hardeningModuleKey="coop_vouchers"
-        breadcrumbs={[
+        breadcrumbs={hideLayout ? undefined : [
           { label: 'Koperasi', path: '/cooperative' },
           { label: 'Voucher & Benefit', path: isManageRoute ? '/cooperative/vouchers/manage' : '/cooperative/vouchers' }
         ]}
-        instruction={isManageRoute 
+        instruction={hideLayout ? undefined : (isManageRoute 
           ? (hasManageAccess ? adminInstruction : auditInstruction) 
-          : memberInstruction}
+          : memberInstruction)}
       >
         {isManageRoute && hasViewListAccess ? (
           /* ======================================================================= */
