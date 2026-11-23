@@ -103,13 +103,23 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
   const [searchParams, setSearchParams] = useSearchParams();
   // Saat embedded di dashboard, param `tab` milik dashboard → gunakan `inner_tab`
   const tabParamKey = hideLayout ? 'inner_tab' : 'tab';
-  const activeTabParam = searchParams.get(tabParamKey) || defaultTab || 'services';
+  const rawTabParam = searchParams.get(tabParamKey) || defaultTab || 'services';
+  const activeTabParam: ServiceCenterTabId = (rawTabParam === 'riwayat' || rawTabParam === 'tagihan') 
+    ? 'invoices' 
+    : (rawTabParam as ServiceCenterTabId);
   
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [isAutoRenewModalOpen, setIsAutoRenewModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState(activeTabParam);
+  const [activeTab, setActiveTab] = useState<ServiceCenterTabId>(activeTabParam);
   const [selectedOrder, setSelectedOrder] = useState<OrderPayload | null>(null);
   const [isOrdering, setIsOrdering] = useState(false);
+
+  // Sinkronisasi activeTab saat URL param berubah (misal dari checkout navigasi ke inner_tab=invoices)
+  useEffect(() => {
+    if (activeTabParam && activeTabParam !== activeTab) {
+      setActiveTab(activeTabParam);
+    }
+  }, [activeTabParam]);
 
   // Comparison Modal state
   const [showComparisonModal, setShowComparisonModal] = useState(false);
@@ -439,8 +449,9 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
   }, [filteredInvoicesData]);
 
   const handleExtend = useCallback((planId: string) => {
-    navigate(`/billing/checkout?plan_id=${planId}`);
-  }, [navigate]);
+    const fromCoop = lockedCategory === 'KOPERASI' ? '&from=cooperative' : '';
+    navigate(`/billing/checkout?plan_id=${planId}${fromCoop}`);
+  }, [navigate, lockedCategory]);
 
   const handleViewInvoice = useCallback((invoiceId: string, forceDocument?: boolean) => {
     if (forceDocument) {
@@ -448,8 +459,9 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
       window.open(`/api/invoice/${cleanId}/print`, '_blank');
       return;
     }
-    navigate(`/billing/checkout?invoice_id=${invoiceId}`);
-  }, [navigate]);
+    const fromCoop = lockedCategory === 'KOPERASI' ? '&from=cooperative' : '';
+    navigate(`/billing/checkout?invoice_id=${invoiceId}${fromCoop}`);
+  }, [navigate, lockedCategory]);
 
   const [cancellingInvoiceId, setCancellingInvoiceId] = useState<string | null>(null);
 
@@ -544,7 +556,8 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
         if (checkoutUrl && (checkoutUrl.startsWith('http://') || checkoutUrl.startsWith('https://'))) {
           window.location.href = checkoutUrl;
         } else if (invId) {
-          navigate(`/billing/checkout?invoice_id=${invId}`);
+          const fromCoop = lockedCategory === 'KOPERASI' ? '&from=cooperative' : '';
+          navigate(`/billing/checkout?invoice_id=${invId}${fromCoop}`);
         } else if (hideLayout) {
           handleTabChange('invoices');
         } else {
@@ -654,7 +667,10 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => navigate(`/billing/checkout?token=${pendingInvoice.invoice_number}&plan_id=${pendingInvoice.plan_id || ''}`)}
+                    onClick={() => {
+                      const fromCoop = lockedCategory === 'KOPERASI' ? '&from=cooperative' : '';
+                      navigate(`/billing/checkout?token=${pendingInvoice.invoice_number}&plan_id=${pendingInvoice.plan_id || ''}${fromCoop}`);
+                    }}
                     className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs"
                   >
                     Lanjutkan Pembayaran

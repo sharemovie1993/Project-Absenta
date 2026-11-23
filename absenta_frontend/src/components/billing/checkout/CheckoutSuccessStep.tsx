@@ -71,7 +71,7 @@ export const CheckoutSuccessStep: React.FC<CheckoutSuccessStepProps> = React.mem
 
   const handleGoToInvoices = () => {
     if (isKoperasi) {
-      navigate('/cooperative/dashboard?subtab=langganan&inner_tab=riwayat');
+      navigate('/cooperative/dashboard?subtab=langganan&inner_tab=invoices');
     } else {
       navigate('/service-center?tab=invoices');
     }

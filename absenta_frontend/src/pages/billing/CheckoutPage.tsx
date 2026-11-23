@@ -256,6 +256,23 @@ function CheckoutContent() {
     return !isCompleteBundlePlan(plan) && plan.service_code !== 'HARDWARE' && !isKoperasi;
   }, [plan]);
 
+  // Deteksi cerdas apakah alur checkout ini berada dalam ekosistem Koperasi (Bukan Global Sekolah)
+  const isCoopContext = useMemo(() => {
+    const q = new URLSearchParams(location.search);
+    if (q.get('from') === 'cooperative' || q.get('context') === 'cooperative') return true;
+    if (!plan) {
+      const pId = String(planId || '').toUpperCase();
+      return pId.includes('KOPERASI');
+    }
+    const serviceCode = String(plan.service_code || '').toUpperCase();
+    const name = String(plan.name || '').toUpperCase();
+    return serviceCode === 'KOPERASI' || name.includes('KOPERASI') || String(plan.id || '').toUpperCase().includes('KOPERASI');
+  }, [location.search, plan, planId]);
+
+  const activeReturnUrl = useMemo(() => {
+    return isCoopContext ? '/cooperative/dashboard?subtab=langganan' : '/service-center?tab=catalog';
+  }, [isCoopContext]);
+
   const executeProceedToPayment = useCallback(async () => {
     if (!plan) return;
     setProcessing(true);
@@ -275,7 +292,7 @@ function CheckoutContent() {
         try {
           sessionStorage.setItem('active_checkout_token', token);
         } catch {}
-        navigate(`/billing/checkout?plan_id=${plan.id}&token=${token}&cycle=${cycle}`, { replace: true });
+        navigate(`/billing/checkout?plan_id=${plan.id}&token=${token}&cycle=${cycle}${isCoopContext ? '&from=cooperative' : ''}`, { replace: true });
         const resolvedInst = invData.payment_instructions || invData.instructions || invData.active_transaction?.payment_instructions || invData.active_transaction?.instructions;
         setInvoiceDetails({
           success: true,
@@ -305,7 +322,7 @@ function CheckoutContent() {
     } finally {
       setProcessing(false);
     }
-  }, [plan, cycle, selectedChannel, totalPrice]);
+  }, [plan, cycle, selectedChannel, totalPrice, isCoopContext, navigate]);
 
   const handleProceedToPayment = useCallback(async () => {
     if (activeBundle && isTargetSingleModule && !hasConfirmedOverlap) {
@@ -423,38 +440,47 @@ function CheckoutContent() {
     }
   }, [hasPendingUpgrade]);
 
-  const breadcrumbs = useMemo(() => [
-    { label: 'Layanan', path: '/service-center?tab=catalog' },
-    { label: 'Checkout & Aktivasi' }
-  ], []);
+  const breadcrumbs = useMemo(() => {
+    if (isCoopContext) {
+      return [
+        { label: 'Koperasi', path: '/cooperative/dashboard' },
+        { label: 'Paket Langganan', path: '/cooperative/dashboard?subtab=langganan' },
+        { label: 'Checkout & Aktivasi' }
+      ];
+    }
+    return [
+      { label: 'Layanan', path: '/service-center?tab=catalog' },
+      { label: 'Checkout & Aktivasi' }
+    ];
+  }, [isCoopContext]);
 
   const isDirectInvoice = Boolean(initialToken);
   if (!isDirectInvoice && (!planId || isPlanError)) {
     return (
       <AcademicPageLayout
-        title="Checkout Layanan"
-        description="Aktivasi langganan modul aplikasi Absenta."
+        title={isCoopContext ? "Checkout Paket Langganan Koperasi" : "Checkout Layanan"}
+        description={isCoopContext ? "Aktivasi langganan modul koperasi & POS sekolah." : "Aktivasi langganan modul aplikasi Absenta."}
         breadcrumbs={breadcrumbs}
-        hardeningModuleKey="billing_checkout"
+        hardeningModuleKey={isCoopContext ? "coop_checkout" : "billing_checkout"}
         instruction={{
           title: "Panduan Checkout",
           description: "Silakan pilih paket modul yang ingin Anda aktifkan.",
-          items: [{ text: "Pilih paket melalui menu Katalog Layanan." }]
+          items: [{ text: isCoopContext ? "Pilih paket melalui menu Paket Langganan Koperasi." : "Pilih paket melalui menu Katalog Layanan." }]
         }}
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
           <div className="max-w-md mx-auto text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-8">
             <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
             <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
-              Paket tidak ditemukan. Silakan kembali ke katalog layanan.
+              {isCoopContext ? "Paket koperasi tidak ditemukan. Silakan kembali ke katalog langganan koperasi." : "Paket tidak ditemukan. Silakan kembali ke katalog layanan."}
             </h3>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate('/service-center?tab=catalog')}
+              onClick={() => navigate(activeReturnUrl)}
               className="mt-6 font-bold rounded-xl"
             >
-              Kembali ke Katalog
+              {isCoopContext ? "Kembali ke Dashboard Koperasi" : "Kembali ke Katalog"}
             </Button>
           </div>
         </SectionCard>
@@ -464,26 +490,34 @@ function CheckoutContent() {
 
   return (
     <AcademicPageLayout
-      title="Checkout & Aktivasi Layanan"
-      description="Selesaikan transaksi pemesanan modul dan dapatkan aktivasi hak akses instan otomatis."
+      title={isCoopContext ? "Checkout Paket Langganan Koperasi" : "Checkout & Aktivasi Layanan"}
+      description={isCoopContext ? "Selesaikan transaksi pemesanan modul koperasi dan nikmati aktivasi instan otomatis." : "Selesaikan transaksi pemesanan modul dan dapatkan aktivasi hak akses instan otomatis."}
       breadcrumbs={breadcrumbs}
-      hardeningModuleKey="billing_checkout"
+      hardeningModuleKey={isCoopContext ? "coop_checkout" : "billing_checkout"}
+      backButtonText={step === 'payment' ? 'Kembali ke Detail' : (isCoopContext ? 'Kembali ke Koperasi' : 'Kembali')}
+      onBack={() => {
+        if (step === 'payment') {
+          setStep('detail');
+        } else {
+          navigate(activeReturnUrl);
+        }
+      }}
       topSlot={
         <div className="flex items-center justify-end gap-2">
           <Button
             variant="toolbarOutline"
             size="toolbar"
-            onClick={() => navigate('/service-center?tab=catalog')}
+            onClick={() => navigate(activeReturnUrl)}
             className="flex items-center gap-1.5 font-bold rounded-xl"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Kembali ke Katalog
+            {isCoopContext ? 'Kembali ke Dashboard Koperasi' : 'Kembali ke Katalog'}
           </Button>
         </div>
       }
       instruction={{
-        title: "Panduan Checkout & Aktivasi Modul",
-        description: "Proses pembelian lisensi modul Absenta dengan aktivasi instan otomatis.",
+        title: isCoopContext ? "Panduan Checkout Lisensi Koperasi" : "Panduan Checkout & Aktivasi Modul",
+        description: isCoopContext ? "Proses pembelian atau perpanjangan lisensi koperasi dengan aktivasi instan." : "Proses pembelian lisensi modul Absenta dengan aktivasi instan otomatis.",
         items: [
           { text: "Pilih paket dan saluran pembayaran yang Anda kehendaki." },
           { text: "Lakukan pembayaran tepat sesuai jumlah hingga digit terakhir." },
@@ -497,8 +531,8 @@ function CheckoutContent() {
             <CheckoutWizardHeader step={step} />
           </Suspense>
 
-          {/* Overlap Alert Banner in Checkout Step */}
-          {step === 'detail' && activeBundle && isTargetSingleModule && plan && (
+          {/* Overlap Alert Banner in Checkout Step (Hanya untuk konteks non-koperasi) */}
+          {step === 'detail' && !isCoopContext && activeBundle && isTargetSingleModule && plan && (
             <div className="p-4 rounded-2xl bg-amber-50/90 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700/60 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-start gap-3">
                 <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
@@ -551,7 +585,7 @@ function CheckoutContent() {
                   processing={processing}
                   hasPendingUpgrade={hasPendingUpgrade}
                   handleProceedToPayment={handleProceedToPayment}
-                  onCancel={() => navigate('/service-center?tab=catalog')}
+                  onCancel={() => navigate(activeReturnUrl)}
                   setError={setError}
                 />
               </Suspense>
