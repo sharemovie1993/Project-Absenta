@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { 
@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { useAuthStore } from '@/store/authStore';
+import { useSocket } from '@/hooks/useSocket';
 import { cn } from '@/lib/utils';
 import { getGerbangDashboardStats } from '@/api/dashboard.api';
 import { piketApi } from '@/api/piket.api';
@@ -125,7 +126,7 @@ export const SatpamDashboard: React.FC = () => {
     [setSearchParams]
   );
 
-  // Queries
+  // Queries with safe staleTime to avoid unnecessary refetches
   const { data: statsRes, isLoading, refetch } = useQuery({
     queryKey: ['satpam-dashboard-stats'],
     queryFn: async () => {
@@ -136,8 +137,35 @@ export const SatpamDashboard: React.FC = () => {
         return null;
       }
     },
+    staleTime: 30000,
     refetchInterval: 30000,
   });
+
+  // Centralized debounced socket listener (anti-thundering herd on gate traffic surge)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const { isConnected, subscribe, unsubscribe } = useSocket();
+
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const handleRealtimeUpdate = () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        refetch();
+      }, 1500);
+    };
+
+    subscribe('gerbang_tap_update', handleRealtimeUpdate);
+    subscribe('buku_tamu_update', handleRealtimeUpdate);
+    subscribe('izin_keluar_update', handleRealtimeUpdate);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      unsubscribe('gerbang_tap_update', handleRealtimeUpdate);
+      unsubscribe('buku_tamu_update', handleRealtimeUpdate);
+      unsubscribe('izin_keluar_update', handleRealtimeUpdate);
+    };
+  }, [isConnected, refetch, subscribe, unsubscribe]);
 
   const satpamStats: SatpamStats = useMemo(() => {
     return {

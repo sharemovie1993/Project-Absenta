@@ -223,23 +223,27 @@ export const SatpamScanGerbangTab: React.FC<SatpamScanGerbangTabProps> = ({
   }, [inputSubTab, scannerInput]);
 
   // Real-time Socket Event Listener (Korelasi Langsung dengan Petugas Kelas & Server)
+  const feedDebounceRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
     if (!isConnected) return;
 
-    const handleSocketTap = (payload: any) => {
-      // Refresh count dan feed bila ada tap dari gerbang mana pun atau kelas
-      fetchGerbangFeed();
-      onTapSuccess?.();
+    const handleSocketTap = () => {
+      // Debounce pembaruan feed lokal (1000ms) saat gelombang tap padat agar tidak thundering herd
+      if (feedDebounceRef.current) clearTimeout(feedDebounceRef.current);
+      feedDebounceRef.current = setTimeout(() => {
+        fetchGerbangFeed();
+      }, 1000);
     };
 
     subscribe('gerbang_tap_update', handleSocketTap);
     subscribe('attendance_update', handleSocketTap);
 
     return () => {
+      if (feedDebounceRef.current) clearTimeout(feedDebounceRef.current);
       unsubscribe('gerbang_tap_update', handleSocketTap);
       unsubscribe('attendance_update', handleSocketTap);
     };
-  }, [isConnected, fetchGerbangFeed, onTapSuccess, subscribe, unsubscribe]);
+  }, [isConnected, fetchGerbangFeed, subscribe, unsubscribe]);
 
   // Query Pencarian Siswa / Guru (Lupa Kartu)
   useEffect(() => {

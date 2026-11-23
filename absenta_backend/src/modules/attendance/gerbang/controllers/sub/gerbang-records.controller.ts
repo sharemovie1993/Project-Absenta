@@ -15,7 +15,7 @@ export const gerbangRecordsController = {
   async getNotPresentStudents(request: any, reply: any) {
     try {
       const tenantId = request.tenantId ?? request.user?.tenantId;
-      const { tanggal, kelas_id, limit = 100, offset = 0 } = request.query || {};
+      const { tanggal, kelas_id, search, limit = 30, offset = 0 } = request.query || {};
       if (!tenantId) {
         reply.status(401);
         return { success: false, message: 'Unauthorized: tenant_id not found' };
@@ -41,19 +41,16 @@ export const gerbangRecordsController = {
       if (!hasPrivilegedAccess) {
           const kelasIds = Array.isArray(org?.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
           if (kelasIds.length > 0) {
-              // Jika user mengirim kelas_id spesifik, validasi apakah ada di list binaan
               if (enforcedKelasId && !kelasIds.includes(String(enforcedKelasId))) {
                   reply.status(403);
                   return { success: false, message: 'Forbidden: Anda tidak memiliki akses ke kelas yang dipilih' };
               }
-              // Jika tidak kirim kelas_id, default ke kelas pertama yang dimiliki
               if (!enforcedKelasId) enforcedKelasId = kelasIds[0];
           } else {
               reply.status(403);
               return { success: false, message: 'Forbidden: Anda tidak memiliki penugasan kelas yang aktif' };
           }
       }
-
 
       const cfg = await systemConfigService.getActive(tenantId);
       const tz = String(cfg?.timezone || '').trim();
@@ -86,8 +83,21 @@ export const gerbangRecordsController = {
           },
         });
       }
+
+      const safeLimit = Math.min(Math.max(1, parseInt(String(limit)) || 30), 100);
+      const safeOffset = Math.max(0, parseInt(String(offset)) || 0);
+
       const whereSiswa: any = { tenant_id: tenantId, status: 'AKTIF' };
       if (enforcedKelasId) whereSiswa.kelas_id = enforcedKelasId;
+      if (search && typeof search === 'string' && search.trim().length > 0) {
+        const sTerm = search.trim();
+        whereSiswa.OR = [
+          { nama_siswa: { contains: sTerm, mode: 'insensitive' } },
+          { nisn: { contains: sTerm } },
+          { nis: { contains: sTerm } }
+        ];
+      }
+
       const students = await prisma.siswa.findMany({
         where: {
           ...whereSiswa,
@@ -99,28 +109,36 @@ export const gerbangRecordsController = {
             } 
           },
         },
-        select: { id: true, nama_siswa: true, kelas_id: true, Kelas: { select: { nama_kelas: true } } },
+        select: { id: true, nama_siswa: true, nisn: true, nis: true, kelas_id: true, Kelas: { select: { id: true, nama_kelas: true } } },
         orderBy: { nama_siswa: 'asc' },
-        take: parseInt(limit),
-        skip: parseInt(offset),
+        take: safeLimit,
+        skip: safeOffset,
       });
-      const total = await prisma.siswa.count({
-        where: {
-          ...whereSiswa,
-          AbsenGerbangSiswa: { 
-            none: { 
-              tenant_id: tenantId, 
-              arah: 'GERBANG_DATANG',
-              sesi_gerbang_id: session.id
-            } 
+
+      // Quick count optimization: skip count query if result is less than limit on first page
+      let total = 0;
+      if (safeOffset === 0 && students.length < safeLimit) {
+        total = students.length;
+      } else {
+        total = await prisma.siswa.count({
+          where: {
+            ...whereSiswa,
+            AbsenGerbangSiswa: { 
+              none: { 
+                tenant_id: tenantId, 
+                arah: 'GERBANG_DATANG',
+                sesi_gerbang_id: session.id
+              } 
+            },
           },
-        },
-      });
+        });
+      }
+
       return {
         success: true,
         message: 'Not-present students retrieved successfully',
         data: students,
-        pagination: { total, limit: parseInt(limit), offset: parseInt(offset) },
+        pagination: { total, limit: safeLimit, offset: safeOffset },
         session_info: { id: session.id, tanggal: session.tanggal },
         filter_info: { kelas_id: enforcedKelasId || null, role: roleName || null },
       };

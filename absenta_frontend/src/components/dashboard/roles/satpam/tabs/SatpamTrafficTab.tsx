@@ -6,46 +6,62 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   Search, 
-  UserX,
-  Phone,
-  Filter,
-  RefreshCw,
-  TrendingUp,
-  BarChart3,
-  ShieldCheck
+  UserX, 
+  Phone, 
+  Filter, 
+  RefreshCw, 
+  TrendingUp, 
+  BarChart3, 
+  ShieldCheck,
+  ChevronRight,
+  GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
-import { getNotPresentStudents, getGerbangStats } from '@/api/attendanceGerbang.api';
-import { useSocket } from '@/hooks/useSocket';
+import { getNotPresentStudents } from '@/api/attendanceGerbang.api';
+import { useKelasOptions } from '@/hooks/useKelasOptions';
+import { useDebounce } from '@/hooks/useDebounce';
 import type { SatpamStats } from '../types';
 
 interface SatpamTrafficTabProps {
   stats: SatpamStats;
-  notPresentStudents?: Array<{ id: string; nama: string; nisn: string; kelas: string; walas?: string }>;
   onRefreshStats?: () => void;
 }
 
 export const SatpamTrafficTab: React.FC<SatpamTrafficTabProps> = ({
   stats,
-  notPresentStudents: initialNotPresent,
   onRefreshStats,
 }) => {
   const [notPresentList, setNotPresentList] = useState<Array<{ id: string; nama: string; nisn: string; kelas: string }>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedKelas, setSelectedKelas] = useState<string>('ALL');
+  const debouncedSearch = useDebounce(searchQuery, 400);
+  const [selectedKelasId, setSelectedKelasId] = useState<string>('');
+  const [hasQueried, setHasQueried] = useState<boolean>(false);
 
-  const { isConnected, subscribe, unsubscribe } = useSocket();
+  // Rombel dropdown options (cached in TanStack Query)
+  const { options: kelasOptions, isLoading: isLoadingKelas } = useKelasOptions({ onlyActive: true });
 
-  // Fetch real un-tapped students from backend
-  const fetchNotPresent = useCallback(async () => {
+  // On-Demand fetch: Only execute when class is chosen OR user types search keyword OR explicitly clicks
+  const fetchStudentsOnDemand = useCallback(async (kelasId?: string, search?: string) => {
     setIsLoading(true);
+    setHasQueried(true);
     try {
       const today = new Date().toISOString().split('T')[0];
-      const res = await getNotPresentStudents({ tanggal: today, limit: 150 });
+      const params: any = {
+        tanggal: today,
+        limit: 35, // Batasi 35 data per request, hindari overload
+      };
 
+      if (kelasId && kelasId !== 'ALL') {
+        params.kelas_id = kelasId;
+      }
+      if (search && search.trim().length >= 2) {
+        params.search = search.trim();
+      }
+
+      const res = await getNotPresentStudents(params);
       if (res?.data && Array.isArray(res.data)) {
         const formatted = res.data.map((item: any) => ({
           id: item.id,
@@ -54,61 +70,37 @@ export const SatpamTrafficTab: React.FC<SatpamTrafficTabProps> = ({
           kelas: item.Kelas?.nama_kelas || item.kelas_nama || item.kelas || '-',
         }));
         setNotPresentList(formatted);
+      } else {
+        setNotPresentList([]);
       }
     } catch {
-      if (initialNotPresent && initialNotPresent.length > 0) {
-        setNotPresentList(initialNotPresent);
-      }
+      setNotPresentList([]);
     } finally {
       setIsLoading(false);
     }
-  }, [initialNotPresent]);
+  }, []);
 
+  // Trigger on-demand search when search term changed (minimal 2 characters)
   useEffect(() => {
-    fetchNotPresent();
-  }, [fetchNotPresent]);
+    if (debouncedSearch.trim().length >= 2) {
+      fetchStudentsOnDemand(selectedKelasId, debouncedSearch);
+    } else if (selectedKelasId) {
+      fetchStudentsOnDemand(selectedKelasId);
+    }
+  }, [debouncedSearch, selectedKelasId, fetchStudentsOnDemand]);
 
-  // Real-time socket sync
-  useEffect(() => {
-    if (!isConnected) return;
-    const handleUpdate = () => {
-      fetchNotPresent();
-      onRefreshStats?.();
-    };
+  // Handle explicit class change
+  const handleClassChange = (newKelasId: string) => {
+    setSelectedKelasId(newKelasId);
+    if (newKelasId) {
+      fetchStudentsOnDemand(newKelasId, debouncedSearch);
+    } else {
+      setNotPresentList([]);
+      setHasQueried(false);
+    }
+  };
 
-    subscribe('gerbang_tap_update', handleUpdate);
-    subscribe('attendance_update', handleUpdate);
-
-    return () => {
-      unsubscribe('gerbang_tap_update', handleUpdate);
-      unsubscribe('attendance_update', handleUpdate);
-    };
-  }, [isConnected, fetchNotPresent, onRefreshStats, subscribe, unsubscribe]);
-
-  // Classes dropdown
-  const uniqueClasses = useMemo(() => {
-    const set = new Set<string>();
-    notPresentList.forEach((s) => {
-      if (s.kelas && s.kelas !== '-') set.add(s.kelas);
-    });
-    return Array.from(set).sort();
-  }, [notPresentList]);
-
-  // Filtered not present students
-  const filteredStudents = useMemo(() => {
-    return notPresentList.filter((s) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        s.nama.toLowerCase().includes(q) ||
-        s.nisn.includes(q) ||
-        s.kelas.toLowerCase().includes(q);
-
-      const matchesKelas = selectedKelas === 'ALL' || s.kelas === selectedKelas;
-      return matchesSearch && matchesKelas;
-    });
-  }, [notPresentList, searchQuery, selectedKelas]);
-
-  // Calculate arrival flow distribution
+  // Calculate arrival flow distribution from parent memoized stats (0 network overhead)
   const flowDistribution = useMemo(() => {
     const total = stats.totalMasuk || 1;
     const tepatWaktu = stats.tepatWaktu || 0;
@@ -148,7 +140,7 @@ export const SatpamTrafficTab: React.FC<SatpamTrafficTabProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* ── BENTO TRAFFIC METRICS ───────────────────────────── */}
+      {/* ── BENTO TRAFFIC METRICS (AGREGASI RINGAN REALTIME) ───────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-4 rounded-3xl bg-teal-50/60 dark:bg-teal-950/20 border border-teal-200/80 dark:border-teal-900/40">
           <p className="text-[10.5px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">
@@ -231,87 +223,127 @@ export const SatpamTrafficTab: React.FC<SatpamTrafficTabProps> = ({
         </div>
       </div>
 
-      {/* ── DAFTAR SISWA BELUM TAP GERBANG (MONITORING LINGKUNGAN) ── */}
+      {/* ── ON-DEMAND CHECK: SISWA BELUM MELEWATI POS GERBANG ────────── */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <UserX size={18} className="text-rose-500" />
-            <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              Daftar Siswa Belum Melewati Pos Gerbang ({notPresentList.length})
-            </h3>
+            <div>
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Monitoring Siswa Belum Melewati Pos Gerbang
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Pilih rombel atau cari nama/NISN untuk inspeksi data tanpa membebani server
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {hasQueried && (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={fetchNotPresent}
+              onClick={() => fetchStudentsOnDemand(selectedKelasId, debouncedSearch)}
               disabled={isLoading}
-              className="h-8 px-2.5 rounded-xl border-slate-200 dark:border-slate-700 text-xs font-bold gap-1"
+              className="h-8 px-2.5 rounded-xl border-slate-200 dark:border-slate-700 text-xs font-bold gap-1 self-end sm:self-auto"
             >
               <RefreshCw size={12} className={cn(isLoading && 'animate-spin')} />
               <span>Segarkan</span>
             </Button>
-          </div>
+          )}
         </div>
 
-        {/* Filter Strip */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1">
+        {/* Filter & Search Bar */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+          <div className="sm:col-span-7 relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
             <Input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama siswa belum tap, NISN..."
-              className="pl-9 h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200/80 dark:border-slate-800"
+              placeholder="Cari nama siswa atau NISN (min. 2 huruf)..."
+              className="pl-9 h-10 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200/80 dark:border-slate-800"
             />
           </div>
 
-          <div className="w-full sm:w-48">
+          <div className="sm:col-span-5">
             <select
-              value={selectedKelas}
-              onChange={(e) => setSelectedKelas(e.target.value)}
-              className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none"
+              value={selectedKelasId}
+              onChange={(e) => handleClassChange(e.target.value)}
+              disabled={isLoadingKelas}
+              className="w-full h-10 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white outline-none focus:border-teal-500"
             >
-              <option value="ALL">Semua Kelas ({notPresentList.length})</option>
-              {uniqueClasses.map((k) => (
-                <option key={k} value={k}>
-                  Kelas {k}
+              <option value="">-- Pilih Kelas untuk Monitoring --</option>
+              {kelasOptions.map((k) => (
+                <option key={k.value} value={k.value}>
+                  Kelas {k.label}
                 </option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Students List */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-96 overflow-y-auto no-scrollbar pr-1">
-          {filteredStudents.length === 0 ? (
-            <div className="col-span-full py-8 text-center text-slate-400 text-xs">
-              Tidak ada data siswa yang cocok dengan filter
-            </div>
-          ) : (
-            filteredStudents.map((s) => (
-              <div
-                key={s.id}
-                className="p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-2"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
-                    {s.nama}
-                  </p>
-                  <p className="text-[10px] text-slate-400 font-mono truncate">
-                    {s.kelas} • NISN: {s.nisn}
-                  </p>
-                </div>
-                <span className="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
-                  Belum Tap
+        {/* State Display */}
+        {!hasQueried && (
+          <div className="py-8 px-4 rounded-2xl bg-slate-50/70 dark:bg-slate-950/40 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2">
+            <GraduationCap size={28} className="mx-auto text-slate-300 dark:text-slate-700" />
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Pilih Rombongan Belajar atau Masukkan Nama Siswa
+            </p>
+            <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+              Sistem Absenta menggunakan mode inspeksi *On-Demand* agar proses pencatatan di gerbang tetap cepat (*sub-100ms*) dan tidak membebani server saat jam sibuk.
+            </p>
+          </div>
+        )}
+
+        {hasQueried && isLoading && (
+          <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+            <RefreshCw size={15} className="animate-spin text-teal-600" />
+            <span>Memuat data siswa belum tap...</span>
+          </div>
+        )}
+
+        {hasQueried && !isLoading && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+              <span>Menampilkan {notPresentList.length} siswa belum tap gerbang:</span>
+              {selectedKelasId && (
+                <span className="font-mono text-[11px] font-bold text-teal-600">
+                  Filter Rombel Aktif
                 </span>
+              )}
+            </div>
+
+            {notPresentList.length === 0 ? (
+              <div className="py-8 text-center text-emerald-600 dark:text-emerald-400 text-xs bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-200/60 dark:border-emerald-900/40 space-y-1">
+                <CheckCircle2 size={24} className="mx-auto text-emerald-500" />
+                <p className="font-bold">Seluruh Siswa di Rombel Ini Sudah Hadir Tap Gerbang!</p>
+                <p className="text-[11px] text-slate-500">Tidak ada siswa tertinggal untuk kelas yang dipilih.</p>
               </div>
-            ))
-          )}
-        </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-96 overflow-y-auto no-scrollbar pr-1">
+                {notPresentList.map((s) => (
+                  <div
+                    key={s.id}
+                    className="p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                        {s.nama}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-mono truncate">
+                        {s.kelas} • NISN: {s.nisn}
+                      </p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
+                      Belum Hadir
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
