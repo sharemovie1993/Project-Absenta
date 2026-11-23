@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader } from '../../../../components/ui/Loader';
 import toast from 'react-hot-toast';
 import { useCapabilities } from '../../../../hooks/useCapabilities';
+import { useAuthStore } from '../../../../store/authStore';
 import { 
   createSesiAbsensi, 
   tapSiswaKeSesi,
@@ -54,11 +55,14 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
   isPetugasSiswa,
   canCreateSession,
   managedKelasIds,
+  user: userProp,
   hideLayout = false,
   hideKelas = false,
   isModal = false,
   onClose,
 }) => {
+  const authUser = useAuthStore((s) => s.user);
+  const user = userProp || (authUser as unknown as Record<string, unknown>);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAdmin, isStudent, isKepalaSekolah, isKurikulum, isKesiswaan, can } = useCapabilities();

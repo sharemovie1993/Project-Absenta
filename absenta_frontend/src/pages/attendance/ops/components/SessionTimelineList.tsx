@@ -229,7 +229,10 @@ export const SessionTimelineList: React.FC<Props> = React.memo(({
     isAdmin,
     isStudent,
     isReadOnlyExecutive,
-    can
+    can,
+    currentGuruId,
+    managedKelasIds,
+    user
   ]);
 
   return (
