@@ -133,20 +133,26 @@ export function isModuleUnlocked(
   const effectiveUser = user || useAuthStore.getState().user;
   const effectiveSub = subscription || useAuthStore.getState().subscription;
 
-  // 1. Role Admin / Superadmin selalu full akses
+  const normModule = String(moduleCode || '').trim().toUpperCase();
+  const isKoperasi = ['KOPERASI', 'COOPERATIVE', 'COOP', 'KOPERASI_SEKOLAH'].includes(normModule);
+
+  // 1. Role Superadmin / Platform selalu full akses.
+  // Untuk KOPERASI (unit otonom "beda dapur"): Admin sekolah tetap tunduk pada status kepemilikan lisensi koperasi.
   const role = String(effectiveUser?.roleName || effectiveUser?.role?.name || '').toUpperCase();
-  if (role.includes('ADMIN') || role === 'SUPERADMIN' || role.startsWith('PLATFORM_') || effectiveUser?.tenant_id === 'system') {
+  if (role === 'SUPERADMIN' || role.startsWith('PLATFORM_') || effectiveUser?.tenant_id === 'system') {
+    return true;
+  }
+  if (role.includes('ADMIN') && !isKoperasi) {
     return true;
   }
 
   // 2. Modul bawaan gratis platform (Core & Academic dasar)
-  const normModule = String(moduleCode || '').trim().toUpperCase();
   if (!normModule || ['CORE', 'ACADEMIC', 'KURIKULUM'].includes(normModule)) {
     return true;
   }
 
-  // 3. Jika berlangganan PAKET LENGKAP yang masih aktif -> SELURUH MODUL TERBUKA
-  if (isSubscriptionPaketLengkap(effectiveSub, effectiveUser)) {
+  // 3. Jika berlangganan PAKET LENGKAP yang masih aktif -> SELURUH MODUL SEKOLAH TERBUKA (KECUALI KOPERASI KARENA BEDA DAPUR)
+  if (!isKoperasi && isSubscriptionPaketLengkap(effectiveSub, effectiveUser)) {
     const subStatus = String(effectiveSub?.status || effectiveUser?.subscription_status || '').toUpperCase();
     const expiredStatuses = ['EXPIRED', 'CANCELLED', 'CANCELED', 'SUSPENDED', 'INACTIVE'];
     if (!expiredStatuses.includes(subStatus)) {
@@ -159,7 +165,13 @@ export function isModuleUnlocked(
   const addFeatures = (raw: any) => {
     if (Array.isArray(raw)) {
       raw.forEach((f) => {
-        if (typeof f === 'string') featurePool.push(f.toUpperCase());
+        if (typeof f === 'string') {
+          const uf = f.toUpperCase().trim();
+          if (isKoperasi && (uf === 'PAKET_LENGKAP' || uf.includes('PAKET LENGKAP') || uf.includes('AKSES SELURUH MODUL'))) {
+            return;
+          }
+          featurePool.push(uf);
+        }
       });
     }
   };
@@ -188,11 +200,12 @@ export function isModuleUnlocked(
     });
   }
 
-  // Jika featurePool memiliki penanda PAKET LENGKAP -> SELURUH MODUL TERBUKA
+  // Jika featurePool memiliki penanda PAKET LENGKAP -> SELURUH MODUL SEKOLAH TERBUKA (KECUALI KOPERASI)
   if (
-    featurePool.includes('PAKET_LENGKAP') ||
-    featurePool.includes('ALL-IN-ONE') ||
-    featurePool.some(f => f.includes('PAKET LENGKAP') || f.includes('AKSES SELURUH MODUL'))
+    !isKoperasi &&
+    (featurePool.includes('PAKET_LENGKAP') ||
+      featurePool.includes('ALL-IN-ONE') ||
+      featurePool.some((f) => f.includes('PAKET LENGKAP') || f.includes('AKSES SELURUH MODUL')))
   ) {
     return true;
   }

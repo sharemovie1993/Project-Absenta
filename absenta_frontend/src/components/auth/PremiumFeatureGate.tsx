@@ -81,10 +81,17 @@ export default function PremiumFeatureGate({
     })
   );
 
+  const isKoperasi = useMemo(() => {
+    const m = String(targetModule || '').toUpperCase();
+    return ['KOPERASI', 'COOPERATIVE', 'COOP', 'KOPERASI_SEKOLAH'].includes(m);
+  }, [targetModule]);
+
   const isModuleAllowed = useMemo(() => {
     if (!targetModule) return true;
-    if (isAdmin) return true;
-    if (isPaketLengkap) return true;
+    const role = String(user?.roleName || user?.role?.name || '').toUpperCase();
+    if (role === 'SUPERADMIN' || role.startsWith('PLATFORM_') || user?.tenant_id === 'system') return true;
+    if (isAdmin && !isKoperasi) return true;
+    if (isPaketLengkap && !isKoperasi) return true;
     const featuresUpper = Array.isArray(features)
       ? features.map(f => String(f).toUpperCase())
       : [];
@@ -92,14 +99,14 @@ export default function PremiumFeatureGate({
       allowedNames.includes(f) ||
       allowedNames.some(name => f.startsWith(name) || f.includes(name))
     );
-  }, [targetModule, isAdmin, isPaketLengkap, features, allowedNames]);
+  }, [targetModule, isAdmin, isPaketLengkap, isKoperasi, user, features, allowedNames]);
 
   // isLocked jika modul tidak ada di paket ATAU status langganan sudah kedaluwarsa/tidak aktif
-  // Catatan: Jika tenant berlangganan PAKET LENGKAP atau role adalah Admin, jangan pernah di-lock secara salah
+  // Catatan: Jika tenant berlangganan PAKET LENGKAP atau role adalah Admin, jangan pernah di-lock secara salah (kecuali Koperasi mandiri)
   const isLocked =
     propIsLocked !== undefined
-      ? (isPaketLengkap || isAdmin || isModuleAllowed ? false : propIsLocked)
-      : !isModuleAllowed || (isStatusExpired && !isAdmin) || (isPastEndDate && !isAdmin) || hasExpiredChildSub;
+      ? (!isKoperasi && (isPaketLengkap || isAdmin) ? false : isModuleAllowed ? false : propIsLocked)
+      : !isModuleAllowed || (isStatusExpired && (!isAdmin || isKoperasi)) || (isPastEndDate && (!isAdmin || isKoperasi)) || hasExpiredChildSub;
 
   // Detect EXPIRED (pernah berlangganan tapi habis / status expired) vs TRIAL (belum pernah)
   const isExpired = useMemo(() => {

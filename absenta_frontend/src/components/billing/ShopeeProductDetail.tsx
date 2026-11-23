@@ -750,7 +750,7 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
           )}
 
           {/* Overlap Info Banner for Desktop */}
-          {activeBundle && isTargetSingleModule && (
+          {activeBundle && isTargetSingleModule && !isKoperasi && (
             <div className="p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-2">
               <Sparkles size={14} className="text-amber-500 shrink-0" />
               <span>Sekolah Anda memiliki <strong>Paket Lengkap aktif</strong> yang sudah mencakup modul ini.</span>
