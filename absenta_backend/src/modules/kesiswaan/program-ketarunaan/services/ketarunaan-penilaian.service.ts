@@ -217,12 +217,22 @@ export class KetarunaanPenilaianService {
   ) {
     const { kelas_id, tahun_pelajaran_id, semester_id } = params;
 
+    // Ambil seluruh ID semester yang beririsan dalam tahun pelajaran ini (proteksi sinkronisasi)
+    const tpSemesters = await prisma.semester.findMany({
+      where: {
+        tenant_id: tenantId,
+        tahun_pelajaran_id,
+      },
+      select: { id: true },
+    });
+    const candidateSemIds = Array.from(new Set([semester_id, ...tpSemesters.map((s) => s.id)].filter(Boolean)));
+
     const sesiList = await prisma.sesiAbsensi.findMany({
       where: {
         tenant_id: tenantId,
         kelas_id,
         tahun_pelajaran_id,
-        semester_id,
+        semester_id: { in: candidateSemIds },
         status: { not: 'MENDATANG' },
         jenis_kegiatan: {
           in: [
@@ -488,6 +498,31 @@ export class KetarunaanPenilaianService {
         rekomendasi_mental: 0,
       };
 
+      const samapta = existing?.nilai_samapta ?? 0;
+      const pbb = existing?.nilai_pbb ?? 0;
+      const disiplin = existing?.nilai_disiplin ?? p.rekomendasi_disiplin;
+      const mental = existing?.nilai_mental ?? p.rekomendasi_mental;
+
+      let nilaiAkhir = existing?.nilai_akhir;
+      let predikat = existing?.predikat;
+      let deskripsiRapor = existing?.deskripsi_rapor;
+
+      if (nilaiAkhir === undefined || nilaiAkhir === null) {
+        const calc = this.calculateScore(
+          { samapta, pbb, disiplin, mental },
+          {
+            samapta: skema.bobot_samapta,
+            pbb: skema.bobot_pbb,
+            disiplin: skema.bobot_disiplin,
+            mental: skema.bobot_mental,
+          },
+          (skema.mode_pelatihan as 'SEMI_TARUNA' | 'FULL_TARUNA') || 'SEMI_TARUNA'
+        );
+        nilaiAkhir = calc.nilaiAkhir;
+        predikat = calc.predikat;
+        deskripsiRapor = calc.narasi;
+      }
+
       return {
         siswa_id: sa.siswa_id,
         siswa_akademik_id: sa.id || null,
@@ -501,13 +536,13 @@ export class KetarunaanPenilaianService {
         jurusan_id: kelas?.jurusan_id || '',
         jurusan_nama: kelas?.Jurusan?.nama || '',
         kode_jurusan: kelas?.Jurusan?.kode || '',
-        nilai_samapta: existing?.nilai_samapta ?? 0,
-        nilai_pbb: existing?.nilai_pbb ?? 0,
-        nilai_disiplin: existing?.nilai_disiplin ?? p.rekomendasi_disiplin,
-        nilai_mental: existing?.nilai_mental ?? p.rekomendasi_mental,
-        nilai_akhir: existing?.nilai_akhir ?? 0,
-        predikat: existing?.predikat ?? '-',
-        deskripsi_rapor: existing?.deskripsi_rapor ?? '',
+        nilai_samapta: samapta,
+        nilai_pbb: pbb,
+        nilai_disiplin: disiplin,
+        nilai_mental: mental,
+        nilai_akhir: nilaiAkhir,
+        predikat: predikat,
+        deskripsi_rapor: deskripsiRapor,
         detail_samapta: existing?.detail_samapta ?? null,
         is_locked: existing?.is_locked ?? false,
         locked_at: existing?.locked_at ?? null,
