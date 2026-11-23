@@ -436,7 +436,7 @@ export function registerTelemetryHook(fastify: any) {
       if (duration > workerDeltaBuffer.localMaxMs) workerDeltaBuffer.localMaxMs = duration;
     }
 
-    // Track active authenticated user from HTTP request (covers CBT students even if WS is on another worker)
+    // Track active authenticated user from HTTP request (covers CBT students & mobile APK even if WS is on another worker)
     try {
       const reqUser = (request as any).user;
       const uid = reqUser?.id || reqUser?.userId || reqUser?.sub;
@@ -448,6 +448,16 @@ export function registerTelemetryHook(fastify: any) {
           httpActiveUsersByTenant.set(sTenant, new Map());
         }
         httpActiveUsersByTenant.get(sTenant)!.set(sUser, Date.now());
+        presenceService.registerHttpActivity(
+          {
+            id: sUser,
+            name: reqUser?.full_name || reqUser?.name || reqUser?.username,
+            full_name: reqUser?.full_name || reqUser?.name,
+            roleName: reqUser?.roleName || reqUser?.role?.name || (typeof reqUser?.role === 'string' ? reqUser.role : undefined),
+            tenantId: sTenant,
+          },
+          (request as any).detectedClientIp || request.ip
+        );
       }
     } catch {}
 

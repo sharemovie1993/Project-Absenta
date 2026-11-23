@@ -14,11 +14,11 @@ export const presenceRoutes = async (fastify: any) => {
 
       const queryAll = request.query?.all === 'true' || request.query?.all === true;
 
-      if (isSuper && queryAll) {
-        const globalSummary = presenceService.getGlobalSummary();
+      if (isSuper || queryAll || tenantId === 'system') {
+        const globalClusterSummary = await presenceService.getClusterTenantSummary(String(tenantId || 'system'), true);
         return reply.status(200).send({
           success: true,
-          data: globalSummary
+          data: globalClusterSummary
         });
       }
 
@@ -29,7 +29,7 @@ export const presenceRoutes = async (fastify: any) => {
         });
       }
 
-      const summary = presenceService.getTenantSummary(String(tenantId));
+      const summary = await presenceService.getClusterTenantSummary(String(tenantId), false);
       return reply.status(200).send({
         success: true,
         data: summary
@@ -50,11 +50,16 @@ export const presenceRoutes = async (fastify: any) => {
   fastify.get('/count', async (request: any, reply: any) => {
     try {
       const tenantId = request.tenantId || request.user?.tenantId || request.user?.tenant_id;
-      const count = presenceService.getActiveUserCount(tenantId ? String(tenantId) : undefined);
+      const user = request.user || {};
+      const isSuper = isSystemSuperAdmin(user.roleName, tenantId) || tenantId === 'system';
+      const summary = await presenceService.getClusterTenantSummary(
+        tenantId ? String(tenantId) : undefined,
+        isSuper
+      );
       return reply.status(200).send({
         success: true,
         data: {
-          totalOnline: count,
+          totalOnline: summary.totalOnline,
           timestamp: new Date().toISOString()
         }
       });
