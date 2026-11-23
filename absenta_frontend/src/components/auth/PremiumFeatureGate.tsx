@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, Zap, RefreshCw, CalendarX2, CreditCard } from 'lucide-react';
 import Button from '../ui/Button';
@@ -28,6 +28,7 @@ export default function PremiumFeatureGate({
   description = 'Upgrade paket Anda untuk mulai menggunakan fitur ini secara penuh.',
 }: PremiumFeatureGateProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, subscription, refreshSubscription } = useAuthStore();
   const { isAdmin } = useCapabilities();
   const [isRefreshing, setIsRefreshing] = React.useState(false);
@@ -127,6 +128,14 @@ export default function PremiumFeatureGate({
   };
 
   const handleUpgradeClick = () => {
+    if (isKoperasi) {
+      if (location.pathname.startsWith('/cooperative')) {
+        navigate('/cooperative/dashboard?subtab=langganan&inner_tab=catalog');
+      } else {
+        navigate('/dashboard?tab=koperasi&subtab=langganan&inner_tab=catalog');
+      }
+      return;
+    }
     const categoryParam = targetModule ? `&cat=${targetModule}` : '';
     navigate(`/service-center?tab=catalog${categoryParam}`);
   };
@@ -174,9 +183,9 @@ export default function PremiumFeatureGate({
                     Modul {displayFeatureName} Tidak Aktif
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {isAdmin
+                    {isAdmin || isKoperasi
                       ? 'Masa berlaku modul ini telah habis. Perpanjang langganan untuk memulihkan akses penuh.'
-                      : 'Masa berlaku modul ini telah habis. Hubungi admin sekolah Anda untuk memperpanjang.'}
+                      : 'Masa berlaku modul ini telah habis. Hubungi pengurus koperasi atau admin untuk memperpanjang.'}
                   </p>
                 </div>
               </div>
@@ -191,7 +200,7 @@ export default function PremiumFeatureGate({
                   <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
                   Cek Status
                 </Button>
-                {isAdmin && (
+                {(isAdmin || isKoperasi) && (
                   <Button
                     onClick={handleUpgradeClick}
                     className="flex-1 md:flex-none bg-rose-600 hover:bg-rose-700 text-white rounded-lg px-4 py-2 h-9 font-bold text-xs shadow-sm shadow-rose-600/10 border-none gap-1.5"
@@ -241,9 +250,9 @@ export default function PremiumFeatureGate({
                   Uji Coba: Fitur {displayFeatureName}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {isAdmin
+                  {isAdmin || isKoperasi
                     ? 'Penyimpanan dibatasi maks. 10 data. Upgrade modul untuk akses tanpa batas.'
-                    : 'Penyimpanan dibatasi maks. 10 data. Hubungi admin sekolah Anda untuk akses penuh.'}
+                    : 'Penyimpanan dibatasi maks. 10 data. Hubungi pengurus koperasi atau admin untuk akses penuh.'}
                 </p>
               </div>
             </div>
