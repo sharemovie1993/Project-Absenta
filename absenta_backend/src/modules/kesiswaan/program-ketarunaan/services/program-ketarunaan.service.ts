@@ -117,7 +117,7 @@ export class ProgramKetarunaanService {
         id: a.id,
         user_id: a.user_id,
         guru_id: guru?.id || '',
-        nama_guru: guru?.nama_guru || a.User?.name || 'Panitia',
+        nama_guru: guru?.nama_guru || a.User?.full_name || 'Panitia',
         nip: guru?.nip || '-',
         no_hp: guru?.no_hp || null,
         position_id: a.position_id,
@@ -135,12 +135,12 @@ export class ProgramKetarunaanService {
       panitia: formattedPanitia,
       ex_officio: {
         penanggung_jawab: penanggungJawab ? {
-          nama: penanggungJawab.User?.Guru?.nama_guru || penanggungJawab.User?.name,
+          nama: penanggungJawab.User?.Guru?.nama_guru || penanggungJawab.User?.full_name || 'Kepala Sekolah',
           nip: penanggungJawab.User?.Guru?.nip || '-',
           jabatan: 'Kepala Sekolah (Penanggung Jawab)',
         } : null,
         pengarah: pengarah ? {
-          nama: pengarah.User?.Guru?.nama_guru || pengarah.User?.name,
+          nama: pengarah.User?.Guru?.nama_guru || pengarah.User?.full_name || 'Waka Kesiswaan',
           nip: pengarah.User?.Guru?.nip || '-',
           jabatan: 'Wakil Kepala Sekolah Bidang Kesiswaan (Pengarah)',
         } : null,
