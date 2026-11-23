@@ -100,7 +100,7 @@ export const KbmStatCards = React.memo<KbmStatCardsProps>(({
                 subtitle={item.subtitle}
                 icon={item.icon}
                 gradient={item.gradient}
-                variant="premium"
+                variant="compact-premium"
                 onClick={() => setStatusFilter(statusFilter === item.id ? 'ALL' : item.id as any)}
                 className="cursor-pointer"
               />

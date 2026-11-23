@@ -6,7 +6,6 @@ import { normalizeFromSesiAbsensi, KbmItem, getKbmStatusKey } from '../../../uti
 import { toLocalDate, formatLocalTimeFromISO, getTimezoneLabel } from '../../../utils/attendance/time';
 import { useSocket } from '../../../hooks/useSocket';
 import { Button } from '../../ui';
-import Card from '../../ui/Card';
 import { Modal, ModalFooter } from '../../ui/Modal';
 import { BookOpen, ShieldAlert, ArrowRight, ArrowLeft, AlertTriangle, CheckCircle2, Sparkles, Activity, HeartPulse, Clock, UserCheck, MessageSquare, Send, UserX, Printer, LayoutGrid } from 'lucide-react';
 import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
@@ -690,50 +689,55 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-            <Card
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => triggerOpenCommandCenter({ statusFilter: 'LIVE', teacherStatusFilter: 'ALL' })}
-              className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all cursor-pointer"
+              className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between hover:shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer"
             >
-              <div className="flex items-start justify-between gap-1.5">
+              <div className="flex items-center justify-between gap-2">
                 <div>
-                  <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                     Sesi Aktif
                   </span>
-                  <h4 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1 leading-none">
-                    {stats.live} <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Live</span>
+                  <h4 className="text-base sm:text-xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5 leading-none">
+                    {stats.live} <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Live</span>
                   </h4>
                 </div>
-                <div className="p-2 sm:p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl shrink-0">
-                  <Activity size={16} className={cn(stats.live > 0 && "animate-pulse")} />
+                <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl shrink-0">
+                  <Activity size={15} className={cn(stats.live > 0 && "animate-pulse")} />
                 </div>
               </div>
-              <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 truncate">
+              <p className="text-[10px] sm:text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 truncate">
                 {stats.finished} dari {stats.total} Selesai
               </p>
-            </Card>
+            </div>
 
-            <Card
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => triggerOpenCommandCenter({ statusFilter: 'ALL', teacherStatusFilter: 'BELUM_MASUK' })}
               className={cn(
-              "rounded-2xl border shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all cursor-pointer",
-              stats.teacherNotArrived > 0
-                ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-800/60"
-                : stats.teacherAlpa > 0
-                ? "bg-slate-50/60 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800"
-                : "bg-white dark:bg-slate-900/60 border-slate-100 dark:border-slate-800"
-            )}>
-              <div className="flex items-start justify-between gap-1.5">
+                "rounded-2xl border shadow-2xs px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between hover:shadow-sm transition-all cursor-pointer",
+                stats.teacherNotArrived > 0
+                  ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-800/60 hover:border-amber-300"
+                  : stats.teacherAlpa > 0
+                  ? "bg-slate-50/60 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800"
+                  : "bg-white dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800"
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
                 <div>
-                  <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                     Belum Masuk
                   </span>
-                  <h4 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1 leading-none">
-                    {stats.teacherNotArrived} <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Sesi</span>
+                  <h4 className="text-base sm:text-xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5 leading-none">
+                    {stats.teacherNotArrived} <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Sesi</span>
                   </h4>
                 </div>
                 <div className={cn(
-                  "p-2 sm:p-2.5 rounded-xl shrink-0",
+                  "p-2 rounded-xl shrink-0",
                   stats.teacherNotArrived > 0
                     ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
                     : stats.teacherAlpa > 0
@@ -741,15 +745,15 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
                     : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
                 )}>
                   {stats.teacherNotArrived > 0 ? (
-                    <Clock size={16} className="animate-pulse" />
+                    <Clock size={15} className="animate-pulse" />
                   ) : stats.teacherAlpa > 0 ? (
-                    <Clock size={16} />
+                    <Clock size={15} />
                   ) : (
-                    <CheckCircle2 size={16} />
+                    <CheckCircle2 size={15} />
                   )}
                 </div>
               </div>
-              <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 truncate">
+              <p className="text-[10px] sm:text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 truncate">
                 {stats.teacherNotArrived > 0
                   ? 'Menunggu Guru Masuk'
                   : stats.total > 0 && (stats.live > 0 || stats.finished > 0) && stats.teacherAlpa === 0
@@ -758,70 +762,75 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
                   ? `KBM Usai (${stats.teacherAlpa} Belum Hadir)`
                   : 'Tidak Ada Sesi Aktif'}
               </p>
-            </Card>
+            </div>
 
-            <Card
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => triggerOpenCommandCenter({ statusFilter: 'ALL', teacherStatusFilter: 'ALPA' })}
               className={cn(
-              "rounded-2xl border shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all cursor-pointer",
-              stats.teacherAlpa > 0
-                ? "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200/80 dark:border-rose-800/60"
-                : "bg-white dark:bg-slate-900/60 border-slate-100 dark:border-slate-800"
-            )}>
-              <div className="flex items-start justify-between gap-1.5">
+                "rounded-2xl border shadow-2xs px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between hover:shadow-sm transition-all cursor-pointer",
+                stats.teacherAlpa > 0
+                  ? "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200/80 dark:border-rose-800/60 hover:border-rose-300"
+                  : "bg-white dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800"
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
                 <div>
-                  <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                     Kelas Kosong
                   </span>
-                  <h4 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1 leading-none">
-                    {stats.teacherAlpa} <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Sesi</span>
+                  <h4 className="text-base sm:text-xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5 leading-none">
+                    {stats.teacherAlpa} <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Sesi</span>
                   </h4>
                 </div>
                 <div className={cn(
-                  "p-2 sm:p-2.5 rounded-xl shrink-0",
+                  "p-2 rounded-xl shrink-0",
                   stats.teacherAlpa > 0
                     ? "bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400"
                     : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
                 )}>
                   {stats.teacherAlpa > 0 ? (
-                    <ShieldAlert size={16} className="animate-bounce" />
+                    <ShieldAlert size={15} className="animate-bounce" />
                   ) : (
-                    <CheckCircle2 size={16} />
+                    <CheckCircle2 size={15} />
                   )}
                 </div>
               </div>
-              <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 truncate">
+              <p className="text-[10px] sm:text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 truncate">
                 {stats.teacherAlpa > 0
                   ? 'Perlu Inval Piket'
                   : 'Semua Kelas Tertangani'}
               </p>
-            </Card>
+            </div>
 
-            <Card
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => triggerOpenCommandCenter({ statusFilter: 'JURNAL', teacherStatusFilter: 'ALL' })}
-              className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs p-3 sm:p-4 flex flex-col justify-between min-h-[96px] sm:min-h-[136px] hover:shadow-sm transition-all cursor-pointer"
+              className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between hover:shadow-sm hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer"
             >
-              <div className="flex items-start justify-between gap-1.5">
+              <div className="flex items-center justify-between gap-2">
                 <div>
-                  <span className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                     Jurnal Materi
                   </span>
-                  <h4 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1 leading-none">
-                    {journalPct}% <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Terisi</span>
+                  <h4 className="text-base sm:text-xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5 leading-none">
+                    {journalPct}% <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Terisi</span>
                   </h4>
                 </div>
-                <div className="p-2 sm:p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl shrink-0">
-                  <BookOpen size={16} />
+                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl shrink-0">
+                  <BookOpen size={15} />
                 </div>
               </div>
-              <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 truncate">
+              <p className="text-[10px] sm:text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 truncate">
                 {stats.withJournal} Jurnal Terinput
               </p>
-            </Card>
+            </div>
           </div>
 
           {/* Action Strip (Catatan Khusus + Tombol Buka Live KBM dalam 1 Baris Elegan) */}
-          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 shadow-sm">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 px-3.5 py-2.5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-black text-slate-400 dark:text-slate-500 uppercase text-[10px] tracking-wider">
                 Catatan KBM:
