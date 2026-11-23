@@ -84,7 +84,9 @@ export const Tickets: React.FC<TicketsProps> = React.memo(({ hideLayout = false 
 
   // Tab & URL Search Params Sync
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab');
+  const isDashboardEmbedded = hideLayout || (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard'));
+  const tabParamKey = isDashboardEmbedded ? 'inner_tab' : 'tab';
+  const tabParam = searchParams.get(tabParamKey);
 
   const activeTab: 'manage' | 'my' = useMemo(() => {
     if (!canManage) return 'my';
@@ -95,11 +97,15 @@ export const Tickets: React.FC<TicketsProps> = React.memo(({ hideLayout = false 
   const handleTabChange = useCallback((tabId: string) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      next.set('tab', tabId);
+      if (tabId === 'manage') {
+        next.delete(tabParamKey);
+      } else {
+        next.set(tabParamKey, tabId);
+      }
       return next;
-    });
+    }, { replace: true });
     setCurrentPage(1);
-  }, [setSearchParams]);
+  }, [setSearchParams, tabParamKey]);
 
   const tabOptions: TabOption[] = useMemo(() => [
     { id: 'manage', label: 'Kelola Aduan Masuk', icon: Inbox },

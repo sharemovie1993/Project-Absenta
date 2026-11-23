@@ -66,7 +66,9 @@ const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
     can('cooperative.loans.manage');
 
   const isManageRoute = window.location.pathname.endsWith('/manage');
-  const tabParam = searchParams.get('tab');
+  const isDashboardEmbedded = hideLayout || (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard'));
+  const tabParamKey = isDashboardEmbedded ? 'inner_tab' : 'tab';
+  const tabParam = searchParams.get(tabParamKey);
 
   const activeTab: 'manage' | 'personal' = useMemo(() => {
     if (!isOperator) return 'personal';
@@ -79,13 +81,13 @@ const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (tab === 'personal') {
-        next.set('tab', 'personal');
+        next.set(tabParamKey, 'personal');
       } else {
-        next.delete('tab');
+        next.delete(tabParamKey);
       }
       return next;
     }, { replace: true });
-  }, [setSearchParams]);
+  }, [setSearchParams, tabParamKey]);
 
   const isOperatorMode = activeTab === 'manage';
   const isStudent = !isOperatorMode;

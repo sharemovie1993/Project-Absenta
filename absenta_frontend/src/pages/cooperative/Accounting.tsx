@@ -78,16 +78,20 @@ const Accounting: React.FC<AccountingProps> = React.memo(({ hideLayout = false }
     const { isKoperasiFinance, isKoperasiHead, isAdmin, isSuperAdmin, can } = useCapabilities();
     const isMobile = useIsMobile();
     const [searchParams, setSearchParams] = useSearchParams();
-    const tabParam = searchParams.get('tab');
+    const isDashboardEmbedded = hideLayout || (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard'));
+    const tabParamKey = isDashboardEmbedded ? 'inner_tab' : 'tab';
+    const tabParam = searchParams.get(tabParamKey);
     
     // Auto-redirect jika pengguna membuka tab legacy ke halaman mandiri masing-masing
     useEffect(() => {
-        if (tabParam === 'expenses' || tabParam === 'beban' || tabParam === 'kas-keluar') {
-            navigate('/cooperative/cash-bank', { replace: true });
-        } else if (tabParam === 'coa' || tabParam === 'bagan-akun') {
-            navigate('/cooperative/chart-of-accounts', { replace: true });
+        if (!isDashboardEmbedded) {
+            if (tabParam === 'expenses' || tabParam === 'beban' || tabParam === 'kas-keluar') {
+                navigate('/cooperative/cash-bank', { replace: true });
+            } else if (tabParam === 'coa' || tabParam === 'bagan-akun') {
+                navigate('/cooperative/chart-of-accounts', { replace: true });
+            }
         }
-    }, [tabParam, navigate]);
+    }, [tabParam, navigate, isDashboardEmbedded]);
 
     const activeTab: AccountingTabId = useMemo(() => {
         if (tabParam === 'income-statement' || tabParam === 'laba-rugi') return 'income-statement';
@@ -103,10 +107,10 @@ const Accounting: React.FC<AccountingProps> = React.memo(({ hideLayout = false }
     const handleTabChange = useCallback((tabId: string) => {
         setSearchParams(prev => {
             const next = new URLSearchParams(prev);
-            next.set('tab', tabId);
+            next.set(tabParamKey, tabId);
             return next;
-        });
-    }, [setSearchParams]);
+        }, { replace: true });
+    }, [setSearchParams, tabParamKey]);
 
     const tabOptions: TabOption[] = useMemo(() => [
         { id: 'income-statement', label: 'Laba Rugi', icon: TrendingUp },

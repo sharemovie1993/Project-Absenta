@@ -68,7 +68,9 @@ const Announcements: React.FC<AnnouncementsProps> = React.memo(({ hideLayout = f
 
   // Tab & Routing Synchronization
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab');
+  const isDashboardEmbedded = hideLayout || (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard'));
+  const tabParamKey = isDashboardEmbedded ? 'inner_tab' : 'tab';
+  const tabParam = searchParams.get(tabParamKey);
 
   const activeTab: 'manage' | 'feed' = useMemo(() => {
     if (!canCreate) return 'feed';
@@ -80,13 +82,13 @@ const Announcements: React.FC<AnnouncementsProps> = React.memo(({ hideLayout = f
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (tabId === 'manage') {
-        next.delete('tab');
+        next.delete(tabParamKey);
       } else {
-        next.set('tab', tabId);
+        next.set(tabParamKey, tabId);
       }
       return next;
     }, { replace: true });
-  }, [setSearchParams]);
+  }, [setSearchParams, tabParamKey]);
 
   const tabOptions: TabOption[] = useMemo(() => [
     { id: 'manage', label: 'Kelola Pengumuman', icon: FileText },

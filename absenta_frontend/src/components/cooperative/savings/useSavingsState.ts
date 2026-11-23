@@ -44,7 +44,9 @@ export const useSavingsState = () => {
     can('cooperative.savings.manage');
 
   const isManageMode = window.location.pathname.endsWith('/manage');
-  const tabParam = searchParams.get('tab');
+  const isDashboardEmbedded = typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard');
+  const tabParamKey = isDashboardEmbedded ? 'inner_tab' : 'tab';
+  const tabParam = searchParams.get(tabParamKey);
 
   const activeTab: 'manage' | 'personal' = useMemo(() => {
     if (!isOperator) return 'personal';
@@ -57,13 +59,13 @@ export const useSavingsState = () => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (tab === 'personal') {
-        next.set('tab', 'personal');
+        next.set(tabParamKey, 'personal');
       } else {
-        next.delete('tab');
+        next.delete(tabParamKey);
       }
       return next;
     }, { replace: true });
-  }, [setSearchParams]);
+  }, [setSearchParams, tabParamKey]);
 
   const isPersonalMode = activeTab === 'personal' || !isOperator;
   const isStudent = isPersonalMode;

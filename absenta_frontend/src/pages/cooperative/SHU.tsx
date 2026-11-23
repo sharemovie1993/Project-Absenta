@@ -135,7 +135,9 @@ const SHUPage: React.FC<SHUPageProps> = React.memo(({ hideLayout = false }) => {
   const isCoopStaff = isAdmin || isKoperasiHead || isKoperasiFinance || can('cooperative.shu.view.report') || can('cooperative.shu.manage');
   const isManageRoute = window.location.pathname.endsWith('/manage');
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab');
+  const isDashboardEmbedded = hideLayout || (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard'));
+  const tabParamKey = isDashboardEmbedded ? 'inner_tab' : 'tab';
+  const tabParam = searchParams.get(tabParamKey);
 
   // Tabs: 'periods' | 'config' | 'personal'
   const activeTab: 'periods' | 'config' | 'personal' = useMemo(() => {
@@ -152,13 +154,13 @@ const SHUPage: React.FC<SHUPageProps> = React.memo(({ hideLayout = false }) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (id === 'periods') {
-        next.delete('tab');
+        next.delete(tabParamKey);
       } else {
-        next.set('tab', id);
+        next.set(tabParamKey, id);
       }
       return next;
     }, { replace: true });
-  }, [setSearchParams]);
+  }, [setSearchParams, tabParamKey]);
 
   const tabOptions: TabOption[] = useMemo(() => [
     { id: 'periods', label: 'Periode SHU', icon: Calendar },

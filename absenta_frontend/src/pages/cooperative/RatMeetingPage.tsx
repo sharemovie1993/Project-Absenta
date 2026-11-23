@@ -182,7 +182,11 @@ const RatMeetingPage: React.FC<RatMeetingPageProps> = React.memo(({ hideLayout =
 
   // URL state
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab') || 'attendance';
+  const isDashboardEmbedded = hideLayout || (typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard'));
+  const tabParamKey = isDashboardEmbedded ? 'inner_tab' : 'tab';
+  const validRatTabs = ['attendance', 'agenda', 'voting', 'resolutions', 'minutes'];
+  const rawRatTab = searchParams.get(tabParamKey);
+  const tabParam = rawRatTab && validRatTabs.includes(rawRatTab) ? rawRatTab : 'attendance';
 
   const [activeTab, setActiveTab] = useState<string>(tabParam);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string>('');
@@ -214,10 +218,10 @@ const RatMeetingPage: React.FC<RatMeetingPageProps> = React.memo(({ hideLayout =
     setActiveTab(tabId);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      next.set('tab', tabId);
+      next.set(tabParamKey, tabId);
       return next;
     }, { replace: true });
-  }, [setSearchParams]);
+  }, [setSearchParams, tabParamKey]);
 
   // Real-time socket sync with spike throttling (1500ms debounce)
   const lastSyncRef = useRef<number>(0);

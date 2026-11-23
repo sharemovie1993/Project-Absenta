@@ -414,6 +414,7 @@ export const UniversalCoopMemberView: React.FC<UniversalCoopMemberViewProps> = R
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
+            next.delete('inner_tab');
             if (tabId === 'ringkasan') {
               next.delete('subtab');
             } else {
