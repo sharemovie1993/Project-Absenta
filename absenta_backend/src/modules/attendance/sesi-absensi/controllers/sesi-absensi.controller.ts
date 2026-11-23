@@ -99,7 +99,7 @@ export const sesiAbsensiController = {
         return { success: false, message: 'Unauthorized: tenant_id not found' };
       }
 
-      const updated = await sesiService.updateStatus(tenantId, scope, id, status);
+      const updated = await sesiService.updateStatus(tenantId, scope, id, status, request.user?.id);
       
       reply.status(200);
       return { success: true, message: 'Sesi status updated', data: updated };
@@ -125,7 +125,7 @@ export const sesiAbsensiController = {
         return { success: false, message: 'Unauthorized: tenant_id not found' };
       }
 
-      const updated = await sesiService.update(tenantId, scope, id, data);
+      const updated = await sesiService.update(tenantId, scope, id, data, request.user?.id);
       
       reply.status(200);
       return { success: true, message: 'Sesi updated', data: updated };

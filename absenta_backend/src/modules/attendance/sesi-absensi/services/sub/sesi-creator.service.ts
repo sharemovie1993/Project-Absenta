@@ -363,23 +363,33 @@ export class SesiCreatorService {
       validateSessionTimeWindow(startTarget, endTarget, Boolean(finalFotoUrl), tz, isPetugasOpening);
 
       if (finalFotoUrl || waktu_mulai || payload.status === 'BERLANGSUNG' || isPetugasOpening) {
+        const updateData: any = {
+          status: 'BERLANGSUNG',
+          ...(finalFotoUrl ? { foto_kegiatan: finalFotoUrl } : {}),
+          ...(waktu_mulai ? { waktu_mulai: parseSafeDate(waktu_mulai, tzOffset) } : {}),
+          ...(endTarget ? { waktu_selesai: endTarget } : {}),
+          updated_at: new Date()
+        };
+        if (isPetugasOpening) {
+          updateData.keterangan = `[DIBUKA_PETUGAS_KELAS] ${user?.name || 'Petugas Kelas'}`;
+          if (userId) updateData.created_by_user_id = userId;
+        } else if (userId && !existingSesi.created_by_user_id) {
+          updateData.created_by_user_id = userId;
+          updateData.keterangan = `[DIBUKA_GURU] ${user?.name || 'Guru'}`;
+        }
+
         const updatedSesi = await prisma.sesiAbsensi.update({
           where: { id: existingSesi.id },
-          data: {
-            status: 'BERLANGSUNG',
-            ...(finalFotoUrl ? { foto_kegiatan: finalFotoUrl } : {}),
-            ...(waktu_mulai ? { waktu_mulai: parseSafeDate(waktu_mulai, tzOffset) } : {}),
-            ...(endTarget ? { waktu_selesai: endTarget } : {}),
-            updated_at: new Date()
-          }
+          data: updateData
         });
 
+        const effectiveAttendingGuruId = guru_id || existingSesi.guru_id || (existingSesi as any).Guru?.id;
         // HANYA tandai guru hadir jika dibuka oleh Guru dengan foto resmi (bukan siswa petugas membuka kelas)
-        if (guru_id && finalFotoUrl && !isPetugasOpening) {
+        if (effectiveAttendingGuruId && finalFotoUrl && !isPetugasOpening) {
           await upsertTeacherAttendanceOnOpen(
             tenantId,
             existingSesi.id,
-            guru_id,
+            effectiveAttendingGuruId,
             startTarget,
             existingSesi.tahun_pelajaran_id,
             existingSesi.semester_id,
@@ -479,6 +489,7 @@ export class SesiCreatorService {
         waktu_selesai: effectiveParsedEnd,
         status: initialStatus,
         foto_kegiatan: finalFotoUrl,
+        keterangan: isPetugasOpening ? `[DIBUKA_PETUGAS_KELAS] ${user?.name || 'Petugas Kelas'}` : `[DIBUKA_GURU] ${user?.name || 'Guru'}`,
         created_by_user_id: userId
       }
     });

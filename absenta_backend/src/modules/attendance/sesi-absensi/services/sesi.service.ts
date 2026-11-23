@@ -27,12 +27,12 @@ export class SesiAbsensiService {
     return sesiLifecycleService.list(tenantId, org, query);
   }
 
-  async updateStatus(tenantId: string, org: any, sesiId: string, status: string) {
-    return sesiLifecycleService.updateStatus(tenantId, org, sesiId, status);
+  async updateStatus(tenantId: string, org: any, sesiId: string, status: string, userId?: string) {
+    return sesiLifecycleService.updateStatus(tenantId, org, sesiId, status, userId);
   }
 
-  async update(tenantId: string, org: any, id: string, data: any) {
-    return sesiLifecycleService.update(tenantId, org, id, data);
+  async update(tenantId: string, org: any, id: string, data: any, userId?: string) {
+    return sesiLifecycleService.update(tenantId, org, id, data, userId);
   }
 
   async remove(tenantId: string, org: any, id: string, userId: string) {

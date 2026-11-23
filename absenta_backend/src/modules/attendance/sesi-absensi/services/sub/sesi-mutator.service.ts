@@ -187,7 +187,7 @@ async function upsertTeacherAttendanceOnOpen(
 }
 
 export class SesiMutatorService {
-  async updateStatus(tenantId: string, _org: any, sesiId: string, status: string) {
+  async updateStatus(tenantId: string, _org: any, sesiId: string, status: string, userId?: string) {
     const sesi = await prisma.sesiAbsensi.findFirst({
       where: { id: sesiId, tenant_id: tenantId }
     });
@@ -199,12 +199,30 @@ export class SesiMutatorService {
       throw new Error(`Status sesi '${status}' tidak valid`);
     }
 
+    const user = userId ? await prisma.user.findUnique({
+      where: { id: userId },
+      include: { Role: true }
+    }) : null;
+    const isSiswa = user?.Role?.name === 'SISWA';
+
+    const updatePayload: any = {
+      status: targetStatus,
+      updated_at: new Date()
+    };
+
+    if (targetStatus === 'BERLANGSUNG' && !sesi.keterangan) {
+      if (isSiswa) {
+        updatePayload.keterangan = `[DIBUKA_PETUGAS_KELAS] ${user?.name || 'Petugas Kelas'}`;
+        if (userId) updatePayload.created_by_user_id = userId;
+      } else {
+        updatePayload.keterangan = `[DIBUKA_GURU] ${user?.name || 'Guru'}`;
+        if (userId) updatePayload.created_by_user_id = userId;
+      }
+    }
+
     const updated = await prisma.sesiAbsensi.update({
       where: { id: sesiId },
-      data: {
-        status: targetStatus,
-        updated_at: new Date()
-      }
+      data: updatePayload
     });
 
     if (targetStatus === 'SELESAI') {
@@ -225,11 +243,17 @@ export class SesiMutatorService {
     return updated;
   }
 
-  async update(tenantId: string, _org: any, id: string, data: any) {
+  async update(tenantId: string, _org: any, id: string, data: any, userId?: string) {
     const sesi = await prisma.sesiAbsensi.findFirst({
       where: { id, tenant_id: tenantId }
     });
     if (!sesi) throw new Error('Sesi tidak ditemukan');
+
+    const user = userId ? await prisma.user.findUnique({
+      where: { id: userId },
+      include: { Role: true }
+    }) : null;
+    const isSiswa = user?.Role?.name === 'SISWA';
 
     // ⚡ Konversi dan upload Base64 foto bukti kegiatan jika dikirim oleh petugas kelas / guru
     let finalFotoUrl = data.foto_kegiatan || data.foto_bukti_url;
@@ -261,6 +285,15 @@ export class SesiMutatorService {
     if (data.status) updatePayload.status = data.status;
     if (finalFotoUrl) updatePayload.foto_kegiatan = finalFotoUrl;
     if (data.keterangan !== undefined) updatePayload.keterangan = data.keterangan;
+    if (!updatePayload.keterangan && data.status === 'BERLANGSUNG' && !sesi.keterangan) {
+      if (isSiswa || data.opened_by_petugas) {
+        updatePayload.keterangan = `[DIBUKA_PETUGAS_KELAS] ${user?.name || 'Petugas Kelas'}`;
+        if (userId) updatePayload.created_by_user_id = userId;
+      } else {
+        updatePayload.keterangan = `[DIBUKA_GURU] ${user?.name || 'Guru'}`;
+        if (userId) updatePayload.created_by_user_id = userId;
+      }
+    }
     if (data.waktu_mulai) updatePayload.waktu_mulai = data.waktu_mulai;
     if (data.waktu_selesai) updatePayload.waktu_selesai = data.waktu_selesai;
     if (data.guru_id) updatePayload.guru_id = data.guru_id;

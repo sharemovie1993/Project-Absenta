@@ -481,6 +481,46 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               </span>
             )}
 
+            {/* 🏷️ Opener Badge: Informasi siapa yang membuka sesi KBM */}
+            {(() => {
+              const isOpenedByPetugas = Boolean(
+                item?.opened_by === 'PETUGAS_KELAS' ||
+                item?.session?.opened_by === 'PETUGAS_KELAS' ||
+                item?.opened_by_petugas ||
+                item?.session?.opened_by_petugas
+              );
+              const isOpenedByGuru = Boolean(
+                item?.opened_by === 'GURU' ||
+                item?.session?.opened_by === 'GURU' ||
+                (!isOpenedByPetugas && isTeacherPresent)
+              );
+              const openerName = item?.opened_by_name || item?.session?.opened_by_name;
+
+              if (isOpenedByPetugas) {
+                return (
+                  <span 
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200 border border-amber-300 dark:border-amber-700/80 text-[10px] font-black shrink-0 shadow-2xs"
+                    title={`Sesi KBM ini dibuka oleh Petugas Kelas${openerName ? `: ${openerName}` : ''}`}
+                  >
+                    <Users size={11} className="text-amber-600 dark:text-amber-400" />
+                    Dibuka Petugas Kelas{openerName ? ` (${openerName})` : ''}
+                  </span>
+                );
+              }
+              if (isOpenedByGuru && isSessionActive) {
+                return (
+                  <span 
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700/80 text-[10px] font-black shrink-0 shadow-2xs"
+                    title={`Sesi KBM ini dibuka oleh Guru Pengampu${openerName ? `: ${openerName}` : ''}`}
+                  >
+                    <CheckCircle2 size={11} className="text-emerald-600 dark:text-emerald-400" />
+                    Dibuka Guru
+                  </span>
+                );
+              }
+              return null;
+            })()}
+
             {/* 🎖️ Ketarunaan Awareness Badge — muncul jika guru hadir via Terminal Ketarunaan */}
             {(() => {
               const guruCatatan = item?.AbsenGuru?.[0]?.catatan || item?.guru_catatan || item?.session?.catatan || '';
@@ -805,8 +845,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
         {mode === 'GURU' && (
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-              {/* Mulai KBM (Foto) Button */}
-              {!isLive && !isFinished && !isOverdue && onOpenPhotoModal && (
+              {/* 1. Guru BELUM HADIR: Tombol Foto Masuk Guru / Mulai KBM */}
+              {!isTeacherPresent && !isFinished && !isOverdue && onOpenPhotoModal && (
                 <Button
                   type="button"
                   size="sm"
@@ -814,10 +854,34 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                     e.stopPropagation();
                     onOpenPhotoModal(item);
                   }}
-                  className="h-8 px-3.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-900/20 active:scale-95 transition-all"
+                  className={cn(
+                    "h-8 px-3.5 rounded-xl text-xs font-black border-none flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 transition-all",
+                    isSessionActive
+                      ? "bg-amber-500 hover:bg-amber-400 text-slate-950 animate-pulse shadow-amber-950/20"
+                      : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20"
+                  )}
+                  title={isSessionActive ? "Sesi telah dibuka oleh Petugas Kelas. Klik untuk mengambil foto verifikasi kehadiran Bapak/Ibu Guru" : "Mulai sesi KBM dengan foto bukti kehadiran guru"}
                 >
                   <Camera size={13} />
-                  <span>{isSesiKegiatan ? `Mulai ${kegiatanNamaLabel}` : "Mulai KBM"}</span>
+                  <span>{isSessionActive ? "📸 Foto Masuk Guru" : isSesiKegiatan ? `Mulai ${kegiatanNamaLabel}` : "Mulai KBM"}</span>
+                </Button>
+              )}
+
+              {/* 2. Guru SUDAH HADIR: Tombol Perbarui Foto jika ingin update dokumentasi */}
+              {isTeacherPresent && !isFinished && !isOverdue && onOpenPhotoModal && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenPhotoModal(item);
+                  }}
+                  className="h-8 px-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer border border-slate-300 dark:border-slate-700"
+                  title="Perbarui foto dokumentasi KBM guru"
+                >
+                  <Camera size={13} className="text-emerald-500" />
+                  <span>Foto Guru ✓</span>
                 </Button>
               )}
 

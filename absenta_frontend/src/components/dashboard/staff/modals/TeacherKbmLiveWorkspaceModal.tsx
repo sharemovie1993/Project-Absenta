@@ -68,11 +68,29 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
   const effectiveSesiId = sesi?.id || (timelineItem?.id && !String(timelineItem.id).startsWith('sched_') ? timelineItem.id : undefined);
 
   // ── Existing KBM Engine Governance Rules (Identik dengan StaffKbmAbsenTab & SesiAttendanceList) ──
-  const isStartedByTeacher = Boolean(
+  const isOpenedByPetugas = Boolean(
+    timelineItem?.opened_by === 'PETUGAS_KELAS' ||
+    sesi?.opened_by === 'PETUGAS_KELAS' ||
+    timelineItem?.opened_by_petugas ||
+    sesi?.opened_by_petugas ||
+    (sesi as any)?.keterangan?.includes('[DIBUKA_PETUGAS_KELAS]')
+  );
+
+  const isTeacherPresent = Boolean(
+    (timelineItem?.guru_status && !['BELUM_TAP', 'BELUM_HADIR', 'ALPA', 'MENDATANG', 'BELUM_MASUK'].includes(timelineItem.guru_status)) ||
+    timelineItem?.AbsenGuru?.[0]?.waktu_tap ||
+    sesi?.AbsenGuru?.[0]?.waktu_tap ||
+    (timelineItem?.session?.waktu_tap) ||
+    (sesi?.foto_kegiatan && !isOpenedByPetugas)
+  );
+  const isStartedByTeacher = isTeacherPresent;
+
+  const isSessionOpen = Boolean(
+    sesi?.status === 'BERLANGSUNG' ||
+    timelineItem?.status === 'BERLANGSUNG' ||
     sesi?.foto_kegiatan ||
-    (timelineItem?.guru_status && !['BELUM_TAP', 'BELUM_HADIR', 'ALPA', 'MENDATANG'].includes(timelineItem.guru_status)) ||
-    (sesi?.status === 'BERLANGSUNG') ||
-    (timelineItem?.isLive ?? timelineItem?.status?.isLive ?? false)
+    isOpenedByPetugas ||
+    isTeacherPresent
   );
 
   const isFinished = Boolean(
@@ -90,7 +108,7 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
   );
 
   const isReportMode = Boolean(isFinished || isOverdue);
-  const canMarkAttendance = isStartedByTeacher && !isReportMode;
+  const canMarkAttendance = (isSessionOpen || isTeacherPresent) && !isReportMode;
 
   // ── 1. ACTIVE ATTENDANCE QUERY ──
   const { data: presensiRes, isLoading: loadingPresensi, refetch: refetchAttendance } = useQuery({
@@ -400,6 +418,14 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                   <span>{jamKe}</span>
                   <span>•</span>
                   <span>{jamRentang}</span>
+                  {isOpenedByPetugas && (
+                    <>
+                      <span>•</span>
+                      <span className="text-amber-600 dark:text-amber-400 font-bold">
+                        Dibuka Petugas Kelas
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -449,23 +475,37 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
               </Button>
             )}
 
-            {/* Quick Button: Mulai KBM (jika sesi belum dibuka guru) */}
-            {!isStartedByTeacher && !isReportMode && onOpenPhotoModal && (
+            {/* Quick Button: Ambil Foto Kehadiran Guru jika Guru Belum Hadir */}
+            {!isTeacherPresent && !isReportMode && onOpenPhotoModal && (
               <Button
                 type="button"
                 size="sm"
                 onClick={() => onOpenPhotoModal(timelineItem)}
-                className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs border-none animate-pulse"
-                title="Ambil foto buka sesi mengajar (Mulai KBM)"
+                className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs border-none animate-pulse"
+                title="Sesi telah aktif. Klik untuk mengambil foto verifikasi kehadiran Guru di kelas"
               >
                 <Camera size={14} />
-                <span className="hidden xs:inline">Mulai KBM</span>
-                <span className="xs:hidden">Buka</span>
+                <span>📸 Foto Masuk Guru</span>
+              </Button>
+            )}
+
+            {/* Quick Button: Update Foto jika Guru Sudah Hadir */}
+            {isTeacherPresent && !isReportMode && onOpenPhotoModal && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => onOpenPhotoModal(timelineItem)}
+                className="h-8 sm:h-9 px-2 sm:px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-300 dark:border-slate-700 cursor-pointer"
+                title="Perbarui foto dokumentasi KBM guru"
+              >
+                <Camera size={14} className="text-emerald-500" />
+                <span>Foto Guru ✓</span>
               </Button>
             )}
 
             {/* Finish Session Button (hanya jika sesi sedang berlangsung) */}
-            {isStartedByTeacher && !isFinished && (
+            {(isSessionOpen || isStartedByTeacher) && !isFinished && (
               <Button
                 type="button"
                 size="sm"
@@ -598,15 +638,19 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
 
         {/* ── MAIN WORKSPACE CONTENT: ERGONOMIC ATTENDANCE LIST ── */}
         <div className="flex-1 overflow-y-auto p-2.5 sm:p-6 bg-slate-100/70 dark:bg-slate-950 space-y-2.5 pb-24 sm:pb-8">
-          {/* 🛡️ Banner Aturan KBM: Sesi Belum Dibuka Oleh Guru */}
-          {!isStartedByTeacher && !isReportMode && (
+          {/* 🛡️ Banner Aturan KBM: Sesi Dibuka Oleh Petugas Kelas / Guru Belum Ambil Foto */}
+          {!isTeacherPresent && !isReportMode && (
             <div className="max-w-5xl mx-auto mb-3 p-3.5 sm:p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-900 dark:text-amber-200 shadow-xs">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" size={20} />
                 <div>
-                  <h4 className="font-bold text-amber-950 dark:text-amber-300 text-xs sm:text-sm">Sesi KBM Belum Dibuka Oleh Guru</h4>
+                  <h4 className="font-bold text-amber-950 dark:text-amber-300 text-xs sm:text-sm">
+                    {isSessionOpen ? "Sesi KBM Telah Dibuka Oleh Petugas Kelas (Guru Belum Hadir)" : "Sesi KBM Belum Dibuka"}
+                  </h4>
                   <p className="text-[11px] sm:text-xs text-amber-800/90 dark:text-amber-200/80 mt-0.5">
-                    Presensi siswa terkunci. Sesuai aturan KBM, Guru pengampu wajib membuka sesi (ambil foto Mulai KBM) terlebih dahulu sebelum dapat mengabsenkan siswa.
+                    {isSessionOpen
+                      ? "Petugas kelas telah membuka sesi untuk mengabsenkan siswa. Silakan Bapak/Ibu Guru mengambil foto verifikasi di kelas agar kehadiran tercatat sebagai HADIR."
+                      : "Presensi siswa terkunci. Sesuai aturan KBM, Guru pengampu wajib membuka sesi (ambil foto Mulai KBM) terlebih dahulu sebelum dapat mengabsenkan siswa."}
                   </p>
                 </div>
               </div>
@@ -617,7 +661,7 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                   className="w-full sm:w-auto px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all active:scale-95 shrink-0"
                 >
                   <Camera size={15} />
-                  <span>📸 Mulai KBM Sekarang</span>
+                  <span>📸 Ambil Foto Kehadiran Guru</span>
                 </button>
               )}
             </div>

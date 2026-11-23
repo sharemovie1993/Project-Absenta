@@ -117,6 +117,7 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
       queryClient.invalidateQueries({ queryKey: ['staff-timeline-unified'] });
       queryClient.invalidateQueries({ queryKey: ['sesi-absensi'] });
       queryClient.invalidateQueries({ queryKey: ['guru-monitoring-unified'] });
+      queryClient.invalidateQueries({ queryKey: ['sesi-detail-attendance'] });
       if (onRefreshTimeline) onRefreshTimeline();
 
       // 🎯 Auto-launch Meja Kerja Kelas saat sesi berhasil dibuka
