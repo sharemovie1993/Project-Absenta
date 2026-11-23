@@ -34,6 +34,7 @@ export const STRUKTUR_CODES = {
   MANAJER_TOKO_KOPERASI: 'MANAJER_TOKO_KOPERASI',
   PENGAWAS_KOPERASI: 'PENGAWAS_KOPERASI',
   KETUA_PEMBINA_TARUNA: 'KETUA_PEMBINA_TARUNA',     // Ketua Pembina Taruna (Tim Ketarunaan - Leadership)
+  PEMBINA_TARUNA: 'PEMBINA_TARUNA',                 // Anggota / Staf Panitia Pembina Ketarunaan
   KOORDINATOR_DHUHA: 'KOORDINATOR_DHUHA',           // Koordinator Pembiasaan Dhuha & Rohis
 } as const;
 
@@ -239,6 +240,14 @@ export const DEFAULT_STRUKTUR_ORGANISASI: StrukturOrganisasiDef[] = [
     scope_type: 'global',
     deskripsi: 'Koordinator utama pelaksana kegiatan Ketarunaan',
     order: 50
+  },
+  { 
+    kode: STRUKTUR_CODES.PEMBINA_TARUNA, 
+    nama: 'Pembina Ketarunaan', 
+    scope: 'student', 
+    scope_type: 'global',
+    deskripsi: 'Anggota tim pelaksana dan penguji kesamaptaan / pembina ketarunaan lapangan',
+    order: 51
   },
   { 
     kode: STRUKTUR_CODES.KOORDINATOR_DHUHA, 

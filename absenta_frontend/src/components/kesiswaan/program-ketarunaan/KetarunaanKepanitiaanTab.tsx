@@ -17,7 +17,12 @@ import {
   Search,
   Sparkles,
   ExternalLink,
-  X
+  X,
+  LayoutGrid,
+  TableProperties,
+  Radio,
+  Plus,
+  Award
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -27,9 +32,14 @@ import toast from 'react-hot-toast';
 import {
   getKetarunaanPendamping,
   tapKetarunaanPendamping,
+  getKetarunaanKepanitiaan,
   type KetarunaanPendamping,
+  type KetarunaanPanitiaMember,
 } from '@/api/kesiswaan/programKetarunaan.api';
 import { UnifiedKegiatanTerminalPanel } from '@/components/attendance/unified-kegiatan/UnifiedKegiatanTerminalPanel';
+import { KetarunaanOrgChart } from './KetarunaanOrgChart';
+import { KetarunaanPanitiaTable } from './KetarunaanPanitiaTable';
+import { KetarunaanPanitiaFormModal } from './KetarunaanPanitiaFormModal';
 
 interface KetarunaanKepanitiaanTabProps {
   jadwalKegiatanId: string | null;
@@ -70,6 +80,37 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
   const [modalSearch, setModalSearch] = useState('');
   const [modalFilterCategory, setModalFilterCategory] = useState<'SEMUA' | 'MAPEL' | 'PEMBINA' | 'WALIKELAS'>('SEMUA');
   const [forceIncidentalMode, setForceIncidentalMode] = useState(false);
+
+  // View Mode: 'STRUKTUR' (Bagan Org Chart), 'PLOTING' (Tabel Ploting Panitia), 'PRESENSI' (Terminal Pos)
+  const [viewMode, setViewMode] = useState<'STRUKTUR' | 'PLOTING' | 'PRESENSI'>('STRUKTUR');
+
+  // Kepanitiaan (Ploting Panitia) Query
+  const { 
+    data: kepanitiaanRes, 
+    isLoading: isLoadingKepanitiaan, 
+    refetch: refetchKepanitiaan 
+  } = useQuery({
+    queryKey: ['ketarunaan-kepanitiaan-structure'],
+    queryFn: getKetarunaanKepanitiaan,
+    staleTime: 60_000,
+  });
+
+  const panitiaMembers = useMemo(() => kepanitiaanRes?.data?.panitia || [], [kepanitiaanRes?.data?.panitia]);
+  const exOfficioData = useMemo(() => kepanitiaanRes?.data?.ex_officio || { penanggung_jawab: null, pengarah: null }, [kepanitiaanRes?.data?.ex_officio]);
+
+  // Modal Ploting Form State
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<KetarunaanPanitiaMember | null>(null);
+
+  const handleOpenAdd = useCallback(() => {
+    setEditingMember(null);
+    setIsFormModalOpen(true);
+  }, []);
+
+  const handleOpenEdit = useCallback((member: KetarunaanPanitiaMember) => {
+    setEditingMember(member);
+    setIsFormModalOpen(true);
+  }, []);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['ketarunaan-pendamping', sesiId, jadwalKegiatanId],
@@ -235,7 +276,7 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100">
-                Presensi Kepanitiaan &amp; Pendamping
+                Kepanitiaan &amp; Presensi Tim Pendamping Ketarunaan
               </h3>
               <Badge variant="outline" className="text-[10px] font-bold border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300">
                 Unified Engine
@@ -264,25 +305,40 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {viewMode === 'PRESENSI' && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setPanitiaModalOpen(true)}
+              className="h-9 px-3.5 gap-2 text-xs font-bold text-white shadow-sm bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 rounded-xl"
+            >
+              <ClipboardList className="w-4 h-4 text-indigo-200" />
+              <span>Lihat Kehadiran Panitia</span>
+              <Badge variant="neutral" className="bg-white/20 text-white font-mono text-[10px] py-0 px-1.5 ml-0.5">
+                {hadirCount}/{totalCount}
+              </Badge>
+            </Button>
+          )}
+
           <Button
             variant="default"
             size="sm"
-            onClick={() => setPanitiaModalOpen(true)}
-            className="h-9 px-3.5 gap-2 text-xs font-bold text-white shadow-sm bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 rounded-xl"
+            onClick={handleOpenAdd}
+            className="h-9 px-3.5 gap-1.5 text-xs font-bold text-white shadow-sm bg-rose-600 hover:bg-rose-700 rounded-xl"
           >
-            <ClipboardList className="w-4 h-4 text-indigo-200" />
-            <span>Lihat Kehadiran Panitia</span>
-            <Badge variant="neutral" className="bg-white/20 text-white font-mono text-[10px] py-0 px-1.5 ml-0.5">
-              {hadirCount}/{totalCount}
-            </Badge>
+            <Plus size={14} />
+            <span>Ploting Panitia</span>
           </Button>
 
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRefresh}
+            onClick={() => {
+              handleRefresh();
+              refetchKepanitiaan();
+            }}
             className="h-9 px-3 gap-1.5 text-xs font-bold rounded-xl"
-            title="Refresh Data Presensi"
+            title="Refresh Data"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Refresh</span>
@@ -290,151 +346,236 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
         </div>
       </div>
 
-      {/* Ringkasan Statistik Kartu (Stats Cards) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {/* Card 1: Total Pendamping */}
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-100 dark:border-amber-900/40">
-            <Users className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Total Pendamping</p>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100">{totalCount}</span>
-              <span className="text-xs text-slate-400">Guru/Panitia</span>
-            </div>
-          </div>
+      {/* ── Sub-Navigation Switcher Antarmuka Kepanitiaan ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setViewMode('STRUKTUR')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              viewMode === 'STRUKTUR'
+                ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            <LayoutGrid size={15} />
+            <span>Bagan Struktur Organisasi</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setViewMode('PLOTING')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              viewMode === 'PLOTING'
+                ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            <TableProperties size={15} />
+            <span>Tabel Ploting Panitia</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+              {panitiaMembers.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setViewMode('PRESENSI')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              viewMode === 'PRESENSI'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            <Radio size={15} />
+            <span>Terminal Presensi Lapangan</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+              {hadirCount}/{totalCount}
+            </span>
+          </button>
         </div>
 
-        {/* Card 2: Sudah Hadir */}
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-900/40">
-            <UserCheck className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Telah Hadir</p>
-              <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                {persenHadir}%
-              </span>
-            </div>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400">{hadirCount}</span>
-              <span className="text-xs text-slate-400">di Lapangan</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Belum Hadir */}
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Menunggu Tap</p>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-lg sm:text-xl font-black text-slate-700 dark:text-slate-200">{belumHadirCount}</span>
-              <span className="text-xs text-slate-400">Belum Presensi</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: KBM Terbuka (1 Tap 2 Record) */}
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900/40">
-            <Zap className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">KBM Terbuka</p>
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                1-Tap-2-Record
-              </span>
-            </div>
-            <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-lg sm:text-xl font-black text-indigo-600 dark:text-indigo-400">
-                {guruMapelHadirCount}
-              </span>
-              <span className="text-xs text-slate-400">/ {guruMapelList.length} Sesi KBM</span>
-            </div>
-          </div>
+        <div className="text-[11px] text-slate-400 pr-2 hidden md:block">
+          {viewMode === 'STRUKTUR' && 'Visual Hierarki Komando'}
+          {viewMode === 'PLOTING' && `${panitiaMembers.length} Anggota Panitia Terploting`}
+          {viewMode === 'PRESENSI' && '1-Tap 2-Record Terminal Siaga'}
         </div>
       </div>
 
-      {/* Status Jadwal Strip */}
-      <div className={`p-3 rounded-2xl border ${
-        !isScheduledDay
-          ? 'bg-gradient-to-r from-amber-50/90 via-slate-50 to-indigo-50/40 border-amber-200/90 dark:from-amber-950/20 dark:via-slate-900 dark:to-indigo-950/20 dark:border-amber-900/40'
-          : 'bg-gradient-to-r from-amber-50/70 via-indigo-50/40 to-slate-50 border-amber-100 dark:from-amber-950/20 dark:via-indigo-950/10 dark:to-slate-900 dark:border-amber-900/40'
-      }`}>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
-          <div className="flex items-start gap-2.5">
-            <div className={`p-2 rounded-xl text-white shrink-0 shadow-2xs ${
-              !isScheduledDay ? 'bg-amber-600' : 'bg-indigo-600'
-            }`}>
-              {!isScheduledDay ? <Clock className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-            </div>
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                  {!isScheduledDay ? 'Mode Siaga (Standby) — Di Luar Hari Pelaksanaan' : 'Terminal Siap: Dual-Presence Program Ketarunaan'}
-                </h4>
-                {!isScheduledDay && (
-                  <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-100/50 dark:bg-amber-950/40">
-                    Jadwal Rutin: {guard?.hari_aktif?.join(', ') || "Rabu"}
-                  </Badge>
-                )}
+      {/* ── VIEW 1: BAGAN STRUKTUR ORGANISASI ── */}
+      {viewMode === 'STRUKTUR' && (
+        <div className="animate-in fade-in duration-150">
+          <KetarunaanOrgChart
+            panitiaList={panitiaMembers}
+            exOfficio={exOfficioData}
+            onOpenAddModal={handleOpenAdd}
+          />
+        </div>
+      )}
+
+      {/* ── VIEW 2: TABEL PLOTING PANITIA ── */}
+      {viewMode === 'PLOTING' && (
+        <div className="animate-in fade-in duration-150">
+          <KetarunaanPanitiaTable
+            panitiaList={panitiaMembers}
+            isLoading={isLoadingKepanitiaan}
+            onRefresh={refetchKepanitiaan}
+            onOpenAddModal={handleOpenAdd}
+            onEditMember={handleOpenEdit}
+          />
+        </div>
+      )}
+
+      {/* ── VIEW 3: TERMINAL PRESENSI & POS LAPANGAN (EXISTING) ── */}
+      {viewMode === 'PRESENSI' && (
+        <div className="space-y-4 animate-in fade-in duration-150">
+          {/* Ringkasan Statistik Kartu (Stats Cards) */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Card 1: Total Pendamping */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-100 dark:border-amber-900/40">
+                <Users className="w-5 h-5" />
               </div>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
-                {!isScheduledDay ? (
-                  <>
-                    Hari ini bukan jadwal reguler ({guard?.hari_aktif?.join(', ') || "Rabu"}). Jika ada kegiatan insidental/khusus hari ini, klik tombol di sebelah kanan untuk mengaktifkan terminal.
-                  </>
-                ) : (
-                  <>
-                    Siklus aktif: <strong>{activeJadwalNama}</strong>. Presensi guru mapel otomatis membuka sesi KBM reguler di kelasnya (1-Tap 2-Record).
-                  </>
-                )}
-              </p>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Total Pendamping</p>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <span className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100">{totalCount}</span>
+                  <span className="text-xs text-slate-400">Guru/Panitia</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Sudah Hadir */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-900/40">
+                <UserCheck className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Telah Hadir</p>
+                  <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                    {persenHadir}%
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <span className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400">{hadirCount}</span>
+                  <span className="text-xs text-slate-400">di Lapangan</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Belum Hadir */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">Menunggu Tap</p>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <span className="text-lg sm:text-xl font-black text-slate-700 dark:text-slate-200">{belumHadirCount}</span>
+                  <span className="text-xs text-slate-400">Belum Presensi</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 4: KBM Terbuka (1 Tap 2 Record) */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-100 dark:border-indigo-900/40">
+                <Zap className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate">KBM Terbuka</p>
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                    1-Tap-2-Record
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <span className="text-lg sm:text-xl font-black text-indigo-600 dark:text-indigo-400">
+                    {guruMapelHadirCount}
+                  </span>
+                  <span className="text-xs text-slate-400">/ {guruMapelList.length} Sesi KBM</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {!isScheduledDay && (
-            <div className="shrink-0 self-end sm:self-center">
-              <Button
-                variant={forceIncidentalMode ? "default" : "outline"}
-                size="sm"
-                onClick={() => setForceIncidentalMode(prev => !prev)}
-                className={`h-8 px-3 text-xs font-bold gap-1.5 rounded-xl ${
-                  forceIncidentalMode
-                    ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                    : 'border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300'
-                }`}
-              >
-                <Zap className="w-3.5 h-3.5" />
-                {forceIncidentalMode ? 'Kunci Kembali Siaga' : 'Buka Sesi Khusus / Insidental'}
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
+          {/* Status Jadwal Strip */}
+          <div className={`p-3 rounded-2xl border ${
+            !isScheduledDay
+              ? 'bg-gradient-to-r from-amber-50/90 via-slate-50 to-indigo-50/40 border-amber-200/90 dark:from-amber-950/20 dark:via-slate-900 dark:to-indigo-950/20 dark:border-amber-900/40'
+              : 'bg-gradient-to-r from-amber-50/70 via-indigo-50/40 to-slate-50 border-amber-100 dark:from-amber-950/20 dark:via-indigo-950/10 dark:to-slate-900 dark:border-amber-900/40'
+          }`}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+              <div className="flex items-start gap-2.5">
+                <div className={`p-2 rounded-xl text-white shrink-0 shadow-2xs ${
+                  !isScheduledDay ? 'bg-amber-600' : 'bg-indigo-600'
+                }`}>
+                  {!isScheduledDay ? <Clock className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                      {!isScheduledDay ? 'Mode Siaga (Standby) — Di Luar Hari Pelaksanaan' : 'Terminal Siap: Dual-Presence Program Ketarunaan'}
+                    </h4>
+                    {!isScheduledDay && (
+                      <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-100/50 dark:bg-amber-950/40">
+                        Jadwal Rutin: {guard?.hari_aktif?.join(', ') || "Rabu"}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                    {!isScheduledDay ? (
+                      <>
+                        Hari ini bukan jadwal reguler ({guard?.hari_aktif?.join(', ') || "Rabu"}). Jika ada kegiatan insidental/khusus hari ini, klik tombol di sebelah kanan untuk mengaktifkan terminal.
+                      </>
+                    ) : (
+                      <>
+                        Siklus aktif: <strong>{activeJadwalNama}</strong>. Presensi guru mapel otomatis membuka sesi KBM reguler di kelasnya (1-Tap 2-Record).
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
 
-      {/* TERMINAL MULTI-INPUT LANGSUNG DI TAMPILKAN (INLINE POS) */}
-      <div className="space-y-2">
-        <UnifiedKegiatanTerminalPanel
-          jenisKegiatan="KETARUNAAN"
-          title={`Terminal Presensi — ${activeJadwalNama}`}
-          subtitle={`Multi-Input Siaga: Tempel Kartu RFID, Barcode Gun HID, Scan QR Kamera atau Cari Nama Guru`}
-          sesiId={realSesiId}
-          jadwalKegiatanId={effectiveJadwalId}
-          onSuccessTap={() => {
-            handleRefresh();
-            qc.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
-            qc.invalidateQueries({ queryKey: ['unified-kbm-sessions'] });
-            qc.invalidateQueries({ queryKey: ['attendance-dashboard-live'] });
-          }}
-        />
-      </div>
+              {!isScheduledDay && (
+                <div className="shrink-0 self-end sm:self-center">
+                  <Button
+                    variant={forceIncidentalMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setForceIncidentalMode(prev => !prev)}
+                    className={`h-8 px-3 text-xs font-bold gap-1.5 rounded-xl ${
+                      forceIncidentalMode
+                        ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                        : 'border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300'
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    {forceIncidentalMode ? 'Kunci Kembali Siaga' : 'Buka Sesi Khusus / Insidental'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* TERMINAL MULTI-INPUT LANGSUNG DI TAMPILKAN (INLINE POS) */}
+          <div className="space-y-2">
+            <UnifiedKegiatanTerminalPanel
+              jenisKegiatan="KETARUNAAN"
+              title={`Terminal Presensi — ${activeJadwalNama}`}
+              subtitle={`Multi-Input Siaga: Tempel Kartu RFID, Barcode Gun HID, Scan QR Kamera atau Cari Nama Guru`}
+              sesiId={realSesiId}
+              jadwalKegiatanId={effectiveJadwalId}
+              onSuccessTap={() => {
+                handleRefresh();
+                qc.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
+                qc.invalidateQueries({ queryKey: ['unified-kbm-sessions'] });
+                qc.invalidateQueries({ queryKey: ['attendance-dashboard-live'] });
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* MODAL LIHAT KEHADIRAN KEPANITIAAN & PENDAMPING */}
       <Modal
@@ -617,6 +758,16 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
           )}
         </div>
       </Modal>
+      {/* MODAL FORM PLOTING PANITIA KETARUNAAN */}
+      <KetarunaanPanitiaFormModal
+        isOpen={isFormModalOpen}
+        onClose={() => setIsFormModalOpen(false)}
+        onSuccess={() => {
+          refetchKepanitiaan();
+          refetch();
+        }}
+        initialData={editingMember}
+      />
     </div>
   );
 };

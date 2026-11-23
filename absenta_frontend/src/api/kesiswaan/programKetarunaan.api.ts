@@ -353,3 +353,66 @@ export async function getKetarunaanNilaiExport(params: {
   );
 }
 
+// ─── PLOTING KEPANITIAAN KETARUNAAN (ORGANIZATIONAL STRUCTURE) ───────────────
+
+export interface KetarunaanPanitiaMember {
+  id: string;
+  user_id: string;
+  guru_id: string;
+  nama_guru: string;
+  nip: string;
+  no_hp?: string | null;
+  position_id: string;
+  position_code: string;
+  position_name: string;
+  is_leader: boolean;
+  assignment_flag: string;
+  custom_title: string;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface KetarunaanExOfficio {
+  nama: string;
+  nip: string;
+  jabatan: string;
+}
+
+export interface KetarunaanKepanitiaanData {
+  panitia: KetarunaanPanitiaMember[];
+  ex_officio: {
+    penanggung_jawab: KetarunaanExOfficio | null;
+    pengarah: KetarunaanExOfficio | null;
+  };
+  positions: Array<{ id: string; code: string; name: string }>;
+}
+
+export async function getKetarunaanKepanitiaan(): Promise<{ success: boolean; data: KetarunaanKepanitiaanData }> {
+  return requestWithFallback(
+    'get',
+    '/kesiswaan/program-ketarunaan/kepanitiaan',
+    { unwrapData: true }
+  );
+}
+
+export async function assignKetarunaanPanitia(payload: {
+  guru_id: string;
+  role_type: string;
+  custom_title?: string;
+  is_leader?: boolean;
+}): Promise<{ success: boolean; message: string; data?: any }> {
+  return requestWithFallback(
+    'post',
+    '/kesiswaan/program-ketarunaan/kepanitiaan/assign',
+    { data: payload, unwrapData: true }
+  );
+}
+
+export async function removeKetarunaanPanitia(id: string): Promise<{ success: boolean; message: string }> {
+  return requestWithFallback(
+    'delete',
+    `/kesiswaan/program-ketarunaan/kepanitiaan/${id}`,
+    { unwrapData: true }
+  );
+}
+

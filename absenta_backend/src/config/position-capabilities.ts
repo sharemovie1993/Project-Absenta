@@ -1117,6 +1117,33 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.events.delete',
   ],
 
+  // Pembina Ketarunaan (Staf Pembina / Penguji / Pelatih Lapangan)
+  [STRUKTUR_CODES.PEMBINA_TARUNA]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.kesiswaan',
+    'dashboard.view.violation.stats',
+    // Data Referensi
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'academic.students.view.history',
+    'academic.teachers.view.list',
+    'academic.structures.view.list',
+    // Presensi & Terminal Ketarunaan
+    'attendance.sessions.view.list',
+    'attendance.sessions.view.detail',
+    'attendance.sessions.tap',
+    'attendance.sessions.update.attendance',
+    // Rekap & Laporan
+    'attendance.reports.view',
+    'attendance.recap.view.daily',
+    'attendance.student.view.stats',
+    // Pelanggaran & Kedisiplinan
+    'affairs.violations.view.list',
+    'affairs.violations.view.detail',
+    'affairs.violations.report',
+    'attendance.events.view.list',
+  ],
+
   // Koordinator Pembiasaan Dhuha (Koordinator Ibadah & Rohis — dinaungi di bawah Kesiswaan)
   [STRUKTUR_CODES.KOORDINATOR_DHUHA]: [
     'organization.scope.tenant_wide',

@@ -99,4 +99,47 @@ export const programKetarunaanController = {
       return reply.status(500).send({ success: false, message: error.message });
     }
   },
+
+  async getKepanitiaan(request: any, reply: any) {
+    try {
+      const scope = request.dataScope as DataScope;
+      if (!scope?.tenantId) {
+        return reply.status(400).send({ message: 'Tenant ID required' });
+      }
+
+      const res = await programKetarunaanService.getKepanitiaan(scope.tenantId);
+      return reply.send({ success: true, data: res });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  },
+
+  async assignPanitia(request: any, reply: any) {
+    try {
+      const scope = request.dataScope as DataScope;
+      if (!scope?.tenantId) {
+        return reply.status(400).send({ message: 'Tenant ID required' });
+      }
+
+      const res = await programKetarunaanService.assignPanitia(scope.tenantId, request.body);
+      return reply.send(res);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  },
+
+  async removePanitia(request: any, reply: any) {
+    try {
+      const scope = request.dataScope as DataScope;
+      if (!scope?.tenantId) {
+        return reply.status(400).send({ message: 'Tenant ID required' });
+      }
+
+      const { id } = request.params;
+      const res = await programKetarunaanService.removePanitia(scope.tenantId, id);
+      return reply.send(res);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  },
 };

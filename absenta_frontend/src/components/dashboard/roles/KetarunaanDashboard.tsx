@@ -503,26 +503,12 @@ export const KetarunaanDashboard: React.FC<KetarunaanDashboardProps> = React.mem
                     </div>
                   }
                 >
-                  {!guard?.is_active ? (
-                    <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                      <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-center mb-2.5">
-                        <Lock className="w-6 h-6 text-amber-500" />
-                      </div>
-                      <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                        Program Ketarunaan Belum Aktif
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1">
-                        Jadwal kegiatan ketarunaan belum diaktifkan. Silakan hubungi Waka Kesiswaan atau aktifkan di Agenda Kesiswaan.
-                      </p>
-                    </div>
-                  ) : (
-                    <KetarunaanKepanitiaanTab
-                      jadwalKegiatanId={jadwalKegiatanId}
-                      sesiId={sesiId}
-                      refetchSesi={refetchSesi}
-                      guard={guard}
-                    />
-                  )}
+                  <KetarunaanKepanitiaanTab
+                    jadwalKegiatanId={jadwalKegiatanId}
+                    sesiId={sesiId}
+                    refetchSesi={refetchSesi}
+                    guard={guard}
+                  />
                 </Suspense>
               </div>
             )}

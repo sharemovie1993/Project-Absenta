@@ -60,6 +60,28 @@ export async function programKetarunaanRoutes(fastify: any) {
     ],
   }, programKetarunaanController.getLaporanKelas);
 
+  // 7b. Struktur & Ploting Kepanitiaan Ketarunaan
+  fastify.get('/kepanitiaan', {
+    preHandler: [
+      requireCapability(['attendance.sessions.view.list', 'dashboard.view.kesiswaan']),
+      determineDataScope(),
+    ],
+  }, programKetarunaanController.getKepanitiaan);
+
+  fastify.post('/kepanitiaan/assign', {
+    preHandler: [
+      requireCapability(['dashboard.view.kesiswaan', 'academic.structures.update']),
+      determineDataScope(),
+    ],
+  }, programKetarunaanController.assignPanitia);
+
+  fastify.delete('/kepanitiaan/:id', {
+    preHandler: [
+      requireCapability(['dashboard.view.kesiswaan', 'academic.structures.update']),
+      determineDataScope(),
+    ],
+  }, programKetarunaanController.removePanitia);
+
   // ─── PENILAIAN & SKEMA BOBOT KETARUNAAN ──────────────────────────────────
   // 8. Ambil Skema Konfigurasi
   fastify.get('/skema', {

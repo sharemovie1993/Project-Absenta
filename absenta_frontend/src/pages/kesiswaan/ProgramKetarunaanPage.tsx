@@ -282,16 +282,12 @@ const ProgramKetarunaanPage: React.FC<ProgramKetarunaanPageProps> = ({ hideLayou
                   </div>
                 }
               >
-                {!guard?.is_active ? (
-                  <GuardState navigate={navigate} />
-                ) : (
-                  <KetarunaanKepanitiaanTab
-                    jadwalKegiatanId={jadwalKegiatanId}
-                    sesiId={sesiId}
-                    refetchSesi={refetchSesi}
-                    guard={guard}
-                  />
-                )}
+                <KetarunaanKepanitiaanTab
+                  jadwalKegiatanId={jadwalKegiatanId}
+                  sesiId={sesiId}
+                  refetchSesi={refetchSesi}
+                  guard={guard}
+                />
               </Suspense>
             </div>
           )}
