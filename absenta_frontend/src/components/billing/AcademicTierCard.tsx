@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 
 interface AcademicTierCardProps {
   activeAcademicTier: string;
+  lockedCategory?: string;
   onTierChangeSuccess: () => void;
   onSync?: () => void;
   isSyncing?: boolean;
@@ -19,28 +20,40 @@ const TIER_OPTIONS = [
   { value: 'ENTERPRISE', label: 'Enterprise (Tanpa Batas)' }
 ];
 
+const KOPERASI_TIER_OPTIONS = [
+  { value: 'MICRO', label: 'Micro (≤ 100 Anggota)' },
+  { value: 'SMALL', label: 'Small (≤ 300 Anggota)' },
+  { value: 'MEDIUM', label: 'Medium (≤ 600 Anggota)' },
+  { value: 'LARGE', label: 'Large (≤ 1.200 Anggota)' },
+  { value: 'ENTERPRISE', label: 'Enterprise (Tanpa Batas)' }
+];
+
 export const AcademicTierCard: React.FC<AcademicTierCardProps> = React.memo(({
   activeAcademicTier,
+  lockedCategory,
   onTierChangeSuccess,
   onSync,
   isSyncing = false
 }) => {
+  const isKoperasi = lockedCategory === 'KOPERASI';
+  const tierOptions = isKoperasi ? KOPERASI_TIER_OPTIONS : TIER_OPTIONS;
   const currentTierVal = activeAcademicTier.toUpperCase() === 'CORE_PLATFORM' ? 'MICRO' : activeAcademicTier.toUpperCase();
   const tierDisplayName = activeAcademicTier.toUpperCase() === 'CORE_PLATFORM' 
     ? 'Core Platform' 
     : `Edisi ${activeAcademicTier.charAt(0).toUpperCase() + activeAcademicTier.slice(1).toLowerCase()}`;
 
   const handleSelectTier = async (newTier: string) => {
-    const confirmChange = window.confirm(`Apakah Anda yakin ingin mengubah kapasitas sekolah ke edisi ${newTier}?`);
+    const entityName = isKoperasi ? 'koperasi' : 'sekolah';
+    const confirmChange = window.confirm(`Apakah Anda yakin ingin mengubah kapasitas ${entityName} ke edisi ${newTier}?`);
     if (!confirmChange) return;
 
     try {
       const res = await axiosInstance.post('/billing/subscriptions/update-academic-tier', { tier: newTier });
       if (res.data && res.data.success) {
-        toast.success(res.data.message || 'Kapasitas sekolah berhasil diubah!');
+        toast.success(res.data.message || `Kapasitas ${entityName} berhasil diubah!`);
         onTierChangeSuccess();
       } else {
-        toast.error(res.data.message || 'Gagal mengubah kapasitas sekolah.');
+        toast.error(res.data.message || `Gagal mengubah kapasitas ${entityName}.`);
       }
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } } };
@@ -57,7 +70,9 @@ export const AcademicTierCard: React.FC<AcademicTierCardProps> = React.memo(({
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Edisi Institusi</span>
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                {isKoperasi ? 'Edisi Kuota Koperasi' : 'Edisi Institusi'}
+              </span>
               <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />
             </div>
             <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-snug">
@@ -89,16 +104,18 @@ export const AcademicTierCard: React.FC<AcademicTierCardProps> = React.memo(({
             Pilih Kapasitas Baru
           </label>
           <span className="text-[9px] text-slate-400 italic">
-            Batas kapasitas siswa untuk pengadaan modul
+            {isKoperasi 
+              ? 'Batas kuota anggota & nasabah koperasi' 
+              : 'Batas kapasitas siswa untuk pengadaan modul'}
           </span>
         </div>
         <div className="mt-1">
           <SearchableSelect
             id="selectAcademicTier"
-            aria-label="Pilih Kapasitas Baru Sekolah"
+            aria-label={isKoperasi ? 'Pilih Kapasitas Baru Koperasi' : 'Pilih Kapasitas Baru Sekolah'}
             value={currentTierVal}
             onValueChange={handleSelectTier}
-            options={TIER_OPTIONS}
+            options={tierOptions}
             placeholder="Pilih edisi kapasitas"
             searchPlaceholder="Cari edisi..."
             triggerClassName="w-full text-xs font-medium h-9"

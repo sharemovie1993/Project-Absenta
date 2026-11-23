@@ -213,6 +213,19 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
   const isLicenseServerOffline = Boolean(invoicesQuery.data?.isLicenseServerOffline || subQuery.data?.is_license_server_offline);
   const invoicesData = useMemo(() => invoicesQuery.data?.items || [], [invoicesQuery.data]);
 
+  const filteredInvoicesData = useMemo(() => {
+    if (!lockedCategory) return invoicesData;
+    if (lockedCategory === 'KOPERASI') {
+      return invoicesData.filter((inv: any) => {
+        const code = String(inv.service_code || inv.serviceCode || '').toUpperCase();
+        const name = String(inv.plan_name || inv.planTitle || inv.product_name || inv.Plan?.name || '').toUpperCase();
+        const id = String(inv.plan_id || inv.planId || '').toUpperCase();
+        return code.includes('KOPERASI') || code.includes('COOPERATIVE') || name.includes('KOPERASI') || id.includes('KOPERASI');
+      });
+    }
+    return invoicesData;
+  }, [invoicesData, lockedCategory]);
+
   const paymentsQuery = useQuery({
     queryKey: ['my-payments-list'],
     queryFn: async () => {
@@ -391,25 +404,25 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
       icon: <ShieldCheck size={16} className="text-blue-600" />,
       variant: 'card' as const,
       gradient: "from-blue-500 to-indigo-600",
-      subtitle: "Total modul berlisensi"
+      subtitle: lockedCategory === 'KOPERASI' ? "Total layanan koperasi aktif" : "Total modul berlisensi"
     },
     {
-      title: "Kapasitas Sekolah",
+      title: lockedCategory === 'KOPERASI' ? "Kapasitas Koperasi" : "Kapasitas Sekolah",
       value: activeAcademicTier.toUpperCase() === 'CORE_PLATFORM' ? 'Micro' : activeAcademicTier,
       icon: <Sparkles size={16} className="text-emerald-600" />,
       variant: 'card' as const,
       gradient: "from-emerald-500 to-teal-600",
-      subtitle: "Edisi tier aktif"
+      subtitle: lockedCategory === 'KOPERASI' ? "Batas kuota anggota" : "Edisi tier aktif"
     },
     {
       title: "Tagihan Berjalan",
-      value: isLicenseServerOffline ? '-' : String(invoicesData.filter(i => i.status === 'UNPAID' || i.status === 'PENDING').length || 0),
+      value: isLicenseServerOffline ? '-' : String(filteredInvoicesData.filter(i => i.status === 'UNPAID' || i.status === 'PENDING').length || 0),
       icon: <History size={16} className="text-purple-600" />,
       variant: 'card' as const,
       gradient: "from-purple-500 to-violet-600",
       subtitle: isLicenseServerOffline ? "Server lisensi offline" : "Menunggu pembayaran"
     }
-  ], [services, activeAcademicTier, invoicesData, isLicenseServerOffline]);
+  ], [services, activeAcademicTier, filteredInvoicesData, isLicenseServerOffline, lockedCategory]);
 
   const tabs = useMemo(() => {
     const list = [{ id: 'services', label: 'Status Lisensi', icon: LayoutGrid }];
@@ -421,9 +434,9 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
   }, [hideLayout]);
 
   const pendingInvoice = useMemo(() => {
-    const list = invoicesData;
+    const list = filteredInvoicesData;
     return list.find((inv: ServiceInvoice) => !['PAID', 'CANCELLED', 'OVERDUE'].includes(String(inv.status).toUpperCase()));
-  }, [invoicesData]);
+  }, [filteredInvoicesData]);
 
   const handleExtend = useCallback((planId: string) => {
     navigate(`/billing/checkout?plan_id=${planId}`);
@@ -549,14 +562,16 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
   }, [selectedOrder, navigate, hideLayout, handleTabChange]);
 
   const instructionData = useMemo(() => ({
-    title: "Panduan Pusat Layanan & Lisensi",
-    description: "Halaman ini digunakan untuk memantau modul berlisensi, kapasitas institusi, perpanjangan masa aktif, dan riwayat tagihan.",
+    title: lockedCategory === 'KOPERASI' ? "Panduan Layanan & Paket Koperasi" : "Panduan Pusat Layanan & Lisensi",
+    description: lockedCategory === 'KOPERASI'
+      ? "Halaman ini digunakan untuk memantau paket layanan koperasi aktif, kapasitas anggota, perpanjangan masa aktif, dan riwayat tagihan koperasi."
+      : "Halaman ini digunakan untuk memantau modul berlisensi, kapasitas institusi, perpanjangan masa aktif, dan riwayat tagihan.",
     items: [
-      { text: "Pilih modul dari daftar layanan untuk memeriksa masa aktif atau melakukan perpanjangan." },
-      { text: "Gunakan tombol 'Katalog Pengadaan Modul' untuk menjelajahi dan mengaktifkan modul baru." },
+      { text: lockedCategory === 'KOPERASI' ? "Pilih layanan koperasi untuk memeriksa masa aktif atau melakukan perpanjangan." : "Pilih modul dari daftar layanan untuk memeriksa masa aktif atau melakukan perpanjangan." },
+      { text: lockedCategory === 'KOPERASI' ? "Gunakan tab 'Katalog Paket' untuk memilih paket layanan koperasi & POS kasir." : "Gunakan tombol 'Katalog Pengadaan Modul' untuk menjelajahi dan mengaktifkan modul baru." },
       { text: "Periksa tab 'Riwayat Tagihan' untuk mengunduh invoice resmi atau memverifikasi status pembayaran." }
     ]
-  }), []);
+  }), [lockedCategory]);
 
   const mainContent = (
     <>
@@ -655,6 +670,7 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
                 <Suspense fallback={<div className="p-4 text-center text-xs text-slate-400">Memuat kapasitas...</div>}>
                   <AcademicTierCard
                     activeAcademicTier={activeAcademicTier}
+                    lockedCategory={lockedCategory}
                     onTierChangeSuccess={() => subQuery.refetch()}
                     onSync={handleSyncLicense}
                     isSyncing={isSyncing || subQuery.isRefetching}
@@ -665,9 +681,9 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
                 <div className="flex items-center justify-between pt-1">
                   <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
                     <LayoutGrid size={16} className="text-blue-600" />
-                    <span>Daftar Modul &amp; Lisensi Aktif</span>
+                    <span>{lockedCategory === 'KOPERASI' ? 'Daftar Layanan & Paket Koperasi Aktif' : 'Daftar Modul & Lisensi Aktif'}</span>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 font-bold">
-                      {services.length} Modul
+                      {services.length} {lockedCategory === 'KOPERASI' ? 'Layanan' : 'Modul'}
                     </span>
                   </h3>
                 </div>
@@ -675,7 +691,11 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
                 {/* Interactive Card Grid */}
                 {consolidatedServices.length === 0 ? (
                   <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat ringkasan lisensi...</div>}>
-                    <EmptySubscriptionOverview activeAcademicTier={activeAcademicTier} />
+                    <EmptySubscriptionOverview 
+                      activeAcademicTier={activeAcademicTier} 
+                      lockedCategory={lockedCategory}
+                      onExploreCatalog={openCatalog}
+                    />
                   </Suspense>
                 ) : (
                   <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat modul lisensi...</div>}>
@@ -717,7 +737,7 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
               <div className="w-full max-w-full min-w-0">
                 <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat riwayat tagihan...</div>}>
                   <BillingInvoicesSection
-                    invoices={(invoicesData as ServiceInvoice[]) || []}
+                    invoices={(filteredInvoicesData as ServiceInvoice[]) || []}
                     isLoading={invoicesQuery.isLoading || invoicesQuery.isFetching}
                     onRefresh={() => invoicesQuery.refetch()}
                     handleViewInvoice={handleViewInvoice}
@@ -796,8 +816,8 @@ export const ServiceCenterView: React.FC<UniversalServiceCenterViewProps> = Reac
   return (
     <InfraErrorBoundary>
       <AcademicPageLayout
-        title="Pusat Layanan &amp; Lisensi"
-        description="Kelola seluruh lisensi modul, perpanjangan masa aktif, kapasitas institusi, dan tagihan sekolah Anda secara terpadu."
+        title={embeddedTitle || (lockedCategory === 'KOPERASI' ? 'Pusat Layanan Koperasi' : 'Pusat Layanan & Lisensi')}
+        description={lockedCategory === 'KOPERASI' ? 'Kelola paket layanan koperasi, perpanjangan masa aktif, kapasitas kuota anggota, dan riwayat tagihan secara mandiri.' : 'Kelola seluruh lisensi modul, perpanjangan masa aktif, kapasitas institusi, dan tagihan sekolah Anda secara terpadu.'}
         stats={stats}
         instruction={instructionData}
         breadcrumbs={[{ label: 'Pusat Layanan' }]}
