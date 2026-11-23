@@ -27,7 +27,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { MessageBubble } from './MessageBubble';
 import { QuickTemplatesModal } from './QuickTemplatesModal';
-import { ThreadProfileModal } from './ThreadProfileModal';
+import { ThreadProfileModal, MemberQuickActionSheet, UserProfileModal, type QuickActionMember } from './ThreadProfileModal';
 import { format, isToday, isYesterday } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { resolveProfilePhotoUrl } from '@/lib/utils';
@@ -121,6 +121,8 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
   };
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [actionMember, setActionMember] = useState<QuickActionMember | null>(null);
+  const [infoUserId, setInfoUserId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -300,6 +302,23 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
     }
   };
 
+  const handleMessageMember = async (member: QuickActionMember) => {
+    if (!member?.user_id || member.user_id === user?.id) return;
+    try {
+      const dmThread = await internalCommunicationApi.createThread({
+        type: 'DIRECT',
+        targetUserIds: [member.user_id],
+        category: 'UMUM',
+      });
+      if (dmThread?.id) {
+        await queryClient.invalidateQueries({ queryKey: communicationKeys.allThreads });
+        if (onSwitchThread) onSwitchThread(dmThread.id);
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Tidak dapat membuka obrolan pribadi dengan anggota ini');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#efeae2] dark:bg-[#0b141a] relative select-none">
       {/* ── WHATSAPP CHAT HEADER ─────────────────────────────────────────── */}
@@ -442,7 +461,11 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
               </div>
 
               {group.items.map((msg) => (
-                <MessageBubble key={msg.id} message={msg} />
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  onSenderClick={(m) => setActionMember(m)}
+                />
               ))}
             </div>
           ))
@@ -611,8 +634,32 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
           threadId={thread.id}
           isOpen={isProfileOpen}
           onClose={() => setIsProfileOpen(false)}
+          onSelectMember={(m) => setActionMember(m)}
         />
       )}
+
+      <MemberQuickActionSheet
+        member={actionMember}
+        isOpen={Boolean(actionMember)}
+        onClose={() => setActionMember(null)}
+        onMessage={handleMessageMember}
+        onAudioCall={(m) => {
+          if (onStartAudioCall) onStartAudioCall(m.user_id, m.name);
+        }}
+        onVideoCall={(m) => {
+          if (onStartVideoCall) onStartVideoCall(m.user_id, m.name);
+        }}
+        onViewInfo={(m) => setInfoUserId(m.user_id)}
+      />
+
+      <UserProfileModal
+        userId={infoUserId}
+        isOpen={Boolean(infoUserId)}
+        onClose={() => setInfoUserId(null)}
+        onMessage={handleMessageMember}
+        onAudioCall={onStartAudioCall ? (m) => onStartAudioCall(m.user_id, m.name) : undefined}
+        onVideoCall={onStartVideoCall ? (m) => onStartVideoCall(m.user_id, m.name) : undefined}
+      />
     </div>
   );
 };

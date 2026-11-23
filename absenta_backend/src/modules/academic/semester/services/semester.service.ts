@@ -56,12 +56,28 @@ export interface SemesterResponse {
 }
 
 export class SemesterService {
-  async getAllSemester(requestingUserRole: RoleName, requestingUserTenantId?: string): Promise<SemesterResponse[]> {
+  async getAllSemester(
+    requestingUserRole: RoleName, 
+    requestingUserTenantId?: string,
+    options?: { search?: string; tahun_pelajaran_id?: string }
+  ): Promise<SemesterResponse[]> {
     let whereClause: any = {};
 
     // Only SUPERADMIN from system tenant can bypass tenant filter
     if (!isSystemSuperAdmin(requestingUserRole, requestingUserTenantId)) {
       whereClause.tenant_id = requestingUserTenantId;
+    }
+
+    if (options?.tahun_pelajaran_id) {
+      whereClause.tahun_pelajaran_id = options.tahun_pelajaran_id;
+    }
+
+    if (options?.search && options.search.trim()) {
+      const q = options.search.trim();
+      whereClause.OR = [
+        { nama_semester: { contains: q, mode: 'insensitive' } },
+        { TahunPelajaran: { tahun: { contains: q, mode: 'insensitive' } } }
+      ];
     }
 
     const semester = await prisma.semester.findMany({

@@ -80,7 +80,33 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
     queryFn: () => getSemesterList(currentPage, itemsPerPage, searchTerm, tahunPelajaranId),
     staleTime: 5 * 60 * 1000
   });
-  const semesters = useMemo(() => listRes?.data || [], [listRes]);
+  const rawSemesters = useMemo(() => listRes?.data || [], [listRes]);
+
+  const filteredSemesters = useMemo(() => {
+    let list = rawSemesters;
+    if (tahunPelajaranId) {
+      list = list.filter((s: Semester) => s.tahun_pelajaran_id === tahunPelajaranId);
+    }
+    if (!searchTerm.trim()) return list;
+    const q = searchTerm.toLowerCase().trim();
+    return list.filter((s: Semester) => {
+      const nama = (s.nama_semester || '').toLowerCase();
+      const tp = (s.TahunPelajaran?.tahun || '').toLowerCase();
+      const status = s.is_active ? 'aktif' : 'tidak aktif';
+      return nama.includes(q) || tp.includes(q) || status.includes(q);
+    });
+  }, [rawSemesters, searchTerm, tahunPelajaranId]);
+
+  const isServerPaginated = Boolean(listRes?.pagination?.totalPages && listRes.pagination.totalPages > 1 && !searchTerm.trim());
+
+  const semesters = useMemo(() => {
+    if (isServerPaginated) return filteredSemesters;
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredSemesters.slice(start, start + itemsPerPage);
+  }, [filteredSemesters, currentPage, itemsPerPage, isServerPaginated]);
+
+  const totalItems = filteredSemesters.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
   // Handle page change
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -89,7 +115,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
   // Handle export to Excel
   const handleExport = useCallback(() => {
     try {
-      exportDataToExcel(semesters || [], [{
+      exportDataToExcel(filteredSemesters || [], [{
         header: 'Nama Semester',
         accessor: row => row.nama_semester,
         width: 25
@@ -107,7 +133,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
         icon: '⚠️'
       });
     }
-  }, [semesters]);
+  }, [filteredSemesters]);
 
   // Handle delete
   const handleDelete = useCallback(async (semester: Semester) => {
@@ -373,8 +399,6 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
   if (isAuthLoading) {
     return <Loader size="lg" />;
   }
-  const totalPages = listRes?.pagination?.totalPages || 1;
-  const totalItems = listRes?.pagination?.total || 0;
   return (
     <div className="flex flex-col">
       {/* Toolbar Baris Kedua - Filter & Search (Desktop Only) */}

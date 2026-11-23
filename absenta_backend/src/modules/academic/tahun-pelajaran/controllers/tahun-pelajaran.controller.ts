@@ -7,12 +7,13 @@ export class TahunPelajaranController {
    async getAllTahunPelajaran(req: any, reply: any): Promise<void> {
     try {
       const user = req.user as any;
-      const { status } = req.query || {};
+      const { status, search } = req.query || {};
 
       const tahunPelajaran = await tahunPelajaranService.getAllTahunPelajaran(
         user.roleName, 
         user.tenantId,
-        status
+        status,
+        search
       );
 
       reply.status(200).send({

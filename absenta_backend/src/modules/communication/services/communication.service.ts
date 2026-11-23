@@ -1684,6 +1684,107 @@ export class CommunicationService {
       members,
     };
   }
+
+  /**
+   * 11. Ambil Profil Lengkap Satu Anggota / Pengguna (Untuk tombol "Info" dari Group Slide-Up)
+   */
+  async getUserProfile(tenantId: string, targetUserId: string) {
+    const u = await prisma.user.findFirst({
+      where: {
+        id: targetUserId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        full_name: true,
+        email: true,
+        no_hp: true,
+        Role: { select: { name: true } },
+        Guru: {
+          select: {
+            id: true,
+            nip: true,
+            nama_guru: true,
+            jabatan: true,
+            no_hp: true,
+            foto: true,
+          },
+        },
+        Siswa: {
+          select: {
+            id: true,
+            nis: true,
+            nisn: true,
+            nama_siswa: true,
+            no_hp: true,
+            jenis_kelamin: true,
+            foto: true,
+            kelas_id: true,
+            Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+          },
+        },
+      },
+    });
+
+    if (!u) {
+      throw new Error('Profil pengguna tidak ditemukan.');
+    }
+
+    const role = u.Role?.name || 'Pengguna';
+    const profile = {
+      user_id: u.id,
+      name: u.full_name || u.Guru?.nama_guru || u.Siswa?.nama_siswa || 'Pengguna',
+      role,
+      role_label: u.Guru?.jabatan || role,
+      avatar: u.Guru?.foto || u.Siswa?.foto || null,
+      email: u.email || null,
+      no_hp: u.no_hp || u.Guru?.no_hp || u.Siswa?.no_hp || null,
+      nip: u.Guru?.nip || null,
+      jabatan: u.Guru?.jabatan || null,
+      nis: u.Siswa?.nis || null,
+      nisn: u.Siswa?.nisn || null,
+      kelas: u.Siswa?.Kelas?.nama_kelas || null,
+      kelas_id: u.Siswa?.kelas_id || null,
+      jenis_kelamin: u.Siswa?.jenis_kelamin || null,
+    };
+
+    let waliKelas: any = null;
+    if (role === 'SISWA' && u.Siswa?.kelas_id) {
+      const walasAssign = await (prisma as any).organizationalAssignment.findFirst({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: u.Siswa.kelas_id,
+          is_active: true,
+        },
+        include: {
+          Position: { select: { name: true } },
+          User: {
+            select: {
+              id: true,
+              full_name: true,
+              no_hp: true,
+              Guru: { select: { nip: true, nama_guru: true, foto: true } },
+            },
+          },
+        },
+      });
+      if (walasAssign?.User) {
+        waliKelas = {
+          user_id: walasAssign.User.id,
+          name: walasAssign.User.full_name || walasAssign.User.Guru?.nama_guru,
+          nip: walasAssign.User.Guru?.nip || null,
+          no_hp: walasAssign.User.no_hp || null,
+          jabatan: walasAssign.Position?.name || 'Wali Kelas',
+          avatar: walasAssign.User.Guru?.foto || null,
+        };
+      }
+    }
+
+    return {
+      user: profile,
+      waliKelas,
+    };
+  }
 }
 
 export const communicationService = new CommunicationService();

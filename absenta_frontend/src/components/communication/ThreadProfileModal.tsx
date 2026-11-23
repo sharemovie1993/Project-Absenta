@@ -11,6 +11,10 @@ import {
   IdentificationIcon,
   MagnifyingGlassIcon,
   UserIcon,
+  ChatBubbleLeftRightIcon,
+  PhoneIcon as PhoneOutlineIcon,
+  VideoCameraIcon,
+  InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface ChatAvatarProps {
@@ -76,9 +80,10 @@ interface ThreadProfileModalProps {
   threadId: string;
   isOpen: boolean;
   onClose: () => void;
+  onSelectMember?: (member: { user_id: string; name: string; role?: string | null; avatar?: string | null }) => void;
 }
 
-export function ThreadProfileModal({ threadId, isOpen, onClose }: ThreadProfileModalProps) {
+export function ThreadProfileModal({ threadId, isOpen, onClose, onSelectMember }: ThreadProfileModalProps) {
   const [memberSearch, setMemberSearch] = useState('');
 
   const { data: profile, isLoading } = useQuery({
@@ -321,7 +326,20 @@ export function ThreadProfileModal({ threadId, isOpen, onClose }: ThreadProfileM
                       filteredMembers.map((m) => (
                         <div
                           key={m.user_id}
-                          className="px-3 py-2 flex items-center gap-2.5 bg-white dark:bg-[#111b21] hover:bg-slate-50 dark:hover:bg-[#202c33]/60"
+                          onClick={() => {
+                            if (onSelectMember) {
+                              onClose();
+                              onSelectMember({
+                                user_id: m.user_id,
+                                name: m.name,
+                                role: m.role,
+                                avatar: m.avatar,
+                              });
+                            }
+                          }}
+                          className={`px-3 py-2 flex items-center gap-2.5 bg-white dark:bg-[#111b21] hover:bg-slate-50 dark:hover:bg-[#202c33]/60 ${
+                            onSelectMember ? 'cursor-pointer' : ''
+                          }`}
                         >
                           <ChatAvatar src={m.avatar} name={m.name} size="sm" />
                           <div className="min-w-0 flex-1">
@@ -344,6 +362,330 @@ export function ThreadProfileModal({ threadId, isOpen, onClose }: ThreadProfileM
                           </span>
                         </div>
                       ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export interface QuickActionMember {
+  user_id: string;
+  name: string;
+  role?: string | null;
+  avatar?: string | null;
+}
+
+interface MemberQuickActionSheetProps {
+  member: QuickActionMember | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onMessage: (member: QuickActionMember) => void;
+  onAudioCall: (member: QuickActionMember) => void;
+  onVideoCall: (member: QuickActionMember) => void;
+  onViewInfo: (member: QuickActionMember) => void;
+}
+
+/**
+ * Slide-Up Bottom Sheet ala WhatsApp Group saat nama atau foto anggota diklik
+ */
+export function MemberQuickActionSheet({
+  member,
+  isOpen,
+  onClose,
+  onMessage,
+  onAudioCall,
+  onVideoCall,
+  onViewInfo,
+}: MemberQuickActionSheetProps) {
+  if (!isOpen || !member) return null;
+
+  const roleLabel =
+    typeof member.role === 'object' ? (member.role as any)?.name : member.role;
+
+  return (
+    <div
+      className="fixed inset-0 z-[75] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-[2px] sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-sm bg-white dark:bg-[#111b21] rounded-t-3xl sm:rounded-2xl shadow-2xl border-t sm:border border-slate-200 dark:border-slate-800 overflow-hidden animate-in slide-in-from-bottom-6 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Drag Handle (Mobile) */}
+        <div className="flex justify-center pt-2.5 pb-1 sm:hidden">
+          <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+        </div>
+
+        {/* Header Foto & Nama Anggota */}
+        <div className="px-5 pt-4 pb-3 flex flex-col items-center text-center border-b border-slate-100 dark:border-slate-800">
+          <ChatAvatar src={member.avatar} name={member.name} size="xl" />
+          <h3 className="mt-2.5 text-sm font-extrabold text-slate-900 dark:text-slate-100">
+            {member.name}
+          </h3>
+          {roleLabel && (
+            <span className="mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+              {roleLabel}
+            </span>
+          )}
+        </div>
+
+        {/* 3 Aksi Utama: Kirim Pesan, Telepon, Video */}
+        <div className="grid grid-cols-3 gap-2 p-4">
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onMessage(member);
+            }}
+            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 dark:bg-[#202c33] dark:hover:bg-[#2a3942] text-emerald-700 dark:text-[#00a884] transition-colors cursor-pointer"
+          >
+            <ChatBubbleLeftRightIcon className="w-5 h-5" />
+            <span className="text-[11px] font-bold">Kirim Pesan</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onAudioCall(member);
+            }}
+            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl bg-sky-50 hover:bg-sky-100 dark:bg-[#202c33] dark:hover:bg-[#2a3942] text-sky-700 dark:text-sky-400 transition-colors cursor-pointer"
+          >
+            <PhoneOutlineIcon className="w-5 h-5" />
+            <span className="text-[11px] font-bold">Telepon</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onVideoCall(member);
+            }}
+            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-[#202c33] dark:hover:bg-[#2a3942] text-indigo-700 dark:text-indigo-400 transition-colors cursor-pointer"
+          >
+            <VideoCameraIcon className="w-5 h-5" />
+            <span className="text-[11px] font-bold">Video</span>
+          </button>
+        </div>
+
+        {/* Tombol Info di Bawah -> Buka Profil Lengkap Anggota */}
+        <div className="px-4 pb-4 space-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onViewInfo(member);
+            }}
+            className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#202c33] dark:hover:bg-[#2a3942] text-slate-800 dark:text-slate-100 text-xs font-extrabold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <InformationCircleIcon className="w-4 h-4 text-[#00a884]" />
+            <span>Info Lengkap Profil</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface UserProfileModalProps {
+  userId: string | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onMessage?: (member: QuickActionMember) => void;
+  onAudioCall?: (member: QuickActionMember) => void;
+  onVideoCall?: (member: QuickActionMember) => void;
+}
+
+/**
+ * Modal Profil Lengkap Satu Anggota (dibuka saat klik "Info" pada Slide-Up Group)
+ */
+export function UserProfileModal({
+  userId,
+  isOpen,
+  onClose,
+  onMessage,
+  onAudioCall,
+  onVideoCall,
+}: UserProfileModalProps) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['internal-communication', 'user-profile', userId],
+    queryFn: () => internalCommunicationApi.getUserProfile(userId!),
+    enabled: isOpen && Boolean(userId),
+    staleTime: 1000 * 30,
+  });
+
+  if (!isOpen || !userId) return null;
+
+  const u = data?.user;
+  const waliKelas = data?.waliKelas;
+  const quickMember: QuickActionMember | null = u
+    ? { user_id: u.user_id, name: u.name, role: u.role, avatar: u.avatar }
+    : null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 backdrop-blur-[2px] p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md max-h-[86vh] bg-white dark:bg-[#111b21] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-4 py-3 bg-gradient-to-r from-[#075e54] to-[#008069] dark:from-[#202c33] dark:to-[#111b21] text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <UserIcon className="w-4 h-4" />
+            <h3 className="text-xs font-extrabold tracking-wide uppercase">Info Profil Anggota</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 rounded-full hover:bg-white/20 text-white transition-colors cursor-pointer"
+          >
+            <XMarkIcon className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {isLoading || !u ? (
+            <div className="py-12 flex flex-col items-center justify-center text-slate-400 text-xs gap-2">
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-[#00a884] border-t-transparent" />
+              Memuat profil lengkap...
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-col items-center text-center space-y-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <ChatAvatar src={u.avatar} name={u.name} size="xl" />
+                <div>
+                  <h4 className="text-base font-extrabold text-slate-800 dark:text-slate-100">
+                    {u.name}
+                  </h4>
+                  <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    {u.role_label || u.role}
+                  </span>
+                </div>
+
+                {quickMember && (onMessage || onAudioCall || onVideoCall) && (
+                  <div className="flex items-center justify-center gap-2 pt-2">
+                    {onMessage && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onMessage(quickMember);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <ChatBubbleLeftRightIcon className="w-3.5 h-3.5" />
+                        <span>Pesan</span>
+                      </button>
+                    )}
+                    {onAudioCall && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onAudioCall(quickMember);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <PhoneOutlineIcon className="w-3.5 h-3.5" />
+                        <span>Telepon</span>
+                      </button>
+                    )}
+                    {onVideoCall && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onVideoCall(quickMember);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <VideoCameraIcon className="w-3.5 h-3.5" />
+                        <span>Video</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#202c33] border border-slate-200/70 dark:border-slate-700/60 space-y-2.5 text-xs">
+                {u.kelas && (
+                  <div className="flex items-center gap-2.5">
+                    <AcademicCapIcon className="w-4 h-4 text-slate-400 shrink-0" />
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Kelas</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-100">{u.kelas}</span>
+                    </div>
+                  </div>
+                )}
+                {(u.nis || u.nisn) && (
+                  <div className="flex items-center gap-2.5">
+                    <IdentificationIcon className="w-4 h-4 text-slate-400 shrink-0" />
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">NIS / NISN</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-100">
+                        {[u.nis, u.nisn].filter(Boolean).join(' / ')}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {u.nip && (
+                  <div className="flex items-center gap-2.5">
+                    <IdentificationIcon className="w-4 h-4 text-slate-400 shrink-0" />
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">NIP</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-100">{u.nip}</span>
+                    </div>
+                  </div>
+                )}
+                {u.no_hp && (
+                  <div className="flex items-center gap-2.5">
+                    <PhoneIcon className="w-4 h-4 text-slate-400 shrink-0" />
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Nomor HP / WA</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-100">{u.no_hp}</span>
+                    </div>
+                  </div>
+                )}
+                {u.email && (
+                  <div className="flex items-center gap-2.5">
+                    <EnvelopeIcon className="w-4 h-4 text-slate-400 shrink-0" />
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-slate-400 block">Email</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-100 truncate block">
+                        {u.email}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {waliKelas && (
+                <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200/80 dark:border-emerald-800/60 space-y-2">
+                  <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
+                    Wali Kelas
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <ChatAvatar src={waliKelas.avatar} name={waliKelas.name} size="md" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100 truncate">
+                        {waliKelas.name}
+                      </p>
+                      <p className="text-[10.5px] text-slate-500 dark:text-slate-400 truncate">
+                        {waliKelas.nip ? `NIP. ${waliKelas.nip}` : waliKelas.jabatan || 'Wali Kelas'}
+                      </p>
+                    </div>
+                    {waliKelas.no_hp && (
+                      <span className="text-[10.5px] font-semibold text-emerald-700 dark:text-emerald-300 shrink-0">
+                        {waliKelas.no_hp}
+                      </span>
                     )}
                   </div>
                 </div>

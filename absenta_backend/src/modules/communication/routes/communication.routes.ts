@@ -83,6 +83,30 @@ export async function communicationRoutes(fastify: any) {
   });
 
   /**
+   * 3a. Ambil profil lengkap satu pengguna (dari Group Member Slide-Up -> Info)
+   * GET /api/v1/communication/users/:userId/profile
+   */
+  fastify.get('/users/:userId/profile', {
+    handler: async (request: any, reply: any) => {
+      try {
+        const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id;
+        const { userId: targetUserId } = request.params;
+
+        if (!tenantId || !targetUserId) {
+          reply.status(400);
+          return { success: false, message: 'Parameter permintaan tidak valid.' };
+        }
+
+        const data = await communicationService.getUserProfile(tenantId, targetUserId);
+        return { success: true, data };
+      } catch (err: any) {
+        reply.status(400);
+        return { success: false, message: err.message || 'Gagal mengambil profil pengguna.' };
+      }
+    }
+  });
+
+  /**
    * 4a. Ambil profil lengkap percakapan / grup / siswa / wali kelas & seluruh anggota
    * GET /api/v1/communication/:id/profile
    */

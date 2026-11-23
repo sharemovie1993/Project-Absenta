@@ -12,12 +12,14 @@ import {
 } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import { ChatAvatar, type QuickActionMember } from './ThreadProfileModal';
 
 interface MessageBubbleProps {
   message: InternalMessageItem;
+  onSenderClick?: (member: QuickActionMember) => void;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onSenderClick }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
@@ -59,8 +61,28 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     setPlaybackRate(nextRate);
   };
 
+  const triggerSenderClick = () => {
+    if (!onSenderClick || !message.sender_id) return;
+    onSenderClick({
+      user_id: message.sender_id,
+      name: message.sender_name || 'Pengguna',
+      role: typeof message.sender_role === 'object' ? (message.sender_role as any)?.name : message.sender_role,
+      avatar: message.sender_avatar,
+    });
+  };
+
   return (
-    <div className={`flex w-full my-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex w-full my-1 items-end gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
+      {!isMe && (
+        <button
+          type="button"
+          onClick={triggerSenderClick}
+          className={onSenderClick ? 'cursor-pointer hover:opacity-85 transition-opacity shrink-0 mb-0.5' : 'shrink-0 mb-0.5'}
+          title={onSenderClick ? `Klik untuk opsi ${message.sender_name || 'anggota'}` : undefined}
+        >
+          <ChatAvatar src={message.sender_avatar} name={message.sender_name} size="xs" />
+        </button>
+      )}
       <div
         className={`relative max-w-[85%] sm:max-w-[65%] rounded-lg px-3 py-1.5 shadow-2xs transition-all ${
           isMe
@@ -71,7 +93,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         {/* Header Pengirim (Jika pesan masuk di disposisi / grup) */}
         {!isMe && message.sender_name && (
           <div className="flex items-center gap-1.5 mb-0.5">
-            <span className="text-[12px] font-bold text-[#008069] dark:text-[#00a884] truncate">
+            <span
+              onClick={triggerSenderClick}
+              className={`text-[12px] font-bold text-[#008069] dark:text-[#00a884] truncate ${
+                onSenderClick ? 'cursor-pointer hover:underline' : ''
+              }`}
+            >
               {message.sender_name}
             </span>
             {message.sender_role && (

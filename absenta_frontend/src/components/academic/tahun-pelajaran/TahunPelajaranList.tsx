@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
 import { Edit, Trash2, Eye, Plus, Search, RefreshCw, Calendar, CheckCircle, FileSpreadsheet, Download } from 'lucide-react';
@@ -65,9 +65,33 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
     staleTime: 5 * 60 * 1000,
   });
 
-  const tahunPelajarans = listRes?.data || [];
-  const totalPages = listRes?.pagination?.totalPages || 1;
-  const totalItems = listRes?.pagination?.total || 0;
+  const rawTahunPelajarans = useMemo(() => listRes?.data || [], [listRes]);
+
+  const filteredTahunPelajarans = useMemo(() => {
+    let list = rawTahunPelajarans;
+    if (filterStatus && filterStatus !== 'ALL') {
+      const wantActive = filterStatus === 'ACTIVE';
+      list = list.filter(tp => Boolean(tp.is_active) === wantActive);
+    }
+    if (!searchTerm.trim()) return list;
+    const q = searchTerm.toLowerCase().trim();
+    return list.filter(tp => {
+      const tahun = (tp.tahun || '').toLowerCase();
+      const status = tp.is_active ? 'aktif' : 'tidak aktif';
+      return tahun.includes(q) || status.includes(q);
+    });
+  }, [rawTahunPelajarans, searchTerm, filterStatus]);
+
+  const isServerPaginated = Boolean(listRes?.pagination?.totalPages && listRes.pagination.totalPages > 1 && !searchTerm.trim() && filterStatus === 'ALL');
+
+  const tahunPelajarans = useMemo(() => {
+    if (isServerPaginated) return filteredTahunPelajarans;
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredTahunPelajarans.slice(start, start + itemsPerPage);
+  }, [filteredTahunPelajarans, currentPage, itemsPerPage, isServerPaginated]);
+
+  const totalItems = filteredTahunPelajarans.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
   
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
@@ -124,7 +148,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
   // Handle export to Excel
   const handleExport = useCallback(() => {
     try {
-      exportDataToExcel(tahunPelajarans || [], [
+      exportDataToExcel(filteredTahunPelajarans || [], [
         { header: 'Tahun Pelajaran', accessor: (row) => row.tahun, width: 20 },
         { header: 'Status', accessor: (row) => row.is_active ? 'Aktif' : 'Tidak Aktif', width: 15 },
         { header: 'Jumlah Siswa', accessor: (row) => row._count?.Siswa || 0, width: 15 },
@@ -133,7 +157,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
     } catch (error: any) {
       toast(error.message || 'Gagal mengekspor data', { icon: '⚠️' });
     }
-  }, [tahunPelajarans]);
+  }, [filteredTahunPelajarans]);
 
   const { executeBulk, isExecuting: isBulkDeleting } = useBulkAction();
 

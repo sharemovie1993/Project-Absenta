@@ -248,6 +248,20 @@ export const internalCommunicationApi = {
       `/communication/${threadId}/profile`
     );
     return (res as any)?.data;
+  },
+
+  /**
+   * Ambil profil lengkap satu anggota/pengguna
+   */
+  async getUserProfile(userId: string): Promise<{
+    user: ThreadProfileMember;
+    waliKelas?: ThreadProfileResponse['waliKelas'];
+  }> {
+    const res = await requestWithFallback<{
+      success: boolean;
+      data: { user: ThreadProfileMember; waliKelas?: ThreadProfileResponse['waliKelas'] };
+    }>('get', `/communication/users/${userId}/profile`);
+    return (res as any)?.data;
   }
 };
 

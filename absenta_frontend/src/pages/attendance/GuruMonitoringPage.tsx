@@ -145,26 +145,32 @@ export default React.memo(function GuruMonitoringPage() {
     queryKey: ['guru-monitoring-refs'],
     queryFn: async () => {
       const [kRes, gRes] = await Promise.all([
-        kelasApi.getAll({ limit: 1000 } as unknown as Record<string, unknown>),
-        guruApi.getAll({ limit: 1000 } as unknown as Record<string, unknown>)
+        kelasApi.getAll({ limit: 1000 } as unknown as Record<string, unknown>).catch(() => ({ data: [] })),
+        guruApi.getAll({ limit: 1000 } as unknown as Record<string, unknown>).catch(() => ({ data: [] }))
       ]);
-      const kList = (kRes.data as DropdownOptionResponse[]) || [];
-      const gList = (gRes.data as DropdownOptionResponse[]) || [];
+      const extractArray = (res: any) => {
+        if (Array.isArray(res)) return res;
+        if (Array.isArray(res?.data)) return res.data;
+        if (Array.isArray(res?.data?.data)) return res.data.data;
+        return [];
+      };
+      const kList = extractArray(kRes);
+      const gList = extractArray(gRes);
       const km: Record<string, string> = {};
       const gm: Record<string, string> = {};
       const kOpts: Array<{ value: string; label: string }> = [];
 
-      kList.forEach((k) => {
-        if (k.id) {
+      kList.forEach((k: any) => {
+        if (k?.id) {
           const name = k.nama_kelas || k.nama || String(k.id);
           km[k.id] = name;
           kOpts.push({ value: k.id, label: name });
         }
       });
 
-      gList.forEach((g) => {
-        if (g.id) {
-          gm[g.id] = g.nama_guru || g.nama || String(g.id);
+      gList.forEach((g: any) => {
+        if (g?.id) {
+          gm[g.id] = g.nama_guru || g.nama || g.full_name || String(g.id);
         }
       });
 
@@ -176,6 +182,32 @@ export default React.memo(function GuruMonitoringPage() {
   const kelasMap = refsQuery.data?.kelasMap || {};
   const guruMap = refsQuery.data?.guruMap || {};
   const kelasOptions = refsQuery.data?.kelasOptions || [];
+
+  const getTeacherDisplayName = useCallback((row: any) => {
+    if (!row) return '-';
+    const byMap = row.guru_id ? guruMap[String(row.guru_id)] : '';
+    if (byMap) return byMap;
+    return (
+      row.guru_nama ||
+      row.Guru?.nama_guru ||
+      row.guru_pengampu_nama ||
+      row.guru_pengganti_nama ||
+      row.GuruPelaksana?.nama_guru ||
+      row.UnitPengajaran?.Guru?.nama_guru ||
+      row.guru?.nama_guru ||
+      row.nama_guru ||
+      row.opened_by_name ||
+      row.created_by?.full_name ||
+      '-'
+    );
+  }, [guruMap]);
+
+  const getKelasDisplayName = useCallback((row: any) => {
+    if (!row) return '-';
+    const byMap = row.kelas_id ? kelasMap[String(row.kelas_id)] : '';
+    if (byMap) return byMap;
+    return row.kelas_nama || row.Kelas?.nama_kelas || '-';
+  }, [kelasMap]);
 
   const stats = useMemo(() => [
     {
@@ -209,14 +241,13 @@ export default React.memo(function GuruMonitoringPage() {
       key: 'kelas_id', 
       label: 'Kelas', 
       render: (_v: unknown, r: unknown) => {
-        const row = r as SesiMonitoringData;
         return (
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
               <LayoutGrid size={16} />
             </div>
             <div className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
-              {kelasMap[String(row?.kelas_id || '')] || row?.kelas_nama || '-'}
+              {getKelasDisplayName(r)}
             </div>
           </div>
         );
@@ -226,14 +257,13 @@ export default React.memo(function GuruMonitoringPage() {
       key: 'guru_id', 
       label: 'Guru Pengajar', 
       render: (_v: unknown, r: unknown) => {
-        const row = r as SesiMonitoringData;
         return (
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
               <UserCheck size={16} />
             </div>
             <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tight">
-              {guruMap[String(row?.guru_id || '')] || row?.guru_nama || '-'}
+              {getTeacherDisplayName(r)}
             </div>
           </div>
         );
@@ -276,13 +306,13 @@ export default React.memo(function GuruMonitoringPage() {
         );
       }
     },
-  ], [kelasMap, guruMap]);
+  ], [getKelasDisplayName, getTeacherDisplayName]);
 
   const isMobile = useIsMobile();
 
   const renderMobileCard = useCallback((row: SesiMonitoringData) => {
-    const kName = (row.kelas_id ? kelasMap[row.kelas_id] : '') || row.kelas_nama || 'Kelas';
-    const gName = (row.guru_id ? guruMap[row.guru_id] : '') || row.guru_nama || 'Guru Pengajar';
+    const kName = getKelasDisplayName(row);
+    const gName = getTeacherDisplayName(row);
     const statusStr = String(row.status || '').toUpperCase();
     const hadir = Number(row?.summary?.HADIR || 0);
     const total = Number(row?.total_siswa_kelas || 0);
@@ -320,7 +350,7 @@ export default React.memo(function GuruMonitoringPage() {
         </div>
       </div>
     );
-  }, [kelasMap, guruMap]);
+  }, [getKelasDisplayName, getTeacherDisplayName]);
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -332,12 +362,12 @@ export default React.memo(function GuruMonitoringPage() {
     if (!searchTerm.trim()) return sessions;
     const q = searchTerm.toLowerCase().trim();
     return sessions.filter((s: any) => {
-      const gName = (guruMap[String(s?.guru_id || '')] || s?.guru_nama || '').toLowerCase();
-      const kName = (kelasMap[String(s?.kelas_id || '')] || s?.kelas_nama || '').toLowerCase();
-      const mName = String(s?.judul_materi || s?.materi || s?.jenis_kegiatan || '').toLowerCase();
+      const gName = getTeacherDisplayName(s).toLowerCase();
+      const kName = getKelasDisplayName(s).toLowerCase();
+      const mName = String(s?.judul_materi || s?.materi || s?.jenis_kegiatan || s?.mapel_nama || s?.Mapel?.nama_mapel || '').toLowerCase();
       return gName.includes(q) || kName.includes(q) || mName.includes(q);
     });
-  }, [sessions, searchTerm, guruMap, kelasMap]);
+  }, [sessions, searchTerm, getTeacherDisplayName, getKelasDisplayName]);
 
   // Paginate sessions
   const pagedSessions = useMemo(() => {

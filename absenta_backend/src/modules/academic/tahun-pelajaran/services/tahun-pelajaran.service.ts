@@ -27,7 +27,12 @@ export interface TahunPelajaranResponse {
 }
 
 export class TahunPelajaranService {
-  async getAllTahunPelajaran(requestingUserRole: RoleName, requestingUserTenantId?: string, status?: string): Promise<TahunPelajaranResponse[]> {
+  async getAllTahunPelajaran(
+    requestingUserRole: RoleName, 
+    requestingUserTenantId?: string, 
+    status?: string,
+    search?: string
+  ): Promise<TahunPelajaranResponse[]> {
     let whereClause: any = {};
 
     // Only system SUPERADMIN can see all tahun pelajaran; others are tenant-scoped
@@ -39,6 +44,10 @@ export class TahunPelajaranService {
       whereClause.is_active = true;
     } else if (status === 'INACTIVE') {
       whereClause.is_active = false;
+    }
+
+    if (search && search.trim()) {
+      whereClause.tahun = { contains: search.trim(), mode: 'insensitive' };
     }
 
     const list = await prisma.tahunPelajaran.findMany({

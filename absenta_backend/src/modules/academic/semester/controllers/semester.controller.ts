@@ -6,8 +6,10 @@ export class SemesterController {
   async getAllSemester(req: any, reply: any): Promise<void> {
     try {
       const user = req.user as any;
+      const search = req.query?.search;
+      const tahun_pelajaran_id = req.query?.tahun_pelajaran_id;
 
-      const semester = await semesterService.getAllSemester(user.roleName, user.tenantId);
+      const semester = await semesterService.getAllSemester(user.roleName, user.tenantId, { search, tahun_pelajaran_id });
 
       reply.status(200).send({
         success: true,
