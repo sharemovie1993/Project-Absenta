@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Zap,
-  Loader2,
   Volume2,
   VolumeX,
   History,
@@ -13,16 +12,18 @@ import {
   User,
   Radio,
   Camera,
-  Keyboard,
-  CreditCard,
   RefreshCw,
-  Send,
+  QrCode,
+  Search,
+  Users,
+  Check,
+  Clock,
   Sparkles
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { resolveProfilePhotoUrl } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import { SmartStudentPicker, type Student } from '@/components/common/SmartStudentPicker';
 import toast from 'react-hot-toast';
 import {
@@ -40,56 +41,66 @@ export interface UnifiedKegiatanTerminalPanelProps {
   className?: string;
 }
 
-interface ScanHistoryItem {
+export interface RecentUnifiedTapRecord {
   id: string;
-  timestamp: string;
   nama: string;
-  nip?: string | null;
-  syncedKbm: boolean;
-  message: string;
+  idNumber?: string; // NIP or NIS
+  subLabel?: string; // Role / Jabatan or Kelas
+  entityType: 'GURU' | 'SISWA';
+  status: string;
+  jam: string;
+  foto?: string;
+  syncedKbm?: boolean;
+  kbmCount?: number;
+  message?: string;
   metode: 'RFID' | 'QR' | 'MANUAL';
 }
 
-type InputTab = 'RFID' | 'QR' | 'MANUAL';
+type SubInputMode = 'SCANNER' | 'QR_KAMERA' | 'PICKER';
 
-// Audio Feedback Menggunakan Synthetic Web Audio API (Bebas Dependency File Eksternal)
-function playBeep(type: 'success' | 'error' | 'kbm') {
+// Zero-asset Web Audio Synthesizer Beep (Selaras dengan Gerbang Satpam + Chord 1-Tap 2-Record)
+const playBeep = (type: 'success' | 'kbm' | 'error') => {
   try {
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
     const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
 
-    if (type === 'success' || type === 'kbm') {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(type === 'kbm' ? 880 : 587.33, ctx.currentTime);
-      if (type === 'kbm') {
-        osc.frequency.exponentialRampToValueAtTime(1174.66, ctx.currentTime + 0.15);
-      }
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (type === 'kbm') {
+      // Dual-tone harmonic chime for KBM sync (D5 -> D6)
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1174.66, ctx.currentTime + 0.15);
       gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.28);
       osc.start();
-      osc.stop(ctx.currentTime + 0.25);
+      osc.stop(ctx.currentTime + 0.28);
+    } else if (type === 'success') {
+      // High-pitched bright beep (A5 -> E6)
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
     } else {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+      // Buzz error sound
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(220, ctx.currentTime);
-      osc.frequency.setValueAtTime(160, ctx.currentTime + 0.1);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.3);
     }
   } catch {
-    // Ignore audio error jika browser memblokir autoplay
+    // Ignore audio restrictions
   }
-}
+};
 
 export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanelProps> = ({
   jenisKegiatan,
@@ -100,20 +111,28 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
   onSuccessTap,
   className = '',
 }) => {
-  // Input Tab State
-  const [activeTab, setActiveTab] = useState<InputTab>('RFID');
-  const [tokenInput, setTokenInput] = useState('');
-  const [manualText, setManualText] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  // Mode Sub-Tab Input: 'SCANNER' (Auto-focus RFID/Barcode), 'QR_KAMERA' (Kamera), 'PICKER' (Smart Student/Guru Picker - Lupa Kartu)
+  const [inputSubTab, setInputSubTab] = useState<SubInputMode>('SCANNER');
+  const [scannerInput, setScannerInput] = useState<string>('');
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
 
-  // Result & History State
-  const [lastResult, setLastResult] = useState<{
-    success: boolean;
-    data?: UnifiedRfidTapResponse;
-    errorMsg?: string;
-  } | null>(null);
-  const [history, setHistory] = useState<ScanHistoryItem[]>([]);
+  // Buffer Refs untuk Hardware RFID/Barcode Keyboard Emulation
+  const inputRef = useRef<HTMLInputElement>(null);
+  const bufferRef = useRef<string>('');
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Feedback State
+  const [lastScanned, setLastScanned] = useState<RecentUnifiedTapRecord | null>(null);
+  const [lastErrorMsg, setLastErrorMsg] = useState<string | null>(null);
+  const [feedTaps, setFeedTaps] = useState<RecentUnifiedTapRecord[]>([]);
+
+  // Mini Counter Sesi Ini
+  const miniStats = React.useMemo(() => {
+    const hadir = feedTaps.length;
+    const kbmOpened = feedTaps.filter((t) => t.syncedKbm).length;
+    return { hadir, kbmOpened };
+  }, [feedTaps]);
 
   // Camera QR State
   const qrScannerRef = useRef<Html5Qrcode | null>(null);
@@ -125,132 +144,149 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
   const lastScannedTokenRef = useRef<string>('');
   const lastScannedTimeRef = useRef<number>(0);
 
-  // Fallback scan via foto kamera sistem OS
-  const handleNativeCameraScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setCameraStatus('Memindai QR dari foto kamera sistem...');
-      let scanner = qrScannerRef.current;
-      if (!scanner) {
-        scanner = new Html5Qrcode('pos-panel-camera-qr-reader');
-        qrScannerRef.current = scanner;
-      }
-      const decoded = await scanner.scanFile(file, true);
-      if (decoded) {
-        handleProcessToken(decoded, 'QR');
-      } else {
-        toast.error('QR Code tidak terbaca dari foto. Pastikan pencahayaan cukup dan foto tegak lurus.');
-      }
-    } catch {
-      toast.error('Gagal mendeteksi QR Code dari foto. Silakan coba arahkan kamera lebih dekat.');
-    } finally {
-      if (nativeCameraInputRef.current) nativeCameraInputRef.current.value = '';
-    }
-  };
-
-  // Hardware Buffer Refs (HID)
-  const inputRef = useRef<HTMLInputElement>(null);
-  const bufferRef = useRef<string>('');
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Focus helper untuk mode RFID
-  const focusHidInput = useCallback(() => {
-    if (activeTab === 'RFID') {
+  // Focus Input Helper
+  const focusScannerInput = useCallback(() => {
+    if (inputSubTab === 'SCANNER') {
       setTimeout(() => {
         inputRef.current?.focus({ preventScroll: true });
       }, 50);
     }
-  }, [activeTab]);
+  }, [inputSubTab]);
 
   useEffect(() => {
-    focusHidInput();
-  }, [focusHidInput]);
+    focusScannerInput();
+  }, [focusScannerInput, inputSubTab]);
 
-  // Core Processing Engine
-  const handleProcessToken = useCallback(async (token: string, source: 'RFID' | 'QR' | 'MANUAL' = activeTab) => {
-    const trimmed = token.trim();
-    if (!trimmed || loading) return;
+  // Eksekusi Tap ke Backend Unified Kegiatan
+  const handleProcessScan = useCallback(
+    async (codeOrId: string, source: 'RFID' | 'QR' | 'MANUAL' = 'RFID', directInfo?: any) => {
+      const trimmed = String(codeOrId || '').trim();
+      if (!trimmed || isProcessing) return;
 
-    setLoading(true);
-    setTokenInput('');
-    setManualText('');
-
-    try {
-      const res = await tapUnifiedPendampingRfid({
-        rfid_token: trimmed,
-        sesi_id: sesiId ?? undefined,
-        jadwal_kegiatan_id: jadwalKegiatanId ?? undefined,
-        jenis_kegiatan: jenisKegiatan,
+      setIsProcessing(true);
+      setLastErrorMsg(null);
+      const now = new Date();
+      const jamStr = now.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
       });
 
-      if (res.success) {
-        if (soundEnabled) {
-          playBeep(res.synced_kbm ? 'kbm' : 'success');
-        }
-
-        setLastResult({
-          success: true,
-          data: res,
+      try {
+        const res = await tapUnifiedPendampingRfid({
+          rfid_token: trimmed,
+          sesi_id: sesiId ?? undefined,
+          jadwal_kegiatan_id: jadwalKegiatanId ?? undefined,
+          jenis_kegiatan: jenisKegiatan,
         });
 
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        if (res.success) {
+          const isKbm = Boolean(res.synced_kbm);
+          const gInfo = res.guru;
+          const sInfo = (res as any).siswa;
 
-        setHistory(prev => [
-          {
-            id: `${Date.now()}_${trimmed}`,
-            timestamp: timeStr,
-            nama: res.guru?.nama_guru || 'Guru / Pembina',
-            nip: res.guru?.nip,
-            syncedKbm: Boolean(res.synced_kbm),
-            message: res.message || 'Presensi Berhasil',
+          let personName = '';
+          let personIdNumber = '';
+          let personSubLabel = '';
+          let personFoto = '';
+          let entityType: 'GURU' | 'SISWA' = 'GURU';
+
+          if (gInfo) {
+            personName = gInfo.nama_guru || directInfo?.displayName || directInfo?.nama_guru || 'Guru / Pembina';
+            personIdNumber = gInfo.nip || directInfo?.nip || trimmed;
+            personSubLabel = gInfo.jenis_ptk || 'Pembina / Pendamping';
+            personFoto = gInfo.foto || directInfo?.foto;
+            entityType = 'GURU';
+          } else if (sInfo) {
+            personName = sInfo.nama_siswa || directInfo?.nama_siswa || directInfo?.displayName || 'Siswa';
+            personIdNumber = sInfo.nisn || sInfo.nis || directInfo?.nis || trimmed;
+            personSubLabel = sInfo.nama_kelas || directInfo?.Kelas?.nama_kelas || 'Peserta';
+            personFoto = sInfo.foto || directInfo?.foto;
+            entityType = 'SISWA';
+          } else {
+            personName = directInfo?.nama_guru || directInfo?.nama_siswa || directInfo?.displayName || `Personil (${trimmed.slice(-4)})`;
+            personIdNumber = directInfo?.nip || directInfo?.nis || trimmed;
+            personSubLabel = directInfo?.subLabel || 'Peserta / Panitia';
+            personFoto = directInfo?.foto;
+            entityType = directInfo?.entityType === 'SISWA' ? 'SISWA' : 'GURU';
+          }
+
+          const record: RecentUnifiedTapRecord = {
+            id: `tap-kegiatan-${Date.now()}`,
+            nama: personName,
+            idNumber: personIdNumber,
+            subLabel: personSubLabel,
+            entityType,
+            status: 'HADIR',
+            jam: jamStr,
+            foto: personFoto,
+            syncedKbm: isKbm,
+            kbmCount: res.jadwal_kbm_opened?.length || (isKbm ? 1 : 0),
+            message: res.message || 'Presensi Berhasil Dicatat',
             metode: source,
-          },
-          ...prev.slice(0, 14), // Simpan 15 rekaman terakhir
-        ]);
+          };
 
-        onSuccessTap?.(res);
-      } else {
-        if (soundEnabled) playBeep('error');
-        setLastResult({
-          success: false,
-          errorMsg: res.message || 'Gagal memproses presensi',
-        });
+          setLastScanned(record);
+          setFeedTaps((prev) => [record, ...prev.slice(0, 24)]);
+
+          if (!isMuted) {
+            playBeep(isKbm ? 'kbm' : 'success');
+          }
+
+          if (isKbm) {
+            toast.success(`PRESENSI + KBM DIBUKA: ${personName}`, {
+              icon: '⚡',
+              position: 'bottom-center',
+            });
+          } else {
+            toast.success(`HADIR: ${personName}`, {
+              icon: '✅',
+              position: 'bottom-center',
+            });
+          }
+
+          onSuccessTap?.(res);
+        } else {
+          const errMsg = res.message || 'Gagal memproses presensi kegiatan';
+          setLastErrorMsg(errMsg);
+          if (!isMuted) playBeep('error');
+          toast.error(errMsg, { position: 'bottom-center' });
+        }
+      } catch (err: any) {
+        const errMsg =
+          err.response?.data?.message || err.message || 'Kartu atau identitas tidak terdaftar di sistem';
+        setLastErrorMsg(errMsg);
+        if (!isMuted) playBeep('error');
+        toast.error(errMsg, { position: 'bottom-center' });
+      } finally {
+        setIsProcessing(false);
+        setScannerInput('');
+        focusScannerInput();
       }
-    } catch (err: unknown) {
-      if (soundEnabled) playBeep('error');
-      const msg = (err as { message?: string })?.message || 'Kartu atau identitas tidak terdaftar di sistem';
-      setLastResult({
-        success: false,
-        errorMsg: msg,
-      });
-    } finally {
-      setLoading(false);
-      focusHidInput();
-    }
-  }, [loading, sesiId, jadwalKegiatanId, jenisKegiatan, soundEnabled, onSuccessTap, activeTab, focusHidInput]);
+    },
+    [isProcessing, isMuted, sesiId, jadwalKegiatanId, jenisKegiatan, onSuccessTap, focusScannerInput]
+  );
 
-  // Global Keydown Trap untuk RFID & Barcode Gun HID (Keyboard Emulation)
+  // Global RFID & Barcode Scanner Keyboard Listener (Keystroke Fast Trap)
   useEffect(() => {
-    if (activeTab !== 'RFID') return;
-
     const handleGlobalKey = (e: KeyboardEvent) => {
+      if (inputSubTab !== 'SCANNER') return;
       const target = e.target as HTMLElement;
-      // Jangan trap jika pengguna sedang aktif mengetik di input pencarian lain
-      if (target && target.tagName === 'INPUT' && target.id !== 'pos-panel-hid-input') return;
+      if (target && target.tagName === 'INPUT' && target.id !== 'unified-scanner-input') {
+        return;
+      }
 
       if (e.key === 'Enter') {
         e.preventDefault();
-        const scanned = bufferRef.current.trim() || tokenInput.trim();
+        const scanned = bufferRef.current.trim() || scannerInput.trim();
         if (scanned) {
           bufferRef.current = '';
-          setTokenInput('');
-          handleProcessToken(scanned, 'RFID');
+          setScannerInput('');
+          handleProcessScan(scanned, 'RFID');
         }
       } else if (e.key.length === 1) {
         bufferRef.current += e.key;
-        setTokenInput(bufferRef.current);
+        setScannerInput(bufferRef.current);
         if (timerRef.current) clearTimeout(timerRef.current);
         timerRef.current = setTimeout(() => {
           bufferRef.current = '';
@@ -263,7 +299,7 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
       window.removeEventListener('keydown', handleGlobalKey);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [activeTab, tokenInput, handleProcessToken]);
+  }, [inputSubTab, scannerInput, handleProcessScan]);
 
   // Camera QR Scanner Lifecycle
   const stopCameraScanner = useCallback(async () => {
@@ -280,92 +316,94 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
     }
   }, []);
 
-  const startCameraScanner = useCallback(async (camIndex = 0) => {
-    try {
-      setCameraError(null);
-      setCameraStatus('Meminta izin & mendeteksi sensor kamera...');
-
-      await stopCameraScanner();
-
-      const elem = document.getElementById('pos-panel-camera-qr-reader');
-      if (!elem) return;
-
-      // 1. Proactive WebRTC permission handshake agar browser membuka sensor kamera & label lengkap
-      let tempStream: MediaStream | null = null;
+  const startCameraScanner = useCallback(
+    async (camIndex = 0) => {
       try {
-        if (navigator?.mediaDevices?.getUserMedia) {
-          tempStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: 'environment' } }
-          }).catch(async () => {
-            return await navigator.mediaDevices.getUserMedia({ video: true });
-          });
-        }
-      } catch (permErr: unknown) {
-        console.warn('[UnifiedKegiatanTerminal] Permission handshake catch:', permErr);
-      } finally {
-        if (tempStream) {
-          tempStream.getTracks().forEach((t) => t.stop());
-        }
-      }
+        setCameraError(null);
+        setCameraStatus('Meminta izin & mendeteksi sensor kamera...');
 
-      // 2. Enumerate cameras
-      let devices: Array<{ id: string; label: string }> = [];
-      try {
-        devices = await Html5Qrcode.getCameras();
-      } catch (camErr) {
-        console.warn('[UnifiedKegiatanTerminal] getCameras error:', camErr);
-      }
+        await stopCameraScanner();
 
-      const html5QrCode = new Html5Qrcode('pos-panel-camera-qr-reader');
-      qrScannerRef.current = html5QrCode;
+        const elem = document.getElementById('unified-camera-qr-reader');
+        if (!elem) return;
 
-      const onScanSuccess = (decodedText: string) => {
-        const now = Date.now();
-        if (decodedText === lastScannedTokenRef.current && now - lastScannedTimeRef.current < 2500) {
-          return; // Debounce scan token yang sama 2.5 detik
-        }
-        lastScannedTokenRef.current = decodedText;
-        lastScannedTimeRef.current = now;
-        handleProcessToken(decodedText, 'QR');
-      };
-
-      const qrConfig = {
-        fps: 20,
-        qrbox: { width: 230, height: 230 },
-        aspectRatio: 1.333333,
-      };
-
-      if (devices && devices.length > 0) {
-        setCameraList(devices);
-        const targetDevice = devices[camIndex % devices.length];
-        setActiveCameraIndex(camIndex % devices.length);
-        setCameraStatus(`Kamera Aktif: ${targetDevice.label || 'Kamera Utama'}`);
-
+        // Proactive permission handshake
+        let tempStream: MediaStream | null = null;
         try {
-          await html5QrCode.start(targetDevice.id, qrConfig, onScanSuccess, () => {});
-        } catch {
-          // Fallback ke facingMode environment jika start by ID gagal
+          if (navigator?.mediaDevices?.getUserMedia) {
+            tempStream = await navigator.mediaDevices
+              .getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
+              .catch(async () => navigator.mediaDevices.getUserMedia({ video: true }));
+          }
+        } catch (permErr) {
+          console.warn('[UnifiedKegiatanTerminal] Handshake catch:', permErr);
+        } finally {
+          if (tempStream) {
+            tempStream.getTracks().forEach((t) => t.stop());
+          }
+        }
+
+        let devices: Array<{ id: string; label: string }> = [];
+        try {
+          devices = await Html5Qrcode.getCameras();
+        } catch (camErr) {
+          console.warn('[UnifiedKegiatanTerminal] getCameras error:', camErr);
+        }
+
+        const html5QrCode = new Html5Qrcode('unified-camera-qr-reader');
+        qrScannerRef.current = html5QrCode;
+
+        const onScanSuccess = (decodedText: string) => {
+          const now = Date.now();
+          if (
+            decodedText === lastScannedTokenRef.current &&
+            now - lastScannedTimeRef.current < 2500
+          ) {
+            return;
+          }
+          lastScannedTokenRef.current = decodedText;
+          lastScannedTimeRef.current = now;
+          handleProcessScan(decodedText, 'QR');
+        };
+
+        const qrConfig = {
+          fps: 20,
+          qrbox: { width: 230, height: 230 },
+          aspectRatio: 1.333333,
+        };
+
+        if (devices && devices.length > 0) {
+          setCameraList(devices);
+          const targetDevice = devices[camIndex % devices.length];
+          setActiveCameraIndex(camIndex % devices.length);
+          setCameraStatus(`Kamera Aktif: ${targetDevice.label || 'Kamera Utama'}`);
+
+          try {
+            await html5QrCode.start(targetDevice.id, qrConfig, onScanSuccess, () => {});
+          } catch {
+            await html5QrCode.start({ facingMode: 'environment' }, qrConfig, onScanSuccess, () => {});
+          }
+        } else {
+          setCameraStatus('Kamera Aktif: Sensor Belakang');
           await html5QrCode.start({ facingMode: 'environment' }, qrConfig, onScanSuccess, () => {});
         }
-      } else {
-        // Fallback langsung menggunakan facingMode environment
-        setCameraStatus('Kamera Aktif: Sensor Belakang');
-        await html5QrCode.start({ facingMode: 'environment' }, qrConfig, onScanSuccess, () => {});
+      } catch (err: any) {
+        console.warn('Start QR scanner exception:', err);
+        const errMsg = String(err?.message || err || '');
+        if (errMsg.toLowerCase().includes('permission') || errMsg.includes('NotAllowedError')) {
+          setCameraError(
+            'Izin akses kamera ditolak oleh browser/perangkat. Berikan izin di setelan browser atau gunakan kamera sistem.'
+          );
+        } else {
+          setCameraError(errMsg || 'Gagal menyalakan kamera. Pastikan izin kamera telah diberikan.');
+        }
       }
-    } catch (err: unknown) {
-      console.warn('Start QR scanner exception:', err);
-      const errMsg = String((err as { message?: string })?.message || err || '');
-      if (errMsg.toLowerCase().includes('permission') || errMsg.includes('NotAllowedError')) {
-        setCameraError('Izin akses kamera ditolak oleh browser/perangkat. Berikan izin kamera di setelan browser atau gunakan kamera sistem.');
-      } else {
-        setCameraError(errMsg || 'Gagal menyalakan kamera. Pastikan izin kamera telah diberikan di browser.');
-      }
-    }
-  }, [stopCameraScanner, handleProcessToken]);
+    },
+    [stopCameraScanner, handleProcessScan]
+  );
 
-  // Handle Tab Switch & Camera Mount
   useEffect(() => {
-    if (activeTab === 'QR') {
+    if (inputSubTab === 'QR_KAMERA') {
       const timer = setTimeout(() => {
         startCameraScanner(activeCameraIndex);
       }, 200);
@@ -376,428 +414,547 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
     } else {
       stopCameraScanner();
     }
-  }, [activeTab, activeCameraIndex, startCameraScanner, stopCameraScanner]);
+  }, [inputSubTab, activeCameraIndex, startCameraScanner, stopCameraScanner]);
 
-  const handleSwitchCamera = useCallback(() => {
-    if (cameraList.length > 1) {
-      const nextIndex = (activeCameraIndex + 1) % cameraList.length;
-      startCameraScanner(nextIndex);
+  const handleNativeCameraScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setCameraStatus('Memindai QR dari foto kamera sistem...');
+      let scanner = qrScannerRef.current;
+      if (!scanner) {
+        scanner = new Html5Qrcode('unified-camera-qr-reader');
+        qrScannerRef.current = scanner;
+      }
+      const decoded = await scanner.scanFile(file, true);
+      if (decoded) {
+        handleProcessScan(decoded, 'QR');
+      } else {
+        toast.error('QR Code tidak terbaca dari foto. Pastikan pencahayaan cukup.');
+      }
+    } catch {
+      toast.error('Gagal mendeteksi QR Code dari foto. Arahkan kamera lebih tegak lurus.');
+    } finally {
+      if (nativeCameraInputRef.current) nativeCameraInputRef.current.value = '';
     }
-  }, [cameraList, activeCameraIndex, startCameraScanner]);
+  };
 
-  const panelTitle = title || `Terminal Presensi Multi-Input — ${jenisKegiatan.toUpperCase()}`;
-  const panelSubtitle = subtitle || `Mode Kiosk Cepat: Tempel RFID, Barcode Gun, Scan QR Kamera atau Cari Nama`;
+  const handleScannerSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleProcessScan(scannerInput, 'RFID');
+  };
+
+  const panelTitle = title || `Terminal Presensi — ${jenisKegiatan.toUpperCase()}`;
+  const panelSubtitle =
+    subtitle || `Multi-Input Siaga: Tempel Kartu RFID, Barcode Gun HID, Scan QR Kamera atau Cari Nama`;
 
   return (
-    <div 
-      className={`bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden flex flex-col ${className}`}
+    <div
+      className={cn(
+        "bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl shadow-xs overflow-hidden flex flex-col space-y-4 p-4 sm:p-5",
+        className
+      )}
       onClick={() => {
-        if (activeTab === 'RFID') focusHidInput();
+        if (inputSubTab === 'SCANNER') focusScannerInput();
       }}
     >
-      {/* Header Bar */}
-      <div className="px-5 py-3.5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0">
+      {/* ── TOP CONTROL BAR (SELARAS DENGAN POS GERBANG SATPAM) ────────── */}
+      <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Info & Counter Badges */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
-            <Scan className="w-4 h-4 animate-pulse" />
+          <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
+            <Scan className="w-5 h-5 animate-pulse" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-xs sm:text-sm font-black tracking-tight">{panelTitle}</h3>
-              <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-300 border-amber-500/40 py-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white tracking-tight">
+                {panelTitle}
+              </h3>
+              <Badge
+                variant="outline"
+                className="text-[9px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 py-0"
+              >
                 Universal Terminal
               </Badge>
             </div>
-            <p className="text-[11px] text-slate-300/80 mt-0.5">{panelSubtitle}</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+              {panelSubtitle}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Right Tools: Mini Stats + Sub-Tab Switcher + Suara Audio */}
+        <div className="flex items-center gap-2 flex-wrap self-end md:self-auto">
+          {/* Mini Counter Sesi Ini */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold shadow-2xs">
+            <span className="text-slate-400">Hadir:</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-mono font-black">
+              {miniStats.hadir}
+            </span>
+            {miniStats.kbmOpened > 0 && (
+              <>
+                <span className="text-slate-300 dark:text-slate-600">•</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-mono flex items-center gap-0.5">
+                  <Zap size={12} className="text-amber-500" />
+                  {miniStats.kbmOpened} KBM
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Sub-Tab Selector: Scan RFID vs Scan QR vs Lupa Kartu */}
+          <div className="flex items-center bg-slate-200/80 dark:bg-slate-900 p-0.5 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setInputSubTab('SCANNER')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                inputSubTab === 'SCANNER'
+                  ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              )}
+            >
+              <Scan size={13} />
+              <span className="hidden sm:inline">Scan</span> RFID
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setInputSubTab('QR_KAMERA')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                inputSubTab === 'QR_KAMERA'
+                  ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              )}
+            >
+              <Camera size={13} />
+              <span>QR Kamera</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setInputSubTab('PICKER')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                inputSubTab === 'PICKER'
+                  ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              )}
+            >
+              <Search size={13} />
+              <span>Lupa Kartu</span>
+            </button>
+          </div>
+
+          {/* Audio Synthesizer Beep Switcher */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setSoundEnabled(prev => !prev);
+              setIsMuted((prev) => !prev);
             }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 transition-colors text-xs font-semibold"
-            title={soundEnabled ? 'Matikan Suara Beep' : 'Nyalakan Suara Beep'}
+            className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
+            title={isMuted ? 'Nyalakan Suara Beep' : 'Bisukan Suara Beep'}
+            aria-label="Toggle Suara Beep"
           >
-            {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-300" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
-            <span className="hidden sm:inline text-[11px]">{soundEnabled ? 'Suara ON' : 'Mute'}</span>
+            {isMuted ? (
+              <VolumeX size={15} />
+            ) : (
+              <Volume2 size={15} className="text-emerald-600 dark:text-emerald-400" />
+            )}
           </button>
         </div>
       </div>
 
-      {/* Tab Selector */}
-      <div className="px-5 pt-3 pb-2 bg-slate-50/80 dark:bg-slate-800/40 border-b border-slate-200/70 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-800 rounded-2xl w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab('RFID')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'RFID'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <CreditCard className="w-3.5 h-3.5" />
-            <span>RFID / Barcode HID</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('QR')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'QR'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <Camera className="w-3.5 h-3.5" />
-            <span>Scan QR Kamera</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('MANUAL')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'MANUAL'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            <Keyboard className="w-3.5 h-3.5" />
-            <span>Cari / Ketik</span>
-          </button>
-        </div>
-
-        <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Siaga Menerima Input</span>
-        </div>
-      </div>
-
-      {/* Main Terminal Grid: Scanner & History Feed */}
-      <div className="p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Column (7 cols): Input Active Mode & Last Result Feedback */}
+      {/* ── MAIN WORKSPACE GRID: 7 COLS (TERMINAL) & 5 COLS (FEED) ──────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start">
+        {/* ── LEFT COLUMN: INPUT MODES & LAST RESULT CARD (7 COLS) ───────── */}
         <div className="lg:col-span-7 space-y-4">
-          {/* TAB 1: RFID & Barcode HID */}
-          {activeTab === 'RFID' && (
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-50/70 via-white to-slate-50 dark:from-indigo-950/30 dark:via-slate-900 dark:to-slate-900 border border-indigo-200/70 dark:border-indigo-800/60 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5 text-center sm:text-left">
-                  <div className="relative shrink-0">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md">
-                      <Radio className="w-6 h-6 animate-pulse" />
-                    </div>
-                    <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900 animate-ping" />
-                    <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900" />
+          <div className="bg-slate-50/60 dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4">
+            {/* Header Pos Status */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200/70 dark:border-slate-800 gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/80 dark:border-emerald-800/60">
+                  <Radio size={16} className="animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                    {inputSubTab === 'SCANNER'
+                      ? 'Terminal Hardware RFID & Barcode Gun'
+                      : inputSubTab === 'QR_KAMERA'
+                      ? 'Kamera Pemindai QR Code'
+                      : 'Smart Search Siswa & Guru (Lupa Kartu)'}
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {inputSubTab === 'SCANNER'
+                      ? 'Siap membaca kartu RFID / barcode USB secara otomatis'
+                      : inputSubTab === 'QR_KAMERA'
+                      ? 'Arahkan kartu QR siswa atau guru ke lensa kamera'
+                      : 'Pencarian cepat nama, NIP, NISN dengan Smart Entity Picker'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Siaga</span>
+              </div>
+            </div>
+
+            {/* ── SUB-PANEL 1: SCANNER VIEWPORT FRAME (ANIMATED RETICLE) ── */}
+            {inputSubTab === 'SCANNER' && (
+              <div className="space-y-4 animate-in fade-in duration-150">
+                <div className="relative w-full h-44 sm:h-52 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-800/60 flex flex-col items-center justify-center text-center p-6 space-y-3 overflow-hidden group select-none shadow-xs">
+                  {/* Animated Laser Reticle (Gaya Gerbang Satpam) */}
+                  <div className="absolute inset-x-0 h-0.5 bg-indigo-500/80 dark:bg-indigo-400 shadow-[0_0_15px_#6366f1] animate-pulse top-1/2 -translate-y-1/2 pointer-events-none" />
+
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-xs group-hover:scale-105 transition-transform">
+                    <QrCode size={30} />
                   </div>
-                  <div>
-                    <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center justify-center sm:justify-start gap-2">
-                      Scanner Hardware Siap
-                      <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-300">
-                        Auto-Listen Active
-                      </Badge>
+                  <div className="space-y-1 relative z-10 max-w-sm">
+                    <h4 className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200 tracking-wide uppercase">
+                      Tempelkan Kartu RFID ke Reader USB
                     </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Tempelkan kartu RFID atau tembak dengan barcode scanner 2D.
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Alat scanner membaca kode kartu secara langsung tanpa perlu klik mouse
                     </p>
                   </div>
                 </div>
 
-                {/* Input Cepat HID */}
-                <div className="w-full sm:w-60">
-                  <input
-                    ref={inputRef}
-                    id="pos-panel-hid-input"
-                    type="text"
-                    value={tokenInput}
-                    onChange={(e) => setTokenInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleProcessToken(tokenInput, 'RFID');
-                      }
-                    }}
-                    disabled={loading}
-                    placeholder="Buffer Kartu / Scan..."
-                    className="w-full text-xs font-mono px-3.5 py-2.5 rounded-2xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: Scan QR Kamera */}
-          {activeTab === 'QR' && (
-            <div className="space-y-3">
-              <input
-                ref={nativeCameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleNativeCameraScan}
-                className="hidden"
-              />
-
-              <div className="relative overflow-hidden rounded-3xl bg-slate-950 w-full min-h-[260px] shadow-2xl ring-1 ring-slate-800 flex flex-col items-center justify-center">
-                <div id="pos-panel-camera-qr-reader" className="w-full h-full min-h-[260px] overflow-hidden [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&_video]:rounded-3xl" />
-                
-                {cameraError ? (
-                  <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center text-rose-400 z-20">
-                    <AlertCircle className="w-10 h-10 mb-2" />
-                    <p className="text-sm font-bold text-white max-w-md">{cameraError}</p>
-                    <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => startCameraScanner(activeCameraIndex)}
-                        className="text-xs font-bold bg-slate-800 text-white border-slate-700 hover:bg-slate-700"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Coba Izin Lagi
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => nativeCameraInputRef.current?.click()}
-                        className="text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none shadow-lg shadow-emerald-500/20"
-                      >
-                        <Camera className="w-3.5 h-3.5 mr-1.5" /> Buka Kamera Sistem HP
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="absolute bottom-3 inset-x-3 text-center text-white text-xs font-medium bg-black/60 backdrop-blur-md py-1.5 px-4 rounded-xl pointer-events-none z-10 flex items-center justify-between">
-                    <span>{cameraStatus}</span>
-                    <span className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">Arahkan QR Code</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => nativeCameraInputRef.current?.click()}
-                  className="text-xs font-bold gap-1.5 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+                {/* Input Bar for Hardware Reader & Manual Enter */}
+                <form
+                  onSubmit={handleScannerSubmit}
+                  className="space-y-2 pt-2 border-t border-slate-200/80 dark:border-slate-800"
                 >
-                  <Camera className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Fallback Kamera Sistem HP</span>
-                </Button>
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    <span className="uppercase tracking-wider">Input Barcode / UID Fisik:</span>
+                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono">
+                      Auto-Focus Ready
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Scan
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+                        size={16}
+                      />
+                      <input
+                        ref={inputRef}
+                        id="unified-scanner-input"
+                        type="text"
+                        value={scannerInput}
+                        onChange={(e) => setScannerInput(e.target.value)}
+                        placeholder="Scan kartu RFID atau ketik NIP/NIS..."
+                        aria-label="Scan kartu atau ketik NIP/NIS"
+                        disabled={isProcessing}
+                        className="w-full pl-10 pr-3.5 h-11 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono text-xs rounded-2xl focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-inner"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={isProcessing || !scannerInput.trim()}
+                      className="h-11 px-5 rounded-2xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 gap-1.5 shrink-0"
+                    >
+                      {isProcessing ? (
+                        <RefreshCw size={14} className="animate-spin" />
+                      ) : (
+                        <Zap size={14} />
+                      )}
+                      <span>Tap Presensi</span>
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )}
 
-                {cameraList.length > 1 && (
+            {/* ── SUB-PANEL 2: SCAN QR KAMERA (WEBRTC & NATIVE HP) ──────── */}
+            {inputSubTab === 'QR_KAMERA' && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                <input
+                  ref={nativeCameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleNativeCameraScan}
+                  className="hidden"
+                />
+
+                <div className="relative overflow-hidden rounded-2xl bg-slate-950 w-full min-h-[230px] shadow-lg ring-1 ring-slate-800 flex flex-col items-center justify-center">
+                  <div
+                    id="unified-camera-qr-reader"
+                    className="w-full h-full min-h-[230px] overflow-hidden [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&_video]:rounded-2xl"
+                  />
+
+                  {cameraError ? (
+                    <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center text-rose-400 z-20 space-y-3">
+                      <AlertCircle className="w-9 h-9" />
+                      <p className="text-xs sm:text-sm font-bold text-white max-w-md">
+                        {cameraError}
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => startCameraScanner(activeCameraIndex)}
+                          className="text-xs font-bold bg-slate-800 text-white border-slate-700 hover:bg-slate-700"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Coba Izin Lagi
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => nativeCameraInputRef.current?.click()}
+                          className="text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-none shadow-md shadow-emerald-500/20"
+                        >
+                          <Camera className="w-3.5 h-3.5 mr-1.5" /> Kamera Sistem HP
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="absolute bottom-3 inset-x-3 text-center text-white text-xs font-medium bg-black/60 backdrop-blur-md py-1.5 px-3 rounded-xl pointer-events-none z-10 flex items-center justify-between">
+                      <span className="truncate max-w-[200px]">{cameraStatus}</span>
+                      <span className="text-[10px] text-amber-300 font-bold uppercase tracking-wider shrink-0">
+                        Arahkan QR Code
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={handleSwitchCamera}
-                    className="text-xs font-bold gap-1.5 rounded-xl"
+                    onClick={() => nativeCameraInputRef.current?.click()}
+                    className="text-xs font-bold gap-1.5 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" /> Ganti Kamera ({activeCameraIndex + 1}/{cameraList.length})
+                    <Camera className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Fallback Foto Kamera HP</span>
                   </Button>
-                )}
-              </div>
-            </div>
-          )}
 
-          {/* TAB 3: Cari / Ketik Manual */}
-          {activeTab === 'MANUAL' && (
-            <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-4">
-              <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                  1. Pencarian Cepat Guru / Pembina
-                </label>
-                <SmartStudentPicker
-                  mode="guru"
-                  scope="global"
-                  placeholder="Ketik Nama atau NIP Guru..."
-                  className="w-full text-xs"
-                  onSelect={(student: Student) => {
-                    const token = student.nip || student.id;
-                    if (token) {
-                      handleProcessToken(token, 'MANUAL');
-                    }
-                  }}
-                />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Ketik nama atau NIP, lalu klik nama guru untuk langsung presensi.
-                </p>
-              </div>
-
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                  2. Atau Ketik Manual NIP / UID Kartu
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={manualText}
-                    onChange={(e) => setManualText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && manualText.trim()) {
-                        e.preventDefault();
-                        handleProcessToken(manualText.trim(), 'MANUAL');
-                      }
-                    }}
-                    placeholder="Masukkan NIP atau nomor kartu..."
-                    className="flex-1 text-xs font-mono px-3.5 py-2.5 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                  />
-                  <Button
-                    onClick={() => {
-                      if (manualText.trim()) {
-                        handleProcessToken(manualText.trim(), 'MANUAL');
-                      }
-                    }}
-                    disabled={!manualText.trim() || loading}
-                    className="rounded-2xl text-xs font-bold gap-1.5"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    Presensikan
-                  </Button>
+                  {cameraList.length > 1 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const nextIndex = (activeCameraIndex + 1) % cameraList.length;
+                        startCameraScanner(nextIndex);
+                      }}
+                      className="text-xs font-bold gap-1.5 rounded-xl"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" /> Ganti Kamera ({activeCameraIndex + 1}/
+                      {cameraList.length})
+                    </Button>
+                  )}
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Feedback Hasil Scan Terakhir */}
+            {/* ── SUB-PANEL 3: SMART STUDENT & GURU PICKER (LUPA KARTU) ──── */}
+            {inputSubTab === 'PICKER' && (
+              <div className="space-y-4 animate-in fade-in duration-150">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    <span className="uppercase tracking-wider">
+                      Cari Siswa / Guru / Pembina (Universal SSOT)
+                    </span>
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400">
+                      Pilih dari dropdown untuk langsung presensi
+                    </span>
+                  </div>
+
+                  {/* Reusable SSOT SmartStudentPicker dengan Mode Universal */}
+                  <SmartStudentPicker
+                    mode="universal"
+                    scope="global"
+                    placeholder="Ketik Nama, NIP, NISN, atau No RFID..."
+                    className="w-full text-xs"
+                    autoFocus
+                    onSelect={(student: Student) => {
+                      const token = student.no_rfid || student.nip || student.nisn || student.nis || student.id;
+                      if (token) {
+                        handleProcessScan(token, 'MANUAL', student);
+                      }
+                    }}
+                  />
+                  <p className="text-[11px] text-slate-400">
+                    Ketik minimal 2 karakter untuk melihat daftar guru atau siswa, lalu klik nama untuk mencatat kehadiran.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── HERO FEEDBACK CARD: HASIL TAP TERAKHIR (GAYA GERBANG SATPAM) ── */}
           <AnimatePresence mode="wait">
-            {loading ? (
+            {lastScanned ? (
               <motion.div
-                key="loading"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="p-6 rounded-3xl border border-dashed border-indigo-200 dark:border-indigo-800 text-center space-y-3 bg-indigo-50/20"
-              >
-                <Loader2 className="w-7 h-7 text-indigo-600 animate-spin mx-auto" />
-                <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
-                  Memverifikasi Identitas &amp; Sinkronisasi Dual-Presence...
-                </p>
-              </motion.div>
-            ) : lastResult ? (
-              <motion.div
-                key={lastResult.success ? 'success' : 'error'}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className={`p-4 rounded-3xl border shadow-sm ${
-                  lastResult.success
-                    ? 'bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-white dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-900 border-emerald-200 dark:border-emerald-800/80'
-                    : 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
-                }`}
-              >
-                {lastResult.success && lastResult.data ? (
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200/80 dark:border-emerald-700/50">
-                          {lastResult.data.guru?.foto ? (
-                            <img
-                              src={resolveProfilePhotoUrl(lastResult.data.guru.foto)}
-                              alt={lastResult.data.guru.nama_guru}
-                              className="w-full h-full rounded-2xl object-cover"
-                            />
-                          ) : (
-                            <User className="w-6 h-6" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Presensi Diterima
-                            </span>
-                            {lastResult.data.synced_kbm && (
-                              <Badge variant="default" className="text-[9px] font-bold bg-indigo-600 text-white gap-1 py-0">
-                                <Zap className="w-3 h-3 text-amber-300" /> 1 Tap 2 Record
-                              </Badge>
-                            )}
-                          </div>
-                          <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 mt-0.5">
-                            {lastResult.data.guru?.nama_guru}
-                          </h4>
-                          {lastResult.data.guru?.nip && (
-                            <p className="text-[11px] text-slate-400 font-mono">
-                              NIP: {lastResult.data.guru.nip}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="shrink-0 text-right">
-                        <span className="text-xs font-mono font-bold text-slate-400">
-                          {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} WIB
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="p-2.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-emerald-100 dark:border-emerald-900/40 text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between">
-                      <span className="font-medium">{lastResult.data.message}</span>
-                      {lastResult.data.synced_kbm && (
-                        <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> KBM Terbuka
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
-                    <div>
-                      <p className="text-xs sm:text-sm font-black text-rose-800 dark:text-rose-200">Identitas Tidak Dikenali</p>
-                      <p className="text-[11px] text-rose-600 dark:text-rose-300 mt-0.5">{lastResult.errorMsg}</p>
-                    </div>
-                  </div>
+                key={lastScanned.id}
+                initial={{ opacity: 0, scale: 0.96, y: 5 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                className={cn(
+                  "p-4 sm:p-5 rounded-3xl border shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-200",
+                  lastScanned.syncedKbm
+                    ? "bg-gradient-to-br from-indigo-50/80 via-white to-slate-50 dark:from-indigo-950/40 dark:via-slate-900 dark:to-slate-900 border-indigo-200 dark:border-indigo-800"
+                    : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800"
                 )}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  {/* Foto Profil Avatar dengan Ring Status */}
+                  <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700 relative shadow-xs">
+                    {lastScanned.foto ? (
+                      <img
+                        src={resolveProfilePhotoUrl(lastScanned.foto)}
+                        alt={lastScanned.nama}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center font-black text-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                        {lastScanned.nama.charAt(0)}
+                      </div>
+                    )}
+                    {lastScanned.syncedKbm && (
+                      <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-amber-500 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center text-[9px] text-white">
+                        ⚡
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white truncate">
+                        {lastScanned.nama}
+                      </h4>
+                      <Badge
+                        variant="default"
+                        className={cn(
+                          "text-[10px] font-black uppercase tracking-wider py-0 px-2",
+                          lastScanned.syncedKbm
+                            ? "bg-indigo-600 text-white"
+                            : "bg-emerald-600 text-white"
+                        )}
+                      >
+                        {lastScanned.syncedKbm ? '⚡ 1-Tap 2-Record' : 'Hadir Lapangan'}
+                      </Badge>
+                    </div>
+
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                      {lastScanned.subLabel} • ID:{' '}
+                      <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                        {lastScanned.idNumber || '-'}
+                      </span>
+                    </p>
+
+                    <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono pt-0.5">
+                      <span className="flex items-center gap-1">
+                        <Clock size={12} /> {lastScanned.jam} WIB
+                      </span>
+                      <span>• Metode: {lastScanned.metode}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                  <div className="p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 text-xs font-bold shadow-2xs">
+                    <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
+                    <span>Presensi Diterima</span>
+                  </div>
+                </div>
+              </motion.div>
+            ) : lastErrorMsg ? (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                className="p-4 rounded-3xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 flex items-center gap-3 shadow-xs"
+              >
+                <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wider">Identitas Tidak Dikenali</p>
+                  <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">{lastErrorMsg}</p>
+                </div>
               </motion.div>
             ) : null}
           </AnimatePresence>
         </div>
 
-        {/* Right Column (5 cols): Live Recent Tap History Feed */}
-        <div className="lg:col-span-5 flex flex-col justify-between bg-slate-50/60 dark:bg-slate-800/30 rounded-3xl p-4 border border-slate-100 dark:border-slate-800 min-h-[300px]">
+        {/* ── RIGHT COLUMN: LIVE RECENT TAP FEED (5 COLS - GAYA GERBANG) ── */}
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col justify-between min-h-[420px] space-y-4">
           <div className="space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                <History className="w-3.5 h-3.5 text-indigo-500" /> Riwayat Tap Sesi Ini ({history.length})
-              </span>
-              {history.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setHistory([])}
-                  className="text-[11px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  Bersihkan
-                </button>
-              )}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <History size={16} className="text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                  Feed Presensi Sesi Ini
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live ({feedTaps.length})
+                </span>
+                {feedTaps.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setFeedTaps([])}
+                    className="text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                  >
+                    Bersihkan
+                  </button>
+                )}
+              </div>
             </div>
 
-            {history.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs">
-                Belum ada kartu atau tap presensi pada sesi terminal ini.
+            {feedTaps.length === 0 ? (
+              <div className="py-14 text-center text-slate-400 space-y-2">
+                <ShieldCheck size={28} className="mx-auto text-slate-300 dark:text-slate-700" />
+                <p className="text-xs font-medium">Belum ada tap presensi pada sesi terminal ini</p>
+                <p className="text-[10px] text-slate-400">
+                  Tempelkan kartu RFID atau cari nama untuk mulai merekam.
+                </p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-72 overflow-y-auto pr-1 space-y-1">
-                {history.map(item => (
-                  <div key={item.id} className="py-2 flex items-center justify-between text-xs hover:bg-white/80 dark:hover:bg-slate-800/60 px-2 rounded-xl transition-colors">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <div className="space-y-2 max-h-[360px] overflow-y-auto no-scrollbar pr-1">
+                {feedTaps.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800 flex items-center justify-between transition-colors text-xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0 flex items-center justify-center font-bold text-[10px] text-slate-700 dark:text-slate-300">
+                        {item.foto ? (
+                          <img
+                            src={resolveProfilePhotoUrl(item.foto)}
+                            alt={item.nama}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          item.nama.charAt(0)
+                        )}
+                      </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-bold text-slate-800 dark:text-slate-200 truncate text-[11px]">{item.nama}</p>
-                          <Badge variant="outline" className="text-[8px] py-0 px-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-bold text-slate-800 dark:text-slate-200 truncate text-xs">
+                            {item.nama}
+                          </p>
+                          <Badge variant="outline" className="text-[8px] py-0 px-1 font-mono">
                             {item.metode}
                           </Badge>
                         </div>
-                        {item.nip && <p className="text-[9px] text-slate-400 font-mono">NIP: {item.nip}</p>}
+                        <p className="text-[10px] text-slate-400 truncate">
+                          {item.subLabel} {item.idNumber ? `• ${item.idNumber}` : ''}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
                       {item.syncedKbm && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300">
-                          ⚡ KBM
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 flex items-center gap-0.5">
+                          <Zap size={10} className="text-amber-500" /> KBM
                         </span>
                       )}
-                      <span className="text-[10px] font-mono text-slate-400">{item.timestamp}</span>
+                      <span className="text-[10px] font-mono text-slate-400">{item.jam}</span>
                     </div>
                   </div>
                 ))}
@@ -805,8 +962,8 @@ export const UnifiedKegiatanTerminalPanel: React.FC<UnifiedKegiatanTerminalPanel
             )}
           </div>
 
-          <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 text-[10px] text-slate-400 flex items-center gap-1.5">
-            <Sparkles className="w-3 h-3 text-amber-500" />
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
             <span>Mendukung Reader USB HID, Barcode Gun, Kamera QR &amp; Pencarian Nama</span>
           </div>
         </div>
