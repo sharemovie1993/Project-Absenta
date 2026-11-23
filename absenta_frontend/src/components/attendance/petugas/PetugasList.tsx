@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
-import { Button, Modal, ModalFooter, Table, Pagination, Badge, Input } from '../../ui';
+import { Button, Modal, ModalFooter, Table, Pagination, Badge, Input, DebouncedSearchInput } from '../../ui';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Plus, Trash2, Search, ShieldCheck } from 'lucide-react';
 import useConfirm from '../../../hooks/useConfirm';
@@ -28,7 +28,6 @@ export default React.memo(function PetugasList() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 500);
   const [limit, setLimit] = useState(10);
 
   // State for Assignment Modal
@@ -51,7 +50,7 @@ export default React.memo(function PetugasList() {
   const fetchPetugas = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await getPetugasList(page, limit, debouncedSearch);
+      const res = await getPetugasList(page, limit, search);
       if (res.success) {
         setPetugas(res.data);
         setTotalPages(res.pagination?.totalPages || 1);
@@ -63,7 +62,7 @@ export default React.memo(function PetugasList() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, debouncedSearch]);
+  }, [page, limit, search]);
 
   useEffect(() => {
     fetchPetugas();
@@ -304,16 +303,18 @@ export default React.memo(function PetugasList() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
+        <div className="flex-1">
+          <DebouncedSearchInput
             placeholder="Cari petugas..."
+            aria-label="Cari Petugas"
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
+            onChange={(val) => {
+              setSearch(val);
               setPage(1);
             }}
-            className="pl-9"
+            isLoading={loading}
+            className="w-full"
+            inputClassName="h-10 text-xs rounded-xl"
           />
         </div>
       </div>

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import useConfirm from '../../../hooks/useConfirm';
 import { Edit, Trash2, Eye, Plus, Search, RefreshCw, CheckCircle, Circle, FileSpreadsheet, Download, Calendar, Clock } from 'lucide-react';
-import { Table, Button, Input, Modal, Badge, Loader, SectionCard } from '../../ui';
+import { Table, Button, Input, Modal, Badge, Loader, SectionCard, DebouncedSearchInput } from '../../ui';
 import { getSemesterList, deleteSemester, setActiveSemester, getSemesterDetail, semesterQueryKeys } from '../../../api/academic/semester.api';
 import type { Semester } from '../../../types/academic';
 import toast from 'react-hot-toast';
@@ -45,8 +45,13 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
     });
   }, [queryClient]);
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination saat search term berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   const [deleting, setDeleting] = useState(false);
   const [activating, setActivating] = useState(false);
   const {
@@ -69,10 +74,10 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
     queryKey: semesterQueryKeys.list({
       page: currentPage,
       limit: itemsPerPage,
-      search: debouncedSearchTerm,
+      search: searchTerm,
       tahunPelajaranId
     }),
-    queryFn: () => getSemesterList(currentPage, itemsPerPage, debouncedSearchTerm, tahunPelajaranId),
+    queryFn: () => getSemesterList(currentPage, itemsPerPage, searchTerm, tahunPelajaranId),
     staleTime: 5 * 60 * 1000
   });
   const semesters = useMemo(() => listRes?.data || [], [listRes]);
@@ -374,9 +379,16 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
     <div className="flex flex-col">
       {/* Toolbar Baris Kedua - Filter & Search (Desktop Only) */}
       <div className="hidden md:flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
-        <div className="flex-1 relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input type="text" placeholder="Cari semester..." aria-label="Cari Semester" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full h-9 text-[13px] rounded-lg bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9" />
+        <div className="flex-1 w-full">
+          <DebouncedSearchInput
+            placeholder="Cari semester..."
+            aria-label="Cari Semester"
+            value={searchTerm}
+            onChange={setSearchTerm}
+            isLoading={loading}
+            className="w-full"
+            inputClassName="h-9 text-[13px] rounded-lg bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+          />
         </div>
       </div>
       
@@ -385,15 +397,15 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
           <div className="p-4 space-y-4">
             {/* Mobile Search & Filter Section */}
             <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  type="text"
+              <div className="w-full">
+                <DebouncedSearchInput
                   placeholder="Cari semester (Ganjil, Genap)..."
                   aria-label="Cari semester"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                  onChange={setSearchTerm}
+                  isLoading={loading}
+                  className="w-full"
+                  inputClassName="h-10 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                 />
               </div>
 

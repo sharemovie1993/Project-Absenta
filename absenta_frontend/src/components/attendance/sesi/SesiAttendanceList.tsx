@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Badge } from '../../ui';
+import { Badge, DebouncedSearchInput } from '../../ui';
 import { getAttendanceBadgeVariant } from '../../../utils/attendance/attendanceUiSelectors';
 import { CatatanAbsensiModal } from '../modals/CatatanAbsensiModal';
 import { getTimezone, formatLocalTimeFromISO, getVirtualDate, formatLocalDateTime } from '../../../utils/attendance/time';
@@ -730,8 +730,20 @@ export function SesiAttendanceList({ records, sesi, sesiId, isReportMode = false
 
       {/* 3. Content Section (List Mode Only) */}
       <div className="space-y-2.5">
-        {/* Status Tabs dengan Badge Count — compact & proporsional */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+        {/* Search & Status Tabs Bar */}
+        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
+          <div className="flex-1 max-w-xs">
+            <DebouncedSearchInput
+              placeholder="Cari siswa di rombel ini..."
+              aria-label="Cari Siswa"
+              value={searchTerm}
+              onChange={setSearchTerm}
+              className="w-full"
+              inputClassName="h-7.5 text-xs rounded-lg"
+            />
+          </div>
+          {/* Status Tabs dengan Badge Count — compact & proporsional */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
           {[
             { key: 'ALL', label: 'All', count: stats.total },
             { key: 'HADIR', label: 'Hadir', count: stats.hadir },
@@ -763,6 +775,7 @@ export function SesiAttendanceList({ records, sesi, sesiId, isReportMode = false
             );
           })}
         </div>
+      </div>
 
         {/* List Records */}
         {!isSessionOpen && !isReportMode && (

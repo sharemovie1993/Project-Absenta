@@ -15,7 +15,8 @@ import {
   Button, 
   Table, 
   Badge, 
-  Input 
+  Input,
+  DebouncedSearchInput
 } from '../../ui';
 import type { JenisKegiatanMaster } from '../../../api/academic/jenisKegiatanMaster.api';
 import { useIsMobile } from '../../../hooks/useIsMobile';
@@ -228,16 +229,15 @@ export const JenisKegiatanList: React.FC<JenisKegiatanListProps> = React.memo(({
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">
       {/* Search Header */}
       <div className="flex flex-col md:flex-row gap-4 p-4 md:p-6 items-center border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10">
-        <div className="flex-1 relative w-full group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-          </div>
-          <Input
+        <div className="flex-1 w-full">
+          <DebouncedSearchInput
             placeholder="Cari jenis kegiatan..."
             value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onChange={onSearchChange}
             aria-label="Cari Jenis Kegiatan"
-            className="w-full pl-10 h-11 text-sm rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-sm group-hover:shadow-md"
+            isLoading={loading}
+            className="w-full"
+            inputClassName="h-11 text-sm rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm"
           />
         </div>
       </div>

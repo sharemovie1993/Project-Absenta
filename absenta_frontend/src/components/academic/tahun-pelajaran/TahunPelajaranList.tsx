@@ -12,7 +12,8 @@ import {
   Loader,
   Tooltip,
   SearchableSelect,
-  SectionCard
+  SectionCard,
+  DebouncedSearchInput
 } from '../../ui';
 import { 
   getTahunPelajaranList, 
@@ -49,15 +50,18 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  // Reset pagination saat search term berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const { user } = useAuthStore();
   const isMobile = useIsMobile();
 
   // Queries
   const { data: listRes, isLoading: loading } = useQuery({
-    queryKey: academicQueryKeys.tahunPelajaran.list({ page: currentPage, limit: itemsPerPage, search: debouncedSearchTerm, status: filterStatus }),
-    queryFn: () => getTahunPelajaranList(currentPage, itemsPerPage, debouncedSearchTerm, filterStatus),
+    queryKey: academicQueryKeys.tahunPelajaran.list({ page: currentPage, limit: itemsPerPage, search: searchTerm, status: filterStatus }),
+    queryFn: () => getTahunPelajaranList(currentPage, itemsPerPage, searchTerm, filterStatus),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -381,15 +385,15 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
       {/* Search & Filter Section (Desktop Only) */}
       <div className="hidden md:flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
         {/* Search Box */}
-        <div className="flex-1 relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input
-            type="text"
+        <div className="flex-1 w-full">
+          <DebouncedSearchInput
             placeholder="Cari tahun pelajaran (misal: 2023/2024)..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
             aria-label="Cari Tahun Pelajaran"
-            className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
+            value={searchTerm}
+            onChange={setSearchTerm}
+            isLoading={loading}
+            className="w-full"
+            inputClassName="h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
           />
         </div>
 
@@ -416,15 +420,15 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
           <div className="p-4 space-y-4">
             {/* Mobile Search & Filter Section */}
             <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  type="text"
+              <div className="w-full">
+                <DebouncedSearchInput
                   placeholder="Cari tahun pelajaran (misal: 2024/2025)..."
                   aria-label="Cari tahun pelajaran"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                  onChange={setSearchTerm}
+                  isLoading={loading}
+                  className="w-full"
+                  inputClassName="h-10 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                 />
               </div>
 

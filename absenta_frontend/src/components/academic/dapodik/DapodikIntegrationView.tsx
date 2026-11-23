@@ -18,7 +18,7 @@ import {
 import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
-import { Button, Input, Badge, Loader, Modal, ModalFooter, Label, Textarea } from '@/components/ui';
+import { Button, Input, Badge, Loader, Modal, ModalFooter, Label, Textarea, DebouncedSearchInput } from '@/components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { SiswaDetailModal } from '@/components/academic/siswa/SiswaDetailModal';
 import { bulkUpdateStatus } from '@/api/academic/siswa.api';
@@ -1195,13 +1195,14 @@ export const DapodikIntegrationView: React.FC<UniversalDapodikIntegrationViewPro
             <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2 flex-1">
                 {/* Search Bar */}
-                <div className="relative min-w-[200px] flex-1 max-w-sm">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <Input
+                <div className="min-w-[200px] flex-1 max-w-sm">
+                  <DebouncedSearchInput
                     placeholder="Cari Nama, NISN, NIS, atau Rombel..."
+                    aria-label="Cari Siswa Dapodik"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 h-7.5 text-xs"
+                    onChange={setSearchQuery}
+                    className="w-full"
+                    inputClassName="h-7.5 text-xs rounded-lg"
                   />
                 </div>
 

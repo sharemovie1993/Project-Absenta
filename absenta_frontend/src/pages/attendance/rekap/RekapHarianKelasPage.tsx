@@ -11,7 +11,8 @@ import {
   Badge, 
   Loader, 
   Alert, 
-  AlertDescription 
+  AlertDescription,
+  DebouncedSearchInput
 } from '../../../components/ui';
 import { dropdownApi, type DropdownOption } from '../../../api/dropdown.api';
 import { getRekapHarianKelas } from '../../../api/attendanceGerbang.api';
@@ -643,14 +644,14 @@ export function RekapHarianKelasContent({
         {/* Search Input Bar */}
         {rows && rows.length > 0 && (
           <div className="pt-2">
-            <div className="relative max-w-sm">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input
-                type="text"
+            <div className="max-w-sm">
+              <DebouncedSearchInput
                 placeholder="Cari nama siswa atau NIS..."
+                aria-label="Cari Siswa"
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                onChange={setSearchQuery}
+                className="w-full"
+                inputClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
               />
             </div>
           </div>

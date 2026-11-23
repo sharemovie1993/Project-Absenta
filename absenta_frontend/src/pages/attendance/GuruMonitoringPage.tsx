@@ -10,7 +10,8 @@ import {
   Alert, 
   AlertDescription,
   Loader, 
-  Label 
+  Label,
+  DebouncedSearchInput
 } from '../../components/ui';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { getSesiAbsensiList } from '../../api/attendanceGerbang.api';
@@ -321,11 +322,28 @@ export default React.memo(function GuruMonitoringPage() {
     );
   }, [kelasMap, guruMap]);
 
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
+  const filteredSessions = useMemo(() => {
+    if (!searchTerm.trim()) return sessions;
+    const q = searchTerm.toLowerCase().trim();
+    return sessions.filter((s: any) => {
+      const gName = (guruMap[String(s?.guru_id || '')] || s?.guru_nama || '').toLowerCase();
+      const kName = (kelasMap[String(s?.kelas_id || '')] || s?.kelas_nama || '').toLowerCase();
+      const mName = String(s?.judul_materi || s?.materi || s?.jenis_kegiatan || '').toLowerCase();
+      return gName.includes(q) || kName.includes(q) || mName.includes(q);
+    });
+  }, [sessions, searchTerm, guruMap, kelasMap]);
+
   // Paginate sessions
   const pagedSessions = useMemo(() => {
     const start = (page - 1) * limit;
-    return sessions.slice(start, start + limit);
-  }, [sessions, page, limit]);
+    return filteredSessions.slice(start, start + limit);
+  }, [filteredSessions, page, limit]);
 
   const handlePageChange = useCallback((p: number) => {
     setPage(p);
@@ -340,37 +358,50 @@ export default React.memo(function GuruMonitoringPage() {
 
   const pageContent = (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
-        <div className="space-y-2">
-          <Label htmlFor="date-filter-field">Pilih Tanggal</Label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
+        <div className="space-y-1.5">
+          <Label htmlFor="date-filter-field" className="text-xs font-bold text-slate-700 dark:text-slate-300">Pilih Tanggal</Label>
           <div className="relative group">
             <Input 
               id="date-filter-field"
               type="date" 
               value={tanggal} 
               onChange={e => { setTanggal(e.target.value); setExplicitTanggal(true); }} 
-              className="h-12 rounded-xl font-bold bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
+              className="h-10 rounded-xl font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-xs"
             />
           </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="kelas-filter-select">Filter Kelas</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="kelas-filter-select" className="text-xs font-bold text-slate-700 dark:text-slate-300">Filter Kelas</Label>
           <SearchableSelect
             id="kelas-filter-select"
             value={selectedKelasId}
             onValueChange={setSelectedKelasId}
             options={[{ value: '', label: 'Semua Kelas' }, ...kelasOptions]}
             placeholder="Cari Kelas..."
-            triggerClassName="h-12 rounded-xl font-bold bg-slate-50 dark:bg-slate-950 border-slate-100 dark:border-slate-800"
+            triggerClassName="h-10 rounded-xl font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-xs"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="guru-search-field" className="text-xs font-bold text-slate-700 dark:text-slate-300">Cari Guru / Mapel</Label>
+          <DebouncedSearchInput
+            id="guru-search-field"
+            placeholder="Cari guru atau mapel..."
+            aria-label="Cari Guru atau Mapel"
+            value={searchTerm}
+            onChange={setSearchTerm}
+            isLoading={loading}
+            className="w-full"
+            inputClassName="h-10 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+          />
+        </div>
+        <div>
           <Button 
             variant="outline" 
-            className="flex-1 h-12 rounded-xl font-black text-[11px] uppercase tracking-widest border-slate-200 dark:border-slate-800"
+            className="w-full h-10 rounded-xl font-black text-xs uppercase tracking-wider border-slate-200 dark:border-slate-800"
             onClick={fetchSessions}
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
@@ -384,12 +415,12 @@ export default React.memo(function GuruMonitoringPage() {
                 title="Daftar Sesi Mengajar"
                 data={pagedSessions}
                 loading={loading}
-                totalItems={sessions.length}
+                totalItems={filteredSessions.length}
                 emptyMessage="Tidak ada aktivitas sesi belajar mengajar untuk filter saat ini."
                 pagination={{
                   currentPage: page,
-                  totalPages: Math.ceil(sessions.length / limit),
-                  totalItems: sessions.length,
+                  totalPages: Math.max(1, Math.ceil(filteredSessions.length / limit)),
+                  totalItems: filteredSessions.length,
                   itemsPerPage: limit,
                   onPageChange: handlePageChange,
                   onLimitChange: handleLimitChange
@@ -407,8 +438,8 @@ export default React.memo(function GuruMonitoringPage() {
               className="border-none"
               pagination={{
                 currentPage: page,
-                totalPages: Math.ceil(sessions.length / limit),
-                totalItems: sessions.length,
+                totalPages: Math.max(1, Math.ceil(filteredSessions.length / limit)),
+                totalItems: filteredSessions.length,
                 itemsPerPage: limit,
                 onPageChange: handlePageChange,
                 onLimitChange: handleLimitChange

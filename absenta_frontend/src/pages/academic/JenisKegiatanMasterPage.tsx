@@ -37,13 +37,12 @@ export default React.memo(function JenisKegiatanMasterPage() {
   const { isKurikulum, isKesiswaan, isAdmin, can } = useCapabilities();
   const canManage = isAdmin || isKurikulum || isKesiswaan || can('academic.subjects.manage');
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 500);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
 
   const { data: jenisKegiatanRes, isLoading: loading, refetch: fetchList } = useQuery({
-    queryKey: ['jenis-kegiatan-list', debouncedSearch],
-    queryFn: () => jenisKegiatanMasterApi.getAll({ limit: 100, search: debouncedSearch }),
+    queryKey: ['jenis-kegiatan-list', search],
+    queryFn: () => jenisKegiatanMasterApi.getAll({ limit: 100, search }),
     staleTime: 5 * 60 * 1000,
   });
 
