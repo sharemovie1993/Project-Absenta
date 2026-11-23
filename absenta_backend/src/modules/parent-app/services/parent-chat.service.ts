@@ -116,4 +116,78 @@ export class ParentChatService {
       data: { is_read: true }
     });
   }
+
+  /**
+   * Kirim log kehadiran siswa (Gerbang, KBM, Pembiasaan, Ketarunaan, Upacara, Apel)
+   * otomatis ke jalur chat ParentTeacherChatSession (Wali Kelas <-> Orang Tua).
+   */
+  static async sendAttendanceLogToParentChat(input: {
+    tenantId: string;
+    orangTuaId: string;
+    studentId?: string | null;
+    title: string;
+    message: string;
+  }): Promise<void> {
+    const { tenantId, orangTuaId, studentId, title, message } = input;
+    if (!tenantId || !orangTuaId || !message) return;
+
+    // 1. Cari guru Wali Kelas siswa terkait agar orang tua bisa langsung membalas ke Wali Kelas
+    let guruId: string | null = null;
+
+    if (studentId) {
+      const siswa = await prisma.siswa.findUnique({
+        where: { id: studentId },
+        select: { kelas_id: true },
+      });
+
+      let kelasId = siswa?.kelas_id || null;
+      if (!kelasId) {
+        const sa = await prisma.siswaAkademik.findFirst({
+          where: { siswa_id: studentId, status: 'AKTIF' },
+          orderBy: { created_at: 'desc' },
+          select: { kelas_id: true },
+        });
+        kelasId = sa?.kelas_id || null;
+      }
+
+      if (kelasId) {
+        const walasAssign = await prisma.organizationalAssignment.findFirst({
+          where: {
+            tenant_id: tenantId,
+            kelas_id: kelasId,
+            is_active: true,
+            Position: { code: 'WALIKELAS' },
+          },
+          include: {
+            User: { select: { Guru: { select: { id: true } } } },
+          },
+        });
+        guruId = walasAssign?.User?.Guru?.id || null;
+      }
+    }
+
+    // 2. Fallback: sesi chat yang sudah ada untuk orang tua ini, atau guru aktif pertama
+    if (!guruId) {
+      const existingSession = await prisma.parentTeacherChatSession.findFirst({
+        where: { tenant_id: tenantId, orang_tua_id: orangTuaId },
+        orderBy: { updated_at: 'desc' },
+        select: { guru_id: true },
+      });
+      guruId = existingSession?.guru_id || null;
+    }
+
+    if (!guruId) {
+      const anyGuru = await prisma.guru.findFirst({
+        where: { tenant_id: tenantId },
+        select: { id: true },
+      });
+      guruId = anyGuru?.id || null;
+    }
+
+    if (!guruId) return;
+
+    const session = await ParentChatService.getOrCreateSession(tenantId, orangTuaId, guruId);
+    const formattedContent = `📋 [${title}]\n${message}`;
+    await ParentChatService.sendMessage(tenantId, session.id, 'TEACHER', guruId, formattedContent);
+  }
 }

@@ -2,6 +2,7 @@ import { prisma } from '../../../../utils/prisma';
 import { AttendanceRuleEngine } from '../../../../domain/attendance/AttendanceRuleEngine';
 import { getTenantTimezone, getTenantOffsetString, getTimezoneLabel } from '../../../../utils/timezone.utils';
 import { sesiHelperService } from './sesi-helper.service';
+import { emitDomainEvent } from '@/infra/event-bus';
 
 export class SesiTapEngineService {
   private static instance: SesiTapEngineService;
@@ -411,6 +412,26 @@ export class SesiTapEngineService {
           catatan: catatan || null
         }
       });
+    }
+
+    // Emit non-blocking domain event agar log kehadiran masuk ke jalur komunikasi Orang Tua
+    if (siswaAkademik?.siswa_id) {
+      const activityLabel = (sesi as any)?.Mapel?.nama_mapel || (sesi as any)?.jenis_kegiatan || 'Sesi Absensi';
+      emitDomainEvent({
+        event_type: 'attendance.session.tap',
+        tenant_id: tenantId,
+        source_service: 'sesi-tap-engine',
+        payload: {
+          student_id: siswaAkademik.siswa_id,
+          sesi_id,
+          status: isTerlambat ? 'TERLAMBAT' : status,
+          jenis_kegiatan: (sesi as any)?.jenis_kegiatan || 'KBM',
+          mapel: activityLabel,
+          keterangan: catatan || activityLabel,
+          tap_time: (effectiveTapTime || new Date()).toISOString(),
+          source: 'SESI_ABSENSI',
+        },
+      }).catch(() => {});
     }
 
     return result;

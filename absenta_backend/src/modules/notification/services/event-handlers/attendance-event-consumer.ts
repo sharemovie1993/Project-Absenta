@@ -98,19 +98,30 @@ export async function handleAttendanceDomainEvent(input: {
 
   if (eventType === 'attendance.session.tap') {
     const p = (evt.payload || {}) as any;
+    const statusUpper = String(p.status || 'HADIR').toUpperCase();
+    let sessionEventType = ParentEventType.SESSION_PRESENT;
+    if (statusUpper === 'TERLAMBAT') sessionEventType = ParentEventType.STUDENT_LATE;
+    else if (statusUpper === 'IZIN' || statusUpper === 'SAKIT' || statusUpper === 'DISPEN') sessionEventType = ParentEventType.STUDENT_PERMISSION;
+    else if (statusUpper === 'ALPA') sessionEventType = ParentEventType.STUDENT_ABSENT;
+
+    const activityLabel = String(p.mapel || p.jenis_kegiatan || 'Sesi Absensi');
     await getNotificationQueue().add('attendance-session-tap', {
       kind: 'parent-notification',
-      eventType: ParentEventType.SESSION_PRESENT,
+      eventType: sessionEventType,
       tenantId: tenantId,
       payload: {
         studentId: String(p.student_id || ''),
         timestamp: String(p.tap_time || evt.timestamp || new Date().toISOString()),
-        source: 'SESSION',
-        relatedId: p.related_id,
+        source: String(p.source || 'SESSION'),
+        relatedId: p.related_id || p.sesi_id,
+        status: statusUpper,
+        keterangan: p.keterangan || activityLabel,
+        mapel: activityLabel,
         details: {
           sesi_id: p.sesi_id,
-          status: p.status,
-          mapel: p.mapel,
+          status: statusUpper,
+          mapel: activityLabel,
+          jenis_kegiatan: p.jenis_kegiatan,
         },
       },
     } as any);

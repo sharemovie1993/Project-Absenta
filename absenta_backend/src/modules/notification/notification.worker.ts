@@ -2,6 +2,7 @@ import { Worker, Job } from 'bullmq';
 import { getRedisConnection } from '@/queue/redis';
 import { NOTIFICATION_QUEUE_NAME, NotificationJobData } from './notification.queue';
 import { parentNotificationService } from '@/modules/parent-app/services/parent-notification.service';
+import { ParentChatService } from '@/modules/parent-app/services/parent-chat.service';
 import { DOMAIN_EVENT_CHANNEL } from '@/infra/event-bus';
 import type { DomainEvent } from '@/infra/event-bus';
 import { WhatsAppService } from '@/modules/notification/services/whatsapp.service';
@@ -36,6 +37,7 @@ async function processPaymentEventJob(_input: { eventType: 'payment.succeeded' |
 async function processParentNotificationCreatedJob(input: {
   tenantId: string;
   parentId: string;
+  studentId?: string | null;
   messageType: string;
   title: string;
   message: string;
@@ -142,6 +144,21 @@ async function processParentNotificationCreatedJob(input: {
         }
       }
     } catch {}
+
+    // Kirim log kehadiran ke jalur chat Orang Tua <-> Wali Kelas (Opsi A)
+    if (messageType === 'PWA') {
+      try {
+        await ParentChatService.sendAttendanceLogToParentChat({
+          tenantId,
+          orangTuaId: String(parent.id),
+          studentId: input.studentId || null,
+          title,
+          message,
+        });
+      } catch (chatErr: any) {
+        appLogger.warn({ error: chatErr?.message, parentId: parent.id }, 'notification_worker.parent_chat_log_failed');
+      }
+    }
   }
 }
 
@@ -233,6 +250,7 @@ export const initNotificationWorker = () => {
           await processParentNotificationCreatedJob({
             tenantId: String(data.tenantId || ''),
             parentId: String(data.parentId || ''),
+            studentId: data.studentId ?? null,
             messageType: String(data.messageType || ''),
             title: String(data.title || ''),
             message: String(data.message || ''),

@@ -31,6 +31,7 @@ export async function handleParentDomainEvent(input: {
   if (!tenantId || !parentId) return true;
 
   const messageType = String(p.message_type || p.messageType || '').toUpperCase();
+  const studentId = p.student_id || p.studentId || null;
   const title = String(p.title || '');
   const message = String(p.message || '');
   const event = String(p.event || p.event_type || 'GENERAL');
@@ -42,6 +43,7 @@ export async function handleParentDomainEvent(input: {
       eventType: 'parent.notification.created',
       tenantId,
       parentId,
+      studentId,
       messageType,
       title,
       message,

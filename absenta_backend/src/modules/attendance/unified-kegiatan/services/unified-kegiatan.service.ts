@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { Hari } from '@prisma/client';
 import { getTenantTimezone, getTenantOffsetString } from '@/utils/timezone.utils';
+import { emitDomainEvent } from '@/infra/event-bus';
 
 export interface UnifiedTapPayload {
   guru_id: string;
@@ -1281,6 +1282,23 @@ export class UnifiedKegiatanService {
         },
       });
     }
+
+    // Emit non-blocking domain event agar log kegiatan (Pembiasaan, Ketarunaan, Upacara, Apel) masuk ke chat Orang Tua
+    emitDomainEvent({
+      event_type: 'attendance.session.tap',
+      tenant_id: tenantId,
+      source_service: 'unified-kegiatan',
+      payload: {
+        student_id: siswa.id,
+        sesi_id: studentSesi.id,
+        status: isLate ? 'TERLAMBAT' : 'HADIR',
+        jenis_kegiatan: jenis,
+        mapel: jenis,
+        keterangan: `Kegiatan ${jenis}${isLate ? ` (Terlambat ${menitTerlambat} menit)` : ''}`,
+        tap_time: now.toISOString(),
+        source: 'UNIFIED_KEGIATAN',
+      },
+    }).catch(() => {});
 
     return {
       success: true,
