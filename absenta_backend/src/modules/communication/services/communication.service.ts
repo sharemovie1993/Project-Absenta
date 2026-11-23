@@ -1,10 +1,21 @@
 import { prisma } from '@/utils/prisma';
+import { presenceService } from '@/infra/realtime/presence.service';
 import { 
   InternalThreadType, 
   InternalThreadCategory, 
   InternalThreadPriority, 
   InternalThreadStatus 
 } from '@prisma/client';
+
+export type BroadcastAudienceType = 'ALL_USERS' | 'ALL_GURU_STAFF' | 'ALL_SISWA' | 'ONLINE_USERS';
+
+export interface CreateBroadcastDto {
+  title: string;
+  content: string;
+  targetAudience: BroadcastAudienceType;
+  category?: InternalThreadCategory;
+  priority?: InternalThreadPriority;
+}
 
 export interface CreateThreadDto {
   type?: InternalThreadType;
@@ -132,6 +143,8 @@ export class CommunicationService {
         context_ref: t.context_ref,
         created_at: t.created_at,
         updated_at: t.updated_at,
+        last_message: lastMessage?.content || null,
+        last_message_at: lastMessage?.created_at || t.updated_at,
         lastMessage: lastMessage ? {
           id: lastMessage.id,
           sender_id: lastMessage.sender_id,
@@ -657,6 +670,186 @@ export class CommunicationService {
     }
 
     return unreadTotal;
+  }
+
+  /**
+   * 8. Kirim Pesan Broadcast Massal (Admin / Pimpinan Sekolah -> Seluruh Pengguna / Guru / Siswa / Online)
+   */
+  async createBroadcast(
+    tenantId: string,
+    senderId: string,
+    dto: CreateBroadcastDto,
+    io?: any
+  ) {
+    const cleanTitle = String(dto.title || '').trim();
+    const cleanContent = String(dto.content || '').trim();
+    const audience: BroadcastAudienceType = dto.targetAudience || 'ALL_USERS';
+
+    if (!cleanTitle) {
+      throw new Error('Judul pesan broadcast wajib diisi.');
+    }
+    if (!cleanContent) {
+      throw new Error('Isi pesan broadcast tidak boleh kosong.');
+    }
+
+    const sender = await prisma.user.findUnique({
+      where: { id: senderId },
+      include: { Role: { select: { name: true } } },
+    });
+
+    const senderName = sender?.full_name || 'Administrator';
+    const senderRole = sender?.Role?.name || 'ADMIN';
+
+    // Kumpulkan daftar user penerima berdasarkan targetAudience
+    let targetUserIds: string[] = [];
+
+    if (audience === 'ONLINE_USERS') {
+      const isGlobal = tenantId === 'system' || senderRole === 'SUPERADMIN';
+      const clusterSummary = await presenceService.getClusterTenantSummary(tenantId, isGlobal);
+      targetUserIds = (clusterSummary.users || [])
+        .map((u) => u.userId)
+        .filter((id) => Boolean(id) && id !== senderId);
+    } else {
+      const userWhere: any = {
+        status: 'ACTIVE',
+        id: { not: senderId },
+      };
+
+      if (tenantId && tenantId !== 'system') {
+        userWhere.tenant_id = tenantId;
+      }
+
+      if (audience === 'ALL_GURU_STAFF') {
+        userWhere.Role = {
+          name: { in: ['ADMIN', 'SUPERADMIN', 'GURU', 'TU', 'KEPALA_SEKOLAH'] },
+        };
+      } else if (audience === 'ALL_SISWA') {
+        userWhere.Role = {
+          name: 'SISWA',
+        };
+      }
+
+      const users = await prisma.user.findMany({
+        where: userWhere,
+        select: { id: true },
+      });
+      targetUserIds = users.map((u) => u.id);
+    }
+
+    targetUserIds = Array.from(new Set(targetUserIds));
+
+    if (targetUserIds.length === 0) {
+      throw new Error('Tidak ditemukan pengguna aktif pada kategori penerima yang dipilih.');
+    }
+
+    const audienceLabel =
+      audience === 'ALL_USERS'
+        ? 'Seluruh Pengguna'
+        : audience === 'ALL_GURU_STAFF'
+        ? 'Seluruh Guru & Staf'
+        : audience === 'ALL_SISWA'
+        ? 'Seluruh Siswa'
+        : 'Pengguna Online';
+
+    const broadcastTitle = cleanTitle.startsWith('📢')
+      ? cleanTitle
+      : `📢 ${cleanTitle}`;
+
+    // 1. Buat Thread Broadcast
+    const thread = await (prisma as any).internalThread.create({
+      data: {
+        tenant_id: tenantId,
+        type: InternalThreadType.DISPOSISI,
+        title: broadcastTitle,
+        category: dto.category || InternalThreadCategory.UMUM,
+        priority: dto.priority || InternalThreadPriority.HIGH,
+        status: InternalThreadStatus.ACTIVE,
+        is_confidential: false,
+        context_ref: {
+          isBroadcast: true,
+          targetAudience: audience,
+          audienceLabel,
+          recipientCount: targetUserIds.length,
+          senderName,
+          senderRole,
+        },
+        created_by_id: senderId,
+      },
+    });
+
+    // 2. Bulk insert seluruh penerima + pengirim ke InternalParticipant (1 query cepat)
+    const participantRows = [
+      {
+        tenant_id: tenantId,
+        thread_id: thread.id,
+        user_id: senderId,
+        role_label: `${senderRole} (Pengirim Siaran)`,
+        last_read_at: new Date(),
+      },
+      ...targetUserIds.map((uid) => ({
+        tenant_id: tenantId,
+        thread_id: thread.id,
+        user_id: uid,
+        role_label: audienceLabel,
+        last_read_at: null,
+      })),
+    ];
+
+    await (prisma as any).internalParticipant.createMany({
+      data: participantRows,
+      skipDuplicates: true,
+    });
+
+    // 3. Simpan pesan pertama
+    const message = await (prisma as any).internalMessage.create({
+      data: {
+        tenant_id: tenantId,
+        thread_id: thread.id,
+        sender_id: senderId,
+        content: cleanContent,
+        is_system_event: false,
+      },
+    });
+
+    // 4. Pancarkan event real-time ke seluruh penerima agar Messenger pop-up langsung terbuka
+    if (io) {
+      const broadcastPayload = {
+        threadId: thread.id,
+        title: broadcastTitle,
+        category: thread.category,
+        priority: thread.priority,
+        audienceLabel,
+        recipientCount: targetUserIds.length,
+        senderId,
+        senderName,
+        senderRole,
+        message: {
+          id: message.id,
+          thread_id: thread.id,
+          sender_id: senderId,
+          sender_name: senderName,
+          sender_role: senderRole,
+          content: cleanContent,
+          created_at: message.created_at,
+          is_system_event: false,
+        },
+      };
+
+      // Emit ke room tenant agar seluruh koneksi di tenant langsung menerima
+      if (tenantId && tenantId !== 'system') {
+        io.to(`tenant:${tenantId}`).emit('internal_comm:broadcast', broadcastPayload);
+        io.to(`tenant:${tenantId}`).emit('internal_comm:new_message', broadcastPayload);
+      } else {
+        io.emit('internal_comm:broadcast', broadcastPayload);
+        io.emit('internal_comm:new_message', broadcastPayload);
+      }
+    }
+
+    return {
+      ...thread,
+      recipientCount: targetUserIds.length,
+      audienceLabel,
+    };
   }
 }
 

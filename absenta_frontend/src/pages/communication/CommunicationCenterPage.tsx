@@ -55,6 +55,7 @@ export default function CommunicationCenterPage() {
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'UNREAD' | 'DISPOSISI' | 'DIRECT'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isNewModalOpen, setIsNewModalOpen] = useState<boolean>(false);
+  const [newModalTab, setNewModalTab] = useState<'DIRECT' | 'DISPOSISI' | 'BROADCAST'>('DIRECT');
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState<boolean>(false);
 
   const defaultRoom = user?.tenant_id ? `kbm-${user.tenant_id.slice(0, 8)}` : 'kbm-sekolah-2026';
@@ -155,10 +156,16 @@ export default function CommunicationCenterPage() {
 
     socket.on('communication:thread_updated', handleThreadUpdate);
     socket.on('communication:new_message', handleThreadUpdate);
+    socket.on('internal_comm:new_message', handleThreadUpdate);
+    socket.on('internal_comm:new_thread', handleThreadUpdate);
+    socket.on('internal_comm:broadcast', handleThreadUpdate);
 
     return () => {
       socket.off('communication:thread_updated', handleThreadUpdate);
       socket.off('communication:new_message', handleThreadUpdate);
+      socket.off('internal_comm:new_message', handleThreadUpdate);
+      socket.off('internal_comm:new_thread', handleThreadUpdate);
+      socket.off('internal_comm:broadcast', handleThreadUpdate);
     };
   }, [socket, queryClient]);
 
@@ -257,6 +264,19 @@ export default function CommunicationCenterPage() {
                   <Button
                     variant="toolbarOutline"
                     size="toolbar"
+                    onClick={() => {
+                      setNewModalTab('BROADCAST');
+                      setIsNewModalOpen(true);
+                    }}
+                    className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold rounded-xl"
+                    title="Kirim Siaran Broadcast ke Seluruh Pengguna"
+                  >
+                    <span>📢</span>
+                    <span>Broadcast</span>
+                  </Button>
+                  <Button
+                    variant="toolbarOutline"
+                    size="toolbar"
                     onClick={() => handleJoinSchoolMeeting()}
                     className="flex items-center gap-1 text-emerald-600 font-bold rounded-xl"
                     title="Buka Ruang Rapat Virtual"
@@ -267,7 +287,10 @@ export default function CommunicationCenterPage() {
                   <Button
                     variant="toolbarPrimary"
                     size="toolbar"
-                    onClick={() => setIsNewModalOpen(true)}
+                    onClick={() => {
+                      setNewModalTab('DIRECT');
+                      setIsNewModalOpen(true);
+                    }}
                     className="flex items-center gap-1 font-bold rounded-xl shadow-sm"
                     title="Obrolan Baru"
                   >
@@ -412,6 +435,7 @@ export default function CommunicationCenterPage() {
       {isNewModalOpen && (
         <NewConversationModal
           isOpen={isNewModalOpen}
+          initialTab={newModalTab}
           onClose={() => setIsNewModalOpen(false)}
           onCreated={(threadId) => {
             setIsNewModalOpen(false);

@@ -135,6 +135,36 @@ export async function communicationRoutes(fastify: any) {
   });
 
   /**
+   * 5b. Kirim Pesan Broadcast Massal ke Seluruh Pengguna / Guru / Siswa / Online
+   * POST /api/v1/communication/broadcast
+   */
+  fastify.post('/broadcast', {
+    handler: async (request: any, reply: any) => {
+      try {
+        const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id;
+        const userId = request.user?.id;
+        const io = fastify.io || (fastify as any).ioApi;
+
+        if (!tenantId || !userId) {
+          reply.status(401);
+          return { success: false, message: 'Autentikasi tidak valid.' };
+        }
+
+        const result = await communicationService.createBroadcast(tenantId, userId, request.body || {}, io);
+        reply.status(201);
+        return {
+          success: true,
+          message: `Pesan broadcast berhasil dikirim ke ${result.recipientCount} penerima (${result.audienceLabel}).`,
+          data: result,
+        };
+      } catch (err: any) {
+        reply.status(400);
+        return { success: false, message: err.message || 'Gagal mengirim pesan broadcast.' };
+      }
+    }
+  });
+
+  /**
    * 6. Kirim pesan baru ke dalam thread
    * POST /api/v1/communication/:id/messages
    */

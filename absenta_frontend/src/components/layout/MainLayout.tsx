@@ -23,6 +23,7 @@ import { isSystemSuperAdmin } from '@/utils/rbac';
 const InAppSidebar = React.lazy(() => import('./InAppSidebar').then(module => ({ default: module.InAppSidebar })));
 const CommandPalette = React.lazy(() => import('./CommandPalette').then(module => ({ default: module.CommandPalette })));
 const InstructionPanel = React.lazy(() => import('@/components/dashboard/shared/InstructionPanel').then(module => ({ default: module.InstructionPanel })));
+const FloatingMessenger = React.lazy(() => import('@/components/common/FloatingMessenger'));
 import { getActiveApp } from '@/config/absentaAppsRegistry';
 
 
@@ -300,8 +301,12 @@ function MainLayoutContent() {
       {/* Navigasi Bawah Seluler Terpadu (Mobile Fixed Bottom Navigation) */}
       <BottomNavigation />
 
-
-
+      {/* Docked Messenger Widget (Bottom-Right Corner) */}
+      {!isTvMode && !isCbtExamRoom && (
+        <Suspense fallback={null}>
+          <FloatingMessenger />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -78,14 +78,25 @@ export interface EligibleContactItem {
   avatar?: string | null;
 }
 
+export type BroadcastAudienceType = 'ALL_USERS' | 'ALL_GURU_STAFF' | 'ALL_SISWA' | 'ONLINE_USERS';
+
+export interface CreateBroadcastPayload {
+  title: string;
+  content: string;
+  targetAudience: BroadcastAudienceType;
+  category?: InternalThreadCategory;
+  priority?: InternalThreadPriority;
+}
+
 export interface CreateThreadPayload {
   type?: InternalThreadType;
-  title: string;
-  category: InternalThreadCategory;
+  title?: string;
+  category?: InternalThreadCategory;
   priority?: InternalThreadPriority;
   is_confidential?: boolean;
+  isConfidential?: boolean;
   targetUserIds: string[];
-  initialMessage: string;
+  initialMessage?: string;
   attachments?: InternalAttachment[];
   context_type?: string;
   context_id?: string;
@@ -145,6 +156,25 @@ export const internalCommunicationApi = {
   },
 
   /**
+   * Kirim pesan broadcast massal (Admin -> Seluruh Pengguna / Guru / Siswa / Online)
+   */
+  async createBroadcast(payload: CreateBroadcastPayload): Promise<InternalThreadItem & { recipientCount?: number; audienceLabel?: string }> {
+    const res = await requestWithFallback<{ success: boolean; data: InternalThreadItem & { recipientCount?: number; audienceLabel?: string } }>(
+      'post',
+      '/communication/broadcast',
+      { data: payload }
+    );
+    return (res as any)?.data;
+  },
+
+  /**
+   * Tandai thread sudah dibaca
+   */
+  async markThreadAsRead(threadId: string): Promise<void> {
+    await requestWithFallback('get', `/communication/${threadId}`);
+  },
+
+  /**
    * Kirim pesan baru ke dalam thread
    */
   async sendMessage(threadId: string, payload: SendMessagePayload): Promise<InternalMessageItem> {
@@ -166,6 +196,10 @@ export const internalCommunicationApi = {
       { data: { status } }
     );
     return (res as any)?.data;
+  },
+
+  async updateThreadStatus(threadId: string, status: InternalThreadStatus): Promise<InternalThreadItem> {
+    return this.updateStatus(threadId, status);
   },
 
   /**
