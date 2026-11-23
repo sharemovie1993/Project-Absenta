@@ -110,6 +110,16 @@ export default function FloatingMessenger() {
 
   const isCommunicationPage = location.pathname.startsWith('/komunikasi');
 
+  // Tutup Floating Messenger & modal terkait secara otomatis setiap kali rute/halaman berubah (termasuk saat tombol Back di HP ditekan)
+  useEffect(() => {
+    setIsOpen(false);
+    setSelectedThreadId(null);
+    setIsProfileOpen(false);
+    setActionMember(null);
+    setInfoUserId(null);
+    setIncomingBanner(null);
+  }, [location.pathname, location.search, location.key]);
+
   const userRoleName = useMemo(() => {
     const raw = (user as any)?.role;
     if (!raw) return String((user as any)?.roleName || '');
