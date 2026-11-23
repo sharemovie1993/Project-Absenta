@@ -28,6 +28,20 @@ interface PaymentChannelItem {
   name: string;
   icon_url?: string;
   maximum_amount?: number | string;
+  fee_flat?: number;
+  fee_percent?: number;
+  fee_customer?: {
+    flat?: number;
+    percent?: number;
+  };
+  fee_merchant?: {
+    flat?: number;
+    percent?: number;
+  };
+  total_fee?: {
+    flat?: number;
+    percent?: number | string;
+  };
 }
 
 function CheckoutContent() {
@@ -160,9 +174,37 @@ function CheckoutContent() {
     return cycle === 'YEAR' ? (plan.price_yearly || plan.price_monthly * 12) : plan.price_monthly;
   }, [plan, cycle]);
 
-  // Biaya transaksi / gateway fee gratis (diserap oleh sistem sehingga nominal pas dengan transfer gateway)
-  const gatewayFee = 0;
-  const totalPrice = price;
+  // Biaya transaksi / gateway fee dihitung secara dinamis dari saluran pembayaran yang dipilih
+  const { gatewayFee, totalPrice } = useMemo(() => {
+    if (!price || !selectedChannel || !paymentChannels.length) {
+      return { gatewayFee: 0, totalPrice: price };
+    }
+
+    const channel = paymentChannels.find((ch) => ch.code === selectedChannel);
+    if (!channel) {
+      return { gatewayFee: 0, totalPrice: price };
+    }
+
+    // Ekstrak biaya customer (flat & percent) yang dibebankan payment gateway
+    let flat = 0;
+    let percent = 0;
+
+    if (channel.fee_customer) {
+      flat = Number(channel.fee_customer.flat) || 0;
+      percent = Number(channel.fee_customer.percent) || 0;
+    } else {
+      flat = Number(channel.fee_flat) || 0;
+      percent = Number(channel.fee_percent) || 0;
+    }
+
+    const calculatedPercent = Math.round(price * (percent / 100));
+    const totalFee = flat + calculatedPercent;
+
+    return {
+      gatewayFee: totalFee,
+      totalPrice: price + totalFee
+    };
+  }, [price, selectedChannel, paymentChannels]);
 
   const expiryDate = useMemo(() => {
     const d = new Date();

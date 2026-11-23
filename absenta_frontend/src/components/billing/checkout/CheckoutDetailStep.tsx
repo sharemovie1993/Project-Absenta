@@ -21,6 +21,20 @@ interface PaymentChannel {
   name: string;
   icon_url?: string;
   maximum_amount?: number | string;
+  fee_flat?: number;
+  fee_percent?: number;
+  fee_customer?: {
+    flat?: number;
+    percent?: number;
+  };
+  fee_merchant?: {
+    flat?: number;
+    percent?: number;
+  };
+  total_fee?: {
+    flat?: number;
+    percent?: number | string;
+  };
 }
 
 interface CheckoutDetailStepProps {
@@ -147,6 +161,10 @@ export const CheckoutDetailStep: React.FC<CheckoutDetailStepProps> = React.memo(
                       {(() => {
                         const activeCh = (paymentChannels ?? []).find((ch) => ch.code === selectedChannel);
                         if (activeCh) {
+                          const flat = Number(activeCh.fee_customer?.flat ?? activeCh.fee_flat ?? 0);
+                          const percent = Number(activeCh.fee_customer?.percent ?? activeCh.fee_percent ?? 0);
+                          const chFee = flat + Math.round(price * (percent / 100));
+
                           return (
                             <div className="flex items-center gap-3">
                               {activeCh.icon_url && (
@@ -156,11 +174,20 @@ export const CheckoutDetailStep: React.FC<CheckoutDetailStepProps> = React.memo(
                                   className="h-6 w-auto object-contain bg-white px-1.5 py-0.5 rounded-lg border border-slate-200" 
                                 />
                               )}
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{activeCh.name}</span>
                                 {activeCh.code !== 'Manual' && (
                                   <span className="text-[8px] font-black text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/20 px-1.5 py-0.5 rounded uppercase tracking-wider">
                                     Otomatis Aktif
+                                  </span>
+                                )}
+                                {chFee === 0 ? (
+                                  <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded">
+                                    Bebas Biaya
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                    +{formatCurrency(chFee)}
                                   </span>
                                 )}
                               </div>
@@ -187,6 +214,10 @@ export const CheckoutDetailStep: React.FC<CheckoutDetailStepProps> = React.memo(
                         <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 max-h-[300px] overflow-y-auto p-1.5 space-y-1">
                           {(paymentChannels ?? [])?.map((channel) => {
                             const isSelected = selectedChannel === channel.code;
+                            const flat = Number(channel.fee_customer?.flat ?? channel.fee_flat ?? 0);
+                            const percent = Number(channel.fee_customer?.percent ?? channel.fee_percent ?? 0);
+                            const chFee = flat + Math.round(price * (percent / 100));
+
                             return (
                               <div
                                 key={channel.code}
@@ -216,6 +247,13 @@ export const CheckoutDetailStep: React.FC<CheckoutDetailStepProps> = React.memo(
                                         <span className="text-[8px] font-black text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/20 px-1.5 py-0.5 rounded uppercase tracking-wider">
                                           Otomatis Aktif
                                         </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] font-semibold text-slate-400 mt-1">
+                                      {chFee === 0 ? (
+                                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">Bebas Biaya Transaksi</span>
+                                      ) : (
+                                        <span>Biaya Transaksi: +{formatCurrency(chFee)}</span>
                                       )}
                                     </div>
                                   </div>
