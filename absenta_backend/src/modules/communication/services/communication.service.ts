@@ -195,7 +195,7 @@ export class CommunicationService {
   /**
    * 2. Ambil detail thread percakapan beserta seluruh pesannya
    */
-  async getThreadMessages(tenantId: string, threadId: string, userId: string, limit = 100) {
+  async getThreadMessages(_tenantId: string, threadId: string, userId: string, limit = 100) {
     // Validasi apakah pengguna adalah peserta thread
     const participant = await (prisma as any).internalParticipant.findFirst({
       where: {
@@ -662,7 +662,7 @@ export class CommunicationService {
   /**
    * 7. Total Unread Count Pengguna (Tenant-Scoped)
    */
-  async getUnreadCount(tenantId: string, userId: string): Promise<number> {
+  async getUnreadCount(_tenantId: string, userId: string): Promise<number> {
     const participants = await (prisma as any).internalParticipant.findMany({
       where: { user_id: userId },
       select: { thread_id: true, last_read_at: true }

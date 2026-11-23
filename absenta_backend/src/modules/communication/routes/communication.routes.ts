@@ -1,4 +1,3 @@
-import { requireCapability } from '@/middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
 import { communicationService } from '../services/communication.service';
 import { InternalThreadStatus } from '@prisma/client';
