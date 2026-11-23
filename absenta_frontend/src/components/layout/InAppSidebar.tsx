@@ -120,11 +120,20 @@ export function InAppSidebar({
             for (const child of childNodes) {
               pushNode(child);
             }
+            if (String(rootNode.name || '').toUpperCase().includes('PRESET')) {
+              pushNode({
+                id: 'sa-preset-wilayah',
+                name: 'Master Wilayah',
+                path: '/superadmin/wilayah',
+                icon: 'MapPin',
+              });
+            }
           }
         }
       } else {
         // Fallback minimal saat menu DB kosong agar Superadmin tetap dapat bernavigasi
         pushNode({ id: 'sa-tenants', name: 'Kelola Tenant', path: '/tenants', icon: 'Users' });
+        pushNode({ id: 'sa-wilayah', name: 'Master Wilayah', path: '/superadmin/wilayah', icon: 'MapPin' });
         pushNode({ id: 'sa-backups', name: 'Cadangan Sistem', path: '/superadmin/backups', icon: 'Archive' });
         pushNode({ id: 'sa-roles', name: 'Hak Akses', path: '/management/roles', icon: 'UserCog' });
         pushNode({ id: 'sa-menus', name: 'Kelola Menu', path: '/management/menus', icon: 'Sliders' });

@@ -77,6 +77,7 @@ const CalendarPresetsPage = lazy(() => import('./pages/superadmin/CalendarPreset
 
 const KurikulumStandardsPage = lazy(() => import('./pages/superadmin/KurikulumStandardsPage'));
 const JurusanPresetsPage = lazy(() => import('./pages/superadmin/JurusanPresetsPage'));
+const WilayahPresetsPage = lazy(() => import('./pages/superadmin/WilayahPresetsPage'));
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
 const CommunicationCenterPage = lazy(() => import('./pages/communication/CommunicationCenterPage'));
 const SupportHelpdeskPage = lazy(() => import('./pages/support/SupportHelpdeskPage').then(m => ({ default: m.SupportHelpdeskPage })));
@@ -1433,6 +1434,9 @@ function App() {
                     <Route path="/superadmin/calendar-presets" element={<CalendarPresetsPage />} />
                     <Route path="/superadmin/jurusan-presets" element={<JurusanPresetsPage />} />
                     <Route path="/superadmin/kurikulum-standards" element={<KurikulumStandardsPage />} />
+                    <Route path="/superadmin/wilayah" element={<WilayahPresetsPage />} />
+                    <Route path="/superadmin/wilayah-presets" element={<Navigate to="/superadmin/wilayah" replace />} />
+                    <Route path="/preset-global/wilayah" element={<Navigate to="/superadmin/wilayah" replace />} />
 
                     {/* Preset Global Aliases & Canonical Fallbacks */}
                     <Route path="/preset-global/mapel" element={<Navigate to="/superadmin/mapel-presets" replace />} />

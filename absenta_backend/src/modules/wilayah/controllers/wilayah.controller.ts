@@ -304,9 +304,299 @@ export const wilayahController = {
 
   // POST /api/wilayah/sync
   async syncWilayah(_request: any, reply: any) {
-    return reply.status(200).send({
-      success: true,
-      message: 'Master data wilayah sudah 100% tersimpan di database lokal.',
-    });
+    try {
+      let seededCount = 0;
+      for (const p of STATIC_PROVINSI) {
+        const exists = await prisma.refWilayah.findUnique({ where: { kode: p.kode } });
+        if (!exists) {
+          await prisma.refWilayah.create({
+            data: { kode: p.kode, nama: p.nama.toUpperCase(), tingkat: 1, parent_kode: null },
+          });
+          seededCount++;
+        }
+      }
+      for (const k of STATIC_KABUPATEN) {
+        const exists = await prisma.refWilayah.findUnique({ where: { kode: k.kode } });
+        if (!exists) {
+          await prisma.refWilayah.create({
+            data: { kode: k.kode, nama: k.nama.toUpperCase(), tingkat: 2, parent_kode: k.provinsi_kode },
+          });
+          seededCount++;
+        }
+      }
+      return reply.status(200).send({
+        success: true,
+        message: seededCount > 0
+          ? `Sinkronisasi selesai: ${seededCount} data wilayah dasar berhasil ditambahkan.`
+          : 'Master data wilayah sudah sinkron dan tersimpan lengkap di database lokal.',
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Gagal menyinkronkan data wilayah',
+      });
+    }
+  },
+
+  // GET /api/wilayah/stats
+  async getStats(_request: any, reply: any) {
+    try {
+      const grouped = await prisma.refWilayah.groupBy({
+        by: ['tingkat'],
+        _count: { kode: true },
+      });
+
+      const stats = {
+        provinsi: 0,
+        kabupaten: 0,
+        kecamatan: 0,
+        kelurahan: 0,
+        total: 0,
+      };
+
+      for (const row of grouped) {
+        const c = row._count.kode || 0;
+        if (row.tingkat === 1) stats.provinsi = c;
+        else if (row.tingkat === 2) stats.kabupaten = c;
+        else if (row.tingkat === 3) stats.kecamatan = c;
+        else if (row.tingkat === 4) stats.kelurahan = c;
+        stats.total += c;
+      }
+
+      return reply.status(200).send({
+        success: true,
+        data: stats,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Gagal memuat statistik wilayah',
+      });
+    }
+  },
+
+  // GET /api/wilayah/manage?tingkat=1&parent_kode=32&search=bandung&page=1&limit=25
+  async listManageWilayah(request: any, reply: any) {
+    try {
+      const {
+        tingkat,
+        parent_kode,
+        search,
+        page = '1',
+        limit = '25',
+      } = (request.query || {}) as {
+        tingkat?: string;
+        parent_kode?: string;
+        search?: string;
+        page?: string;
+        limit?: string;
+      };
+
+      const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 25));
+      const skip = (pageNum - 1) * limitNum;
+
+      const where: any = {};
+      if (tingkat && ['1', '2', '3', '4'].includes(String(tingkat))) {
+        where.tingkat = parseInt(String(tingkat), 10);
+      }
+      if (parent_kode && parent_kode.trim()) {
+        where.parent_kode = parent_kode.trim();
+      }
+      if (search && search.trim()) {
+        const q = search.trim();
+        where.OR = [
+          { kode: { contains: q, mode: 'insensitive' } },
+          { nama: { contains: q, mode: 'insensitive' } },
+        ];
+      }
+
+      const [total, items] = await Promise.all([
+        prisma.refWilayah.count({ where }),
+        prisma.refWilayah.findMany({
+          where,
+          orderBy: [{ tingkat: 'asc' }, { kode: 'asc' }],
+          skip,
+          take: limitNum,
+          include: {
+            Parent: {
+              select: {
+                kode: true,
+                nama: true,
+                tingkat: true,
+              },
+            },
+            _count: {
+              select: {
+                Children: true,
+              },
+            },
+          },
+        }),
+      ]);
+
+      return reply.status(200).send({
+        success: true,
+        data: items,
+        meta: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.max(1, Math.ceil(total / limitNum)),
+        },
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Gagal memuat daftar master wilayah',
+      });
+    }
+  },
+
+  // POST /api/wilayah/manage
+  async createWilayah(request: any, reply: any) {
+    try {
+      const { kode, nama, tingkat, parent_kode } = (request.body || {}) as {
+        kode?: string;
+        nama?: string;
+        tingkat?: number;
+        parent_kode?: string | null;
+      };
+
+      const cleanKode = String(kode || '').trim();
+      const cleanNama = String(nama || '').trim().toUpperCase();
+      const tingkatNum = Number(tingkat);
+      const cleanParent = parent_kode ? String(parent_kode).trim() : null;
+
+      if (!cleanKode || !cleanNama || ![1, 2, 3, 4].includes(tingkatNum)) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Kode, nama wilayah, dan tingkat (1-4) wajib diisi dengan benar.',
+        });
+      }
+
+      if (tingkatNum > 1 && !cleanParent) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Wilayah tingkat Kabupaten/Kota, Kecamatan, dan Kelurahan wajib memiliki kode induk (parent_kode).',
+        });
+      }
+
+      const existing = await prisma.refWilayah.findUnique({ where: { kode: cleanKode } });
+      if (existing) {
+        return reply.status(409).send({
+          success: false,
+          message: `Kode wilayah "${cleanKode}" sudah terdaftar (${existing.nama}).`,
+        });
+      }
+
+      if (cleanParent) {
+        const parentExists = await prisma.refWilayah.findUnique({ where: { kode: cleanParent } });
+        if (!parentExists) {
+          return reply.status(404).send({
+            success: false,
+            message: `Kode induk "${cleanParent}" tidak ditemukan di database.`,
+          });
+        }
+      }
+
+      const created = await prisma.refWilayah.create({
+        data: {
+          kode: cleanKode,
+          nama: cleanNama,
+          tingkat: tingkatNum,
+          parent_kode: tingkatNum === 1 ? null : cleanParent,
+        },
+      });
+
+      return reply.status(201).send({
+        success: true,
+        message: 'Data wilayah berhasil ditambahkan',
+        data: created,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Gagal menambahkan data wilayah',
+      });
+    }
+  },
+
+  // PUT /api/wilayah/manage/:kode
+  async updateWilayah(request: any, reply: any) {
+    try {
+      const targetKode = String(request.params?.kode || '').trim();
+      const { nama, parent_kode } = (request.body || {}) as {
+        nama?: string;
+        parent_kode?: string | null;
+      };
+
+      if (!targetKode) {
+        return reply.status(400).send({ success: false, message: 'Kode wilayah tidak valid' });
+      }
+
+      const existing = await prisma.refWilayah.findUnique({ where: { kode: targetKode } });
+      if (!existing) {
+        return reply.status(404).send({ success: false, message: 'Data wilayah tidak ditemukan' });
+      }
+
+      const cleanNama = nama ? String(nama).trim().toUpperCase() : existing.nama;
+      const cleanParent =
+        parent_kode !== undefined
+          ? parent_kode
+            ? String(parent_kode).trim()
+            : null
+          : existing.parent_kode;
+
+      const updated = await prisma.refWilayah.update({
+        where: { kode: targetKode },
+        data: {
+          nama: cleanNama,
+          parent_kode: existing.tingkat === 1 ? null : cleanParent,
+        },
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Data wilayah berhasil diperbarui',
+        data: updated,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Gagal memperbarui data wilayah',
+      });
+    }
+  },
+
+  // DELETE /api/wilayah/manage/:kode
+  async deleteWilayah(request: any, reply: any) {
+    try {
+      const targetKode = String(request.params?.kode || '').trim();
+      if (!targetKode) {
+        return reply.status(400).send({ success: false, message: 'Kode wilayah tidak valid' });
+      }
+
+      const existing = await prisma.refWilayah.findUnique({
+        where: { kode: targetKode },
+        include: { _count: { select: { Children: true } } },
+      });
+
+      if (!existing) {
+        return reply.status(404).send({ success: false, message: 'Data wilayah tidak ditemukan' });
+      }
+
+      await prisma.refWilayah.delete({ where: { kode: targetKode } });
+
+      return reply.status(200).send({
+        success: true,
+        message: `Wilayah "${existing.nama}" (${existing.kode}) berhasil dihapus.`,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Gagal menghapus data wilayah',
+      });
+    }
   },
 };
