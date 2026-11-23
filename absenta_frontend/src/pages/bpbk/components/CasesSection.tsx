@@ -132,7 +132,7 @@ export const CasesSection: React.FC = React.memo(() => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const data = useMemo(() => casesRes?.data?.list || [], [casesRes]);
+  const data = useMemo(() => Array.isArray(casesRes?.data) ? casesRes.data : casesRes?.data?.list || [], [casesRes]);
   const totalPages = casesRes?.data?.pagination?.totalPages || 1;
   const totalItems = casesRes?.data?.pagination?.totalItems || casesRes?.data?.pagination?.total || 0;
 
@@ -280,12 +280,23 @@ export const CasesSection: React.FC = React.memo(() => {
       return;
     }
 
+    const payload: any = {
+      siswa_id: formData.siswa_id,
+      judul: formData.judul.trim(),
+      kategori: formData.kategori,
+      status: formData.status,
+      prioritas: formData.prioritas,
+      visibility: formData.visibility,
+      tanggal_kasus: formData.tanggal_kasus,
+      keterangan: formData.keterangan?.trim() ? formData.keterangan.trim() : null
+    };
+
     try {
       if (selectedId) {
-        await bpbkApi.updateKasusBK(selectedId, formData);
+        await bpbkApi.updateKasusBK(selectedId, payload);
         toast.success('Kasus BK berhasil diperbarui');
       } else {
-        await bpbkApi.createKasusBK(formData);
+        await bpbkApi.createKasusBK(payload);
         toast.success('Kasus BK baru berhasil dibuka');
       }
       setModalOpen(false);

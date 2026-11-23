@@ -63,7 +63,7 @@ export const HomeVisitSection: React.FC = React.memo(() => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const data = useMemo(() => homeVisitRes?.data?.list || [], [homeVisitRes]);
+  const data = useMemo(() => Array.isArray(homeVisitRes?.data) ? homeVisitRes.data : homeVisitRes?.data?.list || [], [homeVisitRes]);
   const totalPages = homeVisitRes?.data?.pagination?.totalPages || 1;
 
   const resetForm = useCallback(() => {

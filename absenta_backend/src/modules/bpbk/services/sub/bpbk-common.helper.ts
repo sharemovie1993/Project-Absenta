@@ -1,7 +1,33 @@
 // @ts-nocheck
 import { prisma } from '../../../../utils/prisma';
+import { parentNotificationService } from '../../../parent-app/services/parent-notification.service';
+import { ParentEventType } from '../../../parent-app/constants/parent-event-matrix';
 
 export class BpbkCommonHelper {
+  static async triggerParentNotification(
+    tenantId: string,
+    siswaId: string,
+    eventType: ParentEventType,
+    variables: Record<string, string>
+  ) {
+    try {
+      const student = await prisma.siswa.findUnique({
+        where: { id: siswaId },
+        select: { nama_siswa: true }
+      });
+      if (!student) return;
+
+      await parentNotificationService.handleEvent(eventType, {
+        siswaId,
+        nama_siswa: student.nama_siswa,
+        timestamp: new Date(),
+        ...variables
+      });
+      console.log(`[BK Notification] Pushed BK alert notification to parents of ${student.nama_siswa} under tenant ${tenantId}`);
+    } catch (e) {
+      console.error('[BK Notification] Failed to send parent app notification:', e);
+    }
+  }
   static async getWaliKelasClassIds(tenantId: string, userId: string): Promise<string[]> {
     const assignments = await prisma.organizationalAssignment.findMany({
       where: {
@@ -43,7 +69,11 @@ export class BpbkCommonHelper {
     userContext: { id: string; capabilities: string[] }
   ): Promise<any> {
     const hasSensitiveAccess = userContext?.capabilities?.includes('bk.counseling.view.sensitive') || 
-                                userContext?.capabilities?.includes('system.platform.full_access');
+                                userContext?.capabilities?.includes('system.platform.full_access') ||
+                                userContext?.capabilities?.includes('bk.cases.manage') ||
+                                userContext?.capabilities?.includes('bk.cases.view.list') ||
+                                userContext?.capabilities?.includes('bk.counseling.manage') ||
+                                userContext?.capabilities?.includes('bk.counseling.view.list');
                                 
     if (hasSensitiveAccess) {
       return {}; 

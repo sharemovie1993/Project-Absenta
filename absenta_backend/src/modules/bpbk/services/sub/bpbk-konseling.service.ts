@@ -21,7 +21,7 @@ import { BpbkHomeVisitService } from './bpbk-homevisit.service';
 import { BpbkAsesmenService } from './bpbk-asesmen.service';
 import { BpbkAnalyticsService } from './bpbk-analytics.service';
 
-export class BpbkKonselingService {
+export class BpbkKonselingService extends BpbkCommonHelper {
   static async createKonseling(tenantId: string, data: {
     siswa_id: string;
     tanggal: Date;
@@ -40,12 +40,12 @@ export class BpbkKonselingService {
         siswa_id: data.siswa_id,
         tanggal: data.tanggal,
         tipe: data.tipe,
-        kelompok_id: data.kelompok_id,
+        kelompok_id: data.kelompok_id?.trim() ? data.kelompok_id.trim() : null,
         masalah: data.masalah,
-        solusi: data.solusi,
+        solusi: data.solusi?.trim() ? data.solusi.trim() : null,
         status: data.status,
         visibility: data.visibility || 'SENSITIVE',
-        kasus_bk_id: data.kasus_bk_id,
+        kasus_bk_id: data.kasus_bk_id?.trim() ? data.kasus_bk_id.trim() : null,
         petugas_id: data.petugas_id
       }
     });
@@ -75,9 +75,19 @@ export class BpbkKonselingService {
   }, userId?: string) {
     await this.verifyOwner('konselingSiswa', id, tenantId);
     const oldVal = await prisma.konselingSiswa.findUnique({ where: { id } });
+    const updateData: any = { ...data };
+    if ('kasus_bk_id' in updateData) {
+      updateData.kasus_bk_id = updateData.kasus_bk_id?.trim() ? updateData.kasus_bk_id.trim() : null;
+    }
+    if ('kelompok_id' in updateData) {
+      updateData.kelompok_id = updateData.kelompok_id?.trim() ? updateData.kelompok_id.trim() : null;
+    }
+    if ('solusi' in updateData) {
+      updateData.solusi = updateData.solusi?.trim() ? updateData.solusi.trim() : null;
+    }
     const res = await prisma.konselingSiswa.update({
       where: { id },
-      data
+      data: updateData
     });
     activityLogService.logEvent({
       event_type: 'COUNSELING_UPDATE',

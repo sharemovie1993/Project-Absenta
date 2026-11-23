@@ -169,7 +169,7 @@ export const AsesmenSection: React.FC = React.memo(() => {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, selectedKelas, selectedTipe]);
+  }, [search, selectedKelas, selectedTipe]);
 
   const handleEdit = useCallback((item: AsesmenSiswa) => {
     setSelectedId(item.id);

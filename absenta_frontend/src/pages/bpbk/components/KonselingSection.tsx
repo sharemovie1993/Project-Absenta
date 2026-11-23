@@ -103,9 +103,9 @@ export const KonselingSection: React.FC = React.memo(() => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const data = useMemo(() => konselingRes?.data?.list || [], [konselingRes]);
+  const data = useMemo(() => Array.isArray(konselingRes?.data) ? konselingRes.data : konselingRes?.data?.list || [], [konselingRes]);
   const totalPages = konselingRes?.data?.pagination?.totalPages || 1;
-  const cases = useMemo(() => studentCasesRes?.data?.list || [], [studentCasesRes]);
+  const cases = useMemo(() => Array.isArray(studentCasesRes?.data) ? studentCasesRes.data : studentCasesRes?.data?.list || [], [studentCasesRes]);
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -190,12 +190,23 @@ export const KonselingSection: React.FC = React.memo(() => {
       return;
     }
 
+    const payload: any = {
+      siswa_id: formData.siswa_id,
+      tanggal: formData.tanggal,
+      tipe: formData.tipe,
+      masalah: formData.masalah.trim(),
+      status: formData.status || 'PROSES',
+      visibility: formData.visibility || 'SENSITIVE',
+      kasus_bk_id: formData.kasus_bk_id?.trim() ? formData.kasus_bk_id.trim() : null,
+      solusi: formData.solusi?.trim() ? formData.solusi.trim() : null,
+    };
+
     try {
       if (selectedId) {
-        await bpbkApi.updateKonseling(selectedId, formData);
+        await bpbkApi.updateKonseling(selectedId, payload);
         toast.success('Sesi konseling berhasil diperbarui');
       } else {
-        await bpbkApi.createKonseling(formData);
+        await bpbkApi.createKonseling(payload);
         toast.success('Sesi konseling baru berhasil dicatat');
       }
       setModalOpen(false);

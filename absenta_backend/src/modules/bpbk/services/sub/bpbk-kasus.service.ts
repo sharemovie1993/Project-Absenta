@@ -21,7 +21,7 @@ import { BpbkHomeVisitService } from './bpbk-homevisit.service';
 import { BpbkAsesmenService } from './bpbk-asesmen.service';
 import { BpbkAnalyticsService } from './bpbk-analytics.service';
 
-export class BpbkKasusService {
+export class BpbkKasusService extends BpbkCommonHelper {
   static async createKasusBK(tenantId: string, data: {
     siswa_id: string;
     judul: string;
@@ -285,6 +285,7 @@ export class BpbkKasusService {
     status?: string;
     prioritas?: string;
     kategori?: string;
+    visibility?: string;
     show_deleted?: string;
   }) {
     const page = Number(query.page) || 1;
@@ -304,23 +305,27 @@ export class BpbkKasusService {
       where.deleted_at = null;
     }
 
-    if (query.siswa_id) {
-      where.siswa_id = query.siswa_id;
+    if (query.siswa_id?.trim()) {
+      where.siswa_id = query.siswa_id.trim();
     }
-    if (query.status) {
-      where.status = query.status;
+    if (query.status?.trim()) {
+      where.status = query.status.trim();
     }
-    if (query.prioritas) {
-      where.prioritas = query.prioritas;
+    if (query.prioritas?.trim()) {
+      where.prioritas = query.prioritas.trim();
     }
-    if (query.kategori) {
-      where.kategori = query.kategori;
+    if (query.kategori?.trim()) {
+      where.kategori = query.kategori.trim();
     }
-    if (query.search) {
+    if (query.visibility?.trim()) {
+      where.visibility = query.visibility.trim();
+    }
+    if (query.search?.trim()) {
+      const s = query.search.trim();
       where.OR = [
-        { judul: { contains: query.search, mode: 'insensitive' } },
-        { keterangan: { contains: query.search, mode: 'insensitive' } },
-        { Siswa: { nama_siswa: { contains: query.search, mode: 'insensitive' } } }
+        { judul: { contains: s, mode: 'insensitive' } },
+        { keterangan: { contains: s, mode: 'insensitive' } },
+        { Siswa: { nama_siswa: { contains: s, mode: 'insensitive' } } }
       ];
     }
 

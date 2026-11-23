@@ -21,7 +21,7 @@ import { BpbkHomeVisitService } from './bpbk-homevisit.service';
 import { BpbkAsesmenService } from './bpbk-asesmen.service';
 import { BpbkAnalyticsService } from './bpbk-analytics.service';
 
-export class BpbkPemanggilanService {
+export class BpbkPemanggilanService extends BpbkCommonHelper {
   private static async triggerParentNotification(
     tenantId: string,
     siswaId: string,

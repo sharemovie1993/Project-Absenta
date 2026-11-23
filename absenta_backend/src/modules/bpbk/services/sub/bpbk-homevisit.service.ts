@@ -21,7 +21,7 @@ import { BpbkHomeVisitService } from './bpbk-homevisit.service';
 import { BpbkAsesmenService } from './bpbk-asesmen.service';
 import { BpbkAnalyticsService } from './bpbk-analytics.service';
 
-export class BpbkHomeVisitService {
+export class BpbkHomeVisitService extends BpbkCommonHelper {
   static async createHomeVisit(tenantId: string, data: {
     siswa_id: string;
     tanggal: Date;
