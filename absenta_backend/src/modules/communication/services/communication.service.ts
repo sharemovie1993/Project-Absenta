@@ -1,5 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { presenceService } from '@/infra/realtime/presence.service';
+import { STRUKTUR_CAPABILITIES } from '@/config/position-capabilities';
+import { STRUKTUR_CODES } from '@/config/organization-structure';
 import { 
   InternalThreadType, 
   InternalThreadCategory, 
@@ -1078,6 +1080,7 @@ export class CommunicationService {
     let updatedGroups = 0;
     let kelasGroupsCount = 0;
     let jabatanGroupsCount = 0;
+    const validGroupKeys = new Set<string>();
 
     // Helper untuk membuat/memperbarui 1 Grup beserta anggotanya
     const upsertGroupWithMembers = async (opts: {
@@ -1090,6 +1093,7 @@ export class CommunicationService {
       welcomeText: string;
     }) => {
       if (opts.members.size === 0) return;
+      validGroupKeys.add(opts.groupKey);
 
       const existing = existingByKey.get(opts.groupKey) || existingByKey.get(opts.title);
       const contextPayload = {
@@ -1180,181 +1184,109 @@ export class CommunicationService {
         select: { id: true, tahun: true },
       }));
 
-    // ── A. AUTO-GENERATE GRUP SCOPE JABATAN / DIVISI (Scope Tahun Pelajaran Aktif) ──
-    const [allStaffUsers, activeAssignments] = await Promise.all([
-      prisma.user.findMany({
-        where: {
-          tenant_id: tenantId,
-          status: 'ACTIVE',
-          Role: {
-            name: { in: ['ADMIN', 'SUPERADMIN', 'KEPALA_SEKOLAH', 'GURU', 'TU'] },
+    // ── A. AUTO-GENERATE GRUP SCOPE JABATAN (Sesuai Posisi di position-capabilities.ts & Tahun Pelajaran Aktif) ──
+    const activeAssignments = await (prisma as any).organizationalAssignment.findMany({
+      where: {
+        tenant_id: tenantId,
+        is_active: true,
+        User: { status: 'ACTIVE' },
+        ...(activeTp
+          ? {
+              OR: [{ tahun_pelajaran_id: activeTp.id }, { tahun_pelajaran_id: null }],
+            }
+          : {}),
+      },
+      include: {
+        Position: { select: { code: true, name: true, scope_type: true } },
+        Kelas: { select: { id: true, nama_kelas: true } },
+        User: {
+          select: {
+            id: true,
+            full_name: true,
+            Guru: { select: { jabatan: true } },
           },
         },
-        include: {
-          Role: { select: { name: true } },
-          Guru: { select: { id: true, jabatan: true } },
-        },
-      }),
-      (prisma as any).organizationalAssignment.findMany({
-        where: {
-          tenant_id: tenantId,
-          is_active: true,
-          ...(activeTp
-            ? {
-                OR: [{ tahun_pelajaran_id: activeTp.id }, { tahun_pelajaran_id: null }],
-              }
-            : {}),
-        },
-        include: {
-          Position: { select: { code: true, name: true, scope_type: true } },
-          Kelas: { select: { id: true, nama_kelas: true } },
-        },
-      }),
-    ]);
+      },
+    });
 
-    const assignsByUser = new Map<string, any[]>();
-    for (const a of activeAssignments) {
-      if (!a.user_id) continue;
-      if (!assignsByUser.has(a.user_id)) assignsByUser.set(a.user_id, []);
-      assignsByUser.get(a.user_id)!.push(a);
-    }
-
-    const matchOrgPosition = (userAssigns: any[], keywords: string[]): any | undefined => {
-      return userAssigns.find((a) => {
-        const txt = `${a.Position?.code || ''} ${a.Position?.name || ''} ${a.custom_title || ''}`.toUpperCase();
-        return keywords.some((kw) => txt.includes(kw));
-      });
+    // Mapping 2-kata nama grup & kategori kanonikal per STRUKTUR_CODES di position-capabilities.ts
+    const positionGroupMeta: Record<string, { title: string; category: InternalThreadCategory }> = {
+      [STRUKTUR_CODES.PETUGAS_KELAS]: { title: 'Grp. Petugas', category: InternalThreadCategory.PIKET },
+      [STRUKTUR_CODES.GERBANG]: { title: 'Grp. Gerbang', category: InternalThreadCategory.PIKET },
+      [STRUKTUR_CODES.TOOLMAN]: { title: 'Grp. Toolman', category: InternalThreadCategory.SARPRAS },
+      [STRUKTUR_CODES.TU_PERSURATAN]: { title: 'Grp. Persuratan', category: InternalThreadCategory.UMUM },
+      [STRUKTUR_CODES.TU_KEUANGAN]: { title: 'Grp. Keuangan', category: InternalThreadCategory.UMUM },
+      [STRUKTUR_CODES.TU_KEPEGAWAIAN]: { title: 'Grp. Kepegawaian', category: InternalThreadCategory.UMUM },
+      [STRUKTUR_CODES.TU_SARPRAS]: { title: 'Grp. Inventaris', category: InternalThreadCategory.SARPRAS },
+      [STRUKTUR_CODES.TU_KEPALA]: { title: 'Grp. TU', category: InternalThreadCategory.UMUM },
+      [STRUKTUR_CODES.MANAJER_TOKO_KOPERASI]: { title: 'Grp. Toko', category: InternalThreadCategory.UMUM },
+      [STRUKTUR_CODES.WALIKELAS]: { title: 'Grp. Walas', category: InternalThreadCategory.WALIKELAS },
+      [STRUKTUR_CODES.BPBK]: { title: 'Grp. BK', category: InternalThreadCategory.BK },
+      [STRUKTUR_CODES.PEMBINA_ESKUL]: { title: 'Grp. Eskul', category: InternalThreadCategory.KESISWAAN },
+      [STRUKTUR_CODES.KAPROG]: { title: 'Grp. Kaprog', category: InternalThreadCategory.KURIKULUM },
+      [STRUKTUR_CODES.KABENG]: { title: 'Grp. Kabeng', category: InternalThreadCategory.SARPRAS },
+      [STRUKTUR_CODES.KURIKULUM]: { title: 'Grp. Kurikulum', category: InternalThreadCategory.KURIKULUM },
+      [STRUKTUR_CODES.KESISWAAN]: { title: 'Grp. Kesiswaan', category: InternalThreadCategory.KESISWAAN },
+      [STRUKTUR_CODES.HUBIN]: { title: 'Grp. Hubin', category: InternalThreadCategory.UMUM },
+      [STRUKTUR_CODES.BKK]: { title: 'Grp. BKK', category: InternalThreadCategory.UMUM },
+      [STRUKTUR_CODES.SARPRAS]: { title: 'Grp. Sarpras', category: InternalThreadCategory.SARPRAS },
+      [STRUKTUR_CODES.KEPALA_SEKOLAH]: { title: 'Grp. Kepsek', category: InternalThreadCategory.UMUM },
+      [STRUKTUR_CODES.BENDAHARA_KOPERASI]: { title: 'Grp. Bendahara', category: InternalThreadCategory.UMUM },
+      [STRUKTUR_CODES.KETUA_KOPERASI]: { title: 'Grp. Koperasi', category: InternalThreadCategory.UMUM },
+      [STRUKTUR_CODES.SEKRETARIS_KOPERASI]: { title: 'Grp. Sekretaris', category: InternalThreadCategory.UMUM },
+      [STRUKTUR_CODES.PENGAWAS_KOPERASI]: { title: 'Grp. Pengawas', category: InternalThreadCategory.UMUM },
+      [STRUKTUR_CODES.KETUA_PEMBINA_TARUNA]: { title: 'Grp. Taruna', category: InternalThreadCategory.KESISWAAN },
+      [STRUKTUR_CODES.PEMBINA_TARUNA]: { title: 'Grp. Pembina', category: InternalThreadCategory.KESISWAAN },
+      [STRUKTUR_CODES.KOORDINATOR_DHUHA]: { title: 'Grp. Dhuha', category: InternalThreadCategory.KESISWAAN },
     };
 
-    const jabatanDefinitions: Array<{
-      key: string;
-      title: string;
-      category: InternalThreadCategory;
-      welcome: string;
-      matcher: (u: any, userAssigns: any[]) => string | null;
-    }> = [
-      {
-        key: 'JABATAN:MANAJEMEN',
-        title: 'Grp. Manajemen',
-        category: InternalThreadCategory.UMUM,
-        welcome: '[SISTEM] Ruang koordinasi Manajemen & Pimpinan Sekolah.',
-        matcher: (u, userAssigns) => {
-          const r = (u.Role?.name || '').toUpperCase();
-          if (r === 'KEPALA_SEKOLAH') return 'Kepala Sekolah';
-          if (r === 'ADMIN' || r === 'SUPERADMIN') return 'Administrator';
-          if (r === 'TU') return 'Tata Usaha';
-          const pos = matchOrgPosition(userAssigns, ['WAKA', 'KEPALA', 'KAPROG', 'KOORDINATOR']);
-          if (pos) return pos.Position?.name || u.Guru?.jabatan || 'Pimpinan';
-          return null;
-        },
-      },
-      {
-        key: 'JABATAN:KURIKULUM',
-        title: 'Grp. Kurikulum',
-        category: InternalThreadCategory.KURIKULUM,
-        welcome: '[SISTEM] Ruang koordinasi Tim Kurikulum.',
-        matcher: (_u, userAssigns) => {
-          const pos = matchOrgPosition(userAssigns, ['KURIKULUM', 'KBM', 'PENGAJARAN', 'CBT', 'UJIAN', 'KAPROG']);
-          if (pos) return pos.Position?.name || 'Tim Kurikulum';
-          return null;
-        },
-      },
-      {
-        key: 'JABATAN:KESISWAAN',
-        title: 'Grp. Kesiswaan',
-        category: InternalThreadCategory.KESISWAAN,
-        welcome: '[SISTEM] Ruang koordinasi Tim Kesiswaan.',
-        matcher: (_u, userAssigns) => {
-          const pos = matchOrgPosition(userAssigns, ['KESISWAAN', 'DISIPLIN', 'KETARUNAAN', 'OSIS', 'EKSKUL', 'PIKET']);
-          if (pos) return pos.Position?.name || 'Tim Kesiswaan';
-          return null;
-        },
-      },
-      {
-        key: 'JABATAN:WALIKELAS',
-        title: 'Grp. Walas',
-        category: InternalThreadCategory.WALIKELAS,
-        welcome: '[SISTEM] Ruang koordinasi seluruh Wali Kelas aktif.',
-        matcher: (_u, userAssigns) => {
-          const pos = userAssigns.find((a) => {
-            const codeName = `${a.Position?.code || ''} ${a.Position?.name || ''} ${a.custom_title || ''}`.toUpperCase();
-            return Boolean(a.kelas_id) || codeName.includes('WALIKELAS') || codeName.includes('WALI KELAS') || codeName.includes('WALI_KELAS');
-          });
-          if (pos) {
-            return pos.Kelas?.nama_kelas ? `Wali Kelas ${pos.Kelas.nama_kelas}` : pos.Position?.name || 'Wali Kelas';
-          }
-          return null;
-        },
-      },
-      {
-        key: 'JABATAN:BPBK',
-        title: 'Grp. BK',
-        category: InternalThreadCategory.BK,
-        welcome: '[SISTEM] Ruang koordinasi Guru Bimbingan Konseling (BP/BK).',
-        matcher: (_u, userAssigns) => {
-          const pos = matchOrgPosition(userAssigns, ['BPBK', 'KONSELING', 'GURU BK', 'BK']);
-          if (pos) return pos.Position?.name || 'Tim BP/BK';
-          return null;
-        },
-      },
-      {
-        key: 'JABATAN:HUBIN',
-        title: 'Grp. Hubin',
-        category: InternalThreadCategory.UMUM,
-        welcome: '[SISTEM] Ruang koordinasi Tim Hubin & PKL.',
-        matcher: (_u, userAssigns) => {
-          const pos = matchOrgPosition(userAssigns, ['HUBIN', 'HUMAS', 'PKL', 'PRAKERIN', 'BKK', 'DUDI']);
-          if (pos) return pos.Position?.name || 'Tim Hubin';
-          return null;
-        },
-      },
-      {
-        key: 'JABATAN:SARPRAS',
-        title: 'Grp. Sarpras',
-        category: InternalThreadCategory.SARPRAS,
-        welcome: '[SISTEM] Ruang koordinasi Tim Sarpras & Inventaris.',
-        matcher: (_u, userAssigns) => {
-          const pos = matchOrgPosition(userAssigns, ['SARPRAS', 'SARANA', 'ASET', 'LAB', 'BENGKEL', 'TEKNISI']);
-          if (pos) return pos.Position?.name || 'Tim Sarpras';
-          return null;
-        },
-      },
-      {
-        key: 'JABATAN:DEWAN_GURU',
-        title: 'Grp. Guru',
-        category: InternalThreadCategory.UMUM,
-        welcome: '[SISTEM] Ruang komunikasi seluruh Dewan Guru & GTK.',
-        matcher: (u) => {
-          const r = (u.Role?.name || '').toUpperCase();
-          if (r === 'KEPALA_SEKOLAH') return 'Kepala Sekolah';
-          if (r === 'ADMIN' || r === 'SUPERADMIN') return 'Administrator';
-          if (r === 'TU') return 'Tata Usaha';
-          return u.Guru?.jabatan || 'Guru';
-        },
-      },
-    ];
+    // Kelompokkan anggota aktif berdasarkan posisi kanonikal di position-capabilities.ts
+    const membersByPosition = new Map<string, Map<string, string>>();
+    const positionNames = new Map<string, string>();
+    for (const a of activeAssignments) {
+      if (!a.user_id || !a.Position?.code) continue;
+      const rawCode = String(a.Position.code).toUpperCase();
+      const canonicalCode = rawCode === 'TU' ? STRUKTUR_CODES.TU_KEPALA : rawCode;
+      if (!STRUKTUR_CAPABILITIES[canonicalCode]) continue;
 
-    for (const def of jabatanDefinitions) {
-      const members = new Map<string, string>();
-      for (const u of allStaffUsers) {
-        const userAssigns = assignsByUser.get(u.id) || [];
-        const label = def.matcher(u, userAssigns);
-        if (label) {
-          members.set(u.id, label);
-        }
+      if (!membersByPosition.has(canonicalCode)) {
+        membersByPosition.set(canonicalCode, new Map<string, string>());
       }
-      if (members.size >= 1) {
-        await upsertGroupWithMembers({
-          groupKey: def.key,
-          groupScope: 'JABATAN',
-          title: def.title,
-          category: def.category,
-          members,
-          extraMeta: activeTp ? { tahunPelajaranId: activeTp.id, tahunPelajaran: activeTp.tahun } : undefined,
-          welcomeText: def.welcome,
-        });
-        jabatanGroupsCount += 1;
+      if (a.Position.name && !positionNames.has(canonicalCode)) {
+        positionNames.set(canonicalCode, a.Position.name);
       }
+
+      const label =
+        canonicalCode === STRUKTUR_CODES.WALIKELAS && a.Kelas?.nama_kelas
+          ? `Wali Kelas ${a.Kelas.nama_kelas}`
+          : a.custom_title || a.Position.name || canonicalCode;
+      membersByPosition.get(canonicalCode)!.set(a.user_id, label);
+    }
+
+    for (const posCode of Object.keys(STRUKTUR_CAPABILITIES)) {
+      const members = membersByPosition.get(posCode);
+      if (!members || members.size < 1) continue;
+
+      const meta = positionGroupMeta[posCode];
+      const posName = positionNames.get(posCode) || posCode;
+      const fallbackShort = posName.split(/\s+/)[0] || posCode;
+      const title = meta?.title || `Grp. ${fallbackShort}`;
+      const category = meta?.category || InternalThreadCategory.UMUM;
+
+      await upsertGroupWithMembers({
+        groupKey: `JABATAN:${posCode === STRUKTUR_CODES.WALIKELAS ? 'WALIKELAS' : posCode}`,
+        groupScope: 'JABATAN',
+        title,
+        category,
+        members,
+        extraMeta: {
+          positionCode: posCode,
+          positionName: posName,
+          ...(activeTp ? { tahunPelajaranId: activeTp.id, tahunPelajaran: activeTp.tahun } : {}),
+        },
+        welcomeText: `[SISTEM] Ruang koordinasi posisi ${posName} (${title}) telah aktif.`,
+      });
+      jabatanGroupsCount += 1;
     }
 
     // ── B. AUTO-GENERATE GRUP SCOPE KELAS (Tahun Pelajaran Aktif: Wali Kelas + Guru Mapel + Siswa Kelas) ──
@@ -1471,6 +1403,17 @@ export class CommunicationService {
         });
         kelasGroupsCount += 1;
       }
+    }
+
+    // Bersihkan grup otomatis lama yang tidak lagi sesuai posisi di position-capabilities.ts (mis. JABATAN:MANAJEMEN / JABATAN:DEWAN_GURU)
+    const obsoleteIds = existingGroupThreads
+      .filter((gt: any) => gt.context_ref?.isAutoGroup && gt.context_ref?.groupKey && !validGroupKeys.has(String(gt.context_ref.groupKey)))
+      .map((gt: any) => gt.id);
+
+    if (obsoleteIds.length > 0) {
+      await (prisma as any).internalThread.deleteMany({
+        where: { id: { in: obsoleteIds } },
+      });
     }
 
     return {
