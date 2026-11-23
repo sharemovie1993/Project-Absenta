@@ -129,6 +129,7 @@ const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
   const [limit, setLimit] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [memberTypeFilter, setMemberTypeFilter] = useState<string>('ALL');
 
   // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
   const { isLocked } = useModuleAccess('KOPERASI');
@@ -259,8 +260,32 @@ const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
     const raw = Array.isArray(loansQuery.data)
       ? loansQuery.data
       : (loansQuery.data?.data?.loans || loansQuery.data?.data || []);
-    return Array.isArray(raw) ? raw : [];
-  }, [loansQuery.data]);
+    const list: Loan[] = Array.isArray(raw) ? raw : [];
+
+    return list.filter((loan) => {
+      if (statusFilter !== 'ALL' && loan.status !== statusFilter) return false;
+
+      if (!isStudent && memberTypeFilter !== 'ALL') {
+        const m = (loan.member || {}) as { type?: string; siswaId?: string; guruId?: string };
+        const rawType = (m.type || '').toUpperCase();
+        const isSiswa = Boolean(m.siswaId || rawType === 'STUDENT' || rawType === 'SISWA');
+        const isGuru = Boolean(m.guruId || rawType === 'TEACHER' || rawType === 'STAFF' || rawType === 'GURU');
+        const isUmum = !isSiswa && !isGuru;
+        if (memberTypeFilter === 'STUDENT' && !isSiswa) return false;
+        if (memberTypeFilter === 'TEACHER' && !isGuru) return false;
+        if (memberTypeFilter === 'GENERAL' && !isUmum) return false;
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const nameMatch = (loan.member?.name || '').toLowerCase().includes(q);
+        const noMatch = (loan.member?.memberNo || '').toLowerCase().includes(q);
+        if (!nameMatch && !noMatch) return false;
+      }
+
+      return true;
+    });
+  }, [loansQuery.data, statusFilter, memberTypeFilter, searchQuery, isStudent]);
 
   const totalPages = loansQuery.data?.data?.pagination?.totalPages || 1;
   const totalItems = loansQuery.data?.data?.pagination?.total || loans.length;
@@ -567,12 +592,26 @@ const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
         key: 'member',
         label: 'Anggota',
         sortable: true,
-        render: (_, row: Loan) => (
-          <div>
-            <p className="font-bold text-slate-800 dark:text-slate-100">{row.member.name}</p>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{row.member.memberNo}</p>
-          </div>
-        )
+        render: (_, row: Loan) => {
+          const m = (row.member || {}) as { name?: string; memberNo?: string; type?: string; siswaId?: string; guruId?: string };
+          const rawType = (m.type || '').toUpperCase();
+          const typeLabel = m.siswaId || rawType === 'STUDENT' || rawType === 'SISWA'
+            ? 'Siswa'
+            : m.guruId || rawType === 'TEACHER' || rawType === 'STAFF'
+            ? 'Guru'
+            : 'Umum';
+          return (
+            <div>
+              <p className="font-bold text-slate-800 dark:text-slate-100">{row.member.name}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{row.member.memberNo}</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium">
+                  {typeLabel}
+                </span>
+              </div>
+            </div>
+          );
+        }
       });
     }
 
@@ -717,6 +756,28 @@ const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
           />
         </div>
 
+        {!isStudent && (
+          <div className="w-full sm:w-auto">
+            <SearchableSelect
+              id="loans-member-type-select"
+              aria-label="Filter tipe anggota"
+              value={memberTypeFilter}
+              onValueChange={(val) => {
+                setMemberTypeFilter(val || 'ALL');
+                setPage(1);
+              }}
+              options={[
+                { label: 'Semua Anggota', value: 'ALL' },
+                { label: 'Guru & Staf', value: 'TEACHER' },
+                { label: 'Siswa', value: 'STUDENT' },
+                { label: 'Anggota Umum', value: 'GENERAL' },
+              ]}
+              placeholder="Semua Anggota"
+              triggerClassName="w-full sm:w-auto sm:min-w-[145px] text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl"
+            />
+          </div>
+        )}
+
         <div className="w-full sm:w-auto">
           <SearchableSelect
             id="loans-status-select"
@@ -739,7 +800,7 @@ const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
         </div>
       </div>
     ),
-    [searchQuery, statusFilter, isStudent, setSearchQuery, setStatusFilter, setPage]
+    [searchQuery, statusFilter, memberTypeFilter, isStudent, setSearchQuery, setStatusFilter, setPage]
   );
 
   const TableToolbarRightComponent = useMemo(

@@ -291,7 +291,31 @@ export const PayrollDeductionsTable = React.memo<PayrollDeductionsTableProps>(({
                                         {startIndex + idx + 1}
                                     </td>
                                     <td className="p-3 border-r border-slate-100 dark:border-slate-800 font-bold uppercase text-slate-900 dark:text-slate-100">
-                                        {item.name}
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div>
+                                                <span className="block">{item.name}</span>
+                                                {item.memberNo && (
+                                                    <span className="text-[10px] text-slate-400 font-mono font-normal">
+                                                        {item.memberNo}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {item.memberType && (
+                                                <span className={
+                                                    item.memberType === 'STUDENT' || item.memberType === 'SISWA'
+                                                        ? 'px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 shrink-0'
+                                                        : item.memberType === 'GENERAL' || item.memberType === 'UMUM'
+                                                        ? 'px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 shrink-0'
+                                                        : 'px-2 py-0.5 rounded-full text-[9px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800 shrink-0'
+                                                }>
+                                                    {item.memberType === 'STUDENT' || item.memberType === 'SISWA'
+                                                        ? 'SISWA'
+                                                        : item.memberType === 'GENERAL' || item.memberType === 'UMUM'
+                                                        ? 'UMUM'
+                                                        : 'GURU / STAF'}
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     
                                     {/* SIMPANAN */}

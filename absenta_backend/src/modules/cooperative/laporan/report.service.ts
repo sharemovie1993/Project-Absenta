@@ -627,7 +627,6 @@ export class ReportService {
             where: { 
                 tenantId,
                 status: 'ACTIVE',
-                type: { not: 'STUDENT' } // Guru/Staf
             },
             include: {
                 Siswa: { select: { nama_siswa: true } },
@@ -764,10 +763,15 @@ export class ReportService {
 
             const totalDeduction = savingsTotal + principalAmount + interestAmount;
 
+            const resolvedType =
+                member.type ||
+                (member.guruId ? 'TEACHER' : member.siswaId ? 'STUDENT' : 'GENERAL');
+
             return {
                 no: idx + 1,
                 memberNo: member.memberNo,
                 name: member.Guru?.nama_guru || member.User?.full_name || member.Siswa?.nama_siswa || 'Unknown',
+                memberType: resolvedType,
                 savings,
                 loan: {
                     installmentNo,
@@ -846,8 +850,11 @@ export class ReportService {
                 savingTotals[cat.code] = 0;
             });
 
-            // Loop untuk setiap anggota
-            for (const item of report.data) {
+            // Loop untuk setiap anggota (Potongan Gaji khusus Guru & Staf internal)
+            const eligiblePayrollItems = report.data.filter(
+                (item: any) => item.memberType === 'TEACHER' || item.memberType === 'STAFF'
+            );
+            for (const item of (eligiblePayrollItems.length > 0 ? eligiblePayrollItems : report.data)) {
                 const member = await tx.member.findFirst({
                     where: { memberNo: item.memberNo, tenantId }
                 });

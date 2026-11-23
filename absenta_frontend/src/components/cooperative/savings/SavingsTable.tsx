@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Table from '../../ui/Table';
 import type { Column } from '../../ui/Table';
 import Button from '../../ui/Button';
@@ -88,6 +88,7 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
   onOpenCashierModal,
 }) => {
   const isMobile = useIsMobile();
+  const [memberCategoryFilter, setMemberCategoryFilter] = useState<string>('ALL');
 
   // Pengelompokan Data per Anggota (1 Anggota = 1 Baris Utama)
   const groupedList = useMemo(() => {
@@ -402,6 +403,24 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
     if (isStudent) return null;
     return (
       <div className="flex items-center gap-2 w-auto shrink-0 flex-wrap sm:flex-nowrap">
+        <div className="w-40 sm:w-44 shrink-0">
+          <SearchableSelect
+            id="filter-saving-member-category"
+            value={memberCategoryFilter}
+            onValueChange={(val) => {
+              setMemberCategoryFilter(val || 'ALL');
+              setPage(1);
+            }}
+            options={[
+              { label: 'Semua Anggota', value: 'ALL' },
+              { label: 'Guru & Staf', value: 'TEACHER' },
+              { label: 'Siswa', value: 'STUDENT' },
+              { label: 'Anggota Umum', value: 'GENERAL' },
+            ]}
+            placeholder="Semua Anggota"
+            triggerClassName="h-9 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-semibold"
+          />
+        </div>
         <div className="w-44 sm:w-48 shrink-0">
           <SearchableSelect
             id="filter-saving-type"
@@ -439,7 +458,7 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
         )}
       </div>
     );
-  }, [isStudent, typeFilter, setTypeFilter, filterTypeOptions, onOpenExportModal, onOpenCashierModal, setPage]);
+  }, [isStudent, memberCategoryFilter, typeFilter, setTypeFilter, filterTypeOptions, onOpenExportModal, onOpenCashierModal, setPage]);
 
   // Mode Mahasiswa/Personal (Flat)
   const filteredSavings = useMemo(() => {
@@ -507,6 +526,16 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
 
       if (!matchSearch) return false;
 
+      if (memberCategoryFilter !== 'ALL') {
+        const rawType = ((item.member as { type?: string }).type || '').toUpperCase();
+        const isSiswa = Boolean(item.member.siswaId || rawType === 'STUDENT' || rawType === 'SISWA');
+        const isGuru = Boolean(item.member.guruId || rawType === 'TEACHER' || rawType === 'STAFF' || rawType === 'GURU');
+        const isUmum = !isSiswa && !isGuru;
+        if (memberCategoryFilter === 'STUDENT' && !isSiswa) return false;
+        if (memberCategoryFilter === 'TEACHER' && !isGuru) return false;
+        if (memberCategoryFilter === 'GENERAL' && !isUmum) return false;
+      }
+
       if (typeFilter === 'ALL') return true;
       const code = typeFilter.toUpperCase();
       if (code === 'POKOK') return item.pokokAmount > 0;
@@ -514,7 +543,7 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
       if (code === 'SUKARELA') return item.sukarelaAmount > 0;
       return item.otherAmount > 0;
     });
-  }, [groupedList, search, typeFilter, isStudent]);
+  }, [groupedList, search, memberCategoryFilter, typeFilter, isStudent]);
 
   const sortedGroupedSavings = useMemo(() => {
     if (isStudent) return [];

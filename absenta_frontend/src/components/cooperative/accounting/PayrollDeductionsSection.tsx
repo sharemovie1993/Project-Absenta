@@ -1,8 +1,15 @@
-import React from 'react';
-import { Printer, Download, CheckCircle2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Printer, Download, CheckCircle2, Search } from 'lucide-react';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { PayrollDeductionsTable } from './PayrollDeductionsTable';
 import type { PayrollItem } from './types';
+
+const MEMBER_TYPE_FILTER_OPTIONS = [
+  { label: 'Semua Tipe Anggota', value: 'ALL' },
+  { label: 'Guru & Staf', value: 'TEACHER' },
+  { label: 'Siswa', value: 'STUDENT' },
+  { label: 'Anggota Umum', value: 'GENERAL' },
+];
 
 interface PayrollDeductionsSectionProps {
   selectedMonth: number;
@@ -55,35 +62,94 @@ export const PayrollDeductionsSection: React.FC<PayrollDeductionsSectionProps> =
   setPayrollPage,
   setPayrollLimit
 }) => {
+  const [memberTypeFilter, setMemberTypeFilter] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const filteredPayrollData = useMemo(() => {
+    return (payrollData || []).filter((item) => {
+      if (memberTypeFilter !== 'ALL') {
+        const rawType = (item.memberType || 'TEACHER').toUpperCase();
+        if (memberTypeFilter === 'TEACHER') {
+          if (rawType !== 'TEACHER' && rawType !== 'STAFF' && rawType !== 'GURU') return false;
+        } else if (memberTypeFilter === 'STUDENT') {
+          if (rawType !== 'STUDENT' && rawType !== 'SISWA') return false;
+        } else if (memberTypeFilter === 'GENERAL') {
+          if (rawType !== 'GENERAL' && rawType !== 'EXTERNAL' && rawType !== 'UMUM') return false;
+        }
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchName = (item.name || '').toLowerCase().includes(q);
+        const matchNo = (item.memberNo || '').toLowerCase().includes(q);
+        if (!matchName && !matchNo) return false;
+      }
+      return true;
+    });
+  }, [payrollData, memberTypeFilter, searchQuery]);
+
   return (
     <div className="space-y-6 p-4">
       {/* Filters and Actions Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl">
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          <div className="flex items-center gap-2 flex-1 sm:flex-initial sm:w-48 min-w-[140px]">
+      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 p-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full xl:w-auto flex-1">
+          <div className="flex items-center gap-2 min-w-0">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">Bulan:</span>
-            <SearchableSelect
-              id="select_month"
-              aria-label="Pilih Bulan Rekap Gaji"
-              value={String(selectedMonth)}
-              onValueChange={(val) => setSelectedMonth(parseInt(val))}
-              options={monthOptions}
-              placeholder="Pilih Bulan..."
-            />
+            <div className="flex-1 min-w-0">
+              <SearchableSelect
+                id="select_month"
+                aria-label="Pilih Bulan Rekap Gaji"
+                value={String(selectedMonth)}
+                onValueChange={(val) => setSelectedMonth(parseInt(val))}
+                options={monthOptions}
+                placeholder="Pilih Bulan..."
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-2 flex-1 sm:flex-initial sm:w-36 min-w-[120px]">
+          <div className="flex items-center gap-2 min-w-0">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">Tahun:</span>
-            <SearchableSelect
-              id="select_year"
-              aria-label="Pilih Tahun Rekap Gaji"
-              value={String(selectedYear)}
-              onValueChange={(val) => setSelectedYear(parseInt(val))}
-              options={yearOptions}
-              placeholder="Pilih Tahun..."
+            <div className="flex-1 min-w-0">
+              <SearchableSelect
+                id="select_year"
+                aria-label="Pilih Tahun Rekap Gaji"
+                value={String(selectedYear)}
+                onValueChange={(val) => setSelectedYear(parseInt(val))}
+                options={yearOptions}
+                placeholder="Pilih Tahun..."
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">Tipe:</span>
+            <div className="flex-1 min-w-0">
+              <SearchableSelect
+                id="select_payroll_member_type"
+                aria-label="Filter Tipe Anggota"
+                value={memberTypeFilter}
+                onValueChange={(val) => {
+                  setMemberTypeFilter(val || 'ALL');
+                  setPayrollPage(1);
+                }}
+                options={MEMBER_TYPE_FILTER_OPTIONS}
+                placeholder="Semua Tipe Anggota"
+              />
+            </div>
+          </div>
+          <div className="relative min-w-0">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPayrollPage(1);
+              }}
+              placeholder="Cari nama / no. anggota..."
+              aria-label="Cari anggota potongan gaji"
+              className="w-full h-9 pl-9 pr-3 text-xs font-semibold bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
             />
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto shrink-0">
           <button
             type="button"
             aria-label="Cetak Laporan Gaji"
@@ -166,15 +232,15 @@ export const PayrollDeductionsSection: React.FC<PayrollDeductionsSectionProps> =
       </div>
 
       <PayrollDeductionsTable
-        data={payrollData}
+        data={filteredPayrollData}
         visibleColumns={visibleColumns}
         savingCategories={savingCategories}
         showLoans={showLoans}
         loading={loading}
         pagination={{
           currentPage: payrollPage,
-          totalPages: Math.ceil((payrollData?.length || 0) / payrollLimit) || 1,
-          totalItems: payrollData?.length || 0,
+          totalPages: Math.ceil((filteredPayrollData?.length || 0) / payrollLimit) || 1,
+          totalItems: filteredPayrollData?.length || 0,
           itemsPerPage: payrollLimit,
           onPageChange: setPayrollPage,
           onLimitChange: setPayrollLimit

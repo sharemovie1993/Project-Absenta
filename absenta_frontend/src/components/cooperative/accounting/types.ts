@@ -52,6 +52,7 @@ export interface PayrollItem {
     no: number;
     memberNo: string;
     name: string;
+    memberType?: string;
     savings: Record<string, number>;
     loan: {
         installmentNo: number | null;
