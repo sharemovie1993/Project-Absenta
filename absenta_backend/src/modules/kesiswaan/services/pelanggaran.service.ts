@@ -166,64 +166,79 @@ export class PelanggaranService {
 
     const jurusanId = (query as any).jurusan_id;
 
-    // 1. Coba baca dari Redis/Memory Cache (Cache HIT Check via CACHE_KEYS)
-    const cacheKey = CACHE_KEYS.KESISWAAN.PELANGGARAN_LIST(
-      tenantId,
-      page,
-      limit,
-      query.search || '',
-      ((query as any).kelas_id || jurusanId),
-      query.status
-    );
+    const cleanSearch = (query.search || '').trim();
 
-    try {
-      const cached = await cacheService.get(cacheKey);
-      if (cached) {
-        console.log(`[PelanggaranService] ⚡ Cache HIT for key: ${cacheKey}`);
-        return cached;
+    // 1. Coba baca dari Redis/Memory Cache (Hanya untuk query default tanpa keyword search ad-hoc)
+    if (!cleanSearch) {
+      const cacheKey = CACHE_KEYS.KESISWAAN.PELANGGARAN_LIST(
+        tenantId,
+        page,
+        limit,
+        '',
+        ((query as any).kelas_id || jurusanId),
+        query.status
+      );
+
+      try {
+        const cached = await cacheService.get(cacheKey);
+        if (cached) {
+          console.log(`[PelanggaranService] ⚡ Cache HIT for key: ${cacheKey}`);
+          return cached;
+        }
+      } catch (cacheErr) {
+        console.warn('[PelanggaranService] Non-blocking cache read notice:', (cacheErr as any)?.message);
       }
-    } catch (cacheErr) {
-      console.warn('[PelanggaranService] Non-blocking cache read notice:', (cacheErr as any)?.message);
     }
 
-    let where: Prisma.PelanggaranSiswaWhereInput = {
-      tenant_id: tenantId,
-    };
+    const andConditions: Prisma.PelanggaranSiswaWhereInput[] = [
+      { tenant_id: tenantId }
+    ];
 
     if (scope) {
-      where = applyDataScope(where, scope);
-      
+      let scopedWhere: Prisma.PelanggaranSiswaWhereInput = {};
+      scopedWhere = applyDataScope(scopedWhere, scope);
       if (scope.userId) {
-          where.Siswa = { user_id: scope.userId };
-          delete (where as any).user_id; 
+        scopedWhere.Siswa = { user_id: scope.userId };
+        delete (scopedWhere as any).user_id;
       }
+      andConditions.push(scopedWhere);
     }
 
     if (query.siswa_id) {
-      where.siswa_id = query.siswa_id;
+      andConditions.push({ siswa_id: query.siswa_id });
     }
 
     if ((query as any).kelas_id) {
-      where.kelas_id = (query as any).kelas_id;
+      andConditions.push({ kelas_id: (query as any).kelas_id });
     }
 
     if (jurusanId) {
-      where.Kelas = {
-        ...((where.Kelas as any) || {}),
-        jurusan_id: jurusanId,
-      };
+      andConditions.push({
+        Kelas: { jurusan_id: jurusanId }
+      });
     }
 
     if ((query as any).tahun_pelajaran_id) {
-      where.tahun_pelajaran_id = (query as any).tahun_pelajaran_id;
+      // Izinkan data sesuai ID TP atau data historis di mana tahun_pelajaran_id masih null
+      andConditions.push({
+        OR: [
+          { tahun_pelajaran_id: (query as any).tahun_pelajaran_id },
+          { tahun_pelajaran_id: null }
+        ]
+      });
     }
 
     if ((query as any).semester_id) {
-      where.semester_id = (query as any).semester_id;
+      andConditions.push({
+        OR: [
+          { semester_id: (query as any).semester_id },
+          { semester_id: null }
+        ]
+      });
     }
 
     if (query.status) {
-      where.status = query.status;
+      andConditions.push({ status: query.status });
     }
 
     if (query.startDate || query.endDate) {
@@ -232,19 +247,32 @@ export class PelanggaranService {
       const endStr = query.endDate || query.startDate!;
       const startRange = getTenantDayRangeUTC(startStr, tz);
       const endRange = getTenantDayRangeUTC(endStr, tz);
-      where.tanggal = {
-        gte: startRange.startUTC,
-        lte: endRange.endUTC,
-      };
+      andConditions.push({
+        tanggal: {
+          gte: startRange.startUTC,
+          lte: endRange.endUTC,
+        }
+      });
     }
 
-    if (query.search) {
-      where.OR = [
-        { jenis_pelanggaran: { contains: query.search, mode: 'insensitive' } },
-        { keterangan: { contains: query.search, mode: 'insensitive' } },
-        { Siswa: { nama_siswa: { contains: query.search, mode: 'insensitive' } } },
-      ];
+    if (cleanSearch) {
+      andConditions.push({
+        OR: [
+          { jenis_pelanggaran: { contains: cleanSearch, mode: 'insensitive' } },
+          { keterangan: { contains: cleanSearch, mode: 'insensitive' } },
+          { status: { contains: cleanSearch, mode: 'insensitive' } },
+          { Siswa: { nama_siswa: { contains: cleanSearch, mode: 'insensitive' } } },
+          { Siswa: { nis: { contains: cleanSearch, mode: 'insensitive' } } },
+          { Siswa: { nisn: { contains: cleanSearch, mode: 'insensitive' } } },
+          { Kelas: { nama_kelas: { contains: cleanSearch, mode: 'insensitive' } } },
+          { Siswa: { Kelas: { nama_kelas: { contains: cleanSearch, mode: 'insensitive' } } } },
+        ]
+      });
     }
+
+    const where: Prisma.PelanggaranSiswaWhereInput = {
+      AND: andConditions
+    };
 
     console.log(`[PelanggaranService] Final Where Clause:`, JSON.stringify(where, null, 2));
 

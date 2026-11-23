@@ -15,7 +15,8 @@ import {
   Users,
   AlertCircle,
   LayoutGrid,
-  List
+  List,
+  X
 } from 'lucide-react';
 import { KelasTreeDiagram } from './KelasTreeDiagram';
 import { cn } from '../../../lib/utils';

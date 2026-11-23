@@ -3,14 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Package, 
   Search, 
-  Filter, 
   Plus, 
   Edit, 
   Trash2, 
   MapPin,
   Tag,
   FileText,
-  Printer
+  Printer,
+  RotateCcw
 } from 'lucide-react';
 import { Table } from '../ui/Table';
 import type { Column } from '../ui/Table';
@@ -58,7 +58,6 @@ const AssetList: React.FC<AssetListProps> = React.memo(({ onEdit, onView, onAdd,
   const [printModal, setPrintModal] = useState<{isOpen: boolean, assets: Asset[]}>({ isOpen: false, assets: [] });
 
   // Filters
-  const [showFilters, setShowFilters] = useState(false);
   const [filterCategory, setFilterCategory] = useState('');
   const [filterLocation, setFilterLocation] = useState('');
   const [filterCondition, setFilterCondition] = useState('');
@@ -288,66 +287,114 @@ const AssetList: React.FC<AssetListProps> = React.memo(({ onEdit, onView, onAdd,
      if (assets?.length > 0) setPrintModal({ isOpen: true, assets });
   }, [assets]);
 
+  const hasActiveFilters = Boolean(debouncedSearch || filterCategory || filterLocation || filterCondition);
+
+  const handleResetFilters = useCallback(() => {
+    setDebouncedSearch('');
+    setFilterCategory('');
+    setFilterLocation('');
+    setFilterCondition('');
+    setPage(1);
+  }, []);
+
   return (
     <div className="space-y-4">
-      {/* Filters & Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-        <div className="w-full sm:w-96">
-          <DebouncedSearchInput
-            placeholder="Cari aset, kode, atau brand..."
-            className="w-full"
-            inputClassName="bg-slate-50 dark:bg-slate-800/50 border-none rounded-lg"
-            value={debouncedSearch}
-            onChange={setDebouncedSearch}
-            aria-label="Cari Aset"
-            isLoading={isLoading}
-          />
+      {/* Standar Filter & Action Toolbar (Consistent with Data Siswa & Academic Toolbar) */}
+      <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
+        {/* Row 1: Search & Inline Filter Selects */}
+        <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
+          <div className="flex-1 min-w-[240px]">
+            <DebouncedSearchInput
+              placeholder="Cari aset, kode, atau brand..."
+              className="w-full"
+              inputClassName="h-10 bg-slate-50 dark:bg-slate-950 border-slate-200/80 dark:border-slate-800 rounded-xl text-xs sm:text-sm"
+              value={debouncedSearch}
+              onChange={setDebouncedSearch}
+              aria-label="Cari Aset"
+              isLoading={isLoading}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full lg:w-auto">
+            <div className="w-full sm:w-44">
+              <SearchableSelect 
+                id="filterCategory"
+                options={categoriesOptions} 
+                value={filterCategory} 
+                onValueChange={(val) => { setFilterCategory(val); setPage(1); }}
+                placeholder="Semua Kategori"
+                searchPlaceholder="Cari Kategori..."
+                className="w-full"
+                triggerClassName="h-10 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200/80 dark:border-slate-800"
+              />
+            </div>
+            <div className="w-full sm:w-44">
+              <SearchableSelect 
+                id="filterLocation"
+                options={locationsOptions} 
+                value={filterLocation} 
+                onValueChange={(val) => { setFilterLocation(val); setPage(1); }}
+                placeholder="Semua Lokasi"
+                searchPlaceholder="Cari Lokasi..."
+                className="w-full"
+                triggerClassName="h-10 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200/80 dark:border-slate-800"
+              />
+            </div>
+            <div className="w-full sm:w-40">
+              <SearchableSelect 
+                id="filterCondition"
+                options={conditionOptions} 
+                value={filterCondition} 
+                onValueChange={(val) => { setFilterCondition(val); setPage(1); }}
+                placeholder="Semua Kondisi"
+                searchPlaceholder="Cari Kondisi..."
+                className="w-full"
+                triggerClassName="h-10 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200/80 dark:border-slate-800"
+              />
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button variant={showFilters ? 'primary' : 'outline'} className="flex-1 sm:flex-none" onClick={() => setShowFilters(!showFilters)}>
-            <Filter className="h-4 w-4 mr-2" /> Filter
-          </Button>
-          <Button variant="outline" className="flex-1 sm:flex-none hover:bg-slate-50" onClick={handlePrintAll}>
-            <Printer className="h-4 w-4 mr-2" /> Cetak (Halaman Ini)
-          </Button>
-          <Button onClick={onAdd} className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-md shadow-indigo-200 dark:shadow-none transition-all duration-200 hover:translate-y-[-2px]">
-            <Plus className="h-4 w-4 mr-2" /> Tambah Aset
-          </Button>
+
+        {/* Row 2: Secondary / Quick Actions */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetFilters}
+                className="h-8.5 text-xs text-rose-600 dark:text-rose-400 border-rose-200 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl"
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                Reset Filter
+              </Button>
+            )}
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Total <strong className="text-slate-800 dark:text-slate-200">{total}</strong> item aset
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="flex-1 sm:flex-none h-8.5 text-xs rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800" 
+              onClick={handlePrintAll}
+            >
+              <Printer className="h-3.5 w-3.5 mr-1.5" /> Cetak (Halaman Ini)
+            </Button>
+            {onAdd && (
+              <Button 
+                onClick={onAdd} 
+                size="sm"
+                className="flex-1 sm:flex-none h-8.5 text-xs rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-xs shadow-indigo-200 dark:shadow-none transition-all duration-200 hover:translate-y-[-1px]"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1.5" /> Tambah Aset
+              </Button>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Expanded Filters */}
-      {showFilters && (
-        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in slide-in-from-top-2">
-          <div>
-            <Label htmlFor="filterCategory" className="text-xs font-semibold text-slate-500 mb-1 block">Kategori</Label>
-            <SearchableSelect 
-               id="filterCategory"
-               options={categoryOptions} 
-               value={filterCategory} 
-               onValueChange={setFilterCategory} 
-            />
-          </div>
-          <div>
-            <Label htmlFor="filterLocation" className="text-xs font-semibold text-slate-500 mb-1 block">Lokasi</Label>
-            <SearchableSelect 
-               id="filterLocation"
-               options={locationOptions} 
-               value={filterLocation} 
-               onValueChange={setFilterLocation} 
-            />
-          </div>
-          <div>
-            <Label htmlFor="filterCondition" className="text-xs font-semibold text-slate-500 mb-1 block">Kondisi</Label>
-            <SearchableSelect 
-               id="filterCondition"
-               options={conditionOptions} 
-               value={filterCondition} 
-               onValueChange={setFilterCondition} 
-            />
-          </div>
-        </div>
-      )}
 
       {/* Table Content */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
