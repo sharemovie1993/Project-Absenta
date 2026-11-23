@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { getSiswaList, type Siswa, siswaQueryKeys } from '../../../api/academic/siswa.api';
@@ -11,8 +11,8 @@ import { Input } from '../../../components/ui/Input';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
+import { DebouncedSearchInput } from '../../../components/ui';
 import { Search, Info, Plus } from 'lucide-react';
-import { useDebounce } from '../../../hooks/useDebounce';
 import { formatDate } from '../../../utils/layoutUtils';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
@@ -31,7 +31,6 @@ interface SiswaKasusSectionProps {
 
 export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = React.memo(({ onViewSiswaDetail }) => {
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 500);
 
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('AKTIF');
@@ -39,6 +38,10 @@ export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = React.memo(({
   // Pagination
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -58,10 +61,10 @@ export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = React.memo(({
 
   // ── useQuery: Siswa Roster List ──────────────────────────────────────────
   const { data: siswaRes, isLoading: loading } = useQuery({
-    queryKey: siswaQueryKeys.list({ page, limit, search: debouncedSearch, kelas_id: selectedKelas, status: selectedStatus }),
+    queryKey: siswaQueryKeys.list({ page, limit, search, kelas_id: selectedKelas, status: selectedStatus }),
     queryFn: () => {
-      siswaKasusFilterSchema.safeParse({ search: debouncedSearch, selectedKelas, selectedStatus });
-      return getSiswaList(page, limit, debouncedSearch, selectedKelas, selectedStatus);
+      siswaKasusFilterSchema.safeParse({ search, selectedKelas, selectedStatus });
+      return getSiswaList(page, limit, search, selectedKelas, selectedStatus);
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -224,14 +227,15 @@ export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = React.memo(({
 
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="relative md:col-span-2">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <Input
+        <div className="md:col-span-2">
+          <DebouncedSearchInput
             aria-label="Cari nama atau nomor induk siswa"
             placeholder="Cari nama atau nomor induk siswa..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+            onChange={setSearch}
+            isLoading={loading}
+            className="w-full"
+            inputClassName="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
           />
         </div>
         <div>

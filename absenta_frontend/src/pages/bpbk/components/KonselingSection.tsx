@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { formatDate } from '../../../utils/layoutUtils';
-import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { bpbkApi, type KonselingSiswa, type KasusBK, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { Card } from '../../../components/ui/Card';
@@ -12,11 +12,11 @@ import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { Label } from '../../../components/ui/Label';
+import { DebouncedSearchInput } from '../../../components/ui';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { Search, Plus, Edit2, Trash2, Calendar, Clipboard, UserCheck, MessageSquare, RotateCcw } from 'lucide-react';
-import { useDebounce } from '../../../hooks/useDebounce';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 
@@ -34,7 +34,6 @@ const konselingFormSchema = z.object({
 
 export const KonselingSection: React.FC = React.memo(() => {
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 500);
 
   const [selectedTipe, setSelectedTipe] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
@@ -42,6 +41,10 @@ export const KonselingSection: React.FC = React.memo(() => {
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -80,11 +83,11 @@ export const KonselingSection: React.FC = React.memo(() => {
 
   // ── useQuery: Konseling List ─────────────────────────────────────────────
   const { data: konselingRes, isLoading: loading, refetch } = useQuery({
-    queryKey: bpbkQueryKeys.konselingList({ page, limit, search: debouncedSearch, tipe: selectedTipe, status: selectedStatus, show_deleted: showDeleted }),
+    queryKey: bpbkQueryKeys.konselingList({ page, limit, search, tipe: selectedTipe, status: selectedStatus, show_deleted: showDeleted }),
     queryFn: () => bpbkApi.getKonseling({
       page,
       limit,
-      search: debouncedSearch,
+      search,
       tipe: selectedTipe,
       status: selectedStatus,
       show_deleted: showDeleted ? 'true' : 'false'
@@ -409,14 +412,15 @@ export const KonselingSection: React.FC = React.memo(() => {
 
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="relative md:col-span-2">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <Input
+        <div className="md:col-span-2">
+          <DebouncedSearchInput
             aria-label="Cari siswa atau ringkasan kasus"
             placeholder="Cari siswa atau ringkasan kasus..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+            onChange={setSearch}
+            isLoading={loading}
+            className="w-full"
+            inputClassName="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
           />
         </div>
         <div>

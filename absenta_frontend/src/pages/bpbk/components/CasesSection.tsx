@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { bpbkApi, type KasusBK, bpbkQueryKeys } from '../../../api/bpbk.api';
 import { Card } from '../../../components/ui/Card';
@@ -7,11 +7,11 @@ import { Input } from '../../../components/ui/Input';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Loader } from '../../../components/ui/Loader';
 import { Label } from '../../../components/ui/Label';
+import { DebouncedSearchInput } from '../../../components/ui';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { Search, Plus } from 'lucide-react';
-import { useDebounce } from '../../../hooks/useDebounce';
 
 // Extracted Components
 const CaseTable = lazy(() => import('./cases/CaseTable').then(m => ({ default: m.CaseTable })));
@@ -60,7 +60,6 @@ const getVisibilityColor = (vis: string) => {
 
 export const CasesSection: React.FC = React.memo(() => {
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 500);
 
   const [selectedKategori, setSelectedKategori] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
@@ -69,6 +68,10 @@ export const CasesSection: React.FC = React.memo(() => {
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -109,7 +112,7 @@ export const CasesSection: React.FC = React.memo(() => {
     queryKey: bpbkQueryKeys.casesList({
       page,
       limit,
-      search: debouncedSearch,
+      search,
       kategori: selectedKategori,
       status: selectedStatus,
       prioritas: selectedPrioritas,
@@ -119,7 +122,7 @@ export const CasesSection: React.FC = React.memo(() => {
     queryFn: () => bpbkApi.getKasusBK({
       page,
       limit,
-      search: debouncedSearch,
+      search,
       kategori: selectedKategori,
       status: selectedStatus,
       prioritas: selectedPrioritas,
@@ -318,13 +321,14 @@ export const CasesSection: React.FC = React.memo(() => {
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-        <div className="relative md:col-span-2">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <Input
+        <div className="md:col-span-2">
+          <DebouncedSearchInput
             placeholder="Cari siswa atau judul kasus..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+            onChange={setSearch}
+            isLoading={loading}
+            className="w-full"
+            inputClassName="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
           />
         </div>
         <div>

@@ -17,9 +17,9 @@ import { sekolahApi, type Sekolah } from '../../../api/academic/sekolah.api';
 import { getMyTenant, type Tenant } from '../../../api/tenants.api';
 import { getBase64ImageFromUrl } from '../../../utils/cooperative/coopDocUtils';
 import { useAuthStore } from '../../../store/authStore';
-import { useDebounce } from '../../../hooks/useDebounce';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { AnalyticsCard } from '../../../components/ui/AnalyticsCard';
+import { DebouncedSearchInput } from '../../../components/ui';
 import { ASESMEN_PRESETS } from '../data/asesmenConstants';
 import { printAsesmenBlankSheet, printAsesmenResult } from '../utils/asesmenPrinter';
 import { AsesmenFormModal } from './AsesmenFormModal';
@@ -54,7 +54,10 @@ export const AsesmenSection: React.FC = React.memo(() => {
   const [search, setSearch] = useState('');
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedTipe, setSelectedTipe] = useState('');
-  const debouncedSearch = useDebounce(search, 500);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   const { user } = useAuthStore();
   const [logoDaerahBase64, setLogoDaerahBase64] = useState<string | null>(null);
@@ -146,14 +149,14 @@ export const AsesmenSection: React.FC = React.memo(() => {
     queryKey: bpbkQueryKeys.asesmenList({
       page,
       limit,
-      search: debouncedSearch || undefined,
+      search: search || undefined,
       kelas_name: selectedKelas || undefined,
       nama_asesmen: selectedTipe || undefined
     }),
     queryFn: () => bpbkApi.getAsesmen({
       page,
       limit,
-      search: debouncedSearch || undefined,
+      search: search || undefined,
       kelas_name: selectedKelas || undefined,
       nama_asesmen: selectedTipe || undefined
     }),
@@ -453,13 +456,14 @@ export const AsesmenSection: React.FC = React.memo(() => {
 
       {/* Panel Pencarian & Penyaringan */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-          <Input
+        <div>
+          <DebouncedSearchInput
             placeholder="Cari nama siswa atau NIS..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+            onChange={setSearch}
+            isLoading={loading}
+            className="w-full"
+            inputClassName="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
           />
         </div>
         <div>

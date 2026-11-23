@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hubinApi } from '../../api/hubin.api';
@@ -23,7 +23,7 @@ import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { SectionCard, Table, Button, Input } from '../../components/ui';
+import { SectionCard, Table, Button, Input, DebouncedSearchInput } from '../../components/ui';
 import { HubCard } from '../../components/ui/hub';
 import { cn } from '../../lib/utils';
 import useConfirm from '../../hooks/useConfirm';
@@ -62,6 +62,10 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMitra, setEditingMitra] = useState<MitraIndustri | null>(null);
   const [selectedMoUMitra, setSelectedMoUMitra] = useState<MitraIndustri | null>(null);
@@ -449,23 +453,19 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
     </div>
   );
 
-  const tableToolbarLeft = useMemo(() => (
-    <div className="relative w-72 sm:w-80 md:w-96">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-      <Input
+  const tableToolbarLeft = (
+    <div className="w-72 sm:w-80 md:w-96">
+      <DebouncedSearchInput
         aria-label="Cari nama mitra atau bidang industri"
         placeholder="Cari nama mitra atau bidang..."
         value={searchTerm}
-        onChange={(e) => {
-          const parsed = mitraSearchSchema.safeParse({ searchTerm: e.target.value });
-          if (parsed.success) {
-            setSearchTerm(e.target.value);
-          }
-        }}
-        className="w-full h-9 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
+        onChange={setSearchTerm}
+        isLoading={isLoading}
+        className="w-full"
+        inputClassName="h-9 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
       />
     </div>
-  ), [searchTerm]);
+  );
 
   const tableToolbarRight = (
     <MitraTableToolbarRight

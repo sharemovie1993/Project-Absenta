@@ -18,7 +18,7 @@ import { hubinApi, type RekapBulananPklRow } from '@/api/hubin.api';
 import { toLocalMonth } from '@/utils/attendance/time';
 import { exportDataToExcel } from '@/utils/export.utils';
 import { useRekapPklColumns, type ViewMode } from './rekapPklColumns';
-import { SectionCard, Button, Input, Badge, Loader } from '@/components/ui';
+import { SectionCard, Button, Input, Badge, Loader, DebouncedSearchInput } from '@/components/ui';
 import { HubCard } from '@/components/ui/hub';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useTahunPelajaranOptions } from '@/hooks/useTahunPelajaranOptions';
@@ -426,26 +426,15 @@ export const RekapAbsensiPklView: React.FC<UniversalRekapAbsensiPklViewProps> = 
             )}
 
             {/* Search Input */}
-            <div className="relative min-w-[180px] sm:min-w-[220px]">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <Input
-                type="text"
+            <div className="min-w-[180px] sm:min-w-[220px]">
+              <DebouncedSearchInput
                 placeholder="Cari siswa / mitra..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 pr-7 h-9 text-xs rounded-xl"
+                onChange={setSearchTerm}
+                isLoading={isLoading}
+                inputClassName="h-9 text-xs rounded-xl"
                 aria-label="Cari nama siswa atau mitra industri"
               />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
-                  title="Hapus pencarian"
-                >
-                  <X size={12} />
-                </button>
-              )}
             </div>
           </div>
 

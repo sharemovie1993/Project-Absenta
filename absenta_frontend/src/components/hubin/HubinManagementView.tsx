@@ -29,7 +29,8 @@ import {
   Input, 
   Badge, 
   AnalyticsCard,
-  SimpleFormField 
+  SimpleFormField,
+  DebouncedSearchInput 
 } from '../ui';
 import { HubCard } from '@/components/ui/hub';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -501,25 +502,16 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
         {/* Toolbar Baris Pertama - Filter & Search */}
         <div className="flex flex-col lg:flex-row gap-3 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
           {/* 1. Input Pencarian di Sisi Kiri */}
-          <div className="flex-1 relative w-full max-w-full min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
-            <Input
+          <div className="flex-1 w-full max-w-full min-w-0">
+            <DebouncedSearchInput
               placeholder="Cari siswa (NIP/NIS, Nama, Mitra, Pembimbing)..."
               aria-label="Cari Siswa PKL"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full max-w-full min-w-0 h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
+              onChange={setSearchTerm}
+              isLoading={isLoading}
+              className="w-full max-w-full min-w-0"
+              inputClassName="h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
             />
-            {searchTerm && (
-              <button
-                type="button"
-                aria-label="Hapus pencarian"
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-              >
-                <X size={14} />
-              </button>
-            )}
           </div>
 
           {/* 2. Filter Tahun Pelajaran (SearchableSelect) */}

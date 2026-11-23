@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { hubinApi } from '../../api/hubin.api';
@@ -28,7 +28,7 @@ import { useAuthStore } from '../../store/authStore';
 import { isModuleUnlocked } from '../../utils/subscriptionUtils';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { SectionCard, Table, Button, Input } from '../../components/ui';
+import { SectionCard, Table, Button, Input, DebouncedSearchInput } from '../../components/ui';
 import { PklStatusBadge } from '../../components/hubin/PklStatusBadge';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -89,6 +89,10 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = React.me
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [filterClass, setFilterClass] = useState('all');
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
 
   // Gating Logic
   const isLocked = !isModuleUnlocked(subscription, 'HUBIN');
@@ -386,19 +390,15 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = React.me
         <SectionCard title="Aktivitas Monitoring PKL Siswa" icon={Activity} fullWidth noPadding>
           {/* Filters & Refresh */}
           <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center justify-between">
-            <div className="flex-1 relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <Input
+            <div className="flex-1 w-full">
+              <DebouncedSearchInput
                 placeholder="Cari siswa atau nama perusahaan..."
                 value={searchTerm}
-                onChange={(e) => {
-                  const parsed = monitoringFilterSchema.safeParse({ searchTerm: e.target.value });
-                  if (parsed.success) {
-                    setSearchTerm(e.target.value);
-                  }
-                }}
+                onChange={setSearchTerm}
+                isLoading={isLoading}
                 aria-label="Cari siswa atau nama perusahaan"
-                className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
+                className="w-full"
+                inputClassName="h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
               />
             </div>
             
@@ -502,14 +502,15 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = React.me
         <SectionCard title="Aktivitas Monitoring PKL Siswa" icon={Activity} fullWidth noPadding>
           {/* Filters & Refresh */}
           <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center justify-between">
-            <div className="flex-1 relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <Input
+            <div className="flex-1 w-full">
+              <DebouncedSearchInput
                 placeholder="Cari siswa atau nama perusahaan..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={setSearchTerm}
+                isLoading={isLoading}
                 aria-label="Cari siswa atau nama perusahaan"
-                className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
+                className="w-full"
+                inputClassName="h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
               />
             </div>
             
