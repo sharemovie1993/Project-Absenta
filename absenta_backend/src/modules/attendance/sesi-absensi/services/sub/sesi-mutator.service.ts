@@ -212,10 +212,10 @@ export class SesiMutatorService {
 
     if (targetStatus === 'BERLANGSUNG' && !sesi.keterangan) {
       if (isSiswa) {
-        updatePayload.keterangan = `[DIBUKA_PETUGAS_KELAS] ${user?.name || 'Petugas Kelas'}`;
+        updatePayload.keterangan = `[DIBUKA_PETUGAS_KELAS] ${user?.full_name || (user as any)?.name || 'Petugas Kelas'}`;
         if (userId) updatePayload.created_by_user_id = userId;
       } else {
-        updatePayload.keterangan = `[DIBUKA_GURU] ${user?.name || 'Guru'}`;
+        updatePayload.keterangan = `[DIBUKA_GURU] ${user?.full_name || (user as any)?.name || 'Guru'}`;
         if (userId) updatePayload.created_by_user_id = userId;
       }
     }
@@ -287,10 +287,10 @@ export class SesiMutatorService {
     if (data.keterangan !== undefined) updatePayload.keterangan = data.keterangan;
     if (!updatePayload.keterangan && data.status === 'BERLANGSUNG' && !sesi.keterangan) {
       if (isSiswa || data.opened_by_petugas) {
-        updatePayload.keterangan = `[DIBUKA_PETUGAS_KELAS] ${user?.name || 'Petugas Kelas'}`;
+        updatePayload.keterangan = `[DIBUKA_PETUGAS_KELAS] ${user?.full_name || (user as any)?.name || 'Petugas Kelas'}`;
         if (userId) updatePayload.created_by_user_id = userId;
       } else {
-        updatePayload.keterangan = `[DIBUKA_GURU] ${user?.name || 'Guru'}`;
+        updatePayload.keterangan = `[DIBUKA_GURU] ${user?.full_name || (user as any)?.name || 'Guru'}`;
         if (userId) updatePayload.created_by_user_id = userId;
       }
     }

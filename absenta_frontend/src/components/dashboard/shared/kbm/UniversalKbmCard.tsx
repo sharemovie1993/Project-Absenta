@@ -161,7 +161,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     rawTeacherStatus === 'TERLAMBAT' ||
     item.session?.waktu_tap ||
     item.AbsenGuru?.[0]?.waktu_tap ||
-    (fotoKegiatanUrl && !item.opened_by_petugas && !item.session?.opened_by_petugas)
+    (fotoKegiatanUrl && !item.opened_by_petugas && !item.session?.opened_by_petugas && item.opened_by !== 'PETUGAS_KELAS' && item.session?.opened_by !== 'PETUGAS_KELAS')
   );
   const needsReminder = isReadyToOpen && !isLive && !isFinished && !isOverdue && !isTeacherExcused && !isTeacherAlreadyPresent;
   const canChangeStatus = (isReadyToOpen || isOverdue || isTeacherExcused) && !isFinished && !isLive;
@@ -487,14 +487,25 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 item?.opened_by === 'PETUGAS_KELAS' ||
                 item?.session?.opened_by === 'PETUGAS_KELAS' ||
                 item?.opened_by_petugas ||
-                item?.session?.opened_by_petugas
+                item?.session?.opened_by_petugas ||
+                (typeof item?.keterangan === 'string' && item.keterangan.includes('[DIBUKA_PETUGAS_KELAS]')) ||
+                (typeof item?.session?.keterangan === 'string' && item.session.keterangan.includes('[DIBUKA_PETUGAS_KELAS]'))
               );
               const isOpenedByGuru = Boolean(
                 item?.opened_by === 'GURU' ||
                 item?.session?.opened_by === 'GURU' ||
+                (typeof item?.keterangan === 'string' && item.keterangan.includes('[DIBUKA_GURU]')) ||
+                (typeof item?.session?.keterangan === 'string' && item.session.keterangan.includes('[DIBUKA_GURU]')) ||
                 (!isOpenedByPetugas && isTeacherPresent)
               );
-              const openerName = item?.opened_by_name || item?.session?.opened_by_name;
+              const rawOpenerName = item?.opened_by_name || item?.session?.opened_by_name;
+              const openerName = rawOpenerName || (
+                typeof item?.keterangan === 'string' && item.keterangan.includes('[DIBUKA_PETUGAS_KELAS]')
+                  ? item.keterangan.replace('[DIBUKA_PETUGAS_KELAS]', '').trim()
+                  : typeof item?.session?.keterangan === 'string' && item.session.keterangan.includes('[DIBUKA_PETUGAS_KELAS]')
+                  ? item.session.keterangan.replace('[DIBUKA_PETUGAS_KELAS]', '').trim()
+                  : null
+              );
 
               if (isOpenedByPetugas) {
                 return (

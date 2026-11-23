@@ -77,11 +77,11 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
   );
 
   const isTeacherPresent = Boolean(
-    (timelineItem?.guru_status && !['BELUM_TAP', 'BELUM_HADIR', 'ALPA', 'MENDATANG', 'BELUM_MASUK'].includes(timelineItem.guru_status)) ||
+    (['HADIR', 'TEPAT_WAKTU', 'TERLAMBAT'].includes(String(timelineItem?.guru_status || '').toUpperCase())) ||
     timelineItem?.AbsenGuru?.[0]?.waktu_tap ||
     sesi?.AbsenGuru?.[0]?.waktu_tap ||
     (timelineItem?.session?.waktu_tap) ||
-    (sesi?.foto_kegiatan && !isOpenedByPetugas)
+    (sesi?.foto_kegiatan && !isOpenedByPetugas && timelineItem?.opened_by !== 'PETUGAS_KELAS' && sesi?.opened_by !== 'PETUGAS_KELAS')
   );
   const isStartedByTeacher = isTeacherPresent;
 

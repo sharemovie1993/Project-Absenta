@@ -25,7 +25,9 @@ export const AttendanceOpsPage: React.FC = React.memo(() => {
 
   // 🛡️ Universal Role-Ready Guard: Siswa Petugas Kelas tetap di dalam SiswaDashboard (In-Place View)
   React.useEffect(() => {
-    if (user?.role === 'SISWA') {
+    const roleName = String(user?.role?.name || (user as any)?.roleName || (user as any)?.role || '').toUpperCase();
+    const isSiswa = roleName === 'SISWA' || Boolean((user as any)?.siswa_profile) || Boolean((user as any)?.Siswa) || Boolean((user as any)?.siswa);
+    if (isSiswa) {
       const searchParams = new URLSearchParams(window.location.search);
       const subtab = searchParams.get('subtab') || 'kbm';
       navigate(`/dashboard?tab=presensi-kelas&subtab=${subtab}`, { replace: true });

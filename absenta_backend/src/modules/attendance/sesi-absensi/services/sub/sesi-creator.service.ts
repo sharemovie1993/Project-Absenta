@@ -371,11 +371,11 @@ export class SesiCreatorService {
           updated_at: new Date()
         };
         if (isPetugasOpening) {
-          updateData.keterangan = `[DIBUKA_PETUGAS_KELAS] ${user?.name || 'Petugas Kelas'}`;
+          updateData.keterangan = `[DIBUKA_PETUGAS_KELAS] ${user?.full_name || (user as any)?.name || 'Petugas Kelas'}`;
           if (userId) updateData.created_by_user_id = userId;
         } else if (userId && !existingSesi.created_by_user_id) {
           updateData.created_by_user_id = userId;
-          updateData.keterangan = `[DIBUKA_GURU] ${user?.name || 'Guru'}`;
+          updateData.keterangan = `[DIBUKA_GURU] ${user?.full_name || (user as any)?.name || 'Guru'}`;
         }
 
         const updatedSesi = await prisma.sesiAbsensi.update({
@@ -489,7 +489,7 @@ export class SesiCreatorService {
         waktu_selesai: effectiveParsedEnd,
         status: initialStatus,
         foto_kegiatan: finalFotoUrl,
-        keterangan: isPetugasOpening ? `[DIBUKA_PETUGAS_KELAS] ${user?.name || 'Petugas Kelas'}` : `[DIBUKA_GURU] ${user?.name || 'Guru'}`,
+        keterangan: isPetugasOpening ? `[DIBUKA_PETUGAS_KELAS] ${user?.full_name || (user as any)?.name || 'Petugas Kelas'}` : `[DIBUKA_GURU] ${user?.full_name || (user as any)?.name || 'Guru'}`,
         created_by_user_id: userId
       }
     });

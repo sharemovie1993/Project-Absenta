@@ -419,6 +419,13 @@ export function normalizeFromSesiAbsensi(raw: any): KbmItem {
     session: raw, // physical session IS the item here
     status,
     foto_kegiatan: raw.foto_kegiatan || null,
+    opened_by: raw.opened_by || (raw.keterangan?.includes('[DIBUKA_PETUGAS_KELAS]') ? 'PETUGAS_KELAS' : raw.keterangan?.includes('[DIBUKA_GURU]') ? 'GURU' : null),
+    opened_by_name: raw.opened_by_name || (raw.keterangan ? raw.keterangan.replace(/\[DIBUKA_PETUGAS_KELAS\]|\[DIBUKA_GURU\]/, '').trim() : null),
+    opened_by_petugas: Boolean(raw.opened_by_petugas || raw.opened_by === 'PETUGAS_KELAS' || raw.keterangan?.includes('[DIBUKA_PETUGAS_KELAS]')),
+    keterangan: raw.keterangan || null,
+    AbsenGuru: raw.AbsenGuru || null,
+    created_by: raw.created_by || null,
+    created_by_user_id: raw.created_by_user_id || null,
     summary: {
       ...EMPTY_SUMMARY,
       ...summary,
@@ -539,6 +546,14 @@ export function normalizeFromJadwalKbm(raw: any): KbmItem {
     jenis_kegiatan: raw.jenis_kegiatan || raw.kegiatan || raw.type || 'KBM',
     session: physicalSession || null,
     status,
+    foto_kegiatan: physicalSession?.foto_kegiatan || null,
+    opened_by: physicalSession?.opened_by || (physicalSession?.keterangan?.includes('[DIBUKA_PETUGAS_KELAS]') ? 'PETUGAS_KELAS' : physicalSession?.keterangan?.includes('[DIBUKA_GURU]') ? 'GURU' : null),
+    opened_by_name: physicalSession?.opened_by_name || (physicalSession?.keterangan ? physicalSession.keterangan.replace(/\[DIBUKA_PETUGAS_KELAS\]|\[DIBUKA_GURU\]/, '').trim() : null),
+    opened_by_petugas: Boolean(physicalSession?.opened_by_petugas || physicalSession?.opened_by === 'PETUGAS_KELAS' || physicalSession?.keterangan?.includes('[DIBUKA_PETUGAS_KELAS]')),
+    keterangan: physicalSession?.keterangan || null,
+    AbsenGuru: physicalSession?.AbsenGuru || null,
+    created_by: physicalSession?.created_by || null,
+    created_by_user_id: physicalSession?.created_by_user_id || null,
     summary: {
       ...EMPTY_SUMMARY,
       ...merged,

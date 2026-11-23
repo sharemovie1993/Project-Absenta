@@ -391,7 +391,7 @@ export class SesiQueryService {
         created_at: true,
         keterangan: true,
         created_by_user_id: true,
-        created_by: { select: { id: true, name: true, Role: { select: { name: true } } } },
+        created_by: { select: { id: true, full_name: true, Role: { select: { name: true } } } },
         Kelas: { select: { id: true, nama_kelas: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
         UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
@@ -448,10 +448,10 @@ export class SesiQueryService {
 
       if (item.keterangan?.includes('[DIBUKA_PETUGAS_KELAS]') || item.created_by?.Role?.name === 'SISWA') {
         opened_by = 'PETUGAS_KELAS';
-        opened_by_name = (item.keterangan?.replace('[DIBUKA_PETUGAS_KELAS]', '').trim()) || item.created_by?.name || 'Petugas Kelas';
+        opened_by_name = (item.keterangan?.replace('[DIBUKA_PETUGAS_KELAS]', '').trim()) || item.created_by?.full_name || 'Petugas Kelas';
       } else if (item.keterangan?.includes('[DIBUKA_GURU]') || item.created_by?.Role?.name === 'GURU') {
         opened_by = 'GURU';
-        opened_by_name = (item.keterangan?.replace('[DIBUKA_GURU]', '').trim()) || item.created_by?.name || item.Guru?.nama_guru || 'Guru';
+        opened_by_name = (item.keterangan?.replace('[DIBUKA_GURU]', '').trim()) || item.created_by?.full_name || item.Guru?.nama_guru || 'Guru';
       } else if (item.AbsenGuru?.[0]?.status === 'HADIR' || item.AbsenGuru?.[0]?.waktu_tap) {
         opened_by = 'GURU';
         opened_by_name = item.Guru?.nama_guru || 'Guru';
