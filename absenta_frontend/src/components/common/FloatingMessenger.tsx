@@ -32,7 +32,7 @@ export default function FloatingMessenger() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [listFilter, setListFilter] = useState<'ALL' | 'UNREAD' | 'BROADCAST'>('ALL');
+  const [listFilter, setListFilter] = useState<'ALL' | 'UNREAD' | 'GROUP' | 'BROADCAST'>('ALL');
   const [replyText, setReplyText] = useState('');
   const [incomingBanner, setIncomingBanner] = useState<{
     threadId: string;
@@ -113,7 +113,11 @@ export default function FloatingMessenger() {
       const isBc =
         Boolean((t as any)?.context_ref?.isBroadcast) ||
         String(t.title || '').startsWith('📢');
+      const isGrp =
+        t.type === 'GROUP' ||
+        Boolean((t as any)?.context_ref?.isAutoGroup);
       if (listFilter === 'UNREAD' && !t.isUnread) return false;
+      if (listFilter === 'GROUP' && !isGrp) return false;
       if (listFilter === 'BROADCAST' && !isBc) return false;
 
       if (searchQuery.trim()) {
@@ -427,17 +431,18 @@ export default function FloatingMessenger() {
                       className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-[#202c33] border border-slate-200/80 dark:border-slate-700/80 text-slate-800 dark:text-slate-100 placeholder-slate-400 outline-hidden focus:ring-1 focus:ring-[#00a884]"
                     />
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                     {[
                       { id: 'ALL' as const, label: 'Semua' },
                       { id: 'UNREAD' as const, label: `Belum Dibaca${unreadCount > 0 ? ` (${unreadCount})` : ''}` },
+                      { id: 'GROUP' as const, label: '👥 Grup' },
                       { id: 'BROADCAST' as const, label: '📢 Siaran' },
                     ].map((f) => (
                       <button
                         key={f.id}
                         type="button"
                         onClick={() => setListFilter(f.id)}
-                        className={`px-2.5 py-1 rounded-full text-[10.5px] font-bold transition-colors cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-full text-[10.5px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
                           listFilter === f.id
                             ? 'bg-[#d9fdd3] text-[#008069] dark:bg-[#00a884]/25 dark:text-[#00a884]'
                             : 'bg-slate-100 dark:bg-[#202c33] text-slate-500 dark:text-[#8696a0] hover:bg-slate-200/70'
@@ -486,6 +491,11 @@ export default function FloatingMessenger() {
                       const isBc =
                         Boolean(t?.context_ref?.isBroadcast) ||
                         String(t.title || '').startsWith('📢');
+                      const isGrp =
+                        t.type === 'GROUP' ||
+                        Boolean(t?.context_ref?.isAutoGroup);
+                      const grpScope = t?.context_ref?.groupScope;
+                      const memberCount = t?.context_ref?.memberCount || t?.participants?.length || 0;
                       const lastPreview =
                         t.last_message ||
                         t.lastMessage?.content ||
@@ -495,6 +505,10 @@ export default function FloatingMessenger() {
                       );
                       const roleBadge = isBc
                         ? 'SIARAN'
+                        : isGrp
+                        ? grpScope === 'KELAS'
+                          ? `KELAS${memberCount ? ` • ${memberCount}` : ''}`
+                          : `DIVISI${memberCount ? ` • ${memberCount}` : ''}`
                         : t.otherUser?.role || t.otherUser?.role_label || '';
 
                       return (
@@ -512,11 +526,17 @@ export default function FloatingMessenger() {
                             className={`relative w-11 h-11 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 shadow-2xs ${
                               isBc
                                 ? 'bg-amber-500 text-white'
+                                : isGrp
+                                ? grpScope === 'KELAS'
+                                  ? 'bg-indigo-600 text-white'
+                                  : 'bg-teal-600 text-white'
                                 : 'bg-[#00a884] text-white'
                             }`}
                           >
                             {isBc ? (
                               <span className="text-base">📢</span>
+                            ) : isGrp ? (
+                              <span className="text-base">{grpScope === 'KELAS' ? '🏫' : '👥'}</span>
                             ) : (
                               String(t.title || 'CH')
                                 .replace(/^📢\s*/, '')

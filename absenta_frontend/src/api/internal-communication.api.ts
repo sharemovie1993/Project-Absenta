@@ -168,6 +168,17 @@ export const internalCommunicationApi = {
   },
 
   /**
+   * Auto-Generate & Sinkronkan Grup Kelas + Grup Jabatan
+   */
+  async syncAutoGroups(): Promise<{ createdGroups: number; updatedGroups: number; kelasGroups: number; jabatanGroups: number }> {
+    const res = await requestWithFallback<{
+      success: boolean;
+      data: { createdGroups: number; updatedGroups: number; kelasGroups: number; jabatanGroups: number };
+    }>('post', '/communication/sync-groups');
+    return (res as any)?.data;
+  },
+
+  /**
    * Tandai thread sudah dibaca
    */
   async markThreadAsRead(threadId: string): Promise<void> {

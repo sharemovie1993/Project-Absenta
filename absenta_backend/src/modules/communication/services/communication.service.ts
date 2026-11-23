@@ -39,6 +39,9 @@ export interface SendMessageDto {
   }>;
 }
 
+const autoGroupSyncCache = new Map<string, number>();
+const AUTO_GROUP_SYNC_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
 export class CommunicationService {
 
   /**
@@ -49,6 +52,19 @@ export class CommunicationService {
     userId: string, 
     filters?: { type?: string; category?: string; status?: string; search?: string }
   ) {
+    // Pastikan Grup Kelas & Grup Jabatan otomatis tersinkronisasi untuk tenant ini
+    if (tenantId && tenantId !== 'system') {
+      const lastSync = autoGroupSyncCache.get(tenantId) || 0;
+      if (Date.now() - lastSync > AUTO_GROUP_SYNC_TTL_MS) {
+        autoGroupSyncCache.set(tenantId, Date.now());
+        try {
+          await this.syncAutoGroups(tenantId, userId);
+        } catch (err: any) {
+          console.warn('[AutoGroupSync] Background sync warning:', err?.message);
+        }
+      }
+    }
+
     const whereClause: any = {
       Participants: {
         some: { user_id: userId }
@@ -992,6 +1008,432 @@ export class CommunicationService {
       ...thread,
       recipientCount: targetUserIds.length,
       audienceLabel,
+    };
+  }
+
+  /**
+   * 9. Auto-Provision & Sinkronisasi Grup Chat Otomatis (Scope Kelas & Scope Jabatan)
+   */
+  async syncAutoGroups(tenantId: string, triggerUserId?: string): Promise<{
+    createdGroups: number;
+    updatedGroups: number;
+    kelasGroups: number;
+    jabatanGroups: number;
+  }> {
+    if (!tenantId || tenantId === 'system') {
+      return { createdGroups: 0, updatedGroups: 0, kelasGroups: 0, jabatanGroups: 0 };
+    }
+
+    autoGroupSyncCache.set(tenantId, Date.now());
+
+    // 1. Cari user creator fallback (Admin / Kepala Sekolah / Trigger User)
+    let defaultCreatorId = triggerUserId || '';
+    if (!defaultCreatorId) {
+      const adminUser = await prisma.user.findFirst({
+        where: {
+          tenant_id: tenantId,
+          status: 'ACTIVE',
+          Role: { name: { in: ['ADMIN', 'KEPALA_SEKOLAH', 'SUPERADMIN', 'GURU'] } },
+        },
+        select: { id: true },
+      });
+      defaultCreatorId = adminUser?.id || '';
+    }
+    if (!defaultCreatorId) {
+      return { createdGroups: 0, updatedGroups: 0, kelasGroups: 0, jabatanGroups: 0 };
+    }
+
+    // 2. Ambil seluruh Grup yang sudah ada di tenant ini
+    const existingGroupThreads = await (prisma as any).internalThread.findMany({
+      where: {
+        tenant_id: tenantId,
+        type: InternalThreadType.GROUP,
+      },
+      select: {
+        id: true,
+        title: true,
+        context_ref: true,
+      },
+    });
+
+    const existingByKey = new Map<string, { id: string; title: string; context_ref: any }>();
+    for (const gt of existingGroupThreads) {
+      const gKey = gt.context_ref?.groupKey || gt.title;
+      if (gKey) existingByKey.set(String(gKey), gt);
+    }
+
+    let createdGroups = 0;
+    let updatedGroups = 0;
+    let kelasGroupsCount = 0;
+    let jabatanGroupsCount = 0;
+
+    // Helper untuk membuat/memperbarui 1 Grup beserta anggotanya
+    const upsertGroupWithMembers = async (opts: {
+      groupKey: string;
+      groupScope: 'KELAS' | 'JABATAN';
+      title: string;
+      category: InternalThreadCategory;
+      members: Map<string, string>; // userId -> roleLabel
+      extraMeta?: Record<string, any>;
+      welcomeText: string;
+    }) => {
+      if (opts.members.size === 0) return;
+
+      const existing = existingByKey.get(opts.groupKey) || existingByKey.get(opts.title);
+      const contextPayload = {
+        isAutoGroup: true,
+        groupScope: opts.groupScope,
+        groupKey: opts.groupKey,
+        memberCount: opts.members.size,
+        ...(opts.extraMeta || {}),
+      };
+
+      let threadId = existing?.id;
+
+      if (!threadId) {
+        const created = await (prisma as any).internalThread.create({
+          data: {
+            tenant_id: tenantId,
+            type: InternalThreadType.GROUP,
+            title: opts.title,
+            category: opts.category,
+            priority: InternalThreadPriority.NORMAL,
+            status: InternalThreadStatus.ACTIVE,
+            is_confidential: false,
+            context_ref: contextPayload,
+            created_by_id: defaultCreatorId,
+          },
+        });
+        threadId = created.id;
+        createdGroups += 1;
+        existingByKey.set(opts.groupKey, { id: threadId!, title: opts.title, context_ref: contextPayload });
+
+        // Buat pesan sambutan sistem pertama kali grup dibuat
+        await (prisma as any).internalMessage.create({
+          data: {
+            tenant_id: tenantId,
+            thread_id: threadId,
+            sender_id: defaultCreatorId,
+            content: opts.welcomeText,
+            is_system_event: true,
+          },
+        });
+      } else {
+        updatedGroups += 1;
+        await (prisma as any).internalThread.update({
+          where: { id: threadId },
+          data: {
+            title: opts.title,
+            context_ref: contextPayload,
+          },
+        });
+      }
+
+      // Sinkronkan seluruh anggota ke InternalParticipant (skipDuplicates menjaga last_read_at anggota lama!)
+      const participantRows = Array.from(opts.members.entries()).map(([uid, roleLabel]) => ({
+        tenant_id: tenantId,
+        thread_id: threadId,
+        user_id: uid,
+        role_label: roleLabel,
+        last_read_at: new Date(),
+      }));
+
+      await (prisma as any).internalParticipant.createMany({
+        data: participantRows,
+        skipDuplicates: true,
+      });
+    };
+
+    // ── A. AUTO-GENERATE GRUP SCOPE JABATAN / DIVISI ──────────────────────────
+    const [allStaffUsers, activeAssignments] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          tenant_id: tenantId,
+          status: 'ACTIVE',
+          Role: {
+            name: { in: ['ADMIN', 'SUPERADMIN', 'KEPALA_SEKOLAH', 'GURU', 'TU'] },
+          },
+        },
+        include: {
+          Role: { select: { name: true } },
+          Guru: { select: { id: true, jabatan: true } },
+        },
+      }),
+      (prisma as any).organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+        },
+        include: {
+          Position: { select: { code: true, name: true, scope_type: true } },
+          Kelas: { select: { id: true, nama_kelas: true } },
+        },
+      }),
+    ]);
+
+    const userById = new Map<string, any>();
+    for (const u of allStaffUsers) {
+      userById.set(u.id, u);
+    }
+
+    const assignsByUser = new Map<string, any[]>();
+    for (const a of activeAssignments) {
+      if (!a.user_id) continue;
+      if (!assignsByUser.has(a.user_id)) assignsByUser.set(a.user_id, []);
+      assignsByUser.get(a.user_id)!.push(a);
+    }
+
+    const getUserTokens = (u: any): string => {
+      const rName = u.Role?.name || '';
+      const gJab = u.Guru?.jabatan || '';
+      const aList = (assignsByUser.get(u.id) || [])
+        .map((a) => `${a.Position?.code || ''} ${a.Position?.name || ''} ${a.custom_title || ''}`)
+        .join(' ');
+      return `${rName} ${gJab} ${aList}`.toUpperCase();
+    };
+
+    const jabatanDefinitions: Array<{
+      key: string;
+      title: string;
+      category: InternalThreadCategory;
+      welcome: string;
+      matcher: (u: any, tokens: string, userAssigns: any[]) => string | null;
+    }> = [
+      {
+        key: 'JABATAN:MANAJEMEN',
+        title: '🏛️ Grup Manajemen & Pimpinan',
+        category: InternalThreadCategory.UMUM,
+        welcome: '[SISTEM] Ruang koordinasi resmi Manajemen & Pimpinan Sekolah (Kepala Sekolah, Waka, Kaprog, TU, & Admin).',
+        matcher: (u, tokens) => {
+          const r = (u.Role?.name || '').toUpperCase();
+          if (r === 'KEPALA_SEKOLAH') return 'Kepala Sekolah';
+          if (r === 'ADMIN' || r === 'SUPERADMIN') return 'Administrator';
+          if (r === 'TU') return 'Tata Usaha';
+          if (['WAKA', 'KURIKULUM', 'KESISWAAN', 'HUMAS', 'HUBIN', 'SARPRAS', 'KAPROG', 'KEPALA'].some((t) => tokens.includes(t))) {
+            return u.Guru?.jabatan || 'Pimpinan Struktural';
+          }
+          return null;
+        },
+      },
+      {
+        key: 'JABATAN:KURIKULUM',
+        title: '📚 Grup Kurikulum',
+        category: InternalThreadCategory.KURIKULUM,
+        welcome: '[SISTEM] Ruang koordinasi resmi Tim Kurikulum, Kaprog, & Akademik Sekolah.',
+        matcher: (u, tokens) => {
+          const r = (u.Role?.name || '').toUpperCase();
+          if (r === 'KEPALA_SEKOLAH') return 'Kepala Sekolah';
+          if (r === 'ADMIN') return 'Admin Akademik';
+          if (['KURIKULUM', 'KAPROG', 'KBM', 'PENGAJARAN', 'CBT', 'UJIAN'].some((t) => tokens.includes(t))) {
+            return u.Guru?.jabatan || 'Tim Kurikulum';
+          }
+          return null;
+        },
+      },
+      {
+        key: 'JABATAN:KESISWAAN',
+        title: '🛡️ Grup Kesiswaan & Kedisiplinan',
+        category: InternalThreadCategory.KESISWAAN,
+        welcome: '[SISTEM] Ruang koordinasi resmi Tim Kesiswaan, Pembina OSIS, Ketarunaan, & Guru Piket.',
+        matcher: (u, tokens) => {
+          const r = (u.Role?.name || '').toUpperCase();
+          if (r === 'KEPALA_SEKOLAH') return 'Kepala Sekolah';
+          if (r === 'ADMIN') return 'Admin Sekolah';
+          if (['KESISWAAN', 'DISIPLIN', 'KETARUNAAN', 'OSIS', 'EKSKUL', 'PIKET', 'BPBK', 'BK'].some((t) => tokens.includes(t))) {
+            return u.Guru?.jabatan || 'Tim Kesiswaan';
+          }
+          return null;
+        },
+      },
+      {
+        key: 'JABATAN:WALIKELAS',
+        title: '🏢 Grup Wali Kelas',
+        category: InternalThreadCategory.WALIKELAS,
+        welcome: '[SISTEM] Ruang koordinasi resmi seluruh Wali Kelas bersama Pimpinan Sekolah & BK.',
+        matcher: (u, tokens, userAssigns) => {
+          const r = (u.Role?.name || '').toUpperCase();
+          if (r === 'KEPALA_SEKOLAH') return 'Kepala Sekolah';
+          const walasAssign = userAssigns.find(
+            (a) => a.kelas_id || String(a.Position?.code || '').toUpperCase().includes('WALI')
+          );
+          if (walasAssign) {
+            return walasAssign.Kelas?.nama_kelas
+              ? `Wali Kelas ${walasAssign.Kelas.nama_kelas}`
+              : 'Wali Kelas';
+          }
+          if (['WALI KELAS', 'WALIKELAS', 'KURIKULUM', 'KESISWAAN', 'BPBK'].some((t) => tokens.includes(t))) {
+            return u.Guru?.jabatan || 'Koordinator';
+          }
+          return null;
+        },
+      },
+      {
+        key: 'JABATAN:BPBK',
+        title: '🤝 Grup Bimbingan Konseling (BK)',
+        category: InternalThreadCategory.BK,
+        welcome: '[SISTEM] Ruang koordinasi resmi Guru Bimbingan Konseling (BP/BK) & Kesiswaan.',
+        matcher: (u, tokens) => {
+          const r = (u.Role?.name || '').toUpperCase();
+          if (r === 'KEPALA_SEKOLAH') return 'Kepala Sekolah';
+          if (['BPBK', 'KONSELING', 'GURU BK', 'KESISWAAN'].some((t) => tokens.includes(t))) {
+            return u.Guru?.jabatan || 'Tim BP/BK';
+          }
+          return null;
+        },
+      },
+      {
+        key: 'JABATAN:HUBIN',
+        title: '🏭 Grup Hubin & PKL',
+        category: InternalThreadCategory.UMUM,
+        welcome: '[SISTEM] Ruang koordinasi resmi Tim Hubungan Industri (Hubin), Pokja PKL, & Kaprog.',
+        matcher: (u, tokens) => {
+          const r = (u.Role?.name || '').toUpperCase();
+          if (r === 'KEPALA_SEKOLAH') return 'Kepala Sekolah';
+          if (['HUBIN', 'HUMAS', 'PKL', 'PRAKERIN', 'BKK', 'DUDI', 'KAPROG'].some((t) => tokens.includes(t))) {
+            return u.Guru?.jabatan || 'Tim Hubin & PKL';
+          }
+          return null;
+        },
+      },
+      {
+        key: 'JABATAN:SARPRAS',
+        title: '🧰 Grup Sarpras & Inventaris',
+        category: InternalThreadCategory.SARPRAS,
+        welcome: '[SISTEM] Ruang koordinasi resmi Tim Sarana Prasarana, Kepala Bengkel/Lab, & Inventaris.',
+        matcher: (u, tokens) => {
+          const r = (u.Role?.name || '').toUpperCase();
+          if (r === 'KEPALA_SEKOLAH') return 'Kepala Sekolah';
+          if (r === 'ADMIN' || r === 'TU') return 'Staf Sarpras / TU';
+          if (['SARPRAS', 'SARANA', 'ASET', 'LAB', 'BENGKEL', 'TEKNISI'].some((t) => tokens.includes(t))) {
+            return u.Guru?.jabatan || 'Tim Sarpras';
+          }
+          return null;
+        },
+      },
+      {
+        key: 'JABATAN:DEWAN_GURU',
+        title: '👨‍🏫 Grup Dewan Guru & GTK',
+        category: InternalThreadCategory.UMUM,
+        welcome: '[SISTEM] Ruang komunikasi resmi seluruh Dewan Guru & Tenaga Kependidikan (GTK) Sekolah.',
+        matcher: (u) => {
+          const r = (u.Role?.name || '').toUpperCase();
+          if (r === 'KEPALA_SEKOLAH') return 'Kepala Sekolah';
+          if (r === 'ADMIN' || r === 'SUPERADMIN') return 'Administrator';
+          if (r === 'TU') return 'Tata Usaha';
+          return u.Guru?.jabatan || 'Guru';
+        },
+      },
+    ];
+
+    for (const def of jabatanDefinitions) {
+      const members = new Map<string, string>();
+      for (const u of allStaffUsers) {
+        const tokens = getUserTokens(u);
+        const userAssigns = assignsByUser.get(u.id) || [];
+        const label = def.matcher(u, tokens, userAssigns);
+        if (label) {
+          members.set(u.id, label);
+        }
+      }
+      if (members.size >= 1) {
+        await upsertGroupWithMembers({
+          groupKey: def.key,
+          groupScope: 'JABATAN',
+          title: def.title,
+          category: def.category,
+          members,
+          welcomeText: def.welcome,
+        });
+        jabatanGroupsCount += 1;
+      }
+    }
+
+    // ── B. AUTO-GENERATE GRUP SCOPE KELAS (Wali Kelas + Guru Mapel + Siswa Kelas) ──
+    const allKelas = await prisma.kelas.findMany({
+      where: {
+        tenant_id: tenantId,
+        is_active: true,
+      },
+      include: {
+        Siswa: {
+          where: {
+            status: 'AKTIF',
+            user_id: { not: null },
+          },
+          select: { user_id: true, nama_siswa: true },
+        },
+        OrganizationalAssignments: {
+          where: { is_active: true },
+          include: {
+            Position: { select: { name: true, code: true } },
+          },
+        },
+        JadwalKBM: {
+          select: {
+            Guru: { select: { user_id: true, nama_guru: true } },
+            Mapel: { select: { nama_mapel: true } },
+          },
+        },
+        GuruMapel: {
+          select: {
+            Guru: { select: { user_id: true, nama_guru: true } },
+            Mapel: { select: { nama_mapel: true } },
+          },
+        },
+      },
+      orderBy: { nama_kelas: 'asc' },
+    });
+
+    for (const k of allKelas) {
+      const members = new Map<string, string>();
+
+      // 1. Siswa aktif di kelas ini
+      for (const s of k.Siswa || []) {
+        if (s.user_id) {
+          members.set(s.user_id, `Siswa ${k.nama_kelas}`);
+        }
+      }
+
+      // 2. Guru Mapel dari JadwalKBM & GuruMapel di kelas ini
+      for (const gm of k.GuruMapel || []) {
+        const uid = gm.Guru?.user_id;
+        if (uid) {
+          members.set(uid, `Guru ${gm.Mapel?.nama_mapel || 'Mapel'}`);
+        }
+      }
+      for (const jk of k.JadwalKBM || []) {
+        const uid = jk.Guru?.user_id;
+        if (uid && !members.has(uid)) {
+          members.set(uid, `Guru ${jk.Mapel?.nama_mapel || 'Mapel'}`);
+        }
+      }
+
+      // 3. Wali Kelas / Pembina dari OrganizationalAssignments kelas ini
+      for (const oa of k.OrganizationalAssignments || []) {
+        if (oa.user_id) {
+          members.set(oa.user_id, oa.Position?.name || `Wali Kelas ${k.nama_kelas}`);
+        }
+      }
+
+      if (members.size >= 1) {
+        await upsertGroupWithMembers({
+          groupKey: `KELAS:${k.id}`,
+          groupScope: 'KELAS',
+          title: `🏫 Kelas ${k.nama_kelas}`,
+          category: InternalThreadCategory.WALIKELAS,
+          members,
+          extraMeta: { kelasId: k.id, namaKelas: k.nama_kelas },
+          welcomeText: `[SISTEM] Ruang Grup Resmi Kelas ${k.nama_kelas} (Wali Kelas, Guru Mapel, & Siswa) telah aktif.`,
+        });
+        kelasGroupsCount += 1;
+      }
+    }
+
+    return {
+      createdGroups,
+      updatedGroups,
+      kelasGroups: kelasGroupsCount,
+      jabatanGroups: jabatanGroupsCount,
     };
   }
 }

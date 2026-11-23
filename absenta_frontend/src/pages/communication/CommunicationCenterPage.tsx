@@ -52,7 +52,7 @@ export default function CommunicationCenterPage() {
   const { user } = useAuthStore();
 
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<'ALL' | 'UNREAD' | 'DISPOSISI' | 'DIRECT'>('ALL');
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'UNREAD' | 'GROUP' | 'DISPOSISI' | 'DIRECT'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isNewModalOpen, setIsNewModalOpen] = useState<boolean>(false);
   const [newModalTab, setNewModalTab] = useState<'DIRECT' | 'DISPOSISI' | 'BROADCAST'>('DIRECT');
@@ -142,17 +142,30 @@ export default function CommunicationCenterPage() {
   } = useQuery({
     queryKey: communicationKeys.threadList({ 
       category: activeFilter === 'DISPOSISI' ? 'DISPOSISI' : undefined,
-      type: activeFilter === 'DIRECT' ? 'DIRECT' : undefined,
+      type: activeFilter === 'DIRECT' ? 'DIRECT' : activeFilter === 'GROUP' ? 'GROUP' : undefined,
       is_unread: activeFilter === 'UNREAD' ? true : undefined,
       search: searchQuery || undefined
     }),
     queryFn: () => internalCommunicationApi.getThreads({
       category: activeFilter === 'DISPOSISI' ? 'DISPOSISI' : undefined,
-      type: activeFilter === 'DIRECT' ? 'DIRECT' : undefined,
+      type: activeFilter === 'DIRECT' ? 'DIRECT' : activeFilter === 'GROUP' ? 'GROUP' : undefined,
       is_unread: activeFilter === 'UNREAD' ? true : undefined,
       search: searchQuery || undefined
     }),
     staleTime: 1000 * 15,
+  });
+
+  const syncGroupsMutation = useMutation({
+    mutationFn: () => internalCommunicationApi.syncAutoGroups(),
+    onSuccess: (stats) => {
+      toast.success(
+        `Grup Otomatis Tersinkronisasi: ${stats?.kelasGroups || 0} Grup Kelas & ${stats?.jabatanGroups || 0} Grup Jabatan!`
+      );
+      queryClient.invalidateQueries({ queryKey: communicationKeys.allThreads });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal menyinkronkan grup otomatis');
+    },
   });
 
   const threads = useMemo(() => {
@@ -276,19 +289,32 @@ export default function CommunicationCenterPage() {
 
                 <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
                   {canBroadcast && (
-                    <Button
-                      variant="toolbarOutline"
-                      size="toolbar"
-                      onClick={() => {
-                        setNewModalTab('BROADCAST');
-                        setIsNewModalOpen(true);
-                      }}
-                      className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold rounded-xl"
-                      title="Kirim Siaran Broadcast ke Seluruh Pengguna"
-                    >
-                      <span>📢</span>
-                      <span>Broadcast</span>
-                    </Button>
+                    <>
+                      <Button
+                        variant="toolbarOutline"
+                        size="toolbar"
+                        disabled={syncGroupsMutation.isPending}
+                        onClick={() => syncGroupsMutation.mutate()}
+                        className="flex items-center gap-1 text-teal-600 dark:text-teal-400 font-bold rounded-xl"
+                        title="Sinkronkan Otomatis Grup Kelas & Grup Jabatan"
+                      >
+                        <ArrowPathIcon className={`w-3.5 h-3.5 ${syncGroupsMutation.isPending ? 'animate-spin' : ''}`} />
+                        <span>Grup</span>
+                      </Button>
+                      <Button
+                        variant="toolbarOutline"
+                        size="toolbar"
+                        onClick={() => {
+                          setNewModalTab('BROADCAST');
+                          setIsNewModalOpen(true);
+                        }}
+                        className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold rounded-xl"
+                        title="Kirim Siaran Broadcast ke Seluruh Pengguna"
+                      >
+                        <span>📢</span>
+                        <span>Broadcast</span>
+                      </Button>
+                    </>
                   )}
                   <Button
                     variant="toolbarOutline"
@@ -337,7 +363,7 @@ export default function CommunicationCenterPage() {
                 </div>
 
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                  {(['ALL', 'UNREAD', 'DISPOSISI', 'DIRECT'] as const)?.map((filterKey) => (
+                  {(['ALL', 'UNREAD', 'GROUP', 'DISPOSISI', 'DIRECT'] as const)?.map((filterKey) => (
                     <button
                       key={filterKey}
                       type="button"
@@ -350,6 +376,7 @@ export default function CommunicationCenterPage() {
                     >
                       {filterKey === 'ALL' && 'Semua'}
                       {filterKey === 'UNREAD' && 'Belum Dibaca'}
+                      {filterKey === 'GROUP' && '👥 Grup Kelas & Jabatan'}
                       {filterKey === 'DISPOSISI' && 'Disposisi'}
                       {filterKey === 'DIRECT' && 'Langsung'}
                     </button>

@@ -164,6 +164,34 @@ export async function communicationRoutes(fastify: any) {
   });
 
   /**
+   * 5c. Auto-Generate & Sinkronkan Grup Kelas + Grup Jabatan
+   * POST /api/v1/communication/sync-groups
+   */
+  fastify.post('/sync-groups', {
+    handler: async (request: any, reply: any) => {
+      try {
+        const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id;
+        const userId = request.user?.id;
+
+        if (!tenantId || !userId) {
+          reply.status(401);
+          return { success: false, message: 'Autentikasi tidak valid.' };
+        }
+
+        const stats = await communicationService.syncAutoGroups(tenantId, userId);
+        return {
+          success: true,
+          message: `Sinkronisasi grup selesai: ${stats.kelasGroups} Grup Kelas & ${stats.jabatanGroups} Grup Jabatan siap digunakan.`,
+          data: stats,
+        };
+      } catch (err: any) {
+        reply.status(400);
+        return { success: false, message: err.message || 'Gagal menyinkronkan grup otomatis.' };
+      }
+    }
+  });
+
+  /**
    * 6. Kirim pesan baru ke dalam thread
    * POST /api/v1/communication/:id/messages
    */
