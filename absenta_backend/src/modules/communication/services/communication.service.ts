@@ -1588,7 +1588,7 @@ export class CommunicationService {
           id: true,
           nama_kelas: true,
           tingkat: true,
-          Jurusan: { select: { nama_jurusan: true } },
+          Jurusan: { select: { nama: true } },
           OrganizationalAssignments: {
             where: {
               is_active: true,
@@ -1614,7 +1614,7 @@ export class CommunicationService {
           id: kelasData.id,
           nama_kelas: kelasData.nama_kelas,
           tingkat: kelasData.tingkat,
-          jurusan: kelasData.Jurusan?.nama_jurusan || null,
+          jurusan: kelasData.Jurusan?.nama || null,
           tahun_pelajaran: activeTp?.tahun || ctx.tahunPelajaran || null,
         };
         const walasAssign =
