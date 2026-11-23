@@ -9,6 +9,7 @@ export async function wilayahRoutes(fastify: any) {
   fastify.get('/kelurahan', { preHandler: [determineDataScope()] }, wilayahController.getKelurahan);
   fastify.get('/kodepos', { preHandler: [determineDataScope()] }, wilayahController.getKodePos);
   fastify.get('/stats', { preHandler: [determineDataScope()] }, wilayahController.getStats);
+  fastify.get('/next-code', { preHandler: [determineDataScope()] }, wilayahController.getNextCode);
   fastify.get('/manage', { preHandler: [determineDataScope()] }, wilayahController.listManageWilayah);
   fastify.post('/manage', { preHandler: [requireCapability('system.wilayah.manage'), determineDataScope()] }, wilayahController.createWilayah);
   fastify.put('/manage/:kode', { preHandler: [requireCapability('system.wilayah.manage'), determineDataScope()] }, wilayahController.updateWilayah);

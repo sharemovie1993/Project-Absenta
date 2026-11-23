@@ -375,6 +375,95 @@ export const wilayahController = {
     }
   },
 
+  // GET /api/wilayah/next-code?tingkat=4&parent_kode=3214050
+  async getNextCode(request: any, reply: any) {
+    try {
+      const { tingkat, parent_kode } = (request.query || {}) as {
+        tingkat?: string;
+        parent_kode?: string;
+      };
+
+      const tingkatNum = parseInt(String(tingkat || '1'), 10);
+      const cleanParent = parent_kode ? String(parent_kode).trim() : '';
+
+      if (tingkatNum === 1) {
+        const provs = await prisma.refWilayah.findMany({
+          where: { tingkat: 1 },
+          select: { kode: true },
+        });
+        let maxNum = 10;
+        for (const p of provs) {
+          const n = parseInt(p.kode.replace(/\D/g, ''), 10);
+          if (!isNaN(n) && n > maxNum && n < 99) maxNum = n;
+        }
+        let candidate = String(maxNum + 1).padStart(2, '0');
+        while (await prisma.refWilayah.findUnique({ where: { kode: candidate } })) {
+          maxNum++;
+          candidate = String(maxNum + 1).padStart(2, '0');
+        }
+        return reply.status(200).send({
+          success: true,
+          data: { next_kode: candidate, tingkat: 1, parent_kode: null },
+        });
+      }
+
+      if (!cleanParent) {
+        return reply.status(200).send({
+          success: true,
+          data: { next_kode: '', tingkat: tingkatNum, parent_kode: null },
+        });
+      }
+
+      const children = await prisma.refWilayah.findMany({
+        where: { parent_kode: cleanParent },
+        select: { kode: true },
+      });
+
+      let nextKode = '';
+      const numericCodes = children
+        .map((c) => c.kode.trim())
+        .filter((k) => /^\d+$/.test(k));
+
+      if (numericCodes.length > 0) {
+        numericCodes.sort((a, b) => (BigInt(a) > BigInt(b) ? 1 : BigInt(a) < BigInt(b) ? -1 : 0));
+        const maxCodeStr = numericCodes[numericCodes.length - 1];
+        const targetLen = maxCodeStr.length;
+        let maxBig = BigInt(maxCodeStr);
+        const step = tingkatNum === 3 && maxCodeStr.endsWith('0') ? 10n : 1n;
+        let candidateBig = maxBig + step;
+        nextKode = candidateBig.toString().padStart(targetLen, '0');
+
+        while (await prisma.refWilayah.findUnique({ where: { kode: nextKode } })) {
+          candidateBig += 1n;
+          nextKode = candidateBig.toString().padStart(targetLen, '0');
+        }
+      } else {
+        const defaultSuffix = tingkatNum === 2 ? '01' : tingkatNum === 3 ? '010' : '001';
+        nextKode = `${cleanParent}${defaultSuffix}`;
+        let counter = 1;
+        while (await prisma.refWilayah.findUnique({ where: { kode: nextKode } })) {
+          counter++;
+          const padLen = tingkatNum === 2 ? 2 : 3;
+          nextKode = `${cleanParent}${String(counter).padStart(padLen, '0')}`;
+        }
+      }
+
+      return reply.status(200).send({
+        success: true,
+        data: {
+          next_kode: nextKode,
+          tingkat: tingkatNum,
+          parent_kode: cleanParent,
+        },
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        message: error?.message || 'Gagal membuat kode wilayah otomatis',
+      });
+    }
+  },
+
   // GET /api/wilayah/manage?tingkat=1&parent_kode=32&search=bandung&page=1&limit=25
   async listManageWilayah(request: any, reply: any) {
     try {

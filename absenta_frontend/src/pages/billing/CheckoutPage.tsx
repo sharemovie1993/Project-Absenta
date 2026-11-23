@@ -577,7 +577,11 @@ function CheckoutContent() {
 
             {step === 'activate' && (
               <Suspense fallback={<div className="h-96 bg-slate-100 dark:bg-slate-800 rounded-3xl animate-pulse" />}>
-                <CheckoutSuccessStep invoiceDetails={invoiceDetails} />
+                <CheckoutSuccessStep 
+                  invoiceDetails={invoiceDetails} 
+                  plan={plan}
+                  cycle={cycle}
+                />
               </Suspense>
             )}
           </AnimatePresence>

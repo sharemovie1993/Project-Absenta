@@ -6,7 +6,10 @@ import {
   RefreshCw, 
   Copy,
   BookOpen,
-  ChevronDown
+  ChevronDown,
+  Check,
+  ShieldCheck,
+  Download
 } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { formatCurrency } from '@/api/plans.api';
@@ -43,6 +46,20 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
   const inv = invoiceDetails?.data || (invoiceDetails?.invoice_number ? invoiceDetails : null);
   const activeTx = inv?.active_transaction;
   const [openInstructionIdx, setOpenInstructionIdx] = useState<number | null>(0);
+
+  const amountVal = Number(inv?.total_amount ?? inv?.amount ?? 0);
+
+  const handleCopyAmount = () => {
+    if (amountVal > 0) {
+      navigator.clipboard.writeText(String(amountVal));
+      toast.success(`Nominal ${formatCurrency(amountVal)} disalin!`);
+    }
+  };
+
+  const handleCopyPayCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast.success('Nomor Virtual Account disalin!');
+  };
 
   const instructions: Array<{ title: string; steps: string[] }> = useMemo(() => {
     const raw = activeTx?.instructions || 
@@ -105,7 +122,7 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
           steps: [
             'Buka aplikasi Mobile Banking pada smartphone Anda dan lakukan login.',
             'Pilih menu Transfer atau Pembayaran > Virtual Account / Tagihan.',
-            `Masukkan Nomor Virtual Account: ${payCode}.`,
+            `Masukkan Nomor Virtual Account: <strong>${payCode}</strong>.`,
             'Pastikan nama penerima dan nominal transfer persis sesuai tagihan.',
             'Konfirmasi transaksi dan masukkan PIN Mobile Banking Anda untuk menyelesaikan.'
           ]
@@ -115,7 +132,7 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
           steps: [
             'Masukkan kartu ATM dan PIN Anda pada mesin ATM.',
             'Pilih menu Transaksi Lainnya > Pembayaran > Virtual Account.',
-            `Masukkan Nomor Virtual Account: ${payCode}.`,
+            `Masukkan Nomor Virtual Account: <strong>${payCode}</strong>.`,
             'Periksa rincian pembayaran di layar ATM.',
             'Tekan Ya / Benar untuk memproses transaksi dan simpan struk bukti transfer.'
           ]
@@ -126,7 +143,7 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
             'Buka aplikasi perbankan atau ATM bank lain.',
             'Pilih menu Transfer Antar-Bank.',
             'Pilih bank tujuan sesuai nama Virtual Account di atas.',
-            `Masukkan nomor rekening tujuan dengan nomor Virtual Account: ${payCode}.`,
+            `Masukkan nomor rekening tujuan dengan nomor Virtual Account: <strong>${payCode}</strong>.`,
             'Masukkan nominal transfer persis sesuai jumlah tagihan hingga digit terakhir.',
             'Selesaikan transaksi hingga bukti transfer berhasil diterbitkan.'
           ]
@@ -169,23 +186,26 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
-      className="max-w-2xl mx-auto w-full"
+      className="max-w-2xl mx-auto w-full px-2 sm:px-0 pb-24 lg:pb-0"
     >
-      <Card className="p-8 border-none shadow-2xl shadow-blue-500/5 ring-1 ring-slate-100 dark:ring-slate-800 bg-white dark:bg-slate-900 rounded-3xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-36 h-36 bg-blue-500/5 rounded-full blur-3xl -z-10" />
+      <Card className="p-5 sm:p-8 border-none shadow-2xl shadow-blue-500/5 ring-1 ring-slate-100 dark:ring-slate-800 bg-white dark:bg-slate-900 rounded-3xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-36 h-36 bg-blue-500/5 rounded-full blur-3xl -z-10 pointer-events-none" />
 
         {/* Top Status */}
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-5 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-5 mb-6 gap-3">
           <div>
-            <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1.5">
+            <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-0.5 rounded-full">
+              Menunggu Pembayaran
+            </span>
+            <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight mt-1.5 leading-none">
               Selesaikan Pembayaran
             </h3>
-            <p className="text-[11px] font-bold text-slate-400">
-              Invoice: <span className="font-mono text-slate-600 dark:text-slate-300">{inv.invoice_number || invoiceToken}</span>
+            <p className="text-[11px] font-bold text-slate-400 mt-1">
+              Invoice Ref: <span className="font-mono text-slate-700 dark:text-slate-300">{inv.invoice_number || invoiceToken}</span>
             </p>
           </div>
-          <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider">
-            <Clock size={12} className="animate-pulse" />
+          <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-xl text-xs font-mono font-bold shrink-0 self-start sm:self-auto">
+            <Clock size={14} className="animate-pulse text-amber-600 shrink-0" />
             <span>
               {expiredLocal 
                 ? 'Kedaluwarsa' 
@@ -196,58 +216,68 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
         </div>
 
         <div className="space-y-6">
-          {/* Amount Card */}
-          <div className="p-6 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 rounded-2xl text-center">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
-              Jumlah Transfer Pas
+          {/* Amount Card with 1-click Copy */}
+          <div className="p-5 sm:p-6 bg-gradient-to-b from-blue-50/50 to-slate-50 dark:from-slate-800/40 dark:to-slate-800/20 border border-blue-100 dark:border-slate-800 rounded-3xl text-center relative group">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+              Jumlah Transfer Pas (Wajib Sesuai)
             </span>
-            <strong className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
-              {formatCurrency(Number(inv.total_amount ?? inv.amount ?? 0))}
-            </strong>
-            <span className="text-[10px] text-slate-400 block mt-1 font-medium italic">
-              Harus persis sama hingga digit terakhir
+            <div className="flex items-center justify-center gap-2.5 my-1">
+              <strong className="text-2xl sm:text-4xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
+                {formatCurrency(amountVal)}
+              </strong>
+              <button
+                type="button"
+                onClick={handleCopyAmount}
+                className="p-1.5 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-500 hover:text-blue-600 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors shadow-2xs"
+                title="Salin Nominal Pas"
+              >
+                <Copy size={15} />
+              </button>
+            </div>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-medium">
+              Harus persis sama hingga 3 digit terakhir agar terverifikasi otomatis
             </span>
           </div>
 
           {/* QRIS Code Image */}
           {activeTx?.qr_url && (
-            <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50/20 dark:bg-slate-900/30">
-              <div className="bg-white p-4 rounded-2xl shadow-xl inline-block">
+            <div className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50/40 dark:bg-slate-900/30">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-xl inline-block border border-slate-100">
                 <img
                   src={resolveProfilePhotoUrl(activeTx.qr_url)}
                   alt="QRIS Code"
-                  className="w-48 h-48 block object-contain"
+                  className="w-48 h-48 sm:w-56 sm:h-56 block object-contain"
                 />
               </div>
-              <span className="text-[10px] font-bold text-slate-400 mt-4 text-center max-w-sm leading-relaxed">
-                Pindai kode QRIS di atas menggunakan aplikasi e-wallet Anda (GoPay, OVO, Dana, LinkAja, ShopeePay, BCA Mobile, dll.)
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-4 text-center max-w-sm leading-relaxed">
+                Pindai kode QRIS di atas dengan aplikasi e-wallet Anda (GoPay, OVO, Dana, LinkAja, ShopeePay, BCA Mobile, dll.)
               </span>
             </div>
           )}
 
           {/* Virtual Account / Pay Code */}
           {activeTx?.pay_code && !activeTx?.qr_url && (
-            <div className="p-5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 rounded-2xl text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+            <div className="p-5 sm:p-6 bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-3xl text-center">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">
                 Nomor Virtual Account / Kode Bayar
               </span>
-              <div className="flex items-center justify-center gap-3">
-                <strong className="text-2xl font-mono font-black text-slate-800 dark:text-white tracking-widest">
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                <strong className="text-2xl sm:text-3xl font-mono font-black text-slate-900 dark:text-white tracking-widest select-all">
                   {activeTx.pay_code}
                 </strong>
-                <button
+                <Button
                   type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(activeTx.pay_code);
-                    toast.success('Kode bayar disalin!');
-                  }}
-                  className="p-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopyPayCode(activeTx.pay_code)}
+                  className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold gap-1.5"
                 >
-                  <Copy size={14} />
-                </button>
+                  <Copy size={13} />
+                  <span>Salin VA</span>
+                </Button>
               </div>
-              <span className="text-[10px] text-slate-400 block mt-2 font-medium">
-                Gunakan kode VA di atas untuk melakukan transfer melalui ATM/M-Banking.
+              <span className="text-[11px] text-slate-400 block mt-2.5 font-medium">
+                Gunakan nomor VA di atas sebagai rekening tujuan transfer di ATM / M-Banking.
               </span>
             </div>
           )}
@@ -261,7 +291,7 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
                   <span>Petunjuk Pembayaran</span>
                 </h4>
                 <span className="text-[10px] text-slate-400 font-medium">
-                  {instructions.length} Pilihan Metode
+                  {instructions.length} Saluran Panduan
                 </span>
               </div>
 
@@ -310,7 +340,7 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
             </div>
           )}
 
-          {/* Actions buttons */}
+          {/* Desktop Actions */}
           <div className="space-y-3 pt-6 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 py-1">
               <span className="relative flex h-2 w-2">
@@ -325,7 +355,7 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
               size="lg"
               onClick={() => handleCheckPaymentStatus(false)}
               disabled={processing}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl font-bold py-3.5 shadow-lg"
+              className="w-full h-12 flex items-center justify-center gap-2 rounded-2xl font-black py-3.5 shadow-lg shadow-blue-500/25 bg-blue-600 hover:bg-blue-700 text-white"
             >
               <RefreshCw size={16} className={`${processing ? 'animate-spin' : ''}`} />
               <span>Verifikasi Pembayaran Sekarang</span>
@@ -333,6 +363,22 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
           </div>
         </div>
       </Card>
+
+      {/* Sticky Mobile Verification Bar (Muncul di Mobile < lg) */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 p-3.5 px-4 shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
+        <div className="max-w-md mx-auto">
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => handleCheckPaymentStatus(false)}
+            disabled={processing}
+            className="w-full h-12 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <RefreshCw size={16} className={`${processing ? 'animate-spin' : ''}`} />
+            <span>{processing ? 'Memeriksa...' : 'Verifikasi Pembayaran Sekarang'}</span>
+          </Button>
+        </div>
+      </div>
     </motion.div>
   );
 });
