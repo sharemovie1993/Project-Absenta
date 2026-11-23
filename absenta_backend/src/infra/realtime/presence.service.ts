@@ -226,6 +226,19 @@ export class PresenceService {
   }
 
   /**
+   * Export active user IDs grouped by tenantId for cluster-wide Redis telemetry aggregation
+   */
+  public getActiveUserIdsByTenant(): Record<string, string[]> {
+    const result: Record<string, string[]> = {};
+    for (const [tId, users] of this.tenantPresences.entries()) {
+      if (users.size > 0) {
+        result[tId] = Array.from(users.keys());
+      }
+    }
+    return result;
+  }
+
+  /**
    * Get detailed active users summary for a tenant
    */
   public getTenantSummary(tenantId: string): {

@@ -19,42 +19,104 @@ function getCpuSpec(): string {
   return 'Unknown CPU';
 }
 
-async function getCpuUsageRatio(): Promise<number> {
-  return new Promise((resolve) => {
-    try {
-      const cpusStart = os.cpus();
-      setTimeout(() => {
-        try {
-          const cpusEnd = os.cpus();
-          let idleDelta = 0;
-          let totalDelta = 0;
+// ─── Continuous 5-Second System Resource Sampler (Rolling 2-Minute Window) ───
+// Mengukur delta CPU & pemakaian RAM setiap 5 detik secara kontinyu agar lonjakan
+// (spike) yang terjadi selama 5-30 detik di tengah interval 2 menit tetap terekam.
+let lastCpuTimes: os.CpuInfo[] | null = null;
+const cpuSamplesWindow: number[] = [];
+const memSamplesWindow: number[] = [];
+let samplerTimerStarted = false;
 
-          for (let i = 0; i < cpusStart.length; i++) {
-            const start = cpusStart[i].times;
-            const end = cpusEnd[i].times;
-
-            const startTotal = start.user + start.nice + start.sys + start.idle + start.irq;
-            const endTotal = end.user + end.nice + end.sys + end.idle + end.irq;
-
-            idleDelta += end.idle - start.idle;
-            totalDelta += endTotal - startTotal;
-          }
-
-          if (totalDelta <= 0) {
-            resolve(0);
-            return;
-          }
-
-          const usage = Math.max(0, Math.min(1, 1 - (idleDelta / totalDelta)));
-          resolve(parseFloat(usage.toFixed(4)));
-        } catch {
-          resolve(0);
-        }
-      }, 150);
-    } catch {
-      resolve(0);
+function sampleResourceTick(): void {
+  try {
+    const currentCpus = os.cpus();
+    if (lastCpuTimes && lastCpuTimes.length === currentCpus.length) {
+      let idleDelta = 0;
+      let totalDelta = 0;
+      for (let i = 0; i < currentCpus.length; i++) {
+        const start = lastCpuTimes[i].times;
+        const end = currentCpus[i].times;
+        const startTotal = start.user + start.nice + start.sys + start.idle + start.irq;
+        const endTotal = end.user + end.nice + end.sys + end.idle + end.irq;
+        idleDelta += end.idle - start.idle;
+        totalDelta += endTotal - startTotal;
+      }
+      if (totalDelta > 0) {
+        const ratio = Math.max(0, Math.min(1, 1 - idleDelta / totalDelta));
+        cpuSamplesWindow.push(parseFloat(ratio.toFixed(4)));
+        if (cpuSamplesWindow.length > 36) cpuSamplesWindow.shift(); // Keep last 3 mins max
+      }
     }
-  });
+    lastCpuTimes = currentCpus;
+
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    if (totalMem > 0) {
+      const memRatio = Math.max(0, Math.min(1, (totalMem - freeMem) / totalMem));
+      memSamplesWindow.push(parseFloat(memRatio.toFixed(4)));
+      if (memSamplesWindow.length > 36) memSamplesWindow.shift();
+    }
+  } catch {}
+}
+
+function startContinuousResourceSampler(): void {
+  if (samplerTimerStarted) return;
+  samplerTimerStarted = true;
+  lastCpuTimes = os.cpus();
+  setInterval(sampleResourceTick, 5000);
+}
+
+async function consumeResourceWindowStats(): Promise<{
+  avgCpuRatio: number;
+  peakCpuRatio: number;
+  avgMemRatio: number;
+  peakMemRatio: number;
+  totalMemMb: number;
+  usedMemMb: number;
+}> {
+  // Take one immediate tick if buffer is empty
+  if (cpuSamplesWindow.length === 0) {
+    await new Promise<void>((resolve) => {
+      sampleResourceTick();
+      setTimeout(() => {
+        sampleResourceTick();
+        resolve();
+      }, 150);
+    });
+  }
+
+  const cpuCopy = cpuSamplesWindow.splice(0, cpuSamplesWindow.length);
+  const memCopy = memSamplesWindow.splice(0, memSamplesWindow.length);
+
+  const avgCpuRatio = cpuCopy.length > 0
+    ? parseFloat((cpuCopy.reduce((a, b) => a + b, 0) / cpuCopy.length).toFixed(4))
+    : 0;
+  const peakCpuRatio = cpuCopy.length > 0
+    ? parseFloat(Math.max(...cpuCopy).toFixed(4))
+    : avgCpuRatio;
+
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const currentMemRatio = totalMem > 0 ? parseFloat(((totalMem - freeMem) / totalMem).toFixed(4)) : 0;
+
+  const avgMemRatio = memCopy.length > 0
+    ? parseFloat((memCopy.reduce((a, b) => a + b, 0) / memCopy.length).toFixed(4))
+    : currentMemRatio;
+  const peakMemRatio = memCopy.length > 0
+    ? parseFloat(Math.max(...memCopy).toFixed(4))
+    : currentMemRatio;
+
+  const totalMemMb = Math.round(totalMem / (1024 * 1024));
+  const usedMemMb = Math.round(totalMemMb * peakMemRatio);
+
+  return {
+    avgCpuRatio,
+    peakCpuRatio,
+    avgMemRatio,
+    peakMemRatio,
+    totalMemMb,
+    usedMemMb,
+  };
 }
 
 function getRamSpecGB(): string {
@@ -144,17 +206,19 @@ export const heartbeatService = {
     try {
       console.log(`[Heartbeat] Leader instance (pid ${process.pid}) collecting metrics...`);
 
-      // 1. Get realtime active logged-in users count from Presence Engine
+      const { consumeIntervalStats, getClusterActiveUsers } = require('@/middlewares/accessSourceMiddleware');
+
+      // 1. Get cluster-wide realtime active users (WebSocket + HTTP active users across all 4 PM2 workers)
       let activeUsers = 0;
+      let clusterTenantUsers: Record<string, number> = {};
       try {
-        activeUsers = presenceService.getActiveUserCount();
+        const clusterPresence = await getClusterActiveUsers();
+        activeUsers = clusterPresence.globalActiveUsers;
+        clusterTenantUsers = clusterPresence.byTenant || {};
       } catch (e: any) {
-        console.warn('[Heartbeat] Failed to get live active users from presenceService:', e.message);
-        // Fallback to active registered count if presence engine is not initialized
+        console.warn('[Heartbeat] Failed to get cluster active users:', e.message);
         try {
-          activeUsers = await prisma.user.count({
-            where: { status: 'ACTIVE' }
-          });
+          activeUsers = presenceService.getActiveUserCount();
         } catch {}
       }
 
@@ -172,10 +236,11 @@ export const heartbeatService = {
         console.error('[Heartbeat] Failed to calculate database size:', err.message);
       }
 
-      // 3. Get system memory usage ratio
-      const totalMem = os.totalmem();
-      const freeMem = os.freemem();
-      const memoryUsage = parseFloat((totalMem > 0 ? (totalMem - freeMem) / totalMem : 0).toFixed(4));
+      // 3. Get 2-minute continuous resource window stats (5s sampler: Peak & Average CPU/RAM)
+      const resourceStats = await consumeResourceWindowStats();
+      // Gunakan peak ratio dari jendela 2 menit agar spike 5-30 detik tidak hilang saat dikirim ke ServerMetricLog
+      const memoryUsage = resourceStats.peakMemRatio;
+      const cpuUsage = resourceStats.peakCpuRatio;
 
       // 4. Get last tapped activity timestamp
       let lastTapped = new Date();
@@ -209,12 +274,14 @@ export const heartbeatService = {
         });
 
         for (const t of tenants) {
-          // Get realtime active user count for this specific tenant from Presence Engine
-          let tActiveUsers = 0;
-          try {
-            tActiveUsers = presenceService.getActiveUserCount(t.id);
-          } catch {
-            tActiveUsers = 0;
+          // Get cluster-wide active user count for this specific tenant
+          let tActiveUsers = clusterTenantUsers[t.id] ?? 0;
+          if (!tActiveUsers) {
+            try {
+              tActiveUsers = presenceService.getActiveUserCount(t.id);
+            } catch {
+              tActiveUsers = 0;
+            }
           }
 
           // Get last tapped activity timestamp for this specific tenant
@@ -306,13 +373,17 @@ export const heartbeatService = {
         console.warn('[Heartbeat] Gagal mengumpulkan telemetri EasyTunnel:', e.message);
       }
 
-      // 6. Measure CPU usage ratio & HTTP response time for this 2-minute interval
-      const cpuUsage = await getCpuUsageRatio();
-      const { consumeIntervalStats } = require('@/middlewares/accessSourceMiddleware');
-      const intervalStats = consumeIntervalStats();
+      // 6. Consume cluster-wide HTTP response time & request volume for this 2-minute interval
+      const intervalStats = await consumeIntervalStats();
 
       // 7. Send metrics to License Server
-      console.log(`[Heartbeat] Sending metrics: activeUsers=${activeUsers}, dbSize=${dbSize}MB, mem=${(memoryUsage * 100).toFixed(2)}%, cpu=${(cpuUsage * 100).toFixed(2)}%, resp=${intervalStats.overallAvgMs}ms (${intervalStats.totalHits} hits in 2m), tenants=${tenantList.length}`);
+      console.log(
+        `[Heartbeat] Sending cluster metrics: activeUsers=${activeUsers}, dbSize=${dbSize}MB, ` +
+        `memPeak=${(memoryUsage * 100).toFixed(2)}% (${resourceStats.usedMemMb}/${resourceStats.totalMemMb}MB), ` +
+        `cpuPeak=${(cpuUsage * 100).toFixed(2)}% (avg=${(resourceStats.avgCpuRatio * 100).toFixed(2)}%), ` +
+        `respAvg=${intervalStats.overallAvgMs}ms (max=${intervalStats.maxResponseTimeMs}ms, ${intervalStats.totalHits} hits in 2m across cluster), ` +
+        `tenants=${tenantList.length}`
+      );
 
       const currentScenario = getDeployScenario();
       const payload: any = {
@@ -320,9 +391,14 @@ export const heartbeatService = {
         dbSize,
         memoryUsage,
         cpuUsage,
+        avgCpuUsage: resourceStats.avgCpuRatio,
+        peakCpuUsage: resourceStats.peakCpuRatio,
+        memoryUsedMb: resourceStats.usedMemMb,
+        totalMemoryMb: resourceStats.totalMemMb,
         localAvgResponseTimeMs: intervalStats.localAvgMs || undefined,
         publicAvgResponseTimeMs: intervalStats.publicAvgMs || undefined,
         avgResponseTimeMs: intervalStats.overallAvgMs || undefined,
+        maxResponseTimeMs: intervalStats.maxResponseTimeMs || undefined,
         requestsCount: intervalStats.totalHits || 0,
         localRequestsToday: intervalStats.localHits || undefined,
         publicRequestsToday: intervalStats.publicHits || undefined,
@@ -372,12 +448,14 @@ export const heartbeatService = {
   },
 
   startCronJob(): void {
+    // Mulai continuous 5-second CPU & RAM sampler
+    startContinuousResourceSampler();
     // Jalankan setiap 2 menit. Distributed lock memastikan hanya 1 dari N
     // cluster instance yang benar-benar mengirim heartbeat per siklus.
     cron.schedule('*/2 * * * *', async () => {
       console.log(`[Heartbeat] Cron triggered (pid ${process.pid}), contending for leader lock...`);
       await this.collectAndSendMetrics();
     });
-    console.log('[Heartbeat] Heartbeat sync job scheduled (every 2 min, distributed-lock guarded).');
+    console.log('[Heartbeat] Heartbeat sync job scheduled (every 2 min, 5s continuous resource sampler & Redis cluster aggregation active).');
   }
 };
