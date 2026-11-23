@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { 
   PaperAirplaneIcon, 
   PaperClipIcon, 
@@ -12,14 +14,16 @@ import {
   EllipsisVerticalIcon,
   MagnifyingGlassIcon,
   PhoneIcon,
-  VideoCameraIcon,
-  XMarkIcon
+  VideoCameraIcon
 } from '@heroicons/react/24/outline';
 import { 
+  internalCommunicationApi,
+  communicationKeys,
   InternalThreadItem, 
   InternalMessageItem, 
   InternalThreadStatus 
 } from '@/api/internal-communication.api';
+import { useAuth } from '@/hooks/useAuth';
 import { MessageBubble } from './MessageBubble';
 import { QuickTemplatesModal } from './QuickTemplatesModal';
 import { format, isToday, isYesterday } from 'date-fns';
@@ -27,31 +31,92 @@ import { id as idLocale } from 'date-fns/locale';
 import { resolveProfilePhotoUrl } from '@/lib/utils';
 
 interface ChatConversationPanelProps {
-  thread: InternalThreadItem;
-  messages: InternalMessageItem[];
-  isLoadingMessages: boolean;
-  onSendMessage: (payload: { content: string; attachments?: any[] }) => void;
-  isSendingMessage: boolean;
+  threadId?: string;
+  thread?: InternalThreadItem;
+  messages?: InternalMessageItem[];
+  isLoadingMessages?: boolean;
+  onSendMessage?: (payload: { content: string; attachments?: any[] }) => void;
+  isSendingMessage?: boolean;
   onUpdateStatus?: (status: InternalThreadStatus) => void;
   isUpdatingStatus?: boolean;
   onStartCall?: (type: 'AUDIO' | 'VIDEO') => void;
+  onStartAudioCall?: (recipientId: string, recipientName: string) => void;
+  onStartVideoCall?: (recipientId: string, recipientName: string) => void;
+  onJoinVirtualMeeting?: () => void;
+  onSwitchThread?: (threadId: string) => void;
 }
 
 export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
-  thread,
-  messages,
-  isLoadingMessages,
-  onSendMessage,
-  isSendingMessage,
+  threadId,
+  thread: threadProp,
+  messages: messagesProp,
+  isLoadingMessages: isLoadingMessagesProp,
+  onSendMessage: onSendMessageProp,
+  isSendingMessage: isSendingMessageProp,
   onUpdateStatus,
   isUpdatingStatus,
-  onStartCall
+  onStartCall,
+  onStartAudioCall,
+  onStartVideoCall,
+  onSwitchThread
 }) => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [inputText, setInputText] = useState('');
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+
+  const effectiveThreadId = threadId || threadProp?.id || '';
+
+  const detailQuery = useQuery({
+    queryKey: communicationKeys.messages(effectiveThreadId),
+    queryFn: () => internalCommunicationApi.getThreadMessages(effectiveThreadId),
+    enabled: Boolean(effectiveThreadId && (!threadProp || !messagesProp)),
+    staleTime: 5000,
+  });
+
+  const thread = (threadProp || detailQuery.data?.thread || {
+    id: effectiveThreadId,
+    title: 'Percakapan Sekolah',
+    type: 'DIRECT',
+    category: 'UMUM',
+    priority: 'NORMAL',
+    status: 'ACTIVE',
+    is_confidential: false,
+    participants: [],
+  }) as InternalThreadItem;
+
+  const messages = messagesProp || detailQuery.data?.messages || [];
+  const isLoadingMessages = isLoadingMessagesProp ?? detailQuery.isLoading;
+
+  const sendMutation = useMutation({
+    mutationFn: (payload: { content: string; attachments?: any[] }) =>
+      internalCommunicationApi.sendMessage(effectiveThreadId, payload),
+    onSuccess: (newMsg) => {
+      queryClient.setQueryData(communicationKeys.messages(effectiveThreadId), (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          messages: [...(old.messages || []), { ...newMsg, is_me: true }],
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: communicationKeys.allThreads });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal mengirim pesan');
+    },
+  });
+
+  const isSendingMessage = isSendingMessageProp ?? sendMutation.isPending;
+  const onSendMessage = (payload: { content: string; attachments?: any[] }) => {
+    if (onSendMessageProp) {
+      onSendMessageProp(payload);
+    } else if (effectiveThreadId) {
+      sendMutation.mutate(payload);
+    }
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -184,7 +249,7 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
     return groups;
   }, [messages]);
 
-  // Lawan bicara
+  // Lawan bicara & deteksi saluran siaran satu arah (Broadcast)
   const otherUser = thread.participants?.find(p => p.user_id !== thread.created_by) || thread.participants?.[0];
   const interlocutorName = thread.title || otherUser?.name || 'Kontak Sekolah';
   const rawInterlocutorRole = otherUser?.role_label || otherUser?.role;
@@ -192,6 +257,45 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
     typeof rawInterlocutorRole === 'object'
       ? String((rawInterlocutorRole as any)?.name || 'GTK')
       : String(rawInterlocutorRole || 'GTK');
+
+  const isBroadcastThread =
+    Boolean((thread as any)?.context_ref?.isBroadcast) ||
+    String(thread.title || '').startsWith('📢');
+
+  const broadcastSenderId =
+    (thread as any)?.created_by ||
+    messages[0]?.sender_id ||
+    '';
+
+  const userRoleName = useMemo(() => {
+    const raw = (user as any)?.role;
+    if (!raw) return String((user as any)?.roleName || '').toUpperCase();
+    if (typeof raw === 'object') return String(raw.name || '').toUpperCase();
+    return String(raw).toUpperCase();
+  }, [user]);
+
+  const canPostInBroadcast = useMemo(() => {
+    if (!isBroadcastThread) return true;
+    if (['SUPERADMIN', 'ADMIN', 'KEPALA_SEKOLAH'].includes(userRoleName)) return true;
+    return Boolean(user?.id && broadcastSenderId && user.id === broadcastSenderId);
+  }, [isBroadcastThread, userRoleName, user?.id, broadcastSenderId]);
+
+  const handleReplyPrivatelyToSender = async () => {
+    if (!broadcastSenderId || broadcastSenderId === user?.id) return;
+    try {
+      const dmThread = await internalCommunicationApi.createThread({
+        type: 'DIRECT',
+        targetUserIds: [broadcastSenderId],
+        category: 'UMUM',
+      });
+      if (dmThread?.id) {
+        await queryClient.invalidateQueries({ queryKey: communicationKeys.allThreads });
+        if (onSwitchThread) onSwitchThread(dmThread.id);
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal membuka obrolan pribadi');
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-[#efeae2] dark:bg-[#0b141a] relative select-none">
@@ -243,7 +347,10 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
 
           <button 
             type="button" 
-            onClick={() => onStartCall && onStartCall('AUDIO')}
+            onClick={() => {
+              if (onStartCall) onStartCall('AUDIO');
+              else if (onStartAudioCall && otherUser?.user_id) onStartAudioCall(otherUser.user_id, interlocutorName);
+            }}
             className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-[#54656f] dark:text-[#aebac1] hover:text-[#00a884]" 
             title="Panggilan Suara (Voice Call)"
           >
@@ -251,7 +358,10 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
           </button>
           <button 
             type="button" 
-            onClick={() => onStartCall && onStartCall('VIDEO')}
+            onClick={() => {
+              if (onStartCall) onStartCall('VIDEO');
+              else if (onStartVideoCall && otherUser?.user_id) onStartVideoCall(otherUser.user_id, interlocutorName);
+            }}
             className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-[#54656f] dark:text-[#aebac1] hover:text-[#00a884]" 
             title="Panggilan Video (Video Call)"
           >
@@ -317,10 +427,24 @@ export const ChatConversationPanel: React.FC<ChatConversationPanelProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── WHATSAPP BOTTOM INPUT BAR ────────────────────────────────────── */}
+      {/* ── WHATSAPP BOTTOM INPUT BAR (One-Way Broadcast Lock vs Normal Chat Input) ── */}
       <footer className="px-3 py-2 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-[#e9edef] dark:border-[#2a3942] flex items-center gap-2 shrink-0 z-10">
-        {/* Voice Recording Active Bar */}
-        {isRecording ? (
+        {isBroadcastThread && !canPostInBroadcast ? (
+          <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white/80 dark:bg-[#111b21]/80 border border-slate-200/80 dark:border-slate-800">
+            <div className="text-xs text-slate-600 dark:text-slate-300 font-semibold">
+              🔒 Saluran Siaran Resmi Satu Arah — Balasan grup dinonaktifkan agar tidak mengganggu penerima lain.
+            </div>
+            {broadcastSenderId && broadcastSenderId !== user?.id && (
+              <button
+                type="button"
+                onClick={handleReplyPrivatelyToSender}
+                className="px-3.5 py-1.5 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-bold shadow-xs transition-all shrink-0 cursor-pointer"
+              >
+                💬 Balas Pribadi ke Pengirim
+              </button>
+            )}
+          </div>
+        ) : isRecording ? (
           <div className="flex-1 flex items-center justify-between px-4 py-2 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-900 animate-pulse">
             <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 text-xs font-bold">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />

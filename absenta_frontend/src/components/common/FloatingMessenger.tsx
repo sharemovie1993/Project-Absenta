@@ -52,8 +52,17 @@ export default function FloatingMessenger() {
 
   const canBroadcast = useMemo(() => {
     const r = userRoleName.toUpperCase();
-    return ['SUPERADMIN', 'ADMIN', 'KEPALA_SEKOLAH', 'TU', 'GURU'].includes(r);
-  }, [userRoleName]);
+    if (['SUPERADMIN', 'ADMIN', 'KEPALA_SEKOLAH', 'TU'].includes(r)) return true;
+    const jabatanList: string[] = Array.isArray((user as any)?.jabatan_list)
+      ? (user as any).jabatan_list
+      : Array.isArray((user as any)?.guru_profile?.jabatan_list)
+      ? (user as any).guru_profile.jabatan_list
+      : [];
+    const structuralTokens = ['KEPALA', 'WAKA', 'KURIKULUM', 'KESISWAAN', 'HUMAS', 'SARPRAS', 'KAPROG', 'KOORDINATOR'];
+    return jabatanList.some((j) =>
+      structuralTokens.some((tok) => String(j || '').toUpperCase().includes(tok))
+    );
+  }, [userRoleName, user]);
 
   // ── 1. Unread Counter Query ───────────────────────────────────────────────
   const { data: unreadCount = 0 } = useQuery({
@@ -204,7 +213,38 @@ export default function FloatingMessenger() {
   const activeThread = threads.find((t: InternalThreadItem) => t.id === selectedThreadId);
   const isBroadcastThread =
     Boolean((activeThread as any)?.context_ref?.isBroadcast) ||
-    String(activeThread?.title || '').startsWith('📢');
+    Boolean((activeThreadDetail?.thread as any)?.context_ref?.isBroadcast) ||
+    String(activeThread?.title || activeThreadDetail?.thread?.title || '').startsWith('📢');
+
+  const broadcastSenderId =
+    (activeThreadDetail?.thread as any)?.created_by ||
+    (activeThread as any)?.created_by ||
+    activeThreadDetail?.messages?.[0]?.sender_id ||
+    '';
+
+  const canPostInBroadcast = useMemo(() => {
+    if (!isBroadcastThread) return true;
+    const r = userRoleName.toUpperCase();
+    if (['SUPERADMIN', 'ADMIN', 'KEPALA_SEKOLAH'].includes(r)) return true;
+    return Boolean(user?.id && broadcastSenderId && user.id === broadcastSenderId);
+  }, [isBroadcastThread, userRoleName, user?.id, broadcastSenderId]);
+
+  const handleReplyPrivatelyToSender = async () => {
+    if (!broadcastSenderId || broadcastSenderId === user?.id) return;
+    try {
+      const dmThread = await internalCommunicationApi.createThread({
+        type: 'DIRECT',
+        targetUserIds: [broadcastSenderId],
+        category: 'UMUM',
+      });
+      if (dmThread?.id) {
+        await queryClient.invalidateQueries({ queryKey: communicationKeys.allThreads });
+        setSelectedThreadId(dmThread.id);
+      }
+    } catch {
+      navigate('/komunikasi');
+    }
+  };
 
   return (
     <>
@@ -416,25 +456,48 @@ export default function FloatingMessenger() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Footer */}
-            <form onSubmit={handleSend} className="p-2 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-[#e9edef] dark:border-[#2a3942] flex items-center gap-1.5 shrink-0">
-              <input
-                type="text"
-                placeholder={selectedThreadId ? 'Balas pesan di Messenger...' : 'Pilih percakapan...'}
-                value={replyText}
-                disabled={!selectedThreadId}
-                onChange={e => setReplyText(e.target.value)}
-                className="flex-1 px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#2a3942] text-[#111b21] dark:text-[#e9edef] placeholder-[#8696a0] outline-hidden shadow-2xs"
-              />
-              <button
-                type="submit"
-                disabled={!replyText.trim() || sendMessageMutation.isPending || !selectedThreadId}
-                className="p-2 bg-[#00a884] hover:bg-[#008f6f] disabled:opacity-40 text-white rounded-xl shadow-xs transition-all shrink-0 cursor-pointer"
-                title="Kirim Balasan"
-              >
-                <PaperAirplaneIcon className="w-4 h-4" />
-              </button>
-            </form>
+            {/* Input Footer (One-Way Read-Only Lock for Broadcast Recipients vs Reply Input) */}
+            {isBroadcastThread && !canPostInBroadcast ? (
+              <div className="p-2.5 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-[#e9edef] dark:border-[#2a3942] flex items-center justify-between gap-2 shrink-0">
+                <span className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400 truncate">
+                  🔒 Saluran Siaran Resmi Satu Arah
+                </span>
+                {broadcastSenderId && broadcastSenderId !== user?.id && (
+                  <button
+                    type="button"
+                    onClick={handleReplyPrivatelyToSender}
+                    className="px-2.5 py-1.5 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white text-[10.5px] font-bold shadow-xs transition-all shrink-0 cursor-pointer"
+                  >
+                    💬 Balas Pribadi
+                  </button>
+                )}
+              </div>
+            ) : (
+              <form onSubmit={handleSend} className="p-2 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-[#e9edef] dark:border-[#2a3942] flex items-center gap-1.5 shrink-0">
+                <input
+                  type="text"
+                  placeholder={
+                    isBroadcastThread
+                      ? 'Kirim pengumuman susulan ke siaran ini...'
+                      : selectedThreadId
+                      ? 'Balas pesan di Messenger...'
+                      : 'Pilih percakapan...'
+                  }
+                  value={replyText}
+                  disabled={!selectedThreadId}
+                  onChange={e => setReplyText(e.target.value)}
+                  className="flex-1 px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#2a3942] text-[#111b21] dark:text-[#e9edef] placeholder-[#8696a0] outline-hidden shadow-2xs"
+                />
+                <button
+                  type="submit"
+                  disabled={!replyText.trim() || sendMessageMutation.isPending || !selectedThreadId}
+                  className="p-2 bg-[#00a884] hover:bg-[#008f6f] disabled:opacity-40 text-white rounded-xl shadow-xs transition-all shrink-0 cursor-pointer"
+                  title="Kirim Balasan"
+                >
+                  <PaperAirplaneIcon className="w-4 h-4" />
+                </button>
+              </form>
+            )}
           </div>
         )}
 

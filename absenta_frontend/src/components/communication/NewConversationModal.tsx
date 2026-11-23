@@ -22,6 +22,7 @@ import {
 import { SmartStudentPicker, type Student } from '@/components/common/SmartStudentPicker';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect';
 import { resolveProfilePhotoUrl } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 interface NewConversationModalProps {
   isOpen: boolean;
@@ -53,12 +54,42 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
   isSubmitting: isSubmittingProp
 }) => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'DIRECT' | 'DISPOSISI' | 'BROADCAST'>(initialTab);
+  const { user } = useAuth();
+
+  const userRoleName = useMemo(() => {
+    const raw = (user as any)?.role;
+    if (!raw) return String((user as any)?.roleName || '').toUpperCase();
+    if (typeof raw === 'object') return String(raw.name || '').toUpperCase();
+    return String(raw).toUpperCase();
+  }, [user]);
+
+  const isSiswa = userRoleName === 'SISWA';
+  const canCreateDisposisi = !isSiswa;
+  const canBroadcast = useMemo(() => {
+    if (['SUPERADMIN', 'ADMIN', 'KEPALA_SEKOLAH', 'TU'].includes(userRoleName)) return true;
+    const jabatanList: string[] = Array.isArray((user as any)?.jabatan_list)
+      ? (user as any).jabatan_list
+      : Array.isArray((user as any)?.guru_profile?.jabatan_list)
+      ? (user as any).guru_profile.jabatan_list
+      : [];
+    const structuralTokens = ['KEPALA', 'WAKA', 'KURIKULUM', 'KESISWAAN', 'HUMAS', 'SARPRAS', 'KAPROG', 'KOORDINATOR'];
+    return jabatanList.some((j) =>
+      structuralTokens.some((tok) => String(j || '').toUpperCase().includes(tok))
+    );
+  }, [userRoleName, user]);
+
+  const [activeTab, setActiveTab] = useState<'DIRECT' | 'DISPOSISI' | 'BROADCAST'>(
+    initialTab === 'BROADCAST' && !canBroadcast
+      ? 'DIRECT'
+      : initialTab === 'DISPOSISI' && !canCreateDisposisi
+      ? 'DIRECT'
+      : initialTab
+  );
   const [targetAudience, setTargetAudience] = useState<BroadcastAudienceType>('ALL_USERS');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [selectedEntity, setSelectedEntity] = useState<any | null>(null);
   const [selectedMultipleUserIds, setSelectedMultipleUserIds] = useState<string[]>([]);
-  const [pickerType, setPickerType] = useState<'SMART' | 'SELECT'>('SMART');
+  const [pickerType, setPickerType] = useState<'SMART' | 'SELECT'>(isSiswa ? 'SELECT' : 'SMART');
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<InternalThreadCategory>('UMUM');
   const [priority, setPriority] = useState<InternalThreadPriority>('NORMAL');
@@ -66,10 +97,22 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
   const [isConfidential, setIsConfidential] = useState(false);
 
   useEffect(() => {
-    if (isOpen && initialTab) {
-      setActiveTab(initialTab);
+    if (isSiswa) {
+      setPickerType('SELECT');
     }
-  }, [isOpen, initialTab]);
+  }, [isSiswa]);
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      if (initialTab === 'BROADCAST' && !canBroadcast) {
+        setActiveTab('DIRECT');
+      } else if (initialTab === 'DISPOSISI' && !canCreateDisposisi) {
+        setActiveTab('DIRECT');
+      } else {
+        setActiveTab(initialTab);
+      }
+    }
+  }, [isOpen, initialTab, canBroadcast, canCreateDisposisi]);
 
   // Self-fetch contacts if not provided by parent
   const contactsQuery = useQuery({
@@ -243,39 +286,43 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             }`}
           >
             <ChatBubbleLeftRightIcon className="w-4 h-4" />
-            <span>Chat Langsung (1-on-1)</span>
+            <span>{isSiswa ? 'Hubungi Guru / Wali Kelas / BK' : 'Chat Langsung (1-on-1)'}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('DISPOSISI');
-              setSelectedUserId('');
-              setSelectedEntity(null);
-              setSelectedMultipleUserIds([]);
-            }}
-            className={`flex items-center gap-2 pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'DISPOSISI'
-                ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
-          >
-            <DocumentTextIcon className="w-4 h-4" />
-            <span>Disposisi / Laporan Tugas</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('BROADCAST');
-            }}
-            className={`flex items-center gap-2 pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'BROADCAST'
-                ? 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
-                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
-          >
-            <MegaphoneIcon className="w-4 h-4" />
-            <span>📢 Broadcast Massal</span>
-          </button>
+          {canCreateDisposisi && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('DISPOSISI');
+                setSelectedUserId('');
+                setSelectedEntity(null);
+                setSelectedMultipleUserIds([]);
+              }}
+              className={`flex items-center gap-2 pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'DISPOSISI'
+                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              <DocumentTextIcon className="w-4 h-4" />
+              <span>Disposisi / Laporan Tugas</span>
+            </button>
+          )}
+          {canBroadcast && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('BROADCAST');
+              }}
+              className={`flex items-center gap-2 pb-3 text-xs font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'BROADCAST'
+                  ? 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              <MegaphoneIcon className="w-4 h-4" />
+              <span>📢 Broadcast Massal</span>
+            </button>
+          )}
         </div>
 
         <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
@@ -460,38 +507,46 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <span>{activeTab === 'DIRECT' ? 'Pilih Kontak Tujuan' : 'Pilih Penerima Disposisi'}</span>
+                  <span>
+                    {isSiswa
+                      ? 'Pilih Guru Mapel / Wali Kelas / BK Tujuan'
+                      : activeTab === 'DIRECT'
+                      ? 'Pilih Kontak Tujuan'
+                      : 'Pilih Penerima Disposisi'}
+                  </span>
                   <span className="text-red-500">*</span>
                 </label>
 
-                {/* Switcher Mode Pencarian */}
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[10px] font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => setPickerType('SMART')}
-                    className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                      pickerType === 'SMART'
-                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-2xs font-bold'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    ⚡ Smart Picker
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPickerType('SELECT')}
-                    className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                      pickerType === 'SELECT'
-                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-2xs font-bold'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    📋 List Kontak
-                  </button>
-                </div>
+                {/* Switcher Mode Pencarian (Sembunyikan Smart Picker untuk Siswa agar tidak bisa cari sesama siswa) */}
+                {!isSiswa && (
+                  <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[10px] font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setPickerType('SMART')}
+                      className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                        pickerType === 'SMART'
+                          ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-2xs font-bold'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      ⚡ Smart Picker
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPickerType('SELECT')}
+                      className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                        pickerType === 'SELECT'
+                          ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow-2xs font-bold'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      📋 List Kontak
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {pickerType === 'SMART' ? (
+              {!isSiswa && pickerType === 'SMART' ? (
                 <div className="relative">
                   <SmartStudentPicker
                     mode="universal"

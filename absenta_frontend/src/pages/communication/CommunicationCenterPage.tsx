@@ -95,6 +95,20 @@ export default function CommunicationCenterPage() {
     return String(raw);
   }, [user]);
 
+  const canBroadcast = useMemo(() => {
+    const r = resolvedUserRole.toUpperCase();
+    if (['SUPERADMIN', 'ADMIN', 'KEPALA_SEKOLAH', 'TU'].includes(r)) return true;
+    const jabatanList: string[] = Array.isArray((user as any)?.jabatan_list)
+      ? (user as any).jabatan_list
+      : Array.isArray((user as any)?.guru_profile?.jabatan_list)
+      ? (user as any).guru_profile.jabatan_list
+      : [];
+    const structuralTokens = ['KEPALA', 'WAKA', 'KURIKULUM', 'KESISWAAN', 'HUMAS', 'SARPRAS', 'KAPROG', 'KOORDINATOR'];
+    return jabatanList.some((j) =>
+      structuralTokens.some((tok) => String(j || '').toUpperCase().includes(tok))
+    );
+  }, [resolvedUserRole, user]);
+
   // ── WebRTC Calling Hook ───────────────────────────────────────────────────
   const {
     callState,
@@ -261,19 +275,21 @@ export default function CommunicationCenterPage() {
                 </div>
 
                 <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                  <Button
-                    variant="toolbarOutline"
-                    size="toolbar"
-                    onClick={() => {
-                      setNewModalTab('BROADCAST');
-                      setIsNewModalOpen(true);
-                    }}
-                    className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold rounded-xl"
-                    title="Kirim Siaran Broadcast ke Seluruh Pengguna"
-                  >
-                    <span>📢</span>
-                    <span>Broadcast</span>
-                  </Button>
+                  {canBroadcast && (
+                    <Button
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={() => {
+                        setNewModalTab('BROADCAST');
+                        setIsNewModalOpen(true);
+                      }}
+                      className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold rounded-xl"
+                      title="Kirim Siaran Broadcast ke Seluruh Pengguna"
+                    >
+                      <span>📢</span>
+                      <span>Broadcast</span>
+                    </Button>
+                  )}
                   <Button
                     variant="toolbarOutline"
                     size="toolbar"
@@ -408,6 +424,7 @@ export default function CommunicationCenterPage() {
 
                   <ChatConversationPanel
                     threadId={selectedThreadId}
+                    onSwitchThread={(newTid) => setSelectedThreadId(newTid)}
                     onStartAudioCall={(recId, recName) => handleStartDirectCall(recId, recName, 'audio')}
                     onStartVideoCall={(recId, recName) => handleStartDirectCall(recId, recName, 'video')}
                     onJoinVirtualMeeting={() => handleJoinSchoolMeeting()}
