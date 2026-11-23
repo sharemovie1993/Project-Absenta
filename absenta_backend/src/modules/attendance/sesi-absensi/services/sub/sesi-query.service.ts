@@ -268,15 +268,23 @@ export class SesiQueryService {
               where: {
                 tenant_id: tenantId,
                 tanggal: { gte: checkDateLocalStart, lte: checkDateLocalEnd },
-                jadwal_kegiatan_id: { in: activeKegiatans.map((k: any) => k.id) },
+                OR: [
+                  { jadwal_kegiatan_id: { in: activeKegiatans.map((k: any) => k.id) } },
+                  { jenis_kegiatan: { not: 'KBM' } }
+                ]
               },
-              select: { jadwal_kegiatan_id: true, kelas_id: true },
+              select: { id: true, jadwal_kegiatan_id: true, kelas_id: true, jenis_kegiatan: true },
             }),
           ]);
 
           const activeSemId = activeYear?.Semester?.[0]?.id;
           if (activeYear && activeSemId) {
-            const existingSet = new Set(existingActSessions.map((s: any) => `${s.jadwal_kegiatan_id}_${s.kelas_id}`));
+            const existingSet = new Set<string>();
+            existingActSessions.forEach((s: any) => {
+              if (s.jadwal_kegiatan_id) existingSet.add(`${s.jadwal_kegiatan_id}_${s.kelas_id}`);
+              const norm = String(s.jenis_kegiatan || '').trim().toLowerCase();
+              if (norm) existingSet.add(`named_${norm}_${s.kelas_id}`);
+            });
             let allActiveKelasIds: string[] | null = null;
             const toCreate: any[] = [];
 
@@ -310,25 +318,28 @@ export class SesiQueryService {
                 ? new Date(`${checkDateStr}T${kegiatan.waktu_selesai}:00.000${tzOffset}`)
                 : new Date(startMulai.getTime() + 60 * 60 * 1000);
               const isUpacara = String(kegiatan.nama || '').toLowerCase().includes('upacara');
+              const normKegiatan = String(kegiatan.nama || '').trim().toLowerCase();
 
               for (const kId of targetKelasIds) {
-                if (!existingSet.has(`${kegiatan.id}_${kId}`)) {
-                  toCreate.push({
-                    tenant_id: tenantId,
-                    kelas_id: kId,
-                    guru_id: isUpacara ? pembinaGuruId : null,
-                    semester_id: activeSemId,
-                    tahun_pelajaran_id: kegiatan.tahun_pelajaran_id || activeYear.id,
-                    tanggal: checkDateLocalStart,
-                    waktu_mulai: startMulai,
-                    waktu_selesai: startSelesai,
-                    jenis_kegiatan: kegiatan.nama,
-                    sumber_sesi: 'TEMPLATE',
-                    jadwal_kegiatan_id: kegiatan.id,
-                    status: 'MENDATANG',
-                  });
-                  existingSet.add(`${kegiatan.id}_${kId}`);
+                if (existingSet.has(`${kegiatan.id}_${kId}`) || (normKegiatan && existingSet.has(`named_${normKegiatan}_${kId}`))) {
+                  continue;
                 }
+                toCreate.push({
+                  tenant_id: tenantId,
+                  kelas_id: kId,
+                  guru_id: isUpacara ? pembinaGuruId : null,
+                  semester_id: activeSemId,
+                  tahun_pelajaran_id: kegiatan.tahun_pelajaran_id || activeYear.id,
+                  tanggal: checkDateLocalStart,
+                  waktu_mulai: startMulai,
+                  waktu_selesai: startSelesai,
+                  jenis_kegiatan: kegiatan.nama,
+                  sumber_sesi: 'TEMPLATE',
+                  jadwal_kegiatan_id: kegiatan.id,
+                  status: 'MENDATANG',
+                });
+                existingSet.add(`${kegiatan.id}_${kId}`);
+                if (normKegiatan) existingSet.add(`named_${normKegiatan}_${kId}`);
               }
             }
 
@@ -723,8 +734,10 @@ export class SesiQueryService {
     const blockMap = new Map<string, any[]>();
     unifiedList.forEach((item: any) => {
       const isActivity = !!item.jadwal_kegiatan_id || (item.jenis_kegiatan && String(item.jenis_kegiatan).toUpperCase() !== 'KBM');
+      const normActivityName = String(item.jenis_kegiatan || item.nama || item.kegiatan || '').trim().toLowerCase();
+      const activityTime = item.jam_mulai || (item.waktu_mulai ? new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).format(new Date(item.waktu_mulai)) : '00:00');
       const key = isActivity
-        ? `activity_${item.id}`
+        ? `activity_${item.kelas_id || 'all'}_${normActivityName}_${activityTime}`
         : `${item.kelas_id || 'no_kelas'}_${item.guru_id || 'no_guru'}_${item.mapel_id || 'no_mapel'}_${item.unit_pengajaran_id || 'no_unit'}`;
       if (!blockMap.has(key)) blockMap.set(key, []);
       blockMap.get(key)!.push(item);
@@ -758,8 +771,9 @@ export class SesiQueryService {
           // If both have explicit slot indices or adjacent times, keep in same subBlock
           const isSlotContiguous = (prev.jam_ke_end !== undefined && item.jam_ke_start !== undefined && item.jam_ke_start <= prev.jam_ke_end + 1);
           const isTimeContiguous = !prevEnd || !currStart || prevEnd === currStart;
+          const isSameActivityBlock = (item.jadwal_kegiatan_id || (item.jenis_kegiatan && String(item.jenis_kegiatan).toUpperCase() !== 'KBM'));
 
-          if (isSlotContiguous || isTimeContiguous || prev.jadwal_kbm_id === item.jadwal_kbm_id) {
+          if (isSameActivityBlock || isSlotContiguous || isTimeContiguous || prev.jadwal_kbm_id === item.jadwal_kbm_id) {
             currentSubBlock.push(item);
           } else {
             subBlocks.push(currentSubBlock);
@@ -775,8 +789,23 @@ export class SesiQueryService {
           return;
         }
 
-        // Prefer active/completed physical session
-        const bestPhysical = subItems.find((i: any) => i.status === 'SELESAI' || i.status === 'BERLANGSUNG' || i.status === 'AKTIF') || subItems[0];
+        // Prefer active/completed physical session or one with attendance records
+        const sessionWithAttendance = subItems.find((i: any) => (i.summary?.HADIR || 0) > 0 || (i.summary?.total || 0) > 0);
+        const nonVirtualPhysical = subItems.find((i: any) => !String(i.id).startsWith('sched_'));
+        const bestPhysical = sessionWithAttendance || nonVirtualPhysical || subItems.find((i: any) => i.status === 'SELESAI' || i.status === 'BERLANGSUNG' || i.status === 'AKTIF') || subItems[0];
+        
+        // Merge summary across all subItems so attendance from terminal/mobile is preserved
+        const mergedSummary = subItems.reduce((acc: any, curr: any) => {
+          const s = curr.summary || {};
+          acc.total = Math.max(acc.total, s.total || 0);
+          acc.HADIR = Math.max(acc.HADIR, s.HADIR || 0);
+          acc.IZIN = Math.max(acc.IZIN, s.IZIN || 0);
+          acc.SAKIT = Math.max(acc.SAKIT, s.SAKIT || 0);
+          acc.ALPA = Math.max(acc.ALPA, s.ALPA || 0);
+          acc.TERLAMBAT = Math.max(acc.TERLAMBAT, s.TERLAMBAT || 0);
+          return acc;
+        }, { total: 0, HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 });
+
         const teacherHadirItem = subItems.find((i: any) => 
           i.guru_status === 'HADIR' || 
           i.absenGuru?.status === 'HADIR' || 
@@ -790,6 +819,7 @@ export class SesiQueryService {
 
         consolidatedList.push({
           ...bestPhysical,
+          summary: mergedSummary,
           waktu_mulai: earliestStart,
           waktu_selesai: latestEnd,
           jam_mulai: subItems[0].jam_mulai || bestPhysical.jam_mulai,

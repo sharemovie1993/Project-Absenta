@@ -24,6 +24,8 @@ type Props = {
   onSyncSchedule?: () => void;
   syncLoading?: boolean;
   canCreateSession?: boolean;
+  hideKelas?: boolean;
+  isPetugasSiswa?: boolean;
 };
 
 export const SesiFilterPanel = React.memo(function SesiFilterPanel({
@@ -44,6 +46,8 @@ export const SesiFilterPanel = React.memo(function SesiFilterPanel({
   onSyncSchedule,
   syncLoading = false,
   canCreateSession = false,
+  hideKelas = false,
+  isPetugasSiswa = false,
 }: Props) {
   const effectiveDate = tanggal || filterDate || toLocalDate(new Date());
   const handleDateChange = onChangeTanggal || setFilterDate || (() => {});
@@ -115,8 +119,13 @@ export const SesiFilterPanel = React.memo(function SesiFilterPanel({
           <span className="text-xs font-bold text-slate-700 dark:text-slate-200 tracking-tight">{fmtTanggal}</span>
         </div>
 
-        {/* Kelas Filter Selector */}
-        {kelasOptions.length > 0 && !isGuru && (
+        {/* Kelas Filter Selector (Atau badge terkunci jika hideKelas/isPetugasSiswa) */}
+        {(hideKelas || isPetugasSiswa) && selectedKelasId ? (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/50 rounded-xl text-xs font-black text-blue-700 dark:text-blue-300">
+            <span>Kelas:</span>
+            <span>{kelasLabel ? kelasLabel(selectedKelasId) : (kelasOptions.find(o => o.value === selectedKelasId)?.label || selectedKelasId)}</span>
+          </div>
+        ) : kelasOptions.length > 0 && !isGuru ? (
           <div className="flex items-center gap-2">
             <select
               value={selectedKelasId}
@@ -131,9 +140,9 @@ export const SesiFilterPanel = React.memo(function SesiFilterPanel({
               ))}
             </select>
           </div>
-        )}
+        ) : null}
 
-        {isGuru && selectedKelasId && (
+        {isGuru && selectedKelasId && !hideKelas && !isPetugasSiswa && (
           <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 rounded-xl text-xs font-black text-indigo-700 dark:text-indigo-300">
             <span>Kelas:</span>
             <span>{kelasLabel ? kelasLabel(selectedKelasId) : (kelasOptions.find(o => o.value === selectedKelasId)?.label || selectedKelasId)}</span>

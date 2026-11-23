@@ -33,15 +33,19 @@ const SesiScanningModal = lazy(() => import('../../../../components/attendance/s
 const BukaSesiFotoModal = lazy(() => import('../../../../components/dashboard/staff/modals/BukaSesiFotoModal').then(m => ({ default: m.BukaSesiFotoModal })));
 const PhotoPreviewModal = lazy(() => import('../../../../components/dashboard/shared/kbm/PhotoPreviewModal').then(m => ({ default: m.PhotoPreviewModal })));
 const JurnalKbmModal = lazy(() => import('../../../../components/kurikulum/JurnalKbmModal').then(m => ({ default: m.JurnalKbmModal })));
-interface SessionManagerModuleProps {
+export interface SessionManagerModuleProps {
   selectedKelasId: string;
-  setSelectedKelasId: (id: string) => void;
-  kelasOptions: DropdownOption[];
-  isPetugasSiswa: boolean;
+  setSelectedKelasId?: (id: string) => void;
+  kelasOptions?: DropdownOption[];
+  isPetugasSiswa?: boolean;
   userRole?: string;
-  canCreateSession: boolean;
+  canCreateSession?: boolean;
   managedKelasIds?: string[];
   user?: Record<string, unknown>;
+  hideLayout?: boolean;
+  hideKelas?: boolean;
+  isModal?: boolean;
+  onClose?: () => void;
 }
 export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.memo(({
   selectedKelasId,
@@ -50,6 +54,10 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
   isPetugasSiswa,
   canCreateSession,
   managedKelasIds,
+  hideLayout = false,
+  hideKelas = false,
+  isModal = false,
+  onClose,
 }) => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -358,7 +366,7 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
             setSelectedKelasId={setSelectedKelasId}
             filterGuruId={filterGuruId}
             setFilterGuruId={setFilterGuruId}
-            kelasOptions={kelasOptions}
+            kelasOptions={kelasOptions || []}
             guruOptions={guruOptions}
             onRefresh={fetchSessions}
             loading={loading}
@@ -366,6 +374,8 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
             onSyncSchedule={handleGenerateFromTemplate}
             syncLoading={generatingTemplate}
             canCreateSession={canCreateSession}
+            hideKelas={hideKelas}
+            isPetugasSiswa={isPetugasSiswa}
           />
           {/* Tab Switcher */}
           <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">

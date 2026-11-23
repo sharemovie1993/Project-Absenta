@@ -574,7 +574,7 @@ export class StrukturOrganisasiService {
       select: { id: true },
     });
 
-    const isMultiStaffRole = ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'BPBK', 'GERBANG', 'PETUGAS_ABSENSI', 'PEMBINA_ESKUL', 'TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'].includes(position.code);
+    const isMultiStaffRole = ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'BPBK', 'GERBANG', 'PETUGAS_ABSENSI', 'PEMBINA_ESKUL', 'TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS', 'KETUA_PEMBINA_TARUNA', 'PEMBINA_TARUNA'].includes(position.code);
 
     const kelasId = input.kelas_id ? String(input.kelas_id) : null;
     const unitId = input.unit_id ? String(input.unit_id) : null;

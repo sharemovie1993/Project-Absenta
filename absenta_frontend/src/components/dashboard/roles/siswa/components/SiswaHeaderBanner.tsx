@@ -24,6 +24,7 @@ export interface SiswaHeaderBannerProps {
   gamification: SiswaGamification;
   onOpenDigitalCard: () => void;
   onOpenBelumAbsen: () => void;
+  onOpenPresensiKelas?: () => void;
 }
 
 export const SiswaHeaderBanner: React.FC<SiswaHeaderBannerProps> = ({
@@ -38,6 +39,7 @@ export const SiswaHeaderBanner: React.FC<SiswaHeaderBannerProps> = ({
   gamification,
   onOpenDigitalCard,
   onOpenBelumAbsen,
+  onOpenPresensiKelas,
 }) => {
   const navigate = useNavigate();
 
@@ -115,7 +117,13 @@ export const SiswaHeaderBanner: React.FC<SiswaHeaderBannerProps> = ({
             <>
               <Button
                 size="sm"
-                onClick={() => navigate('/attendance/ops?tab=sesi')}
+                onClick={() => {
+                  if (onOpenPresensiKelas) {
+                    onOpenPresensiKelas();
+                  } else {
+                    navigate('/dashboard?tab=presensi-kelas&subtab=kbm');
+                  }
+                }}
                 className="h-9 sm:h-10 px-3.5 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1.5 shadow-md shadow-amber-500/20 border-none cursor-pointer"
                 title={`Presensi Kelas Saya (${currentClassName})`}
               >

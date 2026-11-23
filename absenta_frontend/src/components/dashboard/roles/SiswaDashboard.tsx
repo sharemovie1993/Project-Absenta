@@ -21,6 +21,7 @@ import {
   Laptop,
   Calendar,
   X,
+  ClipboardCheck,
 } from 'lucide-react';
 import { renderApiValue } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -85,10 +86,14 @@ const SiswaExamDispatchModal = lazy(() =>
   import('@/components/cbt/sesi/SiswaExamDispatchModal').then((m) => ({ default: m.SiswaExamDispatchModal }))
 );
 
+const SessionManagerModule = lazy(() =>
+  import('@/pages/attendance/ops/components/SessionManagerModule').then((m) => ({ default: m.SessionManagerModule }))
+);
+
 export const SiswaDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab') as SiswaTabId | null;
-  const validTabs: SiswaTabId[] = ['ringkasan', 'jadwal', 'ekskul', 'pkl', 'cbt', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil'];
+  const validTabs: SiswaTabId[] = ['ringkasan', 'jadwal', 'ekskul', 'pkl', 'cbt', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil', 'presensi-kelas'];
   const activeTab: SiswaTabId = rawTab && validTabs.includes(rawTab) ? rawTab : 'ringkasan';
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -318,9 +323,20 @@ export const SiswaDashboard: React.FC = () => {
   const navTabs: SiswaNavTabItem[] = useMemo(() => {
     const tabs: SiswaNavTabItem[] = [
       { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', icon: LayoutList, category: 'operasional' },
-      { id: 'jadwal', label: 'Jadwal Pelajaran', shortLabel: 'Jadwal', icon: Calendar, category: 'akademik' },
-      { id: 'ekskul', label: 'Ekstrakurikuler', shortLabel: 'Ekskul', icon: Compass, category: 'akademik' },
     ];
+    if (data.isPetugasKelas) {
+      tabs.push({
+        id: 'presensi-kelas',
+        label: 'Presensi Kelas',
+        shortLabel: 'Presensi',
+        icon: ClipboardCheck,
+        category: 'operasional',
+      });
+    }
+    tabs.push(
+      { id: 'jadwal', label: 'Jadwal Pelajaran', shortLabel: 'Jadwal', icon: Calendar, category: 'akademik' },
+      { id: 'ekskul', label: 'Ekstrakurikuler', shortLabel: 'Ekskul', icon: Compass, category: 'akademik' }
+    );
     if (data.isAktifPkl || data.myPenempatan) {
       tabs.push({
         id: 'pkl',
@@ -340,7 +356,7 @@ export const SiswaDashboard: React.FC = () => {
       { id: 'profil', label: 'Profil', shortLabel: 'Profil', icon: User, category: 'layanan' }
     );
     return tabs;
-  }, [data.isAktifPkl, data.myPenempatan, data.pendingJurnalCount, data.pelanggaranCount]);
+  }, [data.isPetugasKelas, data.isAktifPkl, data.myPenempatan, data.pendingJurnalCount, data.pelanggaranCount]);
 
   const activeTabMeta = useMemo(() => {
     return navTabs.find((t) => t.id === activeTab) || navTabs[0];
@@ -353,6 +369,7 @@ export const SiswaDashboard: React.FC = () => {
   const currentSubtabTitle = useMemo(() => {
     switch (activeTab) {
       case 'ringkasan': return 'Pusat Kendali';
+      case 'presensi-kelas': return 'Presensi Kelas (Petugas)';
       case 'jadwal': return 'Jadwal Pelajaran';
       case 'ekskul': return 'Ekstrakurikuler Saya';
       case 'kehadiran': return 'Riwayat Presensi';
@@ -598,6 +615,7 @@ export const SiswaDashboard: React.FC = () => {
               gamification={data.gamification}
               onOpenDigitalCard={() => setShowDigitalCardModal(true)}
               onOpenBelumAbsen={() => setShowBelumAbsenModal(true)}
+              onOpenPresensiKelas={() => handleTabChange('presensi-kelas')}
             />
           )}
 
@@ -814,6 +832,33 @@ export const SiswaDashboard: React.FC = () => {
                 setConfirmPassword={setConfirmPassword}
                 passwordSubmitting={passwordSubmitting}
               />
+            </div>
+          )}
+
+          {visitedTabs.has('presensi-kelas') && (
+            <div
+              role="tabpanel"
+              aria-hidden={activeTab !== 'presensi-kelas'}
+              className={cn('w-full min-w-0', activeTab === 'presensi-kelas' ? 'block' : 'hidden')}
+            >
+              <Suspense fallback={
+                <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
+                  <RefreshCw className="animate-spin text-amber-500 mx-auto" size={24} />
+                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Memuat Meja Kerja Petugas Presensi Kelas...</p>
+                </div>
+              }>
+                <SessionManagerModule
+                  selectedKelasId={data.siswaProfile?.kelas_id || ''}
+                  setSelectedKelasId={() => {}}
+                  kelasOptions={[{ label: data.currentClassName, value: data.siswaProfile?.kelas_id || '' }]}
+                  isPetugasSiswa={true}
+                  canCreateSession={true}
+                  managedKelasIds={data.siswaProfile?.kelas_id ? [data.siswaProfile.kelas_id] : []}
+                  user={data.user as any}
+                  hideLayout={true}
+                  hideKelas={true}
+                />
+              </Suspense>
             </div>
           )}
         </main>
