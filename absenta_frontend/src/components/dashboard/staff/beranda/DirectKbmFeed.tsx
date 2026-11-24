@@ -24,6 +24,8 @@ import { PhotoPreviewModal } from '@/components/dashboard/shared/kbm/PhotoPrevie
 import { BahanAjarReaderModal } from '@/components/kurikulum/bahan-ajar/BahanAjarReaderModal';
 import { JurnalKbmModal } from '@/components/kurikulum/JurnalKbmModal';
 import { TeacherKbmLiveWorkspaceModal } from '../modals/TeacherKbmLiveWorkspaceModal';
+import { SesiScanningModal } from '@/components/attendance/sesi/SesiScanningModal';
+import { useTeacherSesiScanner } from '@/hooks/attendance/useTeacherSesiScanner';
 
 export interface DirectKbmFeedProps {
   timelineItems: TimelineItem[];
@@ -88,6 +90,11 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
   const [targetJadwal, setTargetJadwal] = useState<TimelineItem | null>(null);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [workspaceItem, setWorkspaceItem] = useState<TimelineItem | null>(null);
+  const sesiScanner = useTeacherSesiScanner({
+    onSuccess: () => {
+      if (onRefreshTimeline) onRefreshTimeline();
+    },
+  });
 
   const openSessionMutation = useMutation({
     mutationFn: async (payload: { jadwal: TimelineItem; fotoDataUrl: string }) => {
@@ -268,6 +275,7 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
               isExpanded={canExpand && isExpanded}
               onToggleExpand={canExpand ? () => setExpandedScheduleId(isExpanded ? null : item.id) : undefined}
               onOpenWorkspace={(it) => setWorkspaceItem(it)}
+              onOpenScanModal={() => sesiScanner.openScanModal(item)}
               onOpenPhotoModal={handleOpenPhotoModal}
               onOpenBahanAjar={handleOpenBahanAjar}
               onViewPhoto={(it) => {
@@ -439,6 +447,23 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
             setWorkspaceItem(null);
             if (onRefreshTimeline) onRefreshTimeline();
           }}
+        />
+      )}
+
+      {/* ── MODAL 6: SCAN RFID / QR SISWA ── */}
+      {sesiScanner.isOpen && (
+        <SesiScanningModal
+          isOpen={sesiScanner.isOpen}
+          onClose={sesiScanner.closeScanModal}
+          scannerInputRef={sesiScanner.scannerInputRef}
+          scannerInput={sesiScanner.scannerInput}
+          setScannerInput={sesiScanner.setScannerInput}
+          scanLoading={sesiScanner.scanLoading}
+          onSubmitScan={sesiScanner.submitScan}
+          inputModalSesiId={sesiScanner.sesiId}
+          sessionAttendanceRecords={studentRecords}
+          currentSession={sesiScanner.currentSession}
+          kelasLabel={sesiScanner.kelasLabel}
         />
       )}
     </div>

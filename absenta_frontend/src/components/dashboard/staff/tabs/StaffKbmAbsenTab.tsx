@@ -28,6 +28,8 @@ import { PerangkatAjarPanel } from '../kbm/PerangkatAjarPanel';
 import { JadwalInvalPanel } from '../kbm/JadwalInvalPanel';
 import { BahanAjarReaderModal } from '../../../kurikulum/bahan-ajar/BahanAjarReaderModal';
 import { TeacherKbmLiveWorkspaceModal } from '../modals/TeacherKbmLiveWorkspaceModal';
+import { SesiScanningModal } from '../../../attendance/sesi/SesiScanningModal';
+import { useTeacherSesiScanner } from '../../../../hooks/attendance/useTeacherSesiScanner';
 import { UniversalEcosystemTopbar } from '@/components/dashboard/roles/common';
 import { useSessionWindowAlert, getSessionAlertDetails } from '../../../../hooks/attendance/useSessionWindowAlert';
 import { 
@@ -190,6 +192,11 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
 
   const studentRecords: SesiAttendanceRecord[] = presensiRes?.data || [];
   const [workspaceItem, setWorkspaceItem] = useState<TimelineItem | null>(null);
+  const sesiScanner = useTeacherSesiScanner({
+    onSuccess: () => {
+      if (onRefreshTimeline) onRefreshTimeline();
+    },
+  });
 
   // Mutation: Buka Sesi KBM baru dengan foto
   const openSessionMutation = useMutation({
@@ -452,6 +459,7 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
                   isExpanded={canExpand && isExpanded}
                   onToggleExpand={canExpand ? () => setExpandedScheduleId(isExpanded ? null : item.id) : undefined}
                   onOpenWorkspace={(it) => setWorkspaceItem(it)}
+                  onOpenScanModal={() => sesiScanner.openScanModal(item)}
                   onOpenPhotoModal={handleOpenPhotoModal}
                   onOpenBahanAjar={handleOpenBahanAjar}
                   onViewPhoto={(it) => {
@@ -645,6 +653,23 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
             setWorkspaceItem(null);
             if (onRefreshTimeline) onRefreshTimeline();
           }}
+        />
+      )}
+
+      {/* MODAL 6: SCAN RFID / QR SISWA */}
+      {sesiScanner.isOpen && (
+        <SesiScanningModal
+          isOpen={sesiScanner.isOpen}
+          onClose={sesiScanner.closeScanModal}
+          scannerInputRef={sesiScanner.scannerInputRef}
+          scannerInput={sesiScanner.scannerInput}
+          setScannerInput={sesiScanner.setScannerInput}
+          scanLoading={sesiScanner.scanLoading}
+          onSubmitScan={sesiScanner.submitScan}
+          inputModalSesiId={sesiScanner.sesiId}
+          sessionAttendanceRecords={studentRecords}
+          currentSession={sesiScanner.currentSession}
+          kelasLabel={sesiScanner.kelasLabel}
         />
       )}
     </motion.div>
