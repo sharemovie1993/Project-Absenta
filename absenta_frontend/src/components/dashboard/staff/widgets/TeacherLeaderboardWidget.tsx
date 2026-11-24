@@ -11,7 +11,8 @@ import {
   User, 
   ShieldCheck 
 } from 'lucide-react';
-import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { PersonPhoto } from '@/components/ui/PersonPhoto';
 import type { LeaderboardGuruItem } from '@/api/attendanceGerbang.api';
 
 interface TeacherLeaderboardWidgetProps {
@@ -174,6 +175,12 @@ export const TeacherLeaderboardWidget: React.FC<TeacherLeaderboardWidgetProps> =
                   <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">
                     {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
                   </div>
+                  <PersonPhoto
+                    name={item.nama}
+                    foto={(item as any).foto}
+                    variant="circle"
+                    size="sm"
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate leading-tight">
                       {item.nama} {isMe && <span className="text-amber-600 dark:text-amber-400 font-extrabold">(Saya)</span>}

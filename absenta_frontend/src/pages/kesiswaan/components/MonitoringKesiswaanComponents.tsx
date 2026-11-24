@@ -8,6 +8,7 @@ import { usePiketGateStore } from '../../../hooks/usePiketGateStore';
 import { calculatePiketAnalytics, getPermitGateStage, getPermitStatusBadge } from '../../../utils/piketStatusHelper';
 import { formatDate } from '../../../utils/layoutUtils';
 import { Card } from '../../../components/ui/Card';
+import { PersonPhoto } from '../../../components/ui/PersonPhoto';
 
 interface PelanggaranItem {
   id: string;
@@ -119,13 +120,11 @@ export const PiketAgendaPanel = React.memo(function PiketAgendaPanel() {
             ) : guruPiketList.length > 0 ? (
               guruPiketList?.map((g, i: number) => {
                 const nama = g.Guru?.nama_guru || g.nama_guru || 'Guru Piket';
-                const initial = nama.charAt(0).toUpperCase();
+                const foto = g.Guru?.foto || (g as any).foto || null;
                 return (
                   <div key={g.id || i} className="flex items-center justify-between p-2.5 px-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-800 transition-colors">
                     <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                      <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-black text-[11px] flex items-center justify-center shrink-0">
-                        {initial}
-                      </div>
+                      <PersonPhoto name={nama} foto={foto} variant="circle" size="sm" />
                       <div className="min-w-0">
                         <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate block">
                           {nama}

@@ -5,6 +5,7 @@ import { Users, CheckCircle, PlayCircle, Award, ArrowUpRight, Laptop } from 'luc
 import { HubCard } from '@/components/ui/hub';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { PersonPhoto } from '@/components/ui/PersonPhoto';
 import { cn } from '@/lib/utils';
 import { MonitoringKbmWidget } from '@/components/dashboard/shared/MonitoringKbmWidget';
 import { getSupervisionSchedule } from '@/api/dashboard.api';
@@ -166,7 +167,7 @@ export const KepsekKbmTab: React.FC<KepsekKbmTabProps> = React.memo(({
                   className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col justify-between"
                 >
                   <div>
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-2.5">
                       <span className="text-sm font-black">{rankMedal}</span>
                       <Badge
                         variant="outline"
@@ -180,12 +181,14 @@ export const KepsekKbmTab: React.FC<KepsekKbmTabProps> = React.memo(({
                         {teacher.points > 0 ? `${teacher.points} Pts` : teacher.status_keaktifan === 'BELUM_ADA_SESI' ? 'Belum Ada Sesi' : '0 Pts'}
                       </Badge>
                     </div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1 truncate" title={teacher.nama}>
-                      {teacher.nama}
-                    </h4>
-                    <p className="text-[10px] text-slate-400 mt-0.5 truncate font-medium">
-                      {teacher.nip && teacher.nip !== '-' ? `NIP: ${teacher.nip}` : 'Pendidik'}
-                    </p>
+                    <PersonPhoto
+                      name={teacher.nama}
+                      foto={teacher.foto}
+                      variant="circle"
+                      size="sm"
+                      showName={true}
+                      subtitle={teacher.nip && teacher.nip !== '-' ? `NIP: ${teacher.nip}` : 'Pendidik'}
+                    />
                   </div>
                   <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-slate-700/40 flex items-center justify-between text-[10px] font-medium text-slate-500">
                     <span>
