@@ -182,13 +182,13 @@ export default function FloatingMessenger() {
     );
   }, [userRoleName, user]);
 
-  // ── 1. Unread Counter Query ───────────────────────────────────────────────
+  // ── 1. Unread Counter Query (Andalkan Socket.IO realtime; polling hanya fallback saat socket putus) ──
   const { data: unreadCount = 0 } = useQuery({
     queryKey: communicationKeys.unreadCount(),
     queryFn: () => internalCommunicationApi.getUnreadCount(),
     enabled: !!user?.id,
-    staleTime: 15 * 1000,
-    refetchInterval: 25 * 1000
+    staleTime: 2 * 60 * 1000,
+    refetchInterval: socket?.connected ? false : 60 * 1000
   });
 
   // ── 2. Threads Query ──────────────────────────────────────────────────────

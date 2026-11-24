@@ -1,4 +1,5 @@
 import { prisma } from '@/utils/prisma';
+import { getRedisConnection } from '@/queue/redis';
 import { presenceService } from '@/infra/realtime/presence.service';
 import { STRUKTUR_CAPABILITIES } from '@/config/position-capabilities';
 import { STRUKTUR_CODES } from '@/config/organization-structure';
@@ -54,13 +55,23 @@ export class CommunicationService {
     userId: string, 
     filters?: { type?: string; category?: string; status?: string; search?: string }
   ) {
-    // Pastikan Grup Kelas & Grup Jabatan otomatis tersinkronisasi untuk tenant ini
+    // Pastikan Grup Kelas & Grup Jabatan otomatis tersinkronisasi (Cluster-wide Redis lock 1 jam)
     if (tenantId && tenantId !== 'system') {
       const lastSync = autoGroupSyncCache.get(tenantId) || 0;
       if (Date.now() - lastSync > AUTO_GROUP_SYNC_TTL_MS) {
         autoGroupSyncCache.set(tenantId, Date.now());
         try {
-          await this.syncAutoGroups(tenantId, userId);
+          const redis = getRedisConnection();
+          const acquired = await (redis as any).set(
+            `communication:autogroup_synced:${tenantId}`,
+            '1',
+            'EX',
+            3600,
+            'NX'
+          );
+          if (acquired) {
+            await this.syncAutoGroups(tenantId, userId);
+          }
         } catch (err: any) {
           console.warn('[AutoGroupSync] Background sync warning:', err?.message);
         }

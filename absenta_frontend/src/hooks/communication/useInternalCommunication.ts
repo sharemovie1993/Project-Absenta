@@ -17,16 +17,16 @@ export function useInternalCommunication(filters?: { type?: string; category?: s
   const threadsQuery = useQuery({
     queryKey: communicationKeys.threads(filters),
     queryFn: () => internalCommunicationApi.getThreads(filters),
-    staleTime: 10 * 1000,
-    refetchInterval: 15 * 1000
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000
   });
 
   // 2. Ambil unread counter
   const unreadCountQuery = useQuery({
     queryKey: communicationKeys.unreadCount(),
     queryFn: () => internalCommunicationApi.getUnreadCount(),
-    staleTime: 10 * 1000,
-    refetchInterval: 20 * 1000
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000
   });
 
   // 3. Ambil direktori kontak sah

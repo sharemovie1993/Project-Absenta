@@ -13,6 +13,7 @@ import { generateSessionsForTenantDirect, getTenantLocalTime } from '@/jobs/atte
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 import { systemConfigService } from '@/modules/system-config/services/system-config.service';
 import { appLogger } from '@/utils/app-logger';
+import { getRedisConnection } from '@/queue/redis';
 
 const validationService = new JadwalValidationService();
 
@@ -334,44 +335,50 @@ export class JadwalQueryController {
       scheduleWhere.kelas_id = ctx.kelasId;
     }
 
-    console.log(`[DEBUG listMySchedule] Querying schedule:`, {
-      tenantId: ctx.tenantId,
-      kelasId: ctx.kelasId,
-      tpId: ctx.tahunPelajaranId,
-      semId: ctx.semesterId,
-      targetHari,
-      roleName,
-    });
+    const isSiswaScheduleCacheable = roleName === RoleName.SISWA && Boolean(ctx.kelasId);
+    const scheduleCacheKey = isSiswaScheduleCacheable
+      ? `jadwal:siswa:v1:${ctx.tenantId}:${ctx.kelasId}:${ctx.tahunPelajaranId || 'any'}:${ctx.semesterId || 'any'}:${isAllWeek ? 'ALL' : String(targetHari)}`
+      : null;
 
-    // 3a. Try strict match with active tahun_pelajaran_id and semester_id
-    let jadwal = await jadwalKBMDb.jadwalKBM.findMany({
-      where: {
-        ...scheduleWhere,
-        tahun_pelajaran_id: ctx.tahunPelajaranId,
-        semester_id: ctx.semesterId,
-      },
-      include: {
-        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
-        Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
-        GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
-        UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
-        Kelas: {
-          select: {
-            id: true,
-            nama_kelas: true,
-            tingkat: true,
-            Jurusan: { select: { id: true, kode: true, nama: true, singkatan: true } },
+    let jadwal: any[] | null = null;
+    if (scheduleCacheKey) {
+      try {
+        const cachedRaw = await getRedisConnection().get(scheduleCacheKey);
+        if (cachedRaw) {
+          jadwal = JSON.parse(cachedRaw);
+        }
+      } catch {}
+    }
+
+    if (!jadwal) {
+      // 3a. Try strict match with active tahun_pelajaran_id and semester_id
+      jadwal = await jadwalKBMDb.jadwalKBM.findMany({
+        where: {
+          ...scheduleWhere,
+          tahun_pelajaran_id: ctx.tahunPelajaranId,
+          semester_id: ctx.semesterId,
+        },
+        include: {
+          Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
+          Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+          GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+          UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
+          Kelas: {
+            select: {
+              id: true,
+              nama_kelas: true,
+              tingkat: true,
+              Jurusan: { select: { id: true, kode: true, nama: true, singkatan: true } },
+            },
           },
         },
-      },
-      orderBy: [{ jam_mulai: 'asc' }],
-    });
+        orderBy: [{ jam_mulai: 'asc' }],
+      });
 
-    // 3b. Fallback: If 0 schedules with strict TP/Semester, query by tenant, class, and day
-    if (jadwal.length === 0) {
-      console.log(`[DEBUG listMySchedule] Strict query returned 0, attempting query without strict TP/Semester filter...`);
-      jadwal = await jadwalKBMDb.jadwalKBM.findMany({
-        where: scheduleWhere,
+      // 3b. Fallback: If 0 schedules with strict TP/Semester, query by tenant, class, and day
+      if (jadwal.length === 0) {
+        jadwal = await jadwalKBMDb.jadwalKBM.findMany({
+          where: scheduleWhere,
         include: {
           Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
           Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
@@ -428,6 +435,14 @@ export class JadwalQueryController {
       }
     } else {
       console.log(`[DEBUG listMySchedule] Found ${jadwal.length} schedules (isAllWeek: ${isAllWeek})`);
+    }
+
+    } // end if (!jadwal)
+
+    if (scheduleCacheKey && jadwal && jadwal.length > 0) {
+      try {
+        await getRedisConnection().set(scheduleCacheKey, JSON.stringify(jadwal), 'EX', 120);
+      } catch {}
     }
 
     // 4. Fetch active sessions for deduplication
