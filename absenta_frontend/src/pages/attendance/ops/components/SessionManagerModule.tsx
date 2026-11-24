@@ -47,7 +47,7 @@ export interface SessionManagerModuleProps {
   hideKelas?: boolean;
   isModal?: boolean;
   onClose?: () => void;
-  defaultTab?: 'KBM' | 'KEGIATAN';
+  defaultTab?: 'ALL' | 'KBM' | 'KEGIATAN';
   readOnly?: boolean;
 }
 export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.memo(({
@@ -81,8 +81,8 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
   const [filterDate, setFilterDate] = useState<string>(toLocalDate(new Date()));
   const [filterGuruId, setFilterGuruId] = useState<string>('');
   const subtabParam = (searchParams.get('subtab') || '').toLowerCase();
-  const [activeTab, setActiveTab] = useState<'KBM' | 'KEGIATAN'>(
-    defaultTab || (subtabParam === 'kegiatan' ? 'KEGIATAN' : 'KBM')
+  const [activeTab, setActiveTab] = useState<'ALL' | 'KBM' | 'KEGIATAN'>(
+    defaultTab || (subtabParam === 'kegiatan' ? 'KEGIATAN' : subtabParam === 'kbm' ? 'KBM' : 'ALL')
   );
 
   useEffect(() => {
@@ -91,15 +91,17 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
       setActiveTab('KEGIATAN');
     } else if (subtabParam === 'kbm') {
       setActiveTab('KBM');
+    } else if (subtabParam === 'all') {
+      setActiveTab('ALL');
     }
   }, [subtabParam, defaultTab, hideLayout]);
 
-  const handleTabChange = useCallback((nextTab: 'KBM' | 'KEGIATAN') => {
+  const handleTabChange = useCallback((nextTab: 'ALL' | 'KBM' | 'KEGIATAN') => {
     setActiveTab(nextTab);
     if (!hideLayout) {
       setSearchParams(prev => {
         const next = new URLSearchParams(prev);
-        next.set('subtab', nextTab === 'KEGIATAN' ? 'kegiatan' : 'kbm');
+        next.set('subtab', nextTab === 'KEGIATAN' ? 'kegiatan' : nextTab === 'KBM' ? 'kbm' : 'all');
         return next;
       }, { replace: true });
     }
@@ -191,9 +193,22 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
     const k = (kelasOptions ?? []).find(x => x.value === id);
     return k?.label || id;
   }, [kelasOptions]);
-  const kbmSessions = useMemo(() => (sessions ?? []).filter(s => (s.jenis_kegiatan || 'KBM') === 'KBM'), [sessions]);
-  const kegiatanSessions = useMemo(() => (sessions ?? []).filter(s => s.jenis_kegiatan && s.jenis_kegiatan !== 'KBM'), [sessions]);
-  const activeSessionsList = useMemo(() => (activeTab === 'KBM' ? kbmSessions : kegiatanSessions) as unknown as Array<Record<string, unknown>>, [activeTab, kbmSessions, kegiatanSessions]);
+  const allSessionsSorted = useMemo(() => {
+    const list = [...(sessions ?? [])];
+    const toMinutes = (s: any) => {
+      const raw = String(s?.jam_mulai || s?.waktu_mulai || '');
+      const m = raw.match(/(\d{1,2}):(\d{2})/);
+      return m ? Number(m[1]) * 60 + Number(m[2]) : 9999;
+    };
+    list.sort((a, b) => toMinutes(a) - toMinutes(b));
+    return list;
+  }, [sessions]);
+  const kbmSessions = useMemo(() => allSessionsSorted.filter(s => (s.jenis_kegiatan || 'KBM') === 'KBM'), [allSessionsSorted]);
+  const kegiatanSessions = useMemo(() => allSessionsSorted.filter(s => s.jenis_kegiatan && s.jenis_kegiatan !== 'KBM'), [allSessionsSorted]);
+  const activeSessionsList = useMemo(
+    () => (activeTab === 'ALL' ? allSessionsSorted : activeTab === 'KBM' ? kbmSessions : kegiatanSessions) as unknown as Array<Record<string, unknown>>,
+    [activeTab, allSessionsSorted, kbmSessions, kegiatanSessions]
+  );
   const toggleExpand = useCallback((id: string) => {
     setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
   }, []);
@@ -440,8 +455,23 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
             hideKelas={hideKelas}
             isPetugasSiswa={isPetugasSiswa}
           />
-          {/* Tab Switcher */}
-          <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+          {/* Filter Pill Switcher (Default: Semua Terurut Kronologis) */}
+          <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => handleTabChange('ALL')}
+              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'ALL'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+              }`}
+            >
+              <Layers size={14} />
+              <span>Semua Sesi</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/20">
+                {allSessionsSorted.length}
+              </span>
+            </button>
             <button
               type="button"
               onClick={() => handleTabChange('KBM')}
@@ -483,10 +513,10 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
             <div className="p-16 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-4">
               <Layers className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto" />
               <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
-                {activeTab === 'KBM' ? 'Tidak Ada Sesi KBM' : 'Tidak Ada Sesi Kegiatan'}
+                {activeTab === 'ALL' ? 'Tidak Ada Sesi Hari Ini' : activeTab === 'KBM' ? 'Tidak Ada Sesi KBM' : 'Tidak Ada Sesi Kegiatan'}
               </h3>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                {activeTab === 'KBM' ? 'Belum ada sesi KBM tercatat untuk tanggal ini.' : 'Tidak ada sesi kegiatan tercatat untuk tanggal ini.'}
+                {activeTab === 'ALL' ? 'Belum ada sesi KBM maupun kegiatan tercatat untuk tanggal ini.' : activeTab === 'KBM' ? 'Belum ada sesi KBM tercatat untuk tanggal ini.' : 'Tidak ada sesi kegiatan tercatat untuk tanggal ini.'}
               </p>
             </div>
           ) : (
