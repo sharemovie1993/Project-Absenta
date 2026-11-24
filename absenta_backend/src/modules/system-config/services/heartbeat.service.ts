@@ -20,15 +20,53 @@ function getCpuSpec(): string {
 }
 
 // ─── Continuous 5-Second System Resource Sampler (Rolling 2-Minute Window) ───
-// Mengukur delta CPU & pemakaian RAM setiap 5 detik secara kontinyu agar lonjakan
-// (spike) yang terjadi selama 5-30 detik di tengah interval 2 menit tetap terekam.
+// Mengukur delta CPU, pemakaian RAM, serta throughput jaringan (Inbound Rx / Outbound Tx)
+// setiap 5 detik secara kontinyu agar lonjakan (spike) ujian tetap terekam 100% akurat.
 let lastCpuTimes: os.CpuInfo[] | null = null;
 const cpuSamplesWindow: number[] = [];
 const memSamplesWindow: number[] = [];
+
+interface NetRawCounter {
+  rxBytes: number;
+  txBytes: number;
+}
+let lastNetCounters: Map<string, NetRawCounter> | null = null;
+let lastNetSampleTime: number = Date.now();
+let detectedPrimaryIface: string = 'eth0';
+const netRxSamplesWindow: number[] = []; // KB/s
+const netTxSamplesWindow: number[] = []; // KB/s
+let totalRxBytesRecorded: number = 0;
+let totalTxBytesRecorded: number = 0;
+
 let samplerTimerStarted = false;
+
+function readProcNetDevCounters(): Map<string, NetRawCounter> {
+  const map = new Map<string, NetRawCounter>();
+  if (process.platform === 'linux' && fs.existsSync('/proc/net/dev')) {
+    try {
+      const content = fs.readFileSync('/proc/net/dev', 'utf8');
+      const lines = content.split('\n');
+      for (const line of lines) {
+        if (!line.includes(':')) continue;
+        const [ifaceRaw, dataRaw] = line.split(':');
+        const iface = ifaceRaw.trim();
+        // Skip loopback dan virtual bridge docker
+        if (iface === 'lo' || iface.startsWith('docker') || iface.startsWith('br-') || iface.startsWith('veth')) continue;
+        const fields = dataRaw.trim().split(/\s+/);
+        if (fields.length >= 10) {
+          const rxBytes = parseInt(fields[0], 10) || 0;
+          const txBytes = parseInt(fields[8], 10) || 0;
+          map.set(iface, { rxBytes, txBytes });
+        }
+      }
+    } catch {}
+  }
+  return map;
+}
 
 function sampleResourceTick(): void {
   try {
+    // 1. Sample CPU
     const currentCpus = os.cpus();
     if (lastCpuTimes && lastCpuTimes.length === currentCpus.length) {
       let idleDelta = 0;
@@ -49,6 +87,7 @@ function sampleResourceTick(): void {
     }
     lastCpuTimes = currentCpus;
 
+    // 2. Sample Memory
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
     if (totalMem > 0) {
@@ -56,6 +95,48 @@ function sampleResourceTick(): void {
       memSamplesWindow.push(parseFloat(memRatio.toFixed(4)));
       if (memSamplesWindow.length > 36) memSamplesWindow.shift();
     }
+
+    // 3. Sample Network Throughput (/proc/net/dev)
+    const now = Date.now();
+    const dSec = Math.max(0.5, (now - lastNetSampleTime) / 1000);
+    const curNet = readProcNetDevCounters();
+
+    if (lastNetCounters && curNet.size > 0) {
+      // Prioritaskan eth0 jika ada, atau interface ethernet/wifi fisik dengan akumulasi trafik tertinggi
+      let bestIface = 'eth0';
+      if (curNet.has('eth0')) {
+        bestIface = 'eth0';
+      } else {
+        let maxTraffic = -1;
+        for (const [iface, data] of curNet.entries()) {
+          const total = data.rxBytes + data.txBytes;
+          if (total > maxTraffic) {
+            maxTraffic = total;
+            bestIface = iface;
+          }
+        }
+      }
+      detectedPrimaryIface = bestIface;
+
+      const prev = lastNetCounters.get(bestIface);
+      const cur = curNet.get(bestIface);
+      if (prev && cur) {
+        const dRx = Math.max(0, cur.rxBytes - prev.rxBytes);
+        const dTx = Math.max(0, cur.txBytes - prev.txBytes);
+        const rxKbps = parseFloat(((dRx / dSec) / 1024).toFixed(2));
+        const txKbps = parseFloat(((dTx / dSec) / 1024).toFixed(2));
+
+        netRxSamplesWindow.push(rxKbps);
+        netTxSamplesWindow.push(txKbps);
+        if (netRxSamplesWindow.length > 36) netRxSamplesWindow.shift();
+        if (netTxSamplesWindow.length > 36) netTxSamplesWindow.shift();
+
+        totalRxBytesRecorded = cur.rxBytes;
+        totalTxBytesRecorded = cur.txBytes;
+      }
+    }
+    lastNetCounters = curNet;
+    lastNetSampleTime = now;
   } catch {}
 }
 
@@ -63,6 +144,8 @@ function startContinuousResourceSampler(): void {
   if (samplerTimerStarted) return;
   samplerTimerStarted = true;
   lastCpuTimes = os.cpus();
+  lastNetCounters = readProcNetDevCounters();
+  lastNetSampleTime = Date.now();
   setInterval(sampleResourceTick, 5000);
 }
 
@@ -73,6 +156,13 @@ async function consumeResourceWindowStats(): Promise<{
   peakMemRatio: number;
   totalMemMb: number;
   usedMemMb: number;
+  avgRxKbps: number;
+  peakRxKbps: number;
+  avgTxKbps: number;
+  peakTxKbps: number;
+  totalRxBytes: number;
+  totalTxBytes: number;
+  primaryIface: string;
 }> {
   // Take one immediate tick if buffer is empty
   if (cpuSamplesWindow.length === 0) {
@@ -87,6 +177,8 @@ async function consumeResourceWindowStats(): Promise<{
 
   const cpuCopy = cpuSamplesWindow.splice(0, cpuSamplesWindow.length);
   const memCopy = memSamplesWindow.splice(0, memSamplesWindow.length);
+  const netRxCopy = netRxSamplesWindow.splice(0, netRxSamplesWindow.length);
+  const netTxCopy = netTxSamplesWindow.splice(0, netTxSamplesWindow.length);
 
   const avgCpuRatio = cpuCopy.length > 0
     ? parseFloat((cpuCopy.reduce((a, b) => a + b, 0) / cpuCopy.length).toFixed(4))
@@ -109,6 +201,20 @@ async function consumeResourceWindowStats(): Promise<{
   const totalMemMb = Math.round(totalMem / (1024 * 1024));
   const usedMemMb = Math.round(totalMemMb * peakMemRatio);
 
+  const avgRxKbps = netRxCopy.length > 0
+    ? parseFloat((netRxCopy.reduce((a, b) => a + b, 0) / netRxCopy.length).toFixed(2))
+    : 0;
+  const peakRxKbps = netRxCopy.length > 0
+    ? parseFloat(Math.max(...netRxCopy).toFixed(2))
+    : avgRxKbps;
+
+  const avgTxKbps = netTxCopy.length > 0
+    ? parseFloat((netTxCopy.reduce((a, b) => a + b, 0) / netTxCopy.length).toFixed(2))
+    : 0;
+  const peakTxKbps = netTxCopy.length > 0
+    ? parseFloat(Math.max(...netTxCopy).toFixed(2))
+    : avgTxKbps;
+
   return {
     avgCpuRatio,
     peakCpuRatio,
@@ -116,6 +222,13 @@ async function consumeResourceWindowStats(): Promise<{
     peakMemRatio,
     totalMemMb,
     usedMemMb,
+    avgRxKbps,
+    peakRxKbps,
+    avgTxKbps,
+    peakTxKbps,
+    totalRxBytes: totalRxBytesRecorded,
+    totalTxBytes: totalTxBytesRecorded,
+    primaryIface: detectedPrimaryIface
   };
 }
 
@@ -381,6 +494,7 @@ export const heartbeatService = {
         `[Heartbeat] Sending cluster metrics: activeUsers=${activeUsers}, dbSize=${dbSize}MB, ` +
         `memPeak=${(memoryUsage * 100).toFixed(2)}% (${resourceStats.usedMemMb}/${resourceStats.totalMemMb}MB), ` +
         `cpuPeak=${(cpuUsage * 100).toFixed(2)}% (avg=${(resourceStats.avgCpuRatio * 100).toFixed(2)}%), ` +
+        `net=${resourceStats.primaryIface} (Rx: ${resourceStats.avgRxKbps} KB/s, Peak: ${resourceStats.peakRxKbps} KB/s | Tx: ${resourceStats.avgTxKbps} KB/s, Peak: ${resourceStats.peakTxKbps} KB/s), ` +
         `respAvg=${intervalStats.overallAvgMs}ms (max=${intervalStats.maxResponseTimeMs}ms, ${intervalStats.totalHits} hits in 2m across cluster), ` +
         `tenants=${tenantList.length}`
       );
@@ -395,6 +509,21 @@ export const heartbeatService = {
         peakCpuUsage: resourceStats.peakCpuRatio,
         memoryUsedMb: resourceStats.usedMemMb,
         totalMemoryMb: resourceStats.totalMemMb,
+        // Network Throughput Telemetry
+        rxKbps: resourceStats.avgRxKbps,
+        txKbps: resourceStats.avgTxKbps,
+        peakRxKbps: resourceStats.peakRxKbps,
+        peakTxKbps: resourceStats.peakTxKbps,
+        primaryIface: resourceStats.primaryIface,
+        network: {
+          interface: resourceStats.primaryIface,
+          rxKbps: resourceStats.avgRxKbps,
+          txKbps: resourceStats.avgTxKbps,
+          peakRxKbps: resourceStats.peakRxKbps,
+          peakTxKbps: resourceStats.peakTxKbps,
+          totalRxBytes: resourceStats.totalRxBytes,
+          totalTxBytes: resourceStats.totalTxBytes
+        },
         localAvgResponseTimeMs: intervalStats.localAvgMs || undefined,
         publicAvgResponseTimeMs: intervalStats.publicAvgMs || undefined,
         avgResponseTimeMs: intervalStats.overallAvgMs || undefined,
