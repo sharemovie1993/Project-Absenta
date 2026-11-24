@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarRange,
-  FileDown,
+  Printer,
   Save,
   GraduationCap,
   Sparkles,
@@ -10,6 +10,10 @@ import {
   Check,
   AlertCircle,
 } from 'lucide-react';
+
+const ProtaPromesPrintModal = lazy(() =>
+  import('./ProtaPromesPrintModal').then((m) => ({ default: m.ProtaPromesPrintModal }))
+);
 import { Button, Label } from '../../ui';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { getAtpList, TujuanPembelajaranItem } from '../../../api/atp.api';
@@ -56,6 +60,7 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
   const { user } = useAuth();
   const guruId = String((user as any)?.guru_profile?.id || '');
   const guruNama = String((user as any)?.guru_profile?.nama_guru || user?.name || 'Guru Mata Pelajaran');
+  const guruNip = String((user as any)?.guru_profile?.nip || '');
   const sekolahNama = String((user as any)?.tenant?.nama_sekolah || 'Satuan Pendidikan');
 
   const [docMode, setDocMode] = useState<'PROTA' | 'PROMES'>(initialMode);
@@ -63,6 +68,7 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
   const [selectedFase, setSelectedFase] = useState<string>(initialFase || 'E');
   const [promesSemester, setPromesSemester] = useState<'GANJIL' | 'GENAP'>('GANJIL');
   const [isSaving, setIsSaving] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Semester assignment per TP key (index or id): 'GANJIL' | 'GENAP'
   const [tpSemesterMap, setTpSemesterMap] = useState<Record<string, 'GANJIL' | 'GENAP'>>({});
@@ -229,9 +235,9 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
         head: [['No', 'Kode TP', 'Materi Pokok / Tujuan Pembelajaran', 'Capaian / Indikator', 'Semester', 'Alokasi']],
         body,
         foot: [['', '', `Total Ganjil: ${protaSummary.ganjilJp} JP • Total Genap: ${protaSummary.genapJp} JP`, '', 'TOTAL', `${protaSummary.totalJp} JP`]],
-        styles: { fontSize: 8.5, cellPadding: 2.5 },
-        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold' },
-        footStyles: { fillColor: [239, 246, 255], textColor: [30, 58, 138], fontStyle: 'bold' },
+        styles: { fontSize: 8.5, cellPadding: 2.5, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [15, 23, 42] },
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.2 },
+        footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.2 },
         columnStyles: {
           0: { cellWidth: 10, halign: 'center' },
           1: { cellWidth: 20, halign: 'center' },
@@ -254,8 +260,8 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
         startY: 43,
         head: [['No', 'Kode', 'Tujuan Pembelajaran / Materi', 'JP', ...weekHeaders]],
         body,
-        styles: { fontSize: 7.5, cellPadding: 1.5, halign: 'center' },
-        headStyles: { fillColor: [13, 148, 136], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 7.5, cellPadding: 1.5, halign: 'center', lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [15, 23, 42] },
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', lineColor: [0, 0, 0], lineWidth: 0.2 },
         columnStyles: {
           0: { cellWidth: 8 },
           1: { cellWidth: 16 },
@@ -265,15 +271,25 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
       });
     }
 
-    const finalY = ((doc as any).lastAutoTable?.finalY || 120) + 12;
-    const signY = Math.min(finalY, doc.internal.pageSize.getHeight() - 32);
-    doc.setFontSize(9);
-    doc.text('Mengetahui,', 20, signY);
-    doc.text('Kepala Sekolah', 20, signY + 5);
-    doc.text('( _________________________ )', 20, signY + 22);
+    const pageH = doc.internal.pageSize.getHeight();
+    let currentY = ((doc as any).lastAutoTable?.finalY || 120) + 10;
+    if (currentY > pageH - 60 || (!isLandscape && currentY > 200)) {
+      doc.addPage();
+      currentY = 24;
+    }
 
-    doc.text(`Guru Mata Pelajaran`, pageW - 70, signY + 5);
-    doc.text(guruNama, pageW - 70, signY + 22);
+    doc.setFontSize(9);
+    doc.text('Diverifikasi oleh,', 25, currentY + 5);
+    doc.text('Wakasek Bidang Kurikulum', 25, currentY + 10);
+    doc.text('( _________________________ )', 25, currentY + 28);
+
+    doc.text('Disusun oleh,', pageW - 75, currentY + 5);
+    doc.text('Guru Mata Pelajaran', pageW - 75, currentY + 10);
+    doc.text(guruNama, pageW - 75, currentY + 28);
+
+    doc.text('Mengetahui / Menyetujui,', pageW / 2, currentY + 38, { align: 'center' });
+    doc.text('Kepala Sekolah', pageW / 2, currentY + 43, { align: 'center' });
+    doc.text('( _________________________ )', pageW / 2, currentY + 60, { align: 'center' });
 
     return doc;
   }, [
@@ -293,15 +309,12 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
     promesWeeks,
   ]);
 
-  const handleExportPdf = async () => {
+  const handleOpenPrintPreview = () => {
     if (tpList.length === 0) {
       toast.error('Belum ada data TP dari ATP untuk dicetak.');
       return;
     }
-    const doc = await buildPdfDocument();
-    const filename = `${docMode}_${selectedMapelLabel.replace(/\s+/g, '_')}_Fase_${selectedFase}.pdf`;
-    doc.save(filename);
-    toast.success(`PDF ${docMode} berhasil diunduh!`);
+    setIsPrintModalOpen(true);
   };
 
   const handleSaveToPerangkat = async () => {
@@ -400,12 +413,12 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleExportPdf}
+              onClick={handleOpenPrintPreview}
               disabled={tpList.length === 0}
               className="h-8 px-3 rounded-xl text-xs font-bold gap-1.5 border-slate-300 dark:border-slate-700 cursor-pointer"
             >
-              <FileDown size={13} />
-              <span>Ekspor PDF</span>
+              <Printer size={13} />
+              <span>Cetak / PDF Resmi</span>
             </Button>
             <Button
               type="button"
@@ -657,6 +670,29 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
           </div>
         </div>
       )}
+
+      <Suspense fallback={null}>
+        {isPrintModalOpen && (
+          <ProtaPromesPrintModal
+            isOpen={isPrintModalOpen}
+            onClose={() => setIsPrintModalOpen(false)}
+            docMode={docMode}
+            promesSemester={promesSemester}
+            mapelNama={selectedMapelLabel}
+            fase={selectedFase}
+            tahunPelajaranLabel={tahunPelajaranLabel}
+            namaAtp={activeAtp?.nama_atp || ''}
+            guruNama={guruNama}
+            guruNip={guruNip}
+            tpList={tpList}
+            tpSemesterMap={tpSemesterMap}
+            promesTpList={promesTpList}
+            promesWeeks={promesWeeks}
+            months={months}
+            protaSummary={protaSummary}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };
