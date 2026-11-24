@@ -1077,6 +1077,37 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 </Button>
               )}
 
+              {/* Scan RFID / QR Siswa Button (Guru POV) */}
+              {onOpenScanModal && (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isOverdue || isFinished || !isSessionActive}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenScanModal(item.id);
+                  }}
+                  title={
+                    isOverdue
+                      ? "Sesi KBM telah terlewat (Scan RFID terkunci)"
+                      : isFinished
+                      ? "Sesi KBM telah selesai"
+                      : !isSessionActive
+                      ? "Sesi KBM belum dibuka (Buka sesi terlebih dahulu)"
+                      : "Buka Terminal Scan Kartu RFID / QR Siswa"
+                  }
+                  className={cn(
+                    "h-8 px-3 rounded-xl text-xs font-black border flex items-center gap-1.5 cursor-pointer transition-all",
+                    isOverdue || isFinished || !isSessionActive
+                      ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60"
+                      : "bg-indigo-600 hover:bg-indigo-500 text-white border-none shadow-sm shadow-indigo-900/20 active:scale-95"
+                  )}
+                >
+                  <QrCode size={13} />
+                  <span>Scan RFID / QR</span>
+                </Button>
+              )}
+
               {/* Isi Jurnal Button */}
               {(isLive || isFinished) && !isOverdue && onOpenJournalModal && (
                 <Button

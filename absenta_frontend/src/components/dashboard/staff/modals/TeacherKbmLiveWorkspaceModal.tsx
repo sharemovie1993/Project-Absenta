@@ -19,7 +19,8 @@ import {
   ChevronRight,
   ShieldCheck,
   Check,
-  Camera
+  Camera,
+  QrCode
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
@@ -29,6 +30,8 @@ import { Button } from '@/components/ui';
 import { getPresensiTerpaduSesi } from '@/api/attendanceGerbang.api';
 import { requestWithFallback, formatErrorMessage } from '@/api/apiUtils';
 import { CatatanAbsensiModal } from '@/components/attendance/modals/CatatanAbsensiModal';
+import { SesiScanningModal } from '@/components/attendance/sesi/SesiScanningModal';
+import { useTeacherSesiScanner } from '@/hooks/attendance/useTeacherSesiScanner';
 import { 
   formatLocalDateTime, 
   getVirtualDate, 
@@ -116,6 +119,12 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
     queryFn: () => getPresensiTerpaduSesi(effectiveSesiId!),
     enabled: Boolean(isOpen && effectiveSesiId),
     refetchInterval: isOpen ? 12000 : false,
+  });
+
+  const sesiScanner = useTeacherSesiScanner({
+    onSuccess: () => {
+      refetchAttendance();
+    },
   });
 
   const rawRecords: SesiAttendanceRecord[] = useMemo(() => {
@@ -555,8 +564,22 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
             )}
           </div>
 
-          {/* Quick Actions: Lightning Mark All Present + Search */}
+          {/* Quick Actions: Scan RFID / QR + Lightning Mark All Present + Search */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+            <button
+              type="button"
+              disabled={!canMarkAttendance || !effectiveSesiId}
+              onClick={() => sesiScanner.openScanModal(timelineItem)}
+              title={!isSessionOpen && !isTeacherPresent ? "Sesi belum dibuka oleh Guru" : isReportMode ? "Sesi telah selesai" : "Buka Terminal Scan Kartu RFID / QR Siswa"}
+              className={cn(
+                "w-full sm:w-auto h-9 sm:h-10 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-sm shadow-indigo-950/20 flex items-center justify-center gap-1.5 border-none cursor-pointer transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0",
+                (!canMarkAttendance || !effectiveSesiId) && "opacity-40 cursor-not-allowed pointer-events-none"
+              )}
+            >
+              <QrCode size={14} />
+              <span>Scan RFID / QR</span>
+            </button>
+
             {stats.belum > 0 && (
               <button
                 type="button"
@@ -947,6 +970,22 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
               </div>
             </div>
           </div>
+        )}
+
+        {sesiScanner.isOpen && (
+          <SesiScanningModal
+            isOpen={sesiScanner.isOpen}
+            onClose={sesiScanner.closeScanModal}
+            scannerInputRef={sesiScanner.scannerInputRef}
+            scannerInput={sesiScanner.scannerInput}
+            setScannerInput={sesiScanner.setScannerInput}
+            scanLoading={sesiScanner.scanLoading}
+            onSubmitScan={sesiScanner.submitScan}
+            inputModalSesiId={sesiScanner.sesiId}
+            sessionAttendanceRecords={studentRecords}
+            currentSession={sesiScanner.currentSession}
+            kelasLabel={sesiScanner.kelasLabel}
+          />
         )}
       </div>
     </AnimatePresence>,
