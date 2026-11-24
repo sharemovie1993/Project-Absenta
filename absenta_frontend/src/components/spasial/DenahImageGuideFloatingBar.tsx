@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   Image as ImageIcon,
   Upload,
@@ -33,35 +33,124 @@ interface DenahImageGuideFloatingBarProps {
   isLightMode: boolean;
 }
 
+const COMPRESSION_TIMEOUT_MS = 15_000;
+const MAX_LOCAL_FALLBACK_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_EXTENSIONS = /\.(png|jpe?g|webp|svg)$/i;
+
+function canvasToBlobSafe(
+  canvas: HTMLCanvasElement,
+  mimeType: string,
+  quality: number
+): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    try {
+      canvas.toBlob((blob) => resolve(blob), mimeType, quality);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result;
+      if (typeof result === 'string') {
+        resolve(result);
+      } else {
+        reject(new Error('Gagal membaca data URL gambar'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Gagal membaca berkas gambar lokal'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageElement(file: File): Promise<{ source: HTMLImageElement; cleanup: () => void }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    const cleanup = () => URL.revokeObjectURL(objectUrl);
+
+    img.onload = () => {
+      if (!img.naturalWidth || !img.naturalHeight) {
+        cleanup();
+        reject(new Error('Dimensi gambar tidak valid'));
+        return;
+      }
+      resolve({ source: img, cleanup });
+    };
+
+    img.onerror = () => {
+      cleanup();
+      reject(new Error('Gagal memuat gambar untuk kompresi'));
+    };
+
+    img.src = objectUrl;
+  });
+}
+
 /**
- * Kompresi pintar di browser untuk gambar berukuran besar (misal 17MB)
- * Merampingkan dimensi maksimal ke 4096px dan format WebP/JPEG tanpa kehilangan detail garis arsitektur.
+ * Kompresi pintar di browser untuk gambar berukuran besar (misal 17MB).
+ * Merampingkan dimensi maksimal ke 2560px dan format WebP (fallback JPEG) dengan timeout pengaman
+ * agar tidak pernah menggantung (silent error) di main thread.
  */
 async function compressImageForCanvas(
   file: File,
-  maxDimension: number = 4096,
-  quality: number = 0.88
+  maxDimension: number = 2560,
+  quality: number = 0.85
 ): Promise<{ file: File; originalSize: number; compressedSize: number; ratio: number }> {
   const originalSize = file.size;
+  const fallbackResult = { file, originalSize, compressedSize: originalSize, ratio: 0 };
 
   // Jika SVG, jangan dikompresi (vektor asli)
-  if (file.type === 'image/svg+xml') {
-    return { file, originalSize, compressedSize: originalSize, ratio: 0 };
+  if (file.type === 'image/svg+xml' || /\.svg$/i.test(file.name)) {
+    return fallbackResult;
   }
 
   // Jika file sudah kecil (<= 1.5 MB), tidak perlu kompresi
   if (originalSize <= 1.5 * 1024 * 1024) {
-    return { file, originalSize, compressedSize: originalSize, ratio: 0 };
+    return fallbackResult;
   }
 
-  return new Promise((resolve) => {
-    const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
+  const compressionTask = (async () => {
+    let cleanupSource: (() => void) | undefined;
+    let canvas: HTMLCanvasElement | null = null;
 
-      let { width, height } = img;
+    try {
+      let source: CanvasImageSource;
+      let width = 0;
+      let height = 0;
+
+      if (typeof createImageBitmap === 'function') {
+        try {
+          const bitmap = await createImageBitmap(file);
+          source = bitmap;
+          width = bitmap.width;
+          height = bitmap.height;
+          cleanupSource = () => bitmap.close();
+        } catch {
+          const loaded = await loadImageElement(file);
+          source = loaded.source;
+          width = loaded.source.naturalWidth;
+          height = loaded.source.naturalHeight;
+          cleanupSource = loaded.cleanup;
+        }
+      } else {
+        const loaded = await loadImageElement(file);
+        source = loaded.source;
+        width = loaded.source.naturalWidth;
+        height = loaded.source.naturalHeight;
+        cleanupSource = loaded.cleanup;
+      }
+
+      if (width <= 0 || height <= 0) {
+        return fallbackResult;
+      }
+
       if (width > maxDimension || height > maxDimension) {
         if (width > height) {
           height = Math.round((height * maxDimension) / width);
@@ -72,55 +161,77 @@ async function compressImageForCanvas(
         }
       }
 
-      const canvas = document.createElement('canvas');
+      canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
 
       if (!ctx) {
-        resolve({ file, originalSize, compressedSize: originalSize, ratio: 0 });
-        return;
+        return fallbackResult;
       }
 
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, 0, 0, width, height);
+      ctx.drawImage(source, 0, 0, width, height);
 
-      // Gunakan WebP berkualitas tinggi untuk mempertahankan garis denah
-      const targetMime = 'image/webp';
-      canvas.toBlob(
-        (blob) => {
-          if (!blob || blob.size >= originalSize) {
-            resolve({ file, originalSize, compressedSize: originalSize, ratio: 0 });
-            return;
-          }
+      // Utamakan WebP untuk mempertahankan ketajaman garis denah & transparansi
+      let targetMime = 'image/webp';
+      let targetExt = 'webp';
+      let blob = await canvasToBlobSafe(canvas, targetMime, quality);
 
-          const baseName = file.name.replace(/\.[^.]+$/, '');
-          const compressedFile = new File([blob], `${baseName}.webp`, {
-            type: targetMime,
-            lastModified: Date.now(),
-          });
+      // Fallback ke JPEG jika browser gagal menghasilkan WebP
+      if (!blob) {
+        targetMime = 'image/jpeg';
+        targetExt = 'jpg';
+        ctx.globalCompositeOperation = 'destination-over';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        blob = await canvasToBlobSafe(canvas, targetMime, quality);
+      }
 
-          const ratio = Math.round(((originalSize - blob.size) / originalSize) * 100);
-          resolve({
-            file: compressedFile,
-            originalSize,
-            compressedSize: blob.size,
-            ratio,
-          });
-        },
-        targetMime,
-        quality
-      );
-    };
+      if (!blob || blob.size >= originalSize) {
+        return fallbackResult;
+      }
 
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve({ file, originalSize, compressedSize: originalSize, ratio: 0 });
-    };
+      const baseName = file.name.replace(/\.[^.]+$/, '');
+      const compressedFile = new File([blob], `${baseName}.${targetExt}`, {
+        type: targetMime,
+        lastModified: Date.now(),
+      });
 
-    img.src = objectUrl;
+      const ratio = Math.round(((originalSize - blob.size) / originalSize) * 100);
+      return {
+        file: compressedFile,
+        originalSize,
+        compressedSize: blob.size,
+        ratio,
+      };
+    } catch (err) {
+      console.warn('Kompresi gambar denah gagal, menggunakan berkas asli:', err);
+      return fallbackResult;
+    } finally {
+      cleanupSource?.();
+      if (canvas) {
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+    }
+  })();
+
+  const timeoutTask = new Promise<typeof fallbackResult>((resolve) => {
+    timeoutId = setTimeout(() => {
+      console.warn(`Kompresi gambar melebihi batas ${COMPRESSION_TIMEOUT_MS}ms, menggunakan berkas asli.`);
+      resolve(fallbackResult);
+    }, COMPRESSION_TIMEOUT_MS);
   });
+
+  try {
+    return await Promise.race([compressionTask, timeoutTask]);
+  } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProps> = ({
@@ -137,16 +248,18 @@ export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProp
   const [compressionRatio, setCompressionRatio] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'UPLOAD' | 'URL'>('UPLOAD');
   const [urlInput, setUrlInput] = useState(config.url || '');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle upload file dengan Automatic Client-Side Smart Compression
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const inputEl = e.currentTarget;
+    const file = inputEl.files?.[0];
+    inputEl.value = '';
+    if (!file || isUploading) return;
 
-    // Validasi tipe berkas
+    // Validasi tipe berkas (MIME type + fallback ekstensi)
     const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
-    if (!validTypes.includes(file.type)) {
+    const isValidType = validTypes.includes(file.type) || ALLOWED_IMAGE_EXTENSIONS.test(file.name);
+    if (!isValidType) {
       toast.error('Format berkas tidak didukung. Harap pilih gambar PNG, JPG, WEBP, atau SVG.');
       return;
     }
@@ -160,14 +273,14 @@ export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProp
     setIsUploading(true);
     setCompressionRatio(null);
 
+    let fileToUpload = file;
     try {
-      let fileToUpload = file;
       const originalSizeMB = (file.size / (1024 * 1024)).toFixed(1);
 
       // Jalankan kompresi otomatis jika file > 1.5 MB
-      if (file.size > 1.5 * 1024 * 1024 && file.type !== 'image/svg+xml') {
+      if (file.size > 1.5 * 1024 * 1024 && file.type !== 'image/svg+xml' && !/\.svg$/i.test(file.name)) {
         setUploadStatusText(`Mengompresi gambar denah (${originalSizeMB} MB)...`);
-        const result = await compressImageForCanvas(file, 4096, 0.88);
+        const result = await compressImageForCanvas(file, 2560, 0.85);
         if (result.ratio > 0) {
           fileToUpload = result.file;
           const compressedSizeMB = (result.compressedSize / (1024 * 1024)).toFixed(1);
@@ -191,26 +304,30 @@ export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProp
       });
       setUrlInput(uploadedUrl);
       toast.success('Gambar denah berhasil disimpan di Storage Engine!');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('Gagal upload ke server, fallback ke local dataURL:', err);
-      // 2. Fallback aman jika offline: konversi ke Data URL lokal
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const localDataUrl = event.target?.result as string;
+      // 2. Fallback aman jika offline: gunakan file yang sudah terkompresi dengan batas ukuran aman
+      if (fileToUpload.size > MAX_LOCAL_FALLBACK_BYTES) {
+        toast.error('Gagal mengunggah ke server dan ukuran gambar terlalu besar untuk mode lokal.');
+        return;
+      }
+
+      try {
+        const localDataUrl = await readFileAsDataUrl(fileToUpload);
         onUpdateConfig({
           enabled: true,
           url: localDataUrl,
-          file_name: file.name,
+          file_name: fileToUpload.name,
           is_locked: false,
         });
         setUrlInput(localDataUrl);
         toast.success('Gambar denah siap digunakan (Mode Lokal)!');
-      };
-      reader.readAsDataURL(file);
+      } catch {
+        toast.error('Gagal memproses gambar denah. Silakan coba lagi.');
+      }
     } finally {
       setIsUploading(false);
       setUploadStatusText('Mengunggah gambar...');
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -326,10 +443,10 @@ export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProp
             {!config.url ? (
               <div>
                 <input
-                  ref={fileInputRef}
                   type="file"
                   accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
                   onChange={handleFileChange}
+                  disabled={isUploading}
                   className="hidden"
                   id="denah-blueprint-file-upload"
                 />
@@ -447,10 +564,10 @@ export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProp
                     Ganti Gambar
                   </label>
                   <input
-                    ref={fileInputRef}
                     type="file"
                     accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
                     onChange={handleFileChange}
+                    disabled={isUploading}
                     className="hidden"
                     id="denah-blueprint-file-upload-replace"
                   />
