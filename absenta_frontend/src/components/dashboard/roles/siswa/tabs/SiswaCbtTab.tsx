@@ -33,7 +33,7 @@ import {
   MapPin,
   History,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtStudentExamItem } from '@/types/cbt.types';
 import { useCbtOperationMode } from '@/components/cbt/cbtModeHelper';
@@ -164,6 +164,7 @@ const ProctorAvatar: React.FC<{ nama: string; foto?: string | null; size?: 'sm' 
   size = 'sm',
 }) => {
   const [imgError, setImgError] = useState(false);
+  const resolvedFoto = useMemo(() => (foto ? resolveProfilePhotoUrl(foto) : ''), [foto]);
   const sizeCls = size === 'md' ? 'w-9 h-9 text-xs' : 'w-6 h-6 text-[10px]';
   const initials = (nama || 'P')
     .split(/\s+/)
@@ -172,10 +173,10 @@ const ProctorAvatar: React.FC<{ nama: string; foto?: string | null; size?: 'sm' 
     .map((w) => w[0]?.toUpperCase())
     .join('');
 
-  if (foto && !imgError) {
+  if (resolvedFoto && !imgError) {
     return (
       <img
-        src={foto}
+        src={resolvedFoto}
         alt={nama}
         onError={() => setImgError(true)}
         className={cn(

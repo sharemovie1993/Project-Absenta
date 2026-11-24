@@ -289,10 +289,26 @@ export class CbtTestEngineService {
     if (proctorIdSet.size > 0) {
       const proctors = await prisma.guru.findMany({
         where: { id: { in: Array.from(proctorIdSet) }, tenant_id: tenantId },
-        select: { id: true, nama_guru: true, nip: true, foto: true },
+        select: {
+          id: true,
+          nama_guru: true,
+          nip: true,
+          foto: true,
+          GuruDocument: {
+            where: { kategori: 'FOTO' },
+            orderBy: { created_at: 'desc' },
+            take: 1,
+            select: { file_storage_path: true },
+          },
+        },
       });
       for (const g of proctors) {
-        proctorGuruMap.set(g.id, g);
+        proctorGuruMap.set(g.id, {
+          id: g.id,
+          nama_guru: g.nama_guru,
+          nip: g.nip,
+          foto: g.foto || g.GuruDocument?.[0]?.file_storage_path || null,
+        });
       }
     }
 
