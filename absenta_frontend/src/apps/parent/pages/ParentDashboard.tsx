@@ -108,7 +108,7 @@ export default function ParentDashboard() {
         const notifRes = await getStudentNotifications(student.siswa_id, 1, 5);
         setNotifications(notifRes.data);
       }
-      toast.success('Data presensi anak berhasil diperbarui!');
+      toast.success('Data kehadiran anak berhasil diperbarui!');
     } catch (err) {
       toast.error('Gagal memperbarui data.');
     } finally {
@@ -156,7 +156,7 @@ export default function ParentDashboard() {
   if (!data || !student) {
     return <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-500 space-y-3">
         <RefreshCw size={28} className="animate-spin text-emerald-600" />
-        <p className="text-xs font-extrabold uppercase tracking-wider">Memuat Data Portal Orang Tua...</p>
+        <p className="text-xs font-extrabold uppercase tracking-wider">Sedang Menyiapkan Portal Orang Tua...</p>
       </div>;
   }
   const {
@@ -183,29 +183,29 @@ export default function ParentDashboard() {
   const isTerlambat = today.status === 'HADIR' && today.is_terlambat;
   const tabs = [{
     id: 'ringkasan',
-    label: 'Feed',
-    fullLabel: 'Ringkasan Feed',
+    label: 'Beranda',
+    fullLabel: 'Ringkasan Hari Ini',
     icon: Activity
   }, {
     id: 'kehadiran',
-    label: 'Presensi',
-    fullLabel: 'Presensi Anak',
+    label: 'Kehadiran',
+    fullLabel: 'Riwayat Kehadiran',
     icon: Calendar
   }, {
     id: 'perizinan',
-    label: 'Perizinan',
-    fullLabel: 'Perizinan (1-Tap)',
+    label: 'Izin',
+    fullLabel: 'Kirim Surat Izin',
     icon: FileText,
     badge: '2'
   }, {
     id: 'catatan',
-    label: 'Poin',
-    fullLabel: 'Poin & Kasus',
+    label: 'Catatan',
+    fullLabel: 'Poin & Catatan',
     icon: ShieldCheck
   }, {
     id: 'profil',
     label: 'Profil',
-    fullLabel: 'Profil Ortu',
+    fullLabel: 'Profil & Notifikasi',
     icon: User
   }];
   return <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 pb-24 lg:pb-8">
@@ -233,7 +233,7 @@ export default function ParentDashboard() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button onClick={handleRefresh} disabled={isRefreshing} className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 transition-colors" title="Refresh Data">
+          <button onClick={handleRefresh} disabled={isRefreshing} className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 transition-colors" title="Perbarui Data">
             <RefreshCw size={16} className={cn(isRefreshing && "animate-spin")} />
           </button>
           <button onClick={() => {
@@ -263,11 +263,11 @@ export default function ParentDashboard() {
               {/* Top Badges */}
               <div className="flex items-center gap-2.5 flex-wrap">
                 <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider border border-white/20 shadow-xs">
-                  PARENT PORTAL MONITORING
+                  PORTAL PEMANTAUAN ORANG TUA
                 </span>
                 <span className="px-3 py-1 rounded-full bg-amber-400/30 backdrop-blur-md text-amber-100 text-[10px] font-extrabold flex items-center gap-1.5 border border-amber-300/30">
                   <Bell size={12} className="text-amber-200 animate-bounce" />
-                  WhatsApp Live Alerts Active
+                  Notifikasi WhatsApp Aktif
                 </span>
               </div>
 
@@ -278,7 +278,7 @@ export default function ParentDashboard() {
 
               {/* Subtitle */}
               <p className="text-xs sm:text-sm font-medium text-white/90">
-                Memantau Presensi &amp; Kedisiplinan Anak:{' '}
+                Memantau Kehadiran &amp; Kedisiplinan Anak:{' '}
                 <span className="font-bold text-white underline decoration-white/70 decoration-2 underline-offset-2">
                   {student.nama_siswa} ({student.kelas?.startsWith('Kelas') ? student.kelas : `Kelas ${student.kelas || 'XI RPL 1'}`})
                 </span>
@@ -292,7 +292,7 @@ export default function ParentDashboard() {
               </div>
               <div>
                 <span className="text-[9px] font-black text-amber-200 uppercase tracking-widest block">
-                  SISWA TERHUBUNG
+                  ANAK YANG DIPANTAU
                 </span>
                 <span className="text-xs sm:text-sm font-black text-white tracking-tight">
                   {student.nama_siswa}
@@ -337,11 +337,11 @@ export default function ParentDashboard() {
         }} className="space-y-5 sm:space-y-6">
               {/* 3 Metric Cards Grid (Adopsi Layout Gambar 1) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
-                {/* Card 1: Status Gerbang Hari Ini */}
+                {/* Card 1: Kehadiran di Sekolah Hari Ini */}
                 <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3">
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                      Status Gerbang Hari Ini
+                      Kehadiran di Sekolah Hari Ini
                     </span>
                     <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 uppercase">
                       {statusLabel} {today.waktu_masuk ? `(${new Date(today.waktu_masuk).toLocaleTimeString('id-ID', {
@@ -350,7 +350,7 @@ export default function ParentDashboard() {
                   })} WIB)` : ''}
                     </div>
                     <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                      Gate 1 Utara • {isTerlambat ? 'Terlambat' : 'Tepat Waktu'}
+                      Pintu Masuk Utama • {isTerlambat ? 'Terlambat' : 'Tepat Waktu'}
                     </p>
                   </div>
                   <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
@@ -358,17 +358,17 @@ export default function ParentDashboard() {
                   </div>
                 </div>
 
-                {/* Card 2: Skor Kedisiplinan Anak */}
+                {/* Card 2: Poin Kedisiplinan Anak */}
                 <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3">
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                      Skor Kedisiplinan Anak
+                      Poin Kedisiplinan Anak
                     </span>
                     <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">
                       {summary.total_poin ?? 90} / 100 Poin
                     </div>
                     <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                      Predikat: SANGAT BAIK
+                      Penilaian: SANGAT BAIK
                     </p>
                   </div>
                   <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
@@ -376,17 +376,17 @@ export default function ParentDashboard() {
                   </div>
                 </div>
 
-                {/* Card 3: Notifikasi WA Ortu */}
+                {/* Card 3: Pesan WhatsApp Orang Tua */}
                 <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3">
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                      Notifikasi WA Ortu
+                      Pesan WhatsApp Orang Tua
                     </span>
                     <div className="text-lg sm:text-xl font-black text-blue-600 dark:text-blue-400 truncate max-w-[180px]">
                       AKTIF (+62812...)
                     </div>
                     <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                      Laporan Tap Instant
+                      Kabar otomatis saat anak tiba atau pulang
                     </p>
                   </div>
                   <div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
@@ -395,17 +395,17 @@ export default function ParentDashboard() {
                 </div>
               </div>
 
-              {/* Live Feed Activity Monitoring Sekolah Container */}
+              {/* Kabar Aktivitas Anak di Sekolah Container */}
               <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80">
                   <div className="flex items-center gap-2.5">
                     <Activity size={18} className="text-emerald-600 dark:text-emerald-400" />
                     <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                      Live Feed Activity Monitoring Sekolah
+                      Kabar Aktivitas Anak di Sekolah
                     </h3>
                   </div>
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                    Real-time Sync
+                    Terbaru Otomatis
                   </span>
                 </div>
 
@@ -413,8 +413,8 @@ export default function ParentDashboard() {
                 <div className="space-y-3">
                   {[{
                 id: 'f1',
-                title: 'Tap Masuk Gerbang Utama',
-                subtitle: `${student.nama_siswa} telah tiba di sekolah melalui Gate 1 Utara (RFID Scan OK).`,
+                title: 'Anak Tiba di Sekolah',
+                subtitle: `${student.nama_siswa} sudah sampai di sekolah melalui Pintu Masuk Utama dengan aman.`,
                 badge: 'HADIR TEPAT WAKTU',
                 badgeColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
                 iconColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
@@ -424,24 +424,24 @@ export default function ParentDashboard() {
                 }) + ' WIB' : '06:48 WIB'
               }, {
                 id: 'f2',
-                title: 'Sesi KBM Dimulai',
-                subtitle: 'Guru Drs. Budi Santoso telah membuka sesi Pemrograman Web di Lab Komputer 2.',
-                badge: 'KBM AKTIF',
+                title: 'Pelajaran di Kelas Dimulai',
+                subtitle: 'Bapak/Ibu Guru Drs. Budi Santoso telah memulai pelajaran Pemrograman Web di Lab Komputer 2.',
+                badge: 'SEDANG BELAJAR',
                 badgeColor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30',
                 iconColor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
                 time: '07:00 WIB'
               }, {
                 id: 'f3',
-                title: 'Pencatatan Keterlambatan',
-                subtitle: 'Bagas Prasetyo terdeteksi masuk gerbang pukul 07:18 WIB (+18m late).',
+                title: 'Catatan Keterlambatan',
+                subtitle: 'Bagas Prasetyo tercatat masuk gerbang pukul 07:18 WIB (terlambat 18 menit).',
                 badge: 'TERLAMBAT',
                 badgeColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
                 iconColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
                 time: '07:18 WIB'
               }, {
                 id: 'f4',
-                title: 'Pengajuan Surat Izin Sakit',
-                subtitle: 'Orang tua Elvina Nurul Zahra mengajukan izin sakit terlampir surat dokter.',
+                title: 'Kiriman Surat Izin Sakit',
+                subtitle: 'Orang tua dari Elvina Nurul Zahra telah mengirimkan surat izin sakit beserta surat dokter.',
                 badge: 'SURAT IZIN',
                 badgeColor: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30',
                 iconColor: 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
@@ -490,10 +490,10 @@ export default function ParentDashboard() {
               {/* Header Title */}
               <div className="pb-2 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
                 <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                  Rekap Presensi Anak (Agustus 2026)
+                  Catatan Kehadiran Anak (Agustus 2026)
                 </h3>
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  Bulan Ini: {summary.hadir} Hari Hadir
+                  Bulan Ini: {summary.hadir} Hari Masuk
                 </span>
               </div>
 
@@ -503,42 +503,42 @@ export default function ParentDashboard() {
               date: '2026-08-10',
               status: 'Hadir',
               statusColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-              metode: 'Metode: RFID • Tepat waktu via Gerbang Utara Gate 1',
+              metode: 'Scan kartu pelajar • Tepat waktu di Pintu Masuk Utama',
               tapMasuk: '06:42 WIB',
               tapKeluar: '-'
             }, {
               date: '2026-08-08',
               status: 'Hadir',
               statusColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-              metode: 'Metode: FaceScan • Face Recognition Sukses',
+              metode: 'Scan wajah • Kehadiran tercatat otomatis',
               tapMasuk: '06:35 WIB',
               tapKeluar: '-'
             }, {
               date: '2026-08-07',
               status: 'Terlambat',
               statusColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
-              metode: 'Metode: Manual • Terlambat 18 menit (Macet jalan raya)',
+              metode: 'Dicatat petugas • Terlambat 18 menit (Macet di jalan)',
               tapMasuk: '07:18 WIB',
               tapKeluar: '-'
             }, {
               date: '2026-08-06',
               status: 'Hadir',
               statusColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-              metode: 'Metode: RFID',
+              metode: 'Scan kartu pelajar',
               tapMasuk: '06:50 WIB',
               tapKeluar: '-'
             }, {
               date: '2026-08-05',
               status: 'Alpa',
               statusColor: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
-              metode: 'Metode: • Belum ada kabar dari orang tua',
+              metode: 'Belum ada keterangan dari orang tua',
               tapMasuk: '-',
               tapKeluar: '-'
             }, {
               date: '2026-08-04',
               status: 'Sakit',
               statusColor: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30',
-              metode: 'Metode: • Surat dokter terlampir via Ortu Portal',
+              metode: 'Surat dokter sudah dilampirkan melalui Portal Orang Tua',
               tapMasuk: '-',
               tapKeluar: '-'
             }].map((item, idx) => <div key={idx} className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
@@ -558,10 +558,10 @@ export default function ParentDashboard() {
 
                     <div className="text-right shrink-0 font-mono text-xs font-bold space-y-0.5 self-end sm:self-auto">
                       <div className="text-slate-800 dark:text-slate-200">
-                        Tap Masuk: <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{item.tapMasuk}</span>
+                        Jam Masuk: <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{item.tapMasuk}</span>
                       </div>
                       <div className="text-slate-400 text-[11px]">
-                        Tap Keluar: {item.tapKeluar}
+                        Jam Pulang: {item.tapKeluar}
                       </div>
                     </div>
                   </div>)}
@@ -587,11 +587,11 @@ export default function ParentDashboard() {
                   <div className="flex items-center gap-2.5">
                     <FileText size={20} className="text-amber-500" />
                     <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                      Form 1-Tap Pengajuan Izin Anak
+                      Kirim Surat Izin Anak
                     </h3>
                   </div>
                   <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Kirimkan surat izin sakit atau izin keperluan ke Wali Kelas
+                    Sampaikan kabar jika anak berhalangan hadir langsung ke Wali Kelas
                   </p>
                 </div>
 
@@ -630,10 +630,10 @@ export default function ParentDashboard() {
                         <FileText size={18} />
                       </div>
                       <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
-                        {attachmentFile ? attachmentFile.name : 'Klik untuk Unggah Surat Dokter / Bukti'}
+                        {attachmentFile ? attachmentFile.name : 'Klik untuk Pilih Foto Surat Dokter / Bukti'}
                       </p>
                       <p className="text-[10px] font-semibold text-slate-400 mt-0.5">
-                        {attachmentFile ? `${(attachmentFile.size / 1024).toFixed(1)} KB` : 'JPG, PNG, PDF maks 5MB'}
+                        {attachmentFile ? `${(attachmentFile.size / 1024).toFixed(1)} KB` : 'Format foto (JPG/PNG) atau PDF, maksimal 5 MB'}
                       </p>
                     </label>
                   </div>
@@ -673,7 +673,7 @@ export default function ParentDashboard() {
                       </p>
 
                       <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-800/60 text-xs font-medium">
-                        <span className="text-slate-400 text-[11px]">Status Sistem &amp; Walas:</span>
+                        <span className="text-slate-400 text-[11px]">Status Penerimaan Wali Kelas:</span>
                         <span className={cn("font-bold flex items-center gap-1.5", item.statusColor)}>
                           <CheckCircle2 size={14} />
                           {item.statusText}
@@ -700,7 +700,7 @@ export default function ParentDashboard() {
               {/* Header Title */}
               <div className="pb-2 border-b border-slate-100 dark:border-slate-800/80">
                 <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                  Transparansi Catatan Kedisiplinan Anak
+                  Catatan Prestasi &amp; Kedisiplinan Anak
                 </h3>
               </div>
 
@@ -732,7 +732,7 @@ export default function ParentDashboard() {
               poinColor: 'text-rose-600 dark:text-rose-400'
             }, {
               id: 'pk5',
-              title: 'Meninggalkan Lingkungan Sekolah Tanpa Izin (Bolas KBM)',
+              title: 'Meninggalkan Sekolah Tanpa Izin (Membolos Pelajaran)',
               meta: 'Tanggal: 2026-08-04 • Diproses oleh: Pak Suwandi, S.ST (Guru Piket)',
               poin: '-25 Poin',
               poinColor: 'text-rose-600 dark:text-rose-400'
@@ -769,7 +769,7 @@ export default function ParentDashboard() {
               {/* Header Title */}
               <div className="pb-2 border-b border-slate-100 dark:border-slate-800/80">
                 <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                  Pengaturan Profil &amp; Notifikasi WhatsApp
+                  Profil &amp; Pengaturan Pesan WhatsApp
                 </h3>
               </div>
 
@@ -781,10 +781,10 @@ export default function ParentDashboard() {
                   </div>
                   <div className="space-y-0.5 min-w-0">
                     <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
-                      Laporan WhatsApp Otomatis
+                      Kabar Otomatis via WhatsApp
                     </h4>
                     <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                      Kirimkan pesan WA saat anak melakukan Tap Gerbang atau Absen KBM
+                      Kirimkan pesan WhatsApp ke nomor Anda setiap kali anak tiba di sekolah, pulang, atau tidak masuk kelas
                     </p>
                   </div>
                 </div>
