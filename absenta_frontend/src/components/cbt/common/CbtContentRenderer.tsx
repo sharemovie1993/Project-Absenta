@@ -48,6 +48,7 @@ export const CbtContentRenderer: React.FC<CbtContentRendererProps> = ({
               src={resolveProfilePhotoUrl(imageUrl)}
               alt={imageAlt}
               decoding="async"
+              referrerPolicy="no-referrer"
               className="max-h-64 object-contain rounded-lg transition-transform duration-200 group-hover:scale-[1.02] cursor-pointer bg-white"
               onClick={() => setIsZoomOpen(true)}
               loading="lazy"

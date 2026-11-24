@@ -1639,7 +1639,42 @@ export class CbtBankSoalService {
       pembahasan: string | null;
     }> = [];
 
+    const extractGoogleImageFromNode = (node: any): string | null => {
+      if (!node) return null;
+      if (typeof node === 'string') {
+        const s = node.trim();
+        if (s.startsWith('http://') || s.startsWith('https://')) {
+          return s;
+        }
+        // Google Drive / Forms image ID biasanya alfanumerik + _ - minimal 15 karakter tanpa spasi
+        if (/^[A-Za-z0-9_-]{15,}$/.test(s)) {
+          return `https://lh3.googleusercontent.com/d/${s}`;
+        }
+        return null;
+      }
+      if (Array.isArray(node)) {
+        for (const child of node) {
+          const found = extractGoogleImageFromNode(child);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    // Ekstrak juga daftar URL gambar langsung dari HTML /viewform (lh3/lh4/lh5/lh6/lh7.googleusercontent.com/formsz/...)
+    const htmlImageUrls: string[] = [];
+    const imgTagRegex = /<img[^>]+src=["'](https:\/\/lh\d+[^"']*googleusercontent\.com\/[^"']+)["']/gi;
+    let imgMatch: RegExpExecArray | null;
+    while ((imgMatch = imgTagRegex.exec(htmlContent)) !== null) {
+      const u = imgMatch[1].replace(/&amp;/g, '&');
+      if (!u.includes('a/default') && !htmlImageUrls.includes(u)) {
+        htmlImageUrls.push(u);
+      }
+    }
+    let htmlImageCursor = 0;
+
     let questionIndex = 1;
+    let pendingStimulusImage: string | null = null;
 
     for (const item of rawQuestions) {
       if (!Array.isArray(item)) continue;
@@ -1649,6 +1684,26 @@ export class CbtBankSoalService {
 
       // Lewati section header (type 6 atau 8)
       if (fieldType === 6 || fieldType === 8) {
+        continue;
+      }
+
+      // Ekstrak gambar dari item[6] atau item[9] (atau fallback ke urutan HTML image jika hanya ID/kosong)
+      let itemImage: string | null =
+        extractGoogleImageFromNode(item[6]) || extractGoogleImageFromNode(item[9]);
+
+      if (itemImage && itemImage.includes('lh3.googleusercontent.com/d/') && htmlImageCursor < htmlImageUrls.length) {
+        // Prioritaskan URL signed formsz dari HTML jika tersedia agar lebih andal dimuat di browser
+        const htmlUrl = htmlImageUrls[htmlImageCursor++];
+        if (htmlUrl) itemImage = htmlUrl;
+      } else if (!itemImage && fieldType === 11 && htmlImageCursor < htmlImageUrls.length) {
+        itemImage = htmlImageUrls[htmlImageCursor++];
+      }
+
+      // Blok Gambar Mandiri (fieldType === 11) tanpa opsi: tempelkan gambarnya ke soal berikutnya
+      if (fieldType === 11) {
+        if (itemImage) {
+          pendingStimulusImage = itemImage;
+        }
         continue;
       }
 
@@ -1678,18 +1733,8 @@ export class CbtBankSoalService {
         continue;
       }
 
-      // Ambil stimulus gambar jika ada (dari item[6] atau item[9] Google Forms image array)
-      let stimulusImage: string | null = null;
-      if (item[6] && typeof item[6] === 'string' && item[6].startsWith('http')) {
-        stimulusImage = item[6];
-      } else if (Array.isArray(item[6]) && typeof item[6][0] === 'string') {
-        stimulusImage = item[6][0];
-      } else if (item[9] && Array.isArray(item[9]) && item[9][0]) {
-        const imgId = item[9][0][0];
-        if (imgId && typeof imgId === 'string') {
-          stimulusImage = `https://lh3.googleusercontent.com/d/${imgId}`;
-        }
-      }
+      const stimulusImage: string | null = itemImage || pendingStimulusImage || null;
+      pendingStimulusImage = null;
 
       // Jika judul pertanyaan kosong (misal guru menyisipkan formula matematika murni sebagai gambar), beri penomoran default
       const finalTitle = title && String(title).trim().length > 0

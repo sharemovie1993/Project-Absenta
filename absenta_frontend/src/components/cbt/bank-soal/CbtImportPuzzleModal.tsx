@@ -538,7 +538,8 @@ export const CbtImportPuzzleModal: React.FC<CbtImportPuzzleModalProps> = ({
                         <img
                           src={card.gambar_stimulus_url}
                           alt={`Stimulus ${card.nomor_urut}`}
-                          className="max-h-32 rounded-lg border border-slate-200 object-contain"
+                          referrerPolicy="no-referrer"
+                          className="max-h-36 rounded-lg border border-slate-200 object-contain bg-white"
                         />
                       )}
                     </div>
