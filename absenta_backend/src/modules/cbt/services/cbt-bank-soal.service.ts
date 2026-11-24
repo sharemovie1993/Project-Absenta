@@ -1446,6 +1446,42 @@ export class CbtBankSoalService {
   }
 
   /**
+   * Kosongkan seluruh butir soal dalam 1 Bank Soal (dengan pembersihan media & cache)
+   */
+  static async clearAllQuestions(tenantId: string, bankSoalId: string, user?: any) {
+    const bank = await this.getById(tenantId, bankSoalId);
+    await this.assertQuestionEditAccess(tenantId, bank, user);
+
+    const existingList = await prisma.cbtSoal.findMany({
+      where: { tenant_id: tenantId, bank_soal_id: bankSoalId },
+    });
+
+    if (existingList.length === 0) {
+      return { deletedCount: 0 };
+    }
+
+    const candidateMediaUrls = this.extractMediaUrlsFromSoalList(existingList);
+
+    const deletedCount = await prisma.$transaction(async (tx) => {
+      const del = await tx.cbtSoal.deleteMany({
+        where: { tenant_id: tenantId, bank_soal_id: bankSoalId },
+      });
+
+      await tx.cbtBankSoal.update({
+        where: { id: bankSoalId },
+        data: { jumlah_soal: 0 },
+      });
+
+      return del.count;
+    });
+
+    await this.cleanupUnusedMediaUrls(tenantId, candidateMediaUrls);
+    await this.invalidateActiveJadwalBundleCaches(tenantId, bankSoalId);
+
+    return { deletedCount };
+  }
+
+  /**
    * Bulk Import butir soal (misal dari hasil parser Excel / Word)
    */
   static async bulkImportQuestions(tenantId: string, bankSoalId: string, items: any[], user?: any) {

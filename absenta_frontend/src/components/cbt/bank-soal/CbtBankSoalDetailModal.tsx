@@ -198,6 +198,42 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
     }
   };
 
+  const clearAllMutation = useMutation({
+    mutationFn: (bankId: string) => cbtApi.clearAllSoal(bankId),
+    onSuccess: async (res) => {
+      setActiveCardId(null);
+      toast.success(`Berhasil mengosongkan ${res?.deletedCount ?? 0} butir soal`);
+      await queryClient.invalidateQueries({
+        queryKey: cbtQueryKeys.soalList(bankSoal?.id || ''),
+        exact: false,
+        refetchType: 'all',
+      });
+      await queryClient.invalidateQueries({
+        queryKey: cbtQueryKeys.bankSoal(),
+        exact: false,
+        refetchType: 'all',
+      });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Gagal mengosongkan soal');
+    },
+  });
+
+  const handleClearAllSoal = async () => {
+    if (!bankSoal || soalList.length === 0) return;
+    const isConfirmed = await confirm({
+      title: 'Kosongkan Semua Soal?',
+      message: `Seluruh ${soalList.length} butir soal pada "${bankSoal.judul}" akan dihapus permanen. Lanjutkan?`,
+      confirmText: 'Ya, Kosongkan Semua',
+      cancelText: 'Batal',
+      style: 'danger',
+    });
+
+    if (isConfirmed) {
+      clearAllMutation.mutate(bankSoal.id);
+    }
+  };
+
   if (!bankSoal) return null;
 
   return (
@@ -278,6 +314,23 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                       <span>Tambah Soal</span>
                     </Button>
                   </>
+                )}
+
+                {!readOnly && soalList.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={clearAllMutation.isPending}
+                    onClick={handleClearAllSoal}
+                    className="border-rose-300 dark:border-rose-800 bg-rose-50/70 dark:bg-rose-950/30 hover:bg-rose-100 text-rose-700 dark:text-rose-300 font-bold text-xs h-8 sm:h-9 px-3 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    title="Hapus seluruh butir soal di bank soal ini"
+                  >
+                    <Trash2 size={14} />
+                    <span className="hidden sm:inline">
+                      {clearAllMutation.isPending ? 'Mengosongkan...' : 'Kosongkan Soal'}
+                    </span>
+                    <span className="sm:hidden">Kosongkan</span>
+                  </Button>
                 )}
 
                 {!readOnly && soalList.length > 0 && onAktifkanUjian && (

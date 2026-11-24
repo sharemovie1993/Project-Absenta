@@ -190,6 +190,18 @@ export class CbtBankSoalController {
     }
   }
 
+  static async clearAllQuestions(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { id } = req.params;
+      const result = await CbtBankSoalService.clearAllQuestions(tenant_id, id, req.user);
+      return sendResponse(reply, 200, true, 'Seluruh butir soal berhasil dikosongkan', result);
+    } catch (error: any) {
+      const status = String(error?.message || '').startsWith('Akses ditolak') ? 403 : 400;
+      return sendError(reply, status, error.message || 'Gagal mengosongkan butir soal');
+    }
+  }
+
   static async bulkImportQuestions(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;

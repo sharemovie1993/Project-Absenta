@@ -69,6 +69,10 @@ export async function cbtRoutes(fastify: any) {
     preHandler: [requireCapability('cbt.bank.manage', cbtGuruExempt), determineDataScope()],
   }, CbtBankSoalController.createQuestion);
 
+  fastify.delete('/bank-soal/:id/soal', {
+    preHandler: [requireCapability('cbt.bank.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtBankSoalController.clearAllQuestions);
+
   fastify.post('/bank-soal/:id/soal/bulk-import', {
     preHandler: [requireCapability('cbt.bank.manage', cbtGuruExempt), determineDataScope()],
   }, CbtBankSoalController.bulkImportQuestions);

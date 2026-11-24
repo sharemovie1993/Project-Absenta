@@ -150,6 +150,11 @@ export const cbtApi = {
     return res.data?.data;
   },
 
+  clearAllSoal: async (bankSoalId: string) => {
+    const res = await api.delete(`/cbt/bank-soal/${bankSoalId}/soal`);
+    return res.data?.data as { deletedCount: number };
+  },
+
   bulkImportSoal: async (bankSoalId: string, items: Array<Partial<CbtSoal>>) => {
     const res = await api.post(`/cbt/bank-soal/${bankSoalId}/soal/bulk-import`, { items });
     return res.data?.data as { importedCount: number; totalSoal: number };
