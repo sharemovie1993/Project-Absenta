@@ -101,20 +101,57 @@ export const SiswaDashboard: React.FC = () => {
   const validTabs: SiswaTabId[] = ['ringkasan', 'jadwal', 'ekskul', 'pkl', 'cbt', 'portal', 'kehadiran', 'catatan', 'berkas', 'profil', 'presensi-kelas', 'koperasi'];
   const activeTab: SiswaTabId = rawTab && validTabs.includes(rawTab) ? rawTab : 'ringkasan';
 
+  // Deteksi Event Ujian CBT Aktif Siswa lebih awal agar modul non-ujian tidak ikut di-fetch saat ada ujian
+  const { data: studentExams = [], isLoading: isExamsLoading } = useQuery<CbtStudentExamItem[]>({
+    queryKey: cbtQueryKeys.myExams(),
+    queryFn: cbtApi.getMyExams,
+    staleTime: 30 * 1000,
+  });
+
+  const activeStudentExams = useMemo(() => {
+    if (!studentExams || studentExams.length === 0) return [];
+    const now = Date.now();
+    return studentExams.filter((item) => {
+      if (item.status_peserta === 'FINISHED' || item.status_peserta === 'DISQUALIFIED') return false;
+      if (item.status_jadwal === 'ACTIVE' || item.status_jadwal === 'PAUSED') return true;
+      if (item.status_jadwal !== 'COMPLETED' && item.status_jadwal !== 'ARCHIVED' && item.status_jadwal !== 'DRAFT') {
+        const start = new Date(item.tanggal_mulai).getTime();
+        const end = new Date(item.tanggal_selesai).getTime();
+        return now >= start && now <= end;
+      }
+      return false;
+    });
+  }, [studentExams]);
+
+  const hasActiveStudentExam = activeStudentExams.length > 0;
+  const isExamLockdown = hasActiveStudentExam;
+  const effectiveTab: SiswaTabId =
+    isExamLockdown && activeTab !== 'cbt' && activeTab !== 'profil'
+      ? 'cbt'
+      : isExamsLoading && !rawTab
+      ? 'cbt'
+      : activeTab;
+
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isMobileSidebarOpen, setIsMobileSidebarOpen, openMobileSidebar } = useMobileSubtabSidebar('siswa');
 
   // Keep-Alive Tab Cache
-  const [visitedTabs, setVisitedTabs] = useState<Set<SiswaTabId>>(() => new Set([activeTab]));
+  const [visitedTabs, setVisitedTabs] = useState<Set<SiswaTabId>>(() => new Set([effectiveTab]));
+
+  useEffect(() => {
+    if (isExamLockdown && activeTab !== 'cbt' && activeTab !== 'profil') {
+      setSearchParams({ tab: 'cbt' }, { replace: true });
+    }
+  }, [isExamLockdown, activeTab, setSearchParams]);
 
   useEffect(() => {
     setVisitedTabs((prev) => {
-      if (prev.has(activeTab)) return prev;
+      if (prev.has(effectiveTab)) return prev;
       const next = new Set(prev);
-      next.add(activeTab);
+      next.add(effectiveTab);
       return next;
     });
-  }, [activeTab]);
+  }, [effectiveTab]);
 
   // Telemetry: Laporkan status aplikasi mobile siswa secara otomatis
   useEffect(() => {
@@ -123,13 +160,18 @@ export const SiswaDashboard: React.FC = () => {
 
   const handleTabChange = useCallback(
     (newTab: SiswaTabId | string) => {
+      if (isExamLockdown && newTab !== 'cbt' && newTab !== 'profil') {
+        toast('Mode Fokus Ujian: Hanya Ujian CBT & Profil yang diizinkan.', { icon: '🔒' });
+        setSearchParams({ tab: 'cbt' }, { replace: true });
+        return;
+      }
       setSearchParams({ tab: newTab });
     },
-    [setSearchParams]
+    [isExamLockdown, setSearchParams]
   );
 
-  // Data hook (optimized with activeTab-driven lazy query loading)
-  const data = useSiswaDashboardData(activeTab);
+  // Data hook (optimized with effectiveTab-driven lazy query loading)
+  const data = useSiswaDashboardData(effectiveTab);
 
   // Modals state
   const [showDigitalCardModal, setShowDigitalCardModal] = useState(false);
@@ -145,6 +187,7 @@ export const SiswaDashboard: React.FC = () => {
   const { data: sosialisasiData, refetch: refetchSosialisasi } = useQuery({
     queryKey: sosialisasiQueryKeys.active(),
     queryFn: () => sosialisasiApi.getActiveSession().catch(() => null),
+    enabled: !isExamsLoading && !hasActiveStudentExam,
     staleTime: 60 * 1000,
   });
 
@@ -259,29 +302,6 @@ export const SiswaDashboard: React.FC = () => {
     enabled: showBelumAbsenModal,
   });
 
-  // Deteksi Event Ujian CBT Aktif Siswa (SSOT cbtApi.getMyExams)
-  const { data: studentExams = [], isLoading: isExamsLoading } = useQuery<CbtStudentExamItem[]>({
-    queryKey: cbtQueryKeys.myExams(),
-    queryFn: cbtApi.getMyExams,
-    staleTime: 30 * 1000,
-  });
-
-  const activeStudentExams = useMemo(() => {
-    if (!studentExams || studentExams.length === 0) return [];
-    const now = Date.now();
-    return studentExams.filter((item) => {
-      if (item.status_peserta === 'FINISHED' || item.status_peserta === 'DISQUALIFIED') return false;
-      if (item.status_jadwal === 'ACTIVE' || item.status_jadwal === 'PAUSED') return true;
-      if (item.status_jadwal !== 'COMPLETED' && item.status_jadwal !== 'ARCHIVED' && item.status_jadwal !== 'DRAFT') {
-        const start = new Date(item.tanggal_mulai).getTime();
-        const end = new Date(item.tanggal_selesai).getTime();
-        return now >= start && now <= end;
-      }
-      return false;
-    });
-  }, [studentExams]);
-
-  const hasActiveStudentExam = activeStudentExams.length > 0;
   const [showExamDispatchModal, setShowExamDispatchModal] = useState(false);
   const [isExamDismissedByUser, setIsExamDismissedByUser] = useState(false);
 
@@ -318,14 +338,29 @@ export const SiswaDashboard: React.FC = () => {
     }
   }, [data.siswaProfile, data.user, hasActiveStudentExam, isExamsLoading]);
 
-  // Tab items config & categories
-  const categories: UniversalSubtabCategory[] = useMemo(() => [
-    { id: 'operasional', label: 'OPERASIONAL SISWA', icon: LayoutList },
-    { id: 'akademik', label: 'AKADEMIK & PENILAIAN', icon: Laptop },
-    { id: 'layanan', label: 'LAYANAN & INFORMASI', icon: LayoutGrid },
-  ], []);
+  // Tab items config & categories (dibatasi ke Ujian CBT & Profil saat ada ujian aktif)
+  const categories: UniversalSubtabCategory[] = useMemo(() => {
+    if (isExamLockdown) {
+      return [
+        { id: 'akademik', label: 'UJIAN CBT', icon: Laptop },
+        { id: 'layanan', label: 'AKUN SISWA', icon: User },
+      ];
+    }
+    return [
+      { id: 'operasional', label: 'OPERASIONAL SISWA', icon: LayoutList },
+      { id: 'akademik', label: 'AKADEMIK & PENILAIAN', icon: Laptop },
+      { id: 'layanan', label: 'LAYANAN & INFORMASI', icon: LayoutGrid },
+    ];
+  }, [isExamLockdown]);
 
   const navTabs: SiswaNavTabItem[] = useMemo(() => {
+    if (isExamLockdown) {
+      return [
+        { id: 'cbt', label: 'Ujian CBT', shortLabel: 'Ujian', icon: Laptop, category: 'akademik' },
+        { id: 'profil', label: 'Profil', shortLabel: 'Profil', icon: User, category: 'layanan' },
+      ];
+    }
+
     const tabs: SiswaNavTabItem[] = [
       { id: 'ringkasan', label: 'Ringkasan', shortLabel: 'Ringkasan', icon: LayoutList, category: 'operasional' },
     ];
@@ -362,7 +397,7 @@ export const SiswaDashboard: React.FC = () => {
       { id: 'profil', label: 'Profil', shortLabel: 'Profil', icon: User, category: 'layanan' }
     );
     return tabs;
-  }, [data.isPetugasKelas, data.isAktifPkl, data.myPenempatan, data.pendingJurnalCount, data.pelanggaranCount]);
+  }, [isExamLockdown, data.isPetugasKelas, data.isAktifPkl, data.myPenempatan, data.pendingJurnalCount, data.pelanggaranCount]);
 
   const activeTabMeta = useMemo(() => {
     return navTabs.find((t) => t.id === activeTab) || navTabs[0];
@@ -400,15 +435,17 @@ export const SiswaDashboard: React.FC = () => {
           onRefresh={handleManualRefresh}
           isRefreshing={isRefreshing}
           actions={
-            <button
-              type="button"
-              onClick={() => setShowDigitalCardModal(true)}
-              className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer shrink-0"
-              title="Buka Kartu Pelajar Digital"
-              aria-label="Kartu Digital"
-            >
-              <QrCode size={15} />
-            </button>
+            !isExamLockdown ? (
+              <button
+                type="button"
+                onClick={() => setShowDigitalCardModal(true)}
+                className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer shrink-0"
+                title="Buka Kartu Pelajar Digital"
+                aria-label="Kartu Digital"
+              >
+                <QrCode size={15} />
+              </button>
+            ) : undefined
           }
         />
       )}
@@ -520,7 +557,16 @@ export const SiswaDashboard: React.FC = () => {
             })}
           </nav>
 
-          {/* Quick Shortcuts Card (Leaderboard & Discipline) */}
+          {/* Banner Mode Fokus Ujian saat Ada Ujian Aktif */}
+          {isExamLockdown && (
+            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/70 text-amber-800 dark:text-amber-200 text-[11px] font-semibold leading-relaxed">
+              <span className="font-black block mb-0.5">🔒 Mode Fokus Ujian Aktif</span>
+              Navigasi dibatasi ke <strong>Ujian CBT</strong> &amp; <strong>Profil</strong> selama ujian berlangsung.
+            </div>
+          )}
+
+          {/* Quick Shortcuts Card (Leaderboard & Discipline) - disembunyikan saat Mode Fokus Ujian */}
+          {!isExamLockdown && (
           <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
               Status Kedisiplinan
@@ -550,6 +596,7 @@ export const SiswaDashboard: React.FC = () => {
               </div>
             )}
           </div>
+          )}
         </aside>
 
         {/* Right Column: Main Content & Subtabs */}
