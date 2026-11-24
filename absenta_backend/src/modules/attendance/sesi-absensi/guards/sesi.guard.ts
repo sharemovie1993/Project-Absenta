@@ -382,7 +382,12 @@ export class SesiGuard {
         if (guru) {
             const org = request.organizationalScope;
             const positions = org?.positions || [];
-            const forceOnlyMe = request.query.only_me === 'true' || request.query.only_me === true || request.query.guru_id === 'me';
+            const requestedGuruId = request.query.guru_id ? String(request.query.guru_id) : undefined;
+            if (requestedGuruId === 'me') {
+                request.query.guru_id = guru.id;
+            }
+            const isExplicitOwnGuruQuery = requestedGuruId === 'me' || (requestedGuruId === String(guru.id) && !kelas_id);
+            const forceOnlyMe = request.query.only_me === 'true' || request.query.only_me === true || isExplicitOwnGuruQuery;
 
             // Cek kelas binaan resmi Wali Kelas dari OrganizationalAssignment
             const walasAssignments = await prisma.organizationalAssignment.findMany({

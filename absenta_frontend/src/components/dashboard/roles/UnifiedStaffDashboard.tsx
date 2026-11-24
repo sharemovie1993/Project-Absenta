@@ -253,7 +253,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const isMyAttendanceDone = Boolean(myAttendanceItem?.is_hadir);
 
   const { timelineItems, isLoading: timelineLoading, refetch: refetchTimeline } = useStaffTimeline(guruId, {
-    enabled: !isAdmin && Boolean(guruId),
+    enabled: Boolean(guruId),
   });
 
   const jabatanList: string[] = useMemo(() => {

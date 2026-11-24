@@ -10,6 +10,16 @@ import { sesiReminderService } from '../sesi-reminder.service';
 import { sesiCloseNotifyService } from '../sesi-close-notify.service';
 import { sesiHelperService } from '../sesi-helper.service';
 
+const HARI_BY_WEEKDAY = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
+
+function resolveHariFromDateStr(dateStr: string): string {
+  const [y, m, d] = String(dateStr || '').slice(0, 10).split('-').map(Number);
+  if (y && m && d) {
+    return HARI_BY_WEEKDAY[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  }
+  return HARI_BY_WEEKDAY[new Date().getDay()];
+}
+
 /**
  * Load shift_jam_pelajaran config for a tenant.
  * Identical to JadwalKBMService.loadShiftConfig — kept inline to avoid circular imports.
@@ -256,7 +266,7 @@ export class SesiQueryService {
       const checkDateLocalEnd = new Date(`${checkDateStr}T23:59:59.999${tzOffset}`);
       const checkDateUtcStart = new Date(`${checkDateStr}T00:00:00.000Z`);
       const checkDateUtcEnd = new Date(`${checkDateStr}T23:59:59.999Z`);
-      const checkHariName = new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: tz }).format(checkDateLocalStart).toUpperCase();
+      const checkHariName = resolveHariFromDateStr(checkDateStr);
       const validHariEnums = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
 
       if (validHariEnums.includes(checkHariName)) {
@@ -496,10 +506,27 @@ export class SesiQueryService {
       return { total, page: Number(page), limit: take, data: physicalSessions.slice(skip, skip + take) };
     }
 
-    // Determine Day of Week in Tenant Timezone for JadwalKBM query
+    // Determine Day of Week deterministically for JadwalKBM query
     const dateStr = tanggal || new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
     const targetDateObj = new Date(`${dateStr}T00:00:00.000${tzOffset}`);
-    const hariName = new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: tz }).format(targetDateObj).toUpperCase();
+    const hariName = resolveHariFromDateStr(dateStr);
+
+    let effectiveTpId = tahun_pelajaran_id;
+    let effectiveSemesterId = semester_id;
+    if (!effectiveTpId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      });
+      if (activeTp) effectiveTpId = activeTp.id;
+    }
+    if (!effectiveSemesterId && effectiveTpId) {
+      const activeSem = await prisma.semester.findFirst({
+        where: { tenant_id: tenantId, tahun_pelajaran_id: effectiveTpId, is_active: true },
+        select: { id: true },
+      });
+      if (activeSem) effectiveSemesterId = activeSem.id;
+    }
 
     const scheduleWhere: any = {
       tenant_id: tenantId,
@@ -512,11 +539,11 @@ export class SesiQueryService {
       }
     };
 
-    if (tahun_pelajaran_id) {
-      scheduleWhere.tahun_pelajaran_id = tahun_pelajaran_id;
+    if (effectiveTpId) {
+      scheduleWhere.tahun_pelajaran_id = effectiveTpId;
     }
-    if (semester_id) {
-      scheduleWhere.semester_id = semester_id;
+    if (effectiveSemesterId) {
+      scheduleWhere.semester_id = effectiveSemesterId;
     }
 
     if (kelas_id) {
@@ -528,9 +555,9 @@ export class SesiQueryService {
     const schedTargetGuruId = guru_id || guruIdFilter;
     if (schedTargetGuruId) {
       scheduleWhere.OR = [
-        { guru_id: schedTargetGuruId },
         { guru_pelaksana_id: schedTargetGuruId },
-        { UnitPengajaran: { guru_id: schedTargetGuruId } },
+        { guru_pelaksana_id: null, UnitPengajaran: { is: { guru_id: schedTargetGuruId } } },
+        { guru_pelaksana_id: null, unit_pengajaran_id: null, guru_id: schedTargetGuruId },
       ];
     }
 
