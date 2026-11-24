@@ -376,6 +376,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     item.session?.Guru?.foto ||
     null;
   const showTeacherPhotoCol = Boolean(guruDisplayNama && guruDisplayNama !== '-' && mode !== 'GURU');
+  const showGuruClassCol = Boolean(mode === 'GURU' && !hideKelas && kelasNama && kelasNama !== '-');
 
   return (
     <div
@@ -385,7 +386,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
         className
       )}
     >
-      {/* ── CARD MAIN CLICKABLE AREA (2 KOLOM: FOTO GURU + DATA SESI) ── */}
+      {/* ── CARD MAIN CLICKABLE AREA (2 KOLOM: FOTO GURU / LABEL KELAS + DATA SESI) ── */}
       <div 
         onClick={handleClick}
         className={cn(
@@ -393,7 +394,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
           onToggleExpand || onSelectSession ? "hover:bg-black/5 dark:hover:bg-white/5" : ""
         )}
       >
-        {/* KOLOM 1: FOTO GURU PENGAMPU */}
+        {/* KOLOM 1: FOTO GURU (Siswa/Monitoring/Piket) ATAU KARTU KELAS (Guru) */}
         {showTeacherPhotoCol && (
           <div className="shrink-0 flex items-start pt-0.5">
             <PersonPhoto
@@ -403,6 +404,18 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               size="sm"
               badgeLabel="Guru"
             />
+          </div>
+        )}
+        {showGuruClassCol && (
+          <div className="shrink-0 flex items-start pt-0.5">
+            <div className="w-16 h-20 rounded-xl border-2 border-indigo-100 dark:border-indigo-900/70 bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-indigo-950/70 dark:via-slate-900 dark:to-blue-950/50 shadow-xs flex flex-col items-center justify-center px-1.5 text-center relative overflow-hidden">
+              <span className="text-[9px] font-extrabold uppercase tracking-widest text-indigo-500 dark:text-indigo-400">
+                Kelas
+              </span>
+              <span className="text-xs sm:text-sm font-black text-indigo-900 dark:text-indigo-100 leading-tight mt-0.5 break-words">
+                {kelasNama}
+              </span>
+            </div>
           </div>
         )}
 
