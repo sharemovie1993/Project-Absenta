@@ -200,6 +200,53 @@ export type QrCodeSize = 'normal' | 'jumbo';
 export type QrPlacement = 'header' | 'photo_box';
 export type QrPayloadMode = 'url_short' | 'credentials_only';
 
+// Cache QR Code base64 per payload agar tidak di-generate ulang saat re-render/ganti mode
+const qrDataUrlCache = new Map<string, string>();
+const MAX_QR_CACHE_SIZE = 1000;
+
+function buildQrPayload(username: string, pin: string, mode: QrPayloadMode): string {
+  if (mode === 'credentials_only') {
+    return `${username}:${pin}`;
+  }
+  return `${window.location.origin}/login?u=${encodeURIComponent(username)}&p=${encodeURIComponent(pin)}`;
+}
+
+// ── Subkomponen Memoized Tabel Jadwal agar tidak ikut re-render saat QR/Foto berubah ──
+const ExamCardSchedulesTable = memo(({ schedules }: { schedules: ExamDaySchedule[] }) => (
+  <div className="flex-1 min-w-0 h-full overflow-hidden">
+    <table className="w-full text-left border-collapse border border-slate-300">
+      <thead>
+        <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 font-black text-[6px]">
+          <th className="py-0.5 px-1 border-r border-slate-300 w-[24%]">Tanggal</th>
+          <th className="py-0.5 px-1 border-r border-slate-300 w-[54%]">Mata Pelajaran</th>
+          <th className="py-0.5 px-1 w-[22%] text-center">Waktu</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-200 text-[6px]">
+        {schedules.map((sch, sIdx) => (
+          <tr key={sIdx} className="leading-tight">
+            <td className="py-0.5 px-1 border-r border-slate-200 font-bold text-slate-700 align-top whitespace-nowrap">
+              {sch.tanggal}
+            </td>
+            <td className="py-0.5 px-1 border-r border-slate-200 align-top text-slate-800">
+              {sch.mapelList.map((m, mIdx) => (
+                <div key={mIdx} className="truncate leading-tight">
+                  - {m}
+                </div>
+              ))}
+            </td>
+            <td className="py-0.5 px-0.5 text-center align-top font-bold text-slate-600 whitespace-nowrap">
+              <div>{sch.sesi}</div>
+              <div className="text-[5px] text-slate-400 font-normal">{sch.waktu}</div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+));
+ExamCardSchedulesTable.displayName = 'ExamCardSchedulesTable';
+
 // ── Subkomponen Memoized Satuan Kartu Peserta Ujian TKA (Grid 2x3 & 2x2) ──
 interface ExamCardSingleItemProps {
   student: StudentExamCardData;
@@ -234,7 +281,12 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
   qrPlacement,
   qrPayloadMode,
 }) => {
-  const [qrUrl, setQrUrl] = useState<string>('');
+  const qrPayload = useMemo(
+    () => (showQrCode ? buildQrPayload(student.username, student.pin, qrPayloadMode) : ''),
+    [student.username, student.pin, showQrCode, qrPayloadMode]
+  );
+
+  const [qrUrl, setQrUrl] = useState<string>(() => (qrPayload ? qrDataUrlCache.get(qrPayload) || '' : ''));
   const [imgError, setImgError] = useState<boolean>(false);
 
   useEffect(() => {
@@ -253,35 +305,35 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
     });
   }, [student]);
 
-  // Generate QR Code secara asynchronous & terisolasi per-kartu
-  // Khusus inkjet: pure black (#000000), margin 2, width 320px bitmap tajam tanpa dot bleeding
+  // Generate QR Code dengan cache & resolusi optimal (180px) agar tidak membebani main thread
   useEffect(() => {
-    if (!showQrCode) {
+    if (!showQrCode || !qrPayload) {
       setQrUrl('');
       return;
     }
 
-    let isMounted = true;
-    let payload = '';
-
-    if (qrPayloadMode === 'credentials_only') {
-      // 1. Format Ultra-Compact Version 1 (21x21 modules): Dot fisik terbesar, anti-luber tinta inkjet HVS
-      payload = `${student.username}:${student.pin}`;
-    } else {
-      // 2. Format Short URL Version 3 (29x29 modules): Cukup ~50 karakter, scan kamera HP bawaan langsung masuk
-      payload = `${window.location.origin}/login?u=${encodeURIComponent(student.username)}&p=${encodeURIComponent(student.pin)}`;
+    const cached = qrDataUrlCache.get(qrPayload);
+    if (cached) {
+      setQrUrl(cached);
+      return;
     }
 
-    QRCode.toDataURL(payload, {
-      errorCorrectionLevel: 'M', // 15% error recovery tahan noda/goresan tinta printer
-      margin: 2, // 2-module quiet zone agar scanner cepat mengunci 3 kotak sudut
-      width: 320, // Resolusi bitmap 320px tajam tanpa pixelation saat print
+    let isMounted = true;
+
+    QRCode.toDataURL(qrPayload, {
+      errorCorrectionLevel: 'M',
+      margin: 2,
+      width: 180,
       color: {
-        dark: '#000000', // 100% Black mutlak (tanpa dithering tinta warna)
+        dark: '#000000',
         light: '#ffffff',
       },
     })
       .then((url) => {
+        if (qrDataUrlCache.size >= MAX_QR_CACHE_SIZE) {
+          qrDataUrlCache.clear();
+        }
+        qrDataUrlCache.set(qrPayload, url);
         if (isMounted) setQrUrl(url);
       })
       .catch((err) => {
@@ -291,7 +343,7 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
     return () => {
       isMounted = false;
     };
-  }, [student.username, student.pin, showQrCode, qrPayloadMode]);
+  }, [qrPayload, showQrCode]);
 
   const is6Grid = gridMode === '6_per_page';
 
@@ -310,6 +362,7 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
             <img
               src={resolveProfilePhotoUrl(sekolahData?.logo_url || tenantInfo?.logo_url || '/logo.png')}
               alt="Logo"
+              decoding="async"
               className={cn('object-contain', is6Grid ? 'w-[11mm] h-[11mm]' : 'w-[14mm] h-[14mm]')}
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';
@@ -460,6 +513,7 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
             <img
               src={resolveProfilePhotoUrl(normIdentity.fotoUrl)}
               alt={normIdentity.nama}
+              decoding="async"
               onError={() => setImgError(true)}
               className={cn(
                 'object-cover rounded-xs border border-slate-300 shadow-2xs',
@@ -500,37 +554,7 @@ const ExamCardSingleItem: React.FC<ExamCardSingleItemProps> = memo(({
         </div>
 
         {/* Tabel Jadwal Sesi 1 Minggu (Senin s/d Sabtu) */}
-        <div className="flex-1 min-w-0 h-full overflow-hidden">
-          <table className="w-full text-left border-collapse border border-slate-300">
-            <thead>
-              <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 font-black text-[6px]">
-                <th className="py-0.5 px-1 border-r border-slate-300 w-[24%]">Tanggal</th>
-                <th className="py-0.5 px-1 border-r border-slate-300 w-[54%]">Mata Pelajaran</th>
-                <th className="py-0.5 px-1 w-[22%] text-center">Waktu</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 text-[6px]">
-              {schedules.map((sch, sIdx) => (
-                <tr key={sIdx} className="leading-tight">
-                  <td className="py-0.5 px-1 border-r border-slate-200 font-bold text-slate-700 align-top whitespace-nowrap">
-                    {sch.tanggal}
-                  </td>
-                  <td className="py-0.5 px-1 border-r border-slate-200 align-top text-slate-800">
-                    {sch.mapelList.map((m, mIdx) => (
-                      <div key={mIdx} className="truncate leading-tight">
-                        - {m}
-                      </div>
-                    ))}
-                  </td>
-                  <td className="py-0.5 px-0.5 text-center align-top font-bold text-slate-600 whitespace-nowrap">
-                    <div>{sch.sesi}</div>
-                    <div className="text-[5px] text-slate-400 font-normal">{sch.waktu}</div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ExamCardSchedulesTable schedules={schedules} />
       </div>
     </div>
   );
@@ -647,7 +671,11 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
   const [qrPayloadMode, setQrPayloadMode] = useState<QrPayloadMode>('credentials_only'); // Dot Raksasa Version 1
   const [isOptionsOpen, setIsOptionsOpen] = useState<boolean>(false); // Tray Pengaturan Tersembunyi (Anti-Noise)
 
-  // ── 4. Editable Text ──
+  // ── 4. Editable Text (dengan debounce 250ms agar mengetik tidak me-render ulang seluruh kartu) ──
+  const [eventNameInput, setEventNameInput] = useState<string>(resolvedEventName);
+  const [tpTextInput, setTpTextInput] = useState<string>(() =>
+    formatDefaultCardTp(resolvedTpName, resolvedSemester)
+  );
   const [customEventName, setCustomEventName] = useState<string>(resolvedEventName);
   const [customTpText, setCustomTpText] = useState<string>(() =>
     formatDefaultCardTp(resolvedTpName, resolvedSemester)
@@ -659,39 +687,31 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
 
   useEffect(() => {
     if (resolvedEventName) {
+      setEventNameInput(resolvedEventName);
       setCustomEventName(resolvedEventName);
     }
   }, [resolvedEventName]);
 
   useEffect(() => {
     if (resolvedTpName) {
-      setCustomTpText(formatDefaultCardTp(resolvedTpName, resolvedSemester));
+      const formatted = formatDefaultCardTp(resolvedTpName, resolvedSemester);
+      setTpTextInput(formatted);
+      setCustomTpText(formatted);
     }
   }, [resolvedTpName, resolvedSemester]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setCustomEventName(eventNameInput), 250);
+    return () => clearTimeout(timer);
+  }, [eventNameInput]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setCustomTpText(tpTextInput), 250);
+    return () => clearTimeout(timer);
+  }, [tpTextInput]);
+
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id;
-
-  // ── 5. Query Jadwal Ujian Aktif (Fase 3 Hari & Sesi) ──
-  const { data: jadwalRes } = useQuery({
-    queryKey: cbtQueryKeys.jadwal({ limit: 1000, sort_direction: 'asc' }),
-    queryFn: () => cbtApi.getJadwalList({ limit: 1000, sort_direction: 'asc' }),
-    enabled: isOpen,
-    staleTime: 60 * 1000,
-  });
-
-  const jadwalList = jadwalRes?.items || [];
-
-  // Query Master Bank Soal untuk Resolusi Nama Mata Pelajaran dari Matriks
-  const { data: bankRes } = useQuery({
-    queryKey: cbtQueryKeys.bankSoal({ limit: 500 }),
-    queryFn: () => cbtApi.getBankSoalList({ limit: 500 }),
-    enabled: isOpen,
-    staleTime: 60 * 1000,
-  });
-
-  const bankList: CbtBankSoal[] = bankRes?.items || [];
-  const bankMap = useMemo(() => new Map(bankList.map((b) => [b.id, b])), [bankList]);
 
   // Resolusi Ploting Matriks yang Melekat pada Event Ujian Aktif (SSoT)
   const eventId = effectiveEvent?.id;
@@ -702,6 +722,27 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
     if (!isOpen) return null;
     return loadPersistedMatrixState(tenantId, activeTpId, activeSemId, eventId);
   }, [tenantId, activeTpId, activeSemId, eventId, isOpen]);
+
+  // ── 5. Query Jadwal Ujian Aktif (Fase 3 Hari & Sesi) ──
+  const { data: jadwalRes } = useQuery({
+    queryKey: cbtQueryKeys.jadwal({ limit: 1000, sort_direction: 'asc' }),
+    queryFn: () => cbtApi.getJadwalList({ limit: 1000, sort_direction: 'asc' }),
+    enabled: isOpen,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const jadwalList = jadwalRes?.items || [];
+
+  // Query Master Bank Soal hanya jika ada matriks ploting yang perlu resolusi nama mapel
+  const { data: bankRes } = useQuery({
+    queryKey: cbtQueryKeys.bankSoal({ limit: 500 }),
+    queryFn: () => cbtApi.getBankSoalList({ limit: 500 }),
+    enabled: isOpen && Boolean(persistedMatrix),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const bankList: CbtBankSoal[] = bankRes?.items || [];
+  const bankMap = useMemo(() => new Map(bankList.map((b) => [b.id, b])), [bankList]);
 
   // Hitung jadwal sesi untuk kelas aktif (SSoT: DB Jadwal Terbit -> Days Config Event & Matriks -> Fallback)
   const classSchedules = useMemo<ExamDaySchedule[]>(() => {
@@ -951,7 +992,9 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
       }
       await new Promise((resolve) => setTimeout(resolve, 120));
 
-      const sheetElements = document.querySelectorAll<HTMLElement>('.print-sheet');
+      const sheetElements = sheetContainerRef.current
+        ? sheetContainerRef.current.querySelectorAll<HTMLElement>('.print-sheet')
+        : document.querySelectorAll<HTMLElement>('.print-sheet');
       if (!sheetElements || sheetElements.length === 0) {
         toast.error('Lembar dokumen tidak ditemukan', { id: 'pdf-export-toast' });
         return;
@@ -971,6 +1014,12 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
       const pdfHeight = 297;
 
       for (let i = 0; i < sheetElements.length; i++) {
+        toast.loading(`Memproses lembar ${i + 1} dari ${sheetElements.length}...`, {
+          id: 'pdf-export-toast',
+        });
+        // Beri jeda event loop agar UI & toast progres tetap responsif
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
         if (i > 0) {
           pdf.addPage('a4', 'portrait');
         }
@@ -978,31 +1027,30 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
         const sheetElement = sheetElements[i];
 
         const canvas = await html2canvas(sheetElement, {
-          scale: 2.0,
+          scale: 1.5,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
           logging: false,
-          onclone: (clonedDoc) => {
+          onclone: (clonedDoc, clonedSheet) => {
             const clonedDesk = clonedDoc.getElementById('print-desk-canvas-area');
             if (clonedDesk) {
               clonedDesk.style.zoom = '1';
               clonedDesk.style.transform = 'none';
             }
-            const clonedSheets = clonedDoc.querySelectorAll<HTMLElement>('.print-sheet');
-            clonedSheets.forEach((s) => {
-              s.style.zoom = '1';
-              s.style.transform = 'none';
-              s.style.letterSpacing = 'normal';
-              s.style.fontVariantLigatures = 'none';
-              s.style.border = 'none';
-              s.style.boxShadow = 'none';
-              s.style.outline = 'none';
-            });
+            if (clonedSheet) {
+              clonedSheet.style.zoom = '1';
+              clonedSheet.style.transform = 'none';
+              clonedSheet.style.letterSpacing = 'normal';
+              clonedSheet.style.fontVariantLigatures = 'none';
+              clonedSheet.style.border = 'none';
+              clonedSheet.style.boxShadow = 'none';
+              clonedSheet.style.outline = 'none';
+            }
           },
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.88);
+        const imgData = canvas.toDataURL('image/jpeg', 0.85);
         const canvasRatio = canvas.height / canvas.width;
         const imgHeight = pdfWidth * canvasRatio;
 
@@ -1140,8 +1188,8 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
                 <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Event:</span>
                 <input
                   type="text"
-                  value={customEventName}
-                  onChange={(e) => setCustomEventName(e.target.value)}
+                  value={eventNameInput}
+                  onChange={(e) => setEventNameInput(e.target.value)}
                   placeholder="Nama Event Asesmen..."
                   aria-label="Edit nama event ujian pada kartu"
                   className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-full"
@@ -1152,8 +1200,8 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
                 <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">TP:</span>
                 <input
                   type="text"
-                  value={customTpText}
-                  onChange={(e) => setCustomTpText(e.target.value)}
+                  value={tpTextInput}
+                  onChange={(e) => setTpTextInput(e.target.value)}
                   placeholder="Tahun Pelajaran..."
                   aria-label="Edit tahun pelajaran pada kartu ujian"
                   className="text-xs font-bold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-hidden w-full"
