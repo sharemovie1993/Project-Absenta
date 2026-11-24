@@ -281,43 +281,72 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
   const selectedMapelItem = (guruMapelList as any[]).find((gm) => gm?.Mapel?.id === selectedMapelId);
 
   return (
-    <div className={cn('space-y-4', embedded ? 'pb-2' : 'pb-28 lg:pb-6')}>
-      {/* ═══ PANEL 1: Selektor Konteks (Mapel + Fase + Nama) ═════════ */}
-      <div className="bg-gradient-to-br from-white via-indigo-50/35 to-blue-50/45 dark:from-slate-900 dark:via-indigo-950/20 dark:to-slate-900 rounded-2xl sm:rounded-3xl border border-indigo-200/80 dark:border-indigo-900/60 shadow-xs p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-xs">
-              <BookOpen size={16} />
+    <div className={cn('space-y-2.5 sm:space-y-3', embedded ? 'pb-2' : 'pb-24 lg:pb-6')}>
+      {/* ═══ PANEL 1: Selektor Konteks (Compact 1-Row Grid on Desktop) ═════════ */}
+      <div className="bg-gradient-to-br from-white via-indigo-50/35 to-blue-50/45 dark:from-slate-900 dark:via-indigo-950/20 dark:to-slate-900 rounded-2xl border border-indigo-200/80 dark:border-indigo-900/60 shadow-xs p-3 sm:p-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-2xs">
+              <BookOpen size={14} />
             </div>
-            <div>
-              <h3 className="text-sm font-black text-slate-900 dark:text-white">Konteks ATP</h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Mapel yang Anda ampu &amp; fase kurikulum</p>
-            </div>
+            <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">Konteks ATP</h3>
+            {!isLoadingAtp && selectedMapelId && (
+              <>
+                <span className={cn(
+                  'px-2 py-0.5 rounded-full text-[10px] font-black',
+                  calculatedJp > totalJp
+                    ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
+                    : calculatedJp === totalJp
+                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                      : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                )}>
+                  {calculatedJp} / {totalJp} JP ({tpList.filter((t) => t.judul_materi).length} TP)
+                </span>
+                {activeAtpId && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                    ✓ Tersimpan
+                  </span>
+                )}
+              </>
+            )}
           </div>
 
-          <Button
-            type="button"
-            onClick={() => setIsTemplatePickerOpen(true)}
-            variant="outline"
-            className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 border-indigo-300 dark:border-indigo-700 bg-white/90 dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 shadow-2xs self-start sm:self-auto cursor-pointer"
-          >
-            <Sparkles size={14} className="text-indigo-500" />
-            <span>Gunakan Template Siap Pakai</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              onClick={() => setIsTemplatePickerOpen(true)}
+              variant="outline"
+              className="h-8 px-3 rounded-xl font-bold text-[11px] gap-1.5 border-indigo-300 dark:border-indigo-700 bg-white/90 dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 shadow-2xs cursor-pointer"
+            >
+              <Sparkles size={13} className="text-indigo-500" />
+              <span>Template Siap Pakai</span>
+            </Button>
+            {embedded && (
+              <button
+                type="button"
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending || !selectedMapelId}
+                className="hidden sm:inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-98 text-white font-black text-[11px] shadow-sm shadow-blue-500/25 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                <Save size={13} />
+                <span>{saveMutation.isPending ? 'Menyimpan...' : 'Simpan & Terbitkan ATP'}</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <GraduationCap size={12} className="text-blue-500" />
-              Mata Pelajaran yang Anda Ampu
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5">
+          <div className="lg:col-span-3 space-y-1">
+            <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <GraduationCap size={11} className="text-blue-500" />
+              Mata Pelajaran
             </Label>
             {isLoadingMapel ? (
-              <div className="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+              <div className="h-9 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
             ) : mapelOptions.length === 0 ? (
-              <div className="h-11 rounded-xl border border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-950/30 flex items-center px-3">
-                <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-                  Belum ada penugasan mapel — hubungi admin Kurikulum
+              <div className="h-9 rounded-xl border border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-950/30 flex items-center px-2.5">
+                <span className="text-[11px] text-amber-700 dark:text-amber-400 font-medium truncate">
+                  Belum ada mapel
                 </span>
               </div>
             ) : (
@@ -327,15 +356,15 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
                 options={mapelOptions}
                 value={selectedMapelId}
                 onChange={(val) => setSelectedMapelId(val)}
-                placeholder="Pilih Mata Pelajaran..."
+                placeholder="Pilih Mapel..."
               />
             )}
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <Sparkles size={12} className="text-indigo-500" />
-              Fase Kurikulum Merdeka
+          <div className="lg:col-span-3 space-y-1">
+            <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <Sparkles size={11} className="text-indigo-500" />
+              Fase Kurikulum
             </Label>
             <SearchableSelect
               id="atp_fase_select"
@@ -346,55 +375,33 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
               placeholder="Pilih Fase..."
             />
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-indigo-100/80 dark:border-slate-800">
-          <div className="sm:col-span-3 space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+          <div className="lg:col-span-4 space-y-1">
+            <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
               <span>Nama ATP</span>
-              <span className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400">Auto Title Case</span>
+              <span className="text-[9px] font-semibold text-indigo-500 dark:text-indigo-400">Auto Title Case</span>
             </Label>
             <Input
               value={namaAtp}
               onChange={(e) => setNamaAtp(e.target.value)}
               onBlur={(e) => setNamaAtp(toSmartTitleCase(e.target.value))}
-              placeholder="Contoh: ATP Matematika — Fase E Semester Ganjil"
-              className="h-11 rounded-xl text-sm font-bold bg-white dark:bg-slate-950 border-indigo-200/80 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500/25"
+              placeholder="Contoh: ATP Matematika — Fase E"
+              className="h-10 rounded-xl text-xs font-bold bg-white dark:bg-slate-950 border-indigo-200/80 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500/25"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+
+          <div className="lg:col-span-2 space-y-1">
+            <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
               <Clock size={11} /> Target JP
             </Label>
             <Input
               type="number"
               value={totalJp}
               onChange={(e) => setTotalJp(Number(e.target.value))}
-              className="h-11 rounded-xl text-sm font-bold font-mono text-center"
+              className="h-10 rounded-xl text-xs font-bold font-mono text-center bg-white dark:bg-slate-950 border-indigo-200/80 dark:border-slate-700"
             />
           </div>
         </div>
-
-        {!isLoadingAtp && selectedMapelId && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <span className="text-[11px] text-slate-500 font-medium">Realisasi:</span>
-            <span className={cn(
-              'px-2.5 py-1 rounded-full text-[11px] font-black',
-              calculatedJp > totalJp
-                ? 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
-                : calculatedJp === totalJp
-                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
-            )}>
-              {calculatedJp} JP / {totalJp} JP ({tpList.filter((t) => t.judul_materi).length} TP)
-            </span>
-            {activeAtpId && (
-              <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                ✓ ATP Aktif Tersimpan
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ═══ PANEL 2: Rangkaian TP ═══════════════════════════════════ */}
@@ -522,16 +529,15 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
 
       {/* Save Action Bar */}
       {embedded ? (
-        <div className="sticky bottom-0 z-20 flex items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-slate-800 shadow-lg">
-          <div className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950 border border-blue-200/60 dark:border-blue-800/60 text-center shrink-0">
-            <span className="text-[10px] text-blue-500 font-bold mr-1.5">Alokasi:</span>
+        <div className="sm:hidden sticky bottom-2 z-20 flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-slate-800 shadow-lg">
+          <div className="px-2.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950 border border-blue-200/60 dark:border-blue-800/60 text-center shrink-0">
             <span className="text-xs font-black text-blue-900 dark:text-blue-100 font-mono">{calculatedJp}/{totalJp} JP</span>
           </div>
           <button
             type="button"
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending || !selectedMapelId}
-            className="flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-98 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/25 transition-all disabled:opacity-50 cursor-pointer"
+            className="flex-1 flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-98 text-white font-black text-xs shadow-md shadow-blue-500/25 transition-all disabled:opacity-50 cursor-pointer"
           >
             <Save size={15} />
             <span>{saveMutation.isPending ? 'Menyimpan...' : 'Simpan & Terbitkan ATP'}</span>

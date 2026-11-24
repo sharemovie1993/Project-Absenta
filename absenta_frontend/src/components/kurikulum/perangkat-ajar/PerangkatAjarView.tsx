@@ -635,34 +635,34 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   );
 
   const content = isAtpModalOpen ? (
-    <div className="space-y-4 animate-in fade-in duration-300 pb-10">
-      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white rounded-2xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="p-2.5 rounded-xl bg-white/15 backdrop-blur-xs shrink-0">
-            <Layers className="w-5 h-5 text-white" />
+    <div className="space-y-2.5 animate-in fade-in duration-300 pb-6">
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white rounded-xl px-3.5 py-2.5 shadow-sm flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-1.5 rounded-lg bg-white/15 shrink-0">
+            <Layers className="w-4 h-4 text-white" />
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm sm:text-base font-black tracking-tight truncate">
+            <h3 className="text-xs sm:text-sm font-black tracking-tight truncate">
               Penyusun ATP &amp; Tujuan Pembelajaran (TP)
             </h3>
-            <p className="text-[11px] sm:text-xs text-blue-100 font-medium truncate">
-              Susun linimasa pembelajaran per mapel — otomatis tersinkron ke 1-Klik Jurnal KBM
+            <p className="text-[10px] sm:text-[11px] text-blue-100 font-medium truncate hidden sm:block">
+              Tersinkron otomatis ke pilihan 1-Klik Jurnal KBM
             </p>
           </div>
         </div>
         <button
           type="button"
           onClick={() => setIsAtpModalOpen(false)}
-          className="inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs border border-white/25 transition-all cursor-pointer shrink-0 self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg bg-white/15 hover:bg-white/25 text-white font-bold text-[11px] border border-white/25 transition-all cursor-pointer shrink-0"
         >
-          <ArrowLeft size={14} />
-          <span>Kembali ke Perangkat Ajar</span>
+          <ArrowLeft size={13} />
+          <span>Kembali</span>
         </button>
       </div>
 
       <Suspense
         fallback={
-          <div className="p-10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center text-xs font-semibold text-slate-500">
+          <div className="p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center text-xs font-semibold text-slate-500">
             Memuat Penyusun ATP &amp; TP...
           </div>
         }
