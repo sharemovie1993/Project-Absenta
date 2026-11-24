@@ -12,6 +12,7 @@ import axios from 'axios';
 import { PdfGeneratorService } from '@/modules/reporting/services/pdf-generator.service';
 import { buildAIPromptForJenis, buildFallbackHtmlForJenis } from '../../helpers/perangkat-ajar-layout.helper';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { convertOfficeToPdfSibling } from '@/utils/office-to-pdf.util';
 
 export class PerangkatCrudController {
   static async upload(req: any, reply: any) {
@@ -54,6 +55,9 @@ export class PerangkatCrudController {
         file: file,
         subFolder: 'perangkat-ajar',
       });
+
+      // Konversi otomatis .ppt/.pptx/.doc/.docx -> .pdf pendamping agar bisa langsung dipratinjau di sesi KBM
+      await convertOfficeToPdfSibling(uploadResult.relativePath).catch(() => null);
 
       const hasFullManage = req.user?.roleName === RoleName.SUPERADMIN || 
                             await authorizationService.hasUserPermission(userId, 'academic.manage.academic');

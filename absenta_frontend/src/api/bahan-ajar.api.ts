@@ -97,6 +97,7 @@ export interface AttachedFileItem {
   judul: string;
   jenis: string;
   file_url: string;
+  preview_pdf_url?: string;
   fase?: string;
   tingkat?: number;
   guru_nama?: string;

@@ -853,32 +853,42 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
               </div>
             </div>
 
-            {/* Inline PDF Viewer */}
-            {String(selectedFile.file_url || '').toLowerCase().includes('.pdf') ? (
-              <iframe
-                key={selectedFile.id}
-                src={resolveProfilePhotoUrl(selectedFile.file_url) || selectedFile.file_url}
-                title={selectedFile.judul}
-                className="w-full flex-1 border-0 bg-white"
-              />
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
-                <FileText className="w-12 h-12 text-slate-400" />
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                  Pratinjau langsung hanya tersedia untuk format PDF.
-                </p>
-                <a
-                  href={resolveProfilePhotoUrl(selectedFile.file_url) || selectedFile.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download
-                  className="h-9 px-4 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5"
-                >
-                  <Download size={14} />
-                  <span>Unduh / Buka Dokumen</span>
-                </a>
-              </div>
-            )}
+            {/* Inline PDF Viewer (mendukung PDF langsung maupun hasil konversi PPTX/DOCX) */}
+            {(() => {
+              const previewSrc =
+                selectedFile.preview_pdf_url ||
+                (String(selectedFile.file_url || '').toLowerCase().includes('.pdf')
+                  ? selectedFile.file_url
+                  : null);
+              if (previewSrc) {
+                return (
+                  <iframe
+                    key={selectedFile.id}
+                    src={resolveProfilePhotoUrl(previewSrc) || previewSrc}
+                    title={selectedFile.judul}
+                    className="w-full flex-1 border-0 bg-white"
+                  />
+                );
+              }
+              return (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
+                  <FileText className="w-12 h-12 text-slate-400" />
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                    Pratinjau langsung belum tersedia untuk berkas ini (silakan unduh atau buka file aslinya).
+                  </p>
+                  <a
+                    href={resolveProfilePhotoUrl(selectedFile.file_url) || selectedFile.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    className="h-9 px-4 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5"
+                  >
+                    <Download size={14} />
+                    <span>Unduh / Buka Dokumen</span>
+                  </a>
+                </div>
+              );
+            })()}
           </div>
         </div>
       ) : (

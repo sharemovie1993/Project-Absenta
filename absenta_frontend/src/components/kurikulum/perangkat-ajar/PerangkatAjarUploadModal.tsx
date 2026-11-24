@@ -153,12 +153,12 @@ export default React.memo(function PerangkatAjarUploadModal({
 
         <div>
           <label htmlFor="upload-file" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-            Berkas Fisik (PDF, DOC, DOCX, XLSX) <span className="text-rose-500">*</span>
+            Berkas Fisik (PDF, PPT, PPTX, DOC, DOCX, XLSX) <span className="text-rose-500">*</span>
           </label>
           <input
             id="upload-file"
             type="file"
-            accept=".pdf,.doc,.docx,.xls,.xlsx"
+            accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx"
             required
             disabled={isSubmitting}
             onChange={(e) => setUploadForm((prev) => ({ ...prev, file: e.target.files?.[0] || null }))}

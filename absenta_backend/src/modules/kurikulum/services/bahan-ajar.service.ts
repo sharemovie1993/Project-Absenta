@@ -1,5 +1,6 @@
 import { prisma } from '../../../utils/prisma';
 import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
+import { resolveExistingSiblingPdf } from '../../../utils/office-to-pdf.util';
 
 export interface ListPresetsFilter {
   fase?: string;
@@ -151,6 +152,7 @@ export class BahanAjarService {
         judul: p.judul,
         jenis: p.jenis,
         file_url: p.file_url,
+        preview_pdf_url: resolveExistingSiblingPdf(p.file_url) || undefined,
         fase: p.fase || 'E',
         tingkat: p.tingkat || 10,
         guru_nama: p.Guru?.nama_guru || '-',
