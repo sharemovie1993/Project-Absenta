@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Check, XCircle, Clock, Sparkles, BookOpen, Edit3, Trash2, Layers } from 'lucide-react';
+import { Check, XCircle, Clock, Sparkles, BookOpen, Edit3, Trash2, Layers, CalendarRange } from 'lucide-react';
 import type { Column } from '@/components/ui/Table';
 import type { PerangkatAjar } from '@/api/kurikulum.api';
 
@@ -162,16 +162,36 @@ export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsPara
               className={
                 item.jenis === 'ATP'
                   ? 'text-xs font-black bg-sky-600 hover:bg-sky-500 text-white rounded-xl px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm shadow-sky-500/20 cursor-pointer'
+                  : item.jenis === 'PROTA' || item.jenis === 'PROMES'
+                  ? 'text-xs font-black bg-teal-600 hover:bg-teal-500 text-white rounded-xl px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm shadow-teal-500/20 cursor-pointer'
                   : 'text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm shadow-indigo-500/20 cursor-pointer'
               }
               title={
                 item.jenis === 'ATP'
                   ? 'Buka Penyusun ATP & Tujuan Pembelajaran (TP)'
+                  : item.jenis === 'PROTA'
+                  ? 'Susun Program Tahunan (PROTA) Otomatis dari ATP'
+                  : item.jenis === 'PROMES'
+                  ? 'Susun Program Semester (PROMES) Otomatis dari ATP'
                   : 'Buka Studio Penyusunan Modul Ajar (Per-Pertemuan)'
               }
             >
-              {item.jenis === 'ATP' ? <Layers size={13} /> : <Sparkles size={13} />}
-              <span>{item.jenis === 'ATP' ? 'Susun ATP' : 'Susun'}</span>
+              {item.jenis === 'ATP' ? (
+                <Layers size={13} />
+              ) : item.jenis === 'PROTA' || item.jenis === 'PROMES' ? (
+                <CalendarRange size={13} />
+              ) : (
+                <Sparkles size={13} />
+              )}
+              <span>
+                {item.jenis === 'ATP'
+                  ? 'Susun ATP'
+                  : item.jenis === 'PROTA'
+                  ? 'Susun Prota'
+                  : item.jenis === 'PROMES'
+                  ? 'Susun Promes'
+                  : 'Susun'}
+              </span>
             </Button>
 
             <Button

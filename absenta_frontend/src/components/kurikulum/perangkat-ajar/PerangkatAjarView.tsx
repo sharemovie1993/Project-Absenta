@@ -20,9 +20,11 @@ import {
   Copy,
   Layers,
   ArrowLeft,
+  CalendarRange,
 } from 'lucide-react';
 
 const AtpBuilderView = lazy(() => import('../atp/AtpBuilderView').then((m) => ({ default: m.AtpBuilderView })));
+const ProtaPromesBuilderView = lazy(() => import('../atp/ProtaPromesBuilderView').then((m) => ({ default: m.ProtaPromesBuilderView })));
 
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Card, Button, Badge, SectionCard, TabSwitcher } from '@/components/ui';
@@ -151,6 +153,8 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   const [studioPerangkat, setStudioPerangkat] = useState<PerangkatAjar | null>(null);
   const [isAtpModalOpen, setIsAtpModalOpen] = useState(false);
   const [atpInitialContext, setAtpInitialContext] = useState<{ mapelId?: string; fase?: string }>({});
+  const [isProtaPromesOpen, setIsProtaPromesOpen] = useState(false);
+  const [protaPromesContext, setProtaPromesContext] = useState<{ mode?: 'PROTA' | 'PROMES'; mapelId?: string; fase?: string }>({});
 
   const handleOpenStudio = useCallback((item: PerangkatAjar) => {
     if (item.jenis === 'ATP') {
@@ -159,6 +163,15 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
         fase: (item as any).fase || undefined,
       });
       setIsAtpModalOpen(true);
+      return;
+    }
+    if (item.jenis === 'PROTA' || item.jenis === 'PROMES') {
+      setProtaPromesContext({
+        mode: item.jenis,
+        mapelId: item.mapel_id || item.Mapel?.id,
+        fase: (item as any).fase || undefined,
+      });
+      setIsProtaPromesOpen(true);
       return;
     }
     setStudioPerangkat(item);
@@ -683,6 +696,55 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
         />
       </Suspense>
     </div>
+  ) : isProtaPromesOpen ? (
+    <div className="space-y-2.5 animate-in fade-in duration-300 pb-6">
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 text-white rounded-xl px-3.5 py-2.5 shadow-sm flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-1.5 rounded-lg bg-white/15 shrink-0">
+            <CalendarRange className="w-4 h-4 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-xs sm:text-sm font-black tracking-tight truncate">
+              Penyusun PROTA &amp; PROMES Otomatis (Berbasis ATP)
+            </h3>
+            <p className="text-[10px] sm:text-[11px] text-emerald-100 font-medium truncate hidden sm:block">
+              Tarik TP &amp; JP langsung dari ATP ➔ Petakan Semester/Minggu ➔ Ekspor PDF &amp; Simpan ke Berkas
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsProtaPromesOpen(false)}
+          className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg bg-white/15 hover:bg-white/25 text-white font-bold text-[11px] border border-white/25 transition-all cursor-pointer shrink-0"
+        >
+          <ArrowLeft size={13} />
+          <span>Kembali</span>
+        </button>
+      </div>
+
+      <Suspense
+        fallback={
+          <div className="p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center text-xs font-semibold text-slate-500">
+            Memuat Penyusun PROTA &amp; PROMES...
+          </div>
+        }
+      >
+        <ProtaPromesBuilderView
+          initialMode={protaPromesContext.mode || 'PROTA'}
+          initialMapelId={protaPromesContext.mapelId}
+          initialFase={protaPromesContext.fase}
+          activeTpId={activeTpId}
+          activeSemId={activeSemId}
+          tahunPelajaranLabel={academicFilter.selectedTahunPelajaranNama || academicFilter.activeAcademicYear?.tahun || '2026/2027'}
+          onOpenAtpBuilder={(mId, f) => {
+            setIsProtaPromesOpen(false);
+            setAtpInitialContext({ mapelId: mId, fase: f });
+            setIsAtpModalOpen(true);
+          }}
+          onSaved={() => setIsProtaPromesOpen(false)}
+        />
+      </Suspense>
+    </div>
   ) : (
     <div className="space-y-4 animate-in fade-in duration-300 pb-10">
       {/* 🛡️ Mode Arsip Historis Alert Banner */}
@@ -746,6 +808,21 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
               >
                 <Layers className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Susun ATP</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setProtaPromesContext({ mode: 'PROTA' });
+                  setIsProtaPromesOpen(true);
+                }}
+                className="rounded-xl text-xs font-bold gap-1.5 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-950/40 h-9 cursor-pointer"
+                title="Generate Prota & Promes Otomatis dari ATP"
+              >
+                <CalendarRange className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Prota / Promes</span>
               </Button>
 
               <Button
