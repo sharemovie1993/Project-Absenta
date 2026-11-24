@@ -456,7 +456,7 @@ export class BahanAjarService {
         total_alokasi_jp: metadata?.total_alokasi_jp || 18,
         konten_struktur_json: kontenJson,
         file_url: 'INTERNAL_DIGITAL_READER',
-        status: 'APPROVED'
+        status: 'PENDING'
       }
     });
 
@@ -514,7 +514,7 @@ export class BahanAjarService {
         konten_struktur_json: preset.konten_json as any,
         preset_ref_id: preset.id,
         file_url: 'INTERNAL_DIGITAL_READER',
-        status: 'APPROVED'
+        status: 'PENDING'
       }
     });
 
