@@ -892,11 +892,11 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                     e.stopPropagation();
                     onOpenPhotoModal(item);
                   }}
-                  title={isSesiKegiatan ? "Perbarui foto pembina/pendamping" : "Perbarui foto Bapak/Ibu Guru yang sedang mengajar"}
+                  title={fotoKegiatanUrl ? "Ambil ulang / perbarui foto bukti KBM" : "Ambil foto bukti kehadiran di kelas"}
                   className="h-8 px-2.5 rounded-xl text-xs font-black bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 flex items-center gap-1.5 cursor-pointer"
                 >
                   <Camera size={13} className="text-emerald-600" />
-                  <span>{isSesiKegiatan ? "Foto Pembina ✓" : "Foto Guru ✓"}</span>
+                  <span>{fotoKegiatanUrl ? "Foto Ulang" : "Ambil Foto"}</span>
                 </Button>
               )}
 
@@ -912,8 +912,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                   title="Lihat foto bukti KBM yang telah diambil"
                   className="h-8 px-2.5 rounded-xl text-xs font-black bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer border border-slate-300 dark:border-slate-700"
                 >
-                  <Camera size={13} className="text-emerald-500" />
-                  <span>Foto Kelas</span>
+                  <Eye size={13} className="text-emerald-500" />
+                  <span>Lihat Foto</span>
                 </Button>
               )}
 
@@ -1001,7 +1001,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 </Button>
               )}
 
-              {/* 2. Guru SUDAH HADIR: Tombol Perbarui Foto jika ingin update dokumentasi */}
+              {/* 2. Guru SUDAH HADIR: Tombol Ambil Foto / Foto Ulang */}
               {isTeacherPresent && !isFinished && !isOverdue && onOpenPhotoModal && (
                 <Button
                   type="button"
@@ -1012,10 +1012,10 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                     onOpenPhotoModal(item);
                   }}
                   className="h-8 px-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer border border-slate-300 dark:border-slate-700"
-                  title="Perbarui foto dokumentasi KBM guru"
+                  title={fotoKegiatanUrl ? "Ambil ulang / perbarui foto bukti KBM" : "Ambil foto bukti kehadiran di kelas"}
                 >
                   <Camera size={13} className="text-emerald-500" />
-                  <span>Foto Guru ✓</span>
+                  <span>{fotoKegiatanUrl ? "Foto Ulang" : "Ambil Foto"}</span>
                 </Button>
               )}
 
@@ -1059,7 +1059,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 </Button>
               )}
 
-              {/* Lihat Foto Bukti Kelas Button */}
+              {/* Lihat Foto Bukti Button */}
               {fotoKegiatanUrl && onViewPhoto && (
                 <Button
                   type="button"
@@ -1072,8 +1072,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                   title="Lihat foto bukti KBM yang telah diambil"
                   className="h-8 px-2.5 rounded-xl text-xs font-black bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer border border-slate-300 dark:border-slate-700"
                 >
-                  <Camera size={13} className="text-emerald-500" />
-                  <span>Foto Kelas</span>
+                  <Eye size={13} className="text-emerald-500" />
+                  <span>Lihat Foto</span>
                 </Button>
               )}
 
