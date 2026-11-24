@@ -190,7 +190,7 @@ export class BahanAjarService {
     const sharedWhere: any = {
       tenant_id: tenantId,
       is_shared: true,
-      file_url: { not: null },
+      file_url: { not: '' },
     };
     if (effectiveGuruId) {
       sharedWhere.guru_id = { not: effectiveGuruId };
