@@ -44,6 +44,37 @@ const DEFAULT_TP: TujuanPembelajaranItem = {
   is_completed: false
 };
 
+const LOWERCASE_WORDS = new Set([
+  'dan', 'atau', 'di', 'ke', 'dari', 'pada', 'untuk', 'dengan', 'yang', 'dalam', 'atas', 'oleh', 'sebagai'
+]);
+
+/** Auto Title Case untuk judul ATP & Materi Pokok (mempertahankan akronim huruf besar). */
+function toSmartTitleCase(raw: string): string {
+  const clean = String(raw || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
+  return clean
+    .split(' ')
+    .map((word, idx) => {
+      if (!word) return '';
+      if (word.length > 1 && word === word.toUpperCase() && /[A-Z]/.test(word)) {
+        return word;
+      }
+      const lower = word.toLowerCase();
+      if (idx > 0 && LOWERCASE_WORDS.has(lower)) {
+        return lower;
+      }
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(' ');
+}
+
+/** Auto Sentence Case untuk deskripsi / Capaian Pembelajaran (kapital awal kalimat). */
+function toSmartSentenceCase(raw: string): string {
+  const clean = String(raw || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
+  return clean.replace(/(^\s*[a-zA-Z\u00C0-\u024F])|([.!?]\s+[a-zA-Z\u00C0-\u024F])/g, (m) => m.toUpperCase());
+}
+
 export interface AtpBuilderViewProps {
   initialMapelId?: string;
   initialFase?: string;
@@ -208,15 +239,27 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!selectedMapelId) throw new Error('Pilih mata pelajaran terlebih dahulu');
-      if (!namaAtp.trim()) throw new Error('Nama ATP wajib diisi');
-      const cleanTp = tpList.filter((t) => t.judul_materi.trim());
+      const formattedNamaAtp = toSmartTitleCase(namaAtp);
+      if (!formattedNamaAtp) throw new Error('Nama ATP wajib diisi');
+
+      const formattedTpList = tpList.map((t) => ({
+        ...t,
+        kode_tp: String(t.kode_tp || '').trim().toUpperCase(),
+        judul_materi: toSmartTitleCase(t.judul_materi),
+        deskripsi_tp: toSmartSentenceCase(t.deskripsi_tp || ''),
+      }));
+
+      setNamaAtp(formattedNamaAtp);
+      setTpList(formattedTpList);
+
+      const cleanTp = formattedTpList.filter((t) => t.judul_materi.trim());
       if (cleanTp.length === 0) throw new Error('Isi setidaknya 1 judul materi pada TP');
       return upsertAtp({
         id: activeAtpId || undefined,
         guru_id: guruId,
         mapel_id: selectedMapelId,
         fase: selectedFase,
-        nama_atp: namaAtp,
+        nama_atp: formattedNamaAtp,
         total_alokasi_jp: totalJp,
         status: 'PUBLISHED',
         tujuan_pembelajaran: cleanTp
@@ -240,15 +283,15 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
   return (
     <div className={cn('space-y-4', embedded ? 'pb-2' : 'pb-28 lg:pb-6')}>
       {/* ═══ PANEL 1: Selektor Konteks (Mapel + Fase + Nama) ═════════ */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-4 sm:p-5">
+      <div className="bg-gradient-to-br from-white via-indigo-50/35 to-blue-50/45 dark:from-slate-900 dark:via-indigo-950/20 dark:to-slate-900 rounded-2xl sm:rounded-3xl border border-indigo-200/80 dark:border-indigo-900/60 shadow-xs p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-xs">
               <BookOpen size={16} />
             </div>
             <div>
               <h3 className="text-sm font-black text-slate-900 dark:text-white">Konteks ATP</h3>
-              <p className="text-[11px] text-slate-400 font-medium">Mapel yang Anda ampu &amp; fase kurikulum</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Mapel yang Anda ampu &amp; fase kurikulum</p>
             </div>
           </div>
 
@@ -256,7 +299,7 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
             type="button"
             onClick={() => setIsTemplatePickerOpen(true)}
             variant="outline"
-            className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 shadow-2xs self-start sm:self-auto cursor-pointer"
+            className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 border-indigo-300 dark:border-indigo-700 bg-white/90 dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 shadow-2xs self-start sm:self-auto cursor-pointer"
           >
             <Sparkles size={14} className="text-indigo-500" />
             <span>Gunakan Template Siap Pakai</span>
@@ -305,14 +348,18 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-indigo-100/80 dark:border-slate-800">
           <div className="sm:col-span-3 space-y-1.5">
-            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Nama ATP</Label>
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+              <span>Nama ATP</span>
+              <span className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400">Auto Title Case</span>
+            </Label>
             <Input
               value={namaAtp}
               onChange={(e) => setNamaAtp(e.target.value)}
+              onBlur={(e) => setNamaAtp(toSmartTitleCase(e.target.value))}
               placeholder="Contoh: ATP Matematika — Fase E Semester Ganjil"
-              className="h-11 rounded-xl text-sm font-bold"
+              className="h-11 rounded-xl text-sm font-bold bg-white dark:bg-slate-950 border-indigo-200/80 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500/25"
             />
           </div>
           <div className="space-y-1.5">
@@ -351,22 +398,22 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
       </div>
 
       {/* ═══ PANEL 2: Rangkaian TP ═══════════════════════════════════ */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-indigo-200/70 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-indigo-100/80 dark:border-slate-800 bg-gradient-to-r from-indigo-50/70 via-blue-50/50 to-white dark:from-indigo-950/30 dark:via-slate-900 dark:to-slate-900">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-xs">
               <Layers size={16} />
             </div>
             <div>
               <h3 className="text-sm font-black text-slate-900 dark:text-white">Tujuan Pembelajaran (TP)</h3>
-              <p className="text-[11px] text-slate-400 font-medium hidden sm:block">Susun urut sesuai linimasa pembelajaran</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium hidden sm:block">Susun urut sesuai linimasa pembelajaran • Judul &amp; CP otomatis kapital rapi</p>
             </div>
           </div>
           <Button
             type="button"
             onClick={handleAddTp}
             variant="outline"
-            className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 border-blue-300 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 cursor-pointer"
+            className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 border-blue-300 dark:border-blue-800 bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 cursor-pointer shadow-2xs"
           >
             <Plus size={14} />
             <span className="hidden sm:inline">Tambah TP</span>
@@ -374,22 +421,23 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
           </Button>
         </div>
 
-        <div className="p-4 sm:p-5 space-y-3">
+        <div className="p-4 sm:p-5 space-y-3 bg-slate-50/40 dark:bg-slate-950/30">
           {tpList.map((tp, idx) => (
             <div
               key={idx}
-              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 hover:border-blue-300 dark:hover:border-blue-700 transition-all overflow-hidden"
+              className="rounded-2xl border border-slate-200/90 dark:border-slate-800 border-l-4 border-l-indigo-500 dark:border-l-indigo-500 bg-white dark:bg-slate-900 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all overflow-hidden shadow-2xs"
             >
-              <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-white/80 dark:bg-slate-900/80 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-gradient-to-r from-indigo-50/60 via-slate-50/80 to-white dark:from-indigo-950/30 dark:via-slate-900 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-2xs">
                     {idx + 1}
                   </span>
                   <Input
                     value={tp.kode_tp}
                     onChange={(e) => handleTpChange(idx, 'kode_tp', e.target.value)}
+                    onBlur={(e) => handleTpChange(idx, 'kode_tp', String(e.target.value || '').trim().toUpperCase())}
                     placeholder="Kode TP"
-                    className="w-24 h-7 rounded-lg text-xs font-bold font-mono px-2"
+                    className="w-24 h-7 rounded-lg text-xs font-bold font-mono px-2 bg-indigo-50/70 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800"
                   />
                 </div>
                 <div className="flex items-center gap-0.5">
@@ -427,8 +475,9 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
                   <Input
                     value={tp.judul_materi}
                     onChange={(e) => handleTpChange(idx, 'judul_materi', e.target.value)}
+                    onBlur={(e) => handleTpChange(idx, 'judul_materi', toSmartTitleCase(e.target.value))}
                     placeholder="Contoh: Komponen Motor Bakar"
-                    className="h-9 rounded-xl text-xs font-bold"
+                    className="h-9 rounded-xl text-xs font-bold bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900"
                   />
                 </div>
 
@@ -439,8 +488,9 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
                   <Input
                     value={tp.deskripsi_tp}
                     onChange={(e) => handleTpChange(idx, 'deskripsi_tp', e.target.value)}
+                    onBlur={(e) => handleTpChange(idx, 'deskripsi_tp', toSmartSentenceCase(e.target.value))}
                     placeholder="Kompetensi yang diharapkan dikuasai peserta didik..."
-                    className="h-9 rounded-xl text-xs"
+                    className="h-9 rounded-xl text-xs bg-slate-50/60 dark:bg-slate-950 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900"
                   />
                 </div>
 

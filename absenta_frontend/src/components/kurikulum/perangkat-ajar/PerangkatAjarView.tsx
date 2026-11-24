@@ -19,9 +19,10 @@ import {
   ChevronDown,
   Copy,
   Layers,
+  ArrowLeft,
 } from 'lucide-react';
 
-const AtpBuilderModal = lazy(() => import('../atp/AtpBuilderModal'));
+const AtpBuilderView = lazy(() => import('../atp/AtpBuilderView').then((m) => ({ default: m.AtpBuilderView })));
 
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Card, Button, Badge, SectionCard, TabSwitcher } from '@/components/ui';
@@ -633,7 +634,43 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
     ]
   );
 
-  const content = (
+  const content = isAtpModalOpen ? (
+    <div className="space-y-4 animate-in fade-in duration-300 pb-10">
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white rounded-2xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2.5 rounded-xl bg-white/15 backdrop-blur-xs shrink-0">
+            <Layers className="w-5 h-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm sm:text-base font-black tracking-tight truncate">
+              Penyusun ATP &amp; Tujuan Pembelajaran (TP)
+            </h3>
+            <p className="text-[11px] sm:text-xs text-blue-100 font-medium truncate">
+              Susun linimasa pembelajaran per mapel — otomatis tersinkron ke 1-Klik Jurnal KBM
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsAtpModalOpen(false)}
+          className="inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs border border-white/25 transition-all cursor-pointer shrink-0 self-start sm:self-auto"
+        >
+          <ArrowLeft size={14} />
+          <span>Kembali ke Perangkat Ajar</span>
+        </button>
+      </div>
+
+      <Suspense
+        fallback={
+          <div className="p-10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center text-xs font-semibold text-slate-500">
+            Memuat Penyusun ATP &amp; TP...
+          </div>
+        }
+      >
+        <AtpBuilderView embedded={true} />
+      </Suspense>
+    </div>
+  ) : (
     <div className="space-y-4 animate-in fade-in duration-300 pb-10">
       {/* 🛡️ Mode Arsip Historis Alert Banner */}
       {isViewingArchiveYear && (
@@ -1003,16 +1040,6 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
           queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
         }}
       />
-
-      {/* 7. Penyusun ATP & TP Modal */}
-      <Suspense fallback={null}>
-        {isAtpModalOpen && (
-          <AtpBuilderModal
-            isOpen={isAtpModalOpen}
-            onClose={() => setIsAtpModalOpen(false)}
-          />
-        )}
-      </Suspense>
     </div>
   );
 
