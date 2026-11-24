@@ -223,12 +223,12 @@ const formatCompactSesi = (sesi: string) => sesi.replace(/^Sesi\s+/i, 'S');
 
 const ExamCardSchedulesTable = memo(({ schedules }: { schedules: ExamDaySchedule[] }) => (
   <div className="flex-1 min-w-0 h-full overflow-hidden">
-    <table className="w-full text-left border-collapse border border-slate-300">
+    <table className="w-full table-fixed text-left border-collapse border border-slate-300">
       <thead>
         <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 font-black text-[6px]">
-          <th className="py-0.5 px-1 border-r border-slate-300 w-[22%]">Tanggal</th>
-          <th className="py-0.5 px-1 border-r border-slate-300 w-[52%]">Mata Pelajaran</th>
-          <th className="py-0.5 px-1 w-[26%] text-center">Waktu</th>
+          <th className="py-0.5 px-1 border-r border-slate-300 w-[19%]">Tanggal</th>
+          <th className="py-0.5 px-1 border-r border-slate-300 w-[47%]">Mata Pelajaran</th>
+          <th className="py-0.5 px-1 w-[34%] text-center">Waktu</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-200 text-[6px]">
