@@ -124,6 +124,7 @@ export interface Siswa {
   tanggal_masuk?: string;
   tanggal_keluar?: string;
   alasan_keluar?: string;
+  catatan?: string | null;
   status: 'AKTIF' | 'TIDAK_AKTIF' | 'LULUS' | 'PINDAH' | 'KELUAR';
   no_rfid?: string;
   email?: string;

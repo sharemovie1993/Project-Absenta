@@ -48,7 +48,7 @@ export async function updateSiswaCommand(
     'nama_wali', 'nik_wali', 'no_hp_wali', 'hubungan_wali', 'pekerjaan_wali', 'penghasilan_wali', 'no_hp_ortu', 'alamat_ortu',
     'anak_ke', 'tinggi_badan', 'berat_badan', 'agama', 'hobi', 'cita_cita', 'is_osis', 'is_mpk', 'ekskul_1', 'ekskul_2',
     'kebutuhan_khusus', 'penerima_kps', 'penerima_kip', 'no_kip', 'kelas_id', 'jurusan_id',
-    'tahun_pelajaran_id', 'semester_id', 'tanggal_masuk', 'tanggal_keluar', 'alasan_keluar', 'status', 'no_rfid', 'foto',
+    'tahun_pelajaran_id', 'semester_id', 'tanggal_masuk', 'tanggal_keluar', 'alasan_keluar', 'catatan', 'status', 'no_rfid', 'foto',
     'sekolah_asal', 'no_ijazah_smp'
   ];
 

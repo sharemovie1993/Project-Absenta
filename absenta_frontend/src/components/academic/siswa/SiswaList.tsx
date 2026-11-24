@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, Suspense, lazy, useEffec
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, UserCheck, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, LogIn, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera, Wrench, Copy, ExternalLink, MessageSquare, SlidersHorizontal } from 'lucide-react';
+import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, UserCheck, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, LogIn, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera, Wrench, Copy, ExternalLink, MessageSquare, SlidersHorizontal, StickyNote } from 'lucide-react';
 import { 
   Button, 
   Input, 
@@ -310,6 +310,19 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
 
   // Modal Colek WA Unduh APK
+  const [catatanModalOpen, setCatatanModalOpen] = useState(false);
+  const [catatanTargetSiswa, setCatatanTargetSiswa] = useState<Siswa | null>(null);
+  const [catatanInput, setCatatanInput] = useState('');
+  const [catatanDeactivate, setCatatanDeactivate] = useState(true);
+  const [savingCatatan, setSavingCatatan] = useState(false);
+
+  const handleOpenCatatanModal = useCallback((siswa: Siswa) => {
+    setCatatanTargetSiswa(siswa);
+    setCatatanInput(siswa.catatan || '');
+    setCatatanDeactivate(siswa.status === 'AKTIF');
+    setCatatanModalOpen(true);
+  }, []);
+
   const [waModalConfig, setWaModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -1092,6 +1105,34 @@ Terima kasih.
       render: (value: string) => getStatusBadge(value)
     },
     {
+      key: 'catatan',
+      label: 'Catatan',
+      sortable: false,
+      render: (value: string | null | undefined, siswa: Siswa) => (
+        <div className="max-w-[200px]">
+          <QuickEditCell
+            value={value}
+            placeholder="Tambah catatan..."
+            canEdit={canManage}
+            inputClassName="w-44 text-xs"
+            onSave={async (newVal) => {
+              const cleanCatatan = newVal ? newVal.trim() : null;
+              const res = await updateSiswa(siswa.id, { catatan: cleanCatatan });
+              if (res.success) {
+                toast.success(`Catatan ${siswa.nama_siswa} berhasil disimpan`);
+                invalidateSiswaCache();
+                refetch();
+                onRefresh?.();
+              } else {
+                toast.error(res.message || 'Gagal menyimpan catatan');
+                throw new Error(res.message);
+              }
+            }}
+          />
+        </div>
+      )
+    },
+    {
       key: 'no_rfid',
       label: 'No. RFID',
       sortable: true,
@@ -1174,6 +1215,25 @@ Terima kasih.
               className="h-8 w-8 p-0 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
             >
               <Eye className="w-4 h-4" />
+            </Button>
+          )}
+          {canManage && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenCatatanModal(siswa);
+              }}
+              aria-label="Catatan Administrasi & Nonaktifkan"
+              title={siswa.catatan ? `Catatan: ${siswa.catatan}` : 'Beri Catatan / Nonaktifkan Sementara'}
+              className={`h-8 w-8 p-0 ${
+                siswa.catatan
+                  ? 'text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400'
+                  : 'text-slate-600 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+              }`}
+            >
+              <StickyNote className="w-4 h-4" />
             </Button>
           )}
           {canImpersonate && (
@@ -2158,6 +2218,7 @@ Terima kasih.
                 value={mutationStatus} 
                 onValueChange={setMutationStatus} 
                 options={[
+                  { label: 'Non-Aktif Sementara (Menunggu Berkas)', value: 'TIDAK_AKTIF' },
                   { label: 'Pindah Sekolah', value: 'PINDAH' }, 
                   { label: 'Undur Diri (Keluar)', value: 'KELUAR' }, 
                   { label: 'Dikeluarkan (DO)', value: 'DO' }, 
@@ -2192,6 +2253,123 @@ Terima kasih.
             >
               {executing ? <RefreshCw className="animate-spin mr-2" size={16} /> : <LogOut className="mr-2" size={16} />}
               Konfirmasi Mutasi
+            </Button>
+          </ModalFooter>
+        </div>
+      </Modal>
+
+      {/* Modal Catatan Administrasi & Nonaktifkan Sementara */}
+      <Modal
+        isOpen={catatanModalOpen}
+        onClose={() => !savingCatatan && setCatatanModalOpen(false)}
+        title="Catatan Administrasi & Status Siswa"
+        size="md"
+      >
+        <div className="space-y-4">
+          {catatanTargetSiswa && (
+            <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                  {catatanTargetSiswa.nama_siswa}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  NIS: {catatanTargetSiswa.nis || '-'} • Kelas: {catatanTargetSiswa.Kelas?.nama_kelas || '-'}
+                </p>
+              </div>
+              {getStatusBadge(catatanTargetSiswa.status)}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Catatan / Penanda Administrasi
+            </Label>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                'Sudah tidak di sekolah, surat belum dieksekusi',
+                'Menunggu surat pindah dari orang tua',
+                'Menunggu eksekusi administrasi TU',
+              ].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setCatatanInput(preset)}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-amber-950/60 transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
+                >
+                  + {preset}
+                </button>
+              ))}
+            </div>
+            <Textarea
+              value={catatanInput}
+              onChange={(e) => setCatatanInput(e.target.value)}
+              placeholder="Tulis catatan penanda siswa (mis. sudah tidak masuk, berkas mutasi belum diproses)..."
+              rows={3}
+              className="text-xs rounded-xl border-slate-200 dark:border-slate-800"
+            />
+          </div>
+
+          {catatanTargetSiswa?.status === 'AKTIF' && (
+            <label className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 cursor-pointer">
+              <Checkbox
+                checked={catatanDeactivate}
+                onChange={(e: any) => setCatatanDeactivate(Boolean(e?.target ? e.target.checked : e))}
+              />
+              <div className="text-xs">
+                <span className="font-bold text-slate-800 dark:text-slate-100 block">
+                  Nonaktifkan Siswa Sekarang (TIDAK_AKTIF)
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Siswa dinonaktifkan sementara dari presensi harian sambil menunggu surat persuratan selesai.
+                </span>
+              </div>
+            </label>
+          )}
+
+          <ModalFooter className="pt-3 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setCatatanModalOpen(false)}
+              disabled={savingCatatan}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              disabled={savingCatatan}
+              onClick={async () => {
+                if (!catatanTargetSiswa) return;
+                try {
+                  setSavingCatatan(true);
+                  const cleanCatatan = catatanInput.trim() || null;
+                  const payload: Record<string, unknown> = { catatan: cleanCatatan };
+                  if (catatanTargetSiswa.status === 'AKTIF' && catatanDeactivate) {
+                    payload.status = 'TIDAK_AKTIF';
+                  }
+                  const res = await updateSiswa(catatanTargetSiswa.id, payload);
+                  if (res.success) {
+                    toast.success(
+                      payload.status === 'TIDAK_AKTIF'
+                        ? `${catatanTargetSiswa.nama_siswa} dinonaktifkan & catatan disimpan`
+                        : `Catatan ${catatanTargetSiswa.nama_siswa} disimpan`
+                    );
+                    setCatatanModalOpen(false);
+                    invalidateSiswaCache();
+                    refetch();
+                    onRefresh?.();
+                  } else {
+                    toast.error(res.message || 'Gagal menyimpan catatan');
+                  }
+                } catch (err: any) {
+                  toast.error(err?.message || 'Gagal menyimpan catatan');
+                } finally {
+                  setSavingCatatan(false);
+                }
+              }}
+              className="bg-amber-600 hover:bg-amber-500 text-white"
+            >
+              {savingCatatan ? 'Menyimpan...' : 'Simpan Catatan'}
             </Button>
           </ModalFooter>
         </div>

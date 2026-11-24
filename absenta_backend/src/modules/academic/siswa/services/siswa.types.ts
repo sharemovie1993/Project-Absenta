@@ -101,6 +101,7 @@ export interface CreateSiswaInput {
 export interface UpdateSiswaInput extends Partial<CreateSiswaInput> {
   tanggal_keluar?: Date | string;
   alasan_keluar?: string;
+  catatan?: string;
 }
 
 export type SiswaScope = DataScope;

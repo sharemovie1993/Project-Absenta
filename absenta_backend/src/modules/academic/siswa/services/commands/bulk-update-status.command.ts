@@ -22,10 +22,15 @@ export async function bulkUpdateStatusCommand(
     status,
   };
 
-  const nonActiveStatuses = ['KELUAR', 'PINDAH', 'LULUS', 'DO', 'NON_AKTIF'];
+  const nonActiveStatuses = ['KELUAR', 'PINDAH', 'LULUS', 'DO', 'NON_AKTIF', 'TIDAK_AKTIF', 'MENINGGAL', 'MUTASI'];
   if (nonActiveStatuses.includes(status)) {
     updateData.tanggal_keluar = tanggal || new Date();
-    if (alasan) updateData.alasan_keluar = alasan;
+    if (alasan) {
+      updateData.alasan_keluar = alasan;
+      if (status === 'TIDAK_AKTIF') {
+        updateData.catatan = alasan;
+      }
+    }
   } else if (status === 'AKTIF') {
     updateData.tanggal_keluar = null;
     updateData.alasan_keluar = null;

@@ -26,6 +26,7 @@ export const siswaSchema = z.object({
   status: z.enum(['AKTIF', 'TIDAK_AKTIF', 'LULUS', 'PINDAH', 'KELUAR']),
   tanggal_keluar: z.string().optional().or(z.literal('')),
   alasan_keluar: z.string().optional().or(z.literal('')),
+  catatan: z.string().optional().or(z.literal('')),
   transportasi: z.string().optional().or(z.literal('')),
   no_rfid: z.string().optional().or(z.literal('')),
   foto: z.string().optional().or(z.literal('')),

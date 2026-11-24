@@ -334,6 +334,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         status: (fetchedSiswa.status as any) || 'AKTIF',
         tanggal_keluar: fetchedSiswa.tanggal_keluar ? fetchedSiswa.tanggal_keluar.split('T')[0] : '',
         alasan_keluar: fetchedSiswa.alasan_keluar || '',
+        catatan: fetchedSiswa.catatan || '',
         transportasi: fetchedSiswa.transportasi || '',
         no_rfid: fetchedSiswa.no_rfid || '',
         nisn: fetchedSiswa.nisn || '',
@@ -395,6 +396,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         tanggal_lahir: data.tanggal_lahir || null,
         tanggal_keluar: data.tanggal_keluar || null,
         alasan_keluar: data.alasan_keluar || null,
+        catatan: data.catatan?.trim() ? data.catatan.trim() : null,
         no_rfid: data.no_rfid?.trim() ? data.no_rfid : null,
         orang_tua: (data.orang_tua || []).filter(o => o.nama?.trim()).map(o => ({
             ...o,

@@ -1142,6 +1142,7 @@ model Siswa {
   tanggal_masuk       DateTime?
   tanggal_keluar      DateTime?
   alasan_keluar       String?
+  catatan             String?
   status              String                @default("AKTIF")
   no_rfid             String?
   foto                String?

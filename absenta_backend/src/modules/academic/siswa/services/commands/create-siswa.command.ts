@@ -367,6 +367,7 @@ export async function createSiswaCommand(
       tanggal_masuk: tanggalMasukToUse,
       tanggal_keluar: tanggalKeluarToUse,
       alasan_keluar: input.alasan_keluar || null,
+      catatan: input.catatan || null,
       status: input.status || 'AKTIF',
       no_rfid: rfid,
       foto: input.foto || null,
