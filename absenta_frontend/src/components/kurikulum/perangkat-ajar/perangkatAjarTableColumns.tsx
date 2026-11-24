@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Check, XCircle, Clock, Sparkles, BookOpen, Edit3, Trash2, Layers, CalendarRange } from 'lucide-react';
+import { Check, XCircle, Clock, Sparkles, BookOpen, Edit3, Trash2, Layers, CalendarRange, Award } from 'lucide-react';
 import type { Column } from '@/components/ui/Table';
 import type { PerangkatAjar } from '@/api/kurikulum.api';
 
@@ -164,6 +164,8 @@ export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsPara
                   ? 'text-xs font-black bg-sky-600 hover:bg-sky-500 text-white rounded-xl px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm shadow-sky-500/20 cursor-pointer'
                   : item.jenis === 'PROTA' || item.jenis === 'PROMES'
                   ? 'text-xs font-black bg-teal-600 hover:bg-teal-500 text-white rounded-xl px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm shadow-teal-500/20 cursor-pointer'
+                  : item.jenis === 'KKTP'
+                  ? 'text-xs font-black bg-rose-600 hover:bg-rose-500 text-white rounded-xl px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm shadow-rose-500/20 cursor-pointer'
                   : 'text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm shadow-indigo-500/20 cursor-pointer'
               }
               title={
@@ -173,6 +175,8 @@ export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsPara
                   ? 'Susun Program Tahunan (PROTA) Otomatis dari ATP'
                   : item.jenis === 'PROMES'
                   ? 'Susun Program Semester (PROMES) Otomatis dari ATP'
+                  : item.jenis === 'KKTP'
+                  ? 'Susun Kriteria Ketercapaian Tujuan Pembelajaran (KKTP) Otomatis dari ATP'
                   : 'Buka Studio Penyusunan Modul Ajar (Per-Pertemuan)'
               }
             >
@@ -180,6 +184,8 @@ export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsPara
                 <Layers size={13} />
               ) : item.jenis === 'PROTA' || item.jenis === 'PROMES' ? (
                 <CalendarRange size={13} />
+              ) : item.jenis === 'KKTP' ? (
+                <Award size={13} />
               ) : (
                 <Sparkles size={13} />
               )}
@@ -190,6 +196,8 @@ export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsPara
                   ? 'Susun Prota'
                   : item.jenis === 'PROMES'
                   ? 'Susun Promes'
+                  : item.jenis === 'KKTP'
+                  ? 'Susun KKTP'
                   : 'Susun'}
               </span>
             </Button>
