@@ -7,7 +7,7 @@ import { storageService } from '../infra/storage/storage.service';
 
 const execFileAsync = promisify(execFile);
 
-const CONVERTIBLE_EXTS = new Set(['.ppt', '.pptx', '.doc', '.docx']);
+const CONVERTIBLE_EXTS = new Set(['.ppt', '.pptx', '.doc', '.docx', '.xls', '.xlsx']);
 
 export function getSiblingPdfRelativePath(relativePath: string): string | null {
   if (!relativePath) return null;
