@@ -245,7 +245,10 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
               }}
               perangkatId={studioPerangkat.id}
               perangkatJudul={studioPerangkat.judul}
+              mapelId={studioPerangkat.mapel_id || studioPerangkat.Mapel?.id}
               mapelNama={studioPerangkat.Mapel?.nama_mapel}
+              guruId={studioPerangkat.guru_id || currentGuru?.id}
+              fase={(studioPerangkat as any).fase || 'E'}
             />
           )}
 

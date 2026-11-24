@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen,
@@ -25,7 +25,8 @@ import {
   AlertCircle,
   Eye,
   Image as ImageIcon,
-  UploadCloud
+  UploadCloud,
+  Printer
 } from 'lucide-react';
 import { Modal, Button } from '../../ui';
 import {
@@ -39,9 +40,35 @@ import {
   PertemuanItem,
   BahanAjarPresetData
 } from '../../../api/bahan-ajar.api';
+import { getAtpList, TujuanPembelajaranItem } from '../../../api/atp.api';
+import { useAuth } from '../../../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import { cn, resolveProfilePhotoUrl } from '../../../lib/utils';
 import { BahanAjarReaderModal } from './BahanAjarReaderModal';
+
+const ModulAjarPrintModal = lazy(() =>
+  import('./ModulAjarPrintModal').then((m) => ({ default: m.ModulAjarPrintModal }))
+);
+
+function smartTitle(raw: string): string {
+  const clean = String(raw || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
+  const small = new Set(['dan', 'atau', 'di', 'ke', 'dari', 'pada', 'untuk', 'dengan', 'yang', 'dalam']);
+  return clean
+    .split(' ')
+    .map((w, i) => {
+      if (w.length > 1 && w === w.toUpperCase() && /[A-Z]/.test(w)) return w;
+      const l = w.toLowerCase();
+      return i > 0 && small.has(l) ? l : l.charAt(0).toUpperCase() + l.slice(1);
+    })
+    .join(' ');
+}
+
+function smartSentence(raw: string): string {
+  const clean = String(raw || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
+  return clean.replace(/(^\s*[a-zA-Z\u00C0-\u024F])|([.!?]\s+[a-zA-Z\u00C0-\u024F])/g, (m) => m.toUpperCase());
+}
 
 export interface BabItem {
   id: string;
@@ -77,6 +104,10 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
   fase
 }) => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const effectiveGuruId = guruId || String((user as any)?.guru_profile?.id || '');
+  const guruNama = String((user as any)?.guru_profile?.nama_guru || user?.name || 'Guru Mata Pelajaran');
+  const guruNip = String((user as any)?.guru_profile?.nip || '');
   const [babs, setBabs] = useState<BabItem[]>([
     {
       id: perangkatId || 'new-1',
@@ -93,6 +124,7 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
   const [activeView, setActiveView] = useState<'BAB_INFO' | 'MEETING'>('BAB_INFO');
   const [mobileTab, setMobileTab] = useState<'TREE' | 'EDITOR'>('TREE');
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState<boolean>(false);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
 
@@ -110,6 +142,25 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
     queryFn: () => getBahanAjarPresets({ fase }),
     enabled: isOpen
   });
+
+  // 2b. Fetch Guru's ATP for 1-Click Import TP -> Pertemuan
+  const effectiveMapelId = mapelId || readerData?.perangkat?.mapel_id || '';
+  const { data: atpPlans = [] } = useQuery({
+    queryKey: ['atpListForStudio', effectiveGuruId, effectiveMapelId, fase],
+    queryFn: () =>
+      getAtpList({
+        guru_id: effectiveGuruId || undefined,
+        mapel_id: effectiveMapelId || undefined,
+        fase: fase || 'E',
+      }),
+    enabled: isOpen && Boolean(effectiveMapelId),
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const atpTpList: TujuanPembelajaranItem[] = useMemo(() => {
+    const firstAtp = (atpPlans as any[])[0];
+    return Array.isArray(firstAtp?.TujuanPembelajaran) ? firstAtp.TujuanPembelajaran : [];
+  }, [atpPlans]);
 
 // ── EMPTY CLEAN MEETING STRUCTURE FOR BLANK WORKSPACE ──
 const createEmptyMeeting = (num: number = 1): PertemuanItem => ({
@@ -313,15 +364,23 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
   const saveMutation = useMutation({
     mutationFn: async () => {
       const targetPerangkatId = currentBab.id.startsWith('new-') ? 'new' : currentBab.id;
-      const effectiveJudul = currentBab.judulBab.trim()
-        ? `Bab ${currentBab.nomorBab}: ${currentBab.judulBab.trim()}`
+      const cleanBabTitle = smartTitle(currentBab.judulBab);
+      const effectiveJudul = cleanBabTitle
+        ? `Bab ${currentBab.nomorBab}: ${cleanBabTitle}`
         : `Bab ${currentBab.nomorBab}: Modul Ajar ${mapelNama || 'Mata Pelajaran'}`;
 
-      return saveReaderContent(targetPerangkatId, currentBab.pertemuanList, {
+      const normalizedMeetings = (currentBab.pertemuanList || []).map((m, idx) => ({
+        ...m,
+        nomor_pertemuan: m.nomor_pertemuan || idx + 1,
+        topik: smartTitle(m.topik) || `Pertemuan ${idx + 1}`,
+        tujuan_pembelajaran: (m.tujuan_pembelajaran || []).map((tp) => smartSentence(tp)),
+      }));
+
+      return saveReaderContent(targetPerangkatId, normalizedMeetings, {
         judul: effectiveJudul,
-        mapel_id: mapelId,
+        mapel_id: effectiveMapelId || mapelId,
         mapel_nama: mapelNama,
-        guru_id: guruId,
+        guru_id: effectiveGuruId || guruId,
         fase: currentBab.fase,
         tingkat: currentBab.tingkat
       });
@@ -331,12 +390,73 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
       queryClient.invalidateQueries({ queryKey: ['bahanAjarReaderStudio'] });
       queryClient.invalidateQueries({ queryKey: ['myPerangkatAjarKbm'] });
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar'] });
+      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
+      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
       toast.success('💾 Bab & Seluruh Sesi Berhasil Disimpan ke Asisten Mengajar!', { icon: '✨' });
     },
     onError: (err: any) => {
       toast.error(err.message || 'Gagal menyimpan modul ajar');
     }
   });
+
+  const handleImportFromAtp = () => {
+    if (atpTpList.length === 0) {
+      toast.error('Belum ada TP pada ATP untuk mapel & fase ini.');
+      return;
+    }
+    const generatedMeetings: PertemuanItem[] = atpTpList.map((tp, idx) => {
+      const jp = Number(tp.alokasi_jp) || 2;
+      const durasi = jp * 45;
+      return {
+        nomor_pertemuan: idx + 1,
+        alokasi_jp: jp,
+        durasi_menit: durasi,
+        topik: smartTitle(tp.judul_materi) || `Pertemuan ${idx + 1}`,
+        tujuan_pembelajaran: [smartSentence(tp.deskripsi_tp || tp.judul_materi)],
+        langkah_kbm: {
+          pendahuluan: {
+            durasi_menit: 15,
+            kegiatan: [
+              'Guru membuka pembelajaran dengan salam, doa, dan pengecekan kehadiran siswa.',
+              `Apersepsi & pertanyaan pemantik terkait materi "${smartTitle(tp.judul_materi)}".`,
+            ],
+          },
+          inti: {
+            durasi_menit: Math.max(30, durasi - 30),
+            kegiatan: [
+              `Eksplorasi konsep dan demonstrasi materi ${smartTitle(tp.judul_materi)}.`,
+              'Diskusi kelompok dan pengerjaan LKPD sesuai tujuan pembelajaran.',
+              'Presentasi hasil kerja siswa dan penguatan konsep oleh guru.',
+            ],
+            teks_bacaan: {
+              judul: smartTitle(tp.judul_materi),
+              paragraf: [smartSentence(tp.deskripsi_tp || `Ringkasan materi ${tp.judul_materi}.`)],
+            },
+            lkpd: {
+              judul: `LKPD ${idx + 1}: ${smartTitle(tp.judul_materi)}`,
+              petunjuk: `1. Pelajari tujuan pembelajaran: ${smartSentence(tp.deskripsi_tp || tp.judul_materi)}\n2. Diskusikan dan kerjakan latihan secara berkelompok.`,
+            },
+          },
+          penutup: {
+            durasi_menit: 15,
+            kegiatan: [
+              'Refleksi bersama siswa dan penyimpulan poin utama pembelajaran.',
+              'Penyampaian agenda pertemuan berikutnya dan doa penutup.',
+            ],
+          },
+        },
+      };
+    });
+
+    updateCurrentBab((prev) => ({
+      ...prev,
+      judulBab: prev.judulBab || (atpPlans as any[])[0]?.nama_atp || mapelNama || '',
+      pertemuanList: generatedMeetings,
+    }));
+    setActiveMeetingIdx(0);
+    setActiveView('MEETING');
+    toast.success(`⚡ ${generatedMeetings.length} Pertemuan berhasil ditarik dari ATP!`, { icon: '✨' });
+  };
 
   // Bab Mutators
   const updateCurrentBab = (updater: (prev: BabItem) => BabItem) => {
@@ -676,6 +796,32 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
               >
                 <Copy size={13} className="text-indigo-600 dark:text-indigo-400" />
                 <span>Template</span>
+              </Button>
+
+              {atpTpList.length > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleImportFromAtp}
+                  className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl font-bold text-xs bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-100 hidden sm:flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  title={`Tarik ${atpTpList.length} TP dari ATP sebagai rangkaian pertemuan otomatis`}
+                >
+                  <Layers size={13} className="text-blue-600 dark:text-blue-400" />
+                  <span>Tarik ATP ({atpTpList.length})</span>
+                </Button>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsPrintModalOpen(true)}
+                className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl font-bold text-xs bg-white dark:bg-slate-800 hidden sm:flex items-center gap-1.5 cursor-pointer shadow-xs border-slate-200 dark:border-slate-700 hover:bg-slate-100"
+                title="Pratinjau Cetak & Ekspor PDF Resmi Modul Ajar"
+              >
+                <Printer size={13} className="text-rose-600 dark:text-rose-400" />
+                <span>Cetak / PDF</span>
               </Button>
 
               <Button
@@ -2183,6 +2329,24 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
           </div>
         </Modal>
       )}
+
+      <Suspense fallback={null}>
+        {isPrintModalOpen && (
+          <ModulAjarPrintModal
+            isOpen={isPrintModalOpen}
+            onClose={() => setIsPrintModalOpen(false)}
+            judulBab={currentBab?.judulBab || perangkatJudul || ''}
+            nomorBab={currentBab?.nomorBab || 1}
+            deskripsiBab={currentBab?.deskripsi}
+            mapelNama={mapelNama || readerData?.perangkat?.Mapel?.nama_mapel || 'Mata Pelajaran'}
+            fase={currentBab?.fase || fase || 'E'}
+            tingkat={currentBab?.tingkat || tingkat || 10}
+            guruNama={guruNama}
+            guruNip={guruNip}
+            pertemuanList={currentBab?.pertemuanList || []}
+          />
+        )}
+      </Suspense>
     </Modal>
   );
 };
