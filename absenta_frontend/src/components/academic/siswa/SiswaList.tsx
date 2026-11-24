@@ -1606,13 +1606,10 @@ Terima kasih.
                       options={[
                         { label: 'Semua Status', value: '' },
                         { label: 'Aktif', value: 'AKTIF' },
+                        { label: 'Tidak Aktif (Sementara)', value: 'TIDAK_AKTIF' },
                         { label: 'Pindah / Mutasi', value: 'MUTASI' },
-                        { label: 'Pindah', value: 'PINDAH' },
-                        { label: 'Keluar', value: 'KELUAR' },
-                        { label: 'Drop Out (DO)', value: 'DO' },
-                        { label: 'Lulus', value: 'LULUS' },
-                        { label: 'Tidak Aktif', value: 'TIDAK_AKTIF' },
-                        { label: 'Calon Siswa', value: 'CALON' }
+                        { label: 'Keluar / Mengundurkan Diri', value: 'KELUAR' },
+                        { label: 'Lulus', value: 'LULUS' }
                       ]}
                       placeholder="Status"
                       searchPlaceholder="Cari Status..."
@@ -1854,13 +1851,10 @@ Terima kasih.
                           options={[
                             { label: 'Semua Status', value: '' },
                             { label: 'Aktif', value: 'AKTIF' },
+                            { label: 'Tidak Aktif (Sementara)', value: 'TIDAK_AKTIF' },
                             { label: 'Pindah / Mutasi', value: 'MUTASI' },
-                            { label: 'Pindah', value: 'PINDAH' },
-                            { label: 'Keluar', value: 'KELUAR' },
-                            { label: 'Drop Out (DO)', value: 'DO' },
-                            { label: 'Lulus', value: 'LULUS' },
-                            { label: 'Tidak Aktif', value: 'TIDAK_AKTIF' },
-                            { label: 'Calon Siswa', value: 'CALON' }
+                            { label: 'Keluar / Mengundurkan Diri', value: 'KELUAR' },
+                            { label: 'Lulus', value: 'LULUS' }
                           ]}
                           placeholder="Semua Status"
                           searchPlaceholder="Cari Status..."

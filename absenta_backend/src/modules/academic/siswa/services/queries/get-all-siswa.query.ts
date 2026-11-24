@@ -83,7 +83,11 @@ export async function getAllSiswaQuery(
   const safeStatus = typeof params?.status === 'string' && params.status.trim() !== '' ? params.status.trim() : undefined;
   if (safeStatus) {
     if (safeStatus === 'NON_AKTIF' || safeStatus === 'INAKTIF' || safeStatus === 'TIDAK_AKTIF') {
-      whereClause.status = { not: 'AKTIF' };
+      whereClause.status = { in: ['TIDAK_AKTIF', 'NON_AKTIF'] };
+    } else if (safeStatus === 'MUTASI' || safeStatus === 'PINDAH') {
+      whereClause.status = { in: ['MUTASI', 'PINDAH'] };
+    } else if (safeStatus === 'KELUAR') {
+      whereClause.status = { in: ['KELUAR', 'DO'] };
     } else {
       whereClause.status = safeStatus;
     }
