@@ -164,6 +164,7 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
     kelasNama?: string;
     tingkat?: string | number;
     fase?: string;
+    sourceItem?: any;
   }>({});
 
   const handleOpenBahanAjar = useCallback((item: any) => {
@@ -173,7 +174,8 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
       mapelNama: item.kegiatan || item.mapel_nama || item.Mapel?.nama_mapel,
       kelasNama: item.kelas_nama,
       tingkat: item.tingkat,
-      fase: item.fase
+      fase: item.fase,
+      sourceItem: item,
     });
     setReaderModalOpen(true);
   }, []);
@@ -395,12 +397,20 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
           mapelId={readerContext.mapelId}
           mapelNama={readerContext.mapelNama}
           kelasNama={readerContext.kelasNama}
-          tingkat={readerContext.tingkat}
+          tingkat={typeof readerContext.tingkat === 'string' ? Number(readerContext.tingkat) || undefined : readerContext.tingkat}
           fase={readerContext.fase}
-          onOpenJournal={() => {
+          onOpenJurnal={(jurnalData) => {
             setReaderModalOpen(false);
-            if (activeTimelineItem) {
-              handleOpenJournalModal(activeTimelineItem);
+            const targetItem = readerContext.sourceItem || activeTimelineItem;
+            if (targetItem) {
+              handleOpenJournalModal({
+                ...targetItem,
+                progres_materi: {
+                  ...(targetItem.progres_materi || targetItem.session?.progres || {}),
+                  materi: jurnalData.judul_materi,
+                  deskripsi: jurnalData.deskripsi,
+                },
+              });
             }
           }}
         />
