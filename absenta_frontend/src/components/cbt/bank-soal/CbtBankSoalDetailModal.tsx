@@ -15,6 +15,7 @@ import {
   AlertCircle,
   RefreshCw,
   RotateCw,
+  Puzzle,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
@@ -23,6 +24,7 @@ import type { CbtBankSoal, CbtSoal, CbtUnitPengajaranSummary } from '@/types/cbt
 import { CbtContentRenderer } from '../common/CbtContentRenderer';
 import { CbtOptionsRenderer } from '../common/CbtOptionsRenderer';
 import { CbtInlineSoalCard } from './CbtSoalEditorModal';
+import { CbtImportPuzzleModal } from './CbtImportPuzzleModal';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -52,6 +54,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
   const [droppedDraftText, setDroppedDraftText] = useState<string | null>(null);
   const [isDragOverAddBtn, setIsDragOverAddBtn] = useState(false);
   const [filterUnitId, setFilterUnitId] = useState<string>('ALL');
+  const [isPuzzleImportOpen, setIsPuzzleImportOpen] = useState(false);
 
   useEffect(() => {
     setFilterUnitId('ALL');
@@ -254,14 +257,27 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                 </div>
 
                 {!readOnly && (
-                  <Button
-                    type="button"
-                    onClick={() => setActiveCardId('NEW')}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Plus size={15} />
-                    <span>Tambah Soal</span>
-                  </Button>
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsPuzzleImportOpen(true)}
+                      className="border-emerald-300 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-950/30 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 font-bold text-xs h-8 sm:h-9 px-3 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
+                      title="Import & Susun Puzzle Soal dari Word (.docx), PDF, atau Google Form Preview"
+                    >
+                      <Puzzle size={14} />
+                      <span className="hidden sm:inline">Import Puzzle</span>
+                      <span className="sm:hidden">Import</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setActiveCardId('NEW')}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus size={15} />
+                      <span>Tambah Soal</span>
+                    </Button>
+                  </>
                 )}
 
                 {!readOnly && soalList.length > 0 && onAktifkanUjian && (
@@ -606,6 +622,19 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
           </div>
         </div>
       </div>
+
+      {isPuzzleImportOpen && (
+        <CbtImportPuzzleModal
+          isOpen={isPuzzleImportOpen}
+          onClose={() => setIsPuzzleImportOpen(false)}
+          bankSoalId={bankSoal.id}
+          bankJudul={bankSoal.judul}
+          startingNomor={soalList.length + 1}
+          onSuccessImport={() => {
+            refetch();
+          }}
+        />
+      )}
     </Modal>
   );
 };

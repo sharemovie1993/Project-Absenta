@@ -1694,4 +1694,60 @@ export class CbtBankSoalService {
       items: parsedQuestions,
     };
   }
+
+  /**
+   * Ekstrak teks mentah dari file dokumen eksternal (.docx, .pdf, .txt)
+   * untuk diproses lebih lanjut oleh Helper Scanner & Puzzle Soal Workbench di frontend.
+   */
+  static async parseExternalDocument(fileBuffer: Buffer, filename: string, mimetype?: string) {
+    const lowerName = (filename || '').toLowerCase();
+    const lowerMime = (mimetype || '').toLowerCase();
+
+    if (lowerName.endsWith('.doc') && !lowerName.endsWith('.docx')) {
+      throw new Error('Format .doc lawas belum didukung. Silakan Save As ke .docx atau .pdf terlebih dahulu.');
+    }
+
+    let rawText = '';
+    let sourceType: 'docx' | 'pdf' | 'txt' = 'txt';
+
+    if (
+      lowerName.endsWith('.docx') ||
+      lowerMime.includes('wordprocessingml.document')
+    ) {
+      sourceType = 'docx';
+      const mammoth = await import('mammoth');
+      const result = await mammoth.extractRawText({ buffer: fileBuffer });
+      rawText = result.value || '';
+    } else if (lowerName.endsWith('.pdf') || lowerMime.includes('application/pdf')) {
+      sourceType = 'pdf';
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const pdfParse = require('pdf-parse');
+      const result = await pdfParse(fileBuffer);
+      rawText = result?.text || '';
+    } else if (lowerName.endsWith('.txt') || lowerName.endsWith('.md') || lowerMime.startsWith('text/')) {
+      sourceType = 'txt';
+      rawText = fileBuffer.toString('utf-8');
+    } else {
+      throw new Error('Format file tidak didukung. Gunakan file Word (.docx), PDF (.pdf), atau Teks (.txt).');
+    }
+
+    const normalizedText = rawText
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\u00a0/g, ' ')
+      .trim();
+
+    if (!normalizedText) {
+      throw new Error('Teks tidak ditemukan di dalam dokumen (kemungkinan PDF hasil scan gambar/foto tanpa teks).');
+    }
+
+    const lines = normalizedText.split('\n').map((l) => l.trim()).filter(Boolean);
+
+    return {
+      filename,
+      source_type: sourceType,
+      raw_text: normalizedText,
+      line_count: lines.length,
+    };
+  }
 }

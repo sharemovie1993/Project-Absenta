@@ -77,6 +77,10 @@ export async function cbtRoutes(fastify: any) {
     preHandler: [requireCapability('cbt.bank.manage', cbtGuruExempt), determineDataScope()],
   }, CbtBankSoalController.parseGoogleForm);
 
+  fastify.post('/bank-soal/parse-document', {
+    preHandler: [requireCapability('cbt.bank.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtBankSoalController.parseExternalDocument);
+
   fastify.put('/soal/:questionId', {
     preHandler: [requireCapability('cbt.bank.manage', cbtGuruExempt), determineDataScope()],
   }, CbtBankSoalController.updateQuestion);
