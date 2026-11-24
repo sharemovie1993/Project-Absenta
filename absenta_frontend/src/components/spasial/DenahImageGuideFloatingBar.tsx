@@ -757,15 +757,15 @@ export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProp
                 className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-750 rounded-lg"
               />
 
-              {/* Transparansi Kotak Ruangan (See-Through Glass) */}
+              {/* Kejelasan / Opasitas Kotak Ruangan */}
               {onUpdateBoxOpacity && (
                 <div className="pt-2 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-[10px] text-slate-500">
-                      Tembus Pandang Kotak Ruangan:
+                      Kejelasan Kotak Ruangan:
                     </span>
-                    <span className="text-[10px] font-mono font-bold text-slate-500">
-                      {Math.round((boxOpacity || 0.32) * 100)}%
+                    <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                      {Math.round((boxOpacity ?? 0.85) * 100)}%
                     </span>
                   </div>
                   <input
@@ -777,6 +777,26 @@ export const DenahImageGuideFloatingBar: React.FC<DenahImageGuideFloatingBarProp
                     onChange={(e) => onUpdateBoxOpacity(parseFloat(e.target.value))}
                     className="w-full accent-indigo-500 cursor-pointer h-1.5 bg-slate-200 dark:bg-slate-750 rounded-lg"
                   />
+                  <div className="grid grid-cols-3 gap-1 pt-0.5">
+                    {[
+                      { label: '50% Kaca', value: 0.5 },
+                      { label: '85% Jelas', value: 0.85 },
+                      { label: '100% Solid', value: 1.0 },
+                    ].map((preset) => (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        onClick={() => onUpdateBoxOpacity(preset.value)}
+                        className={`py-0.5 rounded text-[9px] font-bold border transition-colors cursor-pointer ${
+                          Math.abs((boxOpacity ?? 0.85) - preset.value) < 0.04
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

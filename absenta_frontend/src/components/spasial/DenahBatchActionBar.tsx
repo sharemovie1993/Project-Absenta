@@ -12,12 +12,48 @@ import {
   Save,
   Loader2,
   Type,
+  Palette,
+  RotateCcw,
 } from 'lucide-react';
+
+export interface DenahNodeStyleUpdate {
+  warna_bg?: string;
+  warna_border?: string;
+  warna_teks?: string;
+  reset?: boolean;
+}
+
+const FILL_COLOR_PRESETS = [
+  { label: 'Putih Bersih', value: '#ffffff' },
+  { label: 'Gelap Kontras', value: '#0f172a' },
+  { label: 'Biru', value: '#1d4ed8' },
+  { label: 'Emerald', value: '#047857' },
+  { label: 'Amber', value: '#b45309' },
+  { label: 'Merah', value: '#b91c1c' },
+  { label: 'Ungu', value: '#6d28d9' },
+];
+
+const BORDER_COLOR_PRESETS = [
+  { label: 'Putih', value: '#ffffff' },
+  { label: 'Kuning Terang', value: '#facc15' },
+  { label: 'Cyan', value: '#22d3ee' },
+  { label: 'Hijau Terang', value: '#34d399' },
+  { label: 'Merah Terang', value: '#f87171' },
+  { label: 'Hitam', value: '#0f172a' },
+];
+
+const TEXT_COLOR_PRESETS = [
+  { label: 'Putih', value: '#ffffff' },
+  { label: 'Hitam / Slate', value: '#0f172a' },
+  { label: 'Kuning', value: '#fef08a' },
+  { label: 'Cyan Muda', value: '#a5f3fc' },
+];
 
 interface DenahBatchActionBarProps {
   selectedCount: number;
   totalCount: number;
   currentSize?: { width: number; height: number };
+  currentStyle?: { warna_bg?: string; warna_border?: string; warna_teks?: string };
   onRotateAll: () => void;
   onToggleTextUprightAll?: () => void;
   allTextUpright?: boolean;
@@ -27,6 +63,7 @@ interface DenahBatchActionBarProps {
   onSelectAll: () => void;
   onResizeStep: (deltaW: number, deltaH: number) => void;
   onSetSize: (width: number, height: number) => void;
+  onUpdateStyleAll?: (style: DenahNodeStyleUpdate) => void;
   onSave?: () => void;
   isSaving?: boolean;
 }
@@ -36,6 +73,7 @@ export const DenahBatchActionBar = React.memo<DenahBatchActionBarProps>(
     selectedCount,
     totalCount,
     currentSize,
+    currentStyle,
     onRotateAll,
     onToggleTextUprightAll,
     allTextUpright = true,
@@ -45,10 +83,12 @@ export const DenahBatchActionBar = React.memo<DenahBatchActionBarProps>(
     onSelectAll,
     onResizeStep,
     onSetSize,
+    onUpdateStyleAll,
     onSave,
     isSaving = false,
   }) => {
   const [showPresets, setShowPresets] = useState(false);
+  const [showColorMenu, setShowColorMenu] = useState(false);
 
   if (selectedCount <= 0) return null;
 
@@ -197,6 +237,148 @@ export const DenahBatchActionBar = React.memo<DenahBatchActionBarProps>(
           <Type className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Teks Tegak</span>
         </button>
+      )}
+
+      {/* Color & Border Customizer */}
+      {onUpdateStyleAll && (
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setShowColorMenu((prev) => !prev);
+              setShowPresets(false);
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors border ${
+              showColorMenu || currentStyle?.warna_bg || currentStyle?.warna_border
+                ? 'bg-indigo-500/25 text-indigo-200 border-indigo-400/50 hover:bg-indigo-500/35'
+                : 'hover:bg-slate-800 text-slate-200 hover:text-white border-transparent'
+            }`}
+            title="Atur Warna Fill, Border, & Teks Kotak"
+          >
+            <Palette className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Warna</span>
+          </button>
+
+          {showColorMenu && (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-slate-900 border border-slate-700 shadow-2xl rounded-xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                <span className="text-[11px] font-bold text-slate-200">
+                  Pewarnaan Kotak ({selectedCount})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onUpdateStyleAll({ reset: true })}
+                  className="text-[10px] font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                  title="Kembalikan ke warna bawaan tingkat/kategori"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset</span>
+                </button>
+              </div>
+
+              {/* Fill Color (warna_bg) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Fill / Isi Kotak
+                  </span>
+                  <input
+                    type="color"
+                    value={currentStyle?.warna_bg || '#1e293b'}
+                    onChange={(e) => onUpdateStyleAll({ warna_bg: e.target.value })}
+                    className="w-5 h-5 rounded cursor-pointer bg-transparent border-0 p-0"
+                    title="Pilih warna fill kustom"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {FILL_COLOR_PRESETS.map((preset) => (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => onUpdateStyleAll({ warna_bg: preset.value })}
+                      className={`w-5 h-5 rounded-md border transition-transform hover:scale-110 cursor-pointer ${
+                        currentStyle?.warna_bg === preset.value
+                          ? 'ring-2 ring-white border-white scale-110'
+                          : 'border-slate-600'
+                      }`}
+                      style={{ backgroundColor: preset.value }}
+                      title={preset.label}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Border Color (warna_border) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Border / Garis Tepi
+                  </span>
+                  <input
+                    type="color"
+                    value={currentStyle?.warna_border || '#ffffff'}
+                    onChange={(e) => onUpdateStyleAll({ warna_border: e.target.value })}
+                    className="w-5 h-5 rounded cursor-pointer bg-transparent border-0 p-0"
+                    title="Pilih warna border kustom"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {BORDER_COLOR_PRESETS.map((preset) => (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => onUpdateStyleAll({ warna_border: preset.value })}
+                      className={`w-5 h-5 rounded-md border-2 bg-slate-800 transition-transform hover:scale-110 cursor-pointer ${
+                        currentStyle?.warna_border === preset.value
+                          ? 'ring-2 ring-indigo-400 scale-110'
+                          : ''
+                      }`}
+                      style={{ borderColor: preset.value }}
+                      title={preset.label}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Text Color (warna_teks) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Warna Teks
+                  </span>
+                  <input
+                    type="color"
+                    value={currentStyle?.warna_teks || '#ffffff'}
+                    onChange={(e) => onUpdateStyleAll({ warna_teks: e.target.value })}
+                    className="w-5 h-5 rounded cursor-pointer bg-transparent border-0 p-0"
+                    title="Pilih warna teks kustom"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {TEXT_COLOR_PRESETS.map((preset) => (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => onUpdateStyleAll({ warna_teks: preset.value })}
+                      className={`w-5 h-5 rounded-md border flex items-center justify-center text-[10px] font-black transition-transform hover:scale-110 cursor-pointer ${
+                        currentStyle?.warna_teks === preset.value
+                          ? 'ring-2 ring-indigo-400 border-white scale-110'
+                          : 'border-slate-600'
+                      }`}
+                      style={{
+                        backgroundColor: preset.value === '#0f172a' ? '#e2e8f0' : '#1e293b',
+                        color: preset.value,
+                      }}
+                      title={preset.label}
+                    >
+                      A
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Flip H all selected */}

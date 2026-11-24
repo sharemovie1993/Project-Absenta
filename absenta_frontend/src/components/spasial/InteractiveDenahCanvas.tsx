@@ -10,7 +10,7 @@ import { DenahMapGuideLayer } from './DenahMapGuideLayer';
 import { DenahMapGuideFloatingBar } from './DenahMapGuideFloatingBar';
 import { DenahImageGuideLayer } from './DenahImageGuideLayer';
 import { DenahImageGuideFloatingBar } from './DenahImageGuideFloatingBar';
-import { DenahBatchActionBar } from './DenahBatchActionBar';
+import { DenahBatchActionBar, type DenahNodeStyleUpdate } from './DenahBatchActionBar';
 import { DenahMobileNavigationSheet } from './DenahMobileNavigationSheet';
 import { DenahVerticalFloorStepper } from './DenahVerticalFloorStepper';
 import { DenahMobilePaletteDrawer } from './DenahMobilePaletteDrawer';
@@ -213,12 +213,13 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
     const hasImg = Boolean(extractImageGuideConfig(denah.elements, denah.id)?.enabled && extractImageGuideConfig(denah.elements, denah.id)?.url);
     return hasMap || hasImg;
   });
-  const [boxOpacity, setBoxOpacity] = useState<number>(0.32);
+  const [boxOpacity, setBoxOpacity] = useState<number>(0.85);
 
   const effectiveBoxTransparent =
-    isBoxTransparent ||
-    mapGuideConfig.enabled ||
-    (imageGuideConfig.enabled && Boolean(imageGuideConfig.url));
+    boxOpacity < 0.95 &&
+    (isBoxTransparent ||
+      mapGuideConfig.enabled ||
+      (imageGuideConfig.enabled && Boolean(imageGuideConfig.url)));
 
   // History for Undo/Redo
   const [history, setHistory] = useState<DenahElementNode[][]>([initialNodes]);
@@ -1165,7 +1166,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             boxOpacity={boxOpacity}
             onUpdateBoxOpacity={(op) => {
               setBoxOpacity(op);
-              if (op < 0.95) setIsBoxTransparent(true);
+              setIsBoxTransparent(op < 0.95);
             }}
             onClose={() => {
               setIsMapGuideOpen(false);
@@ -1191,7 +1192,7 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             boxOpacity={boxOpacity}
             onUpdateBoxOpacity={(op) => {
               setBoxOpacity(op);
-              if (op < 0.95) setIsBoxTransparent(true);
+              setIsBoxTransparent(op < 0.95);
             }}
             onClose={() => {
               setIsImageGuideOpen(false);
@@ -1274,6 +1275,17 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             selectedCount={selectedNodeIds.length}
             totalCount={nodes.length}
             currentSize={currentSize}
+            currentStyle={(() => {
+              if (selectedNodeIds.length === 0) return undefined;
+              const first = nodes.find((item) => item.id === selectedNodeIds[0]);
+              return first
+                ? {
+                    warna_bg: first.warna_bg,
+                    warna_border: first.warna_border,
+                    warna_teks: first.warna_teks,
+                  }
+                : undefined;
+            })()}
             onRotateAll={handleBatchRotate}
             onToggleTextUprightAll={handleBatchToggleTextUpright}
             allTextUpright={
@@ -1289,6 +1301,27 @@ export const InteractiveDenahCanvas: React.FC<InteractiveDenahCanvasProps> = ({
             onSelectAll={handleSelectAll}
             onResizeStep={handleBatchResizeStep}
             onSetSize={handleBatchSetSize}
+            onUpdateStyleAll={(style: DenahNodeStyleUpdate) => {
+              if (selectedNodeIds.length === 0) return;
+              const selectedSet = new Set(selectedNodeIds);
+              setNodes((current) => {
+                const updated = current.map((n) => {
+                  if (!selectedSet.has(n.id)) return n;
+                  if (style.reset) {
+                    const { warna_bg: _bg, warna_border: _bd, warna_teks: _tx, ...rest } = n;
+                    return rest;
+                  }
+                  return {
+                    ...n,
+                    ...(style.warna_bg !== undefined ? { warna_bg: style.warna_bg } : {}),
+                    ...(style.warna_border !== undefined ? { warna_border: style.warna_border } : {}),
+                    ...(style.warna_teks !== undefined ? { warna_teks: style.warna_teks } : {}),
+                  };
+                });
+                pushHistory(updated);
+                return updated;
+              });
+            }}
             onSave={handleSaveDenah}
             isSaving={isSaving}
           />

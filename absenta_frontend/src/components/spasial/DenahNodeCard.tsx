@@ -72,6 +72,20 @@ const KATEGORI_STYLES: Record<string, { bg: string; border: string; text: string
   },
 };
 
+function applyAlphaToColor(color: string, alpha: number): string {
+  if (alpha >= 0.95) return color;
+  const hexMatch = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim());
+  if (!hexMatch) return color;
+  let hex = hexMatch[1];
+  if (hex.length === 3) {
+    hex = hex.split('').map((ch) => ch + ch).join('');
+  }
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export const DenahNodeCard = React.memo<DenahNodeCardProps>(
   ({
     node,
@@ -102,11 +116,15 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
         : null;
 
     const isTranslucent = isTransparent || (typeof boxOpacity === 'number' && boxOpacity < 0.95);
-    const activeOpacity = typeof boxOpacity === 'number' ? boxOpacity : 0.32;
+    const activeOpacity = typeof boxOpacity === 'number' ? boxOpacity : 0.85;
 
     const dynamicBg = isHighlighted
       ? undefined
-      : node.warna_bg || (isTranslucent ? getNodeTranslucentBg(detectedTingkat, false, activeOpacity, node.kategori_ruang) : undefined);
+      : node.warna_bg
+      ? applyAlphaToColor(node.warna_bg, isTranslucent ? activeOpacity : 1)
+      : isTranslucent
+      ? getNodeTranslucentBg(detectedTingkat, false, activeOpacity, node.kategori_ruang)
+      : undefined;
 
     const effectiveBg = tingkatStyle ? tingkatStyle.bg : catStyle.bg;
     const effectiveBorder = tingkatStyle ? tingkatStyle.border : catStyle.border;
@@ -141,8 +159,11 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
           transformOrigin: 'center center',
           backgroundColor: dynamicBg,
           borderColor: isHighlighted ? undefined : (node.warna_border || undefined),
-          backdropFilter: isTranslucent ? 'blur(3px)' : undefined,
-          WebkitBackdropFilter: isTranslucent ? 'blur(3px)' : undefined,
+          boxShadow: !isHighlighted && (isTranslucent || node.warna_bg || node.warna_border)
+            ? '0 4px 14px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.22)'
+            : undefined,
+          backdropFilter: isTranslucent ? 'blur(6px)' : undefined,
+          WebkitBackdropFilter: isTranslucent ? 'blur(6px)' : undefined,
           willChange: isSelected ? 'transform' : 'auto',
         }}
         className={`absolute select-none cursor-move rounded-xl border-2 transition-colors duration-150 flex flex-col items-center justify-center p-1 ${
@@ -210,6 +231,7 @@ export const DenahNodeCard = React.memo<DenahNodeCardProps>(
                 ? 'text-xs sm:text-sm mt-0.5'
                 : 'text-sm sm:text-base mt-1'
             } ${isTranslucent ? 'drop-shadow-[0_1px_2px_rgba(255,255,255,0.95)] dark:drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)]' : ''}`}
+            style={{ color: isHighlighted ? undefined : (node.warna_teks || undefined) }}
           >
             {node.label_sub}
           </div>
