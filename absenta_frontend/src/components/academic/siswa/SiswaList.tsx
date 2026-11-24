@@ -1606,9 +1606,9 @@ Terima kasih.
                       options={[
                         { label: 'Semua Status', value: '' },
                         { label: 'Aktif', value: 'AKTIF' },
-                        { label: 'Tidak Aktif (Sementara)', value: 'TIDAK_AKTIF' },
-                        { label: 'Pindah / Mutasi', value: 'MUTASI' },
-                        { label: 'Keluar / Mengundurkan Diri', value: 'KELUAR' },
+                        { label: 'Tidak Aktif', value: 'TIDAK_AKTIF' },
+                        { label: 'Mutasi', value: 'MUTASI' },
+                        { label: 'Keluar', value: 'KELUAR' },
                         { label: 'Lulus', value: 'LULUS' }
                       ]}
                       placeholder="Status"
@@ -1851,9 +1851,9 @@ Terima kasih.
                           options={[
                             { label: 'Semua Status', value: '' },
                             { label: 'Aktif', value: 'AKTIF' },
-                            { label: 'Tidak Aktif (Sementara)', value: 'TIDAK_AKTIF' },
-                            { label: 'Pindah / Mutasi', value: 'MUTASI' },
-                            { label: 'Keluar / Mengundurkan Diri', value: 'KELUAR' },
+                            { label: 'Tidak Aktif', value: 'TIDAK_AKTIF' },
+                            { label: 'Mutasi', value: 'MUTASI' },
+                            { label: 'Keluar', value: 'KELUAR' },
                             { label: 'Lulus', value: 'LULUS' }
                           ]}
                           placeholder="Semua Status"

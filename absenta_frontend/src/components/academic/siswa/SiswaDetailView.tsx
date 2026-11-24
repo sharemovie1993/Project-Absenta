@@ -1648,11 +1648,11 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
                       }
                     }}
                     options={[
-                      { value: 'AKTIF', label: 'AKTIF (Siswa Aktif Belajar)' },
-                      { value: 'TIDAK_AKTIF', label: 'TIDAK AKTIF (Non-Aktif Sementara)' },
-                      { value: 'PINDAH', label: 'PINDAH / MUTASI (Pindah Sekolah)' },
-                      { value: 'KELUAR', label: 'KELUAR (Mengundurkan Diri / DO)' },
-                      { value: 'LULUS', label: 'LULUS (Telah Lulus)' }
+                      { value: 'AKTIF', label: 'AKTIF' },
+                      { value: 'TIDAK_AKTIF', label: 'TIDAK AKTIF' },
+                      { value: 'MUTASI', label: 'MUTASI' },
+                      { value: 'KELUAR', label: 'KELUAR' },
+                      { value: 'LULUS', label: 'LULUS' }
                     ]}
                   />
                 </div>
