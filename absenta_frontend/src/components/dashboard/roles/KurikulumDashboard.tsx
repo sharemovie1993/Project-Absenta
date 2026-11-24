@@ -212,7 +212,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
   const { data: guruR, isLoading: lGuru } = useQuery({
     queryKey: ['guru', 'all-dash-kuri'],
     queryFn: () => guruApi.getAll({ limit: 1000, jenis_ptk: 'PENDIDIK' }),
-    enabled: isBerandaActive || isGuruMapelActive,
+    enabled: isBerandaActive || isGuruMapelActive || isPerangkatActive,
     staleTime: 10 * 60 * 1000,
   });
 
@@ -800,7 +800,7 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
                   perangkatStats={perangkatStats}
                   activeEducators={activeEducators}
                   perangkatList={safeArr(perangkatR)}
-                  loading={lPerangkat}
+                  loading={lPerangkat || lGuru}
                   currentTargetTpId={resolvedTahunPelajaranId}
                 />
               </Suspense>
