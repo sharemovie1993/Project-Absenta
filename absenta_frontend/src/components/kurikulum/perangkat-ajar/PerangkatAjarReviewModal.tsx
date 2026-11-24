@@ -87,14 +87,13 @@ export default React.memo(function PerangkatAjarReviewModal({
       onClose={onClose}
       title="Verifikasi & Baca Langsung Perangkat Ajar"
       size={hasLivePreview ? 'full' : 'md'}
-      className={hasLivePreview ? 'h-[94vh] max-h-[94vh] flex flex-col' : undefined}
     >
       <div className={cn(
-        hasLivePreview ? 'grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 overflow-hidden' : ''
+        hasLivePreview ? 'grid grid-cols-1 lg:grid-cols-12 gap-4 lg:h-[calc(92vh-105px)]' : ''
       )}>
         {/* KIRI: LIVE DOCUMENT READER */}
         {hasLivePreview && (
-          <div className="lg:col-span-8 flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-100 dark:bg-slate-950 min-h-[360px]">
+          <div className="lg:col-span-8 flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-100 dark:bg-slate-950 h-[58vh] lg:h-full">
             <div className="px-3.5 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -198,12 +197,25 @@ export default React.memo(function PerangkatAjarReviewModal({
           onSubmit={onSubmit}
           className={cn(
             'space-y-4 flex flex-col justify-between',
-            hasLivePreview ? 'lg:col-span-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-y-auto' : ''
+            hasLivePreview
+              ? 'lg:col-span-4 bg-slate-50 dark:bg-slate-900/95 p-4 sm:p-5 rounded-2xl border-2 border-slate-200 dark:border-slate-800 shadow-xs overflow-y-auto h-full'
+              : ''
           )}
         >
           <div className="space-y-4">
+            {hasLivePreview && (
+              <div className="pb-3 border-b border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  Evaluasi Kurikulum
+                </span>
+                <h5 className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5">
+                  Keputusan &amp; Catatan Verifikator
+                </h5>
+              </div>
+            )}
+
             <div>
-              <label htmlFor="review-status" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label htmlFor="review-status" className="block text-xs font-extrabold text-slate-800 dark:text-slate-200 mb-1.5">
                 Status Persetujuan <span className="text-rose-500">*</span>
               </label>
               <SearchableSelect
@@ -214,25 +226,31 @@ export default React.memo(function PerangkatAjarReviewModal({
                   { label: 'Disetujui (APPROVED)', value: 'APPROVED' },
                   { label: 'Perlu Revisi (REJECTED)', value: 'REJECTED' }
                 ]}
+                triggerClassName={cn(
+                  'h-10 rounded-xl border-2 font-bold',
+                  reviewForm.status === 'APPROVED'
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-950/40 dark:border-emerald-700 dark:text-emerald-200'
+                    : 'bg-rose-50 border-rose-300 text-rose-900 dark:bg-rose-950/40 dark:border-rose-700 dark:text-rose-200'
+                )}
               />
             </div>
 
             <div>
-              <label htmlFor="catatan-reviewer" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label htmlFor="catatan-reviewer" className="block text-xs font-extrabold text-slate-800 dark:text-slate-200 mb-1.5">
                 Catatan Verifikator / Masukan Revisi
               </label>
               <textarea
                 id="catatan-reviewer"
-                rows={hasLivePreview ? 6 : 3}
+                rows={hasLivePreview ? 8 : 3}
                 value={reviewForm.catatan_reviewer}
                 onChange={(e) => setReviewForm((prev) => ({ ...prev, catatan_reviewer: e.target.value }))}
-                placeholder="Berikan catatan perbaikan atau rekomendasi untuk guru..."
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                placeholder="Tulis catatan evaluasi, kelengkapan ATP/modul, atau poin revisi untuk guru..."
+                className="w-full px-3.5 py-2.5 text-xs font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none resize-none shadow-2xs"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
             <Button type="button" variant="outline" onClick={onClose} className="rounded-xl font-bold">
               BATAL
             </Button>
