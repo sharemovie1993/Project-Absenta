@@ -375,7 +375,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     item.session?.guru_foto ||
     item.session?.Guru?.foto ||
     null;
-  const showTeacherPhotoCol = Boolean(guruDisplayNama && guruDisplayNama !== '-');
+  const showTeacherPhotoCol = Boolean(guruDisplayNama && guruDisplayNama !== '-' && mode !== 'GURU');
 
   return (
     <div
@@ -468,8 +468,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               </span>
             )}
 
-            {/* 🏛️ Prediksi Batas Aman Real-Time */}
-            {prediksiRealtime && (
+            {/* 🏛️ Prediksi Batas Aman Real-Time (Hanya Guru, Piket & Monitoring) */}
+            {mode !== 'SISWA' && prediksiRealtime && (
               prediksiRealtime.status === 'TERLAMBAT' ? (
                 <span
                   className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-300 dark:border-rose-700 text-[10px] font-bold shrink-0"
@@ -494,8 +494,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               )
             )}
 
-            {/* 🏷️ Tipe Sesi Badge (Sesi Virtual vs Sesi Fisik) */}
-            {isOtomatis ? (
+            {/* 🏷️ Tipe Sesi Badge (Sesi Virtual vs Sesi Fisik — Khusus Monitoring) */}
+            {mode === 'MONITORING' && (isOtomatis ? (
               <span 
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-bold shrink-0"
                 title="Sesi Virtual: Slot jadwal template KBM yang belum dibuka kelasnya oleh guru"
@@ -509,7 +509,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               >
                 🎯 Sesi Fisik
               </span>
-            )}
+            ))}
 
             {/* 🏷️ Opener Badge: Informasi siapa yang membuka sesi KBM */}
             {(() => {
@@ -904,7 +904,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                   title={isSessionActive ? "Sesi telah dibuka oleh Petugas Kelas. Klik untuk mengambil foto verifikasi kehadiran Bapak/Ibu Guru" : "Mulai sesi KBM dengan foto bukti kehadiran guru"}
                 >
                   <Camera size={13} />
-                  <span>{isSessionActive ? "📸 Foto Masuk Guru" : isSesiKegiatan ? `Mulai ${kegiatanNamaLabel}` : "Mulai KBM"}</span>
+                  <span>{isSessionActive ? "📸 Foto Masuk Guru" : isSesiKegiatan ? "Mulai Sesi" : "Mulai KBM"}</span>
                 </Button>
               )}
 
