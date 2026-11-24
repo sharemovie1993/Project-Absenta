@@ -1,6 +1,6 @@
 import { prisma } from '../../../utils/prisma';
 import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
-import { resolveExistingSiblingPdf } from '../../../utils/office-to-pdf.util';
+import { convertOfficeToPdfSibling, resolveExistingSiblingPdf } from '../../../utils/office-to-pdf.util';
 
 export interface ListPresetsFilter {
   fase?: string;
@@ -145,21 +145,27 @@ export class BahanAjarService {
       }))
     ];
 
-    const attachedFiles = availablePerangkats
-      .filter((p) => Boolean(p.file_url && String(p.file_url).trim() !== ''))
-      .map((p) => ({
-        id: p.id,
-        judul: p.judul,
-        jenis: p.jenis,
-        file_url: p.file_url,
-        preview_pdf_url: resolveExistingSiblingPdf(p.file_url) || undefined,
-        fase: p.fase || 'E',
-        tingkat: p.tingkat || 10,
-        guru_nama: p.Guru?.nama_guru || '-',
-        status: p.status,
-        is_shared: Boolean(p.is_shared),
-        created_at: p.created_at,
-      }));
+    const attachedFiles = await Promise.all(
+      availablePerangkats
+        .filter((p) => Boolean(p.file_url && String(p.file_url).trim() !== ''))
+        .map(async (p) => {
+          const existingPdf = resolveExistingSiblingPdf(p.file_url);
+          const previewPdf = existingPdf || (await convertOfficeToPdfSibling(p.file_url).catch(() => null));
+          return {
+            id: p.id,
+            judul: p.judul,
+            jenis: p.jenis,
+            file_url: p.file_url,
+            preview_pdf_url: previewPdf || undefined,
+            fase: p.fase || 'E',
+            tingkat: p.tingkat || 10,
+            guru_nama: p.Guru?.nama_guru || '-',
+            status: p.status,
+            is_shared: Boolean(p.is_shared),
+            created_at: p.created_at,
+          };
+        })
+    );
 
     // 2. Cek apakah targetIdentifier langsung merujuk ke ID PerangkatAjar Guru
     let directPerangkat = (targetIdentifier && targetIdentifier !== 'auto' && targetIdentifier !== 'empty-mapel')

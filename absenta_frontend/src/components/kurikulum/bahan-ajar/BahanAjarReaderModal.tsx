@@ -825,15 +825,25 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <a
-                  href={resolveProfilePhotoUrl(selectedFile.file_url) || selectedFile.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-8 px-3 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
-                >
-                  <ExternalLink size={13} />
-                  <span>Buka di Tab Baru</span>
-                </a>
+                {(() => {
+                  const previewSrc =
+                    selectedFile.preview_pdf_url ||
+                    (String(selectedFile.file_url || '').toLowerCase().includes('.pdf')
+                      ? selectedFile.file_url
+                      : null);
+                  const openTarget = previewSrc || selectedFile.file_url;
+                  return (
+                    <a
+                      href={resolveProfilePhotoUrl(openTarget) || openTarget}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-8 px-3 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
+                    >
+                      <ExternalLink size={13} />
+                      <span>{previewSrc ? 'Buka PDF di Tab Baru' : 'Unduh File'}</span>
+                    </a>
+                  );
+                })()}
                 {onOpenJurnal && (
                   <Button
                     type="button"
