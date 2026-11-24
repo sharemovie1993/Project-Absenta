@@ -7,6 +7,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, ChevronRight, LogOut, Activity, UserCheck, Award, FileText, MessageCircle, CheckCircle2, Calendar, User, LayoutList, AlertTriangle, Trophy, RefreshCw, QrCode, MapPin, Heart, Phone, ArrowRight, ShieldCheck, Clock, Send, X } from 'lucide-react';
 import ReportAbsenceModal from '../components/ReportAbsenceModal';
+import { ParentKehadiranTab } from '../components/ParentKehadiranTab';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Button } from '@/components/ui/Button';
 import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
@@ -474,7 +475,7 @@ export default function ParentDashboard() {
               </div>
             </motion.div>}
 
-          {/* 🗓️ TAB 2: PRESENSI ANAK */}
+          {/* 🗓️ TAB 2: RIWAYAT KEHADIRAN ANAK (TABEL REKAP SEPERTI SISWA) */}
           {activeTab === 'kehadiran' && <motion.div key="tab-kehadiran" initial={{
           opacity: 0,
           y: 8
@@ -486,86 +487,8 @@ export default function ParentDashboard() {
           y: -8
         }} transition={{
           duration: 0.2
-        }} className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
-              {/* Header Title */}
-              <div className="pb-2 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                  Catatan Kehadiran Anak (Agustus 2026)
-                </h3>
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  Bulan Ini: {summary.hadir} Hari Masuk
-                </span>
-              </div>
-
-              {/* Attendance Log Cards List (Adopsi Layout Mockup Presensi) */}
-              <div className="space-y-3">
-                {[{
-              date: '2026-08-10',
-              status: 'Hadir',
-              statusColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-              metode: 'Scan kartu pelajar • Tepat waktu di Pintu Masuk Utama',
-              tapMasuk: '06:42 WIB',
-              tapKeluar: '-'
-            }, {
-              date: '2026-08-08',
-              status: 'Hadir',
-              statusColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-              metode: 'Scan wajah • Kehadiran tercatat otomatis',
-              tapMasuk: '06:35 WIB',
-              tapKeluar: '-'
-            }, {
-              date: '2026-08-07',
-              status: 'Terlambat',
-              statusColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
-              metode: 'Dicatat petugas • Terlambat 18 menit (Macet di jalan)',
-              tapMasuk: '07:18 WIB',
-              tapKeluar: '-'
-            }, {
-              date: '2026-08-06',
-              status: 'Hadir',
-              statusColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-              metode: 'Scan kartu pelajar',
-              tapMasuk: '06:50 WIB',
-              tapKeluar: '-'
-            }, {
-              date: '2026-08-05',
-              status: 'Alpa',
-              statusColor: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
-              metode: 'Belum ada keterangan dari orang tua',
-              tapMasuk: '-',
-              tapKeluar: '-'
-            }, {
-              date: '2026-08-04',
-              status: 'Sakit',
-              statusColor: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30',
-              metode: 'Surat dokter sudah dilampirkan melalui Portal Orang Tua',
-              tapMasuk: '-',
-              tapKeluar: '-'
-            }].map((item, idx) => <div key={idx} className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
-                    <div className="space-y-1.5 min-w-0">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className="font-mono font-extrabold text-sm text-slate-900 dark:text-white">
-                          {item.date}
-                        </span>
-                        <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border", item.statusColor)}>
-                          {item.status}
-                        </span>
-                      </div>
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                        {item.metode}
-                      </p>
-                    </div>
-
-                    <div className="text-right shrink-0 font-mono text-xs font-bold space-y-0.5 self-end sm:self-auto">
-                      <div className="text-slate-800 dark:text-slate-200">
-                        Jam Masuk: <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{item.tapMasuk}</span>
-                      </div>
-                      <div className="text-slate-400 text-[11px]">
-                        Jam Pulang: {item.tapKeluar}
-                      </div>
-                    </div>
-                  </div>)}
-              </div>
+        }}>
+              <ParentKehadiranTab siswaId={student.siswa_id} studentName={student.nama_siswa} />
             </motion.div>}
 
           {/* 📝 TAB 3: PERIZINAN (1-TAP) */}

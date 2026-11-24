@@ -99,6 +99,9 @@ export interface MonthlyRecapResponse {
     status: string;
     // ... fields lainnya
   }>;
+  rekap_detail?: any[];
+  persentase_kehadiran?: number | null;
+  mapel_matrix?: any;
 }
 
 export interface TrackingHarianResponse {

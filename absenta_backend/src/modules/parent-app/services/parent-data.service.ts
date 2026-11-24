@@ -5,6 +5,7 @@ import { ATTENDANCE_POINTS } from '@/constants/attendance-points';
 import { getEffectiveAbsensiMode } from '@/utils/attendanceModeHelper';
 import { getTenantDayRangeUTC } from '@/utils/timezone.utils';
 import { PLATFORM_TIMEZONE } from '@/infra/jobEngine';
+import { siswaRekapService } from '@/modules/attendance/rekap/services/siswa-rekap.service';
 
 export class ParentDataService {
   
@@ -500,12 +501,22 @@ export class ParentDataService {
       }
     });
 
+    let fullRekap: any = null;
+    try {
+      fullRekap = await siswaRekapService.getRekapBulananSiswa(siswaId, bulan, siswa.tenant_id);
+    } catch (e: any) {
+      console.warn('[ParentDataService.getMonthlyRecap] siswaRekapService fallback:', e?.message);
+    }
+
     return {
-      nama_siswa: (await prisma.siswa.findFirst({ where: { id: siswaId, tenant_id: siswa.tenant_id } } as any))?.nama_siswa || '',
+      nama_siswa: fullRekap?.nama_siswa || (await prisma.siswa.findFirst({ where: { id: siswaId, tenant_id: siswa.tenant_id } } as any))?.nama_siswa || '',
       bulan,
-      statistik,
+      statistik: fullRekap?.statistik || statistik,
       total_poin,
       detail,
+      rekap_detail: fullRekap?.detail || [],
+      persentase_kehadiran: fullRekap?.persentase_kehadiran ?? null,
+      mapel_matrix: fullRekap?.mapel_matrix || null,
     };
   }
 
