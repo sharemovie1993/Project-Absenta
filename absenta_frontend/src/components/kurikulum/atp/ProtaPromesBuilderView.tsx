@@ -136,6 +136,65 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
     [activeAtp]
   );
 
+  // Kalender Pendidikan untuk deteksi Minggu Efektif vs Libur/Ujian di PROMES
+  const { data: kalenderRes } = useQuery({
+    queryKey: ['kalender-akademik-promes', activeTpId],
+    queryFn: () => kurikulumApi.getKalenderAkademik(activeTpId).catch(() => []),
+    enabled: Boolean(activeTpId),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const nonEffectiveWeeks = useMemo(() => {
+    const raw = (kalenderRes as any)?.data || kalenderRes;
+    const events: any[] = Array.isArray(raw) ? raw : [];
+    const nonKbmJenis = new Set(['LIBUR_NASIONAL', 'LIBUR_SEKOLAH', 'PTS', 'PAS']);
+    const nonKbmEvents = events.filter((e) => nonKbmJenis.has(String(e?.jenis || '').toUpperCase()));
+
+    const [startYearStr, endYearStr] = String(tahunPelajaranLabel || '').split('/');
+    const parsedStart = Number(startYearStr);
+    const parsedEnd = Number(endYearStr);
+    const baseYear =
+      promesSemester === 'GANJIL'
+        ? (!Number.isNaN(parsedStart) && parsedStart > 2000 ? parsedStart : new Date().getFullYear())
+        : (!Number.isNaN(parsedEnd) && parsedEnd > 2000 ? parsedEnd : new Date().getFullYear());
+
+    const monthIndices = promesSemester === 'GANJIL' ? [6, 7, 8, 9, 10, 11] : [0, 1, 2, 3, 4, 5];
+    const weekRanges: [number, number][] = [
+      [1, 7],
+      [8, 14],
+      [15, 21],
+      [22, 31],
+    ];
+
+    const result: Record<string, { label: string; jenis: string }> = {};
+
+    monthIndices.forEach((calMonth, mIdx) => {
+      const lastDay = new Date(baseYear, calMonth + 1, 0).getDate();
+      weekRanges.forEach(([dStart, dEndRaw], wIdx) => {
+        const dEnd = Math.min(dEndRaw, lastDay);
+        const wStart = new Date(baseYear, calMonth, dStart).setHours(0, 0, 0, 0);
+        const wEnd = new Date(baseYear, calMonth, dEnd).setHours(23, 59, 59, 999);
+
+        const matched = nonKbmEvents.find((ev) => {
+          const s = new Date(ev.tanggal_mulai).setHours(0, 0, 0, 0);
+          const e = new Date(ev.tanggal_selesai || ev.tanggal_mulai).setHours(23, 59, 59, 999);
+          return s <= wEnd && e >= wStart;
+        });
+
+        if (matched) {
+          result[`${mIdx}_${wIdx}`] = {
+            label: String(matched.judul || matched.jenis || 'Non-Efektif'),
+            jenis: String(matched.jenis || ''),
+          };
+        }
+      });
+    });
+
+    return result;
+  }, [kalenderRes, promesSemester, tahunPelajaranLabel]);
+
+  const effectiveWeeksCount = Math.max(0, 24 - Object.keys(nonEffectiveWeeks).length);
+
   // Auto-assign first half to GANJIL and second half to GENAP when TP list loads
   useEffect(() => {
     if (tpList.length === 0) return;
@@ -179,9 +238,10 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
   }, [tpList, tpSemesterMap, promesSemester]);
 
   const toggleWeekCell = useCallback((tpKey: string, mIdx: number, wIdx: number) => {
+    if (nonEffectiveWeeks[`${mIdx}_${wIdx}`]) return;
     const cellKey = `${tpKey}_${mIdx}_${wIdx}`;
     setPromesWeeks((prev) => ({ ...prev, [cellKey]: !prev[cellKey] }));
-  }, []);
+  }, [nonEffectiveWeeks]);
 
   const buildPdfDocument = useCallback(async () => {
     const { jsPDF } = await import('jspdf');
@@ -601,8 +661,20 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="px-3.5 py-2 bg-teal-50/70 dark:bg-teal-950/30 border-b border-teal-100 dark:border-teal-900/50 text-[11px] font-semibold text-teal-800 dark:text-teal-300">
-            Klik kotak minggu (M1–M4) pada tiap bulan untuk menandai jadwal pelaksanaan TP di Semester {promesSemester}.
+          <div className="px-3.5 py-2 bg-teal-50/70 dark:bg-teal-950/30 border-b border-teal-100 dark:border-teal-900/50 flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold text-teal-800 dark:text-teal-300">
+            <span>
+              Klik kotak minggu (M1–M4) pada tiap bulan untuk menandai jadwal pelaksanaan TP di Semester {promesSemester}.
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-black text-[10px]">
+                {effectiveWeeksCount} Minggu Efektif
+              </span>
+              {Object.keys(nonEffectiveWeeks).length > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-black text-[10px]">
+                  {Object.keys(nonEffectiveWeeks).length} Non-Efektif (Kalender)
+                </span>
+              )}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
@@ -643,20 +715,24 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
                       </td>
                       {months.map((_, mIdx) =>
                         [0, 1, 2, 3].map((wIdx) => {
-                          const checked = Boolean(promesWeeks[`${key}_${mIdx}_${wIdx}`]);
+                          const nonEff = nonEffectiveWeeks[`${mIdx}_${wIdx}`];
+                          const checked = !nonEff && Boolean(promesWeeks[`${key}_${mIdx}_${wIdx}`]);
                           return (
                             <td
                               key={`${mIdx}-${wIdx}`}
                               onClick={() => toggleWeekCell(key, mIdx, wIdx)}
+                              title={nonEff ? `Non-Efektif: ${nonEff.label}` : undefined}
                               className={cn(
-                                'p-0 text-center border-r border-slate-100 dark:border-slate-800 cursor-pointer transition-colors select-none',
-                                checked
-                                  ? 'bg-teal-500 text-white'
-                                  : 'hover:bg-teal-50 dark:hover:bg-teal-950/40'
+                                'p-0 text-center border-r border-slate-100 dark:border-slate-800 transition-colors select-none',
+                                nonEff
+                                  ? 'bg-rose-50/90 dark:bg-rose-950/40 text-rose-400 cursor-not-allowed'
+                                  : checked
+                                  ? 'bg-teal-500 text-white cursor-pointer'
+                                  : 'hover:bg-teal-50 dark:hover:bg-teal-950/40 cursor-pointer'
                               )}
                             >
-                              <div className="h-8 flex items-center justify-center">
-                                {checked && <Check size={12} strokeWidth={3} />}
+                              <div className="h-8 flex items-center justify-center text-[10px] font-bold">
+                                {nonEff ? '×' : checked ? <Check size={12} strokeWidth={3} /> : ''}
                               </div>
                             </td>
                           );
@@ -690,6 +766,8 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
             promesWeeks={promesWeeks}
             months={months}
             protaSummary={protaSummary}
+            nonEffectiveWeeks={nonEffectiveWeeks}
+            effectiveWeeksCount={effectiveWeeksCount}
           />
         )}
       </Suspense>

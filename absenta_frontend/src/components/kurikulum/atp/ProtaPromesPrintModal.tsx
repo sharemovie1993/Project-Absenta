@@ -30,6 +30,8 @@ export interface ProtaPromesPrintModalProps {
   promesWeeks: Record<string, boolean>;
   months: string[];
   protaSummary: { ganjilJp: number; genapJp: number; totalJp: number };
+  nonEffectiveWeeks?: Record<string, { label: string; jenis: string }>;
+  effectiveWeeksCount?: number;
 }
 
 export const ProtaPromesPrintModal: React.FC<ProtaPromesPrintModalProps> = ({
@@ -49,6 +51,8 @@ export const ProtaPromesPrintModal: React.FC<ProtaPromesPrintModalProps> = ({
   promesWeeks,
   months,
   protaSummary,
+  nonEffectiveWeeks = {},
+  effectiveWeeksCount,
 }) => {
   const printDeskRef = useRef<HTMLDivElement>(null);
   const [showLogoDaerah, setShowLogoDaerah] = useState(true);
@@ -72,12 +76,20 @@ export const ProtaPromesPrintModal: React.FC<ProtaPromesPrintModalProps> = ({
   const headerData = usePrintHeaderData(sekolahRes as any);
 
   const signers = useMemo(() => {
-    const nodes: any[] = Array.isArray(strukturRes) ? strukturRes : (strukturRes as any)?.data || [];
+    const raw =
+      (strukturRes as any)?.tree ||
+      (strukturRes as any)?.data?.tree ||
+      (strukturRes as any)?.data ||
+      strukturRes;
+    const nodes: any[] = Array.isArray(raw) ? raw : [];
     const flat: any[] = [];
-    const walk = (arr: any[]) => {
+    const walk = (arr: unknown) => {
+      if (!Array.isArray(arr)) return;
       for (const n of arr) {
-        flat.push(n);
-        if (Array.isArray(n.children)) walk(n.children);
+        if (n && typeof n === 'object') {
+          flat.push(n);
+          if (Array.isArray((n as any).children)) walk((n as any).children);
+        }
       }
     };
     walk(nodes);
@@ -278,13 +290,21 @@ export const ProtaPromesPrintModal: React.FC<ProtaPromesPrintModalProps> = ({
                         <td className="border border-slate-800 px-1.5 py-1 text-center font-bold">{tp.alokasi_jp || 0}</td>
                         {months.map((_, mIdx) =>
                           [0, 1, 2, 3].map((wIdx) => {
-                            const checked = Boolean(promesWeeks[`${key}_${mIdx}_${wIdx}`]);
+                            const nonEff = nonEffectiveWeeks[`${mIdx}_${wIdx}`];
+                            const checked = !nonEff && Boolean(promesWeeks[`${key}_${mIdx}_${wIdx}`]);
                             return (
                               <td
                                 key={`${mIdx}-${wIdx}`}
-                                className={`border border-slate-800 text-center ${checked ? 'bg-slate-200 font-black' : ''}`}
+                                title={nonEff ? nonEff.label : undefined}
+                                className={`border border-slate-800 text-center ${
+                                  nonEff
+                                    ? 'bg-slate-300/80 text-slate-500'
+                                    : checked
+                                    ? 'bg-slate-200 font-black'
+                                    : ''
+                                }`}
                               >
-                                {checked ? <Check className="w-3 h-3 mx-auto text-slate-900" /> : ''}
+                                {nonEff ? '×' : checked ? <Check className="w-3 h-3 mx-auto text-slate-900" /> : ''}
                               </td>
                             );
                           })
@@ -294,6 +314,13 @@ export const ProtaPromesPrintModal: React.FC<ProtaPromesPrintModalProps> = ({
                   })}
                 </tbody>
               </table>
+            )}
+            {docMode === 'PROMES' && typeof effectiveWeeksCount === 'number' && (
+              <div className="mt-2 text-[9.5px] text-slate-700 flex items-center justify-between">
+                <span>
+                  <strong>Kalender Pendidikan:</strong> {effectiveWeeksCount} Minggu Efektif KBM • {Object.keys(nonEffectiveWeeks).length} Minggu Tidak Efektif (ditandai arsiran ×)
+                </span>
+              </div>
             )}
 
             {/* Standar Tanda Tangan 2-Tier */}
