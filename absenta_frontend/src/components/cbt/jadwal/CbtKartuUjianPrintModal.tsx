@@ -75,12 +75,19 @@ export interface StudentExamCardData {
   foto?: string;
 }
 
+export interface ExamDaySessionItem {
+  sesi: string;
+  mapel: string;
+  waktu: string;
+}
+
 export interface ExamDaySchedule {
   tanggal: string;
   hariLabel: string;
   mapelList: string[];
   waktu: string;
   sesi: string;
+  sessions?: ExamDaySessionItem[];
 }
 
 /**
@@ -212,35 +219,45 @@ function buildQrPayload(username: string, pin: string, mode: QrPayloadMode): str
 }
 
 // ── Subkomponen Memoized Tabel Jadwal agar tidak ikut re-render saat QR/Foto berubah ──
+const formatCompactSesi = (sesi: string) => sesi.replace(/^Sesi\s+/i, 'S');
+
 const ExamCardSchedulesTable = memo(({ schedules }: { schedules: ExamDaySchedule[] }) => (
   <div className="flex-1 min-w-0 h-full overflow-hidden">
     <table className="w-full text-left border-collapse border border-slate-300">
       <thead>
         <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 font-black text-[6px]">
-          <th className="py-0.5 px-1 border-r border-slate-300 w-[24%]">Tanggal</th>
-          <th className="py-0.5 px-1 border-r border-slate-300 w-[54%]">Mata Pelajaran</th>
-          <th className="py-0.5 px-1 w-[22%] text-center">Waktu</th>
+          <th className="py-0.5 px-1 border-r border-slate-300 w-[22%]">Tanggal</th>
+          <th className="py-0.5 px-1 border-r border-slate-300 w-[52%]">Mata Pelajaran</th>
+          <th className="py-0.5 px-1 w-[26%] text-center">Waktu</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-200 text-[6px]">
-        {schedules.map((sch, sIdx) => (
-          <tr key={sIdx} className="leading-tight">
-            <td className="py-0.5 px-1 border-r border-slate-200 font-bold text-slate-700 align-top whitespace-nowrap">
-              {sch.tanggal}
-            </td>
-            <td className="py-0.5 px-1 border-r border-slate-200 align-top text-slate-800">
-              {sch.mapelList.map((m, mIdx) => (
-                <div key={mIdx} className="truncate leading-tight">
-                  - {m}
-                </div>
-              ))}
-            </td>
-            <td className="py-0.5 px-0.5 text-center align-top font-bold text-slate-600 whitespace-nowrap">
-              <div>{sch.sesi}</div>
-              <div className="text-[5px] text-slate-400 font-normal">{sch.waktu}</div>
-            </td>
-          </tr>
-        ))}
+        {schedules.map((sch, sIdx) => {
+          const sessionRows: ExamDaySessionItem[] =
+            sch.sessions && sch.sessions.length > 0
+              ? sch.sessions
+              : sch.mapelList.map((m) => ({ sesi: sch.sesi, mapel: m, waktu: sch.waktu }));
+
+          return sessionRows.map((row, rIdx) => (
+            <tr key={`${sIdx}-${rIdx}`} className="leading-tight">
+              {rIdx === 0 && (
+                <td
+                  rowSpan={sessionRows.length}
+                  className="py-0.5 px-1 border-r border-slate-200 font-bold text-slate-700 align-top whitespace-nowrap"
+                >
+                  {sch.tanggal}
+                </td>
+              )}
+              <td className="py-0.5 px-1 border-r border-slate-200 align-top text-slate-800">
+                <div className="truncate leading-tight">- {row.mapel}</div>
+              </td>
+              <td className="py-0.5 px-0.5 text-center align-top font-bold text-slate-600 whitespace-nowrap text-[5.5px]">
+                <span className="text-slate-700">{formatCompactSesi(row.sesi)}</span>{' '}
+                <span className="font-normal text-slate-500">{row.waktu}</span>
+              </td>
+            </tr>
+          ));
+        })}
       </tbody>
     </table>
   </div>
@@ -879,9 +896,22 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
         .map(([_, v]) => {
           const ordered = v.entries.sort((a, b) => a.startMin - b.startMin);
           const uniqueMapels: string[] = [];
+          const sessions: ExamDaySessionItem[] = [];
+          const seenKeys = new Set<string>();
+
           ordered.forEach((e) => {
             if (!uniqueMapels.includes(e.mapel)) uniqueMapels.push(e.mapel);
+            const dedupKey = `${e.sesi}|${e.mapel}|${e.startStr}-${e.endStr}`;
+            if (!seenKeys.has(dedupKey)) {
+              seenKeys.add(dedupKey);
+              sessions.push({
+                sesi: e.sesi,
+                mapel: e.mapel,
+                waktu: `${e.startStr}-${e.endStr}`,
+              });
+            }
           });
+
           const firstEntry = ordered[0];
           const lastEntry = ordered[ordered.length - 1];
           const waktu = `${firstEntry.startStr}-${lastEntry.endStr}`;
@@ -896,6 +926,7 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
             mapelList: uniqueMapels,
             waktu,
             sesi,
+            sessions,
           };
         });
 
@@ -929,6 +960,7 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
         const hariText = day.nama_hari || 'Hari Ujian';
 
         const dayMapelList: string[] = [];
+        const daySessions: ExamDaySessionItem[] = [];
         let firstStart = '';
         let lastEnd = '';
         let firstSesi = '';
@@ -945,7 +977,9 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
           // Slot key matriks: ${day_index}_${session_index}_${tingkat}
           const matrixKey = `${day.day_index}_${sess.session_index}_${tingkatNum}`;
           const matrixVal = matrixState[matrixKey];
+          const sessWaktu = `${sess.jam_mulai}-${sess.jam_selesai}`;
 
+          let resolvedMapelName = `Ujian ${sess.nama_sesi}`;
           if (matrixVal) {
             if (isMultiJurusanSlot(matrixVal)) {
               const multi = parseMultiJurusanSlot(matrixVal);
@@ -957,17 +991,22 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
                   Object.values(multi.assignments)[0] ||
                   '';
               }
-              const mapelName = resolvedId
+              resolvedMapelName = resolvedId
                 ? resolveMatrixSubjectName(resolvedId, multi?.title || 'Mapel Kejuruan')
                 : multi?.title || 'Mapel Kejuruan';
-              if (!dayMapelList.includes(mapelName)) dayMapelList.push(mapelName);
             } else {
-              const mapelName = resolveMatrixSubjectName(matrixVal, `Mapel ${sess.nama_sesi}`);
-              if (!dayMapelList.includes(mapelName)) dayMapelList.push(mapelName);
+              resolvedMapelName = resolveMatrixSubjectName(matrixVal, `Mapel ${sess.nama_sesi}`);
             }
-          } else {
-            dayMapelList.push(`Ujian ${sess.nama_sesi}`);
           }
+
+          if (!dayMapelList.includes(resolvedMapelName)) {
+            dayMapelList.push(resolvedMapelName);
+          }
+          daySessions.push({
+            sesi: sess.nama_sesi,
+            mapel: resolvedMapelName,
+            waktu: sessWaktu,
+          });
         });
 
         const waktu = firstStart && lastEnd ? `${firstStart}-${lastEnd}` : '07:30-09:00';
@@ -982,6 +1021,7 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
           mapelList: dayMapelList.length > 0 ? dayMapelList : ['Ujian CBT'],
           waktu,
           sesi,
+          sessions: daySessions,
         });
       });
 
@@ -1012,7 +1052,10 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
   const studentCardsList = useMemo<StudentExamCardData[]>(() => {
     if (!currentClassMapping) return [];
 
-    const defaultSesiWaktu = classSchedules[0]?.waktu
+    const firstSession = classSchedules[0]?.sessions?.[0];
+    const defaultSesiWaktu = firstSession
+      ? `${firstSession.sesi} (${firstSession.waktu})`
+      : classSchedules[0]?.waktu
       ? `${classSchedules[0]?.sesi || 'Sesi 1'} (${classSchedules[0]?.waktu})`
       : 'Sesi 1';
 
