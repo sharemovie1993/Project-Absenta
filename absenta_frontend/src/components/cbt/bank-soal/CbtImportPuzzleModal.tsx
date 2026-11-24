@@ -21,7 +21,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
-import { parseFullQuestionText } from './cbtTextDragDropHelper';
 import {
   PUZZLE_OPTION_CODES,
   type OptionCode,
@@ -30,6 +29,7 @@ import {
   normalizePuzzleOptions,
   isPuzzleCardReady,
   parseBulkAnswerKeys,
+  parsePuzzleBlockText,
   scanDocumentToPuzzle,
 } from './cbtExternalPuzzleHelper';
 
@@ -187,16 +187,16 @@ export const CbtImportPuzzleModal: React.FC<CbtImportPuzzleModalProps> = ({
     setPuzzleCards((prev) =>
       prev.map((card) => {
         if (card.tempId !== tempId) return card;
-        const parsed = parseFullQuestionText(card.raw_source_block);
+        const parsed = parsePuzzleBlockText(card.raw_source_block);
         if (!parsed?.isFullQuestion) {
-          toast.error('Blok teks belum memenuhi pola Pertanyaan + minimal 2 opsi (A. / B.).');
+          toast.error('Blok teks belum memenuhi pola Pertanyaan + minimal 2 opsi.');
           return card;
         }
         toast.success('Blok soal berhasil di-parse ulang.');
         return {
           ...card,
           konten_pertanyaan: parsed.question,
-          opsi_jawaban_json: normalizePuzzleOptions(parsed.options),
+          opsi_jawaban_json: parsed.options,
           kunci_jawaban: parsed.kunciJawaban || card.kunci_jawaban,
           pembahasan: parsed.pembahasan || card.pembahasan,
         };
@@ -210,13 +210,13 @@ export const CbtImportPuzzleModal: React.FC<CbtImportPuzzleModalProps> = ({
       const current = prev[idx];
       const target = prev[idx - 1];
       const mergedRaw = `${target.raw_source_block}\n${current.raw_source_block}`.trim();
-      const parsed = parseFullQuestionText(mergedRaw);
+      const parsed = parsePuzzleBlockText(mergedRaw);
       const updatedTarget: PuzzleQuestionDraft = parsed?.isFullQuestion
         ? {
             ...target,
             raw_source_block: mergedRaw,
             konten_pertanyaan: parsed.question,
-            opsi_jawaban_json: normalizePuzzleOptions(parsed.options),
+            opsi_jawaban_json: parsed.options,
             kunci_jawaban: parsed.kunciJawaban || target.kunci_jawaban,
             pembahasan: parsed.pembahasan || target.pembahasan,
           }

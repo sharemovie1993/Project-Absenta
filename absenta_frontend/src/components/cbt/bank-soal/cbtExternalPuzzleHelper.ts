@@ -103,6 +103,162 @@ export function parseBulkAnswerKeys(rawKeyText: string): Map<number, OptionCode>
   return result;
 }
 
+const QUESTION_START_REGEX = /^(?:soal\s*(?:no\.?)?\s*\d+\s*[:.-]?|\d{1,3}[.)]\s+)/i;
+const GOOGLE_FORM_OVAL_MARKER_REGEX = /^(?:tandai\s+satu\s+oval\s+saja\.?|mark\s+only\s+one\s+oval\.?)$/i;
+const GOOGLE_FORM_NOISE_REGEX =
+  /^(?:konten ini tidak dibuat atau didukung oleh google\.?|this content is neither created nor endorsed by google\.?|google\s+formulir|google\s+forms|\*\s*menunjukkan pertanyaan yang wajib diisi|\*\s*indicates required question|halaman\s+\d+\s+dari\s+\d+|page\s+\d+\s+of\s+\d+|https?:\/\/docs\.google\.com\/forms\/.*|\*)$/i;
+
+function cleanGoogleFormQuestionText(text: string): string {
+  return text
+    .replace(QUESTION_START_REGEX, '')
+    .replace(/\s*\*+\s*$/gm, '')
+    .replace(/\s*\(\d+\s*poin\)\s*$/i, '')
+    .replace(/\s+\d+\s*poin\s*$/i, '')
+    .trim();
+}
+
+/**
+ * Parse satu blok teks soal (mendukung format standar A-E maupun format Google Form "Tandai satu oval saja.")
+ */
+export function parsePuzzleBlockText(blockText: string): {
+  isFullQuestion: boolean;
+  question: string;
+  options: OpsiJawaban[];
+  kunciJawaban?: OptionCode;
+  pembahasan?: string;
+} | null {
+  const lines = (blockText || '').split(/\r?\n/).map((l) => l.trim());
+  const ovalIdx = lines.findIndex((l) => GOOGLE_FORM_OVAL_MARKER_REGEX.test(l));
+
+  if (ovalIdx > 0) {
+    const qLines = lines
+      .slice(0, ovalIdx)
+      .filter((l) => l.length > 0 && !GOOGLE_FORM_NOISE_REGEX.test(l));
+    const optLines = lines
+      .slice(ovalIdx + 1)
+      .filter((l) => l.length > 0 && !GOOGLE_FORM_NOISE_REGEX.test(l));
+
+    let detectedKey: OptionCode | undefined;
+    let pembahasan: string | undefined;
+    const cleanedOpts: string[] = [];
+
+    for (const line of optLines) {
+      const keyMatch = line.match(
+        /^(?:kunci|kunci\s*jawaban|jawaban|answer|ans|key)\s*[:=-]\s*\(?([A-Ea-e])\)?/i
+      );
+      if (keyMatch) {
+        detectedKey = keyMatch[1].toUpperCase() as OptionCode;
+        continue;
+      }
+      const pembMatch = line.match(/^(?:pembahasan|penjelasan|explanation)\s*[:=-]\s*(.+)/i);
+      if (pembMatch) {
+        pembahasan = pembMatch[1].trim();
+        continue;
+      }
+      if (cleanedOpts.length < 5) {
+        const cleanOpt = line
+          .replace(/^(?:[A-Ea-e][.)\]:-]\s+|\([A-Ea-e]\)\s+|\[[A-Ea-e]\]\s+)/, '')
+          .trim();
+        if (cleanOpt) cleanedOpts.push(cleanOpt);
+      }
+    }
+
+    if (qLines.length > 0 && cleanedOpts.length >= 2) {
+      return {
+        isFullQuestion: true,
+        question: cleanGoogleFormQuestionText(qLines.join('\n')),
+        options: normalizePuzzleOptions(
+          cleanedOpts.map((teks, i) => ({ kode: PUZZLE_OPTION_CODES[i], teks }))
+        ),
+        kunciJawaban: detectedKey,
+        pembahasan,
+      };
+    }
+  }
+
+  const parsed = parseFullQuestionText(blockText);
+  if (!parsed?.isFullQuestion) return null;
+  return {
+    isFullQuestion: true,
+    question: parsed.question,
+    options: normalizePuzzleOptions(parsed.options),
+    kunciJawaban: parsed.kunciJawaban,
+    pembahasan: parsed.pembahasan,
+  };
+}
+
+/**
+ * Segmentasi dokumen hasil Print-to-PDF Google Form menggunakan jangkar "Tandai satu oval saja."
+ */
+function segmentGoogleFormPdfToBlocks(bodyText: string): string[] {
+  const lines = bodyText
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => !GOOGLE_FORM_NOISE_REGEX.test(l));
+
+  const ovalIndices: number[] = [];
+  lines.forEach((l, idx) => {
+    if (GOOGLE_FORM_OVAL_MARKER_REGEX.test(l)) {
+      ovalIndices.push(idx);
+    }
+  });
+
+  if (ovalIndices.length === 0) return [];
+
+  const blocks: string[] = [];
+  let cursor = 0;
+
+  for (let i = 0; i < ovalIndices.length; i++) {
+    const ovalIdx = ovalIndices[i];
+    const nextOvalIdx = i + 1 < ovalIndices.length ? ovalIndices[i + 1] : lines.length;
+
+    // Baris pertanyaan = baris non-kosong antara cursor dan ovalIdx
+    const qLines = lines.slice(cursor, ovalIdx).filter(Boolean);
+
+    // Cari batas akhir opsi di antara ovalIdx+1 .. nextOvalIdx
+    const betweenLines = lines.slice(ovalIdx + 1, nextOvalIdx);
+    let splitOffset = betweenLines.length;
+
+    if (i + 1 < ovalIndices.length) {
+      // 1. Jika soal berikutnya punya nomor ("2. ", "Soal 2"), potong tepat di situ
+      const numberedNextIdx = betweenLines.findIndex((l) => QUESTION_START_REGEX.test(l));
+      if (numberedNextIdx > 0) {
+        splitOffset = numberedNextIdx;
+      } else {
+        // 2. Tanpa nomor soal: cari baris kosong terakhir sebelum pertanyaan berikutnya,
+        //    atau sisakan minimal 1 baris non-kosong terakhir sebagai pertanyaan berikutnya
+        const nonEmptyPositions: number[] = [];
+        betweenLines.forEach((l, idx) => {
+          if (l.length > 0) nonEmptyPositions.push(idx);
+        });
+        if (nonEmptyPositions.length >= 3) {
+          // Maksimal 5 opsi untuk soal ini; jika lebih, sisanya milik soal berikutnya
+          const lastOptPos =
+            nonEmptyPositions.length > 5
+              ? nonEmptyPositions[4]
+              : nonEmptyPositions[nonEmptyPositions.length - 2];
+          splitOffset = lastOptPos + 1;
+        }
+      }
+    } else {
+      // Soal terakhir: ambil maksimal 5 baris opsi non-kosong + kunci/pembahasan jika ada
+      const nonEmptyOptLines = betweenLines.filter(Boolean).slice(0, 7);
+      const blockLines = [...qLines, lines[ovalIdx], ...nonEmptyOptLines];
+      if (blockLines.length > 0) blocks.push(blockLines.join('\n').trim());
+      break;
+    }
+
+    const optLines = betweenLines.slice(0, splitOffset).filter(Boolean).slice(0, 6);
+    const blockLines = [...qLines, lines[ovalIdx], ...optLines];
+    if (blockLines.length > 0) {
+      blocks.push(blockLines.join('\n').trim());
+    }
+    cursor = ovalIdx + 1 + splitOffset;
+  }
+
+  return blocks;
+}
+
 /**
  * Helper Scanner Utama: Memindai teks mentah dari Word / PDF / Teks Bebas
  * menjadi blok-blok puzzle soal siap susun sebelum di-insert ke editor.
@@ -127,44 +283,54 @@ export function scanDocumentToPuzzle(rawText: string, startingNomor = 1): Puzzle
     }
   }
 
-  // Ekspansi opsi inline dan normalisasi baris
-  const rawLines: string[] = [];
-  bodyText.split('\n').forEach((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      rawLines.push('');
-      return;
-    }
-    expandInlineOptions(trimmed).forEach((part) => rawLines.push(part));
-  });
+  // Deteksi khusus PDF hasil Print Google Form ("Tandai satu oval saja." / "Mark only one oval.")
+  const hasGoogleFormOvalMarker = bodyText
+    .split('\n')
+    .some((l) => GOOGLE_FORM_OVAL_MARKER_REGEX.test(l.trim()));
 
-  // Segmentasi menjadi blok soal berdasarkan nomor soal (misal "1. ", "1) ", "Soal 1")
-  const questionStartRegex = /^(?:soal\s*(?:no\.?)?\s*\d+\s*[:.-]?|\d{1,3}[.)]\s+)/i;
-  const blocks: string[] = [];
-  let currentLines: string[] = [];
+  let finalBlocks: string[] = [];
 
-  for (const line of rawLines) {
-    if (questionStartRegex.test(line)) {
-      if (currentLines.some((l) => l.trim().length > 0)) {
-        blocks.push(currentLines.join('\n').trim());
+  if (hasGoogleFormOvalMarker) {
+    finalBlocks = segmentGoogleFormPdfToBlocks(bodyText);
+  } else {
+    // Ekspansi opsi inline dan normalisasi baris
+    const rawLines: string[] = [];
+    bodyText.split('\n').forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        rawLines.push('');
+        return;
       }
-      currentLines = [line];
-    } else {
-      currentLines.push(line);
-    }
-  }
-  if (currentLines.some((l) => l.trim().length > 0)) {
-    blocks.push(currentLines.join('\n').trim());
-  }
+      expandInlineOptions(trimmed).forEach((part) => rawLines.push(part));
+    });
 
-  // Jika tidak ada nomor soal sama sekali, coba pecah berdasarkan paragraf kosong ganda
-  const finalBlocks =
-    blocks.length <= 1 && bodyText.includes('\n\n')
-      ? bodyText
-          .split(/\n{2,}/)
-          .map((b) => b.trim())
-          .filter(Boolean)
-      : blocks;
+    // Segmentasi menjadi blok soal berdasarkan nomor soal (misal "1. ", "1) ", "Soal 1")
+    const blocks: string[] = [];
+    let currentLines: string[] = [];
+
+    for (const line of rawLines) {
+      if (QUESTION_START_REGEX.test(line)) {
+        if (currentLines.some((l) => l.trim().length > 0)) {
+          blocks.push(currentLines.join('\n').trim());
+        }
+        currentLines = [line];
+      } else {
+        currentLines.push(line);
+      }
+    }
+    if (currentLines.some((l) => l.trim().length > 0)) {
+      blocks.push(currentLines.join('\n').trim());
+    }
+
+    // Jika tidak ada nomor soal sama sekali, coba pecah berdasarkan paragraf kosong ganda
+    finalBlocks =
+      blocks.length <= 1 && bodyText.includes('\n\n')
+        ? bodyText
+            .split(/\n{2,}/)
+            .map((b) => b.trim())
+            .filter(Boolean)
+        : blocks;
+  }
 
   const rawBlocks: RawScanBlock[] = finalBlocks.map((text, idx) => ({
     id: `raw-blk-${Date.now()}-${idx}`,
@@ -174,7 +340,7 @@ export function scanDocumentToPuzzle(rawText: string, startingNomor = 1): Puzzle
 
   let detectedKeysCount = 0;
   const cards: PuzzleQuestionDraft[] = finalBlocks.map((blockText, idx) => {
-    const parsed = parseFullQuestionText(blockText);
+    const parsed = parsePuzzleBlockText(blockText);
     const numMatch = blockText.match(/^(?:soal\s*(?:no\.?)?\s*|no\.?\s*)?(\d{1,3})[.):]/i);
     const detectedNumber = numMatch ? parseInt(numMatch[1], 10) : idx + 1;
     const trailingKey = trailingKeys.get(detectedNumber) || trailingKeys.get(idx + 1);
@@ -186,7 +352,7 @@ export function scanDocumentToPuzzle(rawText: string, startingNomor = 1): Puzzle
 
     const questionClean = parsed?.isFullQuestion
       ? parsed.question
-      : blockText.replace(questionStartRegex, '').trim();
+      : cleanGoogleFormQuestionText(blockText);
 
     return {
       tempId: `puzzle-${Date.now()}-${idx}`,
@@ -196,7 +362,7 @@ export function scanDocumentToPuzzle(rawText: string, startingNomor = 1): Puzzle
       gambar_stimulus_url: null,
       bobot: 1.0,
       opsi_jawaban_json: parsed?.isFullQuestion
-        ? normalizePuzzleOptions(parsed.options)
+        ? parsed.options
         : createEmptyPuzzleOptions(),
       kunci_jawaban: kunci,
       pembahasan: parsed?.pembahasan || '',
