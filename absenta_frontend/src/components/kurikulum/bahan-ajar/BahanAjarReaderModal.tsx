@@ -51,6 +51,40 @@ interface BahanAjarReaderModalProps {
 
 export type ProjectorTab = 'ALL' | 'PEMANTIK' | 'MATERI' | 'LKPD' | 'REFLEKSI';
 
+function getFileFormatMeta(fileUrl?: string): { ext: string; badgeClass: string } {
+  const clean = String(fileUrl || '').split('?')[0].toLowerCase();
+  const match = clean.match(/\.([a-z0-9]+)$/);
+  const ext = (match?.[1] || 'FILE').toUpperCase();
+  if (ext === 'PDF') {
+    return {
+      ext,
+      badgeClass: 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800',
+    };
+  }
+  if (ext === 'PPTX' || ext === 'PPT') {
+    return {
+      ext,
+      badgeClass: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/70 dark:text-orange-300 dark:border-orange-800',
+    };
+  }
+  if (ext === 'DOCX' || ext === 'DOC') {
+    return {
+      ext,
+      badgeClass: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/70 dark:text-blue-300 dark:border-blue-800',
+    };
+  }
+  if (ext === 'XLSX' || ext === 'XLS') {
+    return {
+      ext,
+      badgeClass: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800',
+    };
+  }
+  return {
+    ext,
+    badgeClass: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+  };
+}
+
 export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
   isOpen,
   onClose,
@@ -776,6 +810,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
               </div>
               {attachedFiles.map((file) => {
                 const isSelected = file.id === selectedFile.id;
+                const fmt = getFileFormatMeta(file.file_url);
                 return (
                   <button
                     key={file.id}
@@ -789,10 +824,15 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                     )}
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
-                        {file.jenis || 'MODUL'}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-400">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-slate-200/70 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          {file.jenis || 'MODUL'}
+                        </span>
+                        <span className={cn("px-1.5 py-0.5 rounded-md text-[10px] font-black uppercase border font-mono", fmt.badgeClass)}>
+                          {fmt.ext}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 shrink-0">
                         Fase {file.fase || 'E'}
                       </span>
                     </div>
@@ -812,10 +852,18 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
             {/* Bar Info File Modul */}
             <div className="px-4 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 flex-wrap">
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                     {selectedFile.jenis || 'MODUL'}
                   </span>
+                  {(() => {
+                    const fmt = getFileFormatMeta(selectedFile.file_url);
+                    return (
+                      <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-black uppercase border font-mono", fmt.badgeClass)}>
+                        Asli: {fmt.ext}
+                      </span>
+                    );
+                  })()}
                   <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
                     {selectedFile.judul}
                   </h4>
