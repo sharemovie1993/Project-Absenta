@@ -403,17 +403,28 @@ export class DashboardAttendanceStatsService {
       whereClause.tenant_id = tenantId;
     }
 
-    const rawData = await prisma.absenGerbangSiswa.findMany({
-      where: {
-        ...whereClause,
-        arah: 'GERBANG_DATANG',
-      },
-      select: {
-        created_at: true,
-        status: true,
-        is_terlambat: true,
-      },
-    });
+    const [rawKbmData, rawGerbangData] = await Promise.all([
+      prisma.absenSiswa.findMany({
+        where: whereClause,
+        select: {
+          created_at: true,
+          status: true,
+          siswa_id: true,
+          siswa_akademik_id: true,
+        },
+      }),
+      prisma.absenGerbangSiswa.findMany({
+        where: {
+          ...whereClause,
+          arah: 'GERBANG_DATANG',
+        },
+        select: {
+          created_at: true,
+          status: true,
+          siswa_id: true,
+        },
+      }),
+    ]);
 
     const datasets = [
       { label: 'Hadir', data: new Array(daysInMonth).fill(0) },
@@ -424,28 +435,52 @@ export class DashboardAttendanceStatsService {
 
     const statusToDatasetLabel = (status: unknown): string | null => {
       const s = String(status || '').toUpperCase();
-      // TERLAMBAT is counted as 'Hadir' in this chart unless we add a new dataset
-      if (s === 'HADIR') {
-         // Optionally you could separate TERLAMBAT if you have a dataset for it
-         // But for now, user might want to see them as HADIR or maybe we should add TERLAMBAT dataset?
-         // User request: "menghapus TERLAMBAT dijadikan Enum AbsenStatus" but "poin kehadiran 50 for late".
-         // The chart labels are: Hadir, Izin, Sakit, Alpha.
-         // Usually Late is considered Present.
-         return 'Hadir'; 
+      if (s === 'HADIR' || s === 'TERLAMBAT') {
+        return 'Hadir';
       }
       if (s === 'IZIN' || s === 'DISPEN') return 'Izin';
       if (s === 'SAKIT') return 'Sakit';
-      if (s === 'ALPA') return 'Alpha';
+      if (s === 'ALPA' || s === 'ALPHA') return 'Alpha';
       return null;
     };
 
-    rawData.forEach(row => {
-      const dayIndex = new Date(row.created_at).getDate() - 1;
-      const label = statusToDatasetLabel(row.status);
-      const dataset = label ? datasets.find(d => d.label === label) : undefined;
-      if (dataset && dayIndex >= 0 && dayIndex < daysInMonth) {
-        dataset.data[dayIndex]++;
+    const statusPriority: Record<string, number> = {
+      Hadir: 4,
+      Izin: 3,
+      Sakit: 2,
+      Alpha: 1,
+    };
+
+    // Deduplicate per (dayIndex, studentKey) so multiple KBM sessions / gate taps count 1 student per day
+    const dailyStudentStatus = Array.from({ length: daysInMonth }, () => new Map<string, string>());
+
+    const recordStudentDay = (createdAt: Date, studentKey: string | null | undefined, status: unknown) => {
+      if (!studentKey) return;
+      const dayIndex = new Date(createdAt).getDate() - 1;
+      if (dayIndex < 0 || dayIndex >= daysInMonth) return;
+      const label = statusToDatasetLabel(status);
+      if (!label) return;
+      const dayMap = dailyStudentStatus[dayIndex]!;
+      const existing = dayMap.get(studentKey);
+      if (!existing || (statusPriority[label] ?? 0) > (statusPriority[existing] ?? 0)) {
+        dayMap.set(studentKey, label);
       }
+    };
+
+    rawKbmData.forEach((row) => {
+      recordStudentDay(row.created_at, row.siswa_id || row.siswa_akademik_id, row.status);
+    });
+    rawGerbangData.forEach((row) => {
+      recordStudentDay(row.created_at, row.siswa_id, row.status);
+    });
+
+    dailyStudentStatus.forEach((dayMap, dayIndex) => {
+      dayMap.forEach((label) => {
+        const dataset = datasets.find((d) => d.label === label);
+        if (dataset) {
+          dataset.data[dayIndex]++;
+        }
+      });
     });
 
     return {
@@ -500,7 +535,8 @@ export class DashboardAttendanceStatsService {
       where: whereClause,
       select: {
         created_at: true,
-        status: true
+        status: true,
+        guru_id: true,
       }
     });
 
@@ -513,26 +549,39 @@ export class DashboardAttendanceStatsService {
       { label: 'DISPEN', data: new Array(daysInMonth).fill(0) }
     ];
 
-    // Aggregate data in memory
-    rawData.forEach(row => {
-      const day = new Date(row.created_at).getDate();
-      const dayIndex = day - 1;
+    const guruPriority: Record<string, number> = {
+      HADIR: 5,
+      DISPEN: 4,
+      IZIN: 3,
+      SAKIT: 2,
+      ALPA: 1,
+    };
+
+    // Deduplicate per (dayIndex, guru_id) so multiple sessions in one day count 1 unique teacher
+    const dailyGuruStatus = Array.from({ length: daysInMonth }, () => new Map<string, string>());
+
+    rawData.forEach((row) => {
+      const dayIndex = new Date(row.created_at).getDate() - 1;
+      if (dayIndex < 0 || dayIndex >= daysInMonth) return;
       const s = String(row.status || '').toUpperCase();
-      
-      // Map status to dataset label
-      let label = s;
-      if (s === 'HADIR' && (row as any).is_terlambat) {
-          // If we want to track late separately, we can. 
-          // For now, count as HADIR or maybe add TERLAMBAT dataset?
-          // Previous code for Siswa counted TERLAMBAT as HADIR.
-          label = 'HADIR';
+      const label = s === 'TERLAMBAT' ? 'HADIR' : s;
+      if (!datasets.some((d) => d.label === label)) return;
+      const guruKey = String(row.guru_id || '');
+      if (!guruKey) return;
+      const dayMap = dailyGuruStatus[dayIndex]!;
+      const existing = dayMap.get(guruKey);
+      if (!existing || (guruPriority[label] ?? 0) > (guruPriority[existing] ?? 0)) {
+        dayMap.set(guruKey, label);
       }
-      
-      const dataset = datasets.find(d => d.label === label);
-      
-      if (dataset && dayIndex >= 0 && dayIndex < daysInMonth) {
-        dataset.data[dayIndex]++;
-      }
+    });
+
+    dailyGuruStatus.forEach((dayMap, dayIndex) => {
+      dayMap.forEach((label) => {
+        const dataset = datasets.find((d) => d.label === label);
+        if (dataset) {
+          dataset.data[dayIndex]++;
+        }
+      });
     });
 
     return {

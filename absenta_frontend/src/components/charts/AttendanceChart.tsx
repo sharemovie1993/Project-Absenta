@@ -42,17 +42,20 @@ export default function AttendanceChart({
     return dataPoint;
   });
 
-  // Color mapping for different attendance types
-  const colorMap: { [key: string]: string } = {
+  // Color mapping for different attendance types (case-insensitive)
+  const colorMap: Record<string, string> = {
     'HADIR': '#10b981',
     'SAKIT': '#f59e0b',
     'IZIN': '#3b82f6',
     'ALPA': '#ef4444',
+    'ALPHA': '#ef4444',
   };
 
+  const getColor = (label: string) => colorMap[String(label || '').toUpperCase()] || '#6b7280';
+
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+    <div className="bg-white dark:bg-slate-900 shadow rounded-lg p-6">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-4">{title}</h3>
       <ResponsiveContainer minWidth={0} width="100%" height={height}>
         <LineChart
           data={chartData}
@@ -63,7 +66,7 @@ export default function AttendanceChart({
             bottom: 5,
           }}
         >
-          <CartesianGrid strokeDasharray="3 3" />
+          <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
           <XAxis 
             dataKey="day" 
             tick={{ fontSize: 12 }}
@@ -81,18 +84,21 @@ export default function AttendanceChart({
             }}
           />
           <Legend />
-          {data.datasets.map((dataset, idx) => (
-            <Line
-              key={`${dataset.label}-${idx}`}
-              type="monotone"
-              dataKey={dataset.label}
-              stroke={colorMap[dataset.label] || '#6b7280'}
-              strokeWidth={2}
-              dot={{ fill: colorMap[dataset.label] || '#6b7280', strokeWidth: 2, r: 3 }}
-              activeDot={{ r: 5 }}
-              name={dataset.label}
-            />
-          ))}
+          {data.datasets.map((dataset, idx) => {
+            const strokeColor = getColor(dataset.label);
+            return (
+              <Line
+                key={`${dataset.label}-${idx}`}
+                type="monotone"
+                dataKey={dataset.label}
+                stroke={strokeColor}
+                strokeWidth={2}
+                dot={{ fill: strokeColor, strokeWidth: 2, r: 3 }}
+                activeDot={{ r: 5 }}
+                name={dataset.label}
+              />
+            );
+          })}
         </LineChart>
       </ResponsiveContainer>
     </div>

@@ -1,6 +1,6 @@
 import React, { useMemo, useState, Suspense, lazy } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getAttendanceChart } from '@/api/dashboard.api';
+import { getAttendanceChart, getTeacherAttendanceChart } from '@/api/dashboard.api';
 import { 
   Users, 
   GraduationCap, 
@@ -48,7 +48,11 @@ import type { AcademicStats } from '@/api/academic-stats.api';
 import { getTenantActivityLogs, type ActivityLogItem } from '@/api/activityLog.api';
 import { cn } from '@/lib/utils';
 
-const AttendanceChart = lazy(() => import('@/components/charts/AttendanceChart'));
+const SchoolAttendanceAnalytics = lazy(() =>
+  import('@/components/dashboard/shared/SchoolAttendanceAnalytics').then((m) => ({
+    default: m.SchoolAttendanceAnalytics,
+  }))
+);
 
 export interface AdminRingkasanTabProps {
   user?: any;
@@ -162,6 +166,14 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
   const { data: localChartRes } = useQuery({
     queryKey: ['admin-attendance-chart'],
     queryFn: () => getAttendanceChart(),
+    enabled: activeAnalyticsTab === 'chart' && isChartReady,
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: localTeacherChartRes } = useQuery({
+    queryKey: ['admin-teacher-attendance-chart'],
+    queryFn: () => getTeacherAttendanceChart(),
     enabled: activeAnalyticsTab === 'chart' && isChartReady,
     staleTime: 3 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -633,7 +645,19 @@ export const AdminRingkasanTab: React.FC<AdminRingkasanTabProps> = React.memo(({
                   </div>
                 }
               >
-                <AttendanceChart data={effectiveChartData} height={280} />
+                <SchoolAttendanceAnalytics
+                  studentChartData={effectiveChartData}
+                  teacherChartData={localTeacherChartRes?.data ?? null}
+                  stats={{
+                    total_siswa: totalSiswa,
+                    total_guru: totalGuru,
+                    siswa_hadir: stats?.siswa_hadir,
+                    siswa_sakit: stats?.siswa_sakit,
+                    siswa_izin: stats?.siswa_izin,
+                    siswa_alpa: stats?.siswa_alpa,
+                  }}
+                  height={240}
+                />
               </Suspense>
             ) : (
               <div className="flex items-center justify-center h-64 text-slate-400">

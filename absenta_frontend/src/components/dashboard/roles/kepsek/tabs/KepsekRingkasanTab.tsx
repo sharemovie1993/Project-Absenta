@@ -12,7 +12,6 @@ import {
   Mail,
   ShieldCheck,
   LayoutDashboard,
-  TrendingUp,
   Activity,
   Trophy,
   ArrowUpRight,
@@ -30,22 +29,8 @@ import { PersonPhoto } from '@/components/ui/PersonPhoto';
 import { cn } from '@/lib/utils';
 import { CompactSectionCard } from '@/components/dashboard/shared/CompactSectionCard';
 import { MonitoringKbmWidget } from '@/components/dashboard/shared/MonitoringKbmWidget';
+import { SchoolAttendanceAnalytics } from '@/components/dashboard/shared/SchoolAttendanceAnalytics';
 import type { KepsekTabId } from '../types';
-import {
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-} from 'recharts';
-
-const COLORS = ['#10b981', '#3b82f6', '#fbbf24', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 export interface KepsekRingkasanTabProps {
   stats: any;
@@ -197,48 +182,6 @@ export const KepsekRingkasanTab: React.FC<KepsekRingkasanTabProps> = React.memo(
     [onTabSelect, navigate]
   );
 
-  // Trend Data Bulanan (% Kehadiran Guru vs Siswa)
-  const trendData = useMemo(() => {
-    const siswaPayload = chartData?.data;
-    const guruPayload = teacherChartData?.data;
-    const labels: string[] = siswaPayload?.labels || guruPayload?.labels || [];
-    if (labels.length === 0) return [];
-
-    const siswaDatasets: any[] = siswaPayload?.datasets || [];
-    const guruDatasets: any[] = guruPayload?.datasets || [];
-    const siswaHadirDs = siswaDatasets.find((d) => String(d.label || '').toLowerCase() === 'hadir');
-    const guruHadirDs = guruDatasets.find((d) => String(d.label || '').toLowerCase() === 'hadir');
-
-    const totalSiswa = Number(stats?.total_siswa) || 0;
-    const totalGuru = Number(stats?.total_guru) || 0;
-
-    return labels.map((label: string, index: number) => {
-      const siswaRaw = Number(siswaHadirDs?.data?.[index] ?? 0);
-      const guruRaw = Number(guruHadirDs?.data?.[index] ?? 0);
-
-      const siswaPct = totalSiswa > 0 ? Math.min(100, Math.round((siswaRaw / totalSiswa) * 100)) : 0;
-      const guruPct = totalGuru > 0 ? Math.min(100, Math.round((guruRaw / totalGuru) * 100)) : 0;
-
-      return {
-        name: label,
-        Siswa: siswaPct,
-        Guru: guruPct,
-      };
-    });
-  }, [chartData, teacherChartData, stats?.total_siswa, stats?.total_guru]);
-
-  // Distribusi Siswa Harian
-  const distributionData = useMemo(
-    () =>
-      [
-        { name: 'Hadir', value: stats?.siswa_hadir || 0 },
-        { name: 'Sakit', value: stats?.siswa_sakit || 0 },
-        { name: 'Izin', value: stats?.siswa_izin || 0 },
-        { name: 'Alpa', value: stats?.siswa_alpa || 0 },
-      ].filter((d) => d.value > 0),
-    [stats?.siswa_hadir, stats?.siswa_sakit, stats?.siswa_izin, stats?.siswa_alpa]
-  );
-
   return (
     <div className="space-y-4 w-full max-w-full min-w-0">
       {/* 1. Bento Grid Executive KPI */}
@@ -249,68 +192,12 @@ export const KepsekRingkasanTab: React.FC<KepsekRingkasanTabProps> = React.memo(
         <HubActionGrid items={actionItems} variant="slider" />
       </div>
 
-      {/* 3. Grafik Kehadiran & Distribusi */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Tren Kehadiran Bulanan */}
-        <CompactSectionCard title="Tren Kehadiran Sekolah (Guru vs Siswa)" icon={TrendingUp} iconColor="blue">
-          <div className="h-52 w-full pt-2">
-            <ResponsiveContainer minWidth={0} width="100%" height="100%">
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
-                <Tooltip contentStyle={{ borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }} />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                <Line type="monotone" dataKey="Siswa" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="Guru" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CompactSectionCard>
-
-        {/* Distribusi Kehadiran Siswa Hari Ini */}
-        <CompactSectionCard title="Distribusi Kehadiran Siswa Hari Ini" icon={Users} iconColor="indigo">
-          <div className="flex flex-col sm:flex-row items-center gap-6 h-52">
-            <div className="w-full sm:w-1/2 h-44">
-              <ResponsiveContainer minWidth={0} width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={distributionData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={30}
-                    outerRadius={55}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
-                    {distributionData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: '10px', fontSize: '10px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="w-full sm:w-1/2 space-y-2">
-              {distributionData.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between text-xs p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50"
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-2.5 h-2.5 rounded-full"
-                      style={{ backgroundColor: COLORS[idx % COLORS.length] }}
-                    />
-                    <span className="text-slate-600 dark:text-slate-300 font-bold uppercase">{item.name}</span>
-                  </div>
-                  <span className="font-black text-slate-900 dark:text-white">{item.value} Siswa</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CompactSectionCard>
-      </div>
+      {/* 3. Grafik Kehadiran & Distribusi (Komponen Terpadu Admin & Kepsek) */}
+      <SchoolAttendanceAnalytics
+        studentChartData={chartData}
+        teacherChartData={teacherChartData}
+        stats={stats}
+      />
 
       {/* 4. Monitoring KBM Live Real-Time */}
       <HubCard
