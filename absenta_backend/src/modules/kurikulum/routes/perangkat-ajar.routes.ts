@@ -7,6 +7,10 @@ export default async function perangkatAjarRoutes(fastify: any) {
 
   // Guru mengunggah perangkat ajar
   fastify.post('/perangkat', { preHandler: [requireCapability('academic.schedules.manage', guruExempt), determineDataScope()]}, PerangkatAjarController.upload);
+
+  // Memperbarui metadata atau mengganti berkas perangkat ajar
+  fastify.patch('/perangkat/:id', { preHandler: [requireCapability('academic.schedules.manage', guruExempt), determineDataScope()]}, PerangkatAjarController.update);
+  fastify.put('/perangkat/:id', { preHandler: [requireCapability('academic.schedules.manage', guruExempt), determineDataScope()]}, PerangkatAjarController.update);
   
   // Wakasek Kurikulum memverifikasi / merespon unggahan perangkat ajar
   fastify.post('/perangkat/:id/review', { preHandler: [requireCapability('academic.manage.academic', guruExempt), determineDataScope()]}, PerangkatAjarController.review);

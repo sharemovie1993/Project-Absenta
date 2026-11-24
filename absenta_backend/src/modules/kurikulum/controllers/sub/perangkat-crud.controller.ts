@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { sendResponse, sendError } from '@/utils/response';
 import { PerangkatAjarService } from '../../services/perangkat-ajar.service';
-import { perangkatAjarUploadSchema, perangkatAjarReviewSchema } from '../../services/perangkat-ajar.schema';
+import { perangkatAjarUploadSchema, perangkatAjarReviewSchema, perangkatAjarUpdateSchema } from '../../services/perangkat-ajar.schema';
 import { DocumentStorageService } from '@/modules/document-center/services/document-storage.service';
 import { storageService } from '@/infra/storage/storage.service';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
@@ -122,6 +122,103 @@ export class PerangkatCrudController {
         });
       }
       return sendError(reply, 500, 'Gagal mengunggah perangkat ajar', error);
+    }
+  }
+
+  static async update(req: any, reply: any) {
+    try {
+      const { tenant_id, id: userId } = req.user!;
+      const { id } = req.params;
+
+      const existing = await prisma.perangkatAjar.findFirst({
+        where: { id, tenant_id },
+      });
+
+      if (!existing) {
+        return reply.status(404).send({ success: false, message: 'Perangkat ajar tidak ditemukan' });
+      }
+
+      const hasFullManage =
+        req.user?.roleName === RoleName.SUPERADMIN ||
+        (await authorizationService.hasUserPermission(userId, 'academic.manage.academic'));
+
+      if (!hasFullManage) {
+        const guru = await prisma.guru.findFirst({
+          where: { user_id: userId, tenant_id },
+          select: { id: true },
+        });
+        if (!guru || guru.id !== existing.guru_id) {
+          return reply.status(403).send({ success: false, message: 'Anda tidak memiliki izin mengubah perangkat ajar ini' });
+        }
+      }
+
+      let rawFields: Record<string, any> = {};
+      let uploadedFileUrl: string | undefined;
+      let pendingFilePart: { filename: string; mimetype: string; toBuffer: () => Promise<Buffer> } | null = null;
+
+      if (typeof req.isMultipart === 'function' && req.isMultipart()) {
+        for await (const part of req.parts()) {
+          if (part.type === 'file') {
+            const buffer = await part.toBuffer();
+            if (buffer && buffer.length > 0) {
+              pendingFilePart = {
+                filename: part.filename,
+                mimetype: part.mimetype,
+                toBuffer: async () => buffer,
+              };
+            }
+          } else {
+            rawFields[part.fieldname] = part.value;
+          }
+        }
+      } else {
+        rawFields = req.body || {};
+      }
+
+      const parsedFields = perangkatAjarUpdateSchema.parse({
+        ...(rawFields.judul !== undefined ? { judul: rawFields.judul } : {}),
+        ...(rawFields.jenis !== undefined ? { jenis: rawFields.jenis } : {}),
+        ...(rawFields.mapel_id !== undefined ? { mapel_id: rawFields.mapel_id } : {}),
+        ...(rawFields.guru_id !== undefined && hasFullManage ? { guru_id: rawFields.guru_id } : {}),
+        ...(rawFields.fase !== undefined
+          ? { fase: rawFields.fase ? String(rawFields.fase).trim() : null }
+          : {}),
+        ...(rawFields.tingkat !== undefined
+          ? { tingkat: rawFields.tingkat ? Number(rawFields.tingkat) : null }
+          : {}),
+        ...(rawFields.is_shared !== undefined
+          ? { is_shared: String(rawFields.is_shared).toLowerCase() === 'true' }
+          : {}),
+      });
+
+      if (pendingFilePart) {
+        const storage = new DocumentStorageService();
+        const uploadResult = await storage.saveFile({
+          tenantId: tenant_id,
+          category: parsedFields.jenis || existing.jenis,
+          file: pendingFilePart as any,
+          subFolder: 'perangkat-ajar',
+        });
+        await convertOfficeToPdfSibling(uploadResult.relativePath).catch(() => null);
+        uploadedFileUrl = uploadResult.relativePath;
+      }
+
+      const updated = await PerangkatAjarService.updatePerangkat(tenant_id, id, {
+        ...parsedFields,
+        ...(uploadedFileUrl ? { file_url: uploadedFileUrl } : {}),
+        resetToPending: Boolean(uploadedFileUrl && existing.status === 'REJECTED'),
+      });
+
+      return sendResponse(reply, 200, true, 'Perangkat ajar berhasil diperbarui', updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map((e) => e.message).join(', '),
+          errors: error.errors,
+        });
+      }
+      return sendError(reply, 500, 'Gagal memperbarui perangkat ajar', error);
     }
   }
 

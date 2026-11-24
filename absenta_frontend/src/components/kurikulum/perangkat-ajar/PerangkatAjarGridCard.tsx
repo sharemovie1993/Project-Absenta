@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Clock, Trash2, XCircle, Edit3 } from 'lucide-react';
+import { Check, Clock, Trash2, XCircle, Edit3, FileEdit } from 'lucide-react';
 import { Card, Button, Badge } from '../../ui';
 
 export interface Subject {
@@ -40,6 +40,7 @@ interface PerangkatAjarGridCardProps {
   onReview: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit?: (item: PerangkatAjar) => void;
+  onOpenWordEditor?: (item: PerangkatAjar) => void;
 }
 
 export const PerangkatAjarGridCard: React.FC<PerangkatAjarGridCardProps> = React.memo(({
@@ -51,7 +52,8 @@ export const PerangkatAjarGridCard: React.FC<PerangkatAjarGridCardProps> = React
   onOpenStudio,
   onReview,
   onDelete,
-  onEdit
+  onEdit,
+  onOpenWordEditor
 }) => {
   const isOwner = Boolean(currentGuruId && item.Guru?.id === currentGuruId);
   const canUserDelete = isKurikulumOrAdmin || isOwner;
@@ -134,9 +136,24 @@ export const PerangkatAjarGridCard: React.FC<PerangkatAjarGridCardProps> = React
             variant="outline"
             size="sm"
             className="text-xs font-bold text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 flex items-center gap-1 shadow-sm"
+            title="Edit Info & Ganti Berkas"
           >
             <Edit3 size={13} />
             <span>EDIT</span>
+          </Button>
+        )}
+
+        {onOpenWordEditor && !item.file_url && !['ATP', 'PROTA', 'PROMES', 'KKTP'].includes(item.jenis) && (
+          <Button
+            type="button"
+            onClick={() => onOpenWordEditor(item)}
+            variant="outline"
+            size="sm"
+            className="text-xs font-bold text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 flex items-center gap-1 shadow-sm"
+            title="Sunting Naskah HTML di Word Editor"
+          >
+            <FileEdit size={13} />
+            <span>WORD</span>
           </Button>
         )}
 

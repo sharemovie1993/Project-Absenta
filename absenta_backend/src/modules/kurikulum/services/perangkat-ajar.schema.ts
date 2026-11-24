@@ -21,3 +21,15 @@ export const perangkatAjarReviewSchema = z.object({
   }),
   catatan_reviewer: z.string().max(2000).optional().nullable(),
 });
+
+export const perangkatAjarUpdateSchema = z.object({
+  judul: z.string().min(1, 'Judul perangkat ajar wajib diisi').max(255).optional(),
+  jenis: z.enum(['RPP', 'MODUL_AJAR', 'SILABUS', 'PROTA', 'PROMES', 'ATP', 'KKTP', 'MODUL_PROJEK'], {
+    errorMap: () => ({ message: 'Jenis perangkat ajar harus bernilai RPP, MODUL_AJAR, SILABUS, PROTA, PROMES, ATP, KKTP, atau MODUL_PROJEK' })
+  }).optional(),
+  mapel_id: z.string().uuid('ID Mata Pelajaran harus berupa UUID yang valid').optional(),
+  guru_id: z.string().uuid('ID Guru harus berupa UUID yang valid').optional(),
+  fase: z.string().max(10).optional().nullable(),
+  tingkat: z.coerce.number().int().min(1).max(12).optional().nullable(),
+  is_shared: z.boolean().optional(),
+});

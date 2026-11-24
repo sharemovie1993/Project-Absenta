@@ -40,6 +40,70 @@ export class PerangkatAjarService {
     return created;
   }
 
+  static async updatePerangkat(
+    tenantId: string,
+    id: string,
+    data: {
+      judul?: string;
+      jenis?: string;
+      mapel_id?: string;
+      guru_id?: string;
+      file_url?: string;
+      fase?: string | null;
+      tingkat?: number | null;
+      is_shared?: boolean;
+      resetToPending?: boolean;
+    }
+  ) {
+    const existing = await prisma.perangkatAjar.findFirst({
+      where: { id, tenant_id: tenantId },
+    });
+
+    if (!existing) {
+      throw new Error('Perangkat ajar tidak ditemukan atau bukan milik tenant Anda');
+    }
+
+    // Jika berkas fisik diganti dan file lama tidak dipakai record lain, bersihkan file lama
+    if (data.file_url && existing.file_url && existing.file_url !== data.file_url) {
+      const refCount = await prisma.perangkatAjar.count({
+        where: { file_url: existing.file_url },
+      });
+      if (refCount <= 1) {
+        try {
+          await storageService.delete(existing.file_url);
+        } catch (err) {
+          console.error(`Failed to delete replaced file: ${existing.file_url}`, err);
+        }
+      }
+    }
+
+    const updated = await prisma.perangkatAjar.update({
+      where: { id },
+      data: {
+        ...(data.judul !== undefined ? { judul: data.judul } : {}),
+        ...(data.jenis !== undefined ? { jenis: data.jenis } : {}),
+        ...(data.mapel_id !== undefined ? { mapel_id: data.mapel_id } : {}),
+        ...(data.guru_id !== undefined ? { guru_id: data.guru_id } : {}),
+        ...(data.file_url !== undefined ? { file_url: data.file_url } : {}),
+        ...(data.fase !== undefined ? { fase: data.fase } : {}),
+        ...(data.tingkat !== undefined ? { tingkat: data.tingkat } : {}),
+        ...(data.is_shared !== undefined ? { is_shared: data.is_shared } : {}),
+        ...(data.resetToPending
+          ? { status: 'PENDING', catatan_reviewer: null, reviewer_id: null, reviewed_at: null }
+          : {}),
+      },
+      include: {
+        Guru: true,
+        Mapel: true,
+        TahunPelajaran: true,
+        Semester: true,
+      },
+    });
+
+    await cacheInvalidationService.invalidateAcademicCache(tenantId);
+    return updated;
+  }
+
   static async reviewPerangkat(
     tenantId: string,
     id: string,

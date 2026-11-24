@@ -48,6 +48,7 @@ interface PerangkatAjarUploadModalProps {
   uploadProgress?: number;
   isGuruContext?: boolean;
   currentTeacherName?: string;
+  editingItem?: { id: string; judul?: string; file_url?: string | null; status?: string } | null;
   onSubmit: (e: React.FormEvent) => void;
 }
 
@@ -63,15 +64,17 @@ export default React.memo(function PerangkatAjarUploadModal({
   uploadProgress = 0,
   isGuruContext = false,
   currentTeacherName,
+  editingItem,
   onSubmit,
 }: PerangkatAjarUploadModalProps) {
+  const isEditing = Boolean(editingItem?.id);
   const isCurrentlyUploading = isSubmitting || uploadProgress > 0;
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={isSubmitting ? () => {} : onClose}
-      title="Unggah Perangkat Ajar Baru"
+      title={isEditing ? 'Edit Info / Ganti Berkas Perangkat' : 'Unggah Perangkat Ajar Baru'}
       size="lg"
     >
       <form onSubmit={onSubmit} className="space-y-4">
@@ -153,13 +156,26 @@ export default React.memo(function PerangkatAjarUploadModal({
 
         <div>
           <label htmlFor="upload-file" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-            Berkas Fisik (PDF, PPT, PPTX, DOC, DOCX, XLSX) <span className="text-rose-500">*</span>
+            {isEditing
+              ? 'Ganti Berkas Fisik (Opsional — PDF, PPT, PPTX, DOC, DOCX, XLSX)'
+              : 'Berkas Fisik (PDF, PPT, PPTX, DOC, DOCX, XLSX)'}{' '}
+            {!isEditing && <span className="text-rose-500">*</span>}
           </label>
+          {isEditing && editingItem?.file_url && (
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">
+              Berkas saat ini sudah tersimpan. Biarkan kosong jika hanya mengubah judul, mapel, atau pengaturan berbagi.
+            </p>
+          )}
+          {isEditing && editingItem?.status === 'REJECTED' && (
+            <p className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-lg px-2.5 py-1.5 mb-1.5">
+              Jika Anda mengunggah berkas revisi baru, status verifikasi akan otomatis diajukan ulang ke <strong>Menunggu Verifikasi</strong>.
+            </p>
+          )}
           <input
             id="upload-file"
             type="file"
             accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx"
-            required
+            required={!isEditing}
             disabled={isSubmitting}
             onChange={(e) => setUploadForm((prev) => ({ ...prev, file: e.target.files?.[0] || null }))}
             className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-600 dark:file:bg-indigo-950 dark:file:text-indigo-400 hover:file:bg-indigo-100 disabled:opacity-60"
@@ -288,7 +304,7 @@ export default React.memo(function PerangkatAjarUploadModal({
             ) : (
               <>
                 <Upload className="w-3.5 h-3.5 mr-1.5" />
-                UNGGAH BERKAS
+                {isEditing ? 'SIMPAN PERUBAHAN' : 'UNGGAH BERKAS'}
               </>
             )}
           </Button>

@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 export const usePerangkatAjarMutations = (params: any) => {
   const {
-    queryClient, setIsUploadModalOpen, setUploadForm, setIsReviewModalOpen,
+    queryClient, setIsUploadModalOpen, setUploadForm, setEditingPerangkat, setIsReviewModalOpen,
     setSelectedPerangkatId, selectedRowKeys = new Set(), setSelectedRowKeys, setClaimingId, setIsLibraryModalOpen,
     setGeneratedAIContent, JENIS_LABELS, aiForm, isWizardModalOpen, setIsWizardModalOpen,
     setSelectedWordEditItem, currentGuru, activeYear, activeSemester, setIsWordEditorOpen,
@@ -44,6 +44,36 @@ export const usePerangkatAjarMutations = (params: any) => {
       const msg = err instanceof Error ? err.message : 'Gagal mengunggah berkas';
       toast.error(msg);
     }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: FormData | Record<string, unknown> }) =>
+      kurikulumApi.updatePerangkatAjar(id, data, (percent) => {
+        setUploadProgress(percent);
+      }),
+    onMutate: () => {
+      setUploadProgress(5);
+    },
+    onSuccess: () => {
+      setUploadProgress(100);
+      toast.success('Perangkat ajar berhasil diperbarui');
+      setTimeout(() => {
+        setIsUploadModalOpen(false);
+        setEditingPerangkat?.(null);
+        setUploadProgress(0);
+        setUploadForm({ judul: '', jenis: '', mapel_id: '', guru_id: '', file: null });
+      }, 400);
+      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
+      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
+      queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['evaluasi-kinerja-guru'] });
+    },
+    onError: (err: unknown) => {
+      setUploadProgress(0);
+      const msg = err instanceof Error ? err.message : 'Gagal memperbarui perangkat ajar';
+      toast.error(msg);
+    },
   });
 
   const reviewMutation = useMutation({
@@ -184,6 +214,7 @@ export const usePerangkatAjarMutations = (params: any) => {
 
   return {
     uploadMutation,
+    updateMutation,
     uploadProgress,
     reviewMutation,
     deleteMutation,

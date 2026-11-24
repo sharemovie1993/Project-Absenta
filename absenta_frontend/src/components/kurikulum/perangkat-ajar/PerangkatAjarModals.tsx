@@ -19,6 +19,9 @@ interface PerangkatAjarModalsProps {
   mapelOptions: any;
   teacherOptions: any;
   uploadMutation: any;
+  updateMutation?: any;
+  editingPerangkat?: PerangkatAjar | null;
+  setEditingPerangkat?: (v: PerangkatAjar | null) => void;
   handleUploadSubmit: any;
   isReviewModalOpen: boolean;
   setIsReviewModalOpen: (v: boolean) => void;
@@ -79,7 +82,7 @@ interface PerangkatAjarModalsProps {
 export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.memo((props: any) => {
   const {
     isUploadModalOpen, setIsUploadModalOpen, uploadForm, setUploadForm,
-    filterJenisOptions, mapelOptions, teacherOptions, uploadMutation, handleUploadSubmit,
+    filterJenisOptions, mapelOptions, teacherOptions, uploadMutation, updateMutation, editingPerangkat, setEditingPerangkat, handleUploadSubmit,
     isReviewModalOpen, setIsReviewModalOpen, reviewingItem, reviewForm, setReviewForm, reviewMutation, handleReviewSubmit,
     isLibraryModalOpen, setIsLibraryModalOpen, librarySearch, setLibrarySearch, libraryJenisFilter, setLibraryJenisFilter,
     claimMapelId, setClaimMapelId, claimingId, libraryTemplatesData, listPerangkat, handleOpenWordEditor,
@@ -95,7 +98,7 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
   } = props;
 
   const resolvedTeacherOptions = teacherOptions || canonicalGuruOptions || [];
-  const isUploadSubmitting = Boolean(uploadMutation?.isPending ?? uploadLoading);
+  const isUploadSubmitting = Boolean(uploadMutation?.isPending ?? updateMutation?.isPending ?? uploadLoading);
   const isReviewSubmitting = Boolean(reviewMutation?.isPending ?? reviewLoading);
   const isGenerating = Boolean(generateAIMutation?.isPending ?? generateAILoading);
   const isSaving = Boolean(saveAIMutation?.isPending ?? saveAILoading);
@@ -105,7 +108,10 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
       {isUploadModalOpen && (
             <PerangkatAjarUploadModal
               isOpen={isUploadModalOpen}
-              onClose={() => setIsUploadModalOpen(false)}
+              onClose={() => {
+                setIsUploadModalOpen(false);
+                setEditingPerangkat?.(null);
+              }}
               uploadForm={uploadForm}
               setUploadForm={setUploadForm}
               filterJenisOptions={filterJenisOptions}
@@ -115,6 +121,7 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
               uploadProgress={uploadProgress}
               isGuruContext={isGuruContext}
               currentTeacherName={currentTeacherName || currentGuru?.nama_guru}
+              editingItem={editingPerangkat}
               onSubmit={handleUploadSubmit}
             />
           )}

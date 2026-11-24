@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Check, XCircle, Clock, Sparkles, BookOpen, Edit3, Trash2, Layers, CalendarRange, Award } from 'lucide-react';
+import { Check, XCircle, Clock, Sparkles, BookOpen, Edit3, Trash2, Layers, CalendarRange, Award, FileEdit } from 'lucide-react';
 import type { Column } from '@/components/ui/Table';
 import type { PerangkatAjar } from '@/api/kurikulum.api';
 
@@ -49,6 +49,7 @@ interface GetPerangkatAjarColumnsParams {
   isGuruContext?: boolean;
   handleOpenStudio: (item: PerangkatAjar) => void;
   handleOpenReader: (item: PerangkatAjar) => void;
+  handleOpenEditModal: (item: PerangkatAjar) => void;
   handleOpenWordEditor: (item: PerangkatAjar) => void;
   setSelectedPerangkatId: (id: string) => void;
   setIsReviewModalOpen: (v: boolean) => void;
@@ -58,7 +59,7 @@ interface GetPerangkatAjarColumnsParams {
 export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsParams): Column[] => {
   const {
     page, limit, JENIS_LABELS, currentGuru, isKurikulumOrAdmin, isGuruContext = false,
-    handleOpenStudio, handleOpenReader, handleOpenWordEditor,
+    handleOpenStudio, handleOpenReader, handleOpenEditModal, handleOpenWordEditor,
     setSelectedPerangkatId, setIsReviewModalOpen, handleDelete
   } = params;
 
@@ -216,15 +217,29 @@ export const getPerangkatAjarTableColumns = (params: GetPerangkatAjarColumnsPara
 
             <Button
               type="button"
-              onClick={() => handleOpenWordEditor(item)}
+              onClick={() => handleOpenEditModal(item)}
               variant="outline"
               size="sm"
               className="text-xs font-bold text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm"
-              title="Sunting Dokumen via Word Editor"
+              title="Edit Info & Ganti Berkas"
             >
               <Edit3 size={13} />
               Edit
             </Button>
+
+            {!item.file_url && !['ATP', 'PROTA', 'PROMES', 'KKTP'].includes(item.jenis) && (
+              <Button
+                type="button"
+                onClick={() => handleOpenWordEditor(item)}
+                variant="outline"
+                size="sm"
+                className="text-xs font-bold text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 px-2.5 py-1 h-8 flex items-center gap-1 shadow-sm"
+                title="Sunting Naskah HTML di Word Editor"
+              >
+                <FileEdit size={13} />
+                Word
+              </Button>
+            )}
 
             {!isGuruContext && isKurikulumOrAdmin && (
               <Button

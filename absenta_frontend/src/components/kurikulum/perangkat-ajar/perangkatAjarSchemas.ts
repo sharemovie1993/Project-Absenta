@@ -15,6 +15,22 @@ export const uploadPerangkatSchema = z.object({
     .refine((file) => file !== null, 'Silakan pilih berkas dokumen terlebih dahulu'),
 });
 
+export const editPerangkatSchema = z.object({
+  judul: z.string().min(3, 'Judul dokumen minimal 3 karakter'),
+  jenis: z.string().min(1, 'Pilih jenis perangkat ajar terlebih dahulu'),
+  mapel_id: z.string().min(1, 'Pilih mata pelajaran terlebih dahulu'),
+  guru_id: z.string().min(1, 'Pilih guru pengajar terlebih dahulu'),
+  fase: z.string().optional(),
+  tingkat: z.string().optional(),
+  is_shared: z.boolean().optional().default(true),
+  file: z
+    .custom<File | null>((val) => val instanceof File || val === null, {
+      message: 'Format berkas tidak valid',
+    })
+    .optional()
+    .nullable(),
+});
+
 export const reviewPerangkatSchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED'], {
     message: 'Status verifikasi wajib dipilih',

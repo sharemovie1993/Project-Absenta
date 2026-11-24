@@ -5,6 +5,7 @@ import { PerangkatPresetsController } from './sub/perangkat-presets.controller';
 
 export class PerangkatAjarController {
   static async upload(...args: any[]) { return PerangkatCrudController.upload(...args); }
+  static async update(...args: any[]) { return PerangkatCrudController.update(...args); }
   static async download(...args: any[]) { return PerangkatCrudController.download(...args); }
   static async review(...args: any[]) { return PerangkatCrudController.review(...args); }
   static async getList(...args: any[]) { return PerangkatCrudController.getList(...args); }

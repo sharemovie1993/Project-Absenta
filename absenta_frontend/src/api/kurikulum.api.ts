@@ -206,6 +206,25 @@ export const kurikulumApi = {
     });
     return response.data;
   },
+  updatePerangkatAjar: async (
+    id: string,
+    data: FormData | { judul?: string; jenis?: string; mapel_id?: string; guru_id?: string; fase?: string | null; tingkat?: number | null; is_shared?: boolean },
+    onUploadProgress?: (percent: number) => void
+  ) => {
+    const isFormData = data instanceof FormData;
+    const response = await api.patch(`/kurikulum/perangkat/${id}`, data, {
+      ...(isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {}),
+      onUploadProgress: (evt: any) => {
+        if (!onUploadProgress) return;
+        const total = Number(evt?.total || 0);
+        const loaded = Number(evt?.loaded || 0);
+        if (total > 0) {
+          onUploadProgress(Math.round((loaded * 100) / total));
+        }
+      },
+    });
+    return response.data;
+  },
   reviewPerangkatAjar: async (id: string, data: { status: 'APPROVED' | 'REJECTED'; catatan_reviewer?: string | null }) => {
     const response = await api.post(`/kurikulum/perangkat/${id}/review`, data);
     return response.data;

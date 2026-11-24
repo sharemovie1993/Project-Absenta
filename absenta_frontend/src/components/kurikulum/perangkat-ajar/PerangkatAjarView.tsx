@@ -45,6 +45,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 
 import {
   uploadPerangkatSchema,
+  editPerangkatSchema,
   reviewPerangkatSchema,
   generateAIPerangkatSchema,
   saveAIPerangkatSchema,
@@ -113,7 +114,8 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   const [isRolloverModalOpen, setIsRolloverModalOpen] = useState(false);
   const [selectedPerangkatId, setSelectedPerangkatId] = useState<string | null>(null);
 
-  // Word Editor Modal States
+  // Word Editor & Edit Modal States
+  const [editingPerangkat, setEditingPerangkat] = useState<PerangkatAjar | null>(null);
   const [isWordEditorOpen, setIsWordEditorOpen] = useState(false);
   const [selectedWordEditItem, setSelectedWordEditItem] = useState<{
     id?: string;
@@ -393,6 +395,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
 
   const {
     uploadMutation,
+    updateMutation,
     uploadProgress,
     reviewMutation,
     deleteMutation,
@@ -405,6 +408,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
     queryClient,
     setIsUploadModalOpen,
     setUploadForm,
+    setEditingPerangkat,
     setIsReviewModalOpen,
     setSelectedPerangkatId,
     selectedRowKeys,
@@ -452,15 +456,37 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   }, [canonicalMapelOptions, teacherMapelIds]);
 
   const handleOpenUploadModal = useCallback(() => {
+    setEditingPerangkat(null);
     setUploadForm({
       judul: '',
       jenis: '',
       mapel_id: teacherMapelIds.length > 0 ? teacherMapelIds[0] : mapelOptions[0]?.value || '',
       guru_id: currentGuru?.id || '',
+      fase: 'E',
+      tingkat: '10',
+      is_shared: true,
       file: null,
     });
     setIsUploadModalOpen(true);
   }, [currentGuru, teacherMapelIds, mapelOptions]);
+
+  const handleOpenEditModal = useCallback(
+    (item: PerangkatAjar) => {
+      setEditingPerangkat(item);
+      setUploadForm({
+        judul: item.judul || '',
+        jenis: item.jenis || '',
+        mapel_id: item.Mapel?.id || item.mapel_id || '',
+        guru_id: item.Guru?.id || item.guru_id || currentGuru?.id || '',
+        fase: item.fase || (String(item.tingkat) === '10' ? 'E' : 'F'),
+        tingkat: item.tingkat ? String(item.tingkat) : '10',
+        is_shared: item.is_shared ?? true,
+        file: null,
+      });
+      setIsUploadModalOpen(true);
+    },
+    [currentGuru]
+  );
 
   const handleCreateNewStudio = useCallback(() => {
     setStudioPerangkat({
@@ -498,6 +524,44 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
     e.preventDefault();
     const effectiveGuruId = uploadForm.guru_id || (isGuruContext ? currentGuru?.id : '') || currentGuru?.id || '';
     const submitPayload = { ...uploadForm, guru_id: effectiveGuruId };
+
+    if (editingPerangkat?.id) {
+      const editResult = editPerangkatSchema.safeParse(submitPayload);
+      if (!editResult.success) {
+        const firstIssue = editResult.error.issues[0];
+        toast.error(firstIssue.message);
+        return;
+      }
+
+      const validEdit = editResult.data;
+      if (validEdit.file) {
+        const formData = new FormData();
+        formData.append('judul', validEdit.judul);
+        formData.append('jenis', validEdit.jenis);
+        formData.append('mapel_id', validEdit.mapel_id);
+        formData.append('guru_id', validEdit.guru_id);
+        if (validEdit.fase) formData.append('fase', validEdit.fase);
+        if (validEdit.tingkat) formData.append('tingkat', validEdit.tingkat);
+        formData.append('is_shared', String(Boolean(validEdit.is_shared)));
+        formData.append('file', validEdit.file);
+        updateMutation.mutate({ id: editingPerangkat.id, data: formData });
+      } else {
+        updateMutation.mutate({
+          id: editingPerangkat.id,
+          data: {
+            judul: validEdit.judul,
+            jenis: validEdit.jenis,
+            mapel_id: validEdit.mapel_id,
+            guru_id: validEdit.guru_id,
+            fase: validEdit.fase || null,
+            tingkat: validEdit.tingkat ? Number(validEdit.tingkat) : null,
+            is_shared: Boolean(validEdit.is_shared),
+          },
+        });
+      }
+      return;
+    }
+
     const result = uploadPerangkatSchema.safeParse(submitPayload);
     if (!result.success) {
       const firstIssue = result.error.issues[0];
@@ -648,6 +712,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
         isGuruContext,
         handleOpenStudio,
         handleOpenReader,
+        handleOpenEditModal,
         handleOpenWordEditor,
         setSelectedPerangkatId,
         setIsReviewModalOpen,
@@ -661,6 +726,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
       isGuruContext,
       handleOpenStudio,
       handleOpenReader,
+      handleOpenEditModal,
       handleOpenWordEditor,
       setSelectedPerangkatId,
       setIsReviewModalOpen,
@@ -1079,15 +1145,18 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
                 <PerangkatAjarGridCard
                   key={item.id}
                   item={item}
-                  JENIS_LABELS={JENIS_LABELS}
-                  currentGuru={currentGuru}
+                  jenisLabels={JENIS_LABELS}
+                  currentGuruId={currentGuru?.id}
                   isKurikulumOrAdmin={isKurikulumOrAdmin}
-                  handleOpenStudio={handleOpenStudio}
-                  handleOpenReader={handleOpenReader}
-                  handleOpenWordEditor={handleOpenWordEditor}
-                  setSelectedPerangkatId={setSelectedPerangkatId}
-                  setIsReviewModalOpen={setIsReviewModalOpen}
-                  handleDelete={handleDelete}
+                  onOpenStudio={handleOpenStudio}
+                  onOpenReader={handleOpenReader}
+                  onEdit={handleOpenEditModal}
+                  onOpenWordEditor={handleOpenWordEditor}
+                  onReview={(id) => {
+                    setSelectedPerangkatId(id);
+                    setIsReviewModalOpen(true);
+                  }}
+                  onDelete={handleDelete}
                 />
               ))}
             </div>
@@ -1135,6 +1204,9 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
         setUploadForm={setUploadForm}
         handleUploadSubmit={handleUploadSubmit}
         uploadMutation={uploadMutation}
+        updateMutation={updateMutation}
+        editingPerangkat={editingPerangkat}
+        setEditingPerangkat={setEditingPerangkat}
         uploadProgress={uploadProgress}
         isGuruContext={isGuruContext}
         currentTeacherName={currentGuru?.nama_guru}
