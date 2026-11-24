@@ -57,12 +57,29 @@ export async function uploadSiswaDocumentCommand(params: {
     }
   });
 
-  if (kategori === 'FOTO') {
+  if (String(kategori).toUpperCase() === 'FOTO') {
     const downloadUrl = `/academic/siswa/${siswaId}/documents/${doc.id}/download`;
     await prisma.siswa.update({
       where: { id: siswaId },
       data: { foto: downloadUrl }
     });
+
+    // Hapus foto profil lama (fisik + record DB) agar idempoten / 1 foto aktif
+    const oldPhotos = await prisma.siswaDocument.findMany({
+      where: {
+        tenant_id: effectiveTenantId,
+        siswa_id: siswaId,
+        kategori: 'FOTO',
+        id: { not: doc.id }
+      },
+      select: { id: true, file_storage_path: true }
+    });
+    if (oldPhotos.length > 0) {
+      await Promise.all(oldPhotos.map((old) => storage.deleteFile(old.file_storage_path)));
+      await prisma.siswaDocument.deleteMany({
+        where: { id: { in: oldPhotos.map((old) => old.id) } }
+      });
+    }
   }
 
   return doc;

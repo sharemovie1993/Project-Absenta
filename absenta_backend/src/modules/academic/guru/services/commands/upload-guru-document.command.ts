@@ -57,12 +57,29 @@ export async function uploadGuruDocumentCommand(params: {
     }
   });
 
-  if (kategori === 'FOTO') {
+  if (String(kategori).toUpperCase() === 'FOTO') {
     const downloadUrl = `/academic/guru/${guruId}/documents/${doc.id}/download`;
     await prisma.guru.update({
       where: { id: guruId },
       data: { foto: downloadUrl }
     });
+
+    // Hapus foto profil lama (fisik + record DB) agar idempoten / 1 foto aktif
+    const oldPhotos = await prisma.guruDocument.findMany({
+      where: {
+        tenant_id: effectiveTenantId,
+        guru_id: guruId,
+        kategori: 'FOTO',
+        id: { not: doc.id }
+      },
+      select: { id: true, file_storage_path: true }
+    });
+    if (oldPhotos.length > 0) {
+      await Promise.all(oldPhotos.map((old) => storage.deleteFile(old.file_storage_path)));
+      await prisma.guruDocument.deleteMany({
+        where: { id: { in: oldPhotos.map((old) => old.id) } }
+      });
+    }
   }
 
   const { cacheInvalidationService } = await import('@/utils/cache-invalidation.service');

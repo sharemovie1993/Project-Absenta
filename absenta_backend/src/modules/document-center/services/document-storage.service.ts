@@ -86,5 +86,10 @@ export class DocumentStorageService {
   exists(storagePath: string) {
     return storageService.exists(storagePath);
   }
+
+  async deleteFile(storagePath: string) {
+    if (!storagePath) return;
+    await storageService.delete(storagePath).catch(() => null);
+  }
 }
 
