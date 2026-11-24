@@ -114,7 +114,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
     );
   }, []);
 
-  const [readerViewTab, setReaderViewTab] = useState<'SLIDES' | 'PDF'>('SLIDES');
+  const [readerViewTab, setReaderViewTab] = useState<'SLIDES' | 'PDF'>('PDF');
   const [selectedFileId, setSelectedFileId] = useState<string>('');
   const [useOfficeViewer, setUseOfficeViewer] = useState<boolean>(isPublicOrigin);
 
@@ -178,10 +178,10 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
   }, [attachedFiles, selectedFileId]);
 
   useEffect(() => {
-    if (!isLoading && pertemuanList.length === 0 && attachedFiles.length > 0) {
-      setReaderViewTab('PDF');
+    if (!isLoading) {
+      setReaderViewTab(attachedFiles.length > 0 ? 'PDF' : 'SLIDES');
     }
-  }, [isLoading, pertemuanList.length, attachedFiles.length]);
+  }, [isLoading, attachedFiles.length]);
 
   const currentPertemuan: PertemuanItem | undefined = pertemuanList[activePertemuanIdx];
 
@@ -316,7 +316,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
       setIsProjectorMode(false);
       setActiveSlideDeckIdx(0);
       setSelectedModulId('');
-      setReaderViewTab('SLIDES');
+      setReaderViewTab('PDF');
       setSelectedFileId('');
       setUseOfficeViewer(isPublicOrigin);
     }
