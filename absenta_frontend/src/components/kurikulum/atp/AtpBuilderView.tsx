@@ -44,6 +44,45 @@ const DEFAULT_TP: TujuanPembelajaranItem = {
   is_completed: false
 };
 
+const TP_COLOR_THEMES = [
+  {
+    card: 'border-l-indigo-500 hover:border-indigo-300 dark:hover:border-indigo-700',
+    header: 'from-indigo-50/80 via-blue-50/40 to-white dark:from-indigo-950/40 dark:via-slate-900 dark:to-slate-900',
+    badge: 'from-blue-600 to-indigo-600',
+    kodeInput: 'bg-indigo-100/70 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800',
+  },
+  {
+    card: 'border-l-emerald-500 hover:border-emerald-300 dark:hover:border-emerald-700',
+    header: 'from-emerald-50/80 via-teal-50/40 to-white dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900',
+    badge: 'from-emerald-600 to-teal-600',
+    kodeInput: 'bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800',
+  },
+  {
+    card: 'border-l-violet-500 hover:border-violet-300 dark:hover:border-violet-700',
+    header: 'from-violet-50/80 via-purple-50/40 to-white dark:from-violet-950/40 dark:via-slate-900 dark:to-slate-900',
+    badge: 'from-violet-600 to-purple-600',
+    kodeInput: 'bg-violet-100/70 dark:bg-violet-950/60 text-violet-800 dark:text-violet-200 border-violet-200 dark:border-violet-800',
+  },
+  {
+    card: 'border-l-amber-500 hover:border-amber-300 dark:hover:border-amber-700',
+    header: 'from-amber-50/80 via-orange-50/40 to-white dark:from-amber-950/40 dark:via-slate-900 dark:to-slate-900',
+    badge: 'from-amber-500 to-orange-600',
+    kodeInput: 'bg-amber-100/70 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800',
+  },
+  {
+    card: 'border-l-sky-500 hover:border-sky-300 dark:hover:border-sky-700',
+    header: 'from-sky-50/80 via-cyan-50/40 to-white dark:from-sky-950/40 dark:via-slate-900 dark:to-slate-900',
+    badge: 'from-sky-500 to-cyan-600',
+    kodeInput: 'bg-sky-100/70 dark:bg-sky-950/60 text-sky-800 dark:text-sky-200 border-sky-200 dark:border-sky-800',
+  },
+  {
+    card: 'border-l-rose-500 hover:border-rose-300 dark:hover:border-rose-700',
+    header: 'from-rose-50/80 via-pink-50/40 to-white dark:from-rose-950/40 dark:via-slate-900 dark:to-slate-900',
+    badge: 'from-rose-500 to-pink-600',
+    kodeInput: 'bg-rose-100/70 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800',
+  },
+];
+
 const LOWERCASE_WORDS = new Set([
   'dan', 'atau', 'di', 'ke', 'dari', 'pada', 'untuk', 'dengan', 'yang', 'dalam', 'atas', 'oleh', 'sebagai'
 ]);
@@ -428,15 +467,26 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
           </Button>
         </div>
 
-        <div className="p-4 sm:p-5 space-y-3 bg-slate-50/40 dark:bg-slate-950/30">
-          {tpList.map((tp, idx) => (
+        <div className="p-3 sm:p-4 space-y-2.5 bg-slate-50/40 dark:bg-slate-950/30">
+          {tpList.map((tp, idx) => {
+            const theme = TP_COLOR_THEMES[idx % TP_COLOR_THEMES.length];
+            return (
             <div
               key={idx}
-              className="rounded-2xl border border-slate-200/90 dark:border-slate-800 border-l-4 border-l-indigo-500 dark:border-l-indigo-500 bg-white dark:bg-slate-900 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all overflow-hidden shadow-2xs"
+              className={cn(
+                'rounded-2xl border border-slate-200/90 dark:border-slate-800 border-l-4 bg-white dark:bg-slate-900 transition-all overflow-hidden shadow-2xs',
+                theme.card
+              )}
             >
-              <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-gradient-to-r from-indigo-50/60 via-slate-50/80 to-white dark:from-indigo-950/30 dark:via-slate-900 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800">
+              <div className={cn(
+                'flex items-center justify-between gap-2 px-3 py-2 bg-gradient-to-r border-b border-slate-100 dark:border-slate-800',
+                theme.header
+              )}>
                 <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                  <span className={cn(
+                    'w-6 h-6 rounded-full bg-gradient-to-br text-white font-black text-xs flex items-center justify-center shrink-0 shadow-2xs',
+                    theme.badge
+                  )}>
                     {idx + 1}
                   </span>
                   <Input
@@ -444,7 +494,7 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
                     onChange={(e) => handleTpChange(idx, 'kode_tp', e.target.value)}
                     onBlur={(e) => handleTpChange(idx, 'kode_tp', String(e.target.value || '').trim().toUpperCase())}
                     placeholder="Kode TP"
-                    className="w-24 h-7 rounded-lg text-xs font-bold font-mono px-2 bg-indigo-50/70 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800"
+                    className={cn('w-24 h-7 rounded-lg text-xs font-bold font-mono px-2', theme.kodeInput)}
                   />
                 </div>
                 <div className="flex items-center gap-0.5">
@@ -514,7 +564,8 @@ export const AtpBuilderView: React.FC<AtpBuilderViewProps> = ({
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
 
           <button
             type="button"
