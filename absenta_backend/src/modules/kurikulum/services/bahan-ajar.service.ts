@@ -87,7 +87,11 @@ export class BahanAjarService {
       };
     }
     if (fase) {
-      perangkatWhere.fase = fase;
+      perangkatWhere.OR = [
+        { fase },
+        { fase: null },
+        { fase: '' },
+      ];
     }
 
     const availablePerangkats = await prisma.perangkatAjar.findMany({
