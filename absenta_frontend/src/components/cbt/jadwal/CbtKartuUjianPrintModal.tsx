@@ -221,14 +221,32 @@ function buildQrPayload(username: string, pin: string, mode: QrPayloadMode): str
 // ── Subkomponen Memoized Tabel Jadwal agar tidak ikut re-render saat QR/Foto berubah ──
 const formatCompactSesi = (sesi: string) => sesi.replace(/^Sesi\s+/i, 'S');
 
+const SHORT_INDO_MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+  'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+];
+
+function formatShortIndoDate(tanggalStr: string): string {
+  const parts = (tanggalStr || '').split('-');
+  if (parts.length !== 3) return tanggalStr;
+  // Mendukung DD-MM-YYYY maupun YYYY-MM-DD
+  const isYearFirst = parts[0].length === 4;
+  const day = isYearFirst ? parts[2] : parts[0];
+  const monthIdx = Number(parts[1]) - 1;
+  const year = isYearFirst ? parts[0] : parts[2];
+  const monthName = SHORT_INDO_MONTHS[monthIdx];
+  if (!monthName) return tanggalStr;
+  return `${Number(day)} ${monthName} ${year}`;
+}
+
 const ExamCardSchedulesTable = memo(({ schedules }: { schedules: ExamDaySchedule[] }) => (
   <div className="flex-1 min-w-0 h-full overflow-hidden">
     <table className="w-full table-fixed text-left border-collapse border border-slate-300">
       <thead>
         <tr className="bg-slate-100 text-slate-700 border-b border-slate-300 font-black text-[6px]">
-          <th className="py-0.5 px-1 border-r border-slate-300 w-[19%]">Tanggal</th>
+          <th className="py-0.5 px-1 border-r border-slate-300 w-[20%]">Tanggal</th>
           <th className="py-0.5 px-1 border-r border-slate-300 w-[47%]">Mata Pelajaran</th>
-          <th className="py-0.5 px-1 w-[34%] text-center">Waktu</th>
+          <th className="py-0.5 px-1 w-[33%] text-center">Waktu</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-200 text-[6px]">
@@ -243,9 +261,14 @@ const ExamCardSchedulesTable = memo(({ schedules }: { schedules: ExamDaySchedule
               {rIdx === 0 && (
                 <td
                   rowSpan={sessionRows.length}
-                  className="py-0.5 px-1 border-r border-slate-200 font-bold text-slate-700 align-top whitespace-nowrap"
+                  className="py-0.5 px-1 border-r border-slate-200 align-top whitespace-nowrap"
                 >
-                  {sch.tanggal}
+                  <div className="uppercase font-black text-slate-800 leading-tight">
+                    {sch.hariLabel},
+                  </div>
+                  <div className="text-[5.5px] font-semibold text-slate-500 leading-tight">
+                    {formatShortIndoDate(sch.tanggal)}
+                  </div>
                 </td>
               )}
               <td className="py-0.5 px-1 border-r border-slate-200 align-top text-slate-800">
