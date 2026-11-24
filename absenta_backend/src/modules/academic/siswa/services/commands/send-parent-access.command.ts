@@ -4,9 +4,9 @@ import { getSmartParentAppUrl } from '../../../../../utils/url-helper';
 
 export async function sendParentAccessCommand(
   siswaId: string,
-  scope: { tenantId: string; org: any; reqOrigin?: string }
+  scope: { tenantId: string; org: any; reqOrigin?: string; autoSendWa?: boolean }
 ): Promise<any> {
-  const { tenantId, org, reqOrigin } = scope;
+  const { tenantId, org, reqOrigin, autoSendWa = false } = scope;
   let whereClause: any = { id: siswaId, tenant_id: tenantId };
 
   // Apply Isolate/Scope filter from Organization Engine
@@ -118,28 +118,30 @@ Terima kasih.`;
   let waSent = false;
   let waError = '';
 
-  if (targetParent.no_hp) {
-    try {
-      const { WhatsAppService } = await import('@/modules/notification/services/whatsapp.service');
-      const waService = new WhatsAppService();
+  if (autoSendWa) {
+    if (targetParent.no_hp) {
+      try {
+        const { WhatsAppService } = await import('@/modules/notification/services/whatsapp.service');
+        const waService = new WhatsAppService();
 
-      waSent = await waService.sendWhatsApp({
-        phoneNumber: targetParent.no_hp,
-        message: message,
-        tenantId: tenantId,
-        relatedId: siswa.id,
-        event: 'PARENT_ACCESS_SENT',
-        subject: 'Akses Parent App',
-        force: true,
-        throwOnError: false,
-      });
-    } catch (err: any) {
+        waSent = await waService.sendWhatsApp({
+          phoneNumber: targetParent.no_hp,
+          message: message,
+          tenantId: tenantId,
+          relatedId: siswa.id,
+          event: 'PARENT_ACCESS_SENT',
+          subject: 'Akses Parent App',
+          force: true,
+          throwOnError: false,
+        });
+      } catch (err: any) {
+        waSent = false;
+        waError = err?.message || 'WA Gateway Offline';
+      }
+    } else {
       waSent = false;
-      waError = err?.message || 'WA Gateway Offline';
+      waError = 'Nomor WhatsApp belum diisi pada biodata siswa/orang tua';
     }
-  } else {
-    waSent = false;
-    waError = 'Nomor WhatsApp belum diisi pada biodata siswa/orang tua';
   }
 
   return {

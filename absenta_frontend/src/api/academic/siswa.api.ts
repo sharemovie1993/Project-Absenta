@@ -140,7 +140,7 @@ export const getSiswaHistory = async (id: string): Promise<SiswaHistory[]> => {
   return res.data || [];
 };
 
-export const sendParentAccess = async (id: string): Promise<{
+export const sendParentAccess = async (id: string, options?: { autoSendWa?: boolean }): Promise<{
   success: boolean;
   message: string;
   waSent?: boolean;
@@ -153,7 +153,9 @@ export const sendParentAccess = async (id: string): Promise<{
     rawMessage?: string;
   };
 }> => {
-  return requestWithFallback<any>('post', `/academic/siswa/${id}/send-access`);
+  return requestWithFallback<any>('post', `/academic/siswa/${id}/send-access`, {
+    autoSendWa: options?.autoSendWa ?? false,
+  });
 };
 
 // Overload to support both signatures

@@ -77,8 +77,8 @@ export class SiswaService {
     return res;
   }
 
-  async sendParentAccess(siswaId: string, tenantId: string, org: any, reqOrigin?: string): Promise<any> {
-    return sendParentAccessCommand(siswaId, { tenantId, org, reqOrigin });
+  async sendParentAccess(siswaId: string, tenantId: string, org: any, reqOrigin?: string, autoSendWa = false): Promise<any> {
+    return sendParentAccessCommand(siswaId, { tenantId, org, reqOrigin, autoSendWa });
   }
 
   async createSiswa(input: CreateSiswaInput, tenantId: string, org: any, userId?: string): Promise<SiswaResponse> {

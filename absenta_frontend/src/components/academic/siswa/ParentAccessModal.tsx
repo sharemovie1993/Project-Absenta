@@ -84,15 +84,20 @@ export const ParentAccessModal: React.FC<ParentAccessModalProps> = ({ data, onCl
                 Terkirim otomatis via WA Gateway ke <span className="font-bold text-emerald-200">{data.parentPhone}</span>
               </p>
             </div>
-          ) : (
+          ) : data.waError ? (
             <div className="flex items-start gap-2.5 rounded-xl px-4 py-2.5 bg-amber-500/10 border border-amber-500/30">
               <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs text-amber-300 font-semibold">WA Gateway Offline — Salin & kirim manual via WA</p>
-                {data.waError && (
-                  <p className="text-[11px] text-amber-400/80 mt-0.5">{data.waError}</p>
-                )}
+                <p className="text-[11px] text-amber-400/80 mt-0.5">{data.waError}</p>
               </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5 rounded-xl px-4 py-2.5 bg-indigo-500/10 border border-indigo-500/30">
+              <Key size={16} className="text-indigo-400 shrink-0" />
+              <p className="text-xs text-indigo-200 font-medium">
+                Token &amp; Link siap digunakan. Tidak dikirim otomatis ke WhatsApp orang tua.
+              </p>
             </div>
           )}
         </div>

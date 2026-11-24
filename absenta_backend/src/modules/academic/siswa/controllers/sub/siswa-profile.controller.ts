@@ -348,7 +348,8 @@ async sendParentAccess(request: any, reply: any) {
       const reqOrigin = request.headers.origin || 
         (request.headers.host ? `${request.protocol || 'http'}://${request.headers.host}` : undefined);
 
-      const result = await siswaService.sendParentAccess(id, tenantId, scope, reqOrigin);
+      const autoSendWa = Boolean((request.body as any)?.autoSendWa === true);
+      const result = await siswaService.sendParentAccess(id, tenantId, scope, reqOrigin, autoSendWa);
 
       return reply.status(200).send({
         success: true,
