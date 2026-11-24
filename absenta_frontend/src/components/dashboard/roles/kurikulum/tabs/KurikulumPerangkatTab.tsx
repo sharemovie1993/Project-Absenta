@@ -299,7 +299,7 @@ const TeacherRow: React.FC<TeacherRowProps> = React.memo(({
                             e.stopPropagation();
                             onOpenReview(doc);
                           }}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center p-2 sm:p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                           title="Baca Langsung & Pratinjau Berkas"
                         >
                           <Eye size={15} />
@@ -312,7 +312,7 @@ const TeacherRow: React.FC<TeacherRowProps> = React.memo(({
                           e.stopPropagation();
                           onOpenReview(doc);
                         }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-bold transition-all cursor-pointer"
+                        className="min-h-[44px] sm:min-h-0 inline-flex items-center justify-center gap-1 px-3 sm:px-2.5 py-2 sm:py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-bold transition-all cursor-pointer"
                       >
                         <CheckSquare size={13} />
                         Verifikasi
@@ -479,26 +479,47 @@ export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
     e.preventDefault();
     if (!selectedDocForReview?.id || isSubmittingReview) return;
 
+    const targetId = selectedDocForReview.id;
+    const nextStatus = reviewForm.status;
+    const nextNote = reviewForm.catatan_reviewer || null;
+
+    await queryClient.cancelQueries({ queryKey: ['kurikulum', 'perangkat-dash'] });
+    const previousSnapshots = queryClient.getQueriesData({ queryKey: ['kurikulum', 'perangkat-dash'] });
+
+    // Optimistic update on perangkat-dash cache
+    queryClient.setQueriesData({ queryKey: ['kurikulum', 'perangkat-dash'] }, (old: any) => {
+      if (!old) return old;
+      const patchItem = (item: any) =>
+        item?.id === targetId ? { ...item, status: nextStatus, catatan_reviewer: nextNote } : item;
+      if (Array.isArray(old)) return old.map(patchItem);
+      if (Array.isArray(old?.data)) return { ...old, data: old.data.map(patchItem) };
+      return old;
+    });
+
     try {
       setIsSubmittingReview(true);
-      await kurikulumApi.reviewPerangkatAjar(selectedDocForReview.id, {
-        status: reviewForm.status,
-        catatan_reviewer: reviewForm.catatan_reviewer || null,
+      await kurikulumApi.reviewPerangkatAjar(targetId, {
+        status: nextStatus,
+        catatan_reviewer: nextNote,
       });
 
       toast.success(
-        reviewForm.status === 'APPROVED'
+        nextStatus === 'APPROVED'
           ? 'Perangkat ajar berhasil disetujui (Approved)'
           : 'Catatan revisi berhasil disimpan (Rejected)'
       );
 
-      queryClient.invalidateQueries({ queryKey: ['kurikulum', 'perangkat-dash'] });
-      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar'] });
       handleCloseReview();
     } catch (err: any) {
+      // Rollback optimistic update on failure
+      for (const [key, snapshot] of previousSnapshots) {
+        queryClient.setQueryData(key, snapshot);
+      }
       toast.error(err?.response?.data?.message || err?.message || 'Gagal memproses verifikasi');
     } finally {
       setIsSubmittingReview(false);
+      queryClient.invalidateQueries({ queryKey: ['kurikulum', 'perangkat-dash'] });
+      queryClient.invalidateQueries({ queryKey: ['perangkat-ajar'] });
     }
   }, [selectedDocForReview, isSubmittingReview, reviewForm, queryClient, handleCloseReview]);
 
@@ -643,9 +664,18 @@ export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
 
       {/* Teachers Perangkat List (Paginated & Memoized In-Place Inspection) */}
       {loading ? (
-        <div className="space-y-2">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs divide-y divide-slate-100 dark:divide-slate-800 min-h-[480px]">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <div key={i} className="p-3 sm:p-4 flex items-center justify-between gap-3 animate-pulse">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-11 h-11 rounded-full bg-slate-200 dark:bg-slate-800 shrink-0" />
+                <div className="space-y-2 flex-1 max-w-xs">
+                  <div className="h-3.5 w-3/4 rounded bg-slate-200 dark:bg-slate-800" />
+                  <div className="h-2.5 w-1/2 rounded bg-slate-100 dark:bg-slate-800/70" />
+                </div>
+              </div>
+              <div className="h-6 w-28 rounded-full bg-slate-200 dark:bg-slate-800 shrink-0" />
+            </div>
           ))}
         </div>
       ) : filteredTeachers.length === 0 ? (
@@ -680,7 +710,7 @@ export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
                   type="button"
                   disabled={safePage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                  className="min-h-[44px] sm:min-h-0 inline-flex items-center gap-1 px-3 sm:px-2.5 py-2 sm:py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
                 >
                   <ChevronLeft size={14} />
                   <span>Prev</span>
@@ -692,7 +722,7 @@ export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
                   type="button"
                   disabled={safePage >= totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                  className="min-h-[44px] sm:min-h-0 inline-flex items-center gap-1 px-3 sm:px-2.5 py-2 sm:py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
                 >
                   <span>Next</span>
                   <ChevronRight size={14} />
