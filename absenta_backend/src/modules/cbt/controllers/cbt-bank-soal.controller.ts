@@ -230,25 +230,4 @@ export class CbtBankSoalController {
       return sendError(reply, 400, error.message || 'Gagal mengekstrak soal dari Google Form');
     }
   }
-
-  static async parseExternalDocument(req: any, reply: any) {
-    try {
-      const data = await req.file();
-      if (!data) {
-        return sendError(reply, 400, 'File dokumen (.docx / .pdf / .txt) wajib diunggah.');
-      }
-      const buffer: Buffer = await data.toBuffer();
-      if (buffer.length > 15 * 1024 * 1024) {
-        return sendError(reply, 400, 'Ukuran file maksimal 15 MB.');
-      }
-      const result = await CbtBankSoalService.parseExternalDocument(
-        buffer,
-        data.filename || 'dokumen',
-        data.mimetype || ''
-      );
-      return sendResponse(reply, 200, true, 'Berhasil memindai teks dokumen eksternal', result);
-    } catch (error: any) {
-      return sendError(reply, 400, error.message || 'Gagal memindai dokumen eksternal');
-    }
-  }
 }

@@ -179,20 +179,6 @@ export const cbtApi = {
     };
   },
 
-  parseExternalDocument: async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await api.post('/cbt/bank-soal/parse-document', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return res.data?.data as {
-      filename: string;
-      source_type: 'docx' | 'pdf' | 'txt';
-      raw_text: string;
-      line_count: number;
-    };
-  },
-
   // ==========================================
   // 3. JADWAL UJIAN & SESI PROCTOR
   // ==========================================

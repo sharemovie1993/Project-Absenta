@@ -1,8 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Modal, Button } from '@/components/ui';
 import {
-  UploadCloud,
-  FileText,
   Link2,
   ClipboardPaste,
   Puzzle,
@@ -42,7 +40,7 @@ export interface CbtImportPuzzleModalProps {
   onSuccessImport: () => void;
 }
 
-type SourceTab = 'document' | 'google_form' | 'paste_text';
+type SourceTab = 'google_form' | 'paste_text';
 
 export const CbtImportPuzzleModal: React.FC<CbtImportPuzzleModalProps> = ({
   isOpen,
@@ -53,9 +51,8 @@ export const CbtImportPuzzleModal: React.FC<CbtImportPuzzleModalProps> = ({
   onSuccessImport,
 }) => {
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [sourceTab, setSourceTab] = useState<SourceTab>('document');
+  const [sourceTab, setSourceTab] = useState<SourceTab>('google_form');
   const [googleFormUrl, setGoogleFormUrl] = useState('');
   const [pastedRawText, setPastedRawText] = useState('');
   const [bulkKeysInput, setBulkKeysInput] = useState('');
@@ -82,33 +79,7 @@ export const CbtImportPuzzleModal: React.FC<CbtImportPuzzleModalProps> = ({
     setExpandedRawIds({});
   };
 
-  // ── 1A. Scan File Word (.docx) / PDF (.pdf) / Teks (.txt) ──
-  const handleFileUpload = async (file: File) => {
-    try {
-      setIsScanning(true);
-      const res = await cbtApi.parseExternalDocument(file);
-      const scanned = scanDocumentToPuzzle(res.raw_text, startingNomor);
-      if (scanned.cards.length === 0) {
-        toast.error('Teks dokumen terbaca, tetapi belum ada blok soal yang terdeteksi.');
-        setPastedRawText(res.raw_text);
-        setSourceTab('paste_text');
-        return;
-      }
-      setPuzzleCards(scanned.cards);
-      setSourceLabel(`${res.filename} (${res.source_type.toUpperCase()})`);
-      toast.success(
-        `Berhasil memindai ${scanned.cards.length} blok puzzle soal${
-          scanned.detectedKeysCount > 0 ? ` (${scanned.detectedKeysCount} kunci terdeteksi)` : ''
-        }.`
-      );
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Gagal memindai dokumen');
-    } finally {
-      setIsScanning(false);
-    }
-  };
-
-  // ── 1B. Scan Google Form (Preview / viewform URL) ──
+  // ── 1A. Scan Google Form (Preview / Edit / viewform URL) ──
   const handleScanGoogleForm = async () => {
     if (!googleFormUrl.trim()) {
       toast.error('Masukkan URL Google Form terlebih dahulu.');
@@ -304,19 +275,6 @@ export const CbtImportPuzzleModal: React.FC<CbtImportPuzzleModalProps> = ({
             <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
               <button
                 type="button"
-                onClick={() => setSourceTab('document')}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer',
-                  sourceTab === 'document'
-                    ? 'bg-indigo-600 text-white shadow-2xs'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                )}
-              >
-                <FileText size={14} />
-                <span>Word (.docx) / PDF</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => setSourceTab('google_form')}
                 className={cn(
                   'px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer',
@@ -326,7 +284,7 @@ export const CbtImportPuzzleModal: React.FC<CbtImportPuzzleModalProps> = ({
                 )}
               >
                 <Link2 size={14} />
-                <span>Google Form (Preview)</span>
+                <span>Link Google Form</span>
               </button>
               <button
                 type="button"
@@ -339,12 +297,17 @@ export const CbtImportPuzzleModal: React.FC<CbtImportPuzzleModalProps> = ({
                 )}
               >
                 <ClipboardPaste size={14} />
-                <span>Tempel Teks</span>
+                <span>Copy Teks</span>
               </button>
             </div>
 
             {puzzleCards.length > 0 && (
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-2 text-xs flex-wrap">
+                {sourceLabel && (
+                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold">
+                    {sourceLabel}
+                  </span>
+                )}
                 <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800">
                   {readyCount} Siap Import
                 </span>
@@ -365,51 +328,6 @@ export const CbtImportPuzzleModal: React.FC<CbtImportPuzzleModalProps> = ({
           </div>
 
           {/* Input Sumber Aktif */}
-          {sourceTab === 'document' && (
-            <div
-              onClick={() => !isScanning && fileInputRef.current?.click()}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const file = e.dataTransfer.files?.[0];
-                if (file) handleFileUpload(file);
-              }}
-              className="border-2 border-dashed border-indigo-300 dark:border-indigo-700 rounded-xl p-4 bg-white dark:bg-slate-900 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-between gap-3"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".docx,.pdf,.txt,.md"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFileUpload(file);
-                  e.target.value = '';
-                }}
-              />
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
-                  {isScanning ? <Loader2 size={20} className="animate-spin" /> : <UploadCloud size={20} />}
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                    {isScanning
-                      ? 'Helper sedang memindai dokumen...'
-                      : 'Klik atau Drag & Drop file Word (.docx), PDF (.pdf), atau Teks (.txt)'}
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Hasil scan masuk ke Puzzle Workbench terlebih dahulu agar bisa disusun sebelum di-insert ke editor soal.
-                  </p>
-                </div>
-              </div>
-              {sourceLabel && (
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
-                  {sourceLabel}
-                </span>
-              )}
-            </div>
-          )}
-
           {sourceTab === 'google_form' && (
             <div className="flex flex-col sm:flex-row gap-2">
               <input
@@ -463,7 +381,7 @@ export const CbtImportPuzzleModal: React.FC<CbtImportPuzzleModalProps> = ({
                 Belum ada puzzle soal yang dipindai
               </p>
               <p className="text-xs max-w-md mx-auto">
-                Unggah file Word (.docx) / PDF, masukkan link Google Form mode preview, atau tempel teks mentah di atas untuk mulai menyusun soal.
+                Masukkan link Google Form (preview/viewform) atau tempel teks soal di atas untuk mulai menyusun puzzle soal.
               </p>
             </div>
           ) : (

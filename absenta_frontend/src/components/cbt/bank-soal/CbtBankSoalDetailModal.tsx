@@ -299,7 +299,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                       variant="outline"
                       onClick={() => setIsPuzzleImportOpen(true)}
                       className="border-emerald-300 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-950/30 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 font-bold text-xs h-8 sm:h-9 px-3 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
-                      title="Import & Susun Puzzle Soal dari Word (.docx), PDF, atau Google Form Preview"
+                      title="Import & Susun Puzzle Soal dari Link Google Form atau Copy Teks"
                     >
                       <Puzzle size={14} />
                       <span className="hidden sm:inline">Import Puzzle</span>
