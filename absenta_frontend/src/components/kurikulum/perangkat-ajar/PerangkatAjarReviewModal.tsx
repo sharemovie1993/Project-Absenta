@@ -66,8 +66,10 @@ export default React.memo(function PerangkatAjarReviewModal({
   const previewPdfUrl = reviewingItem?.preview_pdf_url || (isOriginalPdf ? fileUrl : null);
   const hasLivePreview = Boolean(fileUrl);
 
+  const isFileMissing = reviewingItem?.file_exists === false;
+
   const iframeSrc = useMemo(() => {
-    if (!fileUrl) return null;
+    if (!fileUrl || isFileMissing) return null;
     if (useOfficeViewer && isOfficeFile && typeof window !== 'undefined') {
       const resolved = resolveProfilePhotoUrl(fileUrl) || fileUrl;
       const absUrl = new URL(resolved, window.location.origin).toString();
@@ -160,6 +162,16 @@ export default React.memo(function PerangkatAjarReviewModal({
                 title={reviewingItem?.judul || 'Pratinjau Perangkat Ajar'}
                 className="w-full flex-1 border-0 bg-white"
               />
+            ) : isFileMissing ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-2.5">
+                <FileText className="w-10 h-10 text-rose-400" />
+                <p className="text-sm font-extrabold text-rose-600 dark:text-rose-400">
+                  Berkas Fisik Tidak Ditemukan di Storage Server
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md">
+                  File ini tercatat di database, namun berkas fisiknya tidak ada di server storage. Silakan tolak (Revisi) dan minta guru mengunggah ulang dokumen.
+                </p>
+              </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
                 <FileText className="w-10 h-10 text-slate-400" />

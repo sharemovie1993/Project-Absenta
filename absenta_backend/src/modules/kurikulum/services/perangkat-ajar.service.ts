@@ -148,8 +148,13 @@ export class PerangkatAjarService {
 
     return Promise.all(
       rows.map(async (row) => {
-        const previewPdf = row.file_url ? await resolveExistingSiblingPdf(row.file_url) : null;
-        return previewPdf ? { ...row, preview_pdf_url: previewPdf } : row;
+        const fileExists = row.file_url ? await storageService.exists(row.file_url).catch(() => false) : false;
+        const previewPdf = fileExists && row.file_url ? await resolveExistingSiblingPdf(row.file_url) : null;
+        return {
+          ...row,
+          file_exists: fileExists,
+          ...(previewPdf ? { preview_pdf_url: previewPdf } : {}),
+        };
       })
     );
   }

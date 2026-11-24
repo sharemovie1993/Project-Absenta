@@ -428,15 +428,17 @@ export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
                                 )}
 
                                 {doc.file_url && (
-                                  <a
-                                    href={resolveMediaUrl(doc.file_url)}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                    title="Lihat Berkas"
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenReview(doc);
+                                    }}
+                                    className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                    title="Baca Langsung & Pratinjau Berkas"
                                   >
                                     <Eye size={15} />
-                                  </a>
+                                  </button>
                                 )}
 
                                 <button
@@ -470,6 +472,7 @@ export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
           <PerangkatAjarReviewModal
             isOpen={reviewModalOpen}
             onClose={handleCloseReview}
+            reviewingItem={selectedDocForReview}
             reviewForm={reviewForm}
             setReviewForm={setReviewForm}
             isSubmitting={isSubmittingReview}
