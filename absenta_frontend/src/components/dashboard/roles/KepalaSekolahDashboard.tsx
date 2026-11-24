@@ -21,6 +21,7 @@ import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/ac
 import { useExecutivePillarStore, type ExecutivePillar } from '@/store/executivePillarStore';
 import {
   getAttendanceChart,
+  getTeacherAttendanceChart,
   getKepsekEscalations,
   getDashboardOverview,
   getSarprasStats,
@@ -148,6 +149,12 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
   const { data: chartData } = useQuery({
     queryKey: ['attendance-chart', currentMonth],
     queryFn: () => getAttendanceChart(currentMonth),
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: teacherChartData } = useQuery({
+    queryKey: ['teacher-attendance-chart', currentMonth],
+    queryFn: () => getTeacherAttendanceChart(currentMonth),
     staleTime: 5 * 60_000,
   });
 
@@ -478,6 +485,7 @@ export const KepalaSekolahDashboard: React.FC<KepalaSekolahDashboardProps> = Rea
                 <KepsekRingkasanTab
                   stats={stats}
                   chartData={chartData}
+                  teacherChartData={teacherChartData}
                   escalations={escalations}
                   sarprasData={sarprasData}
                   hubinData={hubinData}

@@ -25,6 +25,14 @@ export async function getAttendanceChart(bulan?: string): Promise<ChartDataRespo
   });
 }
 
+// Grafik Kehadiran Guru Bulanan - GET /dashboard/grafik/guru/:bulan
+export async function getTeacherAttendanceChart(bulan?: string): Promise<ChartDataResponse> {
+  const currentMonth = bulan || toLocalMonth(); // YYYY-MM format
+  return requestWithFallback<ChartDataResponse>('get', `/dashboard/grafik/guru/${currentMonth}`, {
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}
+
 // Statistik Kelas Harian - GET /dashboard/statistik/kelas/:tanggal
 export async function getDailyClassStats(tanggal?: string): Promise<StatistikKelasResponse> {
   const currentDate = tanggal || toLocalDate(); // YYYY-MM-DD format

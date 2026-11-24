@@ -50,6 +50,7 @@ const COLORS = ['#10b981', '#3b82f6', '#fbbf24', '#ef4444', '#8b5cf6', '#06b6d4'
 export interface KepsekRingkasanTabProps {
   stats: any;
   chartData: any;
+  teacherChartData?: any;
   escalations: any[];
   sarprasData: any;
   hubinData: any;
@@ -61,6 +62,7 @@ export interface KepsekRingkasanTabProps {
 export const KepsekRingkasanTab: React.FC<KepsekRingkasanTabProps> = React.memo(({
   stats,
   chartData,
+  teacherChartData,
   escalations,
   sarprasData,
   hubinData,
@@ -195,20 +197,35 @@ export const KepsekRingkasanTab: React.FC<KepsekRingkasanTabProps> = React.memo(
     [onTabSelect, navigate]
   );
 
-  // Trend Data Bulanan
+  // Trend Data Bulanan (% Kehadiran Guru vs Siswa)
   const trendData = useMemo(() => {
-    if (!chartData?.data) return [];
-    const labels = chartData.data.labels || [];
-    const datasets = chartData.data.datasets || [];
+    const siswaPayload = chartData?.data;
+    const guruPayload = teacherChartData?.data;
+    const labels: string[] = siswaPayload?.labels || guruPayload?.labels || [];
+    if (labels.length === 0) return [];
+
+    const siswaDatasets: any[] = siswaPayload?.datasets || [];
+    const guruDatasets: any[] = guruPayload?.datasets || [];
+    const siswaHadirDs = siswaDatasets.find((d) => String(d.label || '').toLowerCase() === 'hadir');
+    const guruHadirDs = guruDatasets.find((d) => String(d.label || '').toLowerCase() === 'hadir');
+
+    const totalSiswa = Number(stats?.total_siswa) || 0;
+    const totalGuru = Number(stats?.total_guru) || 0;
+
     return labels.map((label: string, index: number) => {
-      const item: any = { name: label };
-      datasets.forEach((dataset: any) => {
-        const key = dataset.label.toLowerCase().includes('guru') ? 'Guru' : 'Siswa';
-        item[key] = dataset.data[index];
-      });
-      return item;
+      const siswaRaw = Number(siswaHadirDs?.data?.[index] ?? 0);
+      const guruRaw = Number(guruHadirDs?.data?.[index] ?? 0);
+
+      const siswaPct = totalSiswa > 0 ? Math.min(100, Math.round((siswaRaw / totalSiswa) * 100)) : 0;
+      const guruPct = totalGuru > 0 ? Math.min(100, Math.round((guruRaw / totalGuru) * 100)) : 0;
+
+      return {
+        name: label,
+        Siswa: siswaPct,
+        Guru: guruPct,
+      };
     });
-  }, [chartData]);
+  }, [chartData, teacherChartData, stats?.total_siswa, stats?.total_guru]);
 
   // Distribusi Siswa Harian
   const distributionData = useMemo(
