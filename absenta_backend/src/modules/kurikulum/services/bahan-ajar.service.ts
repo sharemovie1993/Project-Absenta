@@ -140,6 +140,20 @@ export class BahanAjarService {
       }))
     ];
 
+    const attachedFiles = availablePerangkats
+      .filter((p) => Boolean(p.file_url && String(p.file_url).trim() !== ''))
+      .map((p) => ({
+        id: p.id,
+        judul: p.judul,
+        jenis: p.jenis,
+        file_url: p.file_url,
+        fase: p.fase || 'E',
+        tingkat: p.tingkat || 10,
+        guru_nama: p.Guru?.nama_guru || '-',
+        status: p.status,
+        created_at: p.created_at,
+      }));
+
     // 2. Cek apakah targetIdentifier langsung merujuk ke ID PerangkatAjar Guru
     let directPerangkat = (targetIdentifier && targetIdentifier !== 'auto' && targetIdentifier !== 'empty-mapel')
       ? availablePerangkats.find(p => p.id === targetIdentifier) || await prisma.perangkatAjar.findFirst({
@@ -154,7 +168,8 @@ export class BahanAjarService {
           perangkat: directPerangkat,
           konten: directPerangkat.konten_struktur_json,
           source: 'CUSTOM',
-          available_moduls: availableModulsList
+          available_moduls: availableModulsList,
+          attached_files: attachedFiles,
         };
       }
 
@@ -167,7 +182,8 @@ export class BahanAjarService {
             perangkat: directPerangkat,
             konten: linkedPreset.konten_json,
             source: 'PRESET',
-            available_moduls: availableModulsList
+            available_moduls: availableModulsList,
+            attached_files: attachedFiles,
           };
         }
       }
@@ -190,7 +206,8 @@ export class BahanAjarService {
         },
         konten: directPreset.konten_json,
         source: 'PRESET',
-        available_moduls: availableModulsList
+        available_moduls: availableModulsList,
+        attached_files: attachedFiles,
       };
     }
 
@@ -208,7 +225,8 @@ export class BahanAjarService {
         },
         konten: selectedPreset.konten_json,
         source: 'PRESET',
-        available_moduls: availableModulsList
+        available_moduls: availableModulsList,
+        attached_files: attachedFiles,
       };
     }
 
@@ -225,7 +243,8 @@ export class BahanAjarService {
         },
         konten: null,
         source: 'NONE',
-        available_moduls: []
+        available_moduls: availableModulsList,
+        attached_files: attachedFiles,
       };
     }
 

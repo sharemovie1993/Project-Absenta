@@ -20,7 +20,9 @@ import {
   Check,
   ChevronUp,
   ChevronDown,
-  Layers
+  Layers,
+  ExternalLink,
+  Download
 } from 'lucide-react';
 import { Modal, Button } from '../../ui';
 import {
@@ -28,7 +30,8 @@ import {
   getMateriSlides,
   MateriSlideItem,
   PertemuanItem,
-  AvailableModulItem
+  AvailableModulItem,
+  AttachedFileItem
 } from '../../../api/bahan-ajar.api';
 import { toast } from 'react-hot-toast';
 import { cn, resolveProfilePhotoUrl } from '../../../lib/utils';
@@ -66,6 +69,8 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
   const [activeMateriSlideIdx, setActiveMateriSlideIdx] = useState<number>(0);
   const [fontSizeScale, setFontSizeScale] = useState<number>(1);
   const [selectedModulId, setSelectedModulId] = useState<string>('');
+  const [readerViewTab, setReaderViewTab] = useState<'SLIDES' | 'PDF'>('SLIDES');
+  const [selectedFileId, setSelectedFileId] = useState<string>('');
 
   // 1. Auto-detect Tingkat & Fase dari Nama Kelas jika belum disediakan
   const detectedContext = useMemo(() => {
@@ -116,6 +121,21 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
   const pertemuanList: PertemuanItem[] = useMemo(() => {
     return data?.konten || [];
   }, [data]);
+
+  const attachedFiles: AttachedFileItem[] = useMemo(() => {
+    return data?.attached_files || [];
+  }, [data]);
+
+  const selectedFile: AttachedFileItem | undefined = useMemo(() => {
+    if (attachedFiles.length === 0) return undefined;
+    return attachedFiles.find((f) => f.id === selectedFileId) || attachedFiles[0];
+  }, [attachedFiles, selectedFileId]);
+
+  useEffect(() => {
+    if (!isLoading && pertemuanList.length === 0 && attachedFiles.length > 0) {
+      setReaderViewTab('PDF');
+    }
+  }, [isLoading, pertemuanList.length, attachedFiles.length]);
 
   const currentPertemuan: PertemuanItem | undefined = pertemuanList[activePertemuanIdx];
 
@@ -250,6 +270,8 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
       setIsProjectorMode(false);
       setActiveSlideDeckIdx(0);
       setSelectedModulId('');
+      setReaderViewTab('SLIDES');
+      setSelectedFileId('');
     }
   }, [isOpen, perangkatId, mapelId, kelasNama]);
 
@@ -342,6 +364,41 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
 
           {/* Quick Header Controls */}
           <div className="flex items-center gap-2">
+            {/* Tab Switcher: Slide Terstruktur vs Lampiran File Modul (PDF) */}
+            {!isProjectorMode && attachedFiles.length > 0 && (
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setReaderViewTab('SLIDES')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer flex items-center gap-1",
+                    readerViewTab === 'SLIDES'
+                      ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  )}
+                >
+                  <BookOpen size={12} />
+                  <span>Slide KBM</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReaderViewTab('PDF')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer flex items-center gap-1",
+                    readerViewTab === 'PDF'
+                      ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-2xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  )}
+                >
+                  <FileText size={12} />
+                  <span>File Modul (PDF)</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-mono">
+                    {attachedFiles.length}
+                  </span>
+                </button>
+              </div>
+            )}
+
             {/* Font Scale Controls */}
             <div className="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-0.5 shadow-xs">
               <button
@@ -698,6 +755,126 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
               <CheckCircle2 size={16} />
               <span>Selesai Mengajar ➔ Isi Jurnal KBM</span>
             </Button>
+          </div>
+        </div>
+      ) : readerViewTab === 'PDF' && attachedFiles.length > 0 && selectedFile ? (
+        /* ── MODE 3: PENAMPIL LAMPIRAN FILE MODUL (PDF / DOKUMEN UPLOAD) ── */
+        <div className="flex flex-1 overflow-hidden">
+          {attachedFiles.length > 1 && (
+            <div className="w-64 sm:w-72 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 flex flex-col gap-2 shrink-0 overflow-y-auto custom-scrollbar">
+              <div className="flex items-center justify-between px-1 pb-1">
+                <span className="text-[11px] font-black tracking-wider uppercase text-slate-400 dark:text-slate-500">
+                  Lampiran File Modul
+                </span>
+                <span className="text-[11px] font-black text-rose-600 dark:text-rose-400 font-mono">
+                  {attachedFiles.length} File
+                </span>
+              </div>
+              {attachedFiles.map((file) => {
+                const isSelected = file.id === selectedFile.id;
+                return (
+                  <button
+                    key={file.id}
+                    type="button"
+                    onClick={() => setSelectedFileId(file.id)}
+                    className={cn(
+                      "p-3 rounded-2xl text-left transition-all cursor-pointer border flex flex-col gap-1 text-xs",
+                      isSelected
+                        ? "bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-700 shadow-sm"
+                        : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-800/60 hover:bg-slate-100"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                        {file.jenis || 'MODUL'}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400">
+                        Fase {file.fase || 'E'}
+                      </span>
+                    </div>
+                    <p className="font-bold text-xs text-slate-800 dark:text-slate-100 line-clamp-2 leading-snug pt-0.5">
+                      {file.judul}
+                    </p>
+                    <span className="text-[10px] text-slate-500 truncate">
+                      {file.guru_nama || '-'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex-1 flex flex-col overflow-hidden bg-slate-100 dark:bg-slate-950">
+            {/* Bar Info File Modul */}
+            <div className="px-4 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                    {selectedFile.jenis || 'MODUL'}
+                  </span>
+                  <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                    {selectedFile.judul}
+                  </h4>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Pengunggah: {selectedFile.guru_nama || '-'} • Fase {selectedFile.fase || 'E'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={resolveProfilePhotoUrl(selectedFile.file_url) || selectedFile.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-8 px-3 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
+                >
+                  <ExternalLink size={13} />
+                  <span>Buka di Tab Baru</span>
+                </a>
+                {onOpenJurnal && (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      onOpenJurnal({
+                        judul_materi: selectedFile.judul,
+                        deskripsi: `Mengajar menggunakan lampiran modul ${selectedFile.jenis || 'Perangkat Ajar'}: ${selectedFile.judul}`,
+                      });
+                      onClose();
+                    }}
+                    className="h-8 px-3.5 rounded-xl font-black text-xs bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <CheckCircle2 size={14} />
+                    <span>Isi Jurnal KBM</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Inline PDF Viewer */}
+            {String(selectedFile.file_url || '').toLowerCase().includes('.pdf') ? (
+              <iframe
+                key={selectedFile.id}
+                src={resolveProfilePhotoUrl(selectedFile.file_url) || selectedFile.file_url}
+                title={selectedFile.judul}
+                className="w-full flex-1 border-0 bg-white"
+              />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
+                <FileText className="w-12 h-12 text-slate-400" />
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                  Pratinjau langsung hanya tersedia untuk format PDF.
+                </p>
+                <a
+                  href={resolveProfilePhotoUrl(selectedFile.file_url) || selectedFile.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="h-9 px-4 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5"
+                >
+                  <Download size={14} />
+                  <span>Unduh / Buka Dokumen</span>
+                </a>
+              </div>
+            )}
           </div>
         </div>
       ) : (

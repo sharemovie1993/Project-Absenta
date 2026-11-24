@@ -92,11 +92,24 @@ export interface AvailableModulItem {
   mapel: string;
 }
 
+export interface AttachedFileItem {
+  id: string;
+  judul: string;
+  jenis: string;
+  file_url: string;
+  fase?: string;
+  tingkat?: number;
+  guru_nama?: string;
+  status?: string;
+  created_at?: string;
+}
+
 export interface ReaderDataResponse {
   perangkat: any;
   konten: PertemuanItem[] | null;
   source: 'CUSTOM' | 'PRESET' | 'AUTO_MATCHED_PRESET' | 'NONE';
   available_moduls?: AvailableModulItem[];
+  attached_files?: AttachedFileItem[];
 }
 
 /**
