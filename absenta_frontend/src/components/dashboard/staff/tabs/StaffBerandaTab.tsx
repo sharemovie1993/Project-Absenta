@@ -28,7 +28,9 @@ import {
   Rocket,
   QrCode,
   LayoutGrid,
+  Briefcase,
 } from 'lucide-react';
+import { PersonPhoto } from '@/components/ui/PersonPhoto';
 import { 
   UniversalEcosystemTopbar,
   type UniversalSubtabItem 
@@ -842,31 +844,81 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
             {activeSubTab === 'agenda' && (
               <div className="space-y-3 sm:space-y-4">
                 {/* Daily Status Strip */}
-                <TeacherDailyStatusStrip
-                  activeKbm={activeKbm}
-                  nextKbm={nextKbm}
-                  isAllFinished={isAllFinished}
-                  totalJp={totalJp}
-                  totalMinutes={totalMinutes}
-                  guruTapTime={(rekapStats as any)?.JAM_MASUK || null}
-                  isGuruHadir={Boolean(rekapStats.HADIR > 0 || (rekapStats as any)?.JAM_MASUK)}
-                  userRank={myLeaderboardRank?.rank}
-                  userPoints={myLeaderboardRank?.points}
-                  onOpenLeaderboard={() => setIsLeaderboardModalOpen(true)}
-                />
+                {/* Biodata Ringkas Guru, Jabatan Sekolah & Peringkat Klasemen */}
+                <HubCard bodyClassName="p-3 sm:p-4">
+                  <div className="flex items-stretch gap-3 sm:gap-4">
+                    <PersonPhoto
+                      name={displayName}
+                      foto={rawPhoto || (user?.guru_profile as any)?.foto || (myLeaderboardRank?.data as any)?.foto}
+                      variant="portrait"
+                      size="sm"
+                      badgeLabel="Guru"
+                    />
+                    <div className="min-w-0 flex-1 flex flex-col justify-between gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                            {displayName}
+                          </h2>
+                          <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate">
+                            {((teacherBeban as any)?.nip || (user?.guru_profile as any)?.nip || (myLeaderboardRank?.data as any)?.nip)
+                              ? `NIP. ${(teacherBeban as any)?.nip || (user?.guru_profile as any)?.nip || (myLeaderboardRank?.data as any)?.nip}`
+                              : 'Pendidik'}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsLeaderboardModalOpen(true)}
+                          className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/70 text-[11px] font-black hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors cursor-pointer"
+                          title="Lihat Klasemen Kinerja Guru"
+                        >
+                          <Trophy size={12} className="text-amber-500 shrink-0" />
+                          <span>
+                            {myLeaderboardRank?.rank ? `#${myLeaderboardRank.rank}` : '#-'}
+                          </span>
+                          <span className="font-mono opacity-80">
+                            ({myLeaderboardRank?.points ?? 0} Pts)
+                          </span>
+                        </button>
+                      </div>
 
-                {/* Operational Micro-Grid */}
-                <TeacherOpsMicroGrid
-                  totalJp={totalJp}
-                  totalMinutes={totalMinutes}
-                  unfilledJournalsCount={unfilledJournalsCount}
-                  currentJp={teacherBeban?.total_calculated_jp ?? teacherBeban?.current_jp ?? 0}
-                  targetJp={teacherBeban?.max_jp ?? 24}
-                  onOpenSchedule={() => handleSubTabChange('jadwal')}
-                  onOpenJournals={() => handleSubTabChange('rekap')}
-                  onOpenBeban={() => onNavigateTab('profil')}
-                  onOpenRekapMapel={() => handleSubTabChange('rekap')}
-                />
+                      {/* Posisi Jabatan di Sekolah */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Briefcase size={12} className="text-indigo-500 shrink-0" />
+                        {(() => {
+                          const posLabels: string[] = [];
+                          const rawPos = (teacherBeban as any)?.positions;
+                          if (Array.isArray(rawPos)) {
+                            rawPos.forEach((p: any) => {
+                              const lbl = p?.nama_jabatan || p?.name || p?.position_name || p?.code;
+                              if (lbl && !posLabels.includes(lbl)) posLabels.push(lbl);
+                            });
+                          }
+                          if (isKaprog && !posLabels.some((l) => l.toLowerCase().includes('kaprog'))) {
+                            posLabels.push(`Kaprog${kaprogJurusan ? ` ${kaprogJurusan}` : ''}`);
+                          }
+                          if (waliKelasNama && !posLabels.some((l) => l.toLowerCase().includes('wali'))) {
+                            posLabels.push(`Wali Kelas ${waliKelasNama}`);
+                          }
+                          if (isPembimbingPkl && !posLabels.some((l) => l.toLowerCase().includes('pkl'))) {
+                            posLabels.push('Pembimbing PKL');
+                          }
+                          if (posLabels.length === 0) {
+                            posLabels.push((user?.guru_profile as any)?.jabatan || 'Guru Mata Pelajaran');
+                          }
+                          return posLabels.map((lbl, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/70"
+                            >
+                              {lbl}
+                            </span>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                </HubCard>
 
                 {/* Status Kesiapan / Bebas Tugas Bank Soal CBT Guru (Saat Event CBT Aktif) */}
                 <TeacherCbtDutyCard
