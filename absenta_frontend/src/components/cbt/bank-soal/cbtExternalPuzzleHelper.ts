@@ -104,16 +104,29 @@ export function parseBulkAnswerKeys(rawKeyText: string): Map<number, OptionCode>
 }
 
 const QUESTION_START_REGEX = /^(?:soal\s*(?:no\.?)?\s*\d+\s*[:.-]?|\d{1,3}[.)]\s+)/i;
+const OPTION_PREFIX_REGEX = /^(?:[A-Ea-e][.)\]:-]\s+|\([A-Ea-e]\)\s+|\[[A-Ea-e]\]\s+)/;
 const GOOGLE_FORM_OVAL_MARKER_REGEX = /^(?:tandai\s+satu\s+oval\s+saja\.?|mark\s+only\s+one\s+oval\.?)$/i;
+const GOOGLE_FORM_POINTS_LINE_REGEX = /^(?:\d{1,3}[.)]?\s*)?\d+\s*(?:poin|points?)\s*$/i;
+const GOOGLE_FORM_STANDALONE_NUM_REGEX = /^\d{1,3}[.)]\s*$/;
 const GOOGLE_FORM_NOISE_REGEX =
   /^(?:konten ini tidak dibuat atau didukung oleh google\.?|this content is neither created nor endorsed by google\.?|google\s+formulir|google\s+forms|\*\s*menunjukkan pertanyaan yang wajib diisi|\*\s*indicates required question|halaman\s+\d+\s+dari\s+\d+|page\s+\d+\s+of\s+\d+|https?:\/\/docs\.google\.com\/forms\/.*|\*)$/i;
 
 function cleanGoogleFormQuestionText(text: string): string {
   return text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(
+      (l) =>
+        l.length > 0 &&
+        !GOOGLE_FORM_POINTS_LINE_REGEX.test(l) &&
+        !GOOGLE_FORM_STANDALONE_NUM_REGEX.test(l) &&
+        !GOOGLE_FORM_NOISE_REGEX.test(l)
+    )
+    .join('\n')
     .replace(QUESTION_START_REGEX, '')
     .replace(/\s*\*+\s*$/gm, '')
-    .replace(/\s*\(\d+\s*poin\)\s*$/i, '')
-    .replace(/\s+\d+\s*poin\s*$/i, '')
+    .replace(/\s*\(\d+\s*(?:poin|points?)\)\s*$/i, '')
+    .replace(/\s+\d+\s*(?:poin|points?)\s*$/i, '')
     .trim();
 }
 
@@ -220,24 +233,46 @@ function segmentGoogleFormPdfToBlocks(bodyText: string): string[] {
     let splitOffset = betweenLines.length;
 
     if (i + 1 < ovalIndices.length) {
-      // 1. Jika soal berikutnya punya nomor ("2. ", "Soal 2"), potong tepat di situ
-      const numberedNextIdx = betweenLines.findIndex((l) => QUESTION_START_REGEX.test(l));
-      if (numberedNextIdx > 0) {
-        splitOffset = numberedNextIdx;
+      // 1. Jika opsi memakai awalan a./b./c./d./e., ambil berurutan sampai baris non-opsi muncul
+      const firstNonEmpty = betweenLines.find((l) => l.length > 0) || '';
+      if (OPTION_PREFIX_REGEX.test(firstNonEmpty)) {
+        let lastOptIdx = -1;
+        for (let k = 0; k < betweenLines.length; k++) {
+          const l = betweenLines[k];
+          if (!l) continue;
+          if (OPTION_PREFIX_REGEX.test(l)) {
+            lastOptIdx = k;
+          } else {
+            break;
+          }
+        }
+        if (lastOptIdx >= 0) {
+          splitOffset = lastOptIdx + 1;
+        }
       } else {
-        // 2. Tanpa nomor soal: cari baris kosong terakhir sebelum pertanyaan berikutnya,
-        //    atau sisakan minimal 1 baris non-kosong terakhir sebagai pertanyaan berikutnya
-        const nonEmptyPositions: number[] = [];
-        betweenLines.forEach((l, idx) => {
-          if (l.length > 0) nonEmptyPositions.push(idx);
-        });
-        if (nonEmptyPositions.length >= 3) {
-          // Maksimal 5 opsi untuk soal ini; jika lebih, sisanya milik soal berikutnya
-          const lastOptPos =
-            nonEmptyPositions.length > 5
-              ? nonEmptyPositions[4]
-              : nonEmptyPositions[nonEmptyPositions.length - 2];
-          splitOffset = lastOptPos + 1;
+        // 2. Tanpa awalan a.-e.: cek baris nomor soal ("2. "), baris "4 poin", atau baris wajib "*"
+        const nextQuestionBoundary = betweenLines.findIndex(
+          (l) =>
+            QUESTION_START_REGEX.test(l) ||
+            GOOGLE_FORM_POINTS_LINE_REGEX.test(l) ||
+            GOOGLE_FORM_STANDALONE_NUM_REGEX.test(l) ||
+            /\*$/.test(l)
+        );
+        if (nextQuestionBoundary >= 2) {
+          splitOffset = nextQuestionBoundary;
+        } else {
+          // Fallback: sisakan minimal 1 baris non-kosong terakhir sebagai pertanyaan berikutnya
+          const nonEmptyPositions: number[] = [];
+          betweenLines.forEach((l, idx) => {
+            if (l.length > 0) nonEmptyPositions.push(idx);
+          });
+          if (nonEmptyPositions.length >= 3) {
+            const lastOptPos =
+              nonEmptyPositions.length > 5
+                ? nonEmptyPositions[4]
+                : nonEmptyPositions[nonEmptyPositions.length - 2];
+            splitOffset = lastOptPos + 1;
+          }
         }
       }
     } else {
