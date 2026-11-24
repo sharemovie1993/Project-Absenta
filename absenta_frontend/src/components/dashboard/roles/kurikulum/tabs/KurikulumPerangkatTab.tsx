@@ -385,6 +385,19 @@ export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
                         </div>
                         {t.docs.map((doc: any) => {
                           const docStatus = String(doc.status || 'PENDING').toUpperCase();
+                          const cleanUrl = String(doc.file_url || '').split('?')[0].toLowerCase();
+                          const extMatch = cleanUrl.match(/\.([a-z0-9]+)$/);
+                          const fileExt = (extMatch?.[1] || '').toUpperCase();
+                          const fmtBadgeClass =
+                            fileExt === 'PDF'
+                              ? 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800'
+                              : fileExt === 'PPTX' || fileExt === 'PPT'
+                              ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/70 dark:text-orange-300 dark:border-orange-800'
+                              : fileExt === 'DOCX' || fileExt === 'DOC'
+                              ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/70 dark:text-blue-300 dark:border-blue-800'
+                              : fileExt === 'XLSX' || fileExt === 'XLS'
+                              ? 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800'
+                              : 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
                           return (
                             <div
                               key={doc.id}
@@ -398,9 +411,19 @@ export const KurikulumPerangkatTab: React.FC<KurikulumPerangkatTabProps> = ({
                                   <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                                     {doc.jenis}
                                   </span>
+                                  {fileExt && (
+                                    <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-black uppercase border font-mono', fmtBadgeClass)}>
+                                      {fileExt}
+                                    </span>
+                                  )}
                                   {doc.Mapel?.nama_mapel && (
                                     <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                                       {doc.Mapel.nama_mapel}
+                                    </span>
+                                  )}
+                                  {doc.file_exists === false && (
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300">
+                                      Berkas Hilang
                                     </span>
                                   )}
                                 </div>

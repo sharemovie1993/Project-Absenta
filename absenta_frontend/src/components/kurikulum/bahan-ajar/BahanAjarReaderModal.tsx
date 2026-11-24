@@ -980,10 +980,12 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                   ? selectedFile.file_url
                   : null);
               if (previewSrc) {
+                const resolvedPdf = resolveProfilePhotoUrl(previewSrc) || previewSrc;
+                const pdfViewerUrl = resolvedPdf.includes('#') ? resolvedPdf : `${resolvedPdf}#navpanes=0&view=FitH`;
                 return (
                   <iframe
                     key={selectedFile.id}
-                    src={resolveProfilePhotoUrl(previewSrc) || previewSrc}
+                    src={pdfViewerUrl}
                     title={selectedFile.judul}
                     className="w-full flex-1 border-0 bg-white"
                   />

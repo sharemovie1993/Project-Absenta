@@ -76,7 +76,8 @@ export default React.memo(function PerangkatAjarReviewModal({
       return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(absUrl)}`;
     }
     if (previewPdfUrl) {
-      return resolveProfilePhotoUrl(previewPdfUrl) || previewPdfUrl;
+      const resolvedPdf = resolveProfilePhotoUrl(previewPdfUrl) || previewPdfUrl;
+      return resolvedPdf.includes('#') ? resolvedPdf : `${resolvedPdf}#navpanes=0&view=FitH`;
     }
     return null;
   }, [fileUrl, useOfficeViewer, isOfficeFile, previewPdfUrl]);
