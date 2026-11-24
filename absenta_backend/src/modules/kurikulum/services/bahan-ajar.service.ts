@@ -149,7 +149,7 @@ export class BahanAjarService {
       availablePerangkats
         .filter((p) => Boolean(p.file_url && String(p.file_url).trim() !== ''))
         .map(async (p) => {
-          const existingPdf = resolveExistingSiblingPdf(p.file_url);
+          const existingPdf = await resolveExistingSiblingPdf(p.file_url);
           const previewPdf = existingPdf || (await convertOfficeToPdfSibling(p.file_url).catch(() => null));
           return {
             id: p.id,
