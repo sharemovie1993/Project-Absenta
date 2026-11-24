@@ -832,6 +832,48 @@ export default function CbtExamRoomPage() {
   const currentAnswer = currentSoal ? answersMap[currentSoal.id]?.jawaban : '';
   const currentIsRagu = currentSoal ? answersMap[currentSoal.id]?.isRagu : false;
 
+  // Shortcut Keyboard: Tekan A-E untuk memilih jawaban, ArrowLeft/ArrowRight untuk pindah soal
+  useEffect(() => {
+    if (step !== 'EXAM' || !currentSoal) return;
+
+    const onExamAnswerKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const keyUpper = e.key.toUpperCase();
+      if (['A', 'B', 'C', 'D', 'E'].includes(keyUpper)) {
+        const matchedOpt = (currentSoal.opsi_jawaban_json || []).find(
+          (opt) => (opt.kode || '').toUpperCase().trim() === keyUpper
+        );
+        if (matchedOpt) {
+          e.preventDefault();
+          handleSelectAnswer(currentSoal.id, matchedOpt.kode);
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowLeft' && currentIdx > 0) {
+        e.preventDefault();
+        setCurrentIdx((idx) => Math.max(0, idx - 1));
+      } else if (e.key === 'ArrowRight' && currentIdx < soalList.length - 1) {
+        e.preventDefault();
+        setCurrentIdx((idx) => Math.min(soalList.length - 1, idx + 1));
+      }
+    };
+
+    window.addEventListener('keydown', onExamAnswerKeyDown);
+    return () => window.removeEventListener('keydown', onExamAnswerKeyDown);
+  }, [step, currentSoal, currentIdx, soalList.length]);
+
   const totalTerjawab = Object.values(answersMap).filter((v) => Boolean(v.jawaban)).length;
   const totalRagu = Object.values(answersMap).filter((v) => v.isRagu).length;
 
@@ -1601,9 +1643,14 @@ export default function CbtExamRoomPage() {
 
                 {/* Pilihan Jawaban A-E dengan Blok Warna Menarik */}
                 <div className="space-y-2.5">
-                  <span className="block text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">
-                    PILIHAN JAWABAN:
-                  </span>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="block text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">
+                      PILIHAN JAWABAN:
+                    </span>
+                    <span className="hidden md:inline-block text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                      ⌨️ Tekan <strong>A–E</strong> untuk menjawab • <strong>← / →</strong> pindah soal
+                    </span>
+                  </div>
 
                   <CbtOptionsRenderer
                     options={currentSoal.opsi_jawaban_json}

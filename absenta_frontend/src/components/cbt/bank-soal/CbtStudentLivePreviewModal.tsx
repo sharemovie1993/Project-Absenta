@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Button } from '@/components/ui';
+import React, { useState, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui';
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,6 +9,9 @@ import {
   Clock,
   Laptop,
   RotateCcw,
+  Maximize2,
+  Minimize2,
+  X,
 } from 'lucide-react';
 import type { CbtSoal } from '@/types/cbt.types';
 import { CbtContentRenderer } from '../common/CbtContentRenderer';
@@ -37,6 +40,28 @@ export const CbtStudentLivePreviewModal: React.FC<CbtStudentLivePreviewModalProp
   const [currentIdx, setCurrentIdx] = useState(initialIndex);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [showKeyHint, setShowKeyHint] = useState(false);
+  const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onFsChange = () => {
+      setIsBrowserFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, []);
+
+  const toggleBrowserFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement && containerRef.current) {
+        await containerRef.current.requestFullscreen();
+      } else if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    } catch {
+      // ignore if blocked by browser policy
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -46,6 +71,51 @@ export const CbtStudentLivePreviewModal: React.FC<CbtStudentLivePreviewModalProp
     }
   }, [isOpen, initialIndex, soalList.length]);
 
+  // Shortcut Keyboard: Tekan A-E untuk memilih jawaban, ArrowLeft/ArrowRight untuk pindah soal
+  useEffect(() => {
+    if (!isOpen || soalList.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const activeSoal = soalList[currentIdx];
+      if (!activeSoal) return;
+
+      const keyUpper = e.key.toUpperCase();
+      if (['A', 'B', 'C', 'D', 'E'].includes(keyUpper)) {
+        const matchedOpt = (activeSoal.opsi_jawaban_json || []).find(
+          (opt) => (opt.kode || '').toUpperCase().trim() === keyUpper
+        );
+        if (matchedOpt) {
+          e.preventDefault();
+          setSelectedAnswers((prev) => ({ ...prev, [activeSoal.id]: matchedOpt.kode }));
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowLeft' && currentIdx > 0) {
+        e.preventDefault();
+        setCurrentIdx((idx) => Math.max(0, idx - 1));
+      } else if (e.key === 'ArrowRight' && currentIdx < soalList.length - 1) {
+        e.preventDefault();
+        setCurrentIdx((idx) => Math.min(soalList.length - 1, idx + 1));
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, currentIdx, soalList]);
+
   if (!isOpen || soalList.length === 0) return null;
 
   const currentSoal = soalList[currentIdx] || soalList[0];
@@ -53,15 +123,12 @@ export const CbtStudentLivePreviewModal: React.FC<CbtStudentLivePreviewModalProp
   const answeredCount = Object.keys(selectedAnswers).length;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size="full"
-      title={`Live Preview Tampilan Siswa: ${bankJudul}`}
+    <div
+      ref={containerRef}
+      className="fixed inset-0 z-[70] flex flex-col w-screen h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100"
     >
-      <div className="flex flex-col h-full max-h-[90vh] overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100">
-        {/* ── Header Simulasi Ruang Ujian Siswa ── */}
-        <div className="px-4 sm:px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
+      {/* ── Header Simulasi Ruang Ujian Siswa ── */}
+      <div className="px-4 sm:px-6 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 shrink-0">
               <Laptop size={18} />
@@ -112,6 +179,31 @@ export const CbtStudentLivePreviewModal: React.FC<CbtStudentLivePreviewModalProp
               <RotateCcw size={13} />
               <span>Reset</span>
             </button>
+
+            <button
+              type="button"
+              onClick={toggleBrowserFullscreen}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 flex items-center gap-1 cursor-pointer"
+              title="Toggle Layar Penuh Browser"
+            >
+              {isBrowserFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+              <span className="hidden sm:inline">{isBrowserFullscreen ? 'Normal' : 'Fullscreen'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (document.fullscreenElement) {
+                  document.exitFullscreen().catch(() => {});
+                }
+                onClose();
+              }}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 flex items-center gap-1 cursor-pointer"
+              title="Tutup Preview Siswa"
+            >
+              <X size={14} />
+              <span>Tutup</span>
+            </button>
           </div>
         </div>
 
@@ -141,9 +233,14 @@ export const CbtStudentLivePreviewModal: React.FC<CbtStudentLivePreviewModalProp
 
               {/* Pilihan Jawaban A-E (Komponen Resmi CbtOptionsRenderer modeContext="exam") */}
               <div className="space-y-2.5">
-                <span className="block text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">
-                  PILIHAN JAWABAN:
-                </span>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="block text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">
+                    PILIHAN JAWABAN:
+                  </span>
+                  <span className="hidden md:inline-block text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                    ⌨️ Tekan <strong>A–E</strong> untuk menjawab • <strong>← / →</strong> pindah soal
+                  </span>
+                </div>
                 <CbtOptionsRenderer
                   options={currentSoal.opsi_jawaban_json}
                   selectedAnswer={currentAnswer}
@@ -220,6 +317,5 @@ export const CbtStudentLivePreviewModal: React.FC<CbtStudentLivePreviewModalProp
           </div>
         </div>
       </div>
-    </Modal>
   );
 };
