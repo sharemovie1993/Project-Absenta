@@ -378,6 +378,192 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
   const showTeacherPhotoCol = Boolean(guruDisplayNama && guruDisplayNama !== '-' && mode !== 'GURU');
   const showGuruClassCol = Boolean(mode === 'GURU' && !hideKelas && kelasNama && kelasNama !== '-');
 
+  const sessionStatusBadge = isLive ? (
+    <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs shadow-emerald-500/30 flex items-center gap-1 shrink-0 animate-pulse">
+      <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+      LIVE
+    </span>
+  ) : isReadyToOpen ? (
+    <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700 flex items-center gap-1 shrink-0">
+      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+      SIAP DIMULAI
+    </span>
+  ) : isOverdue ? (
+    <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700 flex items-center gap-1 shrink-0">
+      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+      TERLEWAT
+    </span>
+  ) : isFinished ? (
+    <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 shrink-0">
+      SELESAI
+    </span>
+  ) : (
+    <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shrink-0">
+      MENDATANG
+    </span>
+  );
+
+  const teacherStatusBadge = (
+    <span className={cn(
+      "px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider border flex items-center gap-1 shrink-0",
+      teacherMeta.key === 'HADIR' ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700" :
+      teacherMeta.key === 'TERLAMBAT' ? "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-700" :
+      teacherMeta.key === 'IZIN' ? "bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-700" :
+      teacherMeta.key === 'SAKIT' ? "bg-orange-50 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border-orange-300 dark:border-orange-700" :
+      teacherMeta.key === 'PENUGASAN' || teacherMeta.key === 'INVAL' ? "bg-purple-50 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-300 dark:border-purple-700" :
+      teacherMeta.key === 'ALPA' ? "bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-700" :
+      "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-600"
+    )}>
+      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", teacherMeta.dotClass)} />
+      {teacherMeta.label}
+    </span>
+  );
+
+  const slotBadge = jamLabel ? (
+    <span className="px-1.5 py-0.5 rounded-md text-[10px] sm:text-xs font-black bg-indigo-50 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 uppercase tracking-wider font-mono flex items-center gap-1 shrink-0">
+      <Layers size={10} className="text-indigo-600 dark:text-indigo-400" />
+      <span>{jamLabel}</span>
+    </span>
+  ) : null;
+
+  const timeBadge = jamMulai ? (
+    <span className="text-[11px] sm:text-xs font-mono font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-1 shrink-0">
+      <Clock size={11} className="text-slate-400" />
+      <span>{jamMulai}{jamSelesai ? ` - ${jamSelesai}` : ''} WIB</span>
+    </span>
+  ) : null;
+
+  const headerActions = (
+    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+      {onOpenBahanAjar && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenBahanAjar(item);
+          }}
+          title="Buka Bahan Ajar Digital & Panduan KBM"
+          className="h-7 px-2 sm:px-2.5 sm:py-1 rounded-xl text-[11px] sm:text-xs font-black bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 shrink-0 shadow-xs"
+        >
+          <BookOpen size={12} className="text-indigo-600 dark:text-indigo-400" />
+          <span>Bahan Ajar</span>
+        </button>
+      )}
+
+      {mode === 'GURU' && onTestAlert && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onTestAlert(item);
+          }}
+          title="Uji coba alarm & notifikasi untuk sesi KBM ini"
+          className="w-7 h-7 sm:w-auto sm:px-2.5 sm:py-1 rounded-xl text-xs font-extrabold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shrink-0"
+        >
+          <Volume2 size={12} className="text-emerald-600 dark:text-emerald-400" />
+          <span className="hidden md:inline">Uji Alarm</span>
+        </button>
+      )}
+
+      {onToggleExpand && (
+        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center group-hover/card:text-slate-900 dark:group-hover/card:text-white group-hover/card:bg-slate-200 dark:group-hover/card:bg-slate-700 transition-colors shrink-0">
+          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </div>
+      )}
+    </div>
+  );
+
+  const prediksiBadge = mode !== 'SISWA' && prediksiRealtime ? (
+    prediksiRealtime.status === 'TERLAMBAT' ? (
+      <span
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-300 dark:border-rose-700 text-[10px] font-bold shrink-0"
+        title={`Sudah melewati batas aman hadir${prediksiRealtime.kegiatanNama ? ` (${prediksiRealtime.kegiatanNama})` : ''}`}
+      >
+        🔴 Terlambat {prediksiRealtime.menit} m
+      </span>
+    ) : prediksiRealtime.kegiatanNama ? (
+      <span
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-[10px] font-bold shrink-0"
+        title={`Kegiatan ${prediksiRealtime.kegiatanNama} berlangsung — batas aman hadir s.d ${prediksiRealtime.deadline} WIB`}
+      >
+        ⚠️ Aman ≤ {prediksiRealtime.deadline}
+      </span>
+    ) : (
+      <span
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold shrink-0"
+        title={`Masuk tepat waktu sebelum ${prediksiRealtime.deadline} WIB`}
+      >
+        ✅ Aman ≤ {prediksiRealtime.deadline}
+      </span>
+    )
+  ) : null;
+
+  const openerBadge = (() => {
+    const isOpenedByPetugas = Boolean(
+      item?.opened_by === 'PETUGAS_KELAS' ||
+      item?.session?.opened_by === 'PETUGAS_KELAS' ||
+      item?.opened_by_petugas ||
+      item?.session?.opened_by_petugas ||
+      (typeof item?.keterangan === 'string' && item.keterangan.includes('[DIBUKA_PETUGAS_KELAS]')) ||
+      (typeof item?.session?.keterangan === 'string' && item.session.keterangan.includes('[DIBUKA_PETUGAS_KELAS]'))
+    );
+    const isOpenedByGuru = Boolean(
+      item?.opened_by === 'GURU' ||
+      item?.session?.opened_by === 'GURU' ||
+      (typeof item?.keterangan === 'string' && item.keterangan.includes('[DIBUKA_GURU]')) ||
+      (typeof item?.session?.keterangan === 'string' && item.session.keterangan.includes('[DIBUKA_GURU]')) ||
+      (!isOpenedByPetugas && isTeacherPresent)
+    );
+    const rawOpenerName = item?.opened_by_name || item?.session?.opened_by_name;
+    const openerName = rawOpenerName || (
+      typeof item?.keterangan === 'string' && item.keterangan.includes('[DIBUKA_PETUGAS_KELAS]')
+        ? item.keterangan.replace('[DIBUKA_PETUGAS_KELAS]', '').trim()
+        : typeof item?.session?.keterangan === 'string' && item.session.keterangan.includes('[DIBUKA_PETUGAS_KELAS]')
+        ? item.session.keterangan.replace('[DIBUKA_PETUGAS_KELAS]', '').trim()
+        : null
+    );
+
+    if (isOpenedByPetugas) {
+      return (
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200 border border-amber-300 dark:border-amber-700/80 text-[10px] font-black shrink-0 shadow-2xs"
+          title={`Sesi KBM ini dibuka oleh Petugas Kelas${openerName ? `: ${openerName}` : ''}`}
+        >
+          <Users size={11} className="text-amber-600 dark:text-amber-400" />
+          Dibuka Petugas Kelas{openerName ? ` (${openerName})` : ''}
+        </span>
+      );
+    }
+    if (isOpenedByGuru && isSessionActive) {
+      return (
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700/80 text-[10px] font-black shrink-0 shadow-2xs"
+          title={`Sesi KBM ini dibuka oleh Guru Pengampu${openerName ? `: ${openerName}` : ''}`}
+        >
+          <CheckCircle2 size={11} className="text-emerald-600 dark:text-emerald-400" />
+          Dibuka Guru
+        </span>
+      );
+    }
+    return null;
+  })();
+
+  const ketarunaanBadge = (() => {
+    const guruCatatan = item?.AbsenGuru?.[0]?.catatan || item?.guru_catatan || item?.session?.catatan || '';
+    const isSyncedKetarunaan = Boolean(item?.is_synced_ketarunaan) ||
+      (typeof guruCatatan === 'string' && guruCatatan.toLowerCase().includes('ketarunaan'));
+    if (!isSyncedKetarunaan) return null;
+    return (
+      <span
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700 text-[10px] font-bold shrink-0"
+        title={`Kehadiran tercatat via Terminal Ketarunaan. ${guruCatatan}`}
+      >
+        <ShieldCheck size={10} className="text-yellow-600 dark:text-yellow-400" />
+        Via Terminal Ketarunaan
+      </span>
+    );
+  })();
+
   return (
     <div
       className={cn(
@@ -421,239 +607,100 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
         {/* KOLOM 2: DATA SESI & AKSI */}
         <div className="min-w-0 flex-1 flex flex-col gap-1.5 sm:gap-2.5">
-        {/* ── ZONA 1: STATUS & TIME BAR ── */}
-        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
-            {/* Session Status Badge - High Contrast */}
-            {isLive ? (
-              <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs shadow-emerald-500/30 flex items-center gap-1 shrink-0 animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
-                LIVE
-              </span>
-            ) : isReadyToOpen ? (
-              <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 border border-amber-300 dark:border-amber-700 flex items-center gap-1 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                SIAP DIMULAI
-              </span>
-            ) : isOverdue ? (
-              <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-200 border border-rose-300 dark:border-rose-700 flex items-center gap-1 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                TERLEWAT
-              </span>
-            ) : isFinished ? (
-              <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 shrink-0">
-                SELESAI
-              </span>
-            ) : (
-              <span className="px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shrink-0">
-                MENDATANG
-              </span>
-            )}
-
-            {/* Teacher Status Badge - High Contrast */}
-            <span className={cn(
-              "px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider border flex items-center gap-1 shrink-0",
-              teacherMeta.key === 'HADIR' ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700" :
-              teacherMeta.key === 'TERLAMBAT' ? "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-700" :
-              teacherMeta.key === 'IZIN' ? "bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-700" :
-              teacherMeta.key === 'SAKIT' ? "bg-orange-50 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border-orange-300 dark:border-orange-700" :
-              teacherMeta.key === 'PENUGASAN' || teacherMeta.key === 'INVAL' ? "bg-purple-50 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-300 dark:border-purple-700" :
-              teacherMeta.key === 'ALPA' ? "bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-700" :
-              "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-600"
-            )}>
-              <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", teacherMeta.dotClass)} />
-              {teacherMeta.label}
-            </span>
-
-            {/* Slot Jam ke-X Badge */}
-            {jamLabel && (
-              <span className="px-1.5 py-0.5 rounded-md text-[10px] sm:text-xs font-black bg-indigo-50 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 uppercase tracking-wider font-mono flex items-center gap-1 shrink-0">
-                <Layers size={10} className="text-indigo-600 dark:text-indigo-400" />
-                <span>{jamLabel}</span>
-              </span>
-            )}
-
-            {/* Clock Time Range */}
-            {jamMulai && (
-              <span className="text-[11px] sm:text-xs font-mono font-extrabold text-slate-600 dark:text-slate-400 flex items-center gap-1 shrink-0">
-                <Clock size={11} className="text-slate-400" />
-                <span>{jamMulai}{jamSelesai ? ` - ${jamSelesai}` : ''} WIB</span>
-              </span>
-            )}
-
-            {/* 🏛️ Prediksi Batas Aman Real-Time (Hanya Guru, Piket & Monitoring) */}
-            {mode !== 'SISWA' && prediksiRealtime && (
-              prediksiRealtime.status === 'TERLAMBAT' ? (
-                <span
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-300 dark:border-rose-700 text-[10px] font-bold shrink-0"
-                  title={`Sudah melewati batas aman hadir${prediksiRealtime.kegiatanNama ? ` (${prediksiRealtime.kegiatanNama})` : ''}`}
-                >
-                  🔴 Terlambat {prediksiRealtime.menit} m
-                </span>
-              ) : prediksiRealtime.kegiatanNama ? (
-                <span
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-[10px] font-bold shrink-0"
-                  title={`Kegiatan ${prediksiRealtime.kegiatanNama} berlangsung — batas aman hadir s.d ${prediksiRealtime.deadline} WIB`}
-                >
-                  ⚠️ Aman ≤ {prediksiRealtime.deadline}
-                </span>
-              ) : (
-                <span
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold shrink-0"
-                  title={`Masuk tepat waktu sebelum ${prediksiRealtime.deadline} WIB`}
-                >
-                  ✅ Aman ≤ {prediksiRealtime.deadline}
-                </span>
-              )
-            )}
-
-            {/* 🏷️ Tipe Sesi Badge (Sesi Virtual vs Sesi Fisik — Khusus Monitoring) */}
-            {mode === 'MONITORING' && (isOtomatis ? (
-              <span 
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-bold shrink-0"
-                title="Sesi Virtual: Slot jadwal template KBM yang belum dibuka kelasnya oleh guru"
-              >
-                📅 Sesi Virtual
-              </span>
-            ) : (
-              <span 
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[10px] font-bold shrink-0"
-                title="Sesi Fisik: Rekaman sesi KBM riil yang dibuka di aplikasi"
-              >
-                🎯 Sesi Fisik
-              </span>
-            ))}
-
-            {/* 🏷️ Opener Badge: Informasi siapa yang membuka sesi KBM */}
-            {(() => {
-              const isOpenedByPetugas = Boolean(
-                item?.opened_by === 'PETUGAS_KELAS' ||
-                item?.session?.opened_by === 'PETUGAS_KELAS' ||
-                item?.opened_by_petugas ||
-                item?.session?.opened_by_petugas ||
-                (typeof item?.keterangan === 'string' && item.keterangan.includes('[DIBUKA_PETUGAS_KELAS]')) ||
-                (typeof item?.session?.keterangan === 'string' && item.session.keterangan.includes('[DIBUKA_PETUGAS_KELAS]'))
-              );
-              const isOpenedByGuru = Boolean(
-                item?.opened_by === 'GURU' ||
-                item?.session?.opened_by === 'GURU' ||
-                (typeof item?.keterangan === 'string' && item.keterangan.includes('[DIBUKA_GURU]')) ||
-                (typeof item?.session?.keterangan === 'string' && item.session.keterangan.includes('[DIBUKA_GURU]')) ||
-                (!isOpenedByPetugas && isTeacherPresent)
-              );
-              const rawOpenerName = item?.opened_by_name || item?.session?.opened_by_name;
-              const openerName = rawOpenerName || (
-                typeof item?.keterangan === 'string' && item.keterangan.includes('[DIBUKA_PETUGAS_KELAS]')
-                  ? item.keterangan.replace('[DIBUKA_PETUGAS_KELAS]', '').trim()
-                  : typeof item?.session?.keterangan === 'string' && item.session.keterangan.includes('[DIBUKA_PETUGAS_KELAS]')
-                  ? item.session.keterangan.replace('[DIBUKA_PETUGAS_KELAS]', '').trim()
-                  : null
-              );
-
-              if (isOpenedByPetugas) {
-                return (
-                  <span 
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200 border border-amber-300 dark:border-amber-700/80 text-[10px] font-black shrink-0 shadow-2xs"
-                    title={`Sesi KBM ini dibuka oleh Petugas Kelas${openerName ? `: ${openerName}` : ''}`}
-                  >
-                    <Users size={11} className="text-amber-600 dark:text-amber-400" />
-                    Dibuka Petugas Kelas{openerName ? ` (${openerName})` : ''}
-                  </span>
-                );
-              }
-              if (isOpenedByGuru && isSessionActive) {
-                return (
-                  <span 
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700/80 text-[10px] font-black shrink-0 shadow-2xs"
-                    title={`Sesi KBM ini dibuka oleh Guru Pengampu${openerName ? `: ${openerName}` : ''}`}
-                  >
-                    <CheckCircle2 size={11} className="text-emerald-600 dark:text-emerald-400" />
-                    Dibuka Guru
-                  </span>
-                );
-              }
-              return null;
-            })()}
-
-            {/* 🎖️ Ketarunaan Awareness Badge — muncul jika guru hadir via Terminal Ketarunaan */}
-            {(() => {
-              const guruCatatan = item?.AbsenGuru?.[0]?.catatan || item?.guru_catatan || item?.session?.catatan || '';
-              const isSyncedKetarunaan = Boolean(item?.is_synced_ketarunaan) || 
-                (typeof guruCatatan === 'string' && guruCatatan.toLowerCase().includes('ketarunaan'));
-              if (!isSyncedKetarunaan) return null;
-              return (
-                <span 
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700 text-[10px] font-bold shrink-0"
-                  title={`Kehadiran tercatat via Terminal Ketarunaan. ${guruCatatan}`}
-                >
-                  <ShieldCheck size={10} className="text-yellow-600 dark:text-yellow-400" />
-                  Via Terminal Ketarunaan
-                </span>
-              );
-            })()}
-
-          </div>
-
-          {/* Right Header: Presensi Count or Test Alert */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
-            {/* Header Action: Buka Bahan Ajar Digital */}
-            {onOpenBahanAjar && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenBahanAjar(item);
-                }}
-                title="Buka Bahan Ajar Digital & Panduan KBM"
-                className="h-7 sm:h-auto sm:px-2.5 sm:py-1 rounded-xl text-xs font-black bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 shrink-0 shadow-xs"
-              >
-                <BookOpen size={12} className="text-indigo-600 dark:text-indigo-400" />
-                <span>Bahan Ajar</span>
-              </button>
-            )}
-
-            {mode === 'GURU' && onTestAlert && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTestAlert(item);
-                }}
-                title="Uji coba alarm & notifikasi untuk sesi KBM ini"
-                className="w-7 h-7 sm:w-auto sm:px-2.5 sm:py-1 rounded-xl text-xs font-extrabold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shrink-0"
-              >
-                <Volume2 size={12} className="text-emerald-600 dark:text-emerald-400" />
-                <span className="hidden md:inline">Uji Alarm</span>
-              </button>
-            )}
-
-            {/* Expand / Collapse Icon */}
-            {onToggleExpand && (
-              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center group-hover/card:text-slate-900 dark:group-hover/card:text-white group-hover/card:bg-slate-200 dark:group-hover/card:bg-slate-700 transition-colors shrink-0">
-                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        {mode === 'GURU' ? (
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 min-w-0">
+            {/* Informasi Utama Guru: Jam Berapa -> Jam Ke -> Mata Pelajaran */}
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+                {timeBadge}
+                {slotBadge}
+                {prediksiBadge}
               </div>
-            )}
-          </div>
-        </div>
+              <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                {!hideKelas && !showGuruClassCol && kelasNama && kelasNama !== '-' && (
+                  <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-black text-[11px] sm:text-xs font-mono border border-blue-300 dark:border-blue-800 shrink-0">
+                    {kelasNama}
+                  </span>
+                )}
+                <h4 className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base leading-tight tracking-tight truncate">
+                  {mapelNama}
+                </h4>
+                {unitNama && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 shrink-0 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                    Unit: {unitNama}
+                  </span>
+                )}
+              </div>
+            </div>
 
-        {/* ── ZONA 2: CORE SUBJECT, CLASS, & TEACHER (NAMA GURU DI ATAS) ── */}
-        <div className="space-y-0.5 min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-            {!hideKelas && kelasNama && kelasNama !== '-' && (
-              <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-black text-[11px] sm:text-xs font-mono border border-blue-300 dark:border-blue-800 shrink-0">
-                {kelasNama}
-              </span>
-            )}
-            <h4 className="font-extrabold text-slate-900 dark:text-white text-xs sm:text-sm leading-tight tracking-tight truncate">
-              {mapelNama}
-            </h4>
-            {unitNama && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 shrink-0 shadow-2xs">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
-                Unit: {unitNama}
-              </span>
-            )}
+            {/* Kolom Kanan (Desktop) / Baris Status & Aksi (Mobile): Status Sesi & Aksi Header */}
+            <div className="flex flex-wrap sm:flex-col sm:items-end items-center justify-between gap-1.5 shrink-0">
+              <div className="flex items-center gap-1.5 flex-wrap sm:justify-end">
+                {sessionStatusBadge}
+                {teacherStatusBadge}
+                {openerBadge}
+                {ketarunaanBadge}
+              </div>
+              {headerActions}
+            </div>
           </div>
+        ) : (
+          <>
+            {/* ── ZONA 1: STATUS & TIME BAR ── */}
+            <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+                {sessionStatusBadge}
+                {teacherStatusBadge}
+                {slotBadge}
+                {timeBadge}
+                {prediksiBadge}
+
+                {/* 🏷️ Tipe Sesi Badge (Sesi Virtual vs Sesi Fisik — Khusus Monitoring) */}
+                {mode === 'MONITORING' && (isOtomatis ? (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[10px] font-bold shrink-0"
+                    title="Sesi Virtual: Slot jadwal template KBM yang belum dibuka kelasnya oleh guru"
+                  >
+                    📅 Sesi Virtual
+                  </span>
+                ) : (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[10px] font-bold shrink-0"
+                    title="Sesi Fisik: Rekaman sesi KBM riil yang dibuka di aplikasi"
+                  >
+                    🎯 Sesi Fisik
+                  </span>
+                ))}
+
+                {openerBadge}
+                {ketarunaanBadge}
+              </div>
+
+              {headerActions}
+            </div>
+
+            {/* ── ZONA 2: CORE SUBJECT, CLASS, & TEACHER (NAMA GURU DI ATAS) ── */}
+            <div className="space-y-0.5 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                {!hideKelas && kelasNama && kelasNama !== '-' && (
+                  <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-black text-[11px] sm:text-xs font-mono border border-blue-300 dark:border-blue-800 shrink-0">
+                    {kelasNama}
+                  </span>
+                )}
+                <h4 className="font-extrabold text-slate-900 dark:text-white text-xs sm:text-sm leading-tight tracking-tight truncate">
+                  {mapelNama}
+                </h4>
+                {unitNama && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 shrink-0 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                    Unit: {unitNama}
+                  </span>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
           {/* Nama Guru diletakkan di ATAS (untuk Siswa, Petugas, & Monitoring) */}
           {mode !== 'GURU' && (
@@ -700,7 +747,6 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               )}
             </div>
           )}
-        </div>
 
         {/* ── ZONA 3: FOOTER KHUSUS SESUAI POV (DIVIDER BAWAH) ── */}
         {/* 1. POV SISWA: Khusus Status Presensi Diri Sendiri */}
