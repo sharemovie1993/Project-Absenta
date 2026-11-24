@@ -103,9 +103,18 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
   const [activeMateriSlideIdx, setActiveMateriSlideIdx] = useState<number>(0);
   const [fontSizeScale, setFontSizeScale] = useState<number>(1);
   const [selectedModulId, setSelectedModulId] = useState<string>('');
+  const isPublicOrigin = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const host = window.location.hostname;
+    return (
+      !['localhost', '127.0.0.1'].includes(host) &&
+      !/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)
+    );
+  }, []);
+
   const [readerViewTab, setReaderViewTab] = useState<'SLIDES' | 'PDF'>('SLIDES');
   const [selectedFileId, setSelectedFileId] = useState<string>('');
-  const [useOfficeViewer, setUseOfficeViewer] = useState<boolean>(false);
+  const [useOfficeViewer, setUseOfficeViewer] = useState<boolean>(isPublicOrigin);
 
   // 1. Auto-detect Tingkat & Fase dari Nama Kelas jika belum disediakan
   const detectedContext = useMemo(() => {
@@ -307,9 +316,9 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
       setSelectedModulId('');
       setReaderViewTab('SLIDES');
       setSelectedFileId('');
-      setUseOfficeViewer(false);
+      setUseOfficeViewer(isPublicOrigin);
     }
-  }, [isOpen, perangkatId, mapelId, kelasNama]);
+  }, [isOpen, perangkatId, mapelId, kelasNama, isPublicOrigin]);
 
   if (!isOpen) return null;
 
@@ -879,10 +888,6 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                   const fmt = getFileFormatMeta(selectedFile.file_url);
                   const isOriginalPdf = fmt.ext === 'PDF';
                   const isOfficeFile = ['PPT', 'PPTX', 'DOC', 'DOCX', 'XLS', 'XLSX'].includes(fmt.ext);
-                  const isPublicOrigin =
-                    typeof window !== 'undefined' &&
-                    !['localhost', '127.0.0.1'].includes(window.location.hostname) &&
-                    !/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(window.location.hostname);
                   const previewSrc =
                     selectedFile.preview_pdf_url ||
                     (isOriginalPdf ? selectedFile.file_url : null);
