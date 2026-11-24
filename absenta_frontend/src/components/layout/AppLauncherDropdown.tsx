@@ -1,7 +1,10 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { LayoutGrid, Home, Sparkles, ExternalLink, LayoutDashboard, Users, Archive, BookOpen, Shield, Sliders, MessageSquare } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
+import type { CbtStudentExamItem } from '@/types/cbt.types';
 import { isSystemSuperAdmin } from '@/utils/rbac';
 import { ABSENTA_APPS_REGISTRY, getVisibleApps, getActiveApp, type AbsentaApp } from '@/config/absentaAppsRegistry';
 import { getUserPositionCodes } from '@/helpers/portalNavigationHelper';
@@ -15,6 +18,29 @@ export function AppLauncherDropdown() {
   const { user, subscription } = useAuthStore();
 
   const roleName = user?.role?.name || (typeof user?.role === 'string' ? user.role : (user as any)?.roleName) || '';
+  const isSiswa = roleName.toUpperCase() === 'SISWA';
+
+  const { data: studentExams = [] } = useQuery<CbtStudentExamItem[]>({
+    queryKey: cbtQueryKeys.myExams(),
+    queryFn: cbtApi.getMyExams,
+    enabled: isSiswa,
+    staleTime: 30 * 1000,
+  });
+
+  const hasActiveStudentExam = useMemo(() => {
+    if (!isSiswa || !studentExams || studentExams.length === 0) return false;
+    const now = Date.now();
+    return studentExams.some((item) => {
+      if (item.status_peserta === 'FINISHED' || item.status_peserta === 'DISQUALIFIED') return false;
+      if (item.status_jadwal === 'ACTIVE' || item.status_jadwal === 'PAUSED') return true;
+      if (item.status_jadwal !== 'COMPLETED' && item.status_jadwal !== 'ARCHIVED' && item.status_jadwal !== 'DRAFT') {
+        const start = new Date(item.tanggal_mulai).getTime();
+        const end = new Date(item.tanggal_selesai).getTime();
+        return now >= start && now <= end;
+      }
+      return false;
+    });
+  }, [isSiswa, studentExams]);
   const userCapabilities = useMemo(() => {
     if (Array.isArray(user?.capabilities)) return user.capabilities;
     if (typeof user?.capabilities === 'string') {
@@ -149,6 +175,10 @@ export function AppLauncherDropdown() {
     setIsOpen(false);
     navigate('/dashboard');
   };
+
+  if (isSiswa && hasActiveStudentExam) {
+    return null;
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>
