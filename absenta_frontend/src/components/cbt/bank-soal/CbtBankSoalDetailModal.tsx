@@ -16,6 +16,7 @@ import {
   RefreshCw,
   RotateCw,
   Puzzle,
+  Eye,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
@@ -25,6 +26,7 @@ import { CbtContentRenderer } from '../common/CbtContentRenderer';
 import { CbtOptionsRenderer } from '../common/CbtOptionsRenderer';
 import { CbtInlineSoalCard } from './CbtSoalEditorModal';
 import { CbtImportPuzzleModal } from './CbtImportPuzzleModal';
+import { CbtStudentLivePreviewModal } from './CbtStudentLivePreviewModal';
 import useConfirm from '@/hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -55,6 +57,7 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
   const [isDragOverAddBtn, setIsDragOverAddBtn] = useState(false);
   const [filterUnitId, setFilterUnitId] = useState<string>('ALL');
   const [isPuzzleImportOpen, setIsPuzzleImportOpen] = useState(false);
+  const [isLivePreviewOpen, setIsLivePreviewOpen] = useState(false);
 
   useEffect(() => {
     setFilterUnitId('ALL');
@@ -291,6 +294,20 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
                     {soalList.length} Soal
                   </span>
                 </div>
+
+                {soalList.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsLivePreviewOpen(true)}
+                    className="border-indigo-300 dark:border-indigo-700 bg-indigo-50/70 dark:bg-indigo-950/30 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 font-bold text-xs h-8 sm:h-9 px-3 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    title="Simulasi tampilan soal persis seperti layar siswa saat ujian CBT"
+                  >
+                    <Eye size={14} />
+                    <span className="hidden sm:inline">Preview Siswa</span>
+                    <span className="sm:hidden">Preview</span>
+                  </Button>
+                )}
 
                 {!readOnly && (
                   <>
@@ -686,6 +703,17 @@ export const CbtBankSoalDetailModal: React.FC<CbtBankSoalDetailModalProps> = ({
           onSuccessImport={() => {
             refetch();
           }}
+        />
+      )}
+
+      {isLivePreviewOpen && (
+        <CbtStudentLivePreviewModal
+          isOpen={isLivePreviewOpen}
+          onClose={() => setIsLivePreviewOpen(false)}
+          bankJudul={bankSoal.judul}
+          mapelNama={bankSoal.display_mapel || bankSoal.Mapel?.nama_mapel}
+          tingkat={bankSoal.tingkat}
+          soalList={filteredSoalList.length > 0 ? filteredSoalList : soalList}
         />
       )}
     </Modal>
