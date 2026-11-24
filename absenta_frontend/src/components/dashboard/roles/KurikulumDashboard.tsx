@@ -272,8 +272,10 @@ export const KurikulumDashboard: React.FC<KurikulumDashboardProps> = ({ user }) 
       id: string;
       nama_guru: string;
       nip?: string;
+      foto?: string | null;
+      foto_url?: string | null;
       jenis_ptk?: string;
-      User?: { is_active?: boolean; status?: string };
+      User?: { is_active?: boolean; status?: string; foto?: string | null; foto_profil?: string | null };
     }>(guruR);
 
     return raw.filter((g) => {
