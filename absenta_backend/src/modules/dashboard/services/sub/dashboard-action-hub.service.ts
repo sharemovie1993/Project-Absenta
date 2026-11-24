@@ -112,6 +112,7 @@ export class DashboardActionHubService {
     // 2. Query seluruh modul secara paralel (Promise.allSettled)
     const results = await Promise.allSettled([
       guruId ? this.detectKbmJournalDebts(tenantId, guruId, startOfDay, endOfDay, timeZone) : Promise.resolve([]),
+      guruId ? this.detectOverlappingPembiasaanTasks(tenantId, guruId, startOfDay, endOfDay, timeZone) : Promise.resolve([]),
       guruId ? this.detectPiketDuty(tenantId, guruId, dateStr, timeZone) : Promise.resolve([]),
       guruId ? this.detectUpacaraDuty(tenantId, guruId, startOfDay) : Promise.resolve([]),
       guruId ? this.detectPklTasks(tenantId, guruId) : Promise.resolve([]),
@@ -245,6 +246,148 @@ export class DashboardActionHubService {
         };
       });
     } catch (e) {
+      return [];
+    }
+  }
+
+  // --- DETECTOR 1B: Irisan Jam KBM dengan Kegiatan Pembiasaan (Ketarunaan / Dhuha) ---
+  private async detectOverlappingPembiasaanTasks(
+    tenantId: string,
+    guruId: string,
+    startOfDay: Date,
+    endOfDay: Date,
+    timeZone?: string
+  ): Promise<UnifiedActionItem[]> {
+    try {
+      const tz = timeZone || 'Asia/Jakarta';
+      const now = new Date();
+      const dayName = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(now).toUpperCase();
+      const dayEnumMap: Record<string, Hari> = {
+        SUN: Hari.MINGGU,
+        MON: Hari.SENIN,
+        TUE: Hari.SELASA,
+        WED: Hari.RABU,
+        THU: Hari.KAMIS,
+        FRI: Hari.JUMAT,
+        SAT: Hari.SABTU,
+      };
+      const todayHari = dayEnumMap[dayName];
+      if (!todayHari) return [];
+
+      const [activeTp, activeSem] = await Promise.all([
+        prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+        prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+      ]);
+
+      const kbmWhere: any = {
+        tenant_id: tenantId,
+        guru_id: guruId,
+        hari: todayHari,
+      };
+      if (activeTp?.id) kbmWhere.tahun_pelajaran_id = activeTp.id;
+      if (activeSem?.id) kbmWhere.semester_id = activeSem.id;
+
+      let kbmList = await prisma.jadwalKBM.findMany({
+        where: kbmWhere,
+        include: {
+          Mapel: { select: { nama_mapel: true } },
+          Kelas: { select: { nama_kelas: true } },
+        },
+        orderBy: { jam_mulai: 'asc' },
+      });
+
+      if (kbmList.length === 0 && (activeTp?.id || activeSem?.id)) {
+        kbmList = await prisma.jadwalKBM.findMany({
+          where: { tenant_id: tenantId, guru_id: guruId, hari: todayHari },
+          include: {
+            Mapel: { select: { nama_mapel: true } },
+            Kelas: { select: { nama_kelas: true } },
+          },
+          orderBy: { jam_mulai: 'asc' },
+        });
+      }
+
+      if (kbmList.length === 0) return [];
+
+      const kegiatanList = await prisma.jadwalKegiatan.findMany({
+        where: { tenant_id: tenantId, aktif: true },
+      });
+
+      const parseMin = (t?: string | null) => {
+        if (!t || !t.includes(':')) return null;
+        const [h, m] = t.split(':').map(Number);
+        return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+      };
+
+      const todayStr = String(todayHari).toUpperCase();
+      const items: UnifiedActionItem[] = [];
+
+      for (const keg of kegiatanList) {
+        const days: string[] = Array.isArray(keg.hari)
+          ? keg.hari.map((d: any) => String(d).trim().toUpperCase())
+          : String(keg.hari || '').split(',').map((d) => d.trim().toUpperCase());
+        if (!days.includes(todayStr)) continue;
+
+        const kegStart = parseMin(keg.waktu_mulai) ?? 0;
+        const kegEnd = parseMin(keg.waktu_selesai);
+        if (kegEnd === null) continue;
+
+        const overlappingKbm = kbmList.find((kbm) => {
+          const kbmStart = parseMin(kbm.jam_mulai);
+          const kbmEnd = parseMin(kbm.jam_selesai) ?? (kbmStart !== null ? kbmStart + 45 : null);
+          if (kbmStart === null || kbmEnd === null) return false;
+          return kegEnd > kbmStart && kegStart < kbmEnd;
+        });
+
+        if (!overlappingKbm) continue;
+
+        // Cek apakah guru sudah absen di Terminal Unified Kegiatan hari ini
+        const alreadyTapped = await prisma.absenGuru.findFirst({
+          where: {
+            tenant_id: tenantId,
+            guru_id: guruId,
+            status: { in: ['HADIR', 'TERLAMBAT', 'TEPAT_WAKTU'] },
+            SesiAbsensi: {
+              tanggal: { gte: startOfDay, lte: endOfDay },
+              OR: [
+                { jadwal_kegiatan_id: keg.id },
+                ...(keg.jenis_kegiatan ? [{ jenis_kegiatan: keg.jenis_kegiatan }] : []),
+              ],
+            },
+          },
+          select: { id: true },
+        });
+
+        if (alreadyTapped) continue;
+
+        const isDhuha = /dhuha|duha/i.test(`${keg.nama || ''} ${keg.jenis_kegiatan || ''}`);
+        const routePath = isDhuha ? '/kesiswaan/program-dhuha' : '/kesiswaan/program-ketarunaan';
+        const mapelName = overlappingKbm.Mapel?.nama_mapel || 'KBM Pertama';
+        const kelasName = overlappingKbm.Kelas?.nama_kelas || '';
+
+        items.push({
+          id: `pembiasaan_overlap_${keg.id}`,
+          division: 'KESISWAAN',
+          urgency: 'CRITICAL',
+          roleGroup: { key: 'GURU', label: 'Sebagai Guru', order: 1 },
+          title: `Wajib Absen di Terminal Kegiatan (${keg.nama})`,
+          subtitle: `Jam KBM ${mapelName}${kelasName ? ` (${kelasName})` : ''} pukul ${overlappingKbm.jam_mulai} WIB beririsan dengan ${keg.nama} (${keg.waktu_mulai}–${keg.waktu_selesai} WIB). Segera presensi di Terminal Unified Kegiatan agar tidak dianggap telat saat presensi KBM pertama.`,
+          badgeText: 'Beririsan KBM',
+          action: {
+            label: 'Buka Terminal Kegiatan ➔',
+            type: 'NAVIGATE',
+            target: routePath,
+          },
+          sourceModule: {
+            table: 'JadwalKegiatan',
+            entityId: keg.id,
+          },
+        });
+      }
+
+      return items;
+    } catch (e) {
+      console.warn('[ActionHub] detectOverlappingPembiasaanTasks error:', e);
       return [];
     }
   }

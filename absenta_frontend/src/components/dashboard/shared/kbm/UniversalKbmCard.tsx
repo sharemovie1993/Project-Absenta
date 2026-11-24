@@ -958,7 +958,31 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
           </div>
         )}
 
-        {/* 3. POV GURU: Tombol Aksi Guru di Kiri & Rincian Hadir Siswa di Kanan (Sejajar) */}
+        {/* 3. POV GURU: Peringatan Irisan Pembiasaan + Tombol Aksi Guru */}
+        {mode === 'GURU' && !isTeacherPresent && !isFinished && !isOverdue && prediksiRealtime?.kegiatanNama && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="p-2.5 sm:p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/35 border border-amber-300/80 dark:border-amber-800/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+          >
+            <div className="flex items-start gap-2 min-w-0">
+              <AlertCircle size={15} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] sm:text-xs font-medium text-amber-950 dark:text-amber-100 leading-snug">
+                <span className="font-black">Wajib Presensi di Terminal Kegiatan:</span> Jam KBM ini beririsan dengan{' '}
+                <strong className="font-bold">{prediksiRealtime.kegiatanNama}</strong> (s.d. {prediksiRealtime.deadline} WIB).
+                Lakukan presensi di Terminal Unified Kegiatan agar tidak dianggap telat saat presensi KBM pertama.
+              </p>
+            </div>
+            <a
+              href={/dhuha|duha/i.test(prediksiRealtime.kegiatanNama) ? '/kesiswaan/program-dhuha' : '/kesiswaan/program-ketarunaan'}
+              onClick={(e) => e.stopPropagation()}
+              className="shrink-0 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-black transition-colors shadow-2xs"
+            >
+              <span>Buka Terminal Kegiatan</span>
+              <ExternalLink size={11} />
+            </a>
+          </div>
+        )}
+
         {mode === 'GURU' && (
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
