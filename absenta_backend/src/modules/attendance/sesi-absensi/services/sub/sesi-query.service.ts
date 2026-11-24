@@ -404,8 +404,8 @@ export class SesiQueryService {
         created_by: { select: { id: true, full_name: true, Role: { select: { name: true } } } },
         Kelas: { select: { id: true, nama_kelas: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
-        UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
-        Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
+        UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true, foto: true } } } },
+        Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true, foto: true } },
         GuruPelaksana: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
         AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true, catatan: true } },
         ProgresMateri: { select: { id: true, judul_materi: true, deskripsi: true, pencapaian_persen: true, kendala: true, updated_at: true } }
@@ -483,6 +483,7 @@ export class SesiQueryService {
         UnitPengajaran: item.UnitPengajaran || null,
         unit_nama: item.UnitPengajaran?.nama_unit || null,
         guru_nama: item.Guru?.nama_guru || null,
+        guru_foto: item.Guru?.foto || item.UnitPengajaran?.Guru?.foto || null,
         guru_no_hp: item.Guru?.no_hp || null,
         guru_pengganti_nama: item.GuruPelaksana?.nama_guru || null,
         guru_pengampu_nama: item.Guru?.nama_guru || null,
@@ -567,8 +568,8 @@ export class SesiQueryService {
         include: {
           Kelas: { select: { id: true, nama_kelas: true } },
           Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
-          UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true } } } },
-          Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
+          UnitPengajaran: { select: { id: true, nama_unit: true, guru_id: true, Guru: { select: { id: true, nama_guru: true, foto: true } } } },
+          Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true, foto: true } },
           GuruPelaksana: { select: { id: true, nama_guru: true, nip: true, no_hp: true } }
         },
         orderBy: [{ kelas_id: 'asc' }, { slot_index: 'asc' }, { jam_mulai: 'asc' }]
@@ -771,6 +772,7 @@ export class SesiQueryService {
         kelas_nama: mRange.Kelas?.nama_kelas || null,
         mapel_nama: mRange.Mapel?.nama_mapel || mRange.Mapel?.kode_mapel || null,
         guru_nama: mRange.Guru?.nama_guru || null,
+        guru_foto: mRange.Guru?.foto || mRange.UnitPengajaran?.Guru?.foto || null,
         guru_no_hp: mRange.Guru?.no_hp || null,
         guru_pelaksana_id: mRange.guru_pelaksana_id || null,
         guru_pengganti_nama: mRange.GuruPelaksana?.nama_guru || null,

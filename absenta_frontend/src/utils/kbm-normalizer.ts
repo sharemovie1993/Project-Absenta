@@ -307,6 +307,7 @@ export interface KbmItem {
   UnitPengajaran?: any | null;
   guru_id?: string;
   guru_nama: string;
+  guru_foto?: string | null;
   jenis_kegiatan: string;
   tanggal?: string;
 
@@ -408,6 +409,7 @@ export function normalizeFromSesiAbsensi(raw: any): KbmItem {
     kegiatan: raw.Mapel?.nama_mapel || raw.mapel_nama || raw.jenis_kegiatan || raw.kegiatan || '-',
     guru_id: raw.guru_id,
     guru_nama: raw.Guru?.nama_guru || raw.guru_nama || '-',
+    guru_foto: raw.guru_foto || raw.Guru?.foto || raw.UnitPengajaran?.Guru?.foto || null,
     guru_no_hp: raw.Guru?.no_hp || raw.guru_no_hp || raw.telepon || raw.phone || null,
     guru_status: resolvedGuruStatus,
     guru_pengganti_nama: raw.guru_pengganti_nama || raw.guru_inval_nama || raw.GuruPelaksana?.nama_guru || raw.GuruInval?.nama_guru || raw.permohonan_izin?.guru_inval?.nama_guru || null,

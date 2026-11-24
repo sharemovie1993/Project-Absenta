@@ -113,5 +113,6 @@ export {
   type WaRecipientTab,
 } from './UniversalSendWaModal';
 
+export { PersonPhoto, type PersonPhotoProps } from './PersonPhoto';
 export * from './hub';
 

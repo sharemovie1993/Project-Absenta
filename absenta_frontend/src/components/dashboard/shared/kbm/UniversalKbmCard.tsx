@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getJadwalKegiatan } from '@/api/attendance/jadwalKegiatan.api';
-import { Button } from '@/components/ui';
+import { Button, PersonPhoto } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { 
   getSessionStatusMeta, 
@@ -362,6 +362,21 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     ? "border-l-4 border-l-slate-400 border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/70"
     : "border-l-4 border-l-blue-500 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900";
 
+  const guruDisplayNama =
+    item.guru_pengampu_nama ||
+    item.Guru?.nama_guru ||
+    item.guru_nama ||
+    item.nama_guru ||
+    '';
+  const guruDisplayFoto =
+    item.guru_foto ||
+    item.Guru?.foto ||
+    item.UnitPengajaran?.Guru?.foto ||
+    item.session?.guru_foto ||
+    item.session?.Guru?.foto ||
+    null;
+  const showTeacherPhotoCol = Boolean(guruDisplayNama && guruDisplayNama !== '-');
+
   return (
     <div
       className={cn(
@@ -370,14 +385,29 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
         className
       )}
     >
-      {/* ── CARD MAIN CLICKABLE AREA ── */}
+      {/* ── CARD MAIN CLICKABLE AREA (2 KOLOM: FOTO GURU + DATA SESI) ── */}
       <div 
         onClick={handleClick}
         className={cn(
-          "p-3 sm:p-4 flex flex-col gap-1.5 sm:gap-2.5 transition-colors cursor-pointer",
+          "p-3 sm:p-4 flex items-stretch gap-3 sm:gap-4 transition-colors cursor-pointer",
           onToggleExpand || onSelectSession ? "hover:bg-black/5 dark:hover:bg-white/5" : ""
         )}
       >
+        {/* KOLOM 1: FOTO GURU PENGAMPU */}
+        {showTeacherPhotoCol && (
+          <div className="shrink-0 flex items-start pt-0.5">
+            <PersonPhoto
+              name={guruDisplayNama}
+              foto={guruDisplayFoto}
+              variant="portrait"
+              size="sm"
+              badgeLabel="Guru"
+            />
+          </div>
+        )}
+
+        {/* KOLOM 2: DATA SESI & AKSI */}
+        <div className="min-w-0 flex-1 flex flex-col gap-1.5 sm:gap-2.5">
         {/* ── ZONA 1: STATUS & TIME BAR ── */}
         <div className="flex items-center justify-between gap-1.5 sm:gap-2">
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
@@ -1087,6 +1117,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* ── ACCORDION EXPANDED CONTENT ── */}
