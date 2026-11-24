@@ -24,6 +24,7 @@ import {
   TableProperties,
   SlidersHorizontal,
   ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
@@ -147,6 +148,31 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal mengacak ulang token'),
   });
+
+  // Mutasi Hapus Sesi Tunggal
+  const deleteJadwalMutation = useMutation({
+    mutationFn: (id: string) => cbtApi.deleteJadwal(id),
+    onSuccess: async () => {
+      toast.success('Sesi ujian berhasil dihapus.');
+      await queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all, exact: false, refetchType: 'all' });
+      refetchJadwal();
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal menghapus sesi ujian'),
+  });
+
+  const handleDeleteSesi = async (j: CbtJadwalUjian) => {
+    const pesertaCount = j._count?.Peserta || 0;
+    const isConfirmed = await confirm({
+      title: 'Hapus Sesi Ujian?',
+      description: `Sesi "${j.nama_sesi || 'Sesi Ujian'}"${pesertaCount > 0 ? ` (${pesertaCount} data peserta terkait akan ikut terhapus)` : ''} akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.`,
+      confirmText: 'Ya, Hapus Sesi',
+      cancelText: 'Batal',
+      variant: 'danger',
+    });
+    if (isConfirmed) {
+      deleteJadwalMutation.mutate(j.id);
+    }
+  };
 
   // Salin Token
   const handleCopyToken = (token: string, id: string) => {
@@ -1063,6 +1089,16 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
                               <span>Pantau</span>
                               <ChevronRight size={11} />
                             </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSesi(j)}
+                              disabled={deleteJadwalMutation.isPending}
+                              className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 bg-rose-50/70 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                              title="Hapus Sesi Ujian"
+                            >
+                              <Trash2 size={12} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -1209,13 +1245,24 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
                                     )}
                                   </td>
                                   <td className="py-2 px-3 text-right">
-                                    <button
-                                      type="button"
-                                      onClick={() => setSelectedInspectJadwalId(j.id)}
-                                      className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs cursor-pointer"
-                                    >
-                                      Pantau
-                                    </button>
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedInspectJadwalId(j.id)}
+                                        className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs cursor-pointer"
+                                      >
+                                        Pantau
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteSesi(j)}
+                                        disabled={deleteJadwalMutation.isPending}
+                                        className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 bg-rose-50/70 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 cursor-pointer disabled:opacity-50"
+                                        title="Hapus Sesi Ujian"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
                               );
@@ -1423,13 +1470,24 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
                                         <div className="font-bold text-slate-900 dark:text-white truncate">
                                           {rInfo.rombel}
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => setSelectedInspectJadwalId(roomJadwal.id)}
-                                          className="mt-1 w-full py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] text-center cursor-pointer"
-                                        >
-                                          Pantau
-                                        </button>
+                                        <div className="mt-1 flex items-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => setSelectedInspectJadwalId(roomJadwal.id)}
+                                            className="flex-1 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] text-center cursor-pointer"
+                                          >
+                                            Pantau
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteSesi(roomJadwal)}
+                                            disabled={deleteJadwalMutation.isPending}
+                                            className="p-1 rounded-lg border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 bg-rose-50/70 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 cursor-pointer disabled:opacity-50"
+                                            title="Hapus Sesi Ujian"
+                                          >
+                                            <Trash2 size={10} />
+                                          </button>
+                                        </div>
                                       </div>
                                     );
                                   })}
