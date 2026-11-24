@@ -104,7 +104,7 @@ export function parseBulkAnswerKeys(rawKeyText: string): Map<number, OptionCode>
 }
 
 const QUESTION_START_REGEX = /^(?:soal\s*(?:no\.?)?\s*\d+\s*[:.-]?|\d{1,3}[.)]\s+)/i;
-const OPTION_PREFIX_REGEX = /^(?:[A-Ea-e][.)\]:-]\s+|\([A-Ea-e]\)\s+|\[[A-Ea-e]\]\s+)/;
+const OPTION_PREFIX_REGEX = /^(?:[○◯●•oO]\s+)?(?:[A-Ea-e][.)\]:-]\s+|\([A-Ea-e]\)\s+|\[[A-Ea-e]\]\s+)/;
 const GOOGLE_FORM_OVAL_MARKER_REGEX = /^(?:tandai\s+satu\s+oval\s+saja\.?|mark\s+only\s+one\s+oval\.?)$/i;
 const GOOGLE_FORM_POINTS_LINE_REGEX = /^(?:\d{1,3}[.)]?\s*)?\d+\s*(?:poin|points?)\s*$/i;
 const GOOGLE_FORM_STANDALONE_NUM_REGEX = /^\d{1,3}[.)]\s*$/;
@@ -170,6 +170,7 @@ export function parsePuzzleBlockText(blockText: string): {
       }
       if (cleanedOpts.length < 5) {
         const cleanOpt = line
+          .replace(/^[○◯●•oO]\s+/, '')
           .replace(/^(?:[A-Ea-e][.)\]:-]\s+|\([A-Ea-e]\)\s+|\[[A-Ea-e]\]\s+)/, '')
           .trim();
         if (cleanOpt) cleanedOpts.push(cleanOpt);
@@ -250,16 +251,20 @@ function segmentGoogleFormPdfToBlocks(bodyText: string): string[] {
           splitOffset = lastOptIdx + 1;
         }
       } else {
-        // 2. Tanpa awalan a.-e.: cek baris nomor soal ("2. "), baris "4 poin", atau baris wajib "*"
+        // 2. Tanpa awalan a.-e.: cari baris nomor soal ("2. "), baris "4 poin", atau baris wajib "*"
+        const pointsIdx = betweenLines.findIndex((l) => GOOGLE_FORM_POINTS_LINE_REGEX.test(l));
         const nextQuestionBoundary = betweenLines.findIndex(
           (l) =>
             QUESTION_START_REGEX.test(l) ||
-            GOOGLE_FORM_POINTS_LINE_REGEX.test(l) ||
             GOOGLE_FORM_STANDALONE_NUM_REGEX.test(l) ||
             /\*$/.test(l)
         );
-        if (nextQuestionBoundary >= 2) {
+
+        if (nextQuestionBoundary >= 2 && (pointsIdx < 0 || nextQuestionBoundary < pointsIdx)) {
           splitOffset = nextQuestionBoundary;
+        } else if (pointsIdx >= 3) {
+          // Biasanya di Google Form PDF, 1 baris tepat sebelum "4 poin" adalah teks pertanyaan berikutnya
+          splitOffset = pointsIdx - 1;
         } else {
           // Fallback: sisakan minimal 1 baris non-kosong terakhir sebagai pertanyaan berikutnya
           const nonEmptyPositions: number[] = [];

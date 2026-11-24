@@ -1523,13 +1523,16 @@ export class CbtBankSoalService {
       throw new Error('Tautan harus berasal dari Google Form (docs.google.com/forms atau forms.gle).');
     }
 
-    // Normalisasi URL
-    let targetUrl = trimmedUrl;
+    // Normalisasi URL (mendukung /edit, /preview, /prefill, /formResponse, /viewanalytics)
+    let targetUrl = trimmedUrl.split('#')[0];
     if (targetUrl.includes('docs.google.com/forms')) {
-      // Ganti /edit atau /formResponse dengan /viewform
-      targetUrl = targetUrl.replace(/\/(edit|formResponse)(\?.*)?$/, '/viewform$2');
+      targetUrl = targetUrl.replace(
+        /\/(edit|preview|prefill|formResponse|viewanalytics)(\?.*)?$/i,
+        '/viewform$2'
+      );
       if (!targetUrl.includes('/viewform')) {
-        targetUrl = targetUrl.replace(/\/$/, '') + '/viewform';
+        const [base, query] = targetUrl.split('?');
+        targetUrl = base.replace(/\/$/, '') + '/viewform' + (query ? `?${query}` : '');
       }
     }
 
