@@ -97,10 +97,10 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
   const userPhoto = rawPhoto ? resolveProfilePhotoUrl(rawPhoto) : null;
   const initialChar = (user?.full_name || (typeof userRec?.name === 'string' ? userRec.name : null) || 'G').slice(0, 1).toUpperCase();
 
-  const { isAdmin, isKurikulum, isKesiswaan, isSarpras, isHubin, isKaprog, isWaliKelas, isTU, isKepsek, isPembimbingPkl } = useCapabilities();
+  const { isAdmin } = useCapabilities();
   const rawRoleName = String(user?.role?.name || (typeof userRec?.role === 'string' ? userRec.role : '') || '').toUpperCase();
   const isAdminRole = isAdmin || rawRoleName === 'ADMIN' || rawRoleName === 'SUPERADMIN';
-  const canSwitchDashboard = !isKepsek && (isAdminRole || isKurikulum || isKesiswaan || isSarpras || isHubin || isKaprog || isWaliKelas || isTU || isPembimbingPkl);
+  const canSwitchDashboard = isAdminRole;
 
   // Resolusi aksi tombol kembali
   const handleBack = () => {
@@ -189,8 +189,8 @@ export const UniversalEcosystemTopbar: React.FC<UniversalEcosystemTopbarProps> =
 
       {/* SISI KANAN: AKSI MINIMAL (TOMBOL KUSTOM, REFRESH, & PROFIL AKUN) */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {/* Badge Akses Jaringan Lokal/Tunnel + Signal Bar (Khusus Mobile < lg) */}
-        <RouteAccessBadge className="lg:hidden text-[10px] px-1.5 py-0.5" />
+        {/* Badge Akses Jaringan Lokal (L) / Tunnel (T) + Signal Bar (Khusus Mobile < lg) */}
+        <RouteAccessBadge compact={true} className="lg:hidden text-[10px] px-1.5 py-0.5 gap-1" />
 
         {/* Universal Role Dashboard Switcher Pill (Khusus Admin / Multi-Role) */}
         {canSwitchDashboard && (

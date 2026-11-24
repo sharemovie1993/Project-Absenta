@@ -81,11 +81,13 @@ export function useAccessRoute() {
 interface RouteAccessBadgeProps {
   className?: string;
   showTooltip?: boolean;
+  compact?: boolean;
 }
 
 export const RouteAccessBadge: React.FC<RouteAccessBadgeProps> = ({
   className,
   showTooltip = true,
+  compact = false,
 }) => {
   const { data } = useAccessRoute();
   const ping = useSocketPing(2000);
@@ -120,8 +122,8 @@ export const RouteAccessBadge: React.FC<RouteAccessBadgeProps> = ({
       )}
       title={showTooltip ? tooltipText : undefined}
     >
-      {/* Label Lokal / Tunnel */}
-      <span>{data.label || (isLocal ? 'Lokal' : 'Tunnel')}</span>
+      {/* Label Lokal / Tunnel (atau L / T saat compact) */}
+      <span>{compact ? (isLocal ? 'L' : 'T') : (data.label || (isLocal ? 'Lokal' : 'Tunnel'))}</span>
 
       {/* Pemisah */}
       <span className="opacity-25 font-normal">|</span>
