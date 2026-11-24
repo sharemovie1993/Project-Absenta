@@ -920,6 +920,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
         uploadLoading={uploadMutation.isPending}
         isReviewModalOpen={isReviewModalOpen}
         setIsReviewModalOpen={setIsReviewModalOpen}
+        reviewingItem={listPerangkat.find((p: any) => p.id === selectedPerangkatId) || null}
         reviewForm={reviewForm}
         setReviewForm={setReviewForm}
         handleReviewSubmit={handleReviewSubmit}

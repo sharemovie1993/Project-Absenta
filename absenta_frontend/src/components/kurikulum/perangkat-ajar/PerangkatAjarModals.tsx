@@ -79,7 +79,7 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
   const {
     isUploadModalOpen, setIsUploadModalOpen, uploadForm, setUploadForm,
     filterJenisOptions, mapelOptions, teacherOptions, uploadMutation, handleUploadSubmit,
-    isReviewModalOpen, setIsReviewModalOpen, reviewForm, setReviewForm, reviewMutation, handleReviewSubmit,
+    isReviewModalOpen, setIsReviewModalOpen, reviewingItem, reviewForm, setReviewForm, reviewMutation, handleReviewSubmit,
     isLibraryModalOpen, setIsLibraryModalOpen, librarySearch, setLibrarySearch, libraryJenisFilter, setLibraryJenisFilter,
     claimMapelId, setClaimMapelId, claimingId, libraryTemplatesData, listPerangkat, handleOpenWordEditor,
     isLoadingLibrary, teacherAssignedMapels, activeYear, activeSemester, currentGuru, JENIS_LABELS, claimMutation,
@@ -122,6 +122,7 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
             <PerangkatAjarReviewModal
               isOpen={isReviewModalOpen}
               onClose={() => setIsReviewModalOpen(false)}
+              reviewingItem={reviewingItem}
               reviewForm={reviewForm}
               setReviewForm={setReviewForm}
               isSubmitting={isReviewSubmitting}

@@ -1,6 +1,7 @@
 import { prisma } from '../../../utils/prisma';
 import { storageService } from '../../../infra/storage/storage.service';
 import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
+import { convertOfficeToPdfSibling, resolveExistingSiblingPdf } from '../../../utils/office-to-pdf.util';
 
 export class PerangkatAjarService {
   static async uploadPerangkat(
@@ -83,6 +84,16 @@ export class PerangkatAjarService {
 
     if (!item) return null;
 
+    if (item.file_url) {
+      try {
+        const existingPdf = await resolveExistingSiblingPdf(item.file_url);
+        const previewPdf = existingPdf || (await convertOfficeToPdfSibling(item.file_url).catch(() => null));
+        if (previewPdf) {
+          (item as any).preview_pdf_url = previewPdf;
+        }
+      } catch {}
+    }
+
     // Fetch rich html_content from GlobalPerangkatAjarLibrary matching title/jenis
     try {
       const lib = await prisma.globalPerangkatAjarLibrary.findFirst({
@@ -115,7 +126,7 @@ export class PerangkatAjarService {
       jenis?: string;
     }
   ) {
-    return prisma.perangkatAjar.findMany({
+    const rows = await prisma.perangkatAjar.findMany({
       where: {
         tenant_id: tenantId,
         ...(filter.guru_id ? { OR: [{ guru_id: filter.guru_id }, { is_shared: true }] } : {}),
@@ -134,6 +145,13 @@ export class PerangkatAjarService {
       },
       orderBy: { created_at: 'desc' },
     });
+
+    return Promise.all(
+      rows.map(async (row) => {
+        const previewPdf = row.file_url ? await resolveExistingSiblingPdf(row.file_url) : null;
+        return previewPdf ? { ...row, preview_pdf_url: previewPdf } : row;
+      })
+    );
   }
 
   static async deletePerangkat(tenantId: string, id: string) {
