@@ -1105,6 +1105,7 @@ export const SiswaCbtTab: React.FC = () => {
                                   • {item.durasi_menit} mnt
                                 </span>
                               </div>
+                              <ProctorInfoStrip item={item} />
                             </div>
 
                             {/* Kanan: Aksi */}
