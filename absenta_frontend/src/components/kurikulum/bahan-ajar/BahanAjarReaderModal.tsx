@@ -391,7 +391,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                   )}
                 >
                   <FileText size={12} />
-                  <span>File Modul (PDF)</span>
+                  <span>File Upload</span>
                   <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-mono">
                     {attachedFiles.length}
                   </span>
@@ -399,7 +399,9 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
               </div>
             )}
 
-            {/* Font Scale Controls */}
+            {/* Font Scale Controls & Mode Proyektor (Khusus Slide KBM) */}
+            {readerViewTab === 'SLIDES' && (
+              <>
             <div className="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-0.5 shadow-xs">
               <button
                 type="button"
@@ -436,6 +438,8 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
               {isProjectorMode ? <Minimize2 size={14} /> : <Presentation size={14} />}
               <span>{isProjectorMode ? 'Keluar Proyektor' : '📽️ Mode Proyektor'}</span>
             </button>
+              </>
+            )}
           </div>
         </div>
       }

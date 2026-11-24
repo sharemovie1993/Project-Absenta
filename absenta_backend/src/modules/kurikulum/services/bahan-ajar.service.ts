@@ -155,6 +155,7 @@ export class BahanAjarService {
         tingkat: p.tingkat || 10,
         guru_nama: p.Guru?.nama_guru || '-',
         status: p.status,
+        is_shared: Boolean(p.is_shared),
         created_at: p.created_at,
       }));
 

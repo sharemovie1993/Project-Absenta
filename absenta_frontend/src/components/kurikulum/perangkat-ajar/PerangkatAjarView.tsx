@@ -180,12 +180,18 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
     jenis: string;
     mapel_id: string;
     guru_id: string;
+    fase: string;
+    tingkat: string;
+    is_shared: boolean;
     file: File | null;
   }>({
     judul: '',
     jenis: '',
     mapel_id: '',
     guru_id: '',
+    fase: 'E',
+    tingkat: '10',
+    is_shared: true,
     file: null,
   });
 
@@ -466,6 +472,9 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
     formData.append('jenis', validData.jenis);
     formData.append('mapel_id', validData.mapel_id);
     formData.append('guru_id', validData.guru_id);
+    if (validData.fase) formData.append('fase', validData.fase);
+    if (validData.tingkat) formData.append('tingkat', validData.tingkat);
+    formData.append('is_shared', String(Boolean(validData.is_shared)));
     
     // 🛡️ Academic Context Hardening: Selalu alokasikan dokumen baru ke Periode Aktif
     const targetTpId = academicFilter.activeAcademicYear?.id || activeTpId;

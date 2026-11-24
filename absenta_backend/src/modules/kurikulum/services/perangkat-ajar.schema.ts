@@ -10,6 +10,9 @@ export const perangkatAjarUploadSchema = z.object({
     errorMap: () => ({ message: 'Jenis perangkat ajar harus bernilai RPP, MODUL_AJAR, SILABUS, PROTA, PROMES, ATP, KKTP, atau MODUL_PROJEK' })
   }),
   file_url: z.string().min(1, 'URL berkas wajib disertakan'),
+  fase: z.string().max(10).optional().nullable(),
+  tingkat: z.coerce.number().int().min(1).max(12).optional().nullable(),
+  is_shared: z.boolean().optional().default(false),
 });
 
 export const perangkatAjarReviewSchema = z.object({

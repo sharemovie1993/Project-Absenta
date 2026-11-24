@@ -29,6 +29,9 @@ export class PerangkatCrudController {
       const semester_id = file.fields?.semester_id?.value;
       const judul = file.fields?.judul?.value;
       const jenis = file.fields?.jenis?.value;
+      const faseRaw = file.fields?.fase?.value;
+      const tingkatRaw = file.fields?.tingkat?.value;
+      const isSharedRaw = file.fields?.is_shared?.value;
 
       // Validate inputs before saving the file
       const parsedFields = perangkatAjarUploadSchema.omit({ file_url: true }).parse({
@@ -38,6 +41,9 @@ export class PerangkatCrudController {
         semester_id,
         judul,
         jenis,
+        fase: faseRaw ? String(faseRaw).trim() : null,
+        tingkat: tingkatRaw ? Number(tingkatRaw) : null,
+        is_shared: String(isSharedRaw || '').toLowerCase() === 'true',
       });
 
       // Save file using DocumentStorageService

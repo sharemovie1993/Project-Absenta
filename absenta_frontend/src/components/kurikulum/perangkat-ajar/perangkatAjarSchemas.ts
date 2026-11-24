@@ -5,6 +5,9 @@ export const uploadPerangkatSchema = z.object({
   jenis: z.string().min(1, 'Pilih jenis perangkat ajar terlebih dahulu'),
   mapel_id: z.string().min(1, 'Pilih mata pelajaran terlebih dahulu'),
   guru_id: z.string().min(1, 'Pilih guru pengajar terlebih dahulu'),
+  fase: z.string().optional(),
+  tingkat: z.string().optional(),
+  is_shared: z.boolean().optional().default(true),
   file: z
     .custom<File | null>((val) => val instanceof File || val === null, {
       message: 'Format berkas tidak valid',

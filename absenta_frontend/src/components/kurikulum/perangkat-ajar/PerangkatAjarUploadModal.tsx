@@ -26,6 +26,9 @@ interface PerangkatAjarUploadModalProps {
     jenis: string;
     mapel_id: string;
     guru_id: string;
+    fase?: string;
+    tingkat?: string;
+    is_shared?: boolean;
     file: File | null;
   };
   setUploadForm: React.Dispatch<React.SetStateAction<{
@@ -33,6 +36,9 @@ interface PerangkatAjarUploadModalProps {
     jenis: string;
     mapel_id: string;
     guru_id: string;
+    fase: string;
+    tingkat: string;
+    is_shared: boolean;
     file: File | null;
   }>>;
   filterJenisOptions: Option[];
@@ -159,6 +165,65 @@ export default React.memo(function PerangkatAjarUploadModal({
             className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-600 dark:file:bg-indigo-950 dark:file:text-indigo-400 hover:file:bg-indigo-100 disabled:opacity-60"
           />
         </div>
+
+        {/* Tingkat & Fase + Opsi Share ke Rekan Guru */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="upload-tingkat" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Tingkat Kelas
+            </label>
+            <SearchableSelect
+              id="upload-tingkat"
+              value={uploadForm.tingkat || '10'}
+              disabled={isSubmitting}
+              onValueChange={(val) => {
+                const autoFase = val === '10' ? 'E' : 'F';
+                setUploadForm((prev) => ({ ...prev, tingkat: val, fase: autoFase }));
+              }}
+              options={[
+                { label: 'Kelas X (Tingkat 10)', value: '10' },
+                { label: 'Kelas XI (Tingkat 11)', value: '11' },
+                { label: 'Kelas XII (Tingkat 12)', value: '12' },
+              ]}
+              placeholder="Pilih Tingkat"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="upload-fase" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Fase Kurikulum
+            </label>
+            <SearchableSelect
+              id="upload-fase"
+              value={uploadForm.fase || 'E'}
+              disabled={isSubmitting}
+              onValueChange={(val) => setUploadForm((prev) => ({ ...prev, fase: val }))}
+              options={[
+                { label: 'Fase E (Kelas X)', value: 'E' },
+                { label: 'Fase F (Kelas XI & XII)', value: 'F' },
+              ]}
+              placeholder="Pilih Fase"
+            />
+          </div>
+        </div>
+
+        <label className="flex items-start gap-2.5 p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/60 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={uploadForm.is_shared ?? true}
+            disabled={isSubmitting}
+            onChange={(e) => setUploadForm((prev) => ({ ...prev, is_shared: e.target.checked }))}
+            className="mt-0.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
+          />
+          <div className="text-xs">
+            <span className="font-bold text-slate-800 dark:text-slate-100 block">
+              Bagikan ke Rekan Guru (Mapel &amp; Fase Sama)
+            </span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              Guru lain yang mengajar mapel dan fase yang sama dapat langsung memakai file ini di sesi KBM tanpa perlu upload ulang.
+            </span>
+          </div>
+        </label>
 
         {/* Real-time Upload Progress Bar */}
         {isCurrentlyUploading && (

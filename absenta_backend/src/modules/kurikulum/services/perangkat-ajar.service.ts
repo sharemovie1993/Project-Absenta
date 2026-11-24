@@ -13,6 +13,9 @@ export class PerangkatAjarService {
       judul: string;
       jenis: string;
       file_url: string;
+      fase?: string | null;
+      tingkat?: number | null;
+      is_shared?: boolean;
     }
   ) {
     const created = await prisma.perangkatAjar.create({
@@ -25,6 +28,9 @@ export class PerangkatAjarService {
         judul: data.judul,
         jenis: data.jenis,
         file_url: data.file_url,
+        fase: data.fase || null,
+        tingkat: data.tingkat ?? null,
+        is_shared: Boolean(data.is_shared),
         status: 'PENDING',
       },
     });
@@ -112,7 +118,7 @@ export class PerangkatAjarService {
     return prisma.perangkatAjar.findMany({
       where: {
         tenant_id: tenantId,
-        ...(filter.guru_id ? { guru_id: filter.guru_id } : {}),
+        ...(filter.guru_id ? { OR: [{ guru_id: filter.guru_id }, { is_shared: true }] } : {}),
         ...(filter.mapel_id ? { mapel_id: filter.mapel_id } : {}),
         ...(filter.tahun_pelajaran_id ? { tahun_pelajaran_id: filter.tahun_pelajaran_id } : {}),
         ...(filter.semester_id ? { semester_id: filter.semester_id } : {}),

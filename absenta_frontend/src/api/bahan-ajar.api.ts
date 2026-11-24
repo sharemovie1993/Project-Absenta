@@ -101,6 +101,7 @@ export interface AttachedFileItem {
   tingkat?: number;
   guru_nama?: string;
   status?: string;
+  is_shared?: boolean;
   created_at?: string;
 }
 
