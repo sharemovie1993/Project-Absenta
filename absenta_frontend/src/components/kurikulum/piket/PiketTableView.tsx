@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { JadwalPiketGuru } from '@/api/piketGuru.api';
-import { Button, Badge } from '@/components/ui';
+import { Button, Badge, PersonPhoto } from '@/components/ui';
 import { Edit, Trash2, ShieldCheck, Wrench, Building2, Clock, CheckCircle } from 'lucide-react';
 
 interface PiketTableViewProps {
@@ -223,9 +223,12 @@ export const PiketTableView: React.FC<PiketTableViewProps> = React.memo(({
                       {/* Guru Bertugas */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-[10px] shrink-0">
-                            {item.Guru?.nama_guru?.substring(0, 2).toUpperCase() || 'GP'}
-                          </div>
+                          <PersonPhoto
+                            name={item.Guru?.nama_guru}
+                            foto={(item.Guru as any)?.foto}
+                            variant="circle"
+                            size="sm"
+                          />
                           <div>
                             <div className="flex items-center gap-1.5">
                               <span className="font-extrabold text-slate-900 dark:text-slate-100 text-xs">
