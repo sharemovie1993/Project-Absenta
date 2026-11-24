@@ -608,41 +608,58 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
         {/* KOLOM 2: DATA SESI & AKSI */}
         <div className="min-w-0 flex-1 flex flex-col gap-1.5 sm:gap-2.5">
         {mode === 'GURU' ? (
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 min-w-0">
-            {/* Informasi Utama Guru: Jam Berapa -> Jam Ke -> Mata Pelajaran */}
-            <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
-                {timeBadge}
-                {slotBadge}
-                {prediksiBadge}
+          <div className="space-y-1.5 min-w-0">
+            <div className="flex items-start justify-between gap-2 min-w-0">
+              {/* Informasi Utama Guru: Jam Berapa -> Jam Ke -> Mata Pelajaran */}
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+                  {timeBadge}
+                  {slotBadge}
+                  {prediksiBadge}
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                  {!hideKelas && !showGuruClassCol && kelasNama && kelasNama !== '-' && (
+                    <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-black text-[11px] sm:text-xs font-mono border border-blue-300 dark:border-blue-800 shrink-0">
+                      {kelasNama}
+                    </span>
+                  )}
+                  <h4 className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base leading-tight tracking-tight truncate">
+                    {mapelNama}
+                  </h4>
+                  {unitNama && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 shrink-0 shadow-2xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                      Unit: {unitNama}
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                {!hideKelas && !showGuruClassCol && kelasNama && kelasNama !== '-' && (
-                  <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-black text-[11px] sm:text-xs font-mono border border-blue-300 dark:border-blue-800 shrink-0">
-                    {kelasNama}
-                  </span>
-                )}
-                <h4 className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base leading-tight tracking-tight truncate">
-                  {mapelNama}
-                </h4>
-                {unitNama && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 shrink-0 shadow-2xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
-                    Unit: {unitNama}
-                  </span>
-                )}
+
+              {/* Mobile Top-Right: Chevron Expand/Collapse agar sejajar rapi di pojok kanan atas */}
+              {onToggleExpand && (
+                <div className="sm:hidden w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+                  {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </div>
+              )}
+
+              {/* Desktop Kolom Kanan: Status Sesi + Bahan Ajar + Uji Alarm + Chevron */}
+              <div className="hidden sm:flex sm:flex-col sm:items-end gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  {sessionStatusBadge}
+                  {teacherStatusBadge}
+                  {openerBadge}
+                  {ketarunaanBadge}
+                </div>
+                {headerActions}
               </div>
             </div>
 
-            {/* Kolom Kanan (Desktop) / Baris Status & Aksi (Mobile): Status Sesi & Aksi Header */}
-            <div className="flex flex-wrap sm:flex-col sm:items-end items-center justify-between gap-1.5 shrink-0">
-              <div className="flex items-center gap-1.5 flex-wrap sm:justify-end">
-                {sessionStatusBadge}
-                {teacherStatusBadge}
-                {openerBadge}
-                {ketarunaanBadge}
-              </div>
-              {headerActions}
+            {/* Mobile Status Row: Status Sesi rapi 1 baris di bawah Mapel */}
+            <div className="flex sm:hidden items-center gap-1.5 flex-wrap">
+              {sessionStatusBadge}
+              {teacherStatusBadge}
+              {openerBadge}
+              {ketarunaanBadge}
             </div>
           </div>
         ) : (
@@ -945,6 +962,23 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
         {mode === 'GURU' && (
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              {/* Mobile: Bahan Ajar ikut menyatu rapi di baris tombol aksi */}
+              {onOpenBahanAjar && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenBahanAjar(item);
+                  }}
+                  title="Buka Bahan Ajar Digital & Panduan KBM"
+                  className="sm:hidden h-8 px-2.5 rounded-xl text-xs font-black bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <BookOpen size={13} className="text-indigo-600 dark:text-indigo-400" />
+                  <span>Bahan Ajar</span>
+                </Button>
+              )}
               {/* 1. Guru BELUM HADIR: Tombol Foto Masuk Guru / Mulai KBM */}
               {!isTeacherPresent && !isFinished && !isOverdue && onOpenPhotoModal && (
                 <Button
