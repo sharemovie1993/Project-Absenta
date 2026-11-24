@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Modal, Button, Input, Textarea, Label } from '../ui';
 import { BookOpen, AlertCircle, CheckCircle2, Info, Sparkles, Percent } from 'lucide-react';
@@ -8,6 +8,8 @@ import { getActiveTpForSesi, TujuanPembelajaranItem } from '../../api/atp.api';
 import { toast } from 'react-hot-toast';
 import { ConfirmModal } from '../ui/Modal';
 import { cn } from '../../lib/utils';
+
+const AtpBuilderModal = lazy(() => import('./atp/AtpBuilderModal'));
 
 interface JurnalKbmModalProps {
   isOpen: boolean;
@@ -36,6 +38,7 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
   const [tpList, setTpList] = useState<TujuanPembelajaranItem[]>([]);
   const [atpInfo, setAtpInfo] = useState<any>(null);
   const [isLoadingTp, setIsLoadingTp] = useState(false);
+  const [atpModalOpen, setAtpModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     judul_materi: '',
     deskripsi: '',
@@ -240,7 +243,7 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
                     </div>
                     <button
                       type="button"
-                      onClick={() => window.open('/kurikulum/atp', '_blank')}
+                      onClick={() => setAtpModalOpen(true)}
                       className="shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-white font-black text-[11px] shadow-sm shadow-amber-500/30 transition-all cursor-pointer whitespace-nowrap"
                     >
                       <span>+ Buat ATP</span>
@@ -388,6 +391,29 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
           </div>
         </form>
       </Modal>
+
+      <Suspense fallback={null}>
+        {atpModalOpen && (
+          <AtpBuilderModal
+            isOpen={atpModalOpen}
+            onClose={() => setAtpModalOpen(false)}
+            initialMapelId={sesi?.mapel_id || sesi?.Mapel?.id}
+            initialFase={sesi?.fase || (Number(sesi?.tingkat) >= 11 ? 'F' : 'E')}
+            zIndex={zIndex + 20}
+            onSaved={() => {
+              if (sesiId) {
+                setIsLoadingTp(true);
+                getActiveTpForSesi(sesiId)
+                  .then((res) => {
+                    setTpList(res.tujuan_pembelajaran || []);
+                    setAtpInfo(res.atp || null);
+                  })
+                  .finally(() => setIsLoadingTp(false));
+              }
+            }}
+          />
+        )}
+      </Suspense>
     </>
   );
 };

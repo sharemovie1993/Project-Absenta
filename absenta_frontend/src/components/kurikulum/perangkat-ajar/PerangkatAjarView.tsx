@@ -18,7 +18,10 @@ import {
   AlertCircle,
   ChevronDown,
   Copy,
+  Layers,
 } from 'lucide-react';
+
+const AtpBuilderModal = lazy(() => import('../atp/AtpBuilderModal'));
 
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Card, Button, Badge, SectionCard, TabSwitcher } from '@/components/ui';
@@ -145,6 +148,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   // Studio Modul Ajar (Per-Pertemuan) State
   const [isStudioModalOpen, setIsStudioModalOpen] = useState(false);
   const [studioPerangkat, setStudioPerangkat] = useState<PerangkatAjar | null>(null);
+  const [isAtpModalOpen, setIsAtpModalOpen] = useState(false);
 
   const handleOpenStudio = useCallback((item: PerangkatAjar) => {
     setStudioPerangkat(item);
@@ -730,6 +734,19 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
                   <span className="hidden sm:inline">Studio Modul</span>
                 </Button>
 
+                {/* 2b. Penyusun ATP & TP (Kurikulum Merdeka) */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAtpModalOpen(true)}
+                  className="rounded-xl text-xs font-bold gap-1.5 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 h-9 cursor-pointer"
+                  title="Susun Alur Tujuan Pembelajaran (ATP & TP) untuk 1-Klik Jurnal KBM"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Susun ATP</span>
+                </Button>
+
                 {/* 3. Salin dari Tahun Lalu (Rollover) */}
                 <Button
                   type="button"
@@ -986,6 +1003,16 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
           queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
         }}
       />
+
+      {/* 7. Penyusun ATP & TP Modal */}
+      <Suspense fallback={null}>
+        {isAtpModalOpen && (
+          <AtpBuilderModal
+            isOpen={isAtpModalOpen}
+            onClose={() => setIsAtpModalOpen(false)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 
