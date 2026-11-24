@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   UniversalDocumentModal,
@@ -7,11 +7,19 @@ import {
   usePrintHeaderData,
 } from '@/components/ui/PrintHeader';
 import { sekolahApi } from '@/api/academic/sekolah.api';
-import { getStrukturTree } from '@/api/academic/strukturOrganisasi.api';
+import { getStrukturTree, getStrukturList } from '@/api/academic/strukturOrganisasi.api';
 import { capturePrintSheetsToPdfBlob } from '@/utils/print/capturePrintSheetsToPdf';
 import { TujuanPembelajaranItem } from '@/api/atp.api';
 import { toast } from 'react-hot-toast';
-import { Check } from 'lucide-react';
+import { Check, UserCog, RotateCcw } from 'lucide-react';
+
+function cleanNip(raw?: string | null): string {
+  const s = String(raw || '').trim();
+  if (!s || s === '-' || s === 'null' || s === 'undefined') return '-';
+  const m = s.match(/NIP\.?\s*[:.]?\s*([0-9\s.-]+)/i);
+  if (m && m[1]) return m[1].trim();
+  return s;
+}
 
 export interface ProtaPromesPrintModalProps {
   isOpen: boolean;
@@ -58,69 +66,129 @@ export const ProtaPromesPrintModal: React.FC<ProtaPromesPrintModalProps> = ({
   const [showLogoDaerah, setShowLogoDaerah] = useState(true);
   const [showLogoSekolah, setShowLogoSekolah] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [showSignerEditor, setShowSignerEditor] = useState(false);
 
   const { data: sekolahRes } = useQuery({
-    queryKey: ['sekolah-profil-print'],
-    queryFn: () => sekolahApi.getProfil().catch(() => null),
+    queryKey: ['sekolah-profile-signers'],
+    queryFn: () => sekolahApi.getProfile().catch(() => null),
     enabled: isOpen,
     staleTime: 10 * 60 * 1000,
   });
 
-  const { data: strukturRes } = useQuery({
+  const { data: treeRes } = useQuery({
     queryKey: ['struktur-organisasi-tree-print'],
-    queryFn: () => getStrukturTree().catch(() => []),
+    queryFn: () => getStrukturTree().catch(() => ({})),
+    enabled: isOpen,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const { data: listRes } = useQuery({
+    queryKey: ['struktur-organisasi-list-print'],
+    queryFn: () => getStrukturList().catch(() => []),
     enabled: isOpen,
     staleTime: 10 * 60 * 1000,
   });
 
   const headerData = usePrintHeaderData(sekolahRes as any);
 
-  const signers = useMemo(() => {
-    const raw =
-      (strukturRes as any)?.tree ||
-      (strukturRes as any)?.data?.tree ||
-      (strukturRes as any)?.data ||
-      strukturRes;
-    const nodes: any[] = Array.isArray(raw) ? raw : [];
-    const flat: any[] = [];
-    const walk = (arr: unknown) => {
-      if (!Array.isArray(arr)) return;
-      for (const n of arr) {
-        if (n && typeof n === 'object') {
-          flat.push(n);
-          if (Array.isArray((n as any).children)) walk((n as any).children);
-        }
+  const resolvedSigners = useMemo(() => {
+    const tree = (treeRes as any)?.data || treeRes || {};
+    const list = Array.isArray((listRes as any)?.data)
+      ? (listRes as any).data
+      : Array.isArray(listRes)
+      ? listRes
+      : [];
+    const sekolah = (sekolahRes as any)?.data || sekolahRes || {};
+
+    // 1. RESOLVE KEPALA SEKOLAH
+    let kepsekNama = sekolah?.kepala_sekolah || '';
+    let kepsekNip = cleanNip(sekolah?.nip_kepala || sekolah?.nip_kepala_sekolah);
+
+    const kepsekNodes = Array.isArray(tree['KEPALA_SEKOLAH']) ? tree['KEPALA_SEKOLAH'] : [];
+    const activeKepsek = kepsekNodes.find((n: any) => Array.isArray(n?.members) && n.members.length > 0);
+    if (activeKepsek?.members?.[0]?.name) {
+      kepsekNama = activeKepsek.members[0].name;
+      const parsedNip = cleanNip(activeKepsek.members[0].details);
+      if (parsedNip !== '-') kepsekNip = parsedNip;
+    }
+
+    if (!kepsekNama) {
+      const kepsekPos = list.find((p: any) => {
+        const code = String(p?.kode || p?.code || '').toUpperCase();
+        return code === 'KEPALA_SEKOLAH' || code === 'KEPSEK';
+      });
+      const assign =
+        kepsekPos?.organizationalAssigns?.find((a: any) => a.is_active !== false) ||
+        kepsekPos?.organizationalAssigns?.[0];
+      if (assign?.User?.Guru) {
+        kepsekNama = assign.User.Guru.nama_guru;
+        kepsekNip = assign.User.Guru.nip || kepsekNip;
       }
+    }
+
+    // 2. RESOLVE WAKASEK KURIKULUM
+    let wakaNama = '';
+    let wakaNip = '-';
+
+    const kurikulumNodes = [
+      ...(Array.isArray(tree['KURIKULUM']) ? tree['KURIKULUM'] : []),
+      ...(Array.isArray(tree['WAKA_KURIKULUM']) ? tree['WAKA_KURIKULUM'] : []),
+    ];
+    const activeKurikulum = kurikulumNodes.find((n: any) => Array.isArray(n?.members) && n.members.length > 0);
+    if (activeKurikulum?.members?.[0]?.name) {
+      wakaNama = activeKurikulum.members[0].name;
+      const parsedNip = cleanNip(activeKurikulum.members[0].details);
+      if (parsedNip !== '-') wakaNip = parsedNip;
+    }
+
+    if (!wakaNama) {
+      const kurikulumPos = list.find((p: any) => {
+        const code = String(p?.kode || p?.code || '').toUpperCase();
+        const name = String(p?.nama || p?.name || '').toUpperCase();
+        return code === 'KURIKULUM' || code === 'WAKA_KURIKULUM' || name.includes('KURIKULUM');
+      });
+      const assign =
+        kurikulumPos?.organizationalAssigns?.find((a: any) => a.is_active !== false) ||
+        kurikulumPos?.organizationalAssigns?.[0];
+      if (assign?.User?.Guru) {
+        wakaNama = assign.User.Guru.nama_guru;
+        wakaNip = assign.User.Guru.nip || '-';
+      }
+    }
+
+    const kota = sekolah?.kabupaten_kota || sekolah?.kota || 'Purwakarta';
+
+    return {
+      kepsekNama: kepsekNama || 'Kepala Sekolah',
+      kepsekNip: kepsekNip || '-',
+      wakaNama: wakaNama || 'Wakasek Bidang Kurikulum',
+      wakaNip: wakaNip || '-',
+      kota,
     };
-    walk(nodes);
+  }, [treeRes, listRes, sekolahRes]);
 
-    const kepsekNode = flat.find((n) =>
-      String(n.kode_posisi || n.jabatan || '').toUpperCase().includes('KEPALA_SEKOLAH') ||
-      String(n.nama_jabatan || '').toLowerCase().includes('kepala sekolah')
-    );
-    const wakaKuriNode = flat.find((n) =>
-      String(n.kode_posisi || n.jabatan || '').toUpperCase().includes('KURIKULUM') ||
-      String(n.nama_jabatan || '').toLowerCase().includes('kurikulum')
-    );
+  const [wakaNamaEdit, setWakaNamaEdit] = useState('');
+  const [wakaNipEdit, setWakaNipEdit] = useState('');
+  const [kepsekNamaEdit, setKepsekNamaEdit] = useState('');
+  const [kepsekNipEdit, setKepsekNipEdit] = useState('');
+  const [kotaEdit, setKotaEdit] = useState('');
 
-    const sekolahData = (sekolahRes as any)?.data || sekolahRes || {};
-    const kepsekNama =
-      kepsekNode?.Guru?.nama_guru ||
-      kepsekNode?.nama_pejabat ||
-      sekolahData?.kepala_sekolah ||
-      'Kepala Sekolah';
-    const kepsekNip = kepsekNode?.Guru?.nip || sekolahData?.nip_kepala_sekolah || '........................';
+  useEffect(() => {
+    setWakaNamaEdit(resolvedSigners.wakaNama);
+    setWakaNipEdit(resolvedSigners.wakaNip);
+    setKepsekNamaEdit(resolvedSigners.kepsekNama);
+    setKepsekNipEdit(resolvedSigners.kepsekNip);
+    setKotaEdit(resolvedSigners.kota);
+  }, [resolvedSigners]);
 
-    const wakaNama =
-      wakaKuriNode?.Guru?.nama_guru ||
-      wakaKuriNode?.nama_pejabat ||
-      'Wakasek Kurikulum';
-    const wakaNip = wakaKuriNode?.Guru?.nip || '........................';
-
-    const kota = sekolahData?.kabupaten_kota || sekolahData?.kota || 'Purwakarta';
-
-    return { kepsekNama, kepsekNip, wakaNama, wakaNip, kota };
-  }, [strukturRes, sekolahRes]);
+  const handleResetSigners = () => {
+    setWakaNamaEdit(resolvedSigners.wakaNama);
+    setWakaNipEdit(resolvedSigners.wakaNip);
+    setKepsekNamaEdit(resolvedSigners.kepsekNama);
+    setKepsekNipEdit(resolvedSigners.kepsekNip);
+    setKotaEdit(resolvedSigners.kota);
+    toast.success('Penandatangan dikembalikan ke data struktur organisasi');
+  };
 
   const todayFormatted = useMemo(() => {
     return new Intl.DateTimeFormat('id-ID', {
@@ -181,7 +249,66 @@ export const ProtaPromesPrintModal: React.FC<ProtaPromesPrintModalProps> = ({
       downloadPdfText={isExporting ? 'Merender PDF...' : 'Unduh PDF (WYSIWYG)'}
       printButtonText="Cetak Dokumen"
       size="5xl"
+      extraActions={
+        <button
+          type="button"
+          onClick={() => setShowSignerEditor((v) => !v)}
+          className="px-2.5 py-1 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 cursor-pointer flex items-center gap-1"
+        >
+          <UserCog className="w-3.5 h-3.5" />
+          <span>Edit Penandatangan</span>
+        </button>
+      }
     >
+      {showSignerEditor && (
+        <div className="mb-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2.5 print:hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+              Sesuaikan Pejabat Penandatangan (Sementara)
+            </span>
+            <button
+              type="button"
+              onClick={handleResetSigners}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:underline cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset Struktur</span>
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 text-xs">
+            <input
+              value={wakaNamaEdit}
+              onChange={(e) => setWakaNamaEdit(e.target.value)}
+              placeholder="Nama Wakasek Kurikulum"
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 font-semibold"
+            />
+            <input
+              value={wakaNipEdit}
+              onChange={(e) => setWakaNipEdit(e.target.value)}
+              placeholder="NIP Wakasek"
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono"
+            />
+            <input
+              value={kepsekNamaEdit}
+              onChange={(e) => setKepsekNamaEdit(e.target.value)}
+              placeholder="Nama Kepala Sekolah"
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 font-semibold"
+            />
+            <input
+              value={kepsekNipEdit}
+              onChange={(e) => setKepsekNipEdit(e.target.value)}
+              placeholder="NIP Kepala Sekolah"
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 font-mono"
+            />
+            <input
+              value={kotaEdit}
+              onChange={(e) => setKotaEdit(e.target.value)}
+              placeholder="Kota Titimangsa"
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 font-semibold"
+            />
+          </div>
+        </div>
+      )}
       <div ref={printDeskRef} className="py-2">
         <div id="print-desk-canvas-area">
           <PrintDocumentSheet
@@ -332,16 +459,16 @@ export const ProtaPromesPrintModal: React.FC<ProtaPromesPrintModalProps> = ({
                   <p>Diverifikasi oleh,</p>
                   <p className="font-bold">Wakasek Bidang Kurikulum</p>
                   <div className="h-14" />
-                  <p className="font-bold underline underline-offset-2">{signers.wakaNama}</p>
-                  <p className="text-[9.5px]">NIP. {signers.wakaNip}</p>
+                  <p className="font-bold underline underline-offset-2">{wakaNamaEdit}</p>
+                  <p className="text-[9.5px]">NIP. {wakaNipEdit}</p>
                 </div>
                 <div className="text-center">
-                  <p>{signers.kota}, {todayFormatted}</p>
+                  <p>{kotaEdit}, {todayFormatted}</p>
                   <p>Disusun oleh,</p>
                   <p className="font-bold">Guru Mata Pelajaran</p>
                   <div className="h-14" />
                   <p className="font-bold underline underline-offset-2">{guruNama}</p>
-                  <p className="text-[9.5px]">NIP. {guruNip || '........................'}</p>
+                  <p className="text-[9.5px]">NIP. {guruNip || '-'}</p>
                 </div>
               </div>
 
@@ -351,8 +478,8 @@ export const ProtaPromesPrintModal: React.FC<ProtaPromesPrintModalProps> = ({
                   <p>Mengetahui / Menyetujui,</p>
                   <p className="font-bold">Kepala Sekolah</p>
                   <div className="h-14" />
-                  <p className="font-bold underline underline-offset-2">{signers.kepsekNama}</p>
-                  <p className="text-[9.5px]">NIP. {signers.kepsekNip}</p>
+                  <p className="font-bold underline underline-offset-2">{kepsekNamaEdit}</p>
+                  <p className="text-[9.5px]">NIP. {kepsekNipEdit}</p>
                 </div>
               </div>
             </div>

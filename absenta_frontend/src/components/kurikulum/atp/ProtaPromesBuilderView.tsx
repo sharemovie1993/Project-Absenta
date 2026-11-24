@@ -19,6 +19,8 @@ import { SearchableSelect } from '../../ui/SearchableSelect';
 import { getAtpList, TujuanPembelajaranItem } from '../../../api/atp.api';
 import { listGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
 import { kurikulumApi } from '../../../api/kurikulum.api';
+import { sekolahApi } from '../../../api/academic/sekolah.api';
+import { getStrukturTree, getStrukturList } from '../../../api/academic/strukturOrganisasi.api';
 import { useAuth } from '../../../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import { cn } from '../../../lib/utils';
@@ -244,8 +246,58 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
   }, [nonEffectiveWeeks]);
 
   const buildPdfDocument = useCallback(async () => {
-    const { jsPDF } = await import('jspdf');
-    const autoTable = (await import('jspdf-autotable')).default;
+    const [{ jsPDF }, autoTableMod, sekolahRes, treeRes, listRes] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+      sekolahApi.getProfile().catch(() => null),
+      getStrukturTree().catch(() => ({})),
+      getStrukturList().catch(() => []),
+    ]);
+    const autoTable = autoTableMod.default;
+
+    const tree = (treeRes as any)?.data || treeRes || {};
+    const list = Array.isArray((listRes as any)?.data) ? (listRes as any).data : Array.isArray(listRes) ? listRes : [];
+    const sekolah = (sekolahRes as any)?.data || sekolahRes || {};
+
+    let kepsekNama = sekolah?.kepala_sekolah || '';
+    let kepsekNip = String(sekolah?.nip_kepala || sekolah?.nip_kepala_sekolah || '-');
+    const activeKepsek = (Array.isArray(tree['KEPALA_SEKOLAH']) ? tree['KEPALA_SEKOLAH'] : []).find((n: any) => n?.members?.length > 0);
+    if (activeKepsek?.members?.[0]?.name) {
+      kepsekNama = activeKepsek.members[0].name;
+      if (activeKepsek.members[0].details) kepsekNip = String(activeKepsek.members[0].details).replace(/^NIP\.?\s*/i, '').trim() || kepsekNip;
+    } else if (!kepsekNama) {
+      const kepsekPos = list.find((p: any) => ['KEPALA_SEKOLAH', 'KEPSEK'].includes(String(p?.kode || p?.code || '').toUpperCase()));
+      const assign = kepsekPos?.organizationalAssigns?.find((a: any) => a.is_active !== false) || kepsekPos?.organizationalAssigns?.[0];
+      if (assign?.User?.Guru) {
+        kepsekNama = assign.User.Guru.nama_guru;
+        kepsekNip = assign.User.Guru.nip || kepsekNip;
+      }
+    }
+
+    let wakaNama = '';
+    let wakaNip = '-';
+    const activeWaka = [
+      ...(Array.isArray(tree['KURIKULUM']) ? tree['KURIKULUM'] : []),
+      ...(Array.isArray(tree['WAKA_KURIKULUM']) ? tree['WAKA_KURIKULUM'] : []),
+    ].find((n: any) => n?.members?.length > 0);
+    if (activeWaka?.members?.[0]?.name) {
+      wakaNama = activeWaka.members[0].name;
+      if (activeWaka.members[0].details) wakaNip = String(activeWaka.members[0].details).replace(/^NIP\.?\s*/i, '').trim() || '-';
+    } else {
+      const wakaPos = list.find((p: any) => {
+        const code = String(p?.kode || p?.code || '').toUpperCase();
+        const name = String(p?.nama || p?.name || '').toUpperCase();
+        return code === 'KURIKULUM' || code === 'WAKA_KURIKULUM' || name.includes('KURIKULUM');
+      });
+      const assign = wakaPos?.organizationalAssigns?.find((a: any) => a.is_active !== false) || wakaPos?.organizationalAssigns?.[0];
+      if (assign?.User?.Guru) {
+        wakaNama = assign.User.Guru.nama_guru;
+        wakaNip = assign.User.Guru.nip || '-';
+      }
+    }
+
+    const resolvedKepsekNama = kepsekNama || 'Kepala Sekolah';
+    const resolvedWakaNama = wakaNama || 'Wakasek Bidang Kurikulum';
 
     const isLandscape = docMode === 'PROMES';
     const doc = new jsPDF({
@@ -341,15 +393,18 @@ export const ProtaPromesBuilderView: React.FC<ProtaPromesBuilderViewProps> = ({
     doc.setFontSize(9);
     doc.text('Diverifikasi oleh,', 25, currentY + 5);
     doc.text('Wakasek Bidang Kurikulum', 25, currentY + 10);
-    doc.text('( _________________________ )', 25, currentY + 28);
+    doc.text(resolvedWakaNama, 25, currentY + 28);
+    doc.text(`NIP. ${wakaNip}`, 25, currentY + 33);
 
     doc.text('Disusun oleh,', pageW - 75, currentY + 5);
     doc.text('Guru Mata Pelajaran', pageW - 75, currentY + 10);
     doc.text(guruNama, pageW - 75, currentY + 28);
+    doc.text(`NIP. ${guruNip || '-'}`, pageW - 75, currentY + 33);
 
-    doc.text('Mengetahui / Menyetujui,', pageW / 2, currentY + 38, { align: 'center' });
-    doc.text('Kepala Sekolah', pageW / 2, currentY + 43, { align: 'center' });
-    doc.text('( _________________________ )', pageW / 2, currentY + 60, { align: 'center' });
+    doc.text('Mengetahui / Menyetujui,', pageW / 2, currentY + 42, { align: 'center' });
+    doc.text('Kepala Sekolah', pageW / 2, currentY + 47, { align: 'center' });
+    doc.text(resolvedKepsekNama, pageW / 2, currentY + 64, { align: 'center' });
+    doc.text(`NIP. ${kepsekNip}`, pageW / 2, currentY + 69, { align: 'center' });
 
     return doc;
   }, [
