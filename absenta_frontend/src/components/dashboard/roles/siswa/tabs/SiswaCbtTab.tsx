@@ -165,7 +165,7 @@ const ProctorAvatar: React.FC<{ nama: string; foto?: string | null; size?: 'sm' 
 }) => {
   const [imgError, setImgError] = useState(false);
   const resolvedFoto = useMemo(() => (foto ? resolveProfilePhotoUrl(foto) : ''), [foto]);
-  const sizeCls = size === 'md' ? 'w-9 h-9 text-xs' : 'w-6 h-6 text-[10px]';
+  const sizeCls = size === 'md' ? 'w-11 h-11 text-sm' : 'w-8 h-8 text-xs';
   const initials = (nama || 'P')
     .split(/\s+/)
     .filter(Boolean)
@@ -244,6 +244,53 @@ const ProctorInfoStrip: React.FC<{ item: CbtStudentExamItem; variant?: 'compact'
         <span className="text-slate-500 dark:text-slate-400 font-medium shrink-0">Pengawas:</span>
         <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
           {proctors.map((p) => p.nama).join(' • ')}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+const ProctorPhotoColumn: React.FC<{ item: CbtStudentExamItem }> = ({ item }) => {
+  const proctors =
+    item.pengawas_list && item.pengawas_list.length > 0
+      ? item.pengawas_list
+      : item.pengawas_nama
+      ? [{ nama: item.pengawas_nama, foto: item.pengawas_foto }]
+      : [];
+
+  const primary = proctors[0];
+  const [imgError, setImgError] = useState(false);
+  const resolvedFoto = useMemo(
+    () => (primary?.foto ? resolveProfilePhotoUrl(primary.foto) : ''),
+    [primary?.foto]
+  );
+
+  if (!primary) return null;
+
+  const initials = (primary.nama || 'P')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('');
+
+  return (
+    <div className="shrink-0 flex flex-col items-center">
+      <div className="relative w-20 h-24 sm:w-24 sm:h-28 rounded-2xl overflow-hidden border-2 border-indigo-100 dark:border-indigo-900/70 bg-gradient-to-br from-indigo-50 to-slate-100 dark:from-indigo-950/60 dark:to-slate-900 shadow-xs">
+        {resolvedFoto && !imgError ? (
+          <img
+            src={resolvedFoto}
+            alt={primary.nama}
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover object-top"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-lg sm:text-xl font-black text-indigo-600 dark:text-indigo-300">
+            {initials || <UserCheck size={24} />}
+          </div>
+        )}
+        <span className="absolute inset-x-0 bottom-0 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-center bg-slate-900/70 text-white backdrop-blur-2xs">
+          Pengawas
         </span>
       </div>
     </div>
@@ -1066,96 +1113,114 @@ export const SiswaCbtTab: React.FC = () => {
                         return (
                           <div
                             key={item.id}
-                            className="p-3 sm:px-4 sm:py-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-all shadow-2xs"
+                            className="p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-stretch gap-3.5 sm:gap-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-all shadow-2xs"
                           >
-                            {/* Kiri: Sesi, Jam, Ruang, Mapel, Durasi */}
-                            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-wrap">
-                              <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0">
-                                {sessionLabel}
-                              </span>
+                            {/* Kolom 1: Foto Pengawas */}
+                            <ProctorPhotoColumn item={item} />
 
-                              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 shrink-0">
-                                <Clock size={13} className="text-slate-400" />
-                                <span className="font-semibold text-slate-700 dark:text-slate-300">{timeRange}</span>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenDenah(item);
-                                }}
-                                className="px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0 transition-all group"
-                                title="Buka Denah Ruang Ujian"
-                              >
-                                <DoorOpen size={12} className="text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
-                                <span>Ruang {roomInfo.display}</span>
-                                <MapPin size={10} className="text-amber-500 animate-pulse ml-0.5" />
-                              </button>
-
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">
-                                  {subjectName}
-                                </span>
-                                {(item.kolaborasi_badge || item.is_kolaborasi) && (
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0">
-                                    {item.kolaborasi_badge || 'Kolaborasi'}
+                            {/* Kolom 2: Data Sesi & Aksi */}
+                            <div className="min-w-0 flex-1 flex flex-col justify-between gap-2.5">
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0">
+                                    {sessionLabel}
                                   </span>
-                                )}
-                                <span className="text-[11px] text-slate-400 shrink-0 hidden md:inline">
-                                  • {item.durasi_menit} mnt
-                                </span>
-                              </div>
-                              <ProctorInfoStrip item={item} />
-                            </div>
 
-                            {/* Kanan: Aksi */}
-                            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                              {actionable ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    goToExamRoom(item);
-                                  }}
-                                  disabled={isPaused}
-                                  className="px-4 py-1.5 rounded-xl text-xs font-black bg-violet-600 hover:bg-violet-700 text-white shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-                                >
-                                  {isPaused ? <PauseCircle size={14} /> : isResume ? <RotateCcw size={14} /> : <PlayCircle size={14} />}
-                                  <span>{isPaused ? 'Menunggu' : isResume ? 'Lanjutkan' : 'Kerjakan Ujian'}</span>
-                                </button>
-                              ) : (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                                    <Lock size={10} className="text-slate-400" />
-                                    <span>Hari H</span>
-                                  </span>
+                                  <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 shrink-0">
+                                    <Clock size={13} className="text-slate-400" />
+                                    <span className="font-semibold text-slate-700 dark:text-slate-300">{timeRange}</span>
+                                  </div>
+
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleOpenDenah(item);
                                     }}
-                                    className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800/60 flex items-center gap-1 cursor-pointer transition-all"
-                                    title="Denah Lokasi Ruangan"
+                                    className="px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0 transition-all group"
+                                    title="Buka Denah Ruang Ujian"
                                   >
-                                    <MapPin size={12} className="text-indigo-500" />
-                                    <span>Denah Ruang</span>
+                                    <DoorOpen size={12} className="text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
+                                    <span>Ruang {roomInfo.display}</span>
+                                    <MapPin size={10} className="text-amber-500 animate-pulse ml-0.5" />
                                   </button>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
+                                    {subjectName}
+                                  </span>
+                                  {(item.kolaborasi_badge || item.is_kolaborasi) && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0">
+                                      {item.kolaborasi_badge || 'Kolaborasi'}
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                    • {item.durasi_menit} mnt
+                                  </span>
+                                </div>
+
+                                {(item.pengawas_nama || (item.pengawas_list && item.pengawas_list.length > 0)) && (
+                                  <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                                    <UserCheck size={13} className="text-indigo-500 shrink-0" />
+                                    <span className="text-slate-500 dark:text-slate-400">Pengawas:</span>
+                                    <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
+                                      {item.pengawas_list && item.pengawas_list.length > 0
+                                        ? item.pengawas_list.map((p) => p.nama).join(' • ')
+                                        : item.pengawas_nama}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Baris Aksi */}
+                              <div className="flex items-center justify-end gap-2 flex-wrap pt-1 border-t border-slate-100 dark:border-slate-800/70">
+                                {actionable ? (
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setSelectedDetailItem(item);
+                                      goToExamRoom(item);
                                     }}
-                                    className="px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 text-xs font-bold flex items-center gap-0.5 cursor-pointer transition-colors"
-                                    title="Detail Sesi Ujian"
+                                    disabled={isPaused}
+                                    className="px-4 py-1.5 rounded-xl text-xs font-black bg-violet-600 hover:bg-violet-700 text-white shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                                   >
-                                    <span>Detail</span>
-                                    <ChevronRight size={13} />
+                                    {isPaused ? <PauseCircle size={14} /> : isResume ? <RotateCcw size={14} /> : <PlayCircle size={14} />}
+                                    <span>{isPaused ? 'Menunggu' : isResume ? 'Lanjutkan' : 'Kerjakan Ujian'}</span>
                                   </button>
-                                </div>
-                              )}
+                                ) : (
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                      <Lock size={10} className="text-slate-400" />
+                                      <span>Hari H</span>
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenDenah(item);
+                                      }}
+                                      className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800/60 flex items-center gap-1 cursor-pointer transition-all"
+                                      title="Denah Lokasi Ruangan"
+                                    >
+                                      <MapPin size={12} className="text-indigo-500" />
+                                      <span>Denah Ruang</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedDetailItem(item);
+                                      }}
+                                      className="px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 text-xs font-bold flex items-center gap-0.5 cursor-pointer transition-colors"
+                                      title="Detail Sesi Ujian"
+                                    >
+                                      <span>Detail</span>
+                                      <ChevronRight size={13} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
