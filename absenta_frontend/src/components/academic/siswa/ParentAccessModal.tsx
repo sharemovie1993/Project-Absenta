@@ -7,7 +7,8 @@ import {
   ExternalLink, 
   Copy, 
   Check, 
-  MessageSquare 
+  MessageSquare,
+  Eye,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -167,11 +168,22 @@ export const ParentAccessModal: React.FC<ParentAccessModalProps> = ({ data, onCl
         </div>
 
         {/* Footer */}
-        <div className="px-6 pb-6 pt-4">
+        <div className="px-6 pb-6 pt-4 flex flex-col sm:flex-row gap-2.5">
+          {data.loginLink && (
+            <a
+              href={data.loginLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-all"
+            >
+              <Eye size={14} />
+              <span>Buka / Impersonasi Portal Orang Tua</span>
+            </a>
+          )}
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-xl py-2.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition-all cursor-pointer"
+            className="sm:w-28 rounded-xl py-2.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition-all cursor-pointer"
           >
             Tutup
           </button>
