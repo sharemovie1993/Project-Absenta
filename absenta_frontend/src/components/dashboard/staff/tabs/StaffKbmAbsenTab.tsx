@@ -607,10 +607,20 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
           tingkat={readerContext.tingkat}
           fase={readerContext.fase}
           onOpenJurnal={(jurnalData) => {
+            const sourceItem = (readerContext as any).sourceItem;
+            const resolvedSesiId = sourceItem?.session?.id || activeSesiId;
+            if (!resolvedSesiId) {
+              toast.error('Silakan buka sesi mengajar terlebih dahulu sebelum mengisi Jurnal KBM.');
+              return;
+            }
             setJournalModalOpen(true);
             setTargetJournalSesi({
-              id: activeSesiId || targetJadwal?.id || '',
-              progres: { materi: jurnalData.judul_materi, deskripsi: jurnalData.deskripsi }
+              id: resolvedSesiId,
+              progres: {
+                judul_materi: jurnalData.judul_materi,
+                materi: jurnalData.judul_materi,
+                deskripsi: jurnalData.deskripsi,
+              }
             });
           }}
         />

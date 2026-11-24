@@ -1459,7 +1459,21 @@ export const UnifiedStaffDashboard: React.FC = () => {
             <JurnalKbmModal
               isOpen={journalModalOpen}
               onClose={() => { setJournalModalOpen(false); setSessionForJournal(null); }}
+              sesiId={sessionForJournal?.session?.id || sessionForJournal?.sesi_id || sessionForJournal?.id || ''}
               sesi={sessionForJournal}
+              initialData={
+                sessionForJournal?.progres_materi ||
+                sessionForJournal?.session?.progres ||
+                sessionForJournal?.progres ||
+                (sessionForJournal?.session?.jurnal_kbm
+                  ? {
+                      judul_materi: sessionForJournal.session.jurnal_kbm.judul_materi || sessionForJournal.session.jurnal_kbm.materi,
+                      deskripsi: sessionForJournal.session.jurnal_kbm.deskripsi || sessionForJournal.session.jurnal_kbm.catatan,
+                      pencapaian_persen: sessionForJournal.session.jurnal_kbm.pencapaian_persen,
+                      kendala: sessionForJournal.session.jurnal_kbm.kendala,
+                    }
+                  : undefined)
+              }
             />
           </Suspense>
         )}
@@ -1822,7 +1836,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
                   timelineItems={timelineItems || []}
                   onNavigateTab={handleTabChange}
                   onOpenAttendance={(sesi) => setSelectedSesi(sesi)}
-                  onOpenJournal={(sesi) => { setSessionForJournal(sesi); setJournalModalOpen(true); }}
+                  onOpenJournal={(sesi) => {
+                    const resolvedSesiId = sesi?.session?.id || sesi?.sesi_id || (sesi && !('session' in sesi) ? sesi.id : undefined);
+                    if (!resolvedSesiId) {
+                      toast.error('Silakan buka sesi mengajar terlebih dahulu sebelum mengisi Jurnal KBM.');
+                      return;
+                    }
+                    setSessionForJournal(sesi);
+                    setJournalModalOpen(true);
+                  }}
                 />
               </Suspense>
             )}
@@ -2362,7 +2384,21 @@ export const UnifiedStaffDashboard: React.FC = () => {
           <JurnalKbmModal
             isOpen={journalModalOpen}
             onClose={() => { setJournalModalOpen(false); setSessionForJournal(null); }}
+            sesiId={sessionForJournal?.session?.id || sessionForJournal?.sesi_id || sessionForJournal?.id || ''}
             sesi={sessionForJournal}
+            initialData={
+              sessionForJournal?.progres_materi ||
+              sessionForJournal?.session?.progres ||
+              sessionForJournal?.progres ||
+              (sessionForJournal?.session?.jurnal_kbm
+                ? {
+                    judul_materi: sessionForJournal.session.jurnal_kbm.judul_materi || sessionForJournal.session.jurnal_kbm.materi,
+                    deskripsi: sessionForJournal.session.jurnal_kbm.deskripsi || sessionForJournal.session.jurnal_kbm.catatan,
+                    pencapaian_persen: sessionForJournal.session.jurnal_kbm.pencapaian_persen,
+                    kendala: sessionForJournal.session.jurnal_kbm.kendala,
+                  }
+                : undefined)
+            }
           />
         </Suspense>
       )}

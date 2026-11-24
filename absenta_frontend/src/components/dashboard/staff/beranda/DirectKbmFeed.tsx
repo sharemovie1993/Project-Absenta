@@ -402,16 +402,21 @@ export const DirectKbmFeed: React.FC<DirectKbmFeedProps> = React.memo(({
           onOpenJurnal={(jurnalData) => {
             setReaderModalOpen(false);
             const targetItem = readerContext.sourceItem || activeTimelineItem;
-            if (targetItem) {
-              handleOpenJournalModal({
-                ...targetItem,
-                progres_materi: {
-                  ...(targetItem.progres_materi || targetItem.session?.progres || {}),
-                  materi: jurnalData.judul_materi,
-                  deskripsi: jurnalData.deskripsi,
-                },
-              });
+            if (!targetItem) return;
+            const resolvedSesiId = targetItem.session?.id || (targetItem as any).sesi_id;
+            if (!resolvedSesiId) {
+              toast.error('Silakan buka sesi mengajar terlebih dahulu sebelum mengisi Jurnal KBM.');
+              return;
             }
+            handleOpenJournalModal({
+              ...targetItem,
+              progres_materi: {
+                ...(targetItem.session?.progres || targetItem.progres_materi || {}),
+                judul_materi: jurnalData.judul_materi,
+                materi: jurnalData.judul_materi,
+                deskripsi: jurnalData.deskripsi,
+              },
+            });
           }}
         />
       )}

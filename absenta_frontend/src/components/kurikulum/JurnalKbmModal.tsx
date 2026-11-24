@@ -51,7 +51,7 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setFormData({
-        judul_materi: initialData?.judul_materi || '',
+        judul_materi: initialData?.judul_materi || initialData?.materi || '',
         deskripsi: initialData?.deskripsi || '',
         pencapaian_persen: typeof initialData?.pencapaian_persen === 'number' ? initialData.pencapaian_persen : 100,
         kendala: initialData?.kendala || ''
@@ -77,6 +77,10 @@ export const JurnalKbmModal: React.FC<JurnalKbmModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (readOnly) return;
+    if (!sesiId) {
+      toast.error('ID Sesi KBM tidak ditemukan. Silakan buka sesi mengajar terlebih dahulu.');
+      return;
+    }
     if (!formData.judul_materi.trim()) {
       toast.error('Judul materi wajib diisi');
       return;
