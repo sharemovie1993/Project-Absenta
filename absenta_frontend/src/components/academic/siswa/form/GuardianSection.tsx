@@ -39,9 +39,6 @@ export const GuardianSection: React.FC<GuardianSectionProps> = React.memo(({
     watch,
     setValue
 }) => {
-    isViewMode,
-    watch
-}) => {
     const { fields, append, remove } = useFieldArray({
         control,
         name: "orang_tua"
