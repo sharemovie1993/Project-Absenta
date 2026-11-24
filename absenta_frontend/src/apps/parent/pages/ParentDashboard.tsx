@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParentAuthStore } from '../../../store/parentAuthStore';
-import { getStudentNotifications, getParentDashboard, reportStudentAbsence, type NotificationRecord } from '../../../api/parent.api';
+import { getStudentNotifications, getParentDashboard, reportStudentAbsence, getStudentDailyTracking, type NotificationRecord, type TrackingHarianResponse } from '../../../api/parent.api';
+import { toLocalDate } from '../../../utils/attendance/time';
 import { getTimezone } from '../../../utils/attendance/time';
 import { useParentSocket } from '../hooks/useParentSocket';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -8,6 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, ChevronRight, LogOut, Activity, UserCheck, Award, FileText, MessageCircle, CheckCircle2, Calendar, User, LayoutList, AlertTriangle, Trophy, RefreshCw, QrCode, MapPin, Heart, Phone, ArrowRight, ShieldCheck, Clock, Send, X } from 'lucide-react';
 import ReportAbsenceModal from '../components/ReportAbsenceModal';
 import { ParentKehadiranTab } from '../components/ParentKehadiranTab';
+import ParentRapor from './ParentRapor';
+import ParentChat from './ParentChat';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Button } from '@/components/ui/Button';
 import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
@@ -37,6 +40,8 @@ export default function ParentDashboard() {
   const student = getSelectedStudent();
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
+  const [dailyTracking, setDailyTracking] = useState<TrackingHarianResponse | null>(null);
+  const [loadingTracking, setLoadingTracking] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -106,8 +111,12 @@ export default function ParentDashboard() {
       const newData = await getParentDashboard();
       setData(newData);
       if (student?.siswa_id) {
-        const notifRes = await getStudentNotifications(student.siswa_id, 1, 5);
+        const [notifRes, trackRes] = await Promise.all([
+          getStudentNotifications(student.siswa_id, 1, 5),
+          getStudentDailyTracking(student.siswa_id, toLocalDate()).catch(() => null),
+        ]);
         setNotifications(notifRes.data);
+        if (trackRes) setDailyTracking(trackRes);
       }
       toast.success('Data kehadiran anak berhasil diperbarui!');
     } catch (err) {
@@ -140,11 +149,13 @@ export default function ParentDashboard() {
     };
   }, [socket, student?.siswa_id, setData]);
 
-  // 3. Fetch Notifications
+  // 3. Fetch Notifications & Daily Tracking
   useEffect(() => {
     if (!student) return;
     setLoadingNotifs(true);
+    setLoadingTracking(true);
     getStudentNotifications(student.siswa_id, 1, 5).then(res => setNotifications(res.data)).catch(console.error).finally(() => setLoadingNotifs(false));
+    getStudentDailyTracking(student.siswa_id, toLocalDate()).then(res => setDailyTracking(res)).catch(console.error).finally(() => setLoadingTracking(false));
   }, [student?.siswa_id]);
   const childInitials = useMemo(() => {
     const name = student.nama_siswa || 'Anak';
@@ -182,7 +193,7 @@ export default function ParentDashboard() {
   };
   const statusLabel = getFriendlyStatus(today.status);
   const isTerlambat = today.status === 'HADIR' && today.is_terlambat;
-  const tabs = [{
+  const tabs: Array<{ id: string; label: string; fullLabel: string; icon: any; badge?: string }> = [{
     id: 'ringkasan',
     label: 'Beranda',
     fullLabel: 'Ringkasan Hari Ini',
@@ -193,11 +204,20 @@ export default function ParentDashboard() {
     fullLabel: 'Riwayat Kehadiran',
     icon: Calendar
   }, {
+    id: 'rapor',
+    label: 'Rapor',
+    fullLabel: 'Rapor & Nilai',
+    icon: Award
+  }, {
     id: 'perizinan',
     label: 'Izin',
     fullLabel: 'Kirim Surat Izin',
-    icon: FileText,
-    badge: '2'
+    icon: FileText
+  }, {
+    id: 'chat',
+    label: 'Chat',
+    fullLabel: 'Chat Wali Kelas',
+    icon: MessageCircle
   }, {
     id: 'catatan',
     label: 'Catatan',
@@ -344,17 +364,33 @@ export default function ParentDashboard() {
                     <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                       Kehadiran di Sekolah Hari Ini
                     </span>
-                    <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 uppercase">
+                    <div className={cn(
+                      "text-lg sm:text-xl font-black uppercase",
+                      today.status === 'HADIR' && !isTerlambat ? "text-emerald-600 dark:text-emerald-400" :
+                      isTerlambat ? "text-amber-600 dark:text-amber-400" :
+                      today.status === 'ALPA' ? "text-rose-600 dark:text-rose-400" :
+                      today.status === 'SAKIT' || today.status === 'IZIN' ? "text-blue-600 dark:text-blue-400" :
+                      "text-slate-700 dark:text-slate-300"
+                    )}>
                       {statusLabel} {today.waktu_masuk ? `(${new Date(today.waktu_masuk).toLocaleTimeString('id-ID', {
                     hour: '2-digit',
                     minute: '2-digit'
                   })} WIB)` : ''}
                     </div>
                     <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                      Pintu Masuk Utama • {isTerlambat ? 'Terlambat' : 'Tepat Waktu'}
+                      {today.status === 'BELUM_HADIR'
+                        ? 'Belum ada catatan masuk sekolah hari ini'
+                        : today.status === 'HADIR'
+                        ? `Pintu Masuk Utama • ${isTerlambat ? 'Terlambat' : 'Tepat Waktu'}${today.waktu_pulang ? ` • Pulang ${new Date(today.waktu_pulang).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB` : ''}`
+                        : `Status tercatat untuk hari ini`}
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <div className={cn(
+                    "w-10 h-10 rounded-2xl flex items-center justify-center shrink-0",
+                    today.status === 'HADIR' ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" :
+                    today.status === 'ALPA' ? "bg-rose-500/15 text-rose-600 dark:text-rose-400" :
+                    "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                  )}>
                     <CheckCircle2 size={20} />
                   </div>
                 </div>
@@ -363,13 +399,13 @@ export default function ParentDashboard() {
                 <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3">
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                      Poin Kedisiplinan Anak
+                      Total Poin Kehadiran
                     </span>
                     <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">
-                      {summary.total_poin ?? 90} / 100 Poin
+                      {summary.total_poin ?? 0} Poin
                     </div>
-                    <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                      Penilaian: SANGAT BAIK
+                    <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                      Hadir: <span className="text-emerald-600 font-bold">{summary.hadir}</span> • Izin: <span className="text-blue-600 font-bold">{summary.izin}</span> • Sakit: <span className="text-purple-600 font-bold">{summary.sakit}</span> • Alpa: <span className="text-rose-600 font-bold">{summary.alpa}</span>
                     </p>
                   </div>
                   <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
@@ -379,12 +415,12 @@ export default function ParentDashboard() {
 
                 {/* Card 3: Pesan WhatsApp Orang Tua */}
                 <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3">
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0">
                     <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                       Pesan WhatsApp Orang Tua
                     </span>
-                    <div className="text-lg sm:text-xl font-black text-blue-600 dark:text-blue-400 truncate max-w-[180px]">
-                      AKTIF (+62812...)
+                    <div className="text-base sm:text-lg font-black text-blue-600 dark:text-blue-400 truncate">
+                      {data?.orang_tua?.no_hp ? `Aktif (${data.orang_tua.no_hp})` : 'Belum Terdaftar'}
                     </div>
                     <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                       Kabar otomatis saat anak tiba atau pulang
@@ -396,82 +432,109 @@ export default function ParentDashboard() {
                 </div>
               </div>
 
-              {/* Kabar Aktivitas Anak di Sekolah Container */}
+              {/* Kabar Aktivitas Anak di Sekolah Container (Data Asli Anak) */}
               <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80">
                   <div className="flex items-center gap-2.5">
                     <Activity size={18} className="text-emerald-600 dark:text-emerald-400" />
                     <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                      Kabar Aktivitas Anak di Sekolah
+                      Kabar Aktivitas {student.nama_siswa} Hari Ini
                     </h3>
                   </div>
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                    Terbaru Otomatis
+                    Data Langsung
                   </span>
                 </div>
 
-                {/* Feed Items List */}
-                <div className="space-y-3">
-                  {[{
-                id: 'f1',
-                title: 'Anak Tiba di Sekolah',
-                subtitle: `${student.nama_siswa} sudah sampai di sekolah melalui Pintu Masuk Utama dengan aman.`,
-                badge: 'HADIR TEPAT WAKTU',
-                badgeColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-                iconColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-                time: today.waktu_masuk ? new Date(today.waktu_masuk).toLocaleTimeString('id-ID', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                }) + ' WIB' : '06:48 WIB'
-              }, {
-                id: 'f2',
-                title: 'Pelajaran di Kelas Dimulai',
-                subtitle: 'Bapak/Ibu Guru Drs. Budi Santoso telah memulai pelajaran Pemrograman Web di Lab Komputer 2.',
-                badge: 'SEDANG BELAJAR',
-                badgeColor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30',
-                iconColor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
-                time: '07:00 WIB'
-              }, {
-                id: 'f3',
-                title: 'Catatan Keterlambatan',
-                subtitle: 'Bagas Prasetyo tercatat masuk gerbang pukul 07:18 WIB (terlambat 18 menit).',
-                badge: 'TERLAMBAT',
-                badgeColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
-                iconColor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-                time: '07:18 WIB'
-              }, {
-                id: 'f4',
-                title: 'Kiriman Surat Izin Sakit',
-                subtitle: 'Orang tua dari Elvina Nurul Zahra telah mengirimkan surat izin sakit beserta surat dokter.',
-                badge: 'SURAT IZIN',
-                badgeColor: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30',
-                iconColor: 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
-                time: '06:15 WIB'
-              }].map(item => <div key={item.id} className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
-                      <div className="flex items-start gap-3.5 min-w-0">
-                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 mt-0.5", item.iconColor)}>
-                          <Clock size={20} />
-                        </div>
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold">
-                            <span className={cn("px-2 py-0.5 rounded-md font-mono uppercase tracking-wider border", item.badgeColor)}>
-                              {item.badge}
-                            </span>
-                          </div>
-                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
-                            {item.title}
-                          </h4>
-                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                            {item.subtitle}
-                          </p>
-                        </div>
-                      </div>
+                {/* Feed Items List (Real Data: Tracking Harian + Notifikasi Anak) */}
+                {(loadingTracking || loadingNotifs) && (dailyTracking?.kegiatan?.length || 0) === 0 && notifications.length === 0 ? (
+                  <div className="py-8 text-center text-xs font-semibold text-slate-400">
+                    Memuat kabar aktivitas {student.nama_siswa}...
+                  </div>
+                ) : (dailyTracking?.kegiatan?.length || 0) === 0 && notifications.length === 0 ? (
+                  <div className="py-8 text-center space-y-1.5">
+                    <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
+                      Belum ada aktivitas sekolah untuk {student.nama_siswa} hari ini
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      Kabar akan muncul otomatis saat anak tiba di sekolah, mengikuti pelajaran, atau pulang.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {(dailyTracking?.kegiatan || []).map((keg, idx) => {
+                      const st = String(keg.status || '').toUpperCase();
+                      const badgeColor =
+                        st === 'HADIR' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' :
+                        st === 'TERLAMBAT' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30' :
+                        st === 'ALPA' ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30' :
+                        'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30';
+                      const iconColor =
+                        st === 'HADIR' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' :
+                        st === 'TERLAMBAT' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' :
+                        st === 'ALPA' ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400' :
+                        'bg-blue-500/15 text-blue-600 dark:text-blue-400';
 
-                      <span className="text-xs font-mono font-extrabold text-slate-500 dark:text-slate-400 shrink-0 self-end sm:self-auto">
-                        {item.time}
-                      </span>
-                    </div>)}
-                </div>
+                      return (
+                        <div key={`keg-${idx}`} className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+                          <div className="flex items-start gap-3.5 min-w-0">
+                            <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 mt-0.5", iconColor)}>
+                              <Clock size={20} />
+                            </div>
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold">
+                                <span className={cn("px-2 py-0.5 rounded-md font-mono uppercase tracking-wider border", badgeColor)}>
+                                  {getFriendlyStatus(st)}
+                                </span>
+                              </div>
+                              <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
+                                {keg.jenis_kegiatan}
+                              </h4>
+                              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                Tercatat untuk {student.nama_siswa} hari ini
+                              </p>
+                            </div>
+                          </div>
+
+                          <span className="text-xs font-mono font-extrabold text-slate-500 dark:text-slate-400 shrink-0 self-end sm:self-auto">
+                            {keg.waktu !== '-' ? `${keg.waktu} WIB` : '-'}
+                          </span>
+                        </div>
+                      );
+                    })}
+
+                    {notifications.map((notif) => (
+                      <div key={notif.id} className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+                        <div className="flex items-start gap-3.5 min-w-0">
+                          <div className="w-10 h-10 rounded-2xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
+                            <Bell size={20} />
+                          </div>
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold">
+                              <span className="px-2 py-0.5 rounded-md font-mono uppercase tracking-wider border bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30">
+                                PEMBERITAHUAN
+                              </span>
+                            </div>
+                            <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
+                              {notif.title}
+                            </h4>
+                            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                              {notif.message}
+                            </p>
+                          </div>
+                        </div>
+
+                        <span className="text-xs font-mono font-extrabold text-slate-500 dark:text-slate-400 shrink-0 self-end sm:self-auto">
+                          {new Date(notif.created_at).toLocaleTimeString('id-ID', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}{' '}
+                          WIB
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </motion.div>}
 
@@ -674,6 +737,38 @@ export default function ParentDashboard() {
                     </span>
                   </div>)}
               </div>
+            </motion.div>}
+
+          {/* 🎓 TAB: RAPOR & NILAI ANAK */}
+          {activeTab === 'rapor' && <motion.div key="tab-rapor" initial={{
+          opacity: 0,
+          y: 8
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} exit={{
+          opacity: 0,
+          y: -8
+        }} transition={{
+          duration: 0.2
+        }}>
+              <ParentRapor embedded />
+            </motion.div>}
+
+          {/* 💬 TAB: CHAT WALI KELAS */}
+          {activeTab === 'chat' && <motion.div key="tab-chat" initial={{
+          opacity: 0,
+          y: 8
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} exit={{
+          opacity: 0,
+          y: -8
+        }} transition={{
+          duration: 0.2
+        }}>
+              <ParentChat embedded />
             </motion.div>}
 
           {/* 👤 TAB 5: PROFIL ORTU & PENGATURAN NOTIFIKASI WA */}

@@ -35,7 +35,7 @@ function formatDate(isoStr: string) {
   });
 }
 
-export default function ParentChat() {
+export default function ParentChat({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: parentData, getSelectedStudent } = useParentAuthStore();
@@ -105,7 +105,7 @@ export default function ParentChat() {
   // --- CHAT ROOM VIEW ---
   if (activeSessionId) {
     return (
-      <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-950 max-w-md mx-auto">
+      <div className={embedded ? "flex flex-col h-[540px] rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden" : "flex flex-col h-screen bg-slate-50 dark:bg-slate-950 max-w-md mx-auto"}>
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center gap-3 shadow-sm">
           <button
@@ -206,21 +206,23 @@ export default function ParentChat() {
 
   // --- SESSION LIST VIEW ---
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 p-4">
+    <div className={embedded ? "p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4" : "min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 p-4"}>
       {/* Mobile Top Bar */}
-      <div className="flex items-center justify-between mb-6">
-        <Button
-          onClick={() => navigate('/parent-app/dashboard')}
-          variant="ghost"
-          className="text-xs font-bold text-slate-500"
-        >
-          ← KEMBALI
-        </Button>
-        <h1 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-wider">Pesan Wali Kelas</h1>
-        <div className="w-14" />
-      </div>
+      {!embedded && (
+        <div className="flex items-center justify-between mb-6">
+          <Button
+            onClick={() => navigate('/parent-app/dashboard')}
+            variant="ghost"
+            className="text-xs font-bold text-slate-500"
+          >
+            ← KEMBALI
+          </Button>
+          <h1 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-wider">Pesan Wali Kelas</h1>
+          <div className="w-14" />
+        </div>
+      )}
 
-      <div className="max-w-md mx-auto space-y-4">
+      <div className={embedded ? "space-y-4" : "max-w-md mx-auto space-y-4"}>
         {loadingSessions ? (
           <div className="text-center py-20 text-slate-400 text-xs italic">Memuat daftar obrolan...</div>
         ) : !sessions || sessions.length === 0 ? (

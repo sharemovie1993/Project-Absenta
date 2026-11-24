@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 
-export default function ParentRapor() {
+export default function ParentRapor({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const { getSelectedStudent } = useParentAuthStore();
   const student = getSelectedStudent();
@@ -64,21 +64,23 @@ export default function ParentRapor() {
   }, [rapor]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 p-4">
+    <div className={embedded ? "space-y-5" : "min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 p-4"}>
       {/* Mobile Top Bar */}
-      <div className="flex items-center justify-between mb-6">
-        <Button 
-          onClick={() => navigate('/parent-app/dashboard')}
-          variant="ghost" 
-          className="text-xs font-bold text-slate-500"
-        >
-          ← KEMBALI
-        </Button>
-        <h1 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-wider">E-Rapor Online</h1>
-        <div className="w-14"></div>
-      </div>
+      {!embedded && (
+        <div className="flex items-center justify-between mb-6">
+          <Button 
+            onClick={() => navigate('/parent-app/dashboard')}
+            variant="ghost" 
+            className="text-xs font-bold text-slate-500"
+          >
+            ← KEMBALI
+          </Button>
+          <h1 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-wider">E-Rapor Online</h1>
+          <div className="w-14"></div>
+        </div>
+      )}
 
-      <div className="max-w-md mx-auto space-y-6">
+      <div className={embedded ? "space-y-5" : "max-w-md mx-auto space-y-6"}>
         
         {/* Period Selector Card */}
         <Card className="p-4 border-none shadow-sm dark:bg-slate-900/40 grid grid-cols-2 gap-4">
