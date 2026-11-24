@@ -66,6 +66,7 @@ interface PerangkatAjarModalsProps {
   isReaderModalOpen: boolean;
   setIsReaderModalOpen: (v: boolean) => void;
   readerPerangkatId: string;
+  readerPerangkat?: PerangkatAjar | null;
   isStudioModalOpen: boolean;
   setIsStudioModalOpen: (v: boolean) => void;
   studioPerangkat: any;
@@ -87,7 +88,7 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
     generatedAIContent, setGeneratedAIContent, handleAISubmit, handleAISave,
     isWizardModalOpen, setIsWizardModalOpen, isWordEditorOpen, setIsWordEditorOpen,
     selectedWordEditItem, setSelectedWordEditItem, queryClient,
-    isReaderModalOpen, setIsReaderModalOpen, readerPerangkatId,
+    isReaderModalOpen, setIsReaderModalOpen, readerPerangkatId, readerPerangkat,
     isStudioModalOpen, setIsStudioModalOpen, studioPerangkat, setStudioPerangkat,
     uploadLoading, reviewLoading, generateAILoading, saveAILoading, canonicalGuruOptions,
     uploadProgress, isGuruContext, currentTeacherName
@@ -229,6 +230,9 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
               isOpen={isReaderModalOpen}
               onClose={() => setIsReaderModalOpen(false)}
               perangkatId={readerPerangkatId}
+              mapelId={readerPerangkat?.mapel_id || readerPerangkat?.Mapel?.id}
+              mapelNama={readerPerangkat?.Mapel?.nama_mapel}
+              fase={(readerPerangkat as any)?.fase}
             />
           )}
 

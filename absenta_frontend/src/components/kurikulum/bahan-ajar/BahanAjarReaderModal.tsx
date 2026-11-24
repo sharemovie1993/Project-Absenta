@@ -114,7 +114,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
     );
   }, []);
 
-  const [readerViewTab, setReaderViewTab] = useState<'SLIDES' | 'PDF'>('PDF');
+  const [readerViewTab, setReaderViewTab] = useState<'SLIDES' | 'PDF' | 'SHARED'>('PDF');
   const [selectedFileId, setSelectedFileId] = useState<string>('');
   const [useOfficeViewer, setUseOfficeViewer] = useState<boolean>(isPublicOrigin);
 
@@ -172,16 +172,27 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
     return data?.attached_files || [];
   }, [data]);
 
+  const sharedFiles: AttachedFileItem[] = useMemo(() => {
+    return data?.shared_files || [];
+  }, [data]);
+
+  const activeFileList: AttachedFileItem[] = useMemo(() => {
+    return readerViewTab === 'SHARED' ? sharedFiles : attachedFiles;
+  }, [readerViewTab, sharedFiles, attachedFiles]);
+
   const selectedFile: AttachedFileItem | undefined = useMemo(() => {
-    if (attachedFiles.length === 0) return undefined;
-    return attachedFiles.find((f) => f.id === selectedFileId) || attachedFiles[0];
-  }, [attachedFiles, selectedFileId]);
+    if (activeFileList.length === 0) return undefined;
+    const targetId = selectedFileId || (readerViewTab === 'PDF' ? perangkatId : undefined);
+    return (targetId ? activeFileList.find((f) => f.id === targetId) : undefined) || activeFileList[0];
+  }, [activeFileList, selectedFileId, readerViewTab, perangkatId]);
 
   useEffect(() => {
     if (!isLoading) {
-      setReaderViewTab(attachedFiles.length > 0 ? 'PDF' : 'SLIDES');
+      if (attachedFiles.length > 0) setReaderViewTab('PDF');
+      else if (sharedFiles.length > 0 && pertemuanList.length === 0) setReaderViewTab('SHARED');
+      else setReaderViewTab('SLIDES');
     }
-  }, [isLoading, attachedFiles.length]);
+  }, [isLoading, attachedFiles.length, sharedFiles.length, pertemuanList.length]);
 
   const currentPertemuan: PertemuanItem | undefined = pertemuanList[activePertemuanIdx];
 
@@ -411,9 +422,9 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
 
           {/* Quick Header Controls */}
           <div className="flex items-center gap-2">
-            {/* Tab Switcher: Slide Terstruktur vs Lampiran File Modul (PDF) */}
-            {!isProjectorMode && attachedFiles.length > 0 && (
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+            {/* Tab Switcher: Slide Terstruktur vs File Upload vs Perangkat Rekan Guru Lain */}
+            {!isProjectorMode && (attachedFiles.length > 0 || sharedFiles.length > 0) && (
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 flex-wrap">
                 <button
                   type="button"
                   onClick={() => setReaderViewTab('SLIDES')}
@@ -427,22 +438,48 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                   <BookOpen size={12} />
                   <span>Slide KBM</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setReaderViewTab('PDF')}
-                  className={cn(
-                    "px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer flex items-center gap-1",
-                    readerViewTab === 'PDF'
-                      ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-2xs"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                  )}
-                >
-                  <FileText size={12} />
-                  <span>File Upload</span>
-                  <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-mono">
-                    {attachedFiles.length}
-                  </span>
-                </button>
+                {attachedFiles.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFileId('');
+                      setReaderViewTab('PDF');
+                    }}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer flex items-center gap-1",
+                      readerViewTab === 'PDF'
+                        ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-2xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                    )}
+                  >
+                    <FileText size={12} />
+                    <span>File Upload</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-mono">
+                      {attachedFiles.length}
+                    </span>
+                  </button>
+                )}
+                {sharedFiles.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFileId('');
+                      setReaderViewTab('SHARED');
+                    }}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer flex items-center gap-1",
+                      readerViewTab === 'SHARED'
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                    )}
+                  >
+                    <Users size={12} />
+                    <span>Perangkat Rekan Guru Lain</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono">
+                      {sharedFiles.length}
+                    </span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -808,20 +845,23 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
             </Button>
           </div>
         </div>
-      ) : readerViewTab === 'PDF' && attachedFiles.length > 0 && selectedFile ? (
-        /* ── MODE 3: PENAMPIL LAMPIRAN FILE MODUL (PDF / DOKUMEN UPLOAD) ── */
+      ) : (readerViewTab === 'PDF' || readerViewTab === 'SHARED') && activeFileList.length > 0 && selectedFile ? (
+        /* ── MODE 3: PENAMPIL LAMPIRAN FILE MODUL (SENDIRI / REKAN GURU LAIN) ── */
         <div className="flex flex-1 overflow-hidden">
-          {attachedFiles.length > 1 && (
+          {activeFileList.length > 1 && (
             <div className="w-64 sm:w-72 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 flex flex-col gap-2 shrink-0 overflow-y-auto custom-scrollbar">
               <div className="flex items-center justify-between px-1 pb-1">
                 <span className="text-[11px] font-black tracking-wider uppercase text-slate-400 dark:text-slate-500">
-                  Lampiran File Modul
+                  {readerViewTab === 'SHARED' ? 'Perangkat Rekan Guru Lain' : 'Lampiran File Modul'}
                 </span>
-                <span className="text-[11px] font-black text-rose-600 dark:text-rose-400 font-mono">
-                  {attachedFiles.length} File
+                <span className={cn(
+                  'text-[11px] font-black font-mono',
+                  readerViewTab === 'SHARED' ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'
+                )}>
+                  {activeFileList.length} File
                 </span>
               </div>
-              {attachedFiles.map((file) => {
+              {activeFileList.map((file) => {
                 const isSelected = file.id === selectedFile.id;
                 const fmt = getFileFormatMeta(file.file_url);
                 return (

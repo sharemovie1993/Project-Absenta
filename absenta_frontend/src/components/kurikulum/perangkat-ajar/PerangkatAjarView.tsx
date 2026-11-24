@@ -139,10 +139,10 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
 
   // Reader Mode State
   const [isReaderModalOpen, setIsReaderModalOpen] = useState(false);
-  const [readerPerangkatId, setReaderPerangkatId] = useState('');
+  const [readerPerangkat, setReaderPerangkat] = useState<PerangkatAjar | null>(null);
 
   const handleOpenReader = useCallback((item: PerangkatAjar) => {
-    setReaderPerangkatId(item.id);
+    setReaderPerangkat(item);
     setIsReaderModalOpen(true);
   }, []);
 
@@ -1025,7 +1025,8 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
         setSelectedWordEditItem={setSelectedWordEditItem}
         isReaderModalOpen={isReaderModalOpen}
         setIsReaderModalOpen={setIsReaderModalOpen}
-        readerPerangkatId={readerPerangkatId}
+        readerPerangkatId={readerPerangkat?.id || ''}
+        readerPerangkat={readerPerangkat}
         isStudioModalOpen={isStudioModalOpen}
         setIsStudioModalOpen={setIsStudioModalOpen}
         studioPerangkat={studioPerangkat}

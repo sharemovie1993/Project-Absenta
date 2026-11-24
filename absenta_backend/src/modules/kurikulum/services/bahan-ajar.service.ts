@@ -68,28 +68,45 @@ export class BahanAjarService {
       tingkat?: number;
       mapel_nama?: string;
       mapel_id?: string;
+      guru_id?: string;
     } = {}
   ) {
-    const { fase, tingkat, mapel_nama, mapel_id } = context;
+    const { fase, tingkat, mapel_nama, mapel_id, guru_id } = context;
 
-    let effectiveMapelNama = mapel_nama;
-    if (!effectiveMapelNama && mapel_id) {
-      const mapelRecord = await prisma.mapel.findFirst({ where: { id: mapel_id, tenant_id: tenantId } });
+    // 0. Jika targetIdentifier merujuk ke ID PerangkatAjar spesifik, ambil dulu konteks mapel/guru/fase-nya
+    const directPerangkatLookup =
+      targetIdentifier && targetIdentifier !== 'auto' && targetIdentifier !== 'empty-mapel'
+        ? await prisma.perangkatAjar.findFirst({
+            where: { id: targetIdentifier, tenant_id: tenantId },
+            include: { Mapel: true, Guru: true, TahunPelajaran: true, Semester: true }
+          })
+        : null;
+
+    const effectiveMapelId = mapel_id || directPerangkatLookup?.mapel_id || undefined;
+    const effectiveFase = fase || directPerangkatLookup?.fase || undefined;
+    const effectiveGuruId = guru_id || directPerangkatLookup?.guru_id || undefined;
+
+    let effectiveMapelNama = mapel_nama || directPerangkatLookup?.Mapel?.nama_mapel;
+    if (!effectiveMapelNama && effectiveMapelId) {
+      const mapelRecord = await prisma.mapel.findFirst({ where: { id: effectiveMapelId, tenant_id: tenantId } });
       if (mapelRecord) effectiveMapelNama = mapelRecord.nama_mapel;
     }
 
     // 1. Dapatkan daftar seluruh modul Guru (PerangkatAjar) & Preset yang relevan
     const perangkatWhere: any = { tenant_id: tenantId };
-    if (mapel_id) {
-      perangkatWhere.mapel_id = mapel_id;
+    if (effectiveGuruId) {
+      perangkatWhere.guru_id = effectiveGuruId;
+    }
+    if (effectiveMapelId) {
+      perangkatWhere.mapel_id = effectiveMapelId;
     } else if (effectiveMapelNama) {
       perangkatWhere.Mapel = {
         nama_mapel: { contains: effectiveMapelNama, mode: 'insensitive' }
       };
     }
-    if (fase) {
+    if (effectiveFase) {
       perangkatWhere.OR = [
-        { fase },
+        { fase: effectiveFase },
         { fase: null },
         { fase: '' },
       ];
@@ -107,8 +124,8 @@ export class BahanAjarService {
     });
 
     const presetWhere: any = { status: 'PUBLISHED' };
-    if (fase) {
-      presetWhere.fase = fase;
+    if (effectiveFase) {
+      presetWhere.fase = effectiveFase;
     } else if (tingkat) {
       presetWhere.tingkat = tingkat;
     }
@@ -145,26 +162,58 @@ export class BahanAjarService {
       }))
     ];
 
+    const mapPerangkatToFile = async (p: any) => {
+      const existingPdf = await resolveExistingSiblingPdf(p.file_url);
+      const previewPdf = existingPdf || (await convertOfficeToPdfSibling(p.file_url).catch(() => null));
+      return {
+        id: p.id,
+        judul: p.judul,
+        jenis: p.jenis,
+        file_url: p.file_url,
+        preview_pdf_url: previewPdf || undefined,
+        fase: p.fase || 'E',
+        tingkat: p.tingkat || 10,
+        guru_nama: p.Guru?.nama_guru || '-',
+        status: p.status,
+        is_shared: Boolean(p.is_shared),
+        created_at: p.created_at,
+      };
+    };
+
     const attachedFiles = await Promise.all(
       availablePerangkats
         .filter((p) => Boolean(p.file_url && String(p.file_url).trim() !== ''))
-        .map(async (p) => {
-          const existingPdf = await resolveExistingSiblingPdf(p.file_url);
-          const previewPdf = existingPdf || (await convertOfficeToPdfSibling(p.file_url).catch(() => null));
-          return {
-            id: p.id,
-            judul: p.judul,
-            jenis: p.jenis,
-            file_url: p.file_url,
-            preview_pdf_url: previewPdf || undefined,
-            fase: p.fase || 'E',
-            tingkat: p.tingkat || 10,
-            guru_nama: p.Guru?.nama_guru || '-',
-            status: p.status,
-            is_shared: Boolean(p.is_shared),
-            created_at: p.created_at,
-          };
-        })
+        .map(mapPerangkatToFile)
+    );
+
+    // 1b. Perangkat rekan guru lain yang di-share (is_shared: true) pada mapel yang sama
+    const sharedWhere: any = {
+      tenant_id: tenantId,
+      is_shared: true,
+      file_url: { not: null },
+    };
+    if (effectiveGuruId) {
+      sharedWhere.guru_id = { not: effectiveGuruId };
+    }
+    if (effectiveMapelId) {
+      sharedWhere.mapel_id = effectiveMapelId;
+    } else if (effectiveMapelNama) {
+      sharedWhere.Mapel = {
+        nama_mapel: { contains: effectiveMapelNama, mode: 'insensitive' }
+      };
+    }
+
+    const sharedPerangkats = await prisma.perangkatAjar.findMany({
+      where: sharedWhere,
+      include: { Mapel: true, Guru: true },
+      orderBy: { created_at: 'desc' },
+      take: 30,
+    });
+
+    const sharedFiles = await Promise.all(
+      sharedPerangkats
+        .filter((p) => Boolean(p.file_url && String(p.file_url).trim() !== ''))
+        .map(mapPerangkatToFile)
     );
 
     // 2. Cek apakah targetIdentifier langsung merujuk ke ID PerangkatAjar Guru
@@ -183,6 +232,7 @@ export class BahanAjarService {
           source: 'CUSTOM',
           available_moduls: availableModulsList,
           attached_files: attachedFiles,
+          shared_files: sharedFiles,
         };
       }
 
@@ -197,6 +247,7 @@ export class BahanAjarService {
             source: 'PRESET',
             available_moduls: availableModulsList,
             attached_files: attachedFiles,
+          shared_files: sharedFiles,
           };
         }
       }

@@ -112,6 +112,7 @@ export interface ReaderDataResponse {
   source: 'CUSTOM' | 'PRESET' | 'AUTO_MATCHED_PRESET' | 'NONE';
   available_moduls?: AvailableModulItem[];
   attached_files?: AttachedFileItem[];
+  shared_files?: AttachedFileItem[];
 }
 
 /**
