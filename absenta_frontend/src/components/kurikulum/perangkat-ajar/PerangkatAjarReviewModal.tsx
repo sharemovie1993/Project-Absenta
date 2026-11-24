@@ -68,19 +68,35 @@ export default React.memo(function PerangkatAjarReviewModal({
 
   const isFileMissing = reviewingItem?.file_exists === false;
 
+  const officeAbsUrl = useMemo(() => {
+    if (!fileUrl || isFileMissing || !isOfficeFile || typeof window === 'undefined') return null;
+    const resolved = resolveProfilePhotoUrl(fileUrl) || fileUrl;
+    return new URL(resolved, window.location.origin).toString();
+  }, [fileUrl, isFileMissing, isOfficeFile]);
+
   const iframeSrc = useMemo(() => {
     if (!fileUrl || isFileMissing) return null;
-    if (useOfficeViewer && isOfficeFile && typeof window !== 'undefined') {
-      const resolved = resolveProfilePhotoUrl(fileUrl) || fileUrl;
-      const absUrl = new URL(resolved, window.location.origin).toString();
-      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(absUrl)}`;
+    if (useOfficeViewer && officeAbsUrl) {
+      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(officeAbsUrl)}`;
     }
     if (previewPdfUrl) {
       const resolvedPdf = resolveProfilePhotoUrl(previewPdfUrl) || previewPdfUrl;
       return resolvedPdf.includes('#') ? resolvedPdf : `${resolvedPdf}#navpanes=0&view=FitH`;
     }
     return null;
-  }, [fileUrl, useOfficeViewer, isOfficeFile, previewPdfUrl]);
+  }, [fileUrl, isFileMissing, useOfficeViewer, officeAbsUrl, previewPdfUrl]);
+
+  const newTabHref = useMemo(() => {
+    if (isFileMissing) return null;
+    if (useOfficeViewer && officeAbsUrl) {
+      return `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(officeAbsUrl)}`;
+    }
+    if (previewPdfUrl) {
+      const resolvedPdf = resolveProfilePhotoUrl(previewPdfUrl) || previewPdfUrl;
+      return resolvedPdf.includes('#') ? resolvedPdf : `${resolvedPdf}#navpanes=0&view=FitH`;
+    }
+    return null;
+  }, [isFileMissing, useOfficeViewer, officeAbsUrl, previewPdfUrl]);
 
   return (
     <Modal
@@ -141,9 +157,9 @@ export default React.memo(function PerangkatAjarReviewModal({
                     <span>Unduh Asli</span>
                   </a>
                 )}
-                {previewPdfUrl && (
+                {newTabHref && (
                   <a
-                    href={resolveProfilePhotoUrl(previewPdfUrl) || previewPdfUrl}
+                    href={newTabHref}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="h-8 px-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center gap-1 border border-slate-200 dark:border-slate-700"
