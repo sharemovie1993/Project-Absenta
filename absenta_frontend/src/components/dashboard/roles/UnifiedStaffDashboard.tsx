@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, Suspense } from 'react';
 import { cn } from '../../../lib/utils';
+import { PersonPhoto } from '@/components/ui/PersonPhoto';
 import { EcosystemProvider } from '@/context/EcosystemContext';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
@@ -1510,9 +1511,24 @@ export const UnifiedStaffDashboard: React.FC = () => {
       {/* TOP INTEGRATED HERO BANNER CARD & TAB NAV (Desktop: Always | Mobile: Hidden to conserve vertical space) */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
       <div className="hidden md:block p-4 sm:p-6 rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-700 text-white shadow-lg space-y-4 relative overflow-hidden">
-        {/* Header Row: Title, Jabatan, NIP & Presensi Kegiatan Action */}
+        {/* Header Row: Foto Guru, Title, Jabatan, NIP & Presensi Kegiatan Action */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
+          <div className="flex items-center gap-4 min-w-0">
+            <PersonPhoto
+              name={teacherIdentity.namaLengkapGelar || teacherIdentity.nama || user?.full_name || ''}
+              foto={
+                teacherIdentity.fotoUrl ||
+                guruProfile?.foto ||
+                user?.profile_photo_url ||
+                (user?.guru_profile as any)?.foto_url ||
+                (user?.guru_profile as any)?.foto ||
+                null
+              }
+              variant="portrait"
+              size="sm"
+              className="border-white/30 shadow-md"
+            />
+            <div className="space-y-1 min-w-0">
             {/* 1. NAMA */}
             <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight drop-shadow-xs">
               {teacherIdentity.namaLengkapGelar || teacherIdentity.nama || user?.full_name || ''}
@@ -1544,6 +1560,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
                   </span>
                 );
               })}
+            </div>
             </div>
           </div>
 

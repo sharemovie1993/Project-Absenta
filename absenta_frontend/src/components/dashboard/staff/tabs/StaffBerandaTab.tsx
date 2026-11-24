@@ -397,7 +397,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     switch (activeSubTab) {
       case 'agenda':
         return {
-          currentSubtabTitle: guruNama ? `Halo, ${guruNama}` : 'Beranda Pendidik',
+          currentSubtabTitle: 'Beranda Pendidik',
           currentSubtabIcon: LayoutDashboard,
         };
       case 'jadwal':
@@ -844,8 +844,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
             {activeSubTab === 'agenda' && (
               <div className="space-y-3 sm:space-y-4">
                 {/* Daily Status Strip */}
-                {/* Biodata Ringkas Guru, Jabatan Sekolah & Peringkat Klasemen */}
-                <HubCard bodyClassName="p-3 sm:p-4">
+                {/* Biodata Ringkas Guru, Jabatan Sekolah & Peringkat Klasemen (Khusus Mobile, Desktop di Hero) */}
+                <HubCard className="md:hidden" bodyClassName="p-3 sm:p-4">
                   <div className="flex items-stretch gap-3 sm:gap-4">
                     <PersonPhoto
                       name={displayName}
