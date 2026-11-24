@@ -733,16 +733,27 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
 
   const jadwalList = jadwalRes?.items || [];
 
-  // Query Master Bank Soal hanya jika ada matriks ploting yang perlu resolusi nama mapel
+  // Query Master Bank Soal untuk Resolusi Nama Mata Pelajaran & Tingkat (Jalur 1 & Jalur 2)
   const { data: bankRes } = useQuery({
     queryKey: cbtQueryKeys.bankSoal({ limit: 500 }),
     queryFn: () => cbtApi.getBankSoalList({ limit: 500 }),
-    enabled: isOpen && Boolean(persistedMatrix),
+    enabled: isOpen,
     staleTime: 5 * 60 * 1000,
   });
 
   const bankList: CbtBankSoal[] = bankRes?.items || [];
   const bankMap = useMemo(() => new Map(bankList.map((b) => [b.id, b])), [bankList]);
+  const mapelNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    bankList.forEach((b) => {
+      const mId = b.mapel_id || b.Mapel?.id;
+      const mName = b.Mapel?.nama_mapel;
+      if (mId && mName && !map.has(mId)) {
+        map.set(mId, mName);
+      }
+    });
+    return map;
+  }, [bankList]);
 
   // Hitung jadwal sesi untuk kelas aktif (SSoT: DB Jadwal Terbit -> Days Config Event & Matriks -> Fallback)
   const classSchedules = useMemo<ExamDaySchedule[]>(() => {
@@ -753,6 +764,25 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
     const jurKode = currentClassMapping.kode_jurusan || '';
     const jurId = currentClassMapping.jurusan_id || '';
 
+    const parseTingkatNum = (val: unknown): number | undefined => {
+      if (val === undefined || val === null || val === '') return undefined;
+      const str = String(val).trim().toUpperCase();
+      if (str === 'X') return 10;
+      if (str === 'XI') return 11;
+      if (str === 'XII') return 12;
+      if (str === 'XIII') return 13;
+      const n = Number(str);
+      return Number.isNaN(n) ? undefined : n;
+    };
+
+    const resolveMatrixSubjectName = (val: string, fallback: string): string => {
+      const bank = bankMap.get(val);
+      if (bank) {
+        return bank.Mapel?.nama_mapel || bank.judul || bank.nama_bank || fallback;
+      }
+      return mapelNameById.get(val) || fallback;
+    };
+
     // =========================================================================
     // JALUR 1: JIKA SUDAH ADA JADWAL SESI TERBIT DI DATABASE (CbtJadwalUjian)
     // =========================================================================
@@ -760,36 +790,74 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
       if (eventId && (j as any).event_id && (j as any).event_id !== eventId) {
         return false;
       }
-      const clsIds = j.kelas_ids || [];
+      if (activeTpId && j.tahun_pelajaran_id && j.tahun_pelajaran_id !== activeTpId) {
+        return false;
+      }
+      if (activeSemId && j.semester_id && j.semester_id !== activeSemId) {
+        return false;
+      }
+
+      const clsIds: string[] = j.target_kelas_ids || (j as any).kelas_ids || [];
       if (clsIds.length > 0) {
         return clsIds.includes(classId);
       }
-      if (j.tingkat) {
-        const jTingkatNum = j.tingkat === 'X' ? 10 : j.tingkat === 'XI' ? 11 : j.tingkat === 'XII' ? 12 : Number(j.tingkat);
-        if (jTingkatNum && jTingkatNum !== tingkatNum) return false;
+
+      const linkedBank = bankMap.get(j.bank_soal_id);
+      const jTingkatNum = parseTingkatNum(
+        (j as any).tingkat ?? j.BankSoal?.tingkat ?? linkedBank?.tingkat
+      );
+      if (jTingkatNum !== undefined && jTingkatNum !== tingkatNum) {
+        return false;
       }
       return true;
     });
 
     if (matchedFromDb.length > 0) {
-      const mapByDate = new Map<string, { tanggalStr: string; hariLabel: string; mapelList: string[]; waktu: string; sesi: string }>();
+      const mapByDate = new Map<
+        string,
+        {
+          tanggalStr: string;
+          hariLabel: string;
+          entries: Array<{ startMin: number; startStr: string; endStr: string; sesi: string; mapel: string }>;
+        }
+      >();
 
       matchedFromDb.forEach((j) => {
-        const rawDate = j.tanggal_mulai ? j.tanggal_mulai.split('T')[0] : '2026-11-30';
+        const startObj = j.tanggal_mulai ? new Date(j.tanggal_mulai) : null;
+        const endObj = j.tanggal_selesai ? new Date(j.tanggal_selesai) : null;
+        const hasValidStart = startObj && !Number.isNaN(startObj.getTime());
+        const hasValidEnd = endObj && !Number.isNaN(endObj.getTime());
+
+        const rawDate = hasValidStart
+          ? `${startObj.getFullYear()}-${String(startObj.getMonth() + 1).padStart(2, '0')}-${String(startObj.getDate()).padStart(2, '0')}`
+          : '2026-11-30';
+
+        const linkedBank = bankMap.get(j.bank_soal_id);
         const mapelName =
+          j.display_mapel ||
           j.BankSoal?.Mapel?.nama_mapel ||
           (j.BankSoal as any)?.MataPelajaran?.nama_mapel ||
+          linkedBank?.Mapel?.nama_mapel ||
           j.BankSoal?.judul ||
           j.BankSoal?.nama_bank ||
+          linkedBank?.judul ||
+          linkedBank?.nama_bank ||
           'Mata Pelajaran';
-        const jamMulai = j.jam_mulai ? j.jam_mulai.slice(0, 5) : '07:30';
-        const jamSelesai = j.jam_selesai ? j.jam_selesai.slice(0, 5) : '09:00';
-        const waktuStr = `${jamMulai}-${jamSelesai}`;
-        const sesiStr = j.nama_sesi || 'Sesi 1';
+
+        const startStr = hasValidStart
+          ? `${String(startObj.getHours()).padStart(2, '0')}:${String(startObj.getMinutes()).padStart(2, '0')}`
+          : (j as any).jam_mulai?.slice(0, 5) || '07:30';
+        const endStr = hasValidEnd
+          ? `${String(endObj.getHours()).padStart(2, '0')}:${String(endObj.getMinutes()).padStart(2, '0')}`
+          : (j as any).jam_selesai?.slice(0, 5) || '09:00';
+
+        const startMin = hasValidStart ? startObj.getHours() * 60 + startObj.getMinutes() : 450;
+        const sec = j.setting_keamanan as any;
+        const sesiStr = sec?.nama_sesi_waktu || j.nama_sesi || 'Sesi 1';
 
         if (!mapByDate.has(rawDate)) {
-          const dObj = new Date(rawDate);
-          const hari = !isNaN(dObj.getTime())
+          const dObj = hasValidStart ? startObj : new Date(rawDate);
+          const hari = !Number.isNaN(dObj.getTime())
             ? ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dObj.getDay()]
             : 'Hari Ujian';
           const parts = rawDate.split('-');
@@ -798,33 +866,44 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
           mapByDate.set(rawDate, {
             tanggalStr: tglFormatted,
             hariLabel: hari,
-            mapelList: [mapelName],
-            waktu: waktuStr,
-            sesi: sesiStr,
+            entries: [{ startMin, startStr, endStr, sesi: sesiStr, mapel: mapelName }],
           });
         } else {
           const item = mapByDate.get(rawDate)!;
-          if (!item.mapelList.includes(mapelName)) {
-            item.mapelList.push(mapelName);
-          }
+          item.entries.push({ startMin, startStr, endStr, sesi: sesiStr, mapel: mapelName });
         }
       });
 
       const sorted = Array.from(mapByDate.entries())
         .sort(([dA], [dB]) => dA.localeCompare(dB))
-        .map(([_, v]) => ({
-          tanggal: v.tanggalStr,
-          hariLabel: v.hariLabel,
-          mapelList: v.mapelList,
-          waktu: v.waktu,
-          sesi: v.sesi,
-        }));
+        .map(([_, v]) => {
+          const ordered = v.entries.sort((a, b) => a.startMin - b.startMin);
+          const uniqueMapels: string[] = [];
+          ordered.forEach((e) => {
+            if (!uniqueMapels.includes(e.mapel)) uniqueMapels.push(e.mapel);
+          });
+          const firstEntry = ordered[0];
+          const lastEntry = ordered[ordered.length - 1];
+          const waktu = `${firstEntry.startStr}-${lastEntry.endStr}`;
+          const sesi =
+            firstEntry.sesi === lastEntry.sesi
+              ? firstEntry.sesi
+              : `${firstEntry.sesi} - ${lastEntry.sesi}`;
+
+          return {
+            tanggal: v.tanggalStr,
+            hariLabel: v.hariLabel,
+            mapelList: uniqueMapels,
+            waktu,
+            sesi,
+          };
+        });
 
       if (sorted.length > 0) return sorted;
     }
 
     // =========================================================================
-    // JALUR 2: MELEKAT PADA EVENT UJIAN AKTIF (days_config + Matriks Ploting)
+    // JALUR 2: MELEKAT PADA EVENT UJIAN AKTIF (days_config + matrix_draft / Matriks Ploting)
     // =========================================================================
     const effectiveDays: ExamDayConfig[] =
       effectiveEvent?.days_config && Array.isArray(effectiveEvent.days_config) && effectiveEvent.days_config.length > 0
@@ -833,7 +912,13 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
         ? persistedMatrix.days
         : [];
 
-    const matrixState = persistedMatrix?.matrix || {};
+    const serverMatrixDraft =
+      effectiveEvent?.matrix_draft &&
+      typeof effectiveEvent.matrix_draft === 'object' &&
+      Object.keys(effectiveEvent.matrix_draft).length > 0
+        ? effectiveEvent.matrix_draft
+        : null;
+    const matrixState = serverMatrixDraft || persistedMatrix?.matrix || {};
 
     if (effectiveDays.length > 0) {
       const scheduleResult: ExamDaySchedule[] = [];
@@ -844,15 +929,18 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
         const hariText = day.nama_hari || 'Hari Ujian';
 
         const dayMapelList: string[] = [];
-        let firstWaktu = '';
+        let firstStart = '';
+        let lastEnd = '';
         let firstSesi = '';
+        let lastSesi = '';
 
         day.sessions.forEach((sess) => {
-          const sessWaktu = `${sess.jam_mulai} - ${sess.jam_selesai}`;
-          if (!firstWaktu) {
-            firstWaktu = sessWaktu;
+          if (!firstStart) {
+            firstStart = sess.jam_mulai;
             firstSesi = sess.nama_sesi;
           }
+          lastEnd = sess.jam_selesai;
+          lastSesi = sess.nama_sesi;
 
           // Slot key matriks: ${day_index}_${session_index}_${tingkat}
           const matrixKey = `${day.day_index}_${sess.session_index}_${tingkatNum}`;
@@ -861,34 +949,39 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
           if (matrixVal) {
             if (isMultiJurusanSlot(matrixVal)) {
               const multi = parseMultiJurusanSlot(matrixVal);
-              let resolvedBankId = '';
+              let resolvedId = '';
               if (multi?.assignments) {
-                resolvedBankId =
+                resolvedId =
                   (jurKode && multi.assignments[jurKode]) ||
                   (jurId && multi.assignments[jurId]) ||
                   Object.values(multi.assignments)[0] ||
                   '';
               }
-              const bank = resolvedBankId ? bankMap.get(resolvedBankId) : null;
-              const mapelName = bank?.Mapel?.nama_mapel || bank?.judul || multi?.title || 'Mapel Kejuruan';
+              const mapelName = resolvedId
+                ? resolveMatrixSubjectName(resolvedId, multi?.title || 'Mapel Kejuruan')
+                : multi?.title || 'Mapel Kejuruan';
               if (!dayMapelList.includes(mapelName)) dayMapelList.push(mapelName);
             } else {
-              const bank = bankMap.get(matrixVal);
-              const mapelName = bank?.Mapel?.nama_mapel || bank?.judul || bank?.nama_bank || `Mapel ${sess.nama_sesi}`;
+              const mapelName = resolveMatrixSubjectName(matrixVal, `Mapel ${sess.nama_sesi}`);
               if (!dayMapelList.includes(mapelName)) dayMapelList.push(mapelName);
             }
           } else {
-            // Belum ada bank soal spesifik yang diplot untuk sesi ini
             dayMapelList.push(`Ujian ${sess.nama_sesi}`);
           }
         });
+
+        const waktu = firstStart && lastEnd ? `${firstStart}-${lastEnd}` : '07:30-09:00';
+        const sesi =
+          firstSesi && lastSesi && firstSesi !== lastSesi
+            ? `${firstSesi} - ${lastSesi}`
+            : firstSesi || 'Sesi 1';
 
         scheduleResult.push({
           tanggal: tglFormatted,
           hariLabel: hariText,
           mapelList: dayMapelList.length > 0 ? dayMapelList : ['Ujian CBT'],
-          waktu: firstWaktu || '07:30 - 09:00',
-          sesi: firstSesi || 'Sesi 1',
+          waktu,
+          sesi,
         });
       });
 
@@ -899,7 +992,7 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
     // JALUR 3: FALLBACK STATIS JIKA EVENT BELUM MEMILIKI HARI & SESI
     // =========================================================================
     return DEFAULT_WEEK_SCHEDULE;
-  }, [currentClassMapping, jadwalList, effectiveEvent, persistedMatrix, bankMap, eventId]);
+  }, [currentClassMapping, jadwalList, effectiveEvent, persistedMatrix, bankMap, mapelNameById, eventId, activeTpId, activeSemId]);
 
   // ── 6. Query Siswa Terfokus 1 Kelas ──
   const { data: realStudentsRes, isLoading: isLoadingSiswa } = useQuery({
