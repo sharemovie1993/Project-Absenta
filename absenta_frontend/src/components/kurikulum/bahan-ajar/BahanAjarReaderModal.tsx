@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   BookOpen,
@@ -97,6 +98,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
   onOpenJurnal,
   zIndex = 150
 }) => {
+  const navigate = useNavigate();
   const [activePertemuanIdx, setActivePertemuanIdx] = useState<number>(0);
   const [isProjectorMode, setIsProjectorMode] = useState<boolean>(false);
   const [activeProjectorTab, setActiveProjectorTab] = useState<ProjectorTab>('PEMANTIK');
@@ -1099,13 +1101,17 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                   </p>
                 </div>
                 <div className="pt-2 flex items-center gap-2">
-                  <a
-                    href="/kurikulum/perangkat"
-                    className="h-9 px-4 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      navigate('/dashboard?tab=ringkasan&subtab=perangkat');
+                    }}
+                    className="h-9 px-4 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20 cursor-pointer"
                   >
                     <span>+ Buat / Unggah Modul Ajar</span>
                     <ArrowRight size={14} />
-                  </a>
+                  </button>
                 </div>
               </div>
             )}
