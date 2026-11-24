@@ -105,6 +105,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
   const [selectedModulId, setSelectedModulId] = useState<string>('');
   const [readerViewTab, setReaderViewTab] = useState<'SLIDES' | 'PDF'>('SLIDES');
   const [selectedFileId, setSelectedFileId] = useState<string>('');
+  const [useOfficeViewer, setUseOfficeViewer] = useState<boolean>(false);
 
   // 1. Auto-detect Tingkat & Fase dari Nama Kelas jika belum disediakan
   const detectedContext = useMemo(() => {
@@ -306,6 +307,7 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
       setSelectedModulId('');
       setReaderViewTab('SLIDES');
       setSelectedFileId('');
+      setUseOfficeViewer(false);
     }
   }, [isOpen, perangkatId, mapelId, kelasNama]);
 
@@ -872,24 +874,61 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
                   Pengunggah: {selectedFile.guru_nama || '-'} • Fase {selectedFile.fase || 'E'}
                 </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 {(() => {
+                  const fmt = getFileFormatMeta(selectedFile.file_url);
+                  const isOriginalPdf = fmt.ext === 'PDF';
+                  const isOfficeFile = ['PPT', 'PPTX', 'DOC', 'DOCX', 'XLS', 'XLSX'].includes(fmt.ext);
+                  const isPublicOrigin =
+                    typeof window !== 'undefined' &&
+                    !['localhost', '127.0.0.1'].includes(window.location.hostname) &&
+                    !/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(window.location.hostname);
                   const previewSrc =
                     selectedFile.preview_pdf_url ||
-                    (String(selectedFile.file_url || '').toLowerCase().includes('.pdf')
-                      ? selectedFile.file_url
-                      : null);
+                    (isOriginalPdf ? selectedFile.file_url : null);
                   const openTarget = previewSrc || selectedFile.file_url;
                   return (
-                    <a
-                      href={resolveProfilePhotoUrl(openTarget) || openTarget}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="h-8 px-3 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
-                    >
-                      <ExternalLink size={13} />
-                      <span>{previewSrc ? 'Buka PDF di Tab Baru' : 'Unduh File'}</span>
-                    </a>
+                    <>
+                      {isOfficeFile && isPublicOrigin && (
+                        <button
+                          type="button"
+                          onClick={() => setUseOfficeViewer((prev) => !prev)}
+                          title="Gunakan Microsoft Office Online Viewer agar SmartArt & animasi PowerPoint tampil presisi (membutuhkan akses internet publik)"
+                          className={cn(
+                            "h-8 px-3 rounded-xl text-xs font-bold flex items-center gap-1.5 border cursor-pointer transition-colors",
+                            useOfficeViewer
+                              ? "bg-orange-600 text-white border-orange-600 shadow-xs"
+                              : "bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800"
+                          )}
+                        >
+                          <Presentation size={13} />
+                          <span>{useOfficeViewer ? 'Kembali ke PDF' : 'Office Viewer'}</span>
+                        </button>
+                      )}
+                      {!isOriginalPdf && (
+                        <a
+                          href={resolveProfilePhotoUrl(selectedFile.file_url) || selectedFile.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download
+                          className="h-8 px-3 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
+                        >
+                          <Download size={13} />
+                          <span>Unduh Asli (.{fmt.ext.toLowerCase()})</span>
+                        </a>
+                      )}
+                      {previewSrc && (
+                        <a
+                          href={resolveProfilePhotoUrl(openTarget) || openTarget}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="h-8 px-3 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
+                        >
+                          <ExternalLink size={13} />
+                          <span>Buka PDF di Tab Baru</span>
+                        </a>
+                      )}
+                    </>
                   );
                 })()}
                 {onOpenJurnal && (
@@ -911,8 +950,23 @@ export const BahanAjarReaderModal: React.FC<BahanAjarReaderModalProps> = ({
               </div>
             </div>
 
-            {/* Inline PDF Viewer (mendukung PDF langsung maupun hasil konversi PPTX/DOCX) */}
+            {/* Inline Viewer (Office Online Viewer jika aktif, atau PDF hasil konversi / asli) */}
             {(() => {
+              const fmt = getFileFormatMeta(selectedFile.file_url);
+              const isOfficeFile = ['PPT', 'PPTX', 'DOC', 'DOCX', 'XLS', 'XLSX'].includes(fmt.ext);
+              const resolvedRaw = resolveProfilePhotoUrl(selectedFile.file_url) || selectedFile.file_url;
+              if (useOfficeViewer && isOfficeFile && typeof window !== 'undefined') {
+                const absUrl = new URL(resolvedRaw, window.location.origin).toString();
+                const officeEmbedUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(absUrl)}`;
+                return (
+                  <iframe
+                    key={`${selectedFile.id}-office`}
+                    src={officeEmbedUrl}
+                    title={`${selectedFile.judul} (Office Viewer)`}
+                    className="w-full flex-1 border-0 bg-white"
+                  />
+                );
+              }
               const previewSrc =
                 selectedFile.preview_pdf_url ||
                 (String(selectedFile.file_url || '').toLowerCase().includes('.pdf')
