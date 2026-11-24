@@ -340,6 +340,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         nik: fetchedSiswa.nik || '',
         tinggi_badan: fetchedSiswa.tinggi_badan ?? '',
         berat_badan: fetchedSiswa.berat_badan ?? '',
+        anak_ke: fetchedSiswa.anak_ke ?? '',
         agama: (fetchedSiswa as any).agama || '',
         hobi: (fetchedSiswa as any).hobi || '',
         cita_cita: (fetchedSiswa as any).cita_cita || '',
@@ -367,6 +368,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         pekerjaan_wali: fetchedSiswa.pekerjaan_wali || '',
         penghasilan_wali: fetchedSiswa.penghasilan_wali || '',
         no_hp_ortu: (fetchedSiswa as any).no_hp_ortu || '',
+        alamat_ortu: (fetchedSiswa as any).alamat_ortu || '',
         orang_tua: ((fetchedSiswa as any).OrangTua || []).map((o: any) => ({
           id: o.id,
           nama: o.nama || '',
@@ -524,6 +526,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
               errors={errors}
               isViewMode={isViewMode}
               watch={watch}
+              setValue={setValue}
             />
           </TabsContent>
 

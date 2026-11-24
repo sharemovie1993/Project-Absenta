@@ -71,6 +71,8 @@ export const siswaSchema = z.object({
   pekerjaan_wali: z.string().optional().or(z.literal('')),
   penghasilan_wali: z.string().optional().or(z.literal('')),
   no_hp_ortu: z.string().optional().or(z.literal('')),
+  alamat_ortu: z.string().optional().or(z.literal('')),
+  anak_ke: z.union([z.number(), z.string()]).optional().nullable(),
   
   // Kontak Orang Tua (Array)
   orang_tua: z.array(z.object({

@@ -258,6 +258,44 @@ export class CbtTestEngineService {
       }
     }
 
+    // 4. Batch-Fetch Profil & Foto Pengawas Ruang Ujian (Zero N+1)
+    const proctorIdSet = new Set<string>();
+    for (const j of jadwalList) {
+      const sec = (j.setting_keamanan as any) || {};
+      const roomMappings = sec.room_mappings || sec.kelas_room_map || {};
+      const studentRoom = siswa.kelas_id ? roomMappings[siswa.kelas_id] : null;
+      const candidates = [
+        studentRoom?.pengawas_1_id,
+        studentRoom?.pengawas_1_guru_id,
+        studentRoom?.pengawas_2_id,
+        studentRoom?.pengawas_2_guru_id,
+        studentRoom?.proktor_id,
+        sec.pengawas_1_id,
+        sec.pengawas_1_guru_id,
+        sec.pengawas_2_id,
+        sec.pengawas_2_guru_id,
+        sec.proktor_id,
+        sec.pengawas_guru_id,
+        sec.pengawas_id,
+      ];
+      for (const cid of candidates) {
+        if (typeof cid === 'string' && cid.trim()) {
+          proctorIdSet.add(cid.trim());
+        }
+      }
+    }
+
+    const proctorGuruMap = new Map<string, { id: string; nama_guru: string; nip: string | null; foto: string | null }>();
+    if (proctorIdSet.size > 0) {
+      const proctors = await prisma.guru.findMany({
+        where: { id: { in: Array.from(proctorIdSet) }, tenant_id: tenantId },
+        select: { id: true, nama_guru: true, nip: true, foto: true },
+      });
+      for (const g of proctors) {
+        proctorGuruMap.set(g.id, g);
+      }
+    }
+
     const rawResult = jadwalList
       .filter((j) => {
         const sec = (j.setting_keamanan as any) || {};
@@ -365,6 +403,36 @@ export class CbtTestEngineService {
         }
         const isRemedial = isRemedialSchedule && !isSusulan;
 
+        // Resolusi Pengawas Ruang & Foto Pengawas
+        const p1Id = studentRoom?.pengawas_1_id || studentRoom?.pengawas_1_guru_id || sec.pengawas_1_id || sec.pengawas_1_guru_id || sec.proktor_id || sec.pengawas_guru_id || sec.pengawas_id || null;
+        const p2Id = studentRoom?.pengawas_2_id || studentRoom?.pengawas_2_guru_id || sec.pengawas_2_id || sec.pengawas_2_guru_id || null;
+        const p1Guru = p1Id ? proctorGuruMap.get(String(p1Id).trim()) : undefined;
+        const p2Guru = p2Id && String(p2Id).trim() !== String(p1Id || '').trim() ? proctorGuruMap.get(String(p2Id).trim()) : undefined;
+
+        const p1Nama = p1Guru?.nama_guru || studentRoom?.pengawas_1_nama || sec.pengawas_1_nama || sec.proktor_nama || null;
+        const p2Nama = p2Guru?.nama_guru || studentRoom?.pengawas_2_nama || sec.pengawas_2_nama || null;
+
+        const pengawasList: Array<{ id: string | null; nama: string; nip: string | null; foto: string | null }> = [];
+        if (p1Nama) {
+          pengawasList.push({
+            id: p1Guru?.id || (p1Id ? String(p1Id) : null),
+            nama: p1Nama,
+            nip: p1Guru?.nip || studentRoom?.pengawas_1_nip || sec.pengawas_1_nip || null,
+            foto: p1Guru?.foto || null,
+          });
+        }
+        if (p2Nama && p2Nama !== p1Nama) {
+          pengawasList.push({
+            id: p2Guru?.id || (p2Id ? String(p2Id) : null),
+            nama: p2Nama,
+            nip: p2Guru?.nip || studentRoom?.pengawas_2_nip || sec.pengawas_2_nip || null,
+            foto: p2Guru?.foto || null,
+          });
+        }
+
+        const pengawasNamaDisplay = pengawasList.length > 0 ? pengawasList.map((p) => p.nama).join(' • ') : null;
+        const pengawasFotoDisplay = pengawasList[0]?.foto || null;
+
         return {
           id: j.id,
           nama_sesi: j.nama_sesi,
@@ -381,6 +449,9 @@ export class CbtTestEngineService {
           tahun_ajaran: j.TahunPelajaran?.tahun || null,
           semester: j.Semester?.nama_semester || null,
           guru: resolvedGuru,
+          pengawas_nama: pengawasNamaDisplay,
+          pengawas_foto: pengawasFotoDisplay,
+          pengawas_list: pengawasList,
           total_soal: j.BankSoal?.jumlah_soal || 0,
           tanggal_mulai: j.tanggal_mulai,
           tanggal_selesai: j.tanggal_selesai,

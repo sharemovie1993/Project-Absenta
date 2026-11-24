@@ -1,11 +1,12 @@
 import React from 'react';
 import { User as UserIcon, Phone, Mail, Briefcase, BookOpen, Banknote, UserCheck, Users, Plus, Trash2, ShieldCheck, Heart } from 'lucide-react';
 import { Input } from '../../../ui/Input';
+import { Textarea } from '../../../ui/Textarea';
 import { SearchableSelect } from '../../../ui/SearchableSelect';
 import { Label } from '../../../ui/Label';
 import { Button } from '../../../ui/Button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../../../ui/Accordion';
-import { Controller, useFieldArray, UseFormRegister, Control, FieldErrors, UseFormWatch } from 'react-hook-form';
+import { Controller, useFieldArray, UseFormRegister, Control, FieldErrors, UseFormWatch, UseFormSetValue } from 'react-hook-form';
 import { 
     PEKERJAAN_OPTIONS, 
     PENDIDIKAN_OPTIONS, 
@@ -27,12 +28,17 @@ interface GuardianSectionProps {
     errors: FieldErrors<SiswaFormValues>;
     isViewMode: boolean;
     watch: UseFormWatch<SiswaFormValues>;
+    setValue: UseFormSetValue<SiswaFormValues>;
 }
 
 export const GuardianSection: React.FC<GuardianSectionProps> = React.memo(({
     control,
     register,
     errors,
+    isViewMode,
+    watch,
+    setValue
+}) => {
     isViewMode,
     watch
 }) => {
@@ -322,6 +328,46 @@ export const GuardianSection: React.FC<GuardianSectionProps> = React.memo(({
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>
+
+            <div className="p-5 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <Label htmlFor="alamat_ortu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                        Alamat Orang Tua (Untuk Biodata Rapor)
+                    </Label>
+                    {!isViewMode && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const fullAddress = [
+                                    watch('alamat'),
+                                    watch('rt') && watch('rw') ? `RT ${watch('rt')}/RW ${watch('rw')}` : '',
+                                    watch('dusun'),
+                                    watch('kelurahan'),
+                                    watch('kecamatan'),
+                                    watch('kabupaten'),
+                                    watch('provinsi'),
+                                    watch('kode_pos'),
+                                ]
+                                    .map((s) => String(s || '').trim())
+                                    .filter(Boolean)
+                                    .join(', ');
+                                setValue('alamat_ortu', fullAddress, { shouldDirty: true });
+                            }}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 transition-colors cursor-pointer"
+                        >
+                            Sama Dengan Siswa
+                        </button>
+                    )}
+                </div>
+                <Textarea
+                    id="alamat_ortu"
+                    {...register('alamat_ortu')}
+                    disabled={isViewMode}
+                    placeholder="Alamat lengkap orang tua..."
+                    rows={2}
+                    className="text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                />
+            </div>
         </div>
     );
 });

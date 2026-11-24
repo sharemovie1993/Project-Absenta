@@ -597,6 +597,23 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
 
                 <div className="space-y-2 group">
                     <div className="flex items-center justify-between px-1">
+                        <Label htmlFor="anak_ke" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                            Anak Ke-
+                        </Label>
+                    </div>
+                    <Input
+                        id="anak_ke"
+                        type="number"
+                        min={1}
+                        {...register('anak_ke')}
+                        placeholder="Contoh: 1"
+                        disabled={isViewMode}
+                        className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl"
+                    />
+                </div>
+
+                <div className="space-y-2 group">
+                    <div className="flex items-center justify-between px-1">
                         <Label htmlFor="agama" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                             Agama
                         </Label>

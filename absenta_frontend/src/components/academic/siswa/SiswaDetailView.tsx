@@ -211,6 +211,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
   const [editAgama, setEditAgama] = useState('');
   const [editTinggiBadan, setEditTinggiBadan] = useState('');
   const [editBeratBadan, setEditBeratBadan] = useState('');
+  const [editAnakKe, setEditAnakKe] = useState('');
   const [editStatus, setEditStatus] = useState('');
   const [editKelasId, setEditKelasId] = useState('');
   const [editSekolahAsal, setEditSekolahAsal] = useState('');
@@ -227,6 +228,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
   const [editNoHpIbu, setEditNoHpIbu] = useState('');
   const [editNamaWali, setEditNamaWali] = useState('');
   const [editNoHpWali, setEditNoHpWali] = useState('');
+  const [editAlamatOrtu, setEditAlamatOrtu] = useState('');
 
   // Alamat
   const [editAlamat, setEditAlamat] = useState('');
@@ -279,6 +281,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
       setEditAgama((siswa as any).agama || 'ISLAM');
       setEditTinggiBadan(siswa.tinggi_badan ? String(siswa.tinggi_badan) : '');
       setEditBeratBadan(siswa.berat_badan ? String(siswa.berat_badan) : '');
+      setEditAnakKe(siswa.anak_ke ? String(siswa.anak_ke) : '');
       setEditStatus(siswa.status || 'AKTIF');
       setEditKelasId(siswa.kelas_id || (siswa as any).Kelas?.id || '');
       setEditSekolahAsal(siswa.sekolah_asal || '');
@@ -294,6 +297,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
       setEditNoHpIbu(siswa.no_hp_ibu || '');
       setEditNamaWali(siswa.nama_wali || '');
       setEditNoHpWali(siswa.no_hp_wali || '');
+      setEditAlamatOrtu((siswa as any).alamat_ortu || '');
 
       setNoHpOrtu(siswa.no_hp_ortu || siswa.no_hp || '');
       setEmailSiswa((siswa as any).email || '');
@@ -344,6 +348,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
           nik: editNik ? editNik.trim() : null,
           tinggi_badan: editTinggiBadan && !isNaN(Number(editTinggiBadan)) ? Number(editTinggiBadan) : null,
           berat_badan: editBeratBadan && !isNaN(Number(editBeratBadan)) ? Number(editBeratBadan) : null,
+          anak_ke: editAnakKe && !isNaN(Number(editAnakKe)) ? Number(editAnakKe) : null,
         };
       } else if (activeEditSection === 'akademik') {
         payload = {
@@ -367,6 +372,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
           nama_wali: editNamaWali ? editNamaWali.trim() : null,
           no_hp_wali: editNoHpWali ? editNoHpWali.trim() : null,
           no_hp_ortu: noHpOrtu ? noHpOrtu.trim() : null,
+          alamat_ortu: editAlamatOrtu ? editAlamatOrtu.trim() : null,
         };
       } else if (activeEditSection === 'alamat') {
         payload = {
@@ -1055,9 +1061,9 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
               <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">{editTanggalLahir || '-'}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Tinggi / Berat Badan</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Tinggi / Berat Badan / Anak Ke-</p>
               <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
-                {editTinggiBadan ? `${editTinggiBadan} cm` : '-'} / {editBeratBadan ? `${editBeratBadan} kg` : '-'}
+                {editTinggiBadan ? `${editTinggiBadan} cm` : '-'} / {editBeratBadan ? `${editBeratBadan} kg` : '-'} / {editAnakKe ? `Ke-${editAnakKe}` : '-'}
               </p>
             </div>
             <div>
@@ -1227,6 +1233,10 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
               <p className="text-[10px] font-bold text-slate-400 uppercase">Nama Wali (Jika Ada)</p>
               <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">{editNamaWali || '-'}</p>
               {editNoHpWali && <p className="text-[11px] font-mono text-slate-500 mt-0.5">📞 {editNoHpWali}</p>}
+            </div>
+            <div className="col-span-2 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Alamat Orang Tua</p>
+              <p className="font-medium text-slate-800 dark:text-slate-200 mt-0.5 leading-relaxed">{editAlamatOrtu || '-'}</p>
             </div>
           </div>
         </div>
@@ -1545,7 +1555,7 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label htmlFor="editTinggiBadan">Tinggi Badan (cm)</Label>
                   <Input
@@ -1564,6 +1574,17 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
                     value={editBeratBadan}
                     onChange={(e) => setEditBeratBadan(e.target.value)}
                     placeholder="55"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="editAnakKe">Anak Ke-</Label>
+                  <Input
+                    id="editAnakKe"
+                    type="number"
+                    min={1}
+                    value={editAnakKe}
+                    onChange={(e) => setEditAnakKe(e.target.value)}
+                    placeholder="1"
                   />
                 </div>
               </div>
@@ -1758,6 +1779,45 @@ export const SiswaDetailView: React.FC<SiswaDetailViewProps> = ({
                     onChange={(e) => setEditNoHpWali(e.target.value)}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="editAlamatOrtu">Alamat Orang Tua</Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const fullAddress = [
+                        editAlamat,
+                        editRt && editRw ? `RT ${editRt}/RW ${editRw}` : '',
+                        editDusun,
+                        editKelurahan,
+                        editKecamatan,
+                        editKabupaten,
+                        editProvinsi,
+                        editKodePos,
+                      ]
+                        .map((s) => (s || '').trim())
+                        .filter(Boolean)
+                        .join(', ');
+                      if (!fullAddress) {
+                        toast.error('Alamat siswa belum diisi');
+                        return;
+                      }
+                      setEditAlamatOrtu(fullAddress);
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 transition-colors cursor-pointer"
+                  >
+                    Sama Dengan Siswa
+                  </button>
+                </div>
+                <Textarea
+                  id="editAlamatOrtu"
+                  value={editAlamatOrtu}
+                  onChange={(e) => setEditAlamatOrtu(e.target.value)}
+                  placeholder="Alamat lengkap orang tua (untuk biodata rapor)..."
+                  rows={2}
+                />
               </div>
             </div>
           )}

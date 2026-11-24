@@ -247,6 +247,7 @@ export const siswaProfileController = {
         'pekerjaan_wali',
         'penghasilan_wali',
         'no_hp_ortu',
+        'alamat_ortu',
         'anak_ke',
         'kebutuhan_khusus',
         'penerima_kps',

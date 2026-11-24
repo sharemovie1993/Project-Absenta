@@ -112,6 +112,7 @@ export interface Siswa {
   hubungan_wali?: string;
   pekerjaan_wali?: string;
   penghasilan_wali?: string;
+  alamat_ortu?: string;
   anak_ke?: number;
   kebutuhan_khusus?: string;
   penerima_kps?: boolean;

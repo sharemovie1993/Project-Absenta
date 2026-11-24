@@ -103,6 +103,7 @@ export const createSiswaSchema = z.object({
   pekerjaan_wali: coerceString,
   penghasilan_wali: coerceString,
   no_hp_ortu: coerceString,
+  alamat_ortu: coerceString,
   anak_ke: z.union([z.number(), z.string()]).optional().nullable().transform(val => {
     if (val === null || val === undefined || val === '') return null;
     const num = Number(val);
@@ -219,6 +220,7 @@ export const updateSiswaSchema = z.object({
   pekerjaan_wali: coerceUpdateString,
   penghasilan_wali: coerceUpdateString,
   no_hp_ortu: coerceUpdateString,
+  alamat_ortu: coerceUpdateString,
   anak_ke: coerceUpdateNumber,
   tinggi_badan: coerceUpdateNumber,
   berat_badan: coerceUpdateNumber,

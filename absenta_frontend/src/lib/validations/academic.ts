@@ -98,6 +98,7 @@ export const siswaSchema = z.object({
   hubungan_wali: z.string().max(50, 'Hubungan wali maksimal 50 karakter').optional(),
   pekerjaan_wali: z.string().max(50, 'Pekerjaan wali maksimal 50 karakter').optional(),
   penghasilan_wali: z.string().max(50, 'Penghasilan wali maksimal 50 karakter').optional(),
+  alamat_ortu: z.string().max(500, 'Alamat orang tua maksimal 500 karakter').optional(),
   anak_ke: z.number().int().min(1, 'Anak ke minimal 1').optional(),
   kebutuhan_khusus: z.string().max(100, 'Kebutuhan khusus maksimal 100 karakter').optional(),
   penerima_kps: z.boolean().optional(),

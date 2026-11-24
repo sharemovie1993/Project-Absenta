@@ -346,6 +346,7 @@ export async function createSiswaCommand(
       pekerjaan_wali: input.pekerjaan_wali || null,
       penghasilan_wali: input.penghasilan_wali || null,
       no_hp_ortu: input.no_hp_ortu || null,
+      alamat_ortu: input.alamat_ortu || null,
       anak_ke: input.anak_ke ? Number(input.anak_ke) : null,
       tinggi_badan: input.tinggi_badan ? Number(input.tinggi_badan) : null,
       berat_badan: input.berat_badan ? Number(input.berat_badan) : null,

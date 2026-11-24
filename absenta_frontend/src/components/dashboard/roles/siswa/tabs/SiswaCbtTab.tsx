@@ -158,6 +158,97 @@ const formatExamTimeRange = (startIso?: string | null, endIso?: string | null) =
   return `${startTime} – ${endTime} ${tzLabel}`;
 };
 
+const ProctorAvatar: React.FC<{ nama: string; foto?: string | null; size?: 'sm' | 'md' }> = ({
+  nama,
+  foto,
+  size = 'sm',
+}) => {
+  const [imgError, setImgError] = useState(false);
+  const sizeCls = size === 'md' ? 'w-9 h-9 text-xs' : 'w-6 h-6 text-[10px]';
+  const initials = (nama || 'P')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('');
+
+  if (foto && !imgError) {
+    return (
+      <img
+        src={foto}
+        alt={nama}
+        onError={() => setImgError(true)}
+        className={cn(
+          sizeCls,
+          'rounded-full object-cover border border-indigo-200 dark:border-indigo-700 shrink-0 bg-slate-100 dark:bg-slate-800'
+        )}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        sizeCls,
+        'rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-black flex items-center justify-center border border-indigo-200 dark:border-indigo-700 shrink-0'
+      )}
+    >
+      {initials || <UserCheck size={12} />}
+    </div>
+  );
+};
+
+const ProctorInfoStrip: React.FC<{ item: CbtStudentExamItem; variant?: 'compact' | 'detail' }> = ({
+  item,
+  variant = 'compact',
+}) => {
+  const proctors =
+    item.pengawas_list && item.pengawas_list.length > 0
+      ? item.pengawas_list
+      : item.pengawas_nama
+      ? [{ nama: item.pengawas_nama, foto: item.pengawas_foto }]
+      : [];
+
+  if (proctors.length === 0) return null;
+
+  if (variant === 'detail') {
+    return (
+      <div className="p-2.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/60 space-y-2">
+        <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider block">
+          Pengawas Ruang Ujian
+        </span>
+        <div className="flex flex-wrap gap-2.5">
+          {proctors.map((p, idx) => (
+            <div key={p.id || idx} className="flex items-center gap-2 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-800/70">
+              <ProctorAvatar nama={p.nama} foto={p.foto} size="md" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{p.nama}</p>
+                {p.nip && <p className="text-[10px] font-mono text-slate-500">{p.nip}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap px-2.5 py-1.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60">
+      <div className="flex -space-x-1.5 shrink-0">
+        {proctors.map((p, idx) => (
+          <ProctorAvatar key={p.id || idx} nama={p.nama} foto={p.foto} size="sm" />
+        ))}
+      </div>
+      <div className="min-w-0 flex items-center gap-1 text-[11px]">
+        <span className="text-slate-500 dark:text-slate-400 font-medium shrink-0">Pengawas:</span>
+        <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+          {proctors.map((p) => p.nama).join(' • ')}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 const resolveSesiLabel = (item: CbtStudentExamItem) => {
   if (item.nama_sesi_waktu) return item.nama_sesi_waktu;
   const match = item.nama_sesi.match(/Sesi\s*\d+/i);
@@ -1298,6 +1389,9 @@ export const SiswaCbtTab: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Info Pengawas & Foto Pengawas */}
+                    <ProctorInfoStrip item={item} />
+
                     {/* Tombol Utama: Kerjakan Ujian (Fokus Aksi) */}
                     <button
                       type="button"
@@ -1415,6 +1509,9 @@ export const SiswaCbtTab: React.FC = () => {
                       </>
                     )}
                   </div>
+
+                  {/* Info Pengawas & Foto Pengawas */}
+                  <ProctorInfoStrip item={item} />
 
                   {/* Baris 3 (Footer): Status Selesai & Penyerahan Lembar Jawaban (Sesuai SOP: Nilai Mentah Disembunyikan) */}
                   {(isFinished || isChildFinished) && (
@@ -1637,6 +1734,8 @@ export const SiswaCbtTab: React.FC = () => {
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{selectedDetailItem.guru}</span>
               </div>
             )}
+
+            <ProctorInfoStrip item={selectedDetailItem} variant="detail" />
 
             <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/60 flex items-start gap-2 text-amber-800 dark:text-amber-300 text-[11px]">
               <Lock size={14} className="shrink-0 mt-0.5" />

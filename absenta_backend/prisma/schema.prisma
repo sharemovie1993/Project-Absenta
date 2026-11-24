@@ -1111,6 +1111,7 @@ model Siswa {
   pekerjaan_wali      String?
   penghasilan_wali    String?
   no_hp_ortu          String?
+  alamat_ortu         String?
   anak_ke             Int?
   tinggi_badan        Int?
   berat_badan         Int?

@@ -318,6 +318,7 @@ export const SiswaOnboardingModal: React.FC<SiswaOnboardingModalProps> = ({
     no_hp_ibu: '',
     nama_wali: '',
     hubungan_wali: '',
+    alamat_ortu: '',
   });
 
   const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
@@ -417,6 +418,7 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
         hubungan_wali: matchOptionValue(siswa.hubungan_wali, HUBUNGAN_WALI_OPTIONS),
         pekerjaan_wali: matchOptionValue(siswa.pekerjaan_wali, PEKERJAAN_OPTIONS),
         no_hp_wali: siswa.no_hp_wali || '',
+        alamat_ortu: (siswa as any).alamat_ortu || '',
       });
       setSelectedPhotoFile(null);
       setPhotoPreview(null);
@@ -1353,6 +1355,48 @@ const matchOptionValue = (val: string | null | undefined, options: Array<{ value
                       </select>
                     </div>
                   </div>
+                </div>
+
+                {/* ALAMAT ORANG TUA (UNTUK BIODATA RAPOR) */}
+                <div className="space-y-2.5 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 sm:col-span-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                      Alamat Orang Tua (Biodata Rapor)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const fullAddress = [
+                          formData.alamat,
+                          formData.rt && formData.rw ? `RT ${formData.rt}/RW ${formData.rw}` : '',
+                          formData.dusun,
+                          formData.kelurahan,
+                          formData.kecamatan,
+                          formData.kabupaten,
+                          formData.provinsi,
+                          formData.kode_pos,
+                        ]
+                          .map((s) => String(s || '').trim())
+                          .filter(Boolean)
+                          .join(', ');
+                        if (!fullAddress) {
+                          toast.error('Alamat siswa belum diisi');
+                          return;
+                        }
+                        setFormData({ ...formData, alamat_ortu: fullAddress });
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer"
+                    >
+                      Sama Dengan Siswa
+                    </button>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={formData.alamat_ortu}
+                    onChange={e => setFormData({ ...formData, alamat_ortu: e.target.value })}
+                    placeholder="Alamat lengkap orang tua..."
+                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 font-semibold text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
                 </div>
               </div>
             </motion.div>

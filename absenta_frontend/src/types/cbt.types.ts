@@ -266,6 +266,9 @@ export interface CbtStudentExamItem {
   tahun_ajaran?: string | null;
   semester?: string | null;
   guru: string | null;
+  pengawas_nama?: string | null;
+  pengawas_foto?: string | null;
+  pengawas_list?: Array<{ id?: string | null; nama: string; nip?: string | null; foto?: string | null }>;
   total_soal: number;
   tanggal_mulai: string;
   tanggal_selesai: string;
