@@ -47,7 +47,7 @@ import {
 } from './perangkatAjarSchemas';
 
 import { PerangkatAjarGridCard } from './PerangkatAjarGridCard';
-import { getPerangkatAjarTableColumns } from './perangkatAjarTableColumns';
+import { getPerangkatAjarTableColumns, JENIS_COLOR_MAP } from './perangkatAjarTableColumns';
 import { PerangkatAjarModals } from './PerangkatAjarModals';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
@@ -150,8 +150,17 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
   const [isStudioModalOpen, setIsStudioModalOpen] = useState(false);
   const [studioPerangkat, setStudioPerangkat] = useState<PerangkatAjar | null>(null);
   const [isAtpModalOpen, setIsAtpModalOpen] = useState(false);
+  const [atpInitialContext, setAtpInitialContext] = useState<{ mapelId?: string; fase?: string }>({});
 
   const handleOpenStudio = useCallback((item: PerangkatAjar) => {
+    if (item.jenis === 'ATP') {
+      setAtpInitialContext({
+        mapelId: item.mapel_id || item.Mapel?.id,
+        fase: (item as any).fase || undefined,
+      });
+      setIsAtpModalOpen(true);
+      return;
+    }
     setStudioPerangkat(item);
     setIsStudioModalOpen(true);
   }, []);
@@ -667,7 +676,11 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
           </div>
         }
       >
-        <AtpBuilderView embedded={true} />
+        <AtpBuilderView
+          embedded={true}
+          initialMapelId={atpInitialContext.mapelId}
+          initialFase={atpInitialContext.fase}
+        />
       </Suspense>
     </div>
   ) : (
@@ -692,11 +705,178 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
         }}
       />
 
-      {/* 2. Unified Filter Toolbar (SSOT) */}
+      {/* 2. Unified Filter & Action Toolbar */}
       <SectionCard fullWidth noPadding>
         <div className="p-3 sm:p-4 space-y-3">
+          {/* Baris 1: Aksi Utama & Mode Tampilan */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={handleOpenUploadModal}
+                className="rounded-xl text-xs font-bold gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs h-9 px-3.5 cursor-pointer"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Unggah Berkas</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCreateNewStudio}
+                className="rounded-xl text-xs font-bold gap-1.5 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 h-9 cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Studio Modul</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setAtpInitialContext({});
+                  setIsAtpModalOpen(true);
+                }}
+                className="rounded-xl text-xs font-bold gap-1.5 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 h-9 cursor-pointer"
+                title="Susun Alur Tujuan Pembelajaran (ATP & TP) untuk 1-Klik Jurnal KBM"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Susun ATP</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsRolloverModalOpen(true)}
+                className="rounded-xl text-xs font-bold gap-1.5 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 h-9 cursor-pointer"
+                title="Salin Perangkat Ajar dari Tahun Lalu (1-Klik Rollover)"
+              >
+                <Copy className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="hidden sm:inline">Salin Tahun Lalu</span>
+              </Button>
+
+              <div className="relative">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsToolsMenuOpen(prev => !prev)}
+                  className="rounded-xl text-xs font-bold gap-1.5 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 h-9 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                  <span className="hidden md:inline">Alat Bantu &amp; AI</span>
+                  <ChevronDown size={13} className={cn("transition-transform text-slate-400", isToolsMenuOpen && "rotate-180")} />
+                </Button>
+
+                {isToolsMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsToolsMenuOpen(false)}
+                    />
+                    <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-1.5 w-56 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-1.5 z-50 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsToolsMenuOpen(false);
+                          setIsAIModalOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 transition-colors text-left cursor-pointer"
+                      >
+                        <Sparkles size={15} className="text-purple-600 shrink-0" />
+                        <div>
+                          <div className="font-bold">AI Generator Modul</div>
+                          <div className="text-[10px] text-slate-400 font-normal">Buat modul via asisten AI</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsToolsMenuOpen(false);
+                          setIsLibraryModalOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 transition-colors text-left cursor-pointer"
+                      >
+                        <BookOpen size={15} className="text-indigo-600 shrink-0" />
+                        <div>
+                          <div className="font-bold">Katalog Nasional</div>
+                          <div className="text-[10px] text-slate-400 font-normal">Adopsi template Kemdikbud</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsToolsMenuOpen(false);
+                          setIsWizardModalOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-600 transition-colors text-left cursor-pointer"
+                      >
+                        <Wand2 size={15} className="text-amber-600 shrink-0" />
+                        <div>
+                          <div className="font-bold">Wizard (Bulk)</div>
+                          <div className="text-[10px] text-slate-400 font-normal">Generate perangkat massal</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsToolsMenuOpen(false);
+                          setIsRolloverModalOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-600 transition-colors text-left cursor-pointer"
+                      >
+                        <Copy size={15} className="text-emerald-600 shrink-0" />
+                        <div>
+                          <div className="font-bold">Salin dari Tahun Lalu</div>
+                          <div className="text-[10px] text-slate-400 font-normal">Rollover perangkat tahun sebelumnya</div>
+                        </div>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 rounded-lg text-xs font-semibold flex items-center transition-all cursor-pointer ${
+                  viewMode === 'table'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                }`}
+                title="Tampilan Tabel"
+              >
+                <List size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg text-xs font-semibold flex items-center transition-all cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                }`}
+                title="Tampilan Grid Kartu"
+              >
+                <LayoutGrid size={14} />
+              </button>
+            </div>
+          </div>
+
+          {/* Baris 2: Filter Terpadu (Mapel Diampu + Jenis Berkas + Pencarian + Reset) */}
           <AcademicFilterToolbar
             {...academicFilter.toolbarProps}
+            mapelOptions={mapelOptions}
             variant="plain"
             searchPlaceholder={
               isGuruContext
@@ -704,183 +884,17 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
                 : "Cari judul perangkat, topik, atau nama guru..."
             }
             actionsRight={
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Filter Jenis Dokumen */}
-                <div className="w-40 sm:w-44">
-                  <SearchableSelect
-                    value={filterJenis}
-                    onValueChange={(v) => {
-                      setFilterJenis(v);
-                      setPage(1);
-                    }}
-                    options={filterJenisOptions}
-                    placeholder="Jenis Berkas"
-                    triggerClassName="h-9 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-                  />
-                </div>
-
-                {/* View Mode Toggle */}
-                <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('table')}
-                    className={`p-1.5 rounded-lg text-xs font-semibold flex items-center transition-all ${
-                      viewMode === 'table'
-                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
-                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-                    }`}
-                    title="Tampilan Tabel"
-                  >
-                    <List size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('grid')}
-                    className={`p-1.5 rounded-lg text-xs font-semibold flex items-center transition-all ${
-                      viewMode === 'grid'
-                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs'
-                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-                    }`}
-                    title="Tampilan Grid Kartu"
-                  >
-                    <LayoutGrid size={14} />
-                  </button>
-                </div>
-
-                {/* 1. Tombol Utama: Unggah Berkas */}
-                <Button
-                  type="button"
-                  variant="default"
-                  size="sm"
-                  onClick={handleOpenUploadModal}
-                  className="rounded-xl text-xs font-bold gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs h-9 px-3.5 cursor-pointer"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>Unggah Berkas</span>
-                </Button>
-
-                {/* 2. Studio Modul Ajar */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCreateNewStudio}
-                  className="rounded-xl text-xs font-bold gap-1.5 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 h-9 cursor-pointer"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Studio Modul</span>
-                </Button>
-
-                {/* 2b. Penyusun ATP & TP (Kurikulum Merdeka) */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsAtpModalOpen(true)}
-                  className="rounded-xl text-xs font-bold gap-1.5 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 h-9 cursor-pointer"
-                  title="Susun Alur Tujuan Pembelajaran (ATP & TP) untuk 1-Klik Jurnal KBM"
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Susun ATP</span>
-                </Button>
-
-                {/* 3. Salin dari Tahun Lalu (Rollover) */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsRolloverModalOpen(true)}
-                  className="rounded-xl text-xs font-bold gap-1.5 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 h-9 cursor-pointer"
-                  title="Salin Perangkat Ajar dari Tahun Lalu (1-Klik Rollover)"
-                >
-                  <Copy className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span className="hidden sm:inline">Salin Tahun Lalu</span>
-                </Button>
-
-                {/* 4. Menu Alat Bantu & AI Generator (Clean Ergonomic Dropdown) */}
-                <div className="relative">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsToolsMenuOpen(prev => !prev)}
-                    className="rounded-xl text-xs font-bold gap-1.5 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 h-9 cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                    <span className="hidden md:inline">Alat Bantu &amp; AI</span>
-                    <ChevronDown size={13} className={cn("transition-transform text-slate-400", isToolsMenuOpen && "rotate-180")} />
-                  </Button>
-
-                  {isToolsMenuOpen && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setIsToolsMenuOpen(false)}
-                      />
-                      <div className="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 p-1.5 z-50 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsToolsMenuOpen(false);
-                            setIsAIModalOpen(true);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 transition-colors text-left cursor-pointer"
-                        >
-                          <Sparkles size={15} className="text-purple-600 shrink-0" />
-                          <div>
-                            <div className="font-bold">AI Generator Modul</div>
-                            <div className="text-[10px] text-slate-400 font-normal">Buat modul via asisten AI</div>
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsToolsMenuOpen(false);
-                            setIsLibraryModalOpen(true);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 transition-colors text-left cursor-pointer"
-                        >
-                          <BookOpen size={15} className="text-indigo-600 shrink-0" />
-                          <div>
-                            <div className="font-bold">Katalog Nasional</div>
-                            <div className="text-[10px] text-slate-400 font-normal">Adopsi template Kemdikbud</div>
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsToolsMenuOpen(false);
-                            setIsWizardModalOpen(true);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-600 transition-colors text-left cursor-pointer"
-                        >
-                          <Wand2 size={15} className="text-amber-600 shrink-0" />
-                          <div>
-                            <div className="font-bold">Wizard (Bulk)</div>
-                            <div className="text-[10px] text-slate-400 font-normal">Generate perangkat massal</div>
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsToolsMenuOpen(false);
-                            setIsRolloverModalOpen(true);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-600 transition-colors text-left cursor-pointer"
-                        >
-                          <Copy size={15} className="text-emerald-600 shrink-0" />
-                          <div>
-                            <div className="font-bold">Salin dari Tahun Lalu</div>
-                            <div className="text-[10px] text-slate-400 font-normal">Rollover perangkat tahun sebelumnya</div>
-                          </div>
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
+              <div className="w-40 sm:w-44">
+                <SearchableSelect
+                  value={filterJenis}
+                  onValueChange={(v) => {
+                    setFilterJenis(v);
+                    setPage(1);
+                  }}
+                  options={filterJenisOptions}
+                  placeholder="Semua Jenis Berkas"
+                  triggerClassName="h-9 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                />
               </div>
             }
           />
@@ -941,6 +955,7 @@ export const PerangkatAjarView: React.FC<UniversalPerangkatAjarViewProps> = Reac
               data={listPerangkat?.data || []}
               columns={tableColumns}
               isLoading={isLoading}
+              rowClassName={(row: PerangkatAjar) => JENIS_COLOR_MAP[row.jenis]?.row || ''}
               pagination={{
                 currentPage: page,
                 totalPages: listPerangkat?.totalPages || 1,
