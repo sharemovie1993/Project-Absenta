@@ -449,15 +449,15 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
               const isOverdue = item.is_overdue ?? item.status?.isOverdue ?? false;
               const isStartedByTeacher = Boolean(sesi?.foto_kegiatan || (item.guru_status && item.guru_status !== 'BELUM_TAP' && item.guru_status !== 'BELUM_HADIR' && item.guru_status !== 'ALPA'));
 
-              const canExpand = Boolean(isStartedByTeacher || isFinished || isOverdue);
+              const canExpand = false;
 
               return (
                 <UniversalKbmCard
                   key={item.id}
                   mode="GURU"
                   item={item}
-                  isExpanded={canExpand && isExpanded}
-                  onToggleExpand={canExpand ? () => setExpandedScheduleId(isExpanded ? null : item.id) : undefined}
+                  isExpanded={false}
+                  onToggleExpand={undefined}
                   onOpenWorkspace={(it) => setWorkspaceItem(it)}
                   onOpenScanModal={() => sesiScanner.openScanModal(item)}
                   onOpenPhotoModal={handleOpenPhotoModal}
