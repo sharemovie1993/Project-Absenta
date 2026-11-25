@@ -428,6 +428,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   // Ambil daftar bank soal dari event/TP sebelumnya untuk tawaran Rollover langsung di dalam modal
   const [rollingOverBankId, setRollingOverBankId] = useState<string | null>(null);
   const [previewBankSoal, setPreviewBankSoal] = useState<CbtBankSoal | null>(null);
+  const [userChoseCreateNew, setUserChoseCreateNew] = useState(false);
+
+  useEffect(() => {
+    setUserChoseCreateNew(false);
+  }, [isOpen, mapelId, tingkat]);
   const { data: previousEventBanksRes } = useQuery({
     queryKey: ['cbt-previous-banks-for-rollover-offer', mapelId, tingkat, activeEventId],
     queryFn: () =>
@@ -453,6 +458,9 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       return true;
     });
   }, [previousEventBanksRes, activeEventId]);
+
+  const isAwaitingRolloverDecision =
+    !bankSoalToEdit && Boolean(activeEventId) && previousEventBanks.length > 0 && !userChoseCreateNew;
 
   const handleInlineRollover = async (sourceBank: CbtBankSoal) => {
     if (!activeEventId) {
@@ -984,7 +992,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           ? (isShared ? 'Buat Master Bank Soal MGMP (Ujian Bersama)' : 'Buat Bank Soal Ujian Mandiri')
           : 'Buat Bank Soal Mandiri'
       }
-      size="lg"
+      size="3xl"
     >
       {/* ── Stepper Ramping & Bersih ── */}
       <div className="mb-3.5 grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
@@ -1415,54 +1423,56 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               )}
             </div>
 
-            {/* Tawaran Rollover jika sudah ada naskah Mapel & Tingkat ini di Event / TP Sebelumnya */}
-            {!bankSoalToEdit && activeEventId && previousEventBanks.length > 0 && (
-              <div className="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-2">
-                <div className="flex items-start gap-2">
-                  <History size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+            {/* Tawaran Rollover Eksplisit jika sudah ada naskah Mapel & Tingkat ini di Event / TP Sebelumnya */}
+            {!bankSoalToEdit && activeEventId && previousEventBanks.length > 0 && isAwaitingRolloverDecision && (
+              <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                    <History size={16} />
+                  </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold text-indigo-950 dark:text-indigo-100">
-                      Naskah Soal Tingkat {tingkat} Sudah Pernah Dibuat di Event Sebelumnya
+                    <div className="text-sm font-black text-indigo-950 dark:text-indigo-100">
+                      Naskah Soal Tingkat {tingkat} Sudah Ada di Event Sebelumnya
                     </div>
-                    <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-0.5 leading-relaxed">
-                      Ditemukan {previousEventBanks.length} bank soal berisi butir soal untuk mapel & tingkat ini. Anda dapat langsung <strong>mengambil (Rollover)</strong> ke event ini atau tetap <strong>membuat naskah baru</strong> di bawah.
+                    <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-0.5 leading-relaxed">
+                      Apakah Anda ingin <strong>mengambil (Rollover)</strong> salah satu dari {previousEventBanks.length} naskah yang sudah ada di bawah ini ke event aktif, atau <strong>membuat bank soal baru</strong>?
                     </p>
                   </div>
                 </div>
-                <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                  {previousEventBanks.slice(0, 4).map((prevBank) => {
+                <div className="space-y-2 max-h-52 overflow-y-auto">
+                  {previousEventBanks.slice(0, 6).map((prevBank) => {
                     const totalSoal = prevBank.jumlah_soal || prevBank._count?.Soal || 0;
                     const isRolling = rollingOverBankId === prevBank.id;
                     return (
                       <div
                         key={prevBank.id}
-                        className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 shadow-2xs"
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 truncate">
+                          <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
                             {prevBank.judul}
                           </div>
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                            {prevBank.Guru?.nama_guru || '-'} • {totalSoal} Soal • {prevBank.TahunPelajaran?.tahun || 'Event Sebelumnya'}
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                            {prevBank.Guru?.nama_guru || '-'} • <span className="font-semibold text-emerald-600 dark:text-emerald-400">{totalSoal} Soal</span> • {prevBank.TahunPelajaran?.tahun || 'Event Sebelumnya'}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
                           <button
                             type="button"
                             onClick={() => setPreviewBankSoal(prevBank)}
-                            className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1 cursor-pointer"
                             title="Pratinjau Butir Soal"
                           >
-                            <Eye size={12} />
+                            <Eye size={13} />
                             <span>Preview</span>
                           </button>
                           <button
                             type="button"
                             disabled={rollingOverBankId !== null}
                             onClick={() => handleInlineRollover(prevBank)}
-                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+                            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1 disabled:opacity-50 cursor-pointer shadow-2xs"
                           >
-                            {isRolling ? <Loader2 size={12} className="animate-spin" /> : <History size={12} />}
+                            {isRolling ? <Loader2 size={13} className="animate-spin" /> : <History size={13} />}
                             <span>Ambil (Rollover)</span>
                           </button>
                         </div>
@@ -1470,11 +1480,36 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     );
                   })}
                 </div>
+                <div className="pt-2 border-t border-indigo-200/70 dark:border-indigo-800/60 flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-indigo-700/80 dark:text-indigo-300/80">
+                    Ingin menyusun naskah baru dari awal untuk event ini?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setUserChoseCreateNew(true)}
+                    className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 text-xs font-bold cursor-pointer shadow-2xs shrink-0"
+                  >
+                    + Buat Baru Saja
+                  </button>
+                </div>
               </div>
             )}
 
             {/* 4. Model Distribusi: Tentukan Intensi Terlebih Dahulu (Mandiri vs Bersama) */}
+            {!isAwaitingRolloverDecision && (
             <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              {!bankSoalToEdit && activeEventId && previousEventBanks.length > 0 && userChoseCreateNew && (
+                <div className="flex items-center justify-between pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setUserChoseCreateNew(false)}
+                    className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <ArrowLeft size={12} />
+                    <span>Kembali ke pilihan Rollover ({previousEventBanks.length} naskah tersedia)</span>
+                  </button>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <Share2 size={13} className="text-indigo-600 dark:text-indigo-400" />
@@ -1876,6 +1911,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 );
               })()}
             </div>
+            )}
           </div>
         ) : (
           /* ── TAHAP 2: IDENTITAS, DURASI, & PENYUSUN SOAL ── */
@@ -2071,7 +2107,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           )}
 
           {step === 1 ? (
-            isTargetCoveredByColleague.isLocked ? (
+            isAwaitingRolloverDecision ? null : isTargetCoveredByColleague.isLocked ? (
               <Button
                 key="btn-step1-locked"
                 type="button"
