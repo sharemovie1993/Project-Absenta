@@ -352,11 +352,12 @@ export const CbtPengawasMatrixPanel: React.FC<CbtPengawasMatrixPanelProps> = ({
     }
 
     const detectedTingkat =
+      (j.BankSoal?.tingkat && !Number.isNaN(Number(j.BankSoal.tingkat)) ? Number(j.BankSoal.tingkat) : null) ||
       detectNodeTingkat({
         label_sub: rombel,
-        label_utama: roomCode,
         catatan: j.BankSoal?.tingkat,
-      }) || 10;
+      }) ||
+      10;
 
     return {
       roomCode,

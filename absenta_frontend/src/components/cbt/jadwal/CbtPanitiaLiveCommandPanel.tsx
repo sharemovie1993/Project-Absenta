@@ -218,13 +218,14 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
       if (matched) rombel = matched;
     }
 
-    // Ekstraksi Tingkat
+    // Ekstraksi Tingkat (jangan sertakan roomCode seperti R.12/R.13 agar tidak terbaca sebagai Kelas 12/13)
     const detectedTingkat =
+      (j.BankSoal?.tingkat && !Number.isNaN(Number(j.BankSoal.tingkat)) ? Number(j.BankSoal.tingkat) : null) ||
       detectNodeTingkat({
         label_sub: rombel,
-        label_utama: roomCode,
         catatan: j.BankSoal?.tingkat,
-      }) || 10;
+      }) ||
+      10;
 
     return {
       roomCode,
