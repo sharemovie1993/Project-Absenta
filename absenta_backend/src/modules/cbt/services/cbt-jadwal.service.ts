@@ -38,14 +38,10 @@ export class CbtJadwalService {
       andConditions.push({ bank_soal_id: query.bank_soal_id });
     }
     if (query.tahun_pelajaran_id) {
-      andConditions.push({
-        OR: [{ tahun_pelajaran_id: query.tahun_pelajaran_id }, { tahun_pelajaran_id: null }],
-      });
+      andConditions.push({ tahun_pelajaran_id: query.tahun_pelajaran_id });
     }
     if (query.semester_id) {
-      andConditions.push({
-        OR: [{ semester_id: query.semester_id }, { semester_id: null }],
-      });
+      andConditions.push({ semester_id: query.semester_id });
     }
     if (query.guru_id) {
       // Dapatkan penugasan kelas dan mapel guru (UnitPengajaran, JadwalKBM, maupun GuruMapel)
