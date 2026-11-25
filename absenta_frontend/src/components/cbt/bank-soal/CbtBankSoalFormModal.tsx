@@ -1120,7 +1120,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       onSuccess();
       onClose();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Gagal menyimpan bank soal');
+      console.error('[CbtBankSoalFormModal] Save error:', err);
+      toast.error(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          'Gagal menyimpan bank soal'
+      );
     } finally {
       setIsSubmitting(false);
     }

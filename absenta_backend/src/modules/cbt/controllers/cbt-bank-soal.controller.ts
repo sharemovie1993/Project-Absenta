@@ -46,6 +46,7 @@ export class CbtBankSoalController {
       const result = await CbtBankSoalService.create(tenant_id, parsed);
       return sendResponse(reply, 201, true, 'Bank soal berhasil dibuat', result);
     } catch (error: any) {
+      console.error('[CbtBankSoalController.create] Error:', error?.message || error);
       if (error instanceof z.ZodError) {
         return sendError(reply, 400, error.errors.map((e) => e.message).join(', '));
       }
@@ -61,6 +62,7 @@ export class CbtBankSoalController {
       const result = await CbtBankSoalService.update(tenant_id, id, parsed);
       return sendResponse(reply, 200, true, 'Bank soal berhasil diperbarui', result);
     } catch (error: any) {
+      console.error('[CbtBankSoalController.update] Error:', error?.message || error);
       if (error instanceof z.ZodError) {
         return sendError(reply, 400, error.errors.map((e) => e.message).join(', '));
       }
