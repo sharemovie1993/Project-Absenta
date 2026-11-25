@@ -103,7 +103,20 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   const { rawList: guruList = [] } = useGuruOptions({ jenisPtk: 'ALL' });
   const { rawList: kelasList = [] } = useKelasOptions();
   const { activeYear: activeTp, rawList: tpRawList = [] } = useTahunPelajaranOptions();
-  const { activeSemester } = useSemesterOptions();
+  const { activeSemester, rawList: semRawList = [] } = useSemesterOptions();
+
+  // Konteks Akademik Efektif: Prioritaskan Event CBT Aktif -> Konteks Akademik Aktif Sistem
+  const effectiveTpId = activeEvent?.tahun_pelajaran_id || activeTp?.id;
+  const effectiveSemId = useMemo(() => {
+    if (activeEvent?.semester && semRawList.length > 0) {
+      const target = String(activeEvent.semester).toUpperCase().trim();
+      const matched = semRawList.find((s: any) =>
+        String(s.nama_semester || s.nama || '').toUpperCase().includes(target)
+      );
+      if (matched?.id) return matched.id;
+    }
+    return activeSemester?.id;
+  }, [activeEvent?.semester, semRawList, activeSemester?.id]);
 
   // Resolusi Tahun Pelajaran SSoT: Prioritaskan Pengaturan Event CBT Aktif -> Konteks Akademik Aktif
   const effectiveTpName = useMemo(() => {
@@ -358,10 +371,18 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
     isRoomInitializedRef.current = true;
   }, [scopedKelasList, tenantId, activeEvent?.id, denahMapByKelasId]);
 
-  // ── 2. Fetch Bank Soal (Kapasitas Penuh 500 & StaleTime Guard) ──
+  // ── 2. Fetch Bank Soal (Terikat Konteks TP & Semester Event Aktif) ──
+  const bankQueryParams = useMemo(
+    () => ({
+      limit: 500,
+      ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
+      ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
+    }),
+    [effectiveTpId, effectiveSemId]
+  );
   const { data: bankRes, refetch: refetchBankSoal } = useQuery({
-    queryKey: cbtQueryKeys.bankSoal({ limit: 500 }),
-    queryFn: () => cbtApi.getBankSoalList({ limit: 500 }),
+    queryKey: cbtQueryKeys.bankSoal(bankQueryParams),
+    queryFn: () => cbtApi.getBankSoalList(bankQueryParams),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -381,11 +402,11 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
 
   const jadwalList: CbtJadwalUjian[] = jadwalRes?.items || [];
 
-  // ── 4. Fetch SK Penugasan Guru Mapel untuk Audit Kesiapan Soal ──
+  // ── 4. Fetch SK Penugasan Guru Mapel untuk Audit Kesiapan Soal (Terikat TP Event Aktif) ──
   const { data: guruMapelRes } = useQuery({
-    queryKey: ['guru-mapel-readiness', activeTp?.id],
-    queryFn: () => listGuruMapel({ tahun_pelajaran_id: activeTp?.id }),
-    enabled: !!activeTp?.id,
+    queryKey: ['guru-mapel-readiness', effectiveTpId],
+    queryFn: () => listGuruMapel({ tahun_pelajaran_id: effectiveTpId }),
+    enabled: !!effectiveTpId,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -642,8 +663,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
         <CbtBankSoalReadinessPanel
           topFlightDeck={flightDeckNode}
           bankList={rawBankList}
-          activeTpId={activeTp?.id}
-          activeSemId={activeSemester?.id}
+          activeTpId={effectiveTpId}
+          activeSemId={effectiveSemId}
           targetTingkat={effectiveTargetTingkat}
           eventName={effectiveEventName}
           activeEvent={activeEvent}
@@ -675,8 +696,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           bankList={rawBankList}
           rawGuruMapel={rawGuruMapel}
           roomMappings={roomMappings}
-          activeTpId={activeTp?.id}
-          activeSemId={activeSemester?.id}
+          activeTpId={effectiveTpId}
+          activeSemId={effectiveSemId}
           defaultTodayStr={defaultTodayStr}
           existingSchedules={effectiveJadwalList}
           activeEvent={activeEvent}
