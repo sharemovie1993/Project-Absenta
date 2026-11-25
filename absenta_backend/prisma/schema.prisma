@@ -194,6 +194,7 @@ model Tenant {
   KetarunaanSkemaConfig    KetarunaanSkemaConfig[]
   KetarunaanNilaiSiswa     KetarunaanNilaiSiswa[]
   RaporSetting             RaporSetting[]
+  HubinSetting             HubinSetting[]
 }
 
 enum BackupStatus {
@@ -1024,6 +1025,7 @@ model TahunPelajaran {
   KetarunaanSkemaConfig  KetarunaanSkemaConfig[]
   KetarunaanNilaiSiswa   KetarunaanNilaiSiswa[]
   RaporSetting           RaporSetting[]
+  HubinSetting           HubinSetting[]
 
   @@unique([tenant_id, tahun])
   @@index([tenant_id])
@@ -1674,6 +1676,36 @@ model RaporSetting {
   @@unique([tenant_id, tahun_pelajaran_id, semester_id])
   @@index([tenant_id])
   @@index([tahun_pelajaran_id, semester_id])
+}
+
+model HubinSetting {
+  id                     String         @id @default(uuid())
+  tenant_id              String
+  tahun_pelajaran_id     String
+  assessment_mode        String         @default("DUDI_ONLY")
+  weight_dudi            Int            @default(70)
+  weight_laporan         Int            @default(15)
+  weight_sidang          Int            @default(15)
+  nomor_surat_sertifikat String?
+  tanggal_terbit         String?
+  durasi_jp              String?
+  tempat_terbit          String?
+  penandatangan_nama     String?
+  penandatangan_nip      String?
+  visit_cycle_target     Int            @default(3)
+  visit_cycle_mode       String         @default("THREE_CYCLE")
+  visit_require_photo    Boolean        @default(true)
+  visit_require_sig      Boolean        @default(true)
+  visit_require_journal  Boolean        @default(true)
+  created_at             DateTime       @default(now())
+  updated_at             DateTime       @updatedAt
+
+  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, tahun_pelajaran_id])
+  @@index([tenant_id])
+  @@index([tahun_pelajaran_id])
 }
 
 // Global Master Data Wilayah Indonesia (Cross-Tenant)
