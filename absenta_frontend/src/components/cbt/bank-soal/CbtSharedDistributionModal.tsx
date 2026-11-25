@@ -12,12 +12,19 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { Modal, Button, Loader } from '@/components/ui';
 import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
+import { cbtApi } from '@/api/cbt.api';
 import type { GuruMapel } from '@/types/academic';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import { useAuthStore } from '@/store/authStore';
 import { getMgmpSharedTeacherIds } from '../jadwal/cbtMgmpHelper';
-import { resolveBankTingkatNumber } from '../jadwal/cbtJadwalHelper';
-import { formatTingkatRomawi, isAssignmentMatchingJurusan } from './cbtAsesmenHelper';
+import { formatTingkatRomawi } from './cbtAsesmenHelper';
+import {
+  resolveStrictBankTingkat,
+  resolveStrictTingkat,
+  resolveStrictJurusan,
+  parseBankJurusanTokens,
+  isGeneralBankJurusan,
+} from './cbtDutyEngine';
 import { cn } from '@/lib/utils';
 
 export interface CbtSharedDistributionModalProps {
@@ -44,18 +51,41 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
     staleTime: 60 * 1000,
   });
 
+  // 1b. Query bank soal se-mapel untuk mendeteksi rekan yang sudah membuat bank soal mandiri
+  const { data: mapelBanksRes } = useQuery({
+    queryKey: ['mapel-banks-distribution', bankSoal?.mapel_id],
+    queryFn: () => (bankSoal?.mapel_id ? cbtApi.getBankSoalList({ mapel_id: bankSoal.mapel_id, limit: 200 }) : null),
+    enabled: Boolean(isOpen && bankSoal?.mapel_id),
+    staleTime: 30 * 1000,
+  });
+
   const targetTingkatNum = useMemo(() => {
-    return resolveBankTingkatNumber(bankSoal);
+    return resolveStrictBankTingkat(bankSoal);
   }, [bankSoal]);
 
   const targetJurusanTokens = useMemo(() => {
-    if (!bankSoal?.jurusan) return [];
-    return (bankSoal.jurusan || '')
-      .toUpperCase()
-      .split(/[,;/|]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }, [bankSoal?.jurusan]);
+    const tokens = parseBankJurusanTokens(bankSoal?.jurusan);
+    if (Array.isArray(bankSoal?.target_jurusan_ids)) {
+      bankSoal.target_jurusan_ids.forEach((id) => {
+        if (id && !tokens.includes(id.toUpperCase())) tokens.push(id.toUpperCase());
+      });
+    } else if (bankSoal?.jurusan_id && !tokens.includes(bankSoal.jurusan_id.toUpperCase())) {
+      tokens.push(bankSoal.jurusan_id.toUpperCase());
+    }
+    return tokens;
+  }, [bankSoal]);
+
+  const guruOwnBankSet = useMemo(() => {
+    const items: CbtBankSoal[] = mapelBanksRes?.items || (mapelBanksRes as any)?.data?.items || [];
+    const set = new Set<string>();
+    items.forEach((b) => {
+      if (!b.guru_id || b.id === bankSoal?.id) return;
+      const bTingkat = resolveStrictBankTingkat(b);
+      if (targetTingkatNum && bTingkat && bTingkat !== targetTingkatNum) return;
+      set.add(b.guru_id);
+    });
+    return set;
+  }, [mapelBanksRes, bankSoal?.id, targetTingkatNum]);
 
   // 2. Ambil ID rekan yang secara eksplisit dicatat dalam Kontributor DB / Storage
   const explicitSharedIds = useMemo(() => {
@@ -87,38 +117,39 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
       }
     >();
 
+    const isBankGeneral = isGeneralBankJurusan(bankSoal.jurusan, bankSoal);
+
     rawList.forEach((gm) => {
       const gId = gm.guru_id;
       const gName = gm.Guru?.nama_guru;
       if (!gId || !gName) return;
 
-      // Ekstraksi tingkat
-      const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat;
-      let gmTingkatNum = Number(rawTingkat);
-      if (!gmTingkatNum && gm.Kelas?.nama_kelas) {
-        const match = gm.Kelas.nama_kelas.match(/\b(X|XI|XII|10|11|12)\b/i);
-        if (match) {
-          const roman = match[1].toUpperCase();
-          gmTingkatNum = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
-        }
-      }
+      const gmTingkatNum = resolveStrictTingkat(gm);
+      if (!gmTingkatNum) return;
 
       // Filter tingkat: harus sama dengan tingkat bank soal jika spesifik
-      if (targetTingkatNum && gmTingkatNum && gmTingkatNum !== targetTingkatNum) {
+      if (targetTingkatNum && gmTingkatNum !== targetTingkatNum) {
         return;
       }
 
-      // Filter jurusan jika bank soal spesifik untuk jurusan tertentu (mendukung multi-jurusan)
-      // Menggunakan engine pencocokan resmi isAssignmentMatchingJurusan
+      // Filter jurusan berbasis ID/kode relasi mutlak (tanpa regex nama kelas)
       const kName = gm.Kelas?.nama_kelas || '';
-      const isMatchJurusan = isAssignmentMatchingJurusan(gm, targetJurusanTokens);
+      const { jurusanId, jurusanKode } = resolveStrictJurusan(gm);
+      const isMatchJurusan = isBankGeneral
+        ? true
+        : targetJurusanTokens.some(
+            (tok) =>
+              (jurusanId && tok === jurusanId.toUpperCase()) ||
+              (jurusanKode !== 'UMUM' && tok === jurusanKode)
+          );
 
-      if (targetJurusanTokens.length > 0 && !targetJurusanTokens.includes('SEMUA') && !targetJurusanTokens.includes('UMUM') && !isMatchJurusan) {
+      if (!isBankGeneral && targetJurusanTokens.length > 0 && !isMatchJurusan) {
         return;
       }
 
       const isAuthor = gId === bankSoal.guru_id;
       const isExplicitRecipient = explicitSharedIds.length > 0 ? explicitSharedIds.includes(gId) : true;
+      const hasOwnBank = guruOwnBankSet.has(gId);
 
       if (!map.has(gId)) {
         map.set(gId, {
@@ -130,7 +161,8 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
           matchedJurusanKelas: [],
           isAuthor,
           isExplicitRecipient,
-        });
+          hasOwnBank,
+        } as any);
       }
 
       const entry = map.get(gId)!;
@@ -161,7 +193,7 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
       recipients,
       isAllCovered: recipients.length > 0 && recipients.length === allTeachers.filter((t) => !t.isAuthor).length,
     };
-  }, [bankSoal, parallelTeachersRes?.data, targetTingkatNum, targetJurusanTokens, explicitSharedIds]);
+  }, [bankSoal, parallelTeachersRes?.data, targetTingkatNum, targetJurusanTokens, explicitSharedIds, guruOwnBankSet]);
 
   if (!bankSoal) return null;
 
@@ -281,10 +313,17 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 rounded-full">
-                      <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
-                      <span>Bebas Tugas (MGMP)</span>
-                    </span>
+                    {(teacher as any).hasOwnBank ? (
+                      <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-indigo-800 dark:text-indigo-200 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-2.5 py-0.5 rounded-full">
+                        <BookOpen size={12} className="text-indigo-600 shrink-0" />
+                        <span>Mandiri (Buat Sendiri)</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 rounded-full">
+                        <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                        <span>Bebas Tugas (MGMP)</span>
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}

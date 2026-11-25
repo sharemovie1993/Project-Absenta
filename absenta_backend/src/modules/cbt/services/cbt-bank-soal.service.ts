@@ -325,9 +325,51 @@ export class CbtBankSoalService {
         unitAssignments.forEach((u: any) => registerTeachingScope(u.mapel_id, u.Kelas, u.Jurusan));
         delegatedJadwals.forEach((j: any) => registerTeachingScope(j.mapel_id, j.Kelas));
 
-        // Isi sharedScopeConditions untuk paket Master MGMP se-sekolah yang relevan
+        // Ambil bank soal milik guru ini sendiri agar bank master MGMP (auto-share) tidak lagi membanjiri radar "Dibagikan Kepada Saya" jika guru sudah membuat bank sendiri
+        const ownBanks = await prisma.cbtBankSoal.findMany({
+          where: { tenant_id: tenantId, guru_id: query.guru_id },
+          select: {
+            mapel_id: true,
+            tingkat: true,
+            tingkat_num: true,
+            jurusan: true,
+            jurusan_id: true,
+            target_jurusan_ids: true,
+          },
+        });
 
+        // Isi sharedScopeConditions untuk paket Master MGMP se-sekolah yang relevan
         for (const scope of scopeMap.values()) {
+          const scopeTingkatNums = scope.tingkatVariants
+            .map((tv) => this.parseTingkatNumber(tv))
+            .filter((n): n is number => n !== null);
+
+          const scopeJurusansUpper = Array.from(scope.jurusans).map((j) => j.toUpperCase().trim());
+
+          const alreadyHasOwnBank = ownBanks.some((ob) => {
+            if (ob.mapel_id !== scope.mapelId) return false;
+            const obTingkat = ob.tingkat_num ?? this.parseTingkatNumber(ob.tingkat);
+            const matchTingkat =
+              (obTingkat !== null && scopeTingkatNums.includes(obTingkat)) ||
+              scope.tingkatVariants.includes(String(ob.tingkat || '').toUpperCase().trim());
+            if (!matchTingkat) return false;
+
+            const obJurUpper = String(ob.jurusan || '').toUpperCase().trim();
+            const isObGeneral =
+              !ob.jurusan_id &&
+              (!Array.isArray(ob.target_jurusan_ids) || ob.target_jurusan_ids.length === 0) &&
+              (!obJurUpper || obJurUpper === 'SEMUA' || obJurUpper === 'UMUM');
+            if (isObGeneral) return true;
+            if (scopeJurusansUpper.length === 0) return true;
+
+            const obTokens = obJurUpper.split(/[,;/|]+/).map((s) => s.trim()).filter(Boolean);
+            return scopeJurusansUpper.some((sj) => obTokens.includes(sj));
+          });
+
+          if (alreadyHasOwnBank) {
+            continue;
+          }
+
           const jurusanCandidates: string[] = [];
           for (const j of scope.jurusans) {
             jurusanCandidates.push(j);
@@ -359,6 +401,7 @@ export class CbtBankSoalService {
 
           sharedScopeConditions.push({
             status: 'PUBLISHED',
+            is_shared: true,
             mapel_id: scope.mapelId,
             tingkat: { in: scope.tingkatVariants },
             OR: jurusanOR,
