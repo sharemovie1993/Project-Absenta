@@ -125,11 +125,9 @@ export const CbtPengawasTeacherView: React.FC<CbtPengawasTeacherViewProps> = ({
   // Active Monitoring Desk state (jika sedang membuka meja kerja pengawas untuk satu sesi)
   const [activeMonitorJadwalId, setActiveMonitorJadwalId] = useState<string | null>(initialJadwalId || null);
 
-  // Sync jika parent mengoper initialJadwalId baru
+  // Sync jika parent mengoper initialJadwalId baru (atau reset ke list saat undefined)
   useEffect(() => {
-    if (initialJadwalId) {
-      setActiveMonitorJadwalId(initialJadwalId);
-    }
+    setActiveMonitorJadwalId(initialJadwalId || null);
   }, [initialJadwalId]);
 
   // Modal State Denah Ruang
@@ -525,6 +523,7 @@ export const CbtPengawasTeacherView: React.FC<CbtPengawasTeacherViewProps> = ({
                                         title="Lihat Denah Ruang Ujian"
                                       >
                                         <MapPin size={13} className="text-slate-500 dark:text-slate-400" />
+                                        <span className="sm:hidden">Denah</span>
                                         <span className="hidden sm:inline">Denah Ruang</span>
                                       </button>
 

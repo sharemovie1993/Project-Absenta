@@ -389,8 +389,15 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
   const handleEnterMejaPengawas = useCallback((_jadwalId: string) => {
     setSelectedPengawasJadwalId(undefined);
     setShowPengawasDispatchModal(false);
-    handleSubTabChange('pengawas_cbt');
-  }, [handleSubTabChange]);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', 'ringkasan');
+      next.set('subtab', 'pengawas_cbt');
+      next.delete('pengawas_jadwal_id');
+      next.delete('sesi_id');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   // Resolusi Judul & Icon Subtab untuk Universal Ecosystem Topbar
   const { currentSubtabTitle, currentSubtabIcon } = useMemo(() => {
