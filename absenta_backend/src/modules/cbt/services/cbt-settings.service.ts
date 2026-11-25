@@ -246,7 +246,7 @@ export class CbtSettingsService {
           tenantId,
           {
             ...evt,
-            is_active: evt.id === activeEventId || Boolean(evt.is_active),
+            is_active: activeEventId ? evt.id === activeEventId : Boolean(evt.is_active),
           },
           validTpIds
         ).catch(() => null);
