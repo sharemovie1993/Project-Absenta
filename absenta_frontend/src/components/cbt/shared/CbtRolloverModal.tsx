@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   History,
@@ -72,20 +72,28 @@ export const CbtRolloverModal: React.FC<CbtRolloverModalProps> = ({
   const [includeDaysConfig, setIncludeDaysConfig] = useState(false);
   const [includeBankSoal, setIncludeBankSoal] = useState(false);
 
+  const wasOpenRef = useRef(false);
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      wasOpenRef.current = false;
+      return;
+    }
+    if (!wasOpenRef.current) {
+      wasOpenRef.current = true;
+      setSelectedBankIds(new Set());
+      setSearchTerm('');
+    }
     if (sourceEvents.length > 0 && !sourceEventId) {
       setSourceEventId(sourceEvents[0].id);
-    } else if (sourceEvents.length === 0 && mode === 'bank-soal') {
+    } else if (sourceEvents.length === 0 && mode === 'bank-soal' && sourceType === 'event') {
       setSourceType('tp');
     }
     if (tpList.length > 0 && !sourceTpId) {
       const nonTarget = tpList.find((tp) => tp.id !== targetTpId);
       setSourceTpId(nonTarget?.id || tpList[0].id);
     }
-    setSelectedBankIds(new Set());
-    setSearchTerm('');
-  }, [isOpen, sourceEvents, tpList, targetTpId, mode]);
+  }, [isOpen, sourceEvents, tpList, targetTpId, mode, sourceEventId, sourceTpId, sourceType]);
 
   // Query source banks when in bank-soal mode
   const sourceBankParams = useMemo(() => {
@@ -394,18 +402,28 @@ export const CbtRolloverModal: React.FC<CbtRolloverModalProps> = ({
                     const checked = selectedBankIds.has(bank.id);
                     const totalSoal = bank.jumlah_soal || bank._count?.Soal || 0;
                     return (
-                      <label
+                      <div
                         key={bank.id}
+                        role="checkbox"
+                        aria-checked={checked}
+                        tabIndex={0}
+                        onClick={() => toggleOne(bank.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === ' ' || e.key === 'Enter') {
+                            e.preventDefault();
+                            toggleOne(bank.id);
+                          }
+                        }}
                         className={cn(
-                          'flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors',
+                          'flex items-center gap-3 p-3 cursor-pointer select-none hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors',
                           checked && 'bg-indigo-50/50 dark:bg-indigo-950/20'
                         )}
                       >
                         <input
                           type="checkbox"
                           checked={checked}
-                          onChange={() => toggleOne(bank.id)}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          onChange={() => {}}
+                          className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 pointer-events-none shrink-0"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -429,7 +447,7 @@ export const CbtRolloverModal: React.FC<CbtRolloverModalProps> = ({
                             </span>
                           </div>
                         </div>
-                      </label>
+                      </div>
                     );
                   })
                 )}
