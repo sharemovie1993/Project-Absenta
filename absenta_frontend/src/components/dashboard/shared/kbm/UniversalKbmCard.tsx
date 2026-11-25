@@ -345,6 +345,16 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     };
   }, [nowTick, kegiatanData, jamMulai, jamSelesai, isGuroPrediksiActive]);
 
+  const canStartSessionNow = useMemo(() => {
+    if (isSessionActive || isLive || isReadyToOpen) return true;
+    if (!jamMulai || !jamMulai.includes(':')) return true;
+    const [h, m] = jamMulai.split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return true;
+    const startMinutes = h * 60 + m;
+    const currentMinutes = nowTick.getHours() * 60 + nowTick.getMinutes();
+    return currentMinutes >= startMinutes - 15;
+  }, [isSessionActive, isLive, isReadyToOpen, jamMulai, nowTick]);
+
   const hadirVal = item.summary?.hadir 
     ?? item._summary?.hadir 
     ?? item._summary?.HADIR 
@@ -1018,17 +1028,27 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 <Button
                   type="button"
                   size="sm"
+                  disabled={!canStartSessionNow}
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (!canStartSessionNow) return;
                     onOpenPhotoModal(item);
                   }}
                   className={cn(
-                    "h-8 px-3.5 rounded-xl text-xs font-black border-none flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 transition-all",
-                    isSessionActive
-                      ? "bg-amber-500 hover:bg-amber-400 text-slate-950 animate-pulse shadow-amber-950/20"
-                      : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20"
+                    "h-8 px-3.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all",
+                    !canStartSessionNow
+                      ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60"
+                      : isSessionActive
+                      ? "bg-amber-500 hover:bg-amber-400 text-slate-950 animate-pulse shadow-sm shadow-amber-950/20 border-none cursor-pointer active:scale-95"
+                      : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm shadow-emerald-900/20 border-none cursor-pointer active:scale-95"
                   )}
-                  title={isSessionActive ? "Sesi telah dibuka oleh Petugas Kelas. Klik untuk mengambil foto verifikasi kehadiran Bapak/Ibu Guru" : "Mulai sesi KBM dengan foto bukti kehadiran guru"}
+                  title={
+                    !canStartSessionNow
+                      ? `Tombol Mulai Sesi aktif 15 menit sebelum jam KBM (${jamMulai} WIB)`
+                      : isSessionActive
+                      ? "Sesi telah dibuka oleh Petugas Kelas. Klik untuk mengambil foto verifikasi kehadiran Bapak/Ibu Guru"
+                      : "Mulai sesi KBM dengan foto bukti kehadiran guru"
+                  }
                 >
                   <Camera size={13} />
                   <span>{isSessionActive ? "📸 Foto Masuk Guru" : isSesiKegiatan ? "Mulai Sesi" : "Mulai KBM"}</span>
