@@ -807,6 +807,7 @@ model Jurusan {
   UnitPengajaran        UnitPengajaran[]
   SettingDeskripsiPkl   SettingDeskripsiPkl[]
   KetarunaanSkemaConfig KetarunaanSkemaConfig[]
+  CbtBankSoal           CbtBankSoal[]
 
   @@unique([tenant_id, kode])
   @@index([tenant_id])
@@ -6079,8 +6080,11 @@ model CbtBankSoal {
   unit_pengajaran_id String?
   kode_bank          String
   judul              String
-  tingkat            String        // 'X' | 'XI' | 'XII' | 'SEMUA'
-  jurusan            String?       // Nama jurusan atau null untuk semua jurusan
+  tingkat            String        // 'X' | 'XI' | 'XII' | '1'..'13' | 'SEMUA'
+  tingkat_num        Int?          // Tingkat numerik presisi multi-jenjang (1..13)
+  jurusan            String?       // Nama/kode jurusan untuk display legacy atau null untuk semua jurusan
+  jurusan_id         String?       // FK mutlak ke Jurusan (untuk single-jurusan)
+  target_jurusan_ids Json?         // Array string Jurusan.id mutlak (untuk multi-jurusan)
   jumlah_soal        Int           @default(0)
   alokasi_menit      Int           @default(60)
   acak_soal          Boolean       @default(true)
@@ -6093,6 +6097,7 @@ model CbtBankSoal {
   Tenant          Tenant                   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Guru            Guru                     @relation(fields: [guru_id], references: [id], onDelete: Cascade)
   Mapel           Mapel                    @relation(fields: [mapel_id], references: [id], onDelete: Cascade)
+  Jurusan         Jurusan?                 @relation(fields: [jurusan_id], references: [id], onDelete: SetNull)
   TahunPelajaran  TahunPelajaran?          @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: SetNull)
   Semester        Semester?                @relation(fields: [semester_id], references: [id], onDelete: SetNull)
   UnitPengajaran  UnitPengajaran?          @relation(fields: [unit_pengajaran_id], references: [id], onDelete: SetNull)
@@ -6105,6 +6110,7 @@ model CbtBankSoal {
   @@index([tenant_id, tahun_pelajaran_id, semester_id])
   @@index([guru_id])
   @@index([mapel_id])
+  @@index([jurusan_id])
   @@index([unit_pengajaran_id])
 }
 

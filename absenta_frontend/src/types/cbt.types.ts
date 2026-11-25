@@ -80,8 +80,11 @@ export interface CbtBankSoal {
   unit_pengajaran_id?: string | null;
   kode_bank: string;
   judul: string;
-  tingkat: 'X' | 'XI' | 'XII' | 'SEMUA';
+  tingkat: string;
+  tingkat_num?: number | null;
   jurusan?: string | null;
+  jurusan_id?: string | null;
+  target_jurusan_ids?: string[] | null;
   jumlah_soal: number;
   alokasi_menit: number;
   acak_soal: boolean;

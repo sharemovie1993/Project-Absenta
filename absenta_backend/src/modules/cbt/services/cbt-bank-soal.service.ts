@@ -798,6 +798,90 @@ export class CbtBankSoalService {
     return null;
   }
 
+  private static parseTingkatNumber(raw: unknown): number | null {
+    if (raw === null || raw === undefined || raw === '') return null;
+    const num = Number(raw);
+    if (Number.isInteger(num) && num >= 1 && num <= 13) return num;
+    if (typeof raw === 'string') {
+      const romanMap: Record<string, number> = {
+        I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6,
+        VII: 7, VIII: 8, IX: 9, X: 10, XI: 11, XII: 12, XIII: 13,
+      };
+      return romanMap[raw.toUpperCase().trim()] ?? null;
+    }
+    return null;
+  }
+
+  private static async resolveBankPrecisionFields(tenantId: string, data: any) {
+    const tingkatNum =
+      data.tingkat_num !== undefined
+        ? data.tingkat_num
+        : data.tingkat !== undefined
+        ? this.parseTingkatNumber(data.tingkat)
+        : undefined;
+
+    let resolvedJurusan = data.jurusan;
+    let resolvedJurusanId = data.jurusan_id;
+    let resolvedTargetJurusanIds = data.target_jurusan_ids;
+
+    const explicitIds: string[] | null = Array.isArray(data.target_jurusan_ids)
+      ? Array.from(new Set(data.target_jurusan_ids.filter(Boolean)))
+      : data.jurusan_id
+      ? [data.jurusan_id]
+      : null;
+
+    if (explicitIds !== null) {
+      if (explicitIds.length === 0) {
+        resolvedJurusanId = null;
+        resolvedTargetJurusanIds = null;
+        if (resolvedJurusan === undefined) resolvedJurusan = null;
+      } else {
+        const jurRows = await prisma.jurusan.findMany({
+          where: { tenant_id: tenantId, id: { in: explicitIds } },
+          select: { id: true, kode: true, singkatan: true, nama: true },
+        });
+        const validIds = jurRows.map((j) => j.id);
+        resolvedTargetJurusanIds = validIds.length > 0 ? validIds : null;
+        resolvedJurusanId = validIds.length === 1 ? validIds[0] : null;
+        if (resolvedJurusan === undefined && jurRows.length > 0) {
+          resolvedJurusan = jurRows
+            .map((j) => (j.kode || j.singkatan || j.nama).toUpperCase().trim())
+            .join(', ');
+        }
+      }
+    } else if (data.jurusan !== undefined) {
+      const rawJur = String(data.jurusan || '').trim();
+      const upper = rawJur.toUpperCase();
+      if (!rawJur || upper === 'SEMUA' || upper === 'UMUM') {
+        resolvedJurusanId = null;
+        resolvedTargetJurusanIds = null;
+      } else {
+        const tokens = upper.split(/[,;/|]+/).map((s) => s.trim()).filter(Boolean);
+        const allJurusans = await prisma.jurusan.findMany({
+          where: { tenant_id: tenantId },
+          select: { id: true, kode: true, singkatan: true, nama: true },
+        });
+        const matchedIds = allJurusans
+          .filter((j) => {
+            const codes = [j.kode, j.singkatan, j.nama]
+              .filter(Boolean)
+              .map((s) => String(s).toUpperCase().trim());
+            return tokens.some((tok) => codes.includes(tok));
+          })
+          .map((j) => j.id);
+        resolvedTargetJurusanIds = matchedIds.length > 0 ? matchedIds : null;
+        resolvedJurusanId = matchedIds.length === 1 ? matchedIds[0] : null;
+      }
+    }
+
+    return {
+      tingkatNum,
+      resolvedJurusan,
+      resolvedJurusanId,
+      resolvedTargetJurusanIds,
+    };
+  }
+
   /**
    * Membuat Bank Soal baru (termasuk binding TP/Semester/Unit & Auto-Sync Kontributor DB)
    */
@@ -884,6 +968,8 @@ export class CbtBankSoalService {
       }
     }
 
+    const precision = await this.resolveBankPrecisionFields(tenantId, data);
+
     const created = await prisma.cbtBankSoal.create({
       data: {
         tenant_id: tenantId,
@@ -895,7 +981,10 @@ export class CbtBankSoalService {
         kode_bank: data.kode_bank.toUpperCase().trim(),
         judul: data.judul.trim(),
         tingkat: data.tingkat,
-        jurusan: data.jurusan || null,
+        tingkat_num: precision.tingkatNum ?? null,
+        jurusan: precision.resolvedJurusan || null,
+        jurusan_id: precision.resolvedJurusanId ?? null,
+        target_jurusan_ids: precision.resolvedTargetJurusanIds ?? undefined,
         alokasi_menit: data.alokasi_menit ?? 60,
         acak_soal: data.acak_soal ?? true,
         acak_opsi: data.acak_opsi ?? true,
@@ -961,6 +1050,8 @@ export class CbtBankSoalService {
           : 'DRAFT'
         : undefined;
 
+    const precision = await this.resolveBankPrecisionFields(tenantId, data);
+
     await prisma.cbtBankSoal.update({
       where: { id },
       data: {
@@ -972,7 +1063,12 @@ export class CbtBankSoalService {
         ...(data.kode_bank ? { kode_bank: data.kode_bank.toUpperCase().trim() } : {}),
         ...(data.judul ? { judul: data.judul.trim() } : {}),
         ...(data.tingkat ? { tingkat: data.tingkat } : {}),
-        ...(data.jurusan !== undefined ? { jurusan: data.jurusan } : {}),
+        ...(precision.tingkatNum !== undefined ? { tingkat_num: precision.tingkatNum } : {}),
+        ...(precision.resolvedJurusan !== undefined ? { jurusan: precision.resolvedJurusan } : {}),
+        ...(precision.resolvedJurusanId !== undefined ? { jurusan_id: precision.resolvedJurusanId } : {}),
+        ...(precision.resolvedTargetJurusanIds !== undefined
+          ? { target_jurusan_ids: precision.resolvedTargetJurusanIds === null ? null : precision.resolvedTargetJurusanIds }
+          : {}),
         ...(data.alokasi_menit !== undefined ? { alokasi_menit: data.alokasi_menit } : {}),
         ...(data.acak_soal !== undefined ? { acak_soal: data.acak_soal } : {}),
         ...(data.acak_opsi !== undefined ? { acak_opsi: data.acak_opsi } : {}),

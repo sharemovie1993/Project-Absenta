@@ -30,6 +30,7 @@ import { evaluateJurusanOccupancy } from './cbtJurusanAvailabilityHelper';
 import { getMgmpSharedTeacherIds, setMgmpSharedTeacherIds } from '../jadwal/cbtMgmpHelper';
 import { useCbtOperationMode } from '../cbtModeHelper';
 import { useTeacherCbtDutyStatus } from './useTeacherCbtDutyStatus';
+import { parseStrictTingkatValue } from './cbtDutyEngine';
 
 export * from './cbtAsesmenHelper';
 
@@ -796,6 +797,16 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     try {
       setIsSubmitting(true);
 
+      const matchedJurusanIds = (rawJurusanList || [])
+        .filter((j) => {
+          const code = ((j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string)
+            .toUpperCase()
+            .trim();
+          return code && selectedJurusanList.includes(code);
+        })
+        .map((j) => j.id)
+        .filter(Boolean);
+
       const payload = {
         kode_bank: kodeBank.trim().toUpperCase(),
         judul: judul.trim(),
@@ -803,7 +814,10 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         mapel_id: mapelId,
         unit_pengajaran_id: unitPengajaranId || null,
         tingkat,
+        tingkat_num: parseStrictTingkatValue(tingkat),
         jurusan: jurusan || null,
+        jurusan_id: matchedJurusanIds.length === 1 ? matchedJurusanIds[0] : null,
+        target_jurusan_ids: matchedJurusanIds.length > 0 ? matchedJurusanIds : null,
         alokasi_menit: Number(alokasiMenit),
         acak_soal: acakSoal,
         acak_opsi: acakOpsi,

@@ -107,11 +107,11 @@ export function resolveStrictTingkat(gm: GuruMapel | any): number | null {
 }
 
 /**
- * Resolusi tingkat mutlak pada Bank Soal dari kolom `tingkat` DB.
+ * Resolusi tingkat mutlak pada Bank Soal dari kolom `tingkat_num` atau `tingkat` DB.
  * Mendukung seluruh jenjang (SD/MI, SMP/MTs, SMA/MA, SMK/MAK). NOL fallback parsing judul bank soal.
  */
 export function resolveStrictBankTingkat(bank: CbtBankSoal | any): number | null {
-  return parseStrictTingkatValue(bank?.tingkat);
+  return parseStrictTingkatValue(bank?.tingkat_num ?? bank?.tingkat);
 }
 
 /**
@@ -131,7 +131,9 @@ export function resolveStrictJurusan(gm: GuruMapel | any): {
   return { jurusanId, jurusanKode };
 }
 
-export function isGeneralBankJurusan(jurusan?: string | null): boolean {
+export function isGeneralBankJurusan(jurusan?: string | null, bank?: CbtBankSoal | null): boolean {
+  if (bank?.jurusan_id) return false;
+  if (Array.isArray(bank?.target_jurusan_ids) && bank.target_jurusan_ids.length > 0) return false;
   const clean = (jurusan || '').toUpperCase().trim();
   return !clean || clean === 'SEMUA' || clean === 'UMUM';
 }
@@ -181,12 +183,19 @@ export function isStrictMgmpBankCoveringAssignment(params: {
   const isSharedOrPublished = Boolean(bank.is_shared || bank.status === 'PUBLISHED');
   if (!isSharedOrPublished) return false;
 
-  if (isGeneralBankJurusan(bank.jurusan)) {
+  if (isGeneralBankJurusan(bank.jurusan, bank)) {
     return !bank.Kontributor || bank.Kontributor.length === 0 || allowSharedByJurusan;
   }
 
   if (!allowSharedByJurusan) return false;
 
+  // Prioritas 1: ID mutlak jurusan (jurusan_id / target_jurusan_ids)
+  if (jurusanId) {
+    if (bank.jurusan_id && bank.jurusan_id === jurusanId) return true;
+    if (Array.isArray(bank.target_jurusan_ids) && bank.target_jurusan_ids.includes(jurusanId)) return true;
+  }
+
+  // Prioritas 2: Token kode jurusan pada data bank soal yang belum memiliki jurusan_id
   const tokens = parseBankJurusanTokens(bank.jurusan);
   if (jurusanId && tokens.includes(jurusanId.toUpperCase())) return true;
   if (jurusanKode && jurusanKode !== 'UMUM' && tokens.includes(jurusanKode.toUpperCase())) return true;
@@ -309,9 +318,9 @@ export function evaluateTeacherDutiesSSOT(params: {
       isStrictMgmpBankCoveringAssignment({ bank: b, guruId, allowSharedByJurusan: false })
     );
 
-    const ownGeneral = ownBanks.find((b) => isGeneralBankJurusan(b.jurusan));
-    const mgmpGeneral = mgmpBanks.find((b) => isGeneralBankJurusan(b.jurusan));
-    const hasSpecificBanks = candidateBanks.some((b) => !isGeneralBankJurusan(b.jurusan));
+    const ownGeneral = ownBanks.find((b) => isGeneralBankJurusan(b.jurusan, b));
+    const mgmpGeneral = mgmpBanks.find((b) => isGeneralBankJurusan(b.jurusan, b));
+    const hasSpecificBanks = candidateBanks.some((b) => !isGeneralBankJurusan(b.jurusan, b));
     const jurusanList = Array.from(jurusanMap.values());
 
     if ((ownGeneral || mgmpGeneral) && !hasSpecificBanks) {
@@ -366,6 +375,10 @@ export function evaluateTeacherDutiesSSOT(params: {
       const jCode = jurusanKode !== 'UMUM' ? jurusanKode : undefined;
 
       const matchBankSpecific = (b: CbtBankSoal) => {
+        if (jurusanId) {
+          if (b.jurusan_id && b.jurusan_id === jurusanId) return true;
+          if (Array.isArray(b.target_jurusan_ids) && b.target_jurusan_ids.includes(jurusanId)) return true;
+        }
         const tokens = parseBankJurusanTokens(b.jurusan);
         if (jurusanId && tokens.includes(jurusanId.toUpperCase())) return true;
         return Boolean(jCode && tokens.includes(jCode));
