@@ -1,6 +1,7 @@
 import type { CbtBankSoal } from '@/types/cbt.types';
 import type { GuruMapel } from '@/types/academic';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
+import { isStrictMgmpBankCoveringAssignment, resolveStrictBankTingkat } from '../bank-soal/cbtDutyEngine';
 import { JURUSAN_ALIASES } from './CbtMultiJurusanModal';
 
 export type MatrixCellStatus = 'COVERED' | 'MISSING' | 'NOT_APPLICABLE';
@@ -277,39 +278,25 @@ export function buildClassSubjectMatrix(params: {
 
       totalCellsRequired++;
 
-      // Cari apakah ada bank soal yang mencakup kelas ini pada mapel ini
-      const matchingBanks = relevantBanks.filter((b) => b.mapel_id === sub.id);
-
-      // Prioritas 1: Bank Soal spesifik untuk jurusan kelas ini (misal b.jurusan === 'KUL')
-      const clsJur = (cls.jurusanKode || '').toUpperCase().trim();
-      const clsNameUpper = cls.name.toUpperCase();
-
-      const specificJurusanBank = matchingBanks.find((b) => {
-        if (!b.jurusan) return false;
-        const bJurUpper = b.jurusan.toUpperCase().trim();
-        const tokens = bJurUpper.split(/[,\s/|]+/).map((s) => s.trim());
-        if (clsJur && tokens.includes(clsJur)) return true;
-        if (clsJur) {
-          const aliases = JURUSAN_ALIASES[clsJur] || [];
-          if (aliases.some((a) => tokens.includes(a.toUpperCase()))) return true;
-        }
-        return tokens.some((tok) => {
-          if (!tok) return false;
-          const reg = new RegExp(`\\b${tok}\\b`, 'i');
-          return reg.test(clsNameUpper);
-        });
+      // Cari bank soal SSOT yang meng-cover guru pengampu kelas ini:
+      // 1. Bank Soal milik guru pengampu kelas ini sendiri (guru_id === assignment.guruId)
+      // 2. Bank Soal rekan yang EKSPLISIT dibagikan kepadanya melalui CbtBankSoalKontributor
+      const matchingBanks = relevantBanks.filter((b) => {
+        if (b.mapel_id !== sub.id) return false;
+        const bTingkat = resolveStrictBankTingkat(b);
+        return bTingkat === tingkat && (b.jumlah_soal || b._count?.Soal || 0) > 0;
       });
 
-      // Prioritas 2: Bank Soal umum (tanpa jurusan / 'SEMUA')
-      const generalBank = matchingBanks.find((b) => {
-        const rawJur = (b.jurusan || '').trim().toUpperCase();
-        return !rawJur || rawJur === 'SEMUA' || rawJur === 'UMUM';
-      });
-
-      // Prioritas 3: Bank Soal yang dibuat langsung oleh guru pengampu kelas ini
       const teacherDirectBank = matchingBanks.find((b) => b.guru_id === assignment.guruId);
+      const explicitMgmpBank = matchingBanks.find((b) =>
+        isStrictMgmpBankCoveringAssignment({
+          bank: b,
+          guruId: assignment.guruId,
+        })
+      );
 
-      const resolvedBank = specificJurusanBank || generalBank || teacherDirectBank;
+      const resolvedBank = teacherDirectBank || explicitMgmpBank;
+      const specificJurusanBank = resolvedBank && !(!resolvedBank.jurusan_id && (!resolvedBank.jurusan || resolvedBank.jurusan === 'SEMUA' || resolvedBank.jurusan === 'UMUM')) ? resolvedBank : undefined;
 
       const phone = assignment?.guruId ? guruPhoneMap?.get(assignment.guruId) : undefined;
       const targetKey = assignment?.guruId ? `${assignment.guruId}_${sub.id}_${tingkat}` : undefined;
