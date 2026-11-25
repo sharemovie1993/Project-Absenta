@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { kurikulumApi } from '@/api/kurikulum.api';
+import { getMyJadwalKBM, getJadwalKBM, type JadwalKBM } from '@/api/attendance/jadwalKBM.api';
 import { cbtApi } from '@/api/cbt.api';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import type { GuruMapel } from '@/types/academic';
@@ -43,6 +44,32 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
     staleTime: 60 * 1000,
   });
 
+  // 1b. Ambil Jadwal KBM Mingguan Riil Guru (untuk melengkapi relasi kelas_id & tingkat jika SK GuruMapel belum mengikat kelas_id)
+  const { data: jadwalKBMRes, isLoading: isJadwalLoading } = useQuery({
+    queryKey: ['guru-jadwal-kbm-for-duty', guruId],
+    queryFn: async () => {
+      try {
+        const res = await getMyJadwalKBM({ weekly: 'true' } as any);
+        const list = res?.data || (res as any)?.items;
+        if (Array.isArray(list) && list.length > 0) return list;
+      } catch {
+        // lanjut ke query by guru_id
+      }
+      if (guruId) {
+        try {
+          const res2 = await getJadwalKBM({ guru_id: guruId } as any);
+          const list2 = res2?.data || (res2 as any)?.items;
+          if (Array.isArray(list2)) return list2;
+        } catch {
+          // ignore
+        }
+      }
+      return [];
+    },
+    enabled: Boolean(guruId),
+    staleTime: 60 * 1000,
+  });
+
   // 2. Bank Soal Relevan (milik sendiri + master MGMP / kontributor)
   const { data: bankListRes, isLoading: isBankLoading } = useQuery({
     queryKey: ['cbt-bank-soal-for-teacher-duty', guruId],
@@ -63,6 +90,16 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
     return assignedMapelsRes?.data || [];
   }, [assignedMapelsRes]);
 
+  const rawJadwalList: JadwalKBM[] = useMemo(() => {
+    const list = Array.isArray(jadwalKBMRes) ? jadwalKBMRes : (jadwalKBMRes as any)?.data || [];
+    if (!guruId) return list;
+    return list.filter((j: any) => {
+      const directGuruId = j.guru_id || j.guru_pelaksana_id;
+      const unitGuruId = j.UnitPengajaran?.guru_id;
+      return (directGuruId && directGuruId === guruId) || (unitGuruId && unitGuruId === guruId);
+    });
+  }, [jadwalKBMRes, guruId]);
+
   const rawBankList: CbtBankSoal[] = useMemo(() => {
     return bankListRes?.items || (bankListRes as any)?.data?.items || [];
   }, [bankListRes]);
@@ -75,6 +112,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
     const res = evaluateTeacherDutiesSSOT({
       guruId,
       guruMapelList: rawAssignedList,
+      jadwalKbmList: rawJadwalList,
       bankList: rawBankList,
       targetTingkat: effectiveTargetTingkat,
     });
@@ -82,14 +120,14 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       ...res,
       isFullyExempt: res.totalDuties > 0 && res.coveredDuties === res.totalDuties,
     };
-  }, [guruId, rawAssignedList, rawBankList, effectiveTargetTingkat]);
+  }, [guruId, rawAssignedList, rawJadwalList, rawBankList, effectiveTargetTingkat]);
 
   const detectedTeacherName = useMemo(() => {
     return rawAssignedList.find((gm) => (!guruId || gm.guru_id === guruId) && gm.Guru?.nama_guru)?.Guru?.nama_guru;
   }, [rawAssignedList, guruId]);
 
   return {
-    isLoading: isMapelLoading || isBankLoading,
+    isLoading: isMapelLoading || isJadwalLoading || isBankLoading,
     activeEventName: eventName || activeEvent?.nama_event || undefined,
     hasActiveEvent: Boolean(activeEvent),
     teacherName: detectedTeacherName,

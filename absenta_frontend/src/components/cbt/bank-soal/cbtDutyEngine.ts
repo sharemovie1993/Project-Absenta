@@ -203,17 +203,19 @@ export function isStrictMgmpBankCoveringAssignment(params: {
 }
 
 /**
- * SSOT: Evaluasi daftar kewajiban (Duty) guru dari SK Penugasan GuruMapel.
+ * SSOT: Evaluasi daftar kewajiban (Duty) guru dari SK Penugasan GuruMapel + Jadwal KBM (berbasis ID mutlak).
+ * Tidak ada fallback parsing nama kelas atau nama mapel.
  */
 export function evaluateTeacherDutiesSSOT(params: {
   guruId?: string;
   guruMapelList: GuruMapel[];
+  jadwalKbmList?: any[];
   bankList: CbtBankSoal[];
   targetTingkat?: number[];
 }) {
-  const { guruId, guruMapelList, bankList, targetTingkat } = params;
+  const { guruId, guruMapelList, jadwalKbmList = [], bankList, targetTingkat } = params;
 
-  if (!guruId || guruMapelList.length === 0) {
+  if (!guruId || (guruMapelList.length === 0 && jadwalKbmList.length === 0)) {
     return {
       totalDuties: 0,
       coveredDuties: 0,
@@ -246,6 +248,83 @@ export function evaluateTeacherDutiesSSOT(params: {
     }
   >();
 
+  const registerDutyRow = (row: {
+    mapelId: string;
+    mapelName: string;
+    mapelKode?: string;
+    tingkat: number;
+    jurusanId?: string;
+    jurusanKode: string;
+    rombelName: string;
+  }) => {
+    if (targetTingkat && targetTingkat.length > 0 && !targetTingkat.includes(row.tingkat)) return;
+    const mtKey = `${row.mapelId}_${row.tingkat}`;
+    if (!mapelTingkatMap.has(mtKey)) {
+      mapelTingkatMap.set(mtKey, {
+        mapelId: row.mapelId,
+        mapelName: row.mapelName,
+        mapelKode: row.mapelKode,
+        tingkat: row.tingkat,
+        jurusanMap: new Map<string, JurusanGroup>(),
+      });
+    }
+    const mtEntry = mapelTingkatMap.get(mtKey)!;
+    const jKey = row.jurusanId || row.jurusanKode;
+    if (!mtEntry.jurusanMap.has(jKey)) {
+      mtEntry.jurusanMap.set(jKey, {
+        jurusanKey: jKey,
+        jurusanId: row.jurusanId,
+        jurusanKode: row.jurusanKode,
+        rombelNames: new Set<string>(),
+      });
+    }
+    mtEntry.jurusanMap.get(jKey)!.rombelNames.add(row.rombelName);
+  };
+
+  // Index Jadwal KBM berdasarkan mapel_id mutlak (mendukung mapel_id langsung maupun UnitPengajaran.mapel_id)
+  const kbmByMapelId = new Map<
+    string,
+    Array<{
+      mapelId: string;
+      mapelName: string;
+      mapelKode?: string;
+      tingkat: number;
+      jurusanId?: string;
+      jurusanKode: string;
+      rombelName: string;
+    }>
+  >();
+
+  jadwalKbmList.forEach((j: any) => {
+    if (j.jenis_kegiatan && String(j.jenis_kegiatan).toUpperCase() !== 'KBM') return;
+    const mId = j.mapel_id || j.UnitPengajaran?.mapel_id;
+    const mName = j.Mapel?.nama_mapel || j.UnitPengajaran?.Mapel?.nama_mapel || '';
+    const mKode = j.Mapel?.kode_mapel || j.UnitPengajaran?.Mapel?.kode_mapel;
+    if (!mId || isNonAcademicMapel(mName)) return;
+
+    const tNum = resolveStrictTingkat(j);
+    if (!tNum) return;
+
+    const { jurusanId, jurusanKode } = resolveStrictJurusan(j);
+    const rombelName = j.Kelas?.nama_kelas || `Tingkat ${formatTingkatRomawi(tNum)}`;
+    const entry = {
+      mapelId: mId,
+      mapelName: mName || 'Mata Pelajaran',
+      mapelKode: mKode,
+      tingkat: tNum,
+      jurusanId,
+      jurusanKode,
+      rombelName,
+    };
+
+    if (!kbmByMapelId.has(mId)) kbmByMapelId.set(mId, []);
+    kbmByMapelId.get(mId)!.push(entry);
+
+    // Daftarkan langsung sebagai duty jika berada dalam targetTingkat
+    registerDutyRow(entry);
+  });
+
+  // Daftarkan seluruh penugasan SK GuruMapel
   guruMapelList.forEach((gm) => {
     const mId = gm.mapel_id;
     if (!mId) return;
@@ -254,34 +333,27 @@ export function evaluateTeacherDutiesSSOT(params: {
     if (isNonAcademicMapel(mapelName)) return;
 
     const tNum = resolveStrictTingkat(gm);
-    if (!tNum) return;
-    if (targetTingkat && targetTingkat.length > 0 && !targetTingkat.includes(tNum)) return;
+    if (!tNum) {
+      // Jika SK GuruMapel belum punya kelas_id dan Mapel.tingkat null, relasi diambil dari Jadwal KBM (sudah terdaftar di atas via mapel_id)
+      return;
+    }
 
-    const mtKey = `${mId}_${tNum}`;
-    if (!mapelTingkatMap.has(mtKey)) {
-      mapelTingkatMap.set(mtKey, {
+    const { jurusanId, jurusanKode } = resolveStrictJurusan(gm);
+    const kName = gm.Kelas?.nama_kelas || `Semua Rombel Tingkat ${formatTingkatRomawi(tNum)}`;
+
+    // Jika SK memiliki kelas_id eksplisit atau belum ada entri KBM spesifik untuk mapel+tingkat ini, daftarkan
+    const kbmMatches = (kbmByMapelId.get(mId) || []).filter((k) => k.tingkat === tNum);
+    if (gm.kelas_id || kbmMatches.length === 0) {
+      registerDutyRow({
         mapelId: mId,
         mapelName,
         mapelKode: gm.Mapel?.kode_mapel,
         tingkat: tNum,
-        jurusanMap: new Map<string, JurusanGroup>(),
-      });
-    }
-
-    const mtEntry = mapelTingkatMap.get(mtKey)!;
-    const { jurusanId, jurusanKode } = resolveStrictJurusan(gm);
-    const jKey = jurusanId || jurusanKode;
-    const kName = gm.Kelas?.nama_kelas || `Semua Rombel Tingkat ${formatTingkatRomawi(tNum)}`;
-
-    if (!mtEntry.jurusanMap.has(jKey)) {
-      mtEntry.jurusanMap.set(jKey, {
-        jurusanKey: jKey,
         jurusanId,
         jurusanKode,
-        rombelNames: new Set<string>(),
+        rombelName: kName,
       });
     }
-    mtEntry.jurusanMap.get(jKey)!.rombelNames.add(kName);
   });
 
   const mapelTingkatList = Array.from(mapelTingkatMap.values());
