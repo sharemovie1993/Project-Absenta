@@ -1013,7 +1013,12 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         ]);
         const parallelRows: any[] = cachedParallel?.data || [];
         const targetTingkatNum = parseStrictTingkatValue(tingkat);
-        const derivedSet = new Set<string>(myTeachingJurusans.map((c) => c.toUpperCase().trim()));
+        const creatorDuty = tingkat ? tingkatDutyMap.get(tingkat) : undefined;
+        const creatorJurusans =
+          myTeachingClasses.length > 0
+            ? myTeachingClasses.map((c) => c.jurusanCode.toUpperCase().trim()).filter(Boolean)
+            : (creatorDuty?.teachingJurusans || []).map((c) => c.toUpperCase().trim()).filter(Boolean);
+        const derivedSet = new Set<string>(creatorJurusans);
         const useExplicitKelasFilter = selectedColleagueKelasIds.length > 0;
         parallelRows.forEach((gm: any) => {
           const gmKelasId = gm.Kelas?.id || gm.kelas_id;
