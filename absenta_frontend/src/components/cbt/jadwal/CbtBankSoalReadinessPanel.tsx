@@ -16,8 +16,14 @@ import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
 import type { GuruMapel } from '@/types/academic';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import { useJenjang } from '@/hooks/useJenjang';
-import { formatTingkatRomawi, isAssignmentMatchingJurusan } from '../bank-soal/cbtAsesmenHelper';
-import { resolveBankTingkatNumber } from './cbtJadwalHelper';
+import { formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
+import {
+  isNonAcademicMapel,
+  isStrictMgmpBankCoveringAssignment,
+  resolveStrictBankTingkat,
+  resolveStrictJurusan,
+  resolveStrictTingkat,
+} from '../bank-soal/cbtDutyEngine';
 import { cn } from '@/lib/utils';
 import { CbtBankSoalFormModal } from '../bank-soal/CbtBankSoalFormModal';
 import { CbtBankSoalDetailModal } from '../bank-soal/CbtBankSoalDetailModal';
@@ -166,9 +172,9 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
     const banksByMapelTingkat = new Map<string, CbtBankSoal[]>();
 
     bankList.forEach((b) => {
-      const tNum = resolveBankTingkatNumber(b) || 10;
+      const tNum = resolveStrictBankTingkat(b);
       const mId = b.mapel_id;
-      if (!mId) return;
+      if (!mId || !tNum) return;
 
       const mtKey = `${mId}_${tNum}`;
       if (!banksByMapelTingkat.has(mtKey)) {
@@ -188,40 +194,12 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         if (!gId || !mId) return;
 
         const mapelName = gm.Mapel?.nama_mapel || 'Mata Pelajaran';
-        const lowerName = mapelName.toLowerCase();
-        if (
-          lowerName.includes('bimbingan') ||
-          lowerName.includes('konseling') ||
-          lowerName.includes('bp/bk') ||
-          lowerName.includes('bk')
-        ) {
+        if (isNonAcademicMapel(mapelName)) {
           return;
         }
 
-        const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat;
-        let tNum = Number(rawTingkat);
-        if (!tNum && gm.Kelas?.nama_kelas) {
-          const match = gm.Kelas.nama_kelas.match(/\b(X|XI|XII|10|11|12)\b/i);
-          if (match) {
-            const roman = match[1].toUpperCase();
-            tNum = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
-          }
-        }
-        if (!tNum) {
-          const upper = mapelName.toUpperCase();
-          if (upper.includes('DDPK') || upper.includes('DASAR') || upper.includes('FASE E')) {
-            tNum = 10;
-          } else if (
-            upper.includes('KONSENTRASI') ||
-            upper.includes('FASE F') ||
-            upper.startsWith('KK ') ||
-            upper.startsWith('MPP ')
-          ) {
-            tNum = (targetTingkat && targetTingkat.some((t) => t >= 11)) ? targetTingkat.find((t) => t >= 11)! : 11;
-          } else {
-            tNum = rawTingkat === 'XI' ? 11 : rawTingkat === 'XII' ? 12 : 10;
-          }
-        }
+        const tNum = resolveStrictTingkat(gm);
+        if (!tNum) return;
 
         // Jika event ujian memiliki sasaran tingkat spesifik, lewati penugasan di luar tingkat sasaran!
         if (targetTingkat && targetTingkat.length > 0 && !targetTingkat.includes(tNum)) {
@@ -272,27 +250,18 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         // 1. Bank Soal Mandiri Milik Guru Sendiri
         const ownBank = candidateBanks.find((b) => b.guru_id === gId);
 
-        // 2. Bank Soal MGMP / Rekan Berbagi yang Meng-cover Guru Ini:
-        // - Terdaftar eksplisit di Kontributor DB atau mgmpSharedMap
-        // - ATAU Bank Master MGMP Se-Sekolah yang mencakup jurusan / rombel penugasan guru ini via isAssignmentMatchingJurusan
-        const mgmpCoveringBank = candidateBanks.find((b) => {
-          if (b.guru_id === gId) return false;
-          const isSharedOrPublished = Boolean(b.is_shared || b.status === 'PUBLISHED');
-          const isExplicitContributor =
-            (b.Kontributor && b.Kontributor.some((c) => c.guru_id === gId && c.can_edit_soal !== false)) ||
-            (mgmpSharedMap[b.id] && mgmpSharedMap[b.id].includes(gId));
-
-          if (isExplicitContributor) return true;
-
-          if (isSharedOrPublished) {
-            const rawJur = (b.jurusan || '').toUpperCase().trim();
-            if (!rawJur || rawJur === 'SEMUA' || rawJur === 'UMUM') return true;
-            const bJurTokens = rawJur.split(/[,;/|]+/).map((s) => s.trim()).filter(Boolean);
-            return isAssignmentMatchingJurusan(gm, bJurTokens);
-          }
-
-          return false;
-        });
+        // 2. Bank Soal MGMP / Rekan Berbagi yang Meng-cover Guru Ini (SSOT Mutlak tanpa fallback)
+        const { jurusanId, jurusanKode } = resolveStrictJurusan(gm);
+        const mgmpCoveringBank = candidateBanks.find((b) =>
+          isStrictMgmpBankCoveringAssignment({
+            bank: b,
+            guruId: gId,
+            jurusanId,
+            jurusanKode,
+            mgmpSharedIds: mgmpSharedMap[b.id],
+            allowSharedByJurusan: true,
+          })
+        );
 
         const effectiveBank = ownBank || mgmpCoveringBank;
         const isCoveredByMaster = Boolean(!ownBank && mgmpCoveringBank);

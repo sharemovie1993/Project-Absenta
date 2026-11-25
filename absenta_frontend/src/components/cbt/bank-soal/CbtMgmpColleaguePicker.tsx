@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
 import type { GuruMapel } from '@/types/academic';
 import { cn } from '@/lib/utils';
-import { formatTingkatRomawi, parseTingkatToNumber, isAssignmentMatchingJurusan } from './cbtAsesmenHelper';
+import { formatTingkatRomawi } from './cbtAsesmenHelper';
+import { findParallelColleaguesSSOT } from './cbtDutyEngine';
 
 interface CbtMgmpColleaguePickerProps {
   mapelId: string;
@@ -53,54 +54,14 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
 
   const parallelColleagues = useMemo(() => {
     const list = parallelTeachersRes?.data || [];
-    const map = new Map<string, { id: string; name: string; tingkatNum?: number; kelasNames: string[]; matchedJurusanKelas: string[] }>();
-
-    list.forEach((gm: GuruMapel) => {
-      const gId = gm.guru_id;
-      const gName = gm.Guru?.nama_guru;
-      if (!gId || gId === currentGuruId || !gName) return;
-
-      // Ekstraksi tingkat mengajar guru dari kelas atau mapel
-      const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat;
-      let gmTingkatNum = parseTingkatToNumber(rawTingkat || '');
-      if (!gmTingkatNum && gm.Kelas?.nama_kelas) {
-        const match = gm.Kelas.nama_kelas.match(/\b(X|XI|XII|10|11|12)\b/i);
-        if (match) {
-          gmTingkatNum = parseTingkatToNumber(match[1]);
-        }
-      }
-
-      // Filter ketat 1: Hanya tampilkan guru yang mengajar tingkat yang sama
-      if (targetTingkatNum && gmTingkatNum && gmTingkatNum !== targetTingkatNum) {
-        return;
-      }
-
-      // Filter ketat 2: Jika sasaran jurusan diisi (misal KUL / PHT / TSM atau multi-jurusan),
-      // hanya sertakan guru jika mengajar rombel di salah satu jurusan tersebut!
-      // Menggunakan engine pencocokan resmi isAssignmentMatchingJurusan (mendukung singkatan, kode, dan sinonim kurikulum merdeka)
-      const kName = gm.Kelas?.nama_kelas || '';
-      const isMatchJurusan = isAssignmentMatchingJurusan(gm, targetJurusanTokens);
-
-      // Jika target jurusan spesifik dipilih dan guru ini sama sekali tidak mengajar di jurusan tersebut, lewati!
-      if (targetJurusanTokens.length > 0 && !isMatchJurusan) {
-        return;
-      }
-
-      if (!map.has(gId)) {
-        map.set(gId, { id: gId, name: gName, tingkatNum: gmTingkatNum, kelasNames: [], matchedJurusanKelas: [] });
-      }
-
-      const entry = map.get(gId)!;
-      if (kName && !entry.kelasNames.includes(kName)) {
-        entry.kelasNames.push(kName);
-        if (isMatchJurusan) {
-          entry.matchedJurusanKelas.push(kName);
-        }
-      }
+    return findParallelColleaguesSSOT({
+      mapelId,
+      tingkatNum: targetTingkatNum,
+      targetJurusanTokens,
+      currentGuruId,
+      guruMapelList: list,
     });
-
-    return Array.from(map.values());
-  }, [parallelTeachersRes?.data, currentGuruId, targetTingkatNum, targetJurusanTokens]);
+  }, [parallelTeachersRes?.data, mapelId, currentGuruId, targetTingkatNum, targetJurusanTokens]);
 
   // Otomatis sinkronkan centang rekan guru saat tingkat, mapel, atau sasaran jurusan berubah
   // PENTING: Pada mode edit, JANGAN otomatis memilih semua agar penarikan share (uncheck) tidak tertimpa!

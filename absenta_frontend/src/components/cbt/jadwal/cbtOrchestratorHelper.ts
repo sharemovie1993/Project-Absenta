@@ -1,6 +1,11 @@
 import type { CbtBankSoal, CbtJadwalUjian } from '@/types/cbt.types';
 import { localDateTimeInputToISO } from '@/utils/attendance/time';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
+import {
+  isNonAcademicMapel,
+  resolveStrictBankTingkat,
+  resolveStrictTingkat,
+} from '../bank-soal/cbtDutyEngine';
 import { detectNodeTingkat } from '@/components/spasial/denahTingkatHelper';
 import { resolveCbtEventPrefix, formatCanonicalSesiUjian, formatTingkatRomawi } from '../bank-soal/cbtAsesmenHelper';
 
@@ -1174,9 +1179,9 @@ export function evaluateStep1Soal(params: {
     const banksByMapelTingkat = new Map<string, CbtBankSoal[]>();
 
     bankList.forEach((b) => {
-      const tNum = resolveBankTingkatNumber(b) || 10;
+      const tNum = resolveStrictBankTingkat(b);
       const mId = b.mapel_id;
-      if (!mId) return;
+      if (!mId || !tNum) return;
 
       const mtKey = `${mId}_${tNum}`;
       if (!banksByMapelTingkat.has(mtKey)) {
@@ -1193,26 +1198,12 @@ export function evaluateStep1Soal(params: {
       if (!gId || !mId) return;
 
       const mapelName = gm.Mapel?.nama_mapel || '';
-      const lowerName = mapelName.toLowerCase();
-      if (
-        lowerName.includes('bimbingan') ||
-        lowerName.includes('konseling') ||
-        lowerName.includes('bp/bk') ||
-        lowerName.includes('bk')
-      ) {
+      if (isNonAcademicMapel(mapelName)) {
         return;
       }
 
-      const rawTingkat = gm.Kelas?.tingkat || gm.Mapel?.tingkat;
-      let tNum = Number(rawTingkat);
-      if (!tNum && gm.Kelas?.nama_kelas) {
-        const match = gm.Kelas.nama_kelas.match(/\b(X|XI|XII|10|11|12)\b/i);
-        if (match) {
-          const roman = match[1].toUpperCase();
-          tNum = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
-        }
-      }
-      if (!tNum) tNum = 10;
+      const tNum = resolveStrictTingkat(gm);
+      if (!tNum) return;
 
       if (targetTingkat && targetTingkat.length > 0 && !targetTingkat.includes(tNum)) {
         return;

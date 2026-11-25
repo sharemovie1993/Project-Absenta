@@ -233,15 +233,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
   const relevantDutiesForMapel = useMemo(() => {
     if (!mapelId || !teacherDutyItems || teacherDutyItems.length === 0) return [];
-    const curMapel = mapelOptions.find((m) => m.value === mapelId);
-    const curMapelName = (curMapel?.label?.split('(')[0]?.trim() || '').toLowerCase();
-
-    return teacherDutyItems.filter((item) => {
-      if (item.mapelId === mapelId) return true;
-      if (curMapelName && item.mapelName.toLowerCase().trim() === curMapelName) return true;
-      return false;
-    });
-  }, [mapelId, teacherDutyItems, mapelOptions]);
+    return teacherDutyItems.filter((item) => item.mapelId === mapelId);
+  }, [mapelId, teacherDutyItems]);
 
   const tingkatDutyMap = useMemo(() => {
     const map = new Map<
