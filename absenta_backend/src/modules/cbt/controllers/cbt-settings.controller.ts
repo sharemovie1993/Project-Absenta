@@ -70,4 +70,25 @@ export class CbtSettingsController {
       return sendError(reply, 400, error.message || 'Gagal mencatat riwayat colek CBT', error);
     }
   }
+
+  static async broadcastKandidatWa(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { eventId } = req.params;
+      const { message, guru_ids } = req.body || {};
+      const result = await CbtSettingsService.broadcastKandidatWa(tenant_id, eventId, {
+        message,
+        guru_ids,
+      });
+      return sendResponse(
+        reply,
+        200,
+        true,
+        `${result.queuedCount} pesan WA kandidat pengawas berhasil masuk antrian pengiriman`,
+        result
+      );
+    } catch (error: any) {
+      return sendError(reply, 400, error.message || 'Gagal mengirim pesan WA massal kandidat pengawas', error);
+    }
+  }
 }

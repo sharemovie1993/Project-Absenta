@@ -1,4 +1,5 @@
 import { prisma } from '@/utils/prisma';
+import { waQueueService } from '@/services/wa-queue.service';
 import crypto from 'crypto';
 
 export interface CbtEventItem {
@@ -382,5 +383,119 @@ export class CbtSettingsService {
 
     await this.setConfig(tenantId, CBT_NUDGE_HISTORY_KEY, JSON.stringify(currentHistory));
     return currentHistory;
+  }
+
+  // ── BROADCAST PESAN MASSAL WA GATEWAY KE KANDIDAT PENGAWAS ──
+  private static normalizeWaPhone(phone?: string | null): string {
+    if (!phone) return '';
+    let cleaned = phone.replace(/[^0-9]/g, '');
+    if (cleaned.startsWith('0')) {
+      cleaned = '62' + cleaned.slice(1);
+    }
+    return cleaned.length >= 9 ? cleaned : '';
+  }
+
+  static async broadcastKandidatWa(
+    tenantId: string,
+    eventId: string,
+    payload: { message: string; guru_ids?: string[] }
+  ) {
+    const rawMessage = (payload.message || '').trim();
+    if (!rawMessage) {
+      throw new Error('Pesan WhatsApp wajib diisi');
+    }
+    if (rawMessage.length > 4000) {
+      throw new Error('Pesan terlalu panjang (maksimal 4000 karakter)');
+    }
+
+    const configRow = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: CBT_CONFIG_KEY },
+    });
+
+    let allEvents: CbtEventItem[] = [];
+    if (configRow?.value) {
+      try {
+        allEvents = JSON.parse(configRow.value);
+      } catch {
+        allEvents = [];
+      }
+    }
+
+    const targetEvent = allEvents.find((e) => e.id === eventId);
+    if (!targetEvent) {
+      throw new Error('Event CBT tidak ditemukan');
+    }
+
+    const candidateIds = Array.isArray(payload.guru_ids) && payload.guru_ids.length > 0
+      ? Array.from(new Set(payload.guru_ids))
+      : Array.from(new Set(targetEvent.pengawas_candidates || []));
+
+    if (candidateIds.length === 0) {
+      throw new Error('Belum ada kandidat pengawas yang dipilih pada event ini');
+    }
+
+    const [teachers, tenant] = await Promise.all([
+      prisma.guru.findMany({
+        where: {
+          tenant_id: tenantId,
+          id: { in: candidateIds },
+        },
+        select: {
+          id: true,
+          nama_guru: true,
+          nip: true,
+          no_hp: true,
+        },
+        orderBy: { nama_guru: 'asc' },
+      }),
+      prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { name: true },
+      }),
+    ]);
+
+    if (teachers.length === 0) {
+      throw new Error('Data guru kandidat pengawas tidak ditemukan');
+    }
+
+    const schoolName = tenant?.name || 'Sekolah';
+    const eventName = targetEvent.nama_event || 'Ujian CBT';
+
+    let queuedCount = 0;
+    const skippedTeachers: Array<{ id: string; nama_guru: string; reason: string }> = [];
+
+    for (const teacher of teachers) {
+      const normPhone = this.normalizeWaPhone(teacher.no_hp);
+      if (!normPhone) {
+        skippedTeachers.push({
+          id: teacher.id,
+          nama_guru: teacher.nama_guru,
+          reason: 'Nomor HP/WA kosong atau tidak valid',
+        });
+        continue;
+      }
+
+      const renderedMessage = rawMessage
+        .replace(/\{nama\}/gi, teacher.nama_guru || '')
+        .replace(/\{nip\}/gi, teacher.nip || '-')
+        .replace(/\{event\}/gi, eventName)
+        .replace(/\{sekolah\}/gi, schoolName);
+
+      await waQueueService.enqueue({
+        tenantId,
+        nomor: normPhone,
+        pesan: renderedMessage,
+        source: 'cbt_kandidat_pengawas_broadcast',
+      });
+      queuedCount++;
+    }
+
+    return {
+      queuedCount,
+      skippedCount: skippedTeachers.length,
+      skippedTeachers,
+      totalCandidates: teachers.length,
+      estimatedSeconds: queuedCount * 3,
+    };
   }
 }

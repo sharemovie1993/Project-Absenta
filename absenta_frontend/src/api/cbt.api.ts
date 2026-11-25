@@ -422,6 +422,20 @@ export const cbtApi = {
     return res.data;
   },
 
+  broadcastKandidatWa: async (
+    eventId: string,
+    payload: { message: string; guru_ids?: string[] }
+  ) => {
+    const res = await api.post(`/cbt/settings/events/${eventId}/kandidat-broadcast-wa`, payload);
+    return res.data?.data as {
+      queuedCount: number;
+      skippedCount: number;
+      skippedTeachers: Array<{ id: string; nama_guru: string; reason: string }>;
+      totalCandidates: number;
+      estimatedSeconds: number;
+    };
+  },
+
   // ==========================================
   // 6. RIWAYAT COLEK WHATSAPP (MULTI-DEVICE SYNC)
   // ==========================================

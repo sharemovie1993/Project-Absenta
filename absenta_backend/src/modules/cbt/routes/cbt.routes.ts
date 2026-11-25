@@ -237,4 +237,8 @@ export async function cbtRoutes(fastify: any) {
   fastify.post('/settings/nudge-history', {
     preHandler: [requireCapability('cbt.jadwal.view', cbtGuruExempt), determineDataScope()],
   }, CbtSettingsController.recordNudge);
+
+  fastify.post('/settings/events/:eventId/kandidat-broadcast-wa', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtSettingsController.broadcastKandidatWa);
 }

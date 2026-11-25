@@ -12,6 +12,11 @@ import {
   Info,
   Check,
   UserCheck,
+  MessageSquare,
+  Send,
+  Phone,
+  AlertTriangle,
+  ArrowLeft,
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
@@ -70,6 +75,19 @@ export const CbtKandidatPengawasModal: React.FC<CbtKandidatPengawasModalProps> =
   const [searchQuery, setSearchQuery] = useState('');
   const [ptkFilter, setPtkFilter] = useState<'ALL' | 'PENDIDIK' | 'TU' | 'SELECTED_ONLY'>('ALL');
 
+  // WA Broadcast Mode
+  const [isWaComposerOpen, setIsWaComposerOpen] = useState(false);
+  const [waMessage, setWaMessage] = useState('');
+  const [waBroadcastResult, setWaBroadcastResult] = useState<{
+    queuedCount: number;
+    skippedCount: number;
+    skippedTeachers: Array<{ id: string; nama_guru: string; reason: string }>;
+    estimatedSeconds: number;
+  } | null>(null);
+
+  const buildDefaultWaTemplate = (eventNama?: string) =>
+    `Yth. Bapak/Ibu {nama},\n\nAnda telah ditetapkan sebagai *Kandidat Pengawas Ujian* pada kegiatan *${eventNama || '{event}'}* di {sekolah}.\nMohon bersiap untuk jadwal penugasan ruang yang akan dibagikan oleh Panitia CBT.\n\nTerima kasih.`;
+
   // Inisialisasi dari activeEvent.pengawas_candidates
   useEffect(() => {
     if (isOpen && activeEvent) {
@@ -83,6 +101,9 @@ export const CbtKandidatPengawasModal: React.FC<CbtKandidatPengawasModalProps> =
       }
       setSearchQuery('');
       setPtkFilter('ALL');
+      setIsWaComposerOpen(false);
+      setWaBroadcastResult(null);
+      setWaMessage(buildDefaultWaTemplate(activeEvent.nama_event));
     }
   }, [isOpen, activeEvent]);
 
@@ -214,6 +235,50 @@ export const CbtKandidatPengawasModal: React.FC<CbtKandidatPengawasModalProps> =
     },
   });
 
+  // Statistik Nomor HP Kandidat Terpilih untuk WA Broadcast
+  const selectedWaStats = useMemo(() => {
+    const selectedStaff = allStaffList.filter((g) => selectedIds.has(g.id));
+    const isValidPhone = (hp?: string | null) => Boolean(hp && hp.replace(/[^0-9]/g, '').length >= 9);
+    const withPhone = selectedStaff.filter((g) => isValidPhone(g.no_hp));
+    const withoutPhone = selectedStaff.filter((g) => !isValidPhone(g.no_hp));
+    return {
+      total: selectedStaff.length,
+      withPhone,
+      withoutPhone,
+      sample: withPhone[0] || selectedStaff[0] || null,
+    };
+  }, [allStaffList, selectedIds]);
+
+  const broadcastWaMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeEvent) throw new Error('Event CBT tidak ditemukan');
+      const trimmed = waMessage.trim();
+      if (!trimmed) throw new Error('Pesan WhatsApp wajib diisi');
+      const targetIds = Array.from(selectedIds);
+      if (targetIds.length === 0) throw new Error('Pilih minimal satu kandidat pengawas');
+      return await cbtApi.broadcastKandidatWa(activeEvent.id, {
+        message: trimmed,
+        guru_ids: targetIds,
+      });
+    },
+    onSuccess: (res) => {
+      setWaBroadcastResult(res);
+      toast.success(
+        `${res.queuedCount} pesan WA kandidat masuk antrian WA Gateway${
+          res.skippedCount > 0 ? ` (${res.skippedCount} dilewati tanpa No. HP)` : ''
+        }`
+      );
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Gagal mengirim pesan WA massal';
+      toast.error(msg);
+    },
+  });
+
+  const handleInsertPlaceholder = (token: string) => {
+    setWaMessage((prev) => (prev ? `${prev}${prev.endsWith(' ') || prev.endsWith('\n') ? '' : ' '}${token}` : token));
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -222,6 +287,162 @@ export const CbtKandidatPengawasModal: React.FC<CbtKandidatPengawasModalProps> =
       size="xl"
     >
       <div className="space-y-4 py-1 text-xs">
+        {isWaComposerOpen ? (
+          <div className="space-y-4">
+            {/* Header Banner WA Broadcast */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50/50 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-emerald-950/20 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <MessageSquare size={20} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-slate-900 dark:text-white">
+                    Kirim Pesan Massal via WA Gateway
+                  </h4>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                    Target: <strong>{selectedWaStats.withPhone.length} kandidat</strong> memiliki No. HP valid
+                    {selectedWaStats.withoutPhone.length > 0 && (
+                      <span className="text-amber-700 dark:text-amber-300 font-semibold">
+                        {' '}• {selectedWaStats.withoutPhone.length} tanpa No. HP (dilewati)
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsWaComposerOpen(false)}
+                className="text-xs font-bold gap-1.5"
+              >
+                <ArrowLeft size={13} />
+                <span>Kembali ke Daftar</span>
+              </Button>
+            </div>
+
+            {selectedWaStats.withoutPhone.length > 0 && (
+              <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 text-[11px] text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                <AlertTriangle size={14} className="shrink-0 mt-0.5 text-amber-600" />
+                <div>
+                  <span className="font-bold">Kandidat tanpa No. HP/WA valid ({selectedWaStats.withoutPhone.length}): </span>
+                  <span>
+                    {selectedWaStats.withoutPhone
+                      .slice(0, 6)
+                      .map((g) => g.nama_guru)
+                      .join(', ')}
+                    {selectedWaStats.withoutPhone.length > 6
+                      ? ` dan ${selectedWaStats.withoutPhone.length - 6} lainnya`
+                      : ''}
+                    .
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Placeholder Chips */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                  Isi Pesan WhatsApp
+                </label>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[10px] text-slate-400 mr-1">Sisipkan variabel:</span>
+                  {['{nama}', '{nip}', '{event}', '{sekolah}'].map((token) => (
+                    <button
+                      key={token}
+                      type="button"
+                      onClick={() => handleInsertPlaceholder(token)}
+                      className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 cursor-pointer transition-colors"
+                    >
+                      {token}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <textarea
+                rows={6}
+                value={waMessage}
+                onChange={(e) => setWaMessage(e.target.value)}
+                placeholder="Tulis pesan untuk kandidat pengawas CBT..."
+                className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs focus:outline-hidden focus:ring-2 focus:ring-emerald-500 font-normal leading-relaxed"
+              />
+              <div className="flex items-center justify-between text-[10px] text-slate-400">
+                <span>Antrian WA Gateway otomatis memberi jeda ±3 detik per pesan agar aman dari pemblokiran.</span>
+                <span className="font-mono">{waMessage.length}/4000</span>
+              </div>
+            </div>
+
+            {/* Live Preview */}
+            {selectedWaStats.sample && (
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Pratinjau Pesan ({selectedWaStats.sample.nama_guru})
+                </div>
+                <p className="text-[11px] text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                  {waMessage
+                    .replace(/\{nama\}/gi, selectedWaStats.sample.nama_guru || '')
+                    .replace(/\{nip\}/gi, selectedWaStats.sample.nip || '-')
+                    .replace(/\{event\}/gi, activeEvent?.nama_event || 'Ujian CBT')
+                    .replace(/\{sekolah\}/gi, 'Sekolah Anda')}
+                </p>
+              </div>
+            )}
+
+            {/* Broadcast Result Feedback */}
+            {waBroadcastResult && (
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-200 space-y-1">
+                <div className="font-bold flex items-center gap-1.5">
+                  <CheckCircle2 size={14} className="text-emerald-600" />
+                  <span>
+                    {waBroadcastResult.queuedCount} pesan berhasil masuk antrian WA Gateway (estimasi selesai ±
+                    {waBroadcastResult.estimatedSeconds} detik).
+                  </span>
+                </div>
+                {waBroadcastResult.skippedCount > 0 && (
+                  <p className="text-[10px] text-amber-700 dark:text-amber-300">
+                    {waBroadcastResult.skippedCount} kandidat dilewati karena tidak memiliki No. HP valid.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Footer WA Composer */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsWaComposerOpen(false)}
+                disabled={broadcastWaMutation.isPending}
+                className="text-xs font-bold"
+              >
+                Kembali
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => broadcastWaMutation.mutate()}
+                disabled={
+                  broadcastWaMutation.isPending ||
+                  !waMessage.trim() ||
+                  selectedWaStats.withPhone.length === 0
+                }
+                className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-xs"
+              >
+                <Send size={13} />
+                <span>
+                  {broadcastWaMutation.isPending
+                    ? 'Memasukkan Antrian...'
+                    : `Kirim via WA Gateway (${selectedWaStats.withPhone.length})`}
+                </span>
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
         {/* Banner Info Kesiapan & Rasio */}
         <div className="p-3.5 rounded-2xl bg-gradient-to-r from-indigo-50 via-sky-50 to-indigo-50/50 dark:from-indigo-950/40 dark:via-sky-950/30 dark:to-indigo-950/20 border border-indigo-200 dark:border-indigo-800/80 shadow-2xs flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
@@ -373,6 +594,7 @@ export const CbtKandidatPengawasModal: React.FC<CbtKandidatPengawasModalProps> =
                 <tr>
                   <th className="py-2 px-3 text-center w-12">Pilih</th>
                   <th className="py-2 px-3">Nama Pegawai &amp; NIP</th>
+                  <th className="py-2 px-3">No. HP / WA</th>
                   <th className="py-2 px-3">Jenis PTK</th>
                   <th className="py-2 px-3 text-center">Status Kandidat</th>
                 </tr>
@@ -419,6 +641,20 @@ export const CbtKandidatPengawasModal: React.FC<CbtKandidatPengawasModalProps> =
                         </div>
                       </td>
 
+                      {/* No. HP / WA */}
+                      <td className="py-2 px-3 align-middle">
+                        {staff.no_hp && staff.no_hp.replace(/[^0-9]/g, '').length >= 9 ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                            <Phone size={10} />
+                            <span>{staff.no_hp}</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-rose-500 italic">
+                            No. HP kosong
+                          </span>
+                        )}
+                      </td>
+
                       {/* Kategori PTK */}
                       <td className="py-2 px-3 align-middle">
                         {isTU ? (
@@ -461,7 +697,22 @@ export const CbtKandidatPengawasModal: React.FC<CbtKandidatPengawasModalProps> =
             Total {selectedCounts.total} pegawai akan menjadi dasar pool seleksi pengawas ujian.
           </p>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setWaBroadcastResult(null);
+                setIsWaComposerOpen(true);
+              }}
+              disabled={selectedCounts.total === 0 || saveCandidatesMutation.isPending}
+              className="text-xs font-bold border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 gap-1.5"
+              title="Kirim pesan massal WhatsApp ke kandidat terpilih via WA Gateway"
+            >
+              <MessageSquare size={13} />
+              <span>Kirim WA Massal ({selectedWaStats.withPhone.length})</span>
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -490,6 +741,8 @@ export const CbtKandidatPengawasModal: React.FC<CbtKandidatPengawasModalProps> =
             </Button>
           </div>
         </div>
+          </>
+        )}
       </div>
     </Modal>
   );
