@@ -1,7 +1,11 @@
 import type { CbtBankSoal } from '@/types/cbt.types';
 import type { GuruMapel } from '@/types/academic';
 import { resolveBankTingkatNumber } from './cbtJadwalHelper';
-import { isStrictMgmpBankCoveringAssignment, resolveStrictBankTingkat } from '../bank-soal/cbtDutyEngine';
+import {
+  isStrictBankCoveringJurusan,
+  isStrictMgmpBankCoveringAssignment,
+  resolveStrictBankTingkat,
+} from '../bank-soal/cbtDutyEngine';
 import { JURUSAN_ALIASES } from './CbtMultiJurusanModal';
 
 export type MatrixCellStatus = 'COVERED' | 'MISSING' | 'NOT_APPLICABLE';
@@ -278,13 +282,14 @@ export function buildClassSubjectMatrix(params: {
 
       totalCellsRequired++;
 
-      // Cari bank soal SSOT yang meng-cover guru pengampu kelas ini:
+      // Cari bank soal SSOT yang meng-cover guru pengampu kelas ini DAN mencakup jurusan kelas ini:
       // 1. Bank Soal milik guru pengampu kelas ini sendiri (guru_id === assignment.guruId)
       // 2. Bank Soal rekan yang EKSPLISIT dibagikan kepadanya melalui CbtBankSoalKontributor
       const matchingBanks = relevantBanks.filter((b) => {
         if (b.mapel_id !== sub.id) return false;
         const bTingkat = resolveStrictBankTingkat(b);
-        return bTingkat === tingkat && (b.jumlah_soal || b._count?.Soal || 0) > 0;
+        if (bTingkat !== tingkat || (b.jumlah_soal || b._count?.Soal || 0) <= 0) return false;
+        return isStrictBankCoveringJurusan(b, cls.jurusanId, cls.jurusanKode);
       });
 
       const teacherDirectBank = matchingBanks.find((b) => b.guru_id === assignment.guruId);

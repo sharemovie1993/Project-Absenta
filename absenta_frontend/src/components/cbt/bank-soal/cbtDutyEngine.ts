@@ -138,6 +138,23 @@ export function isGeneralBankJurusan(jurusan?: string | null, bank?: CbtBankSoal
   return !clean || clean === 'SEMUA' || clean === 'UMUM';
 }
 
+export function isStrictBankCoveringJurusan(
+  bank: CbtBankSoal,
+  jurusanId?: string,
+  jurusanKode?: string
+): boolean {
+  if (isGeneralBankJurusan(bank.jurusan, bank)) return true;
+  if (jurusanId) {
+    if (bank.jurusan_id && bank.jurusan_id === jurusanId) return true;
+    if (Array.isArray(bank.target_jurusan_ids) && bank.target_jurusan_ids.includes(jurusanId)) return true;
+  }
+  const tokens = parseBankJurusanTokens(bank.jurusan);
+  if (jurusanId && tokens.includes(jurusanId.toUpperCase())) return true;
+  const cleanCode = (jurusanKode || '').toUpperCase().trim();
+  if (cleanCode && cleanCode !== 'UMUM' && tokens.includes(cleanCode)) return true;
+  return false;
+}
+
 export function parseBankJurusanTokens(jurusan?: string | null): string[] {
   if (!jurusan) return [];
   return jurusan
