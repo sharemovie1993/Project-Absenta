@@ -2,7 +2,7 @@ import { prisma } from '@/utils/prisma';
 import { DataScope } from '../../../../types/fastify';
 import { Hari } from '@prisma/client';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
-import { getTenantTimezone } from '@/utils/timezone.utils';
+import { getTenantTimezone, getTenantOffsetString } from '@/utils/timezone.utils';
 import { getTenantLocalTime, generateSessionsForTenantDirect } from '@/jobs/attendanceAutoSession.job';
 
 export interface CreateJadwalKegiatanInput {
@@ -39,6 +39,67 @@ export class JadwalKegiatanService {
       await generateSessionsForTenantDirect(tenantId, dateStr, timeZone);
     } catch {
       // Non-blocking sync
+    }
+  }
+
+  /**
+   * Memperbarui waktu & membuka kembali sesi hari ini yang terlanjur ditutup/lewat
+   * saat JadwalKegiatan diubah secara mendadak (hanya menyentuh tanggal hari ini).
+   */
+  private async resyncUpdatedTodayActivitySessions(
+    tenantId: string,
+    kegiatan: { id: string; nama: string; waktu_mulai: string; waktu_selesai: string | null }
+  ) {
+    try {
+      const tz = await getTenantTimezone(tenantId);
+      const tzOffset = getTenantOffsetString(tz);
+      const { dateStr } = getTenantLocalTime(tz, new Date());
+
+      const startOfDay = new Date(`${dateStr}T00:00:00.000${tzOffset}`);
+      const endOfDay = new Date(`${dateStr}T23:59:59.999${tzOffset}`);
+      const newWaktuMulai = new Date(`${dateStr}T${kegiatan.waktu_mulai.slice(0, 5)}:00.000${tzOffset}`);
+      const newWaktuSelesai = kegiatan.waktu_selesai
+        ? new Date(`${dateStr}T${kegiatan.waktu_selesai.slice(0, 5)}:00.000${tzOffset}`)
+        : new Date(newWaktuMulai.getTime() + 60 * 60 * 1000);
+
+      const todaySessions = await prisma.sesiAbsensi.findMany({
+        where: {
+          tenant_id: tenantId,
+          jadwal_kegiatan_id: kegiatan.id,
+          tanggal: { gte: startOfDay, lte: endOfDay },
+        },
+        select: {
+          id: true,
+          status: true,
+          _count: {
+            select: { AbsenSiswa: true, AbsenGuru: true },
+          },
+        },
+      });
+
+      const now = new Date();
+      const canReopen = newWaktuSelesai.getTime() > now.getTime();
+
+      for (const s of todaySessions) {
+        const hasAnyTap = (s._count?.AbsenSiswa || 0) > 0 || (s._count?.AbsenGuru || 0) > 0;
+        const nextStatus =
+          canReopen && s.status === 'SELESAI'
+            ? (hasAnyTap ? 'BERLANGSUNG' : 'MENDATANG')
+            : s.status;
+
+        await prisma.sesiAbsensi.update({
+          where: { id: s.id },
+          data: {
+            waktu_mulai: newWaktuMulai,
+            waktu_selesai: newWaktuSelesai,
+            jenis_kegiatan: kegiatan.nama,
+            status: nextStatus,
+            updated_at: new Date(),
+          },
+        });
+      }
+    } catch {
+      // Non-blocking resync
     }
   }
 
@@ -236,6 +297,7 @@ export class JadwalKegiatanService {
           where: { tenant_id: scope.tenantId, jadwal_kegiatan_id: id, status: 'MENDATANG' },
         });
       } else {
+        await this.resyncUpdatedTodayActivitySessions(scope.tenantId, updated);
         await this.syncTodayActivitySessions(scope.tenantId);
       }
       await cacheInvalidationService.invalidateAttendanceCache(scope.tenantId);
