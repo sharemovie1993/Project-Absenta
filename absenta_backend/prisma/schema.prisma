@@ -195,6 +195,7 @@ model Tenant {
   KetarunaanNilaiSiswa     KetarunaanNilaiSiswa[]
   RaporSetting             RaporSetting[]
   HubinSetting             HubinSetting[]
+  CbtEvent                 CbtEvent[]
 }
 
 enum BackupStatus {
@@ -1026,6 +1027,7 @@ model TahunPelajaran {
   KetarunaanNilaiSiswa   KetarunaanNilaiSiswa[]
   RaporSetting           RaporSetting[]
   HubinSetting           HubinSetting[]
+  CbtEvent               CbtEvent[]
 
   @@unique([tenant_id, tahun])
   @@index([tenant_id])
@@ -1706,6 +1708,36 @@ model HubinSetting {
   @@unique([tenant_id, tahun_pelajaran_id])
   @@index([tenant_id])
   @@index([tahun_pelajaran_id])
+}
+
+model CbtEvent {
+  id                      String         @id
+  tenant_id               String
+  tahun_pelajaran_id      String
+  nama_event              String
+  kode_event              String
+  semester                String         @default("GANJIL")
+  target_tingkat          Json           @default("[10,11,12]")
+  tipe_pelaksanaan        String?
+  keterangan              String?
+  days_config             Json?
+  room_mappings           Json?
+  matrix_draft            Json?
+  pengawas_candidates     Json?
+  lock_teacher_scheduling Boolean        @default(true)
+  token_refresh_interval  Int            @default(0)
+  strict_browser_guard    Boolean        @default(true)
+  enable_proctor          Boolean?
+  is_active               Boolean        @default(false)
+  created_at              DateTime       @default(now())
+  updated_at              DateTime       @updatedAt
+
+  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([tenant_id, tahun_pelajaran_id])
+  @@index([tenant_id, is_active])
 }
 
 // Global Master Data Wilayah Indonesia (Cross-Tenant)
