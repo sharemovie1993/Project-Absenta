@@ -360,9 +360,7 @@ export class DashboardActionHubService {
 
         if (alreadyTapped) continue;
 
-        const isDhuha = /dhuha|duha/i.test(`${keg.nama || ''} ${keg.jenis_kegiatan || ''}`);
-        const routePath = isDhuha ? '/kesiswaan/program-dhuha' : '/kesiswaan/program-ketarunaan';
-        const mapelName = overlappingKbm.Mapel?.nama_mapel || 'KBM Pertama';
+        const mapelName = overlappingKbm.Mapel?.nama_mapel || 'KBM';
         const kelasName = overlappingKbm.Kelas?.nama_kelas || '';
 
         items.push({
@@ -370,13 +368,13 @@ export class DashboardActionHubService {
           division: 'KESISWAAN',
           urgency: 'CRITICAL',
           roleGroup: { key: 'GURU', label: 'Sebagai Guru', order: 1 },
-          title: `Wajib Absen di Terminal Kegiatan (${keg.nama})`,
-          subtitle: `Jam KBM ${mapelName}${kelasName ? ` (${kelasName})` : ''} pukul ${overlappingKbm.jam_mulai} WIB beririsan dengan ${keg.nama} (${keg.waktu_mulai}–${keg.waktu_selesai} WIB). Segera presensi di Terminal Unified Kegiatan agar tidak dianggap telat saat presensi KBM pertama.`,
-          badgeText: 'Beririsan KBM',
+          title: `Wajib Hadir Fisik: ${keg.nama}`,
+          subtitle: `Jam KBM ${mapelName}${kelasName ? ` (${kelasName})` : ''} pukul ${overlappingKbm.jam_mulai} WIB beririsan dengan ${keg.nama} (${keg.waktu_mulai}–${keg.waktu_selesai} WIB). Hadir fisik & presensi melalui Panitia ${keg.nama} di lokasi agar tidak dianggap telat saat presensi KBM.`,
+          badgeText: 'Wajib Hadir Fisik',
           action: {
-            label: 'Buka Terminal Kegiatan ➔',
+            label: 'Lihat Jadwal KBM ➔',
             type: 'NAVIGATE',
-            target: routePath,
+            target: '/dashboard?tab=kbm',
           },
           sourceModule: {
             table: 'JadwalKegiatan',

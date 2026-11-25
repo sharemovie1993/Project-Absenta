@@ -272,11 +272,18 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     if (!isGuroPrediksiActive) return null;
     if (!jamMulai || !jamMulai.includes(':')) return null;
 
-    // 1. Hitung deadline jadwal resmi (JadwalKBM.jam_mulai)
+    // 1. Hitung deadline jadwal resmi (JadwalKBM.jam_mulai & jam_selesai)
     const [schH, schM] = jamMulai.split(':').map(Number);
     const scheduledMinutes = schH * 60 + schM;
+    let kbmEndMinutes = scheduledMinutes + 45;
+    if (jamSelesai && jamSelesai.includes(':')) {
+      const [endKbmH, endKbmM] = jamSelesai.split(':').map(Number);
+      if (Number.isFinite(endKbmH) && Number.isFinite(endKbmM)) {
+        kbmEndMinutes = endKbmH * 60 + endKbmM;
+      }
+    }
 
-    // 2. Cek JadwalKegiatan hari ini — apakah ada yang selesai melewati jam jadwal?
+    // 2. Cek JadwalKegiatan hari ini — apakah benar-benar beririsan dengan jam KBM ini?
     const rawList: any[] = Array.isArray(kegiatanData)
       ? kegiatanData
       : (Array.isArray((kegiatanData as any)?.data) ? (kegiatanData as any).data : []);
@@ -292,9 +299,17 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
         if (!k.aktif) return false;
         const days: string[] = Array.isArray(k.hari) ? k.hari : (k.hari || '').split(',').map((s: string) => s.trim().toUpperCase());
         if (!days.includes(todayStr)) return false;
-        if (!k.waktu_selesai) return false;
+        if (!k.waktu_selesai || !k.waktu_selesai.includes(':')) return false;
         const [endH, endM] = k.waktu_selesai.split(':').map(Number);
-        return (endH * 60 + endM) > scheduledMinutes;
+        const kegEnd = endH * 60 + endM;
+        let kegStart = 0;
+        if (k.waktu_mulai && k.waktu_mulai.includes(':')) {
+          const [startH, startM] = k.waktu_mulai.split(':').map(Number);
+          if (Number.isFinite(startH) && Number.isFinite(startM)) {
+            kegStart = startH * 60 + startM;
+          }
+        }
+        return kegEnd > scheduledMinutes && kegStart < kbmEndMinutes;
       })
       .sort((a: any, b: any) => {
         const [aH, aM] = a.waktu_selesai.split(':').map(Number);
@@ -306,6 +321,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     let deadlineMinutes = scheduledMinutes;
     let deadlineStr = jamMulai;
     let kegiatanNama: string | null = null;
+    let kegiatanMulai: string | null = null;
 
     if (matchingKegiatan.length > 0) {
       const top = matchingKegiatan[0];
@@ -313,6 +329,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
       deadlineMinutes = endH * 60 + endM;
       deadlineStr = top.waktu_selesai;
       kegiatanNama = top.nama;
+      kegiatanMulai = top.waktu_mulai || null;
     }
 
     // 4. Bandingkan waktu sekarang vs deadline
@@ -324,8 +341,9 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
       menit: lateMinutes > 0 ? lateMinutes : 0,
       deadline: deadlineStr,
       kegiatanNama,
+      kegiatanMulai,
     };
-  }, [nowTick, kegiatanData, jamMulai, isGuroPrediksiActive]);
+  }, [nowTick, kegiatanData, jamMulai, jamSelesai, isGuroPrediksiActive]);
 
   const hadirVal = item.summary?.hadir 
     ?? item._summary?.hadir 
@@ -962,24 +980,16 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
         {mode === 'GURU' && !isTeacherPresent && !isFinished && !isOverdue && prediksiRealtime?.kegiatanNama && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="p-2.5 sm:p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/35 border border-amber-300/80 dark:border-amber-800/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+            className="p-2.5 sm:p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/35 border border-amber-300/80 dark:border-amber-800/70 flex items-start gap-2.5"
           >
-            <div className="flex items-start gap-2 min-w-0">
-              <AlertCircle size={15} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <p className="text-[11px] sm:text-xs font-medium text-amber-950 dark:text-amber-100 leading-snug">
-                <span className="font-black">Wajib Presensi di Terminal Kegiatan:</span> Jam KBM ini beririsan dengan{' '}
-                <strong className="font-bold">{prediksiRealtime.kegiatanNama}</strong> (s.d. {prediksiRealtime.deadline} WIB).
-                Lakukan presensi di Terminal Unified Kegiatan agar tidak dianggap telat saat presensi KBM pertama.
-              </p>
-            </div>
-            <a
-              href={/dhuha|duha/i.test(prediksiRealtime.kegiatanNama) ? '/kesiswaan/program-dhuha' : '/kesiswaan/program-ketarunaan'}
-              onClick={(e) => e.stopPropagation()}
-              className="shrink-0 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-black transition-colors shadow-2xs"
-            >
-              <span>Buka Terminal Kegiatan</span>
-              <ExternalLink size={11} />
-            </a>
+            <AlertCircle size={15} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <p className="text-[11px] sm:text-xs font-medium text-amber-950 dark:text-amber-100 leading-snug">
+              <span className="font-black">Wajib Hadir Fisik di Kegiatan:</span> Jam KBM ini beririsan dengan{' '}
+              <strong className="font-bold">{prediksiRealtime.kegiatanNama}</strong> (
+              {prediksiRealtime.kegiatanMulai ? `${prediksiRealtime.kegiatanMulai}–` : 's.d. '}
+              {prediksiRealtime.deadline} WIB). Silakan hadir fisik dan lakukan presensi melalui{' '}
+              <strong className="font-bold">Panitia {prediksiRealtime.kegiatanNama}</strong> di lokasi kegiatan agar tidak dianggap telat saat presensi KBM.
+            </p>
           </div>
         )}
 
