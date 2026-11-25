@@ -169,6 +169,29 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
     }
   }, [parallelColleagues, mapelId, tingkat, targetJurusanTokens, onChangeSelectedIds, isEditMode, selectedIds, guruOwnBankSet]);
 
+  // Fallback 1 kali untuk bank soal lama (legacy) saat mode Edit:
+  // Jika Kontributor guru sudah ada tetapi target_kelas_ids masih kosong/null, centang semua kelas guru tsb pada konteks akademik aktif
+  const legacyEditFallbackAppliedRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (
+      isEditMode &&
+      !legacyEditFallbackAppliedRef.current &&
+      selectedIds.length > 0 &&
+      selectedKelasIds.length === 0 &&
+      colleagueKelasMap.size > 0 &&
+      onChangeSelectedKelasIds
+    ) {
+      legacyEditFallbackAppliedRef.current = true;
+      const fallbackKelas: string[] = [];
+      selectedIds.forEach((id) => {
+        (colleagueKelasMap.get(id) || []).forEach((k) => fallbackKelas.push(k.kelasId));
+      });
+      if (fallbackKelas.length > 0) {
+        onChangeSelectedKelasIds(Array.from(new Set(fallbackKelas)));
+      }
+    }
+  }, [isEditMode, selectedIds, selectedKelasIds.length, colleagueKelasMap, onChangeSelectedKelasIds]);
+
   if (!mapelId) {
     return (
       <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
