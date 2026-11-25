@@ -5,6 +5,7 @@ import { cbtApi } from '@/api/cbt.api';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import type { GuruMapel } from '@/types/academic';
 import { useCbtOperationMode } from '../cbtModeHelper';
+import { useJenjang } from '@/hooks/useJenjang';
 import {
   evaluateTeacherDutiesSSOT,
   type DutyCoverStatus,
@@ -32,6 +33,7 @@ export interface TeacherCbtDutyStatusResult {
 
 export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusResult {
   const { activeEvent, eventName, targetTingkat } = useCbtOperationMode();
+  const { tingkatList } = useJenjang();
 
   // 1. Sumber Kebenaran Tunggal Penugasan Mengajar Guru: SK GuruMapel
   const { data: assignedMapelsRes, isLoading: isMapelLoading } = useQuery({
@@ -65,18 +67,22 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
     return bankListRes?.items || (bankListRes as any)?.data?.items || [];
   }, [bankListRes]);
 
+  const effectiveTargetTingkat = useMemo(() => {
+    return targetTingkat && targetTingkat.length > 0 ? targetTingkat : tingkatList;
+  }, [targetTingkat, tingkatList]);
+
   const evaluation = useMemo(() => {
     const res = evaluateTeacherDutiesSSOT({
       guruId,
       guruMapelList: rawAssignedList,
       bankList: rawBankList,
-      targetTingkat,
+      targetTingkat: effectiveTargetTingkat,
     });
     return {
       ...res,
       isFullyExempt: res.totalDuties > 0 && res.coveredDuties === res.totalDuties,
     };
-  }, [guruId, rawAssignedList, rawBankList, targetTingkat]);
+  }, [guruId, rawAssignedList, rawBankList, effectiveTargetTingkat]);
 
   const detectedTeacherName = useMemo(() => {
     return rawAssignedList.find((gm) => (!guruId || gm.guru_id === guruId) && gm.Guru?.nama_guru)?.Guru?.nama_guru;

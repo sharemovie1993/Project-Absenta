@@ -67,42 +67,51 @@ export function isNonAcademicMapel(name?: string): boolean {
   return NON_ACADEMIC_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
+const ROMAN_TO_TINGKAT: Record<string, number> = {
+  I: 1,
+  II: 2,
+  III: 3,
+  IV: 4,
+  V: 5,
+  VI: 6,
+  VII: 7,
+  VIII: 8,
+  IX: 9,
+  X: 10,
+  XI: 11,
+  XII: 12,
+  XIII: 13,
+};
+
 /**
- * Resolusi tingkat mutlak dari relasi DB (Kelas.tingkat atau Mapel.tingkat).
- * NOL fallback parsing nama kelas.
+ * Konversi nilai tingkat multi-jenjang (SD/MI 1-6, SMP/MTs 7-9, SMA/MA 10-12, SMK/MAK 10-13).
+ * NOL fallback parsing nama kelas atau judul.
  */
-export function resolveStrictTingkat(gm: GuruMapel | any): number | null {
-  const raw = gm?.Kelas?.tingkat ?? gm?.Mapel?.tingkat;
+export function parseStrictTingkatValue(raw: unknown): number | null {
   if (raw === null || raw === undefined || raw === '') return null;
   const num = Number(raw);
-  if (Number.isInteger(num) && num >= 10 && num <= 13) return num;
+  if (Number.isInteger(num) && num >= 1 && num <= 13) return num;
   if (typeof raw === 'string') {
     const up = raw.toUpperCase().trim();
-    if (up === 'X') return 10;
-    if (up === 'XI') return 11;
-    if (up === 'XII') return 12;
-    if (up === 'XIII') return 13;
+    if (ROMAN_TO_TINGKAT[up]) return ROMAN_TO_TINGKAT[up];
   }
   return null;
 }
 
 /**
+ * Resolusi tingkat mutlak dari relasi DB (Kelas.tingkat atau Mapel.tingkat).
+ * Mendukung seluruh jenjang (SD/MI, SMP/MTs, SMA/MA, SMK/MAK). NOL fallback parsing nama kelas.
+ */
+export function resolveStrictTingkat(gm: GuruMapel | any): number | null {
+  return parseStrictTingkatValue(gm?.Kelas?.tingkat ?? gm?.Mapel?.tingkat);
+}
+
+/**
  * Resolusi tingkat mutlak pada Bank Soal dari kolom `tingkat` DB.
- * NOL fallback parsing judul bank soal.
+ * Mendukung seluruh jenjang (SD/MI, SMP/MTs, SMA/MA, SMK/MAK). NOL fallback parsing judul bank soal.
  */
 export function resolveStrictBankTingkat(bank: CbtBankSoal | any): number | null {
-  const raw = bank?.tingkat;
-  if (raw === null || raw === undefined || raw === '') return null;
-  const num = Number(raw);
-  if (Number.isInteger(num) && num >= 10 && num <= 13) return num;
-  if (typeof raw === 'string') {
-    const up = raw.toUpperCase().trim();
-    if (up === 'X') return 10;
-    if (up === 'XI') return 11;
-    if (up === 'XII') return 12;
-    if (up === 'XIII') return 13;
-  }
-  return null;
+  return parseStrictTingkatValue(bank?.tingkat);
 }
 
 /**

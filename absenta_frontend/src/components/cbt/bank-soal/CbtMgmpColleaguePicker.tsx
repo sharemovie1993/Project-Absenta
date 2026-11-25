@@ -5,7 +5,7 @@ import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
 import type { GuruMapel } from '@/types/academic';
 import { cn } from '@/lib/utils';
 import { formatTingkatRomawi } from './cbtAsesmenHelper';
-import { findParallelColleaguesSSOT } from './cbtDutyEngine';
+import { findParallelColleaguesSSOT, parseStrictTingkatValue } from './cbtDutyEngine';
 
 interface CbtMgmpColleaguePickerProps {
   mapelId: string;
@@ -34,13 +34,10 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
     enabled: Boolean(mapelId),
   });
 
-  // Konversi tingkat target menjadi angka (10, 11, 12) untuk pencocokan ketat
+  // Konversi tingkat target multi-jenjang (1..13 / I..XIII) untuk pencocokan ketat
   const targetTingkatNum = useMemo(() => {
     if (!tingkat || tingkat === 'SEMUA') return null;
-    if (tingkat === 'XI' || tingkat === '11') return 11;
-    if (tingkat === 'XII' || tingkat === '12') return 12;
-    if (tingkat === 'X' || tingkat === '10') return 10;
-    return Number(tingkat) || null;
+    return parseStrictTingkatValue(tingkat);
   }, [tingkat]);
 
   const targetJurusanTokens = useMemo(() => {
