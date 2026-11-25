@@ -1372,30 +1372,81 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         />
       ) : guruId && groupedDisplayData.length > 0 ? (
         <div className="space-y-4">
-          {groupedDisplayData.map((group) => {
+          {groupedDisplayData.map((group, groupIdx) => {
             const isCollapsed = collapsedMapels.has(group.mapelName);
+            const MAPEL_THEMES = [
+              {
+                wrapper: 'border-indigo-200/90 dark:border-indigo-800/70 border-l-4 border-l-indigo-500',
+                header: 'bg-indigo-50/75 dark:bg-indigo-950/35 border-indigo-200/70 dark:border-indigo-800/60 hover:bg-indigo-100/70 dark:hover:bg-indigo-950/50',
+                icon: 'bg-indigo-600 text-white border-indigo-600 shadow-xs',
+                title: 'text-indigo-950 dark:text-indigo-100',
+                badge: 'bg-white dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+              },
+              {
+                wrapper: 'border-emerald-200/90 dark:border-emerald-800/70 border-l-4 border-l-emerald-500',
+                header: 'bg-emerald-50/75 dark:bg-emerald-950/35 border-emerald-200/70 dark:border-emerald-800/60 hover:bg-emerald-100/70 dark:hover:bg-emerald-950/50',
+                icon: 'bg-emerald-600 text-white border-emerald-600 shadow-xs',
+                title: 'text-emerald-950 dark:text-emerald-100',
+                badge: 'bg-white dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+              },
+              {
+                wrapper: 'border-sky-200/90 dark:border-sky-800/70 border-l-4 border-l-sky-500',
+                header: 'bg-sky-50/75 dark:bg-sky-950/35 border-sky-200/70 dark:border-sky-800/60 hover:bg-sky-100/70 dark:hover:bg-sky-950/50',
+                icon: 'bg-sky-600 text-white border-sky-600 shadow-xs',
+                title: 'text-sky-950 dark:text-sky-100',
+                badge: 'bg-white dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800',
+              },
+              {
+                wrapper: 'border-amber-200/90 dark:border-amber-800/70 border-l-4 border-l-amber-500',
+                header: 'bg-amber-50/75 dark:bg-amber-950/35 border-amber-200/70 dark:border-amber-800/60 hover:bg-amber-100/70 dark:hover:bg-amber-950/50',
+                icon: 'bg-amber-600 text-white border-amber-600 shadow-xs',
+                title: 'text-amber-950 dark:text-amber-100',
+                badge: 'bg-white dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+              },
+              {
+                wrapper: 'border-rose-200/90 dark:border-rose-800/70 border-l-4 border-l-rose-500',
+                header: 'bg-rose-50/75 dark:bg-rose-950/35 border-rose-200/70 dark:border-rose-800/60 hover:bg-rose-100/70 dark:hover:bg-rose-950/50',
+                icon: 'bg-rose-600 text-white border-rose-600 shadow-xs',
+                title: 'text-rose-950 dark:text-rose-100',
+                badge: 'bg-white dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+              },
+              {
+                wrapper: 'border-violet-200/90 dark:border-violet-800/70 border-l-4 border-l-violet-500',
+                header: 'bg-violet-50/75 dark:bg-violet-950/35 border-violet-200/70 dark:border-violet-800/60 hover:bg-violet-100/70 dark:hover:bg-violet-950/50',
+                icon: 'bg-violet-600 text-white border-violet-600 shadow-xs',
+                title: 'text-violet-950 dark:text-violet-100',
+                badge: 'bg-white dark:bg-violet-950/80 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800',
+              },
+            ];
+            const theme = MAPEL_THEMES[groupIdx % MAPEL_THEMES.length];
             return (
               <div
                 key={group.mapelName}
-                className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs"
+                className={cn(
+                  'overflow-hidden rounded-xl border bg-white dark:bg-slate-900 shadow-2xs',
+                  theme.wrapper
+                )}
               >
                 <button
                   type="button"
                   onClick={() => toggleMapelGroup(group.mapelName)}
-                  className="w-full px-4 py-2.5 bg-slate-50/90 dark:bg-slate-800/60 border-b border-slate-200/70 dark:border-slate-800 flex items-center justify-between gap-3 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className={cn(
+                    'w-full px-4 py-2.5 border-b flex items-center justify-between gap-3 transition-colors cursor-pointer',
+                    theme.header
+                  )}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 shrink-0">
+                    <span className={cn('p-1.5 rounded-lg border shrink-0', theme.icon)}>
                       <BookOpen size={14} />
                     </span>
-                    <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 truncate">
+                    <span className={cn('text-xs sm:text-sm font-black truncate', theme.title)}>
                       {group.mapelName}
                     </span>
-                    <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 bg-white dark:bg-slate-900">
+                    <Badge variant="outline" className={cn('text-[10px] font-bold px-2 py-0.5', theme.badge)}>
                       {group.rows.length} Sesi
                     </Badge>
                   </div>
-                  <span className="text-slate-400 shrink-0">
+                  <span className="text-slate-500 dark:text-slate-400 shrink-0">
                     {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                   </span>
                 </button>
