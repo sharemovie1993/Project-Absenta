@@ -31,8 +31,7 @@ export interface CbtTpEventsSummary {
   events: CbtEventItem[];
 }
 
-const CBT_CONFIG_KEY = 'CBT_EVENTS_CONFIG';
-const CBT_ACTIVE_KEY = 'CBT_ACTIVE_EVENT_ID';
+// NOTE: CBT_EVENTS_CONFIG dan CBT_ACTIVE_EVENT_ID di Config telah diputus dan digantikan penuh oleh tabel relasional `CbtEvent`.
 const CBT_NUDGE_HISTORY_KEY = 'CBT_NUDGE_HISTORY';
 
 export class CbtSettingsService {
@@ -206,8 +205,9 @@ export class CbtSettingsService {
     ];
   }
 
+  // NOTE: SSOT Event CBT kini 100% menggunakan tabel relasional `CbtEvent` (fallback & dual-write Config CBT_EVENTS_CONFIG/CBT_ACTIVE_EVENT_ID sudah diputus).
   static async getEventsSummary(tenantId: string) {
-    const [tpList, dbEvents, configRow, activeRow] = await Promise.all([
+    const [tpList, dbEvents] = await Promise.all([
       prisma.tahunPelajaran.findMany({
         where: { tenant_id: tenantId },
         orderBy: [{ is_active: 'desc' }, { created_at: 'desc' }],
@@ -216,60 +216,27 @@ export class CbtSettingsService {
         where: { tenant_id: tenantId },
         orderBy: [{ created_at: 'asc' }],
       }),
-      prisma.config.findFirst({
-        where: { tenant_id: tenantId, key: CBT_CONFIG_KEY },
-      }),
-      prisma.config.findFirst({
-        where: { tenant_id: tenantId, key: CBT_ACTIVE_KEY },
-      }),
     ]);
 
-    let allEvents: CbtEventItem[] = [];
-    let activeEventId = activeRow?.value || '';
-
-    if (dbEvents.length > 0) {
-      allEvents = dbEvents.map((row) => this.mapRowToItem(row));
-      const dbActive = allEvents.find((e) => e.is_active);
-      if (dbActive) {
-        activeEventId = dbActive.id;
-      }
-    } else if (configRow?.value) {
-      try {
-        allEvents = JSON.parse(configRow.value);
-      } catch {
-        allEvents = [];
-      }
-      // Auto-migrate legacy Config JSON ke tabel relasional CbtEvent secara aman
-      const validTpIds = new Set(tpList.map((tp) => tp.id));
-      for (const evt of allEvents) {
-        await this.upsertRelationalEvent(
-          tenantId,
-          {
-            ...evt,
-            is_active: activeEventId ? evt.id === activeEventId : Boolean(evt.is_active),
-          },
-          validTpIds
-        ).catch(() => null);
-      }
-    }
+    let allEvents: CbtEventItem[] = dbEvents.map((row) => this.mapRowToItem(row));
+    let activeEventId = allEvents.find((e) => e.is_active)?.id || '';
 
     // Auto-inisialisasi event bawaan jika belum ada untuk TP aktif
     const activeTp = tpList.find((tp) => tp.is_active);
     if (activeTp && !allEvents.some((e) => e.tahun_pelajaran_id === activeTp.id)) {
       const defaultEvents = this.generateDefaultEvents(activeTp.id);
-      allEvents = [...allEvents, ...defaultEvents];
       if (!activeEventId) {
         activeEventId = defaultEvents[0].id;
       }
+      const seededDefaults = defaultEvents.map((evt) => ({
+        ...evt,
+        is_active: evt.id === activeEventId,
+      }));
+      allEvents = [...allEvents, ...seededDefaults];
 
-      // Simpan inisialisasi default ke tabel relasional & Config (dual-write)
-      await Promise.all([
-        ...defaultEvents.map((evt) =>
-          this.upsertRelationalEvent(tenantId, { ...evt, is_active: evt.id === activeEventId })
-        ),
-        this.setConfig(tenantId, CBT_CONFIG_KEY, JSON.stringify(allEvents)),
-        this.setConfig(tenantId, CBT_ACTIVE_KEY, activeEventId),
-      ]);
+      await Promise.all(
+        seededDefaults.map((evt) => this.upsertRelationalEvent(tenantId, evt))
+      );
     }
 
     // Pastikan flag is_active sinkron dengan activeEventId
@@ -303,23 +270,14 @@ export class CbtSettingsService {
   }
 
   static async upsertEvent(tenantId: string, payload: Partial<CbtEventItem>) {
-    const configRow = await prisma.config.findFirst({
-      where: { tenant_id: tenantId, key: CBT_CONFIG_KEY },
+    const dbEvents = await prisma.cbtEvent.findMany({
+      where: { tenant_id: tenantId },
     });
-
-    let allEvents: CbtEventItem[] = [];
-    if (configRow?.value) {
-      try {
-        allEvents = JSON.parse(configRow.value);
-      } catch {
-        allEvents = [];
-      }
-    }
+    const allEvents: CbtEventItem[] = dbEvents.map((r) => this.mapRowToItem(r));
 
     const now = new Date().toISOString();
     const id = payload.id || `cbt-event-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-    const existingIndex = allEvents.findIndex((e) => e.id === id);
-    const existing = existingIndex >= 0 ? allEvents[existingIndex] : null;
+    const existing = allEvents.find((e) => e.id === id) || null;
 
     // Resolusi Target Tingkat: Jika ada payload, gunakan payload. Jika tidak ada dan existing ada, gunakan existing. Jika baru, default [10, 11, 12]
     let targetTingkat: number[];
@@ -365,56 +323,25 @@ export class CbtSettingsService {
       updated_at: now,
     };
 
-    if (existingIndex >= 0) {
-      allEvents[existingIndex] = updatedEvent;
-    } else {
-      allEvents.push(updatedEvent);
-    }
-
     if (updatedEvent.is_active) {
-      allEvents = allEvents.map((e) => ({
-        ...e,
-        is_active: e.id === id,
-      }));
       await prisma.cbtEvent.updateMany({
         where: { tenant_id: tenantId, id: { not: id } },
         data: { is_active: false },
       });
-      await this.setConfig(tenantId, CBT_ACTIVE_KEY, id);
     }
 
-    await Promise.all([
-      this.upsertRelationalEvent(tenantId, updatedEvent),
-      this.setConfig(tenantId, CBT_CONFIG_KEY, JSON.stringify(allEvents)),
-    ]);
+    await this.upsertRelationalEvent(tenantId, updatedEvent);
 
     return updatedEvent;
   }
 
   static async setActiveEvent(tenantId: string, eventId: string) {
-    const [dbEvents, configRow] = await Promise.all([
-      prisma.cbtEvent.findMany({ where: { tenant_id: tenantId } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: CBT_CONFIG_KEY } }),
-    ]);
-
-    let allEvents: CbtEventItem[] = dbEvents.map((r) => this.mapRowToItem(r));
-    if (allEvents.length === 0 && configRow?.value) {
-      try {
-        allEvents = JSON.parse(configRow.value);
-      } catch {
-        allEvents = [];
-      }
-    }
-
-    const targetEvent = allEvents.find((e) => e.id === eventId);
-    if (!targetEvent) {
+    const targetRow = await prisma.cbtEvent.findFirst({
+      where: { tenant_id: tenantId, id: eventId },
+    });
+    if (!targetRow) {
       throw new Error('Event CBT tidak ditemukan');
     }
-
-    allEvents = allEvents.map((e) => ({
-      ...e,
-      is_active: e.id === eventId,
-    }));
 
     await prisma.$transaction([
       prisma.cbtEvent.updateMany({
@@ -427,44 +354,19 @@ export class CbtSettingsService {
       }),
     ]);
 
-    await Promise.all([
-      this.setConfig(tenantId, CBT_CONFIG_KEY, JSON.stringify(allEvents)),
-      this.setConfig(tenantId, CBT_ACTIVE_KEY, eventId),
-    ]);
-
-    return { ...targetEvent, is_active: true };
+    return { ...this.mapRowToItem(targetRow), is_active: true };
   }
 
   static async deleteEvent(tenantId: string, eventId: string) {
-    const [dbTarget, configRow, activeRow] = await Promise.all([
-      prisma.cbtEvent.findFirst({ where: { tenant_id: tenantId, id: eventId } }),
-      prisma.config.findFirst({
-        where: { tenant_id: tenantId, key: CBT_CONFIG_KEY },
-      }),
-      prisma.config.findFirst({
-        where: { tenant_id: tenantId, key: CBT_ACTIVE_KEY },
-      }),
-    ]);
+    const dbTarget = await prisma.cbtEvent.findFirst({
+      where: { tenant_id: tenantId, id: eventId },
+    });
 
-    if (dbTarget?.is_active || activeRow?.value === eventId) {
+    if (dbTarget?.is_active) {
       throw new Error('Event ini sedang aktif di Meja Kerja Panitia dan tidak dapat dihapus. Silakan aktifkan event lain terlebih dahulu.');
     }
 
-    let allEvents: CbtEventItem[] = [];
-    if (configRow?.value) {
-      try {
-        allEvents = JSON.parse(configRow.value);
-      } catch {
-        allEvents = [];
-      }
-    }
-
-    allEvents = allEvents.filter((e) => e.id !== eventId);
-
-    await Promise.all([
-      prisma.cbtEvent.deleteMany({ where: { tenant_id: tenantId, id: eventId } }),
-      this.setConfig(tenantId, CBT_CONFIG_KEY, JSON.stringify(allEvents)),
-    ]);
+    await prisma.cbtEvent.deleteMany({ where: { tenant_id: tenantId, id: eventId } });
 
     return { success: true, message: 'Event CBT berhasil dihapus' };
   }
