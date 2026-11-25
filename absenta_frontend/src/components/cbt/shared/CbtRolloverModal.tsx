@@ -12,11 +12,13 @@ import {
   ArrowRight,
   Search,
   AlertCircle,
+  Eye,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
 import { useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
+import { CbtBankSoalDetailModal } from '../bank-soal/CbtBankSoalDetailModal';
 import { cn } from '@/lib/utils';
 
 export type CbtRolloverMode = 'bank-soal' | 'event-config';
@@ -65,6 +67,7 @@ export const CbtRolloverModal: React.FC<CbtRolloverModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBankIds, setSelectedBankIds] = useState<Set<string>>(new Set());
   const [keepStatus, setKeepStatus] = useState(true);
+  const [previewBankSoal, setPreviewBankSoal] = useState<CbtBankSoal | null>(null);
 
   // Event config rollover options
   const [includeRoomMappings, setIncludeRoomMappings] = useState(true);
@@ -447,6 +450,18 @@ export const CbtRolloverModal: React.FC<CbtRolloverModalProps> = ({
                             </span>
                           </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewBankSoal(bank);
+                          }}
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                          title="Pratinjau Butir Soal"
+                        >
+                          <Eye size={12} />
+                          <span>Preview</span>
+                        </button>
                       </div>
                     );
                   })
@@ -601,6 +616,15 @@ export const CbtRolloverModal: React.FC<CbtRolloverModalProps> = ({
           </div>
         </div>
       </div>
+
+      {previewBankSoal && (
+        <CbtBankSoalDetailModal
+          isOpen={Boolean(previewBankSoal)}
+          onClose={() => setPreviewBankSoal(null)}
+          bankSoal={previewBankSoal}
+          readOnly={true}
+        />
+      )}
     </div>
   );
 };

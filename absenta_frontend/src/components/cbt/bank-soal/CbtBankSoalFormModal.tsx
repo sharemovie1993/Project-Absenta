@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
-import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users, AlertCircle, AlertTriangle, Share2, Check, ShieldCheck, Star, Lock, History, Loader2 } from 'lucide-react';
+import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users, AlertCircle, AlertTriangle, Share2, Check, ShieldCheck, Star, Lock, History, Loader2, Eye } from 'lucide-react';
 import {
   type CbtBankSoalScope,
   getOfficialAsesmenTypes,
@@ -26,6 +26,7 @@ import {
   formatTingkatLabel,
 } from './cbtAsesmenHelper';
 import { CbtMgmpColleaguePicker } from './CbtMgmpColleaguePicker';
+import { CbtBankSoalDetailModal } from './CbtBankSoalDetailModal';
 import { evaluateJurusanOccupancy } from './cbtJurusanAvailabilityHelper';
 import { getMgmpSharedTeacherIds, setMgmpSharedTeacherIds } from '../jadwal/cbtMgmpHelper';
 import { useCbtOperationMode } from '../cbtModeHelper';
@@ -426,6 +427,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
   // Ambil daftar bank soal dari event/TP sebelumnya untuk tawaran Rollover langsung di dalam modal
   const [rollingOverBankId, setRollingOverBankId] = useState<string | null>(null);
+  const [previewBankSoal, setPreviewBankSoal] = useState<CbtBankSoal | null>(null);
   const { data: previousEventBanksRes } = useQuery({
     queryKey: ['cbt-previous-banks-for-rollover-offer', mapelId, tingkat, activeEventId],
     queryFn: () =>
@@ -971,6 +973,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   };
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
@@ -1443,15 +1446,26 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                             {prevBank.Guru?.nama_guru || '-'} • {totalSoal} Soal • {prevBank.TahunPelajaran?.tahun || 'Event Sebelumnya'}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          disabled={rollingOverBankId !== null}
-                          onClick={() => handleInlineRollover(prevBank)}
-                          className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
-                        >
-                          {isRolling ? <Loader2 size={12} className="animate-spin" /> : <History size={12} />}
-                          <span>Ambil (Rollover)</span>
-                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewBankSoal(prevBank)}
+                            className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                            title="Pratinjau Butir Soal"
+                          >
+                            <Eye size={12} />
+                            <span>Preview</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={rollingOverBankId !== null}
+                            onClick={() => handleInlineRollover(prevBank)}
+                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+                          >
+                            {isRolling ? <Loader2 size={12} className="animate-spin" /> : <History size={12} />}
+                            <span>Ambil (Rollover)</span>
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -2124,5 +2138,15 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         </div>
       </form>
     </Modal>
+
+    {previewBankSoal && (
+      <CbtBankSoalDetailModal
+        isOpen={Boolean(previewBankSoal)}
+        onClose={() => setPreviewBankSoal(null)}
+        bankSoal={previewBankSoal}
+        readOnly={true}
+      />
+    )}
+    </>
   );
 };
