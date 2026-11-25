@@ -200,72 +200,19 @@ export function buildClassSubjectMatrix(params: {
     const gmJurusanKode = (gm.Jurusan?.kode || gm.Jurusan?.singkatan || '').toUpperCase().trim();
     const upperMapel = mapelName.toUpperCase();
 
-    // Cocokkan ke rombel-rombel tingkat ini yang berada di bawah jurusan tersebut
+    // Cocokkan ke rombel-rombel tingkat ini berdasarkan ID mutlak (kelas_id / jurusan_id)
     const matchedClasses = Array.from(classMap.values()).filter((cls) => {
-      if (gmJurusanId && cls.jurusanId && gmJurusanId === cls.jurusanId) return true;
+      if (gm.kelas_id) return cls.id === gm.kelas_id;
+      if (gmJurusanId && cls.jurusanId) return gmJurusanId === cls.jurusanId;
+
       const clsJur = (cls.jurusanKode || '').toUpperCase().trim();
-      const clsNameUpper = cls.name.toUpperCase();
-
       if (gmJurusanKode && clsJur) {
-        if (gmJurusanKode === clsJur) return true;
-        // Alias rumpun kejuruan SMK:
-        // TKJ <=> TKT, TJKT
-        if (
-          (gmJurusanKode === 'TKJ' || gmJurusanKode === 'TKT' || gmJurusanKode === 'TJKT') &&
-          (clsJur === 'TKJ' || clsJur === 'TKT' || clsJur === 'TJKT')
-        ) {
-          return true;
-        }
-        // TM <=> TP
-        if (
-          (gmJurusanKode === 'TM' || gmJurusanKode === 'TP') &&
-          (clsJur === 'TM' || clsJur === 'TP')
-        ) {
-          return true;
-        }
+        return gmJurusanKode === clsJur;
       }
 
-      if (clsJur) {
-        if (upperMapel.includes(clsJur)) return true;
-        const aliases = JURUSAN_ALIASES[clsJur] || [];
-        const isAliasMatch = aliases.some((a) => {
-          const reg = new RegExp(`(^|[^a-z0-9])${a}([^a-z0-9]|$)`, 'i');
-          return reg.test(mapelName);
-        });
-        if (isAliasMatch) return true;
-      }
-      if (gmJurusanKode && new RegExp(`\\b${gmJurusanKode}\\b`, 'i').test(clsNameUpper)) return true;
+      if (clsJur && upperMapel.includes(clsJur)) return true;
 
-      // Pemetaan rumpun kelas SMKN 1 PLERED & SMK Kejuruan:
-      // X TO 1 & 2 adalah TKR, X TO 3 & 4 adalah TSM
-      if (
-        (clsNameUpper.includes('TO 1') || clsNameUpper.includes('TO 2')) &&
-        (upperMapel.includes('TKR') || gmJurusanKode === 'TKR')
-      ) {
-        return true;
-      }
-      if (
-        (clsNameUpper.includes('TO 3') || clsNameUpper.includes('TO 4')) &&
-        (upperMapel.includes('TSM') || gmJurusanKode === 'TSM')
-      ) {
-        return true;
-      }
-
-      // X TE 1, 2, 3 adalah TOI; X TE 4, 5 adalah TAV
-      if (
-        (clsNameUpper.includes('TE 1') || clsNameUpper.includes('TE 2') || clsNameUpper.includes('TE 3')) &&
-        (upperMapel.includes('TOI') || gmJurusanKode === 'TOI')
-      ) {
-        return true;
-      }
-      if (
-        (clsNameUpper.includes('TE 4') || clsNameUpper.includes('TE 5')) &&
-        (upperMapel.includes('TAV') || gmJurusanKode === 'TAV')
-      ) {
-        return true;
-      }
-
-      // Jika plotting umum tanpa batasan jurusan sama sekali
+      // Jika plotting umum tanpa batasan kelas/jurusan sama sekali
       if (!gmJurusanId && !gmJurusanKode) return true;
 
       return false;
