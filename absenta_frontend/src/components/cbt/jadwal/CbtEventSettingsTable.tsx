@@ -101,7 +101,10 @@ export const CbtEventSettingsTable: React.FC<CbtEventSettingsTableProps> = ({
   const setActiveMutation = useMutation({
     mutationFn: (eventId: string) => cbtApi.setActiveEvent(eventId),
     onSuccess: (updatedEvent) => {
-      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.eventsSummary() });
+      queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['cbt-bank-soal-for-teacher-duty'] });
+      queryClient.invalidateQueries({ queryKey: ['my-pengawas-cbt-schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['my-action-hub-dashboard'] });
       updateActiveEvent(updatedEvent);
       toast.success(`Event aktif berhasil diubah ke: ${updatedEvent.nama_event}`);
       onSelectEventForOrchestrator?.(updatedEvent);
