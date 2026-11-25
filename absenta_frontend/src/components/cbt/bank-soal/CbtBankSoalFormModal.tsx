@@ -152,7 +152,6 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     return ''; // Wajib kosong jika tidak diberikan spesifik agar guru memilih secara sadar
   }, [defaultTingkat, effectiveTingkatList]);
 
-  const { activeSemester } = useSemesterOptions();
   const [tingkat, setTingkat] = useState<string>(() => {
     return bankSoalToEdit?.tingkat || defaultInitialTingkat;
   });
