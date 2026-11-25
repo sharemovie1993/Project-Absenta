@@ -31,6 +31,7 @@ import {
   Sparkles,
   Users,
   GitBranch,
+  BookOpen,
 } from 'lucide-react';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -139,6 +140,16 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
   const [sessionFilter, setSessionFilter] = useState<'all' | 'main' | 'remedial'>('all');
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const [hasInitializedExpanded, setHasInitializedExpanded] = useState(false);
+  const [collapsedMapels, setCollapsedMapels] = useState<Set<string>>(new Set());
+
+  const toggleMapelGroup = (mapelName: string) => {
+    setCollapsedMapels((prev) => {
+      const next = new Set(prev);
+      if (next.has(mapelName)) next.delete(mapelName);
+      else next.add(mapelName);
+      return next;
+    });
+  };
 
   // Auto-expand all parents that have remedial children on data load
   useEffect(() => {
@@ -206,13 +217,37 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
     });
 
     // 2. Bangun urutan baris bertingkat (Sesi Utama langsung diikuti anak remedialnya)
+    const getMapelName = (item: any) =>
+      item?.BankSoal?.Mapel?.nama_mapel || item?.BankSoal?.judul || 'Mata Pelajaran Lainnya';
+
+    const getKelasSortKey = (item: any) => {
+      const cfg = (item?.setting_keamanan as any) || {};
+      if (cfg.rombel_nama) return String(cfg.rombel_nama);
+      if (cfg.kelas_nama) return String(cfg.kelas_nama);
+      const match = String(item?.nama_sesi || '').match(/\(([^)-]+?)(?:\s*-\s*[^)]*)?\)/);
+      if (match?.[1]) return match[1].trim();
+      return String(item?.nama_sesi || '');
+    };
+
+    const parentItems = items.filter((item) => !childIds.has(item.id));
+    if (guruId) {
+      parentItems.sort((a, b) => {
+        const mCmp = getMapelName(a).localeCompare(getMapelName(b), 'id', { sensitivity: 'base' });
+        if (mCmp !== 0) return mCmp;
+        return getKelasSortKey(a).localeCompare(getKelasSortKey(b), 'id', { numeric: true, sensitivity: 'base' });
+      });
+    }
+
     const result: any[] = [];
     let mainCount = 0;
 
-    items.forEach((item) => {
-      if (childIds.has(item.id)) return; // Sesi anak akan dirender di bawah induknya
-
+    parentItems.forEach((item) => {
       const children = childrenMap.get(item.id) || [];
+      if (guruId && children.length > 1) {
+        children.sort((a, b) =>
+          getKelasSortKey(a).localeCompare(getKelasSortKey(b), 'id', { numeric: true, sensitivity: 'base' })
+        );
+      }
       const hasChildren = children.length > 0;
       const isExpanded = expandedParents.has(item.id);
       mainCount++;
@@ -222,6 +257,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         _isParent: hasChildren,
         _childCount: children.length,
         _isExpanded: isExpanded,
+        _mapelGroup: getMapelName(item),
       });
 
       if (hasChildren && isExpanded) {
@@ -232,6 +268,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
             _parentId: item.id,
             _parentName: item.nama_sesi,
             _isLastChild: childIdx === children.length - 1,
+            _mapelGroup: getMapelName(item),
           });
         });
       }
@@ -242,7 +279,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
       totalMainCount: mainCount,
       totalRemedialCount: remedialCount,
     };
-  }, [items, expandedParents]);
+  }, [items, expandedParents, guruId]);
 
   const displayData = useMemo(() => {
     if (sessionFilter === 'main') {
@@ -253,6 +290,20 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
     }
     return flattenedData;
   }, [flattenedData, sessionFilter]);
+
+  const groupedDisplayData = useMemo(() => {
+    if (!guruId) return [];
+    const groups = new Map<string, any[]>();
+    displayData.forEach((row: any) => {
+      const key = row._mapelGroup || row?.BankSoal?.Mapel?.nama_mapel || 'Mata Pelajaran Lainnya';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(row);
+    });
+    return Array.from(groups.entries()).map(([mapelName, rows]) => ({
+      mapelName,
+      rows,
+    }));
+  }, [displayData, guruId]);
 
   // Copy token helper
   const handleCopyToken = (token: string) => {
@@ -1319,6 +1370,77 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           }}
           onItemClick={(item) => handleOpenMonitor(item.id)}
         />
+      ) : guruId && groupedDisplayData.length > 0 ? (
+        <div className="space-y-4">
+          {groupedDisplayData.map((group) => {
+            const isCollapsed = collapsedMapels.has(group.mapelName);
+            return (
+              <div
+                key={group.mapelName}
+                className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleMapelGroup(group.mapelName)}
+                  className="w-full px-4 py-2.5 bg-slate-50/90 dark:bg-slate-800/60 border-b border-slate-200/70 dark:border-slate-800 flex items-center justify-between gap-3 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 shrink-0">
+                      <BookOpen size={14} />
+                    </span>
+                    <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 truncate">
+                      {group.mapelName}
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 bg-white dark:bg-slate-900">
+                      {group.rows.length} Sesi
+                    </Badge>
+                  </div>
+                  <span className="text-slate-400 shrink-0">
+                    {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                  </span>
+                </button>
+                {!isCollapsed && (
+                  <Table
+                    data={group.rows}
+                    columns={columns}
+                    loading={false}
+                    hoverable={true}
+                    emptyMessage="Belum ada jadwal ujian pada mapel ini"
+                    rowClassName={(row: any) => {
+                      if (row._isChildRow) {
+                        return 'bg-slate-50/70 dark:bg-slate-900/40 hover:bg-slate-100/70 dark:hover:bg-slate-800/40 transition-colors border-l-2 border-l-indigo-400 dark:border-l-indigo-500/80';
+                      }
+                      if (row._isParent && row._isExpanded) {
+                        return 'bg-slate-50/40 dark:bg-slate-800/20';
+                      }
+                      return '';
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })}
+          {pagination && (pagination.totalPages || 1) > 1 && (
+            <div className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+              <Table
+                data={[]}
+                columns={[]}
+                loading={false}
+                pagination={{
+                  currentPage: page,
+                  totalPages: pagination?.totalPages || 1,
+                  totalItems: pagination?.totalItems || 0,
+                  itemsPerPage: limit,
+                  onPageChange: (newPage) => setPage(newPage),
+                  onLimitChange: (newLimit) => {
+                    setLimit(newLimit);
+                    setPage(1);
+                  },
+                }}
+              />
+            </div>
+          )}
+        </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
           <Table
