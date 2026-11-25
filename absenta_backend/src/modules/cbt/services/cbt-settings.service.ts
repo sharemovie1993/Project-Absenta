@@ -20,6 +20,7 @@ export interface CbtEventItem {
   strict_browser_guard: boolean;
   enable_proctor?: boolean;
   tokenless?: boolean;
+  custom_token?: string | null;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
@@ -71,6 +72,7 @@ export class CbtSettingsService {
       strict_browser_guard: Boolean(row.strict_browser_guard),
       ...(row.enable_proctor !== null && row.enable_proctor !== undefined ? { enable_proctor: Boolean(row.enable_proctor) } : {}),
       tokenless: Boolean(row.tokenless ?? false),
+      custom_token: row.custom_token || null,
       is_active: Boolean(row.is_active),
       created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
       updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
@@ -101,6 +103,7 @@ export class CbtSettingsService {
         strict_browser_guard: Boolean(evt.strict_browser_guard),
         enable_proctor: evt.enable_proctor !== undefined ? Boolean(evt.enable_proctor) : null,
         tokenless: Boolean(evt.tokenless ?? false),
+        custom_token: evt.custom_token ? String(evt.custom_token).trim().toUpperCase().slice(0, 10) : null,
         is_active: Boolean(evt.is_active),
       },
       create: {
@@ -122,6 +125,7 @@ export class CbtSettingsService {
         strict_browser_guard: Boolean(evt.strict_browser_guard),
         enable_proctor: evt.enable_proctor !== undefined ? Boolean(evt.enable_proctor) : null,
         tokenless: Boolean(evt.tokenless ?? false),
+        custom_token: evt.custom_token ? String(evt.custom_token).trim().toUpperCase().slice(0, 10) : null,
         is_active: Boolean(evt.is_active),
       },
     });
@@ -341,6 +345,10 @@ export class CbtSettingsService {
       strict_browser_guard: payload.strict_browser_guard !== undefined ? payload.strict_browser_guard : (existing?.strict_browser_guard ?? true),
       enable_proctor: payload.enable_proctor !== undefined ? payload.enable_proctor : (existing?.enable_proctor ?? false),
       tokenless: payload.tokenless !== undefined ? Boolean(payload.tokenless) : (existing?.tokenless ?? false),
+      custom_token:
+        payload.custom_token !== undefined
+          ? (payload.custom_token ? String(payload.custom_token).trim().toUpperCase().slice(0, 10) : null)
+          : (existing?.custom_token ?? null),
       is_active: isActive,
       created_at: existing?.created_at || payload.created_at || now,
       updated_at: now,
@@ -354,6 +362,17 @@ export class CbtSettingsService {
     }
 
     await this.upsertRelationalEvent(tenantId, updatedEvent);
+
+    // Sinkronkan token_ujian pada jadwal event ini jika custom_token diisi
+    if (updatedEvent.custom_token) {
+      await prisma.cbtJadwalUjian.updateMany({
+        where: {
+          tenant_id: tenantId,
+          setting_keamanan: { path: ['event_id'], equals: updatedEvent.id },
+        },
+        data: { token_ujian: updatedEvent.custom_token },
+      });
+    }
 
     return updatedEvent;
   }

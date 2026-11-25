@@ -345,7 +345,19 @@ export class CbtJadwalService {
       }
     }
 
-    const token = data.token_ujian ? String(data.token_ujian).trim().toUpperCase() : this.generateToken();
+    let eventCustomToken: string | null = null;
+    const reqEventId = (data.setting_keamanan as any)?.event_id;
+    if (!data.token_ujian && reqEventId) {
+      const ev = await prisma.cbtEvent.findFirst({
+        where: { tenant_id: tenantId, id: String(reqEventId) },
+        select: { custom_token: true },
+      });
+      if (ev?.custom_token) eventCustomToken = ev.custom_token;
+    }
+
+    const token = data.token_ujian
+      ? String(data.token_ujian).trim().toUpperCase()
+      : eventCustomToken || this.generateToken();
 
     // ── BEHAVIOR KHUSUS SESI REMEDIAL & SUSULAN ──
     // Sesi yang dibuat dari remedial otomatis diaktifkan (status: 'ACTIVE')
@@ -1846,6 +1858,24 @@ export class CbtJadwalService {
       },
     });
 
+    const eventIdsInBatch = Array.from(
+      new Set(
+        items
+          .map((it) => (it.setting_keamanan as any)?.event_id)
+          .filter((id): id is string => Boolean(id))
+      )
+    );
+    const customTokenByEventId = new Map<string, string>();
+    if (eventIdsInBatch.length > 0) {
+      const eventsWithToken = await prisma.cbtEvent.findMany({
+        where: { tenant_id: tenantId, id: { in: eventIdsInBatch }, custom_token: { not: null } },
+        select: { id: true, custom_token: true },
+      });
+      eventsWithToken.forEach((ev) => {
+        if (ev.custom_token) customTokenByEventId.set(ev.id, ev.custom_token);
+      });
+    }
+
     const operations: any[] = [];
     const claimedExistingIds = new Set<string>();
     const updatedBankSoalIds = new Set<string>();
@@ -1984,7 +2014,9 @@ export class CbtJadwalService {
       }
 
       // Jika belum ada jadwal pada hari dan rombel tersebut, buat jadwal baru
-      const token = this.generateToken();
+      const itemEventId = (data.setting_keamanan as any)?.event_id;
+      const customEvToken = itemEventId ? customTokenByEventId.get(String(itemEventId)) : undefined;
+      const token = customEvToken || (data.token_ujian ? String(data.token_ujian).trim().toUpperCase() : this.generateToken());
       operations.push(
         prisma.cbtJadwalUjian.create({
           data: {

@@ -46,6 +46,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
   const [strictBrowserGuard, setStrictBrowserGuard] = useState(true);
   const [enableProctor, setEnableProctor] = useState(false);
   const [tokenless, setTokenless] = useState(false);
+  const [customToken, setCustomToken] = useState('');
   const [isActive, setIsActive] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -63,6 +64,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
       setStrictBrowserGuard(event.strict_browser_guard ?? true);
       setEnableProctor(event.enable_proctor ?? false);
       setTokenless(event.tokenless ?? false);
+      setCustomToken(event.custom_token || '');
       setIsActive(event.is_active ?? false);
     } else {
       setTpId(defaultTpId || (tpOptions.find((t) => t.is_active)?.value || tpOptions[0]?.value || ''));
@@ -77,6 +79,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
       setStrictBrowserGuard(true);
       setEnableProctor(false);
       setTokenless(false);
+      setCustomToken('');
       setIsActive(false);
     }
   }, [event, defaultTpId, tpOptions, isOpen]);
@@ -145,6 +148,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
         strict_browser_guard: strictBrowserGuard,
         enable_proctor: enableProctor,
         tokenless,
+        custom_token: !tokenless && customToken.trim() ? customToken.trim().toUpperCase() : null,
         is_active: isActive,
       };
 
@@ -540,6 +544,27 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
                 className="w-4 h-4 mt-0.5 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
               />
             </div>
+
+            {!tokenless && (
+              <div className="sm:col-span-2 space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <Lock size={13} className="text-indigo-500" />
+                  Token Khusus Seragam — Semua Ruang Sama (Opsional)
+                </Label>
+                <Input
+                  value={customToken}
+                  onChange={(e) =>
+                    setCustomToken(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))
+                  }
+                  placeholder="Kosongkan untuk token acak tiap ruang, atau isi misal: SIMULASI"
+                  className="text-xs font-mono font-bold tracking-wider uppercase rounded-xl"
+                  maxLength={10}
+                />
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  Cocok untuk simulasi di lapangan: seluruh ruang & sesi dalam event ini akan memakai token yang sama persis.
+                </p>
+              </div>
+            )}
 
             <div className="sm:col-span-2 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-950/20 flex items-start justify-between gap-3">
               <div>

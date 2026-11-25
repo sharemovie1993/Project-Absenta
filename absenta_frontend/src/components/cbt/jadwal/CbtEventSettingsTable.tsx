@@ -373,6 +373,11 @@ export const CbtEventSettingsTable: React.FC<CbtEventSettingsTableProps> = ({
                                         Bebas Token
                                       </span>
                                     )}
+                                    {!event.tokenless && event.custom_token && (
+                                      <span className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-mono font-bold">
+                                        Token: {event.custom_token}
+                                      </span>
+                                    )}
                                   </div>
                                 </td>
 
