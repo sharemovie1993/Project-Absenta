@@ -860,6 +860,11 @@ export const CbtTransferNilaiModal: React.FC<CbtTransferNilaiModalProps> = ({
                                       (Awal: {initialScore})
                                     </span>
                                   )}
+                                  {(p.metadata_perangkat as any)?.remedial_audit?.raw_remedial_score !== undefined && (
+                                    <span className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold">
+                                      (Murni: {Number((p.metadata_perangkat as any).remedial_audit.raw_remedial_score).toFixed(1)})
+                                    </span>
+                                  )}
                                 </span>
                               ) : isZero ? (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-semibold bg-rose-50 text-rose-600 border border-rose-200">

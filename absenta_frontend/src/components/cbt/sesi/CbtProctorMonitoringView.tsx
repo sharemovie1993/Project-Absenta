@@ -926,8 +926,8 @@ export const CbtProctorMonitoringView: React.FC<CbtProctorMonitoringViewProps> =
             <span className="font-black text-xs px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
               {Number(row.nilai_akhir).toFixed(1)}
             </span>
-            {isRemedial && rawScore !== undefined && Number(rawScore) !== Number(row.nilai_akhir) && (
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5 whitespace-nowrap">
+            {(isRemedial || remedialAudit?.is_remedial) && rawScore !== undefined && Number(rawScore) !== Number(row.nilai_akhir) && (
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5 whitespace-nowrap">
                 (Murni: {Number(rawScore).toFixed(1)})
               </span>
             )}
