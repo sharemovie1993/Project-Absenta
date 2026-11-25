@@ -287,7 +287,7 @@ export class DashboardActionHubService {
       if (activeTp?.id) kbmWhere.tahun_pelajaran_id = activeTp.id;
       if (activeSem?.id) kbmWhere.semester_id = activeSem.id;
 
-      let kbmList = await prisma.jadwalKBM.findMany({
+      const kbmList = await prisma.jadwalKBM.findMany({
         where: kbmWhere,
         include: {
           Mapel: { select: { nama_mapel: true } },
@@ -295,17 +295,6 @@ export class DashboardActionHubService {
         },
         orderBy: { jam_mulai: 'asc' },
       });
-
-      if (kbmList.length === 0 && (activeTp?.id || activeSem?.id)) {
-        kbmList = await prisma.jadwalKBM.findMany({
-          where: { tenant_id: tenantId, guru_id: guruId, hari: todayHari },
-          include: {
-            Mapel: { select: { nama_mapel: true } },
-            Kelas: { select: { nama_kelas: true } },
-          },
-          orderBy: { jam_mulai: 'asc' },
-        });
-      }
 
       if (kbmList.length === 0) return [];
 
@@ -418,19 +407,9 @@ export class DashboardActionHubService {
       if (activeTp?.id) whereCondition.tahun_pelajaran_id = activeTp.id;
       if (activeSem?.id) whereCondition.semester_id = activeSem.id;
 
-      let piketList = await prisma.jadwalPiketGuru.findMany({
+      const piketList = await prisma.jadwalPiketGuru.findMany({
         where: whereCondition,
       });
-
-      // Fallback jika belum tersinkronisasi semester aktif
-      if (piketList.length === 0 && (activeTp?.id || activeSem?.id)) {
-        piketList = await prisma.jadwalPiketGuru.findMany({
-          where: {
-            tenant_id: tenantId,
-            guru_id: guruId,
-          }
-        });
-      }
 
       if (!piketList || piketList.length === 0) return [];
 
@@ -1544,10 +1523,17 @@ export class DashboardActionHubService {
    */
   private async detectCbtPengawasTasks(tenantId: string, guruId: string): Promise<UnifiedActionItem[]> {
     try {
+      const [activeTp, activeSem] = await Promise.all([
+        prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+        prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+      ]);
+
       const mySchedules = await prisma.cbtJadwalUjian.findMany({
         where: {
           tenant_id: tenantId,
           status: { notIn: ['COMPLETED', 'ARCHIVED'] },
+          ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
+          ...(activeSem?.id ? { semester_id: activeSem.id } : {}),
           OR: [
             { setting_keamanan: { path: ['pengawas_1_id'], equals: guruId } },
             { setting_keamanan: { path: ['pengawas_2_id'], equals: guruId } },
@@ -1678,10 +1664,17 @@ export class DashboardActionHubService {
    */
   private async detectCbtLiveAuthorTasks(tenantId: string, guruId: string): Promise<UnifiedActionItem[]> {
     try {
+      const [activeTp, activeSem] = await Promise.all([
+        prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+        prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } }),
+      ]);
+
       const liveSchedules = await prisma.cbtJadwalUjian.findMany({
         where: {
           tenant_id: tenantId,
           status: { in: ['ACTIVE', 'PAUSED'] },
+          ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
+          ...(activeSem?.id ? { semester_id: activeSem.id } : {}),
           BankSoal: {
             OR: [
               { guru_id: guruId },
