@@ -341,6 +341,7 @@ export interface CbtEventItem {
   token_refresh_interval?: number;
   strict_browser_guard: boolean;
   enable_proctor?: boolean;
+  tokenless?: boolean;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;

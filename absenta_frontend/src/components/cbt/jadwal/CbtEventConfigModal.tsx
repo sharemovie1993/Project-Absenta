@@ -45,6 +45,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
   const [tokenRefreshInterval, setTokenRefreshInterval] = useState(0);
   const [strictBrowserGuard, setStrictBrowserGuard] = useState(true);
   const [enableProctor, setEnableProctor] = useState(false);
+  const [tokenless, setTokenless] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -61,6 +62,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
       setTokenRefreshInterval(event.token_refresh_interval ?? 0);
       setStrictBrowserGuard(event.strict_browser_guard ?? true);
       setEnableProctor(event.enable_proctor ?? false);
+      setTokenless(event.tokenless ?? false);
       setIsActive(event.is_active ?? false);
     } else {
       setTpId(defaultTpId || (tpOptions.find((t) => t.is_active)?.value || tpOptions[0]?.value || ''));
@@ -74,6 +76,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
       setTokenRefreshInterval(0);
       setStrictBrowserGuard(true);
       setEnableProctor(false);
+      setTokenless(false);
       setIsActive(false);
     }
   }, [event, defaultTpId, tpOptions, isOpen]);
@@ -141,6 +144,7 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
         token_refresh_interval: Number(tokenRefreshInterval),
         strict_browser_guard: strictBrowserGuard,
         enable_proctor: enableProctor,
+        tokenless,
         is_active: isActive,
       };
 
@@ -520,7 +524,24 @@ export const CbtEventConfigModal: React.FC<CbtEventConfigModalProps> = ({
               </select>
             </div>
 
-            <div className="p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-950/20 flex items-start justify-between gap-3 self-end">
+            <div className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20 flex items-start justify-between gap-3 self-end">
+              <div>
+                <p className="text-xs font-bold text-emerald-950 dark:text-emerald-200">
+                  Bebas Token (Tokenless / Simulasi)
+                </p>
+                <p className="text-[10px] text-emerald-700 dark:text-emerald-300 mt-0.5">
+                  Siswa langsung masuk ujian tanpa perlu mengetik token dari pengawas.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={tokenless}
+                onChange={(e) => setTokenless(e.target.checked)}
+                className="w-4 h-4 mt-0.5 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
+              />
+            </div>
+
+            <div className="sm:col-span-2 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-950/20 flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
                   <Sparkles size={13} className="text-indigo-600" />

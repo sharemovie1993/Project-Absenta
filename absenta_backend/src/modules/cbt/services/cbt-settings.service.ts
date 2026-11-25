@@ -19,6 +19,7 @@ export interface CbtEventItem {
   token_refresh_interval?: number;
   strict_browser_guard: boolean;
   enable_proctor?: boolean;
+  tokenless?: boolean;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
@@ -69,6 +70,7 @@ export class CbtSettingsService {
       token_refresh_interval: Number(row.token_refresh_interval ?? 0),
       strict_browser_guard: Boolean(row.strict_browser_guard),
       ...(row.enable_proctor !== null && row.enable_proctor !== undefined ? { enable_proctor: Boolean(row.enable_proctor) } : {}),
+      tokenless: Boolean(row.tokenless ?? false),
       is_active: Boolean(row.is_active),
       created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
       updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
@@ -98,6 +100,7 @@ export class CbtSettingsService {
         token_refresh_interval: Number(evt.token_refresh_interval ?? 0),
         strict_browser_guard: Boolean(evt.strict_browser_guard),
         enable_proctor: evt.enable_proctor !== undefined ? Boolean(evt.enable_proctor) : null,
+        tokenless: Boolean(evt.tokenless ?? false),
         is_active: Boolean(evt.is_active),
       },
       create: {
@@ -118,6 +121,7 @@ export class CbtSettingsService {
         token_refresh_interval: Number(evt.token_refresh_interval ?? 0),
         strict_browser_guard: Boolean(evt.strict_browser_guard),
         enable_proctor: evt.enable_proctor !== undefined ? Boolean(evt.enable_proctor) : null,
+        tokenless: Boolean(evt.tokenless ?? false),
         is_active: Boolean(evt.is_active),
       },
     });
@@ -336,6 +340,7 @@ export class CbtSettingsService {
       token_refresh_interval: payload.token_refresh_interval !== undefined ? payload.token_refresh_interval : (existing?.token_refresh_interval ?? 0),
       strict_browser_guard: payload.strict_browser_guard !== undefined ? payload.strict_browser_guard : (existing?.strict_browser_guard ?? true),
       enable_proctor: payload.enable_proctor !== undefined ? payload.enable_proctor : (existing?.enable_proctor ?? false),
+      tokenless: payload.tokenless !== undefined ? Boolean(payload.tokenless) : (existing?.tokenless ?? false),
       is_active: isActive,
       created_at: existing?.created_at || payload.created_at || now,
       updated_at: now,

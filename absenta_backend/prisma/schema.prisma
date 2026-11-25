@@ -1730,6 +1730,7 @@ model CbtEvent {
   token_refresh_interval  Int            @default(0)
   strict_browser_guard    Boolean        @default(true)
   enable_proctor          Boolean?
+  tokenless               Boolean        @default(false)
   is_active               Boolean        @default(false)
   created_at              DateTime       @default(now())
   updated_at              DateTime       @updatedAt

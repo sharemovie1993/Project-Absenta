@@ -362,10 +362,15 @@ export const CbtEventSettingsTable: React.FC<CbtEventSettingsTableProps> = ({
                                       <Lock size={11} className={event.lock_teacher_scheduling ? 'text-indigo-600' : 'text-slate-400'} />
                                       {event.lock_teacher_scheduling ? 'Kunci' : 'Bebas'}
                                     </span>
-                                    {Boolean(event.token_refresh_interval) && (
+                                    {Boolean(event.token_refresh_interval) && !event.tokenless && (
                                       <span className="flex items-center gap-1 text-slate-500">
                                         <Clock size={11} className="text-amber-500" />
                                         {event.token_refresh_interval}m
+                                      </span>
+                                    )}
+                                    {event.tokenless && (
+                                      <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
+                                        Bebas Token
                                       </span>
                                     )}
                                   </div>

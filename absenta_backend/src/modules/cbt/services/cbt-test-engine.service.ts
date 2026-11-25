@@ -312,6 +312,12 @@ export class CbtTestEngineService {
       }
     }
 
+    const tokenlessEvents = await prisma.cbtEvent.findMany({
+      where: { tenant_id: tenantId, tokenless: true },
+      select: { id: true },
+    });
+    const tokenlessEventIds = new Set(tokenlessEvents.map((e) => e.id));
+
     const rawResult = jadwalList
       .filter((j) => {
         const sec = (j.setting_keamanan as any) || {};
@@ -398,7 +404,8 @@ export class CbtTestEngineService {
         const displayMapel = isKuisUnit && unitNama ? `${baseMapel} — ${unitNama}` : baseMapel;
 
         const isRemedialSchedule = Boolean(sec.is_remedial);
-        const isTokenless = isRemedialSchedule && sec.tokenless !== false;
+        const isEventTokenless = Boolean(sec.event_id && tokenlessEventIds.has(String(sec.event_id)));
+        const isTokenless = (isRemedialSchedule && sec.tokenless !== false) || isEventTokenless || sec.tokenless === true;
         const parentJadwalId = (sec.parent_jadwal_id || sec.original_jadwal_id || null) as string | null;
 
         // Deteksi Otomatis Susulan vs Remedial Berbasis Hak Regulasi Kurikulum Merdeka
@@ -1006,7 +1013,17 @@ export class CbtTestEngineService {
 
     const mapelName = (jadwal.BankSoal as any)?.judul || jadwal.nama_sesi;
     const isRemedial = Boolean((jadwal.setting_keamanan as any)?.is_remedial);
-    const isTokenless = isRemedial && (jadwal.setting_keamanan as any)?.tokenless !== false;
+    const linkedEventId = (jadwal.setting_keamanan as any)?.event_id;
+    const linkedEvent = linkedEventId
+      ? await prisma.cbtEvent.findFirst({
+          where: { tenant_id: tenantId, id: String(linkedEventId) },
+          select: { tokenless: true },
+        })
+      : null;
+    const isTokenless =
+      (isRemedial && (jadwal.setting_keamanan as any)?.tokenless !== false) ||
+      Boolean(linkedEvent?.tokenless) ||
+      (jadwal.setting_keamanan as any)?.tokenless === true;
 
     if (!isRemedial && jadwal.status === 'DRAFT') {
       const err: any = new Error(
