@@ -1475,14 +1475,8 @@ export class CbtTestEngineService {
       const kktp = Number(sec.kktp_threshold) || 75;
 
       if (policy === 'max_kktp') {
-        // Standar Regulasi: Jika nilai remedial melampaui KKTP, skor dipatok maksimal = batas KKTP
-        if (rawScore >= kktp) {
-          nilaiAkhir = kktp;
-        } else if (initialScore !== null) {
-          nilaiAkhir = Math.max(initialScore, rawScore);
-        } else {
-          nilaiAkhir = rawScore;
-        }
+        // Kebijakan Tuntas KKTP: Siswa yang menuntaskan sesi remedial memperoleh nilai akhir = batas KKTP (besar/kecil skor tes)
+        nilaiAkhir = kktp;
       } else if (policy === 'highest') {
         // Nilai Tertinggi: Mengambil skor terbaik antara sesi awal vs remedial
         if (initialScore !== null) {

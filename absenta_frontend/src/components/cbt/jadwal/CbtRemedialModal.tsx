@@ -776,8 +776,8 @@ export const CbtRemedialModal: React.FC<CbtRemedialModalProps> = ({
               {[
                 {
                   id: 'max_kktp',
-                  label: 'Maksimal KKTP',
-                  desc: 'Standar regulasi, skor maksimal = batas KKTP.',
+                  label: 'Tuntas KKTP',
+                  desc: 'Siswa yang menuntaskan remedial langsung mendapat nilai batas KKTP (besar/kecil skor tes).',
                 },
                 {
                   id: 'highest',

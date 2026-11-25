@@ -825,10 +825,10 @@ export const CbtMultiClassRemedialModal: React.FC<CbtMultiClassRemedialModalProp
                     />
                     <div>
                       <div className="font-bold text-slate-800 dark:text-slate-200">
-                        Maksimal Nilai KKTP ({kktpThreshold}) (Rekomendasi Kurikulum)
+                        Tuntas Nilai KKTP ({kktpThreshold}) (Rekomendasi Kurikulum)
                       </div>
                       <div className="text-[11px] text-slate-500">
-                        Nilai remedial jika melebihi batas dipatok pada {kktpThreshold}.
+                        Siswa yang menuntaskan sesi remedial langsung mendapat nilai {kktpThreshold} (besar/kecil skor tes).
                       </div>
                     </div>
                   </label>
