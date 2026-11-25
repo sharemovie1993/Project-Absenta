@@ -1497,6 +1497,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
             {/* 4. Model Distribusi: Tentukan Intensi Terlebih Dahulu (Mandiri vs Bersama) */}
             {!isAwaitingRolloverDecision && (
+            <>
             <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               {!bankSoalToEdit && activeEventId && previousEventBanks.length > 0 && userChoseCreateNew && (
                 <div className="flex items-center justify-between pb-1">
@@ -1911,6 +1912,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 );
               })()}
             </div>
+            </>
             )}
           </div>
         ) : (
