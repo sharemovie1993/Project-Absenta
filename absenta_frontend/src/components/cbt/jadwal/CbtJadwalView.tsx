@@ -623,8 +623,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                 );
               },
             },
-          ]
-        : []),
+          ]),
       {
         key: 'token',
         title: 'Token Masuk',
