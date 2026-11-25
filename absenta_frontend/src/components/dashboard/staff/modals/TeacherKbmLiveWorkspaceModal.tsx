@@ -112,6 +112,27 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
 
   const isReportMode = Boolean(isFinished || isOverdue);
   const canMarkAttendance = (isSessionOpen || isTeacherPresent) && !isReportMode;
+  const canOpenJournal = Boolean(isSessionOpen || isTeacherPresent || isReportMode);
+
+  const [nowTick, setNowTick] = useState(() => new Date());
+  useEffect(() => {
+    if (!isOpen) return;
+    const t = setInterval(() => setNowTick(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, [isOpen]);
+
+  const rawJamMulai: string = timelineItem?.jam_mulai || '';
+  const canStartSessionNow = useMemo(() => {
+    if (isSessionOpen || isTeacherPresent || timelineItem?.isReadyToOpen || timelineItem?.status?.isReadyToOpen) {
+      return true;
+    }
+    if (!rawJamMulai || !rawJamMulai.includes(':')) return true;
+    const [h, m] = rawJamMulai.split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return true;
+    const startMinutes = h * 60 + m;
+    const currentMinutes = nowTick.getHours() * 60 + nowTick.getMinutes();
+    return currentMinutes >= startMinutes - 15;
+  }, [isSessionOpen, isTeacherPresent, timelineItem, rawJamMulai, nowTick]);
 
   // ── 1. ACTIVE ATTENDANCE QUERY ──
   const { data: presensiRes, isLoading: loadingPresensi, refetch: refetchAttendance } = useQuery({
@@ -475,9 +496,18 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
               <Button
                 type="button"
                 size="sm"
-                onClick={() => onOpenJournalModal(timelineItem)}
-                className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black flex items-center gap-1 cursor-pointer shadow-xs border-none"
-                title="Isi Jurnal KBM Kelas Ini"
+                disabled={!canOpenJournal}
+                onClick={() => {
+                  if (!canOpenJournal) return;
+                  onOpenJournalModal(timelineItem);
+                }}
+                className={cn(
+                  "h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-black flex items-center gap-1 border-none transition-all",
+                  !canOpenJournal
+                    ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-60"
+                    : "bg-blue-600 hover:bg-blue-500 text-white cursor-pointer shadow-xs"
+                )}
+                title={!canOpenJournal ? "Jurnal KBM aktif setelah sesi dibuka" : "Isi Jurnal KBM Kelas Ini"}
               >
                 <FileText size={14} />
                 <span>Jurnal</span>
@@ -489,9 +519,22 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
               <Button
                 type="button"
                 size="sm"
-                onClick={() => onOpenPhotoModal(timelineItem)}
-                className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs border-none animate-pulse"
-                title="Sesi telah aktif. Klik untuk mengambil foto verifikasi kehadiran Guru di kelas"
+                disabled={!canStartSessionNow}
+                onClick={() => {
+                  if (!canStartSessionNow) return;
+                  onOpenPhotoModal(timelineItem);
+                }}
+                className={cn(
+                  "h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all",
+                  !canStartSessionNow
+                    ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60"
+                    : "bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer shadow-xs border-none animate-pulse"
+                )}
+                title={
+                  !canStartSessionNow
+                    ? `Foto Masuk Guru aktif 15 menit sebelum jam KBM (${rawJamMulai} WIB)`
+                    : "Sesi telah aktif. Klik untuk mengambil foto verifikasi kehadiran Guru di kelas"
+                }
               >
                 <Camera size={14} />
                 <span>📸 Foto Masuk Guru</span>
@@ -671,7 +714,9 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
                     {isSessionOpen ? "Sesi KBM Telah Dibuka Oleh Petugas Kelas (Guru Belum Hadir)" : "Sesi KBM Belum Dibuka"}
                   </h4>
                   <p className="text-[11px] sm:text-xs text-amber-800/90 dark:text-amber-200/80 mt-0.5">
-                    {isSessionOpen
+                    {!canStartSessionNow
+                      ? `Sesi belum dapat dibuka. Tombol Foto Kehadiran Guru akan aktif otomatis 15 menit sebelum jam KBM (${rawJamMulai} WIB).`
+                      : isSessionOpen
                       ? "Petugas kelas telah membuka sesi untuk mengabsenkan siswa. Silakan Bapak/Ibu Guru mengambil foto verifikasi di kelas agar kehadiran tercatat sebagai HADIR."
                       : "Presensi siswa terkunci. Sesuai aturan KBM, Guru pengampu wajib membuka sesi (ambil foto Mulai KBM) terlebih dahulu sebelum dapat mengabsenkan siswa."}
                   </p>
@@ -680,8 +725,18 @@ export const TeacherKbmLiveWorkspaceModal: React.FC<TeacherKbmLiveWorkspaceModal
               {onOpenPhotoModal && (
                 <button
                   type="button"
-                  onClick={() => onOpenPhotoModal(timelineItem)}
-                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all active:scale-95 shrink-0"
+                  disabled={!canStartSessionNow}
+                  onClick={() => {
+                    if (!canStartSessionNow) return;
+                    onOpenPhotoModal(timelineItem);
+                  }}
+                  title={!canStartSessionNow ? `Aktif 15 menit sebelum jam KBM (${rawJamMulai} WIB)` : "Ambil foto kehadiran guru"}
+                  className={cn(
+                    "w-full sm:w-auto px-4 py-2 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all shrink-0",
+                    !canStartSessionNow
+                      ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-70"
+                      : "bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer shadow-xs active:scale-95"
+                  )}
                 >
                   <Camera size={15} />
                   <span>📸 Ambil Foto Kehadiran Guru</span>
