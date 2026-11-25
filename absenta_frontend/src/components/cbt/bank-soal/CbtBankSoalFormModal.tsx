@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Modal, Button, Input, SearchableSelect, Badge } from '@/components/ui';
-import { useGuruOptions, useMapelOptions, useSemesterOptions, useJurusanOptions } from '@/components/common';
+import { useGuruOptions, useMapelOptions, useSemesterOptions, useJurusanOptions, useTahunPelajaranOptions } from '@/components/common';
 import { useJenjang } from '@/hooks/useJenjang';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import { kurikulumApi } from '@/api/kurikulum.api';
@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CbtBankSoal, CbtEventItem } from '@/types/cbt.types';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
-import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users, AlertCircle, AlertTriangle, Share2, Check, ShieldCheck, Star, Lock } from 'lucide-react';
+import { Layers, User, Sparkles, ArrowRight, ArrowLeft, CheckCircle2, Users, AlertCircle, AlertTriangle, Share2, Check, ShieldCheck, Star, Lock, History, Loader2 } from 'lucide-react';
 import {
   type CbtBankSoalScope,
   getOfficialAsesmenTypes,
@@ -76,6 +76,21 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   // ── Kepatuhan Pengaturan Event (Event-Compliance Engine) ──
   const cbtMode = useCbtOperationMode();
   const activeEvent = propActiveEvent !== undefined ? propActiveEvent : cbtMode.activeEvent;
+  const { activeYear: activeTp } = useTahunPelajaranOptions();
+  const { activeSemester, rawList: semRawList = [] } = useSemesterOptions();
+  const activeEventId = activeEvent?.id;
+  const activeTpId = activeTp?.id || activeEvent?.tahun_pelajaran_id;
+  const activeSemId = useMemo(() => {
+    if (activeSemester?.id) return activeSemester.id;
+    if (activeEvent?.semester && semRawList.length > 0) {
+      const target = String(activeEvent.semester).toUpperCase().trim();
+      const matched = semRawList.find((s: any) =>
+        String(s.nama_semester || s.nama || '').toUpperCase().includes(target)
+      );
+      if (matched?.id) return matched.id;
+    }
+    return undefined;
+  }, [activeSemester?.id, activeEvent?.semester, semRawList]);
   const eventName = propEventName || cbtMode.eventName;
   const rawTargetTingkat =
     propTargetTingkat && propTargetTingkat.length > 0
@@ -390,15 +405,18 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     return Array.from(seen.values());
   }, [tenantUnitsRes?.data]);
 
-  // Ambil daftar bank soal yang sudah ada untuk mapel & tingkat ini guna pencegahan duplikasi varian jurusan
+  // Ambil daftar bank soal yang sudah ada pada EVENT & TP/SEMESTER AKTIF guna pencegahan duplikasi
   const { data: existingBanksRes } = useQuery({
-    queryKey: ['cbt-existing-banks-by-mapel-tingkat', mapelId, tingkat],
+    queryKey: ['cbt-existing-banks-by-mapel-tingkat', mapelId, tingkat, activeTpId, activeSemId, activeEventId],
     queryFn: () =>
       mapelId
         ? cbtApi
             .getBankSoalList({
               mapel_id: mapelId,
               tingkat: tingkat !== 'SEMUA' ? tingkat : undefined,
+              ...(activeTpId ? { tahun_pelajaran_id: activeTpId } : {}),
+              ...(activeSemId ? { semester_id: activeSemId } : {}),
+              ...(activeEventId ? { event_id: activeEventId } : {}),
               limit: 200,
             })
             .catch(() => null)
@@ -406,6 +424,67 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     enabled: isOpen && Boolean(mapelId),
     staleTime: 30 * 1000,
   });
+
+  // Ambil daftar bank soal dari event/TP sebelumnya untuk tawaran Rollover langsung di dalam modal
+  const [rollingOverBankId, setRollingOverBankId] = useState<string | null>(null);
+  const { data: previousEventBanksRes } = useQuery({
+    queryKey: ['cbt-previous-banks-for-rollover-offer', mapelId, tingkat, activeEventId],
+    queryFn: () =>
+      mapelId && tingkat
+        ? cbtApi
+            .getBankSoalList({
+              mapel_id: mapelId,
+              tingkat: tingkat !== 'SEMUA' ? tingkat : undefined,
+              limit: 50,
+            })
+            .catch(() => null)
+        : null,
+    enabled: isOpen && !bankSoalToEdit && Boolean(mapelId) && Boolean(tingkat),
+    staleTime: 30 * 1000,
+  });
+
+  const previousEventBanks: CbtBankSoal[] = useMemo(() => {
+    const raw = previousEventBanksRes?.items || (previousEventBanksRes as any)?.data?.items || [];
+    return raw.filter((b: CbtBankSoal) => {
+      const totalSoal = b.jumlah_soal || b._count?.Soal || 0;
+      if (totalSoal <= 0) return false;
+      if (activeEventId && b.event_id === activeEventId) return false;
+      return true;
+    });
+  }, [previousEventBanksRes, activeEventId]);
+
+  const handleInlineRollover = async (sourceBank: CbtBankSoal) => {
+    if (!activeEventId) {
+      toast.error('Belum ada Event CBT aktif untuk tujuan rollover.');
+      return;
+    }
+    try {
+      setRollingOverBankId(sourceBank.id);
+      const res = await cbtApi.rolloverBankSoal({
+        bank_soal_ids: [sourceBank.id],
+        target_event_id: activeEventId,
+        target_tahun_pelajaran_id: activeTpId,
+        target_semester_id: activeSemId,
+        keep_status: true,
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: cbtQueryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ['cbt-bank-soal-for-teacher-duty'] }),
+        queryClient.invalidateQueries({ queryKey: ['cbt-existing-banks-by-mapel-tingkat'] }),
+      ]);
+      if (res.created_count > 0) {
+        toast.success(`Berhasil mengambil & rollover "${sourceBank.judul}" ke event ini!`);
+      } else {
+        toast.success(`Bank soal "${sourceBank.judul}" sudah tersedia di event ini.`);
+      }
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Gagal melakukan rollover bank soal');
+    } finally {
+      setRollingOverBankId(null);
+    }
+  };
 
   const existingBanks = useMemo(() => {
     return existingBanksRes?.items || (existingBanksRes as any)?.data?.items || [];
@@ -1333,6 +1412,53 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 </p>
               )}
             </div>
+
+            {/* Tawaran Rollover jika sudah ada naskah Mapel & Tingkat ini di Event / TP Sebelumnya */}
+            {!bankSoalToEdit && activeEventId && previousEventBanks.length > 0 && (
+              <div className="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-2">
+                <div className="flex items-start gap-2">
+                  <History size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-indigo-950 dark:text-indigo-100">
+                      Naskah Soal Tingkat {tingkat} Sudah Pernah Dibuat di Event Sebelumnya
+                    </div>
+                    <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-0.5 leading-relaxed">
+                      Ditemukan {previousEventBanks.length} bank soal berisi butir soal untuk mapel & tingkat ini. Anda dapat langsung <strong>mengambil (Rollover)</strong> ke event ini atau tetap <strong>membuat naskah baru</strong> di bawah.
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                  {previousEventBanks.slice(0, 4).map((prevBank) => {
+                    const totalSoal = prevBank.jumlah_soal || prevBank._count?.Soal || 0;
+                    const isRolling = rollingOverBankId === prevBank.id;
+                    return (
+                      <div
+                        key={prevBank.id}
+                        className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 truncate">
+                            {prevBank.judul}
+                          </div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                            {prevBank.Guru?.nama_guru || '-'} • {totalSoal} Soal • {prevBank.TahunPelajaran?.tahun || 'Event Sebelumnya'}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={rollingOverBankId !== null}
+                          onClick={() => handleInlineRollover(prevBank)}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
+                        >
+                          {isRolling ? <Loader2 size={12} className="animate-spin" /> : <History size={12} />}
+                          <span>Ambil (Rollover)</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* 4. Model Distribusi: Tentukan Intensi Terlebih Dahulu (Mandiri vs Bersama) */}
             <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
