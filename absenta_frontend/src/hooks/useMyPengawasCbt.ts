@@ -3,9 +3,28 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import { cbtApi } from '@/api/cbt.api';
 import type { CbtJadwalUjian } from '@/types/cbt.types';
+import { useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
+import { useCbtOperationMode } from '@/components/cbt/cbtModeHelper';
 
 export function useMyPengawasCbt(overrideGuruId?: string) {
   const user = useAuthStore((state) => state.user);
+  const { activeEvent } = useCbtOperationMode();
+  const { activeYear: activeTp } = useTahunPelajaranOptions();
+  const { activeSemester, rawList: semRawList = [] } = useSemesterOptions();
+
+  const effectiveTpId = activeTp?.id || activeEvent?.tahun_pelajaran_id;
+  const effectiveSemId = useMemo(() => {
+    if (activeSemester?.id) return activeSemester.id;
+    if (activeEvent?.semester && semRawList.length > 0) {
+      const target = String(activeEvent.semester).toUpperCase().trim();
+      const matched = semRawList.find((s: any) =>
+        String(s.nama_semester || s.nama || '').toUpperCase().includes(target)
+      );
+      if (matched?.id) return matched.id;
+    }
+    return undefined;
+  }, [activeSemester?.id, activeEvent?.semester, semRawList]);
+
   const rawRole = String(
     user?.role?.name ||
       (typeof user?.role === 'string' ? user.role : (user as any)?.roleName) ||
@@ -23,19 +42,29 @@ export function useMyPengawasCbt(overrideGuruId?: string) {
       null);
 
   const { data: myPengawasCbtData, isLoading, refetch } = useQuery<CbtJadwalUjian[]>({
-    queryKey: ['my-pengawas-cbt-schedules', effectiveGuruId],
+    queryKey: ['my-pengawas-cbt-schedules', effectiveGuruId, effectiveTpId, effectiveSemId],
     queryFn: async () => {
       if (!effectiveGuruId || isSiswa) return [];
-      // Prioritaskan pengawas_guru_id langsung di query backend
+      // Prioritaskan pengawas_guru_id langsung di query backend + isolasi konteks akademik
       const res = await cbtApi
-        .getJadwalList({ limit: 500, pengawas_guru_id: effectiveGuruId })
+        .getJadwalList({
+          limit: 500,
+          pengawas_guru_id: effectiveGuruId,
+          ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
+          ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
+        })
         .catch(() => null);
       let list = res?.items || [];
 
       // Fallback jika backend versi lama belum memfilter pengawas_guru_id
       if (list.length === 0) {
         const fallbackRes = await cbtApi
-          .getJadwalList({ limit: 500, guru_id: effectiveGuruId })
+          .getJadwalList({
+            limit: 500,
+            guru_id: effectiveGuruId,
+            ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
+            ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
+          })
           .catch(() => null);
         list = fallbackRes?.items || [];
       }
