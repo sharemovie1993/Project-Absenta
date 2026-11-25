@@ -18,7 +18,7 @@ import {
   AlertTriangle,
   ArrowLeft,
 } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtEventItem } from '@/types/cbt.types';
 import { cn } from '@/lib/utils';
@@ -74,6 +74,54 @@ export const CbtKandidatPengawasModal: React.FC<CbtKandidatPengawasModalProps> =
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [ptkFilter, setPtkFilter] = useState<'ALL' | 'PENDIDIK' | 'TU' | 'SELECTED_ONLY'>('ALL');
+  const [rolloverSourceEventId, setRolloverSourceEventId] = useState<string>('');
+
+  const { data: eventsSummaryRes } = useQuery({
+    queryKey: cbtQueryKeys.eventsSummary(),
+    queryFn: () => cbtApi.getEventsSummary(),
+    enabled: isOpen,
+    staleTime: 60 * 1000,
+  });
+
+  const rolloverSourceEvents = useMemo(() => {
+    const groups = eventsSummaryRes?.summary || [];
+    const list: Array<{ id: string; nama_event: string; tpLabel: string; candidateIds: string[] }> = [];
+    groups.forEach((grp: any) => {
+      const tpLabel = grp?.tahun_pelajaran || '';
+      (grp?.events || []).forEach((ev: CbtEventItem) => {
+        if (!ev?.id || ev.id === activeEvent?.id) return;
+        const cands = Array.isArray(ev.pengawas_candidates) ? ev.pengawas_candidates : [];
+        if (cands.length > 0) {
+          list.push({
+            id: ev.id,
+            nama_event: ev.nama_event,
+            tpLabel,
+            candidateIds: cands,
+          });
+        }
+      });
+    });
+    return list;
+  }, [eventsSummaryRes, activeEvent?.id]);
+
+  useEffect(() => {
+    if (rolloverSourceEvents.length > 0 && !rolloverSourceEvents.some((e) => e.id === rolloverSourceEventId)) {
+      setRolloverSourceEventId(rolloverSourceEvents[0].id);
+    }
+  }, [rolloverSourceEvents, rolloverSourceEventId]);
+
+  const handleRolloverCandidates = () => {
+    const src = rolloverSourceEvents.find((e) => e.id === rolloverSourceEventId);
+    if (!src) return;
+    const validStaffIds = new Set(allStaffList.map((g) => g.id));
+    const imported = src.candidateIds.filter((id) => validStaffIds.has(id));
+    if (imported.length === 0) {
+      toast.error('Tidak ada kandidat yang cocok dengan data pegawai aktif saat ini.');
+      return;
+    }
+    setSelectedIds(new Set(imported));
+    toast.success(`Berhasil mengambil ${imported.length} kandidat pengawas dari "${src.nama_event}". Klik Simpan untuk menerapkan.`);
+  };
 
   // WA Broadcast Mode
   const [isWaComposerOpen, setIsWaComposerOpen] = useState(false);
@@ -561,6 +609,39 @@ export const CbtKandidatPengawasModal: React.FC<CbtKandidatPengawasModalProps> =
               </Button>
             </div>
           </div>
+
+          {/* Search Box */}
+          {rolloverSourceEvents.length > 0 && (
+            <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <RotateCcw size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200 shrink-0">
+                  Rollover dari Event Lain:
+                </span>
+                <select
+                  value={rolloverSourceEventId}
+                  onChange={(e) => setRolloverSourceEventId(e.target.value)}
+                  className="h-7 px-2 text-[11px] rounded-lg border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-medium min-w-0 max-w-xs"
+                >
+                  {rolloverSourceEvents.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      {ev.nama_event}{ev.tpLabel ? ` (${ev.tpLabel})` : ''} — {ev.candidateIds.length} Kandidat
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleRolloverCandidates}
+                className="text-[11px] h-7 font-bold border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 shrink-0"
+              >
+                <RotateCcw size={12} className="mr-1" />
+                Ambil Kandidat
+              </Button>
+            </div>
+          )}
 
           {/* Search Box */}
           <div className="relative">
