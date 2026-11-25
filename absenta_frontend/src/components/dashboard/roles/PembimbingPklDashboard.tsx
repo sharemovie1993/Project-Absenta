@@ -126,15 +126,14 @@ export const PembimbingPklDashboard: React.FC<PembimbingPklDashboardProps> = ({ 
   const { data: penempatanRes, isLoading, refetch: refetchPenempatan } = useQuery({
     queryKey: ['hubin-penempatan-pembimbing', guruId, tpId],
     queryFn: async () => {
-      try {
-        const res = await hubinApi.getPenempatan({ pembimbing_id: guruId, tahun_pelajaran_id: tpId, limit: 100 });
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) return res.data;
-      } catch { /* Fallback to my penempatan */ }
-      const myRes = await hubinApi.getMyPenempatan().catch(() => ({ data: [] }));
-      if (Array.isArray(myRes?.data) && myRes.data.length > 0) return myRes.data;
-      const allRes = await hubinApi.getPenempatan({ limit: 50 }).catch(() => ({ data: [] }));
-      return allRes?.data || [];
+      const res = await hubinApi.getPenempatan({
+        pembimbing_id: guruId,
+        tahun_pelajaran_id: tpId,
+        limit: 100,
+      });
+      return Array.isArray(res?.data) ? res.data : [];
     },
+    enabled: Boolean(guruId && tpId),
     staleTime: 3 * 60 * 1000,
     refetchOnWindowFocus: false,
   });

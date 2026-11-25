@@ -18,6 +18,7 @@ import { Button, Badge, Loader } from '../../ui';
 import { hubinApi } from '../../../api/hubin.api';
 import { toLocalDate } from '../../../utils/attendance/time';
 import { SiswaBimbinganDetailModal } from '../../hubin/SiswaBimbinganDetailModal';
+import { useTahunPelajaranOptions } from '@/components/common';
 
 interface PembimbingPklWidgetProps {
   guruId?: string;
@@ -30,13 +31,18 @@ export const PembimbingPklWidget: React.FC<PembimbingPklWidgetProps> = ({ guruId
   const [selectedSiswaForModal, setSelectedSiswaForModal] = React.useState<any>(null);
   const [modalInitialTab, setModalInitialTab] = React.useState<'presensi' | 'logbook'>('presensi');
 
+  const { activeYear: activeTp } = useTahunPelajaranOptions();
+  const activeTpId = activeTp?.id;
+
   const { data: penempatanRes, isLoading } = useQuery({
-    queryKey: ['hubin-penempatan-pembimbing-widget', guruId],
+    queryKey: ['hubin-penempatan-pembimbing-widget', guruId, activeTpId],
     queryFn: () => hubinApi.getPenempatan({
       limit: 100,
       status: 'AKTIF',
-      ...(guruId ? { pembimbing_id: guruId } : {})
+      ...(guruId ? { pembimbing_id: guruId } : {}),
+      ...(activeTpId ? { tahun_pelajaran_id: activeTpId } : {})
     }),
+    enabled: Boolean(activeTpId),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
   });

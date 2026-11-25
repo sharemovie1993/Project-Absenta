@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useTahunPelajaranOptions } from '@/components/common';
 import { 
   Briefcase, 
   Users, 
@@ -66,13 +67,18 @@ export const StaffPembimbingPklTab: React.FC<StaffPembimbingPklTabProps> = ({
     setModalInitialTab('logbook');
   };
 
+  const { activeYear: activeTp } = useTahunPelajaranOptions();
+  const activeTpId = activeTp?.id;
+
   // Query Data Siswa Bimbingan
   const { data: penempatanRes, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['hubin-penempatan-pembimbing-tab', guruId],
+    queryKey: ['hubin-penempatan-pembimbing-tab', guruId, activeTpId],
     queryFn: () => hubinApi.getPenempatan({
       limit: 100,
-      ...(guruId ? { pembimbing_id: guruId } : {})
+      ...(guruId ? { pembimbing_id: guruId } : {}),
+      ...(activeTpId ? { tahun_pelajaran_id: activeTpId } : {})
     }),
+    enabled: Boolean(activeTpId),
     staleTime: 30 * 1000,
   });
 
