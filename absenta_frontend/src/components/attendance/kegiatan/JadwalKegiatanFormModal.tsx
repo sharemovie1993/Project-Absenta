@@ -34,12 +34,22 @@ import { useJenisKegiatanMaster } from '@/hooks/academic/useJenisKegiatanMaster'
 import { useKelasOptions } from '@/hooks/useKelasOptions';
 import { toast } from 'react-hot-toast';
 
-// ─── Zod Schema ──────────────────────────────────────────────────────────────
+// ─── Zod Schema & Helpers ────────────────────────────────────────────────────
+const TIME_24H_REGEX = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
+function parseTimeMinutes(value?: string | null): number | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!TIME_24H_REGEX.test(trimmed)) return null;
+  const [hh, mm] = trimmed.split(':').map(Number);
+  return hh * 60 + mm;
+}
+
 export const jadwalKegiatanSchema = z.object({
   nama: z.string().min(1, 'Nama kegiatan wajib diisi').max(120, 'Nama terlalu panjang'),
   jenis_kegiatan: z.string().min(1, 'Pilih kategori kegiatan'),
   hari: z.array(z.string()).min(1, 'Pilih minimal satu hari pelaksanaan'),
-  waktu_mulai: z.string().min(1, 'Waktu mulai wajib diisi'),
+  waktu_mulai: z.string().min(1, 'Waktu mulai wajib diisi').regex(TIME_24H_REGEX, 'Format jam mulai tidak valid (HH:mm)'),
   waktu_selesai: z.string().nullable().optional(),
   target_semua_kelas: z.boolean(),
   target_kelas_ids: z.array(z.string()),
@@ -55,6 +65,32 @@ export const jadwalKegiatanSchema = z.object({
       inclusive: true,
       message: 'Pilih minimal satu kelas target jika tidak memilih seluruh kelas',
       path: ['target_kelas_ids'],
+    });
+  }
+
+  if (data.waktu_selesai && data.waktu_selesai.trim() !== '') {
+    const startMins = parseTimeMinutes(data.waktu_mulai);
+    const endMins = parseTimeMinutes(data.waktu_selesai);
+    if (endMins === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Format jam selesai tidak valid (HH:mm)',
+        path: ['waktu_selesai'],
+      });
+    } else if (startMins !== null && endMins <= startMins) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Jam selesai harus lebih besar dari jam mulai',
+        path: ['waktu_selesai'],
+      });
+    }
+  }
+
+  if (data.berlaku_sampai && data.berlaku_sampai.trim() !== '' && data.berlaku_sampai < data.berlaku_mulai) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Tanggal selesai berlaku tidak boleh lebih awal dari tanggal mulai berlaku',
+      path: ['berlaku_sampai'],
     });
   }
 });
@@ -482,6 +518,20 @@ export default React.memo(function JadwalKegiatanFormModal({
     });
   }, [classes]);
 
+  const validClassIdSet = useMemo(() => new Set(classes.map(c => c.id)), [classes]);
+
+  // Sanitize & deduplicate targetKelasIds against active classes so stale/deleted IDs never inflate count
+  useEffect(() => {
+    if (!isOpen || classes.length === 0) return;
+    setTargetKelasIds(prev => {
+      const cleaned = Array.from(new Set(prev)).filter(id => validClassIdSet.has(id));
+      if (cleaned.length === prev.length && cleaned.every((id, idx) => id === prev[idx])) {
+        return prev;
+      }
+      return cleaned;
+    });
+  }, [isOpen, classes.length, validClassIdSet]);
+
   const handleToggleClass = useCallback((classId: string) => {
     setTargetKelasIds(prev => prev.includes(classId) ? prev.filter(id => id !== classId) : [...prev, classId]);
   }, []);
@@ -524,39 +574,71 @@ export default React.memo(function JadwalKegiatanFormModal({
     e.preventDefault();
     setErrors({});
 
-    const cleanBerlakuMulai = berlakuMulai ? berlakuMulai.trim().split('T')[0] : toLocalDate();
+    const failValidation = (fieldErrors: Record<string, string>, toastMsg?: string) => {
+      setErrors(fieldErrors);
+      const firstMsg = toastMsg || Object.values(fieldErrors)[0];
+      if (firstMsg) toast.error(firstMsg);
+    };
+
+    const cleanBerlakuMulai = berlakuMulai ? berlakuMulai.trim().split('T')[0] : '';
     const cleanBerlakuSampai = berlakuSampai && berlakuSampai.trim() !== '' ? berlakuSampai.trim().split('T')[0] : null;
     const cleanTpId = (editingItem?.tahun_pelajaran_id || activeTahunPelajaranId || '').trim();
+    const cleanTargetKelasIds = classes.length > 0
+      ? Array.from(new Set(targetKelasIds)).filter(id => validClassIdSet.has(id))
+      : Array.from(new Set(targetKelasIds));
 
     if (!nama.trim()) {
-      setErrors({ nama: 'Nama kegiatan wajib diisi' });
+      failValidation({ nama: 'Nama kegiatan wajib diisi' });
       return;
     }
     if (!jenisKegiatan) {
-      setErrors({ jenis_kegiatan: 'Pilih kategori kegiatan' });
+      failValidation({ jenis_kegiatan: 'Pilih kategori kegiatan' });
       return;
     }
     if (hari.length === 0) {
-      setErrors({ hari: 'Pilih minimal satu hari pelaksanaan' });
+      failValidation({ hari: 'Pilih minimal satu hari pelaksanaan' });
       return;
     }
-    if (!targetSemuaKelas && targetKelasIds.length === 0) {
-      setErrors({ target_kelas_ids: 'Pilih minimal satu kelas target' });
+    if (!cleanBerlakuMulai) {
+      failValidation({ berlaku_mulai: 'Tanggal berlaku mulai wajib diisi' });
+      return;
+    }
+    if (cleanBerlakuSampai && cleanBerlakuSampai < cleanBerlakuMulai) {
+      failValidation({ berlaku_sampai: 'Tanggal selesai berlaku tidak boleh lebih awal dari tanggal mulai berlaku' });
+      return;
+    }
+    if (!targetSemuaKelas && cleanTargetKelasIds.length === 0) {
+      failValidation({ target_kelas_ids: 'Pilih minimal satu kelas target yang valid' });
       return;
     }
 
     let payloads: JadwalKegiatanFormData[] = [];
 
     if (!isMatrixMode) {
+      const wMulai = waktuMulai ? waktuMulai.trim() : '';
+      const wSelesai = waktuSelesai && waktuSelesai.trim() !== '' ? waktuSelesai.trim() : null;
+      const startMins = parseTimeMinutes(wMulai);
+      if (startMins === null) {
+        failValidation({ waktu_mulai: 'Jam mulai wajib diisi dengan format HH:mm yang valid' });
+        return;
+      }
+      if (wSelesai) {
+        const endMins = parseTimeMinutes(wSelesai);
+        if (endMins === null || endMins <= startMins) {
+          failValidation({ waktu_selesai: 'Jam selesai harus lebih besar dari jam mulai' });
+          return;
+        }
+      }
+
       // Uniform mode: single payload
       const payload: JadwalKegiatanFormData = {
         nama: nama.trim(),
         jenis_kegiatan: jenisKegiatan,
         hari: hari.map(h => h.toUpperCase()),
-        waktu_mulai: waktuMulai ? waktuMulai.trim() : '07:00',
-        waktu_selesai: waktuSelesai && waktuSelesai.trim() !== '' ? waktuSelesai.trim() : null,
+        waktu_mulai: wMulai,
+        waktu_selesai: wSelesai,
         target_semua_kelas: targetSemuaKelas,
-        target_kelas_ids: targetSemuaKelas ? [] : targetKelasIds,
+        target_kelas_ids: targetSemuaKelas ? [] : cleanTargetKelasIds,
         berlaku_mulai: cleanBerlakuMulai,
         berlaku_sampai: cleanBerlakuSampai,
         tahun_pelajaran_id: cleanTpId,
@@ -570,18 +652,34 @@ export default React.memo(function JadwalKegiatanFormModal({
           const field = err.path[0] as string;
           if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
         });
-        setErrors(fieldErrors);
+        failValidation(fieldErrors);
         return;
       }
       payloads = [result.data];
     } else {
-      // Matrix Mode: Group days by start + end time
+      // Matrix Mode: Validate every selected day before grouping
       const timeGroups = new Map<string, { waktuMulai: string; waktuSelesai: string | null; days: string[] }>();
       
       for (const d of hari) {
         const dSched = matrixSchedule[d] || { waktuMulai, waktuSelesai };
-        const wMulai = dSched.waktuMulai ? dSched.waktuMulai.trim() : '07:00';
+        const wMulai = dSched.waktuMulai ? dSched.waktuMulai.trim() : '';
         const wSelesai = dSched.waktuSelesai && dSched.waktuSelesai.trim() !== '' ? dSched.waktuSelesai.trim() : null;
+        const dayLabel = getDayOption(d)?.label || d;
+
+        const startMins = parseTimeMinutes(wMulai);
+        if (startMins === null) {
+          setActiveFocusDay(d);
+          failValidation({ waktu_mulai: `Jam mulai hari ${dayLabel} wajib diisi dengan format HH:mm yang valid` });
+          return;
+        }
+        if (wSelesai) {
+          const endMins = parseTimeMinutes(wSelesai);
+          if (endMins === null || endMins <= startMins) {
+            setActiveFocusDay(d);
+            failValidation({ waktu_selesai: `Jam selesai hari ${dayLabel} harus lebih besar dari jam mulai` });
+            return;
+          }
+        }
         
         const key = `${wMulai}___${wSelesai || 'null'}`;
         if (!timeGroups.has(key)) {
@@ -598,7 +696,7 @@ export default React.memo(function JadwalKegiatanFormModal({
           waktu_mulai: group.waktuMulai,
           waktu_selesai: group.waktuSelesai,
           target_semua_kelas: targetSemuaKelas,
-          target_kelas_ids: targetSemuaKelas ? [] : targetKelasIds,
+          target_kelas_ids: targetSemuaKelas ? [] : cleanTargetKelasIds,
           berlaku_mulai: cleanBerlakuMulai,
           berlaku_sampai: cleanBerlakuSampai,
           tahun_pelajaran_id: cleanTpId,
@@ -612,7 +710,7 @@ export default React.memo(function JadwalKegiatanFormModal({
             const field = err.path[0] as string;
             if (field && !fieldErrors[field]) fieldErrors[field] = err.message;
           });
-          setErrors(fieldErrors);
+          failValidation(fieldErrors);
           return;
         }
         payloads.push(result.data);
@@ -637,6 +735,8 @@ export default React.memo(function JadwalKegiatanFormModal({
     waktuSelesai,
     targetSemuaKelas,
     targetKelasIds,
+    classes.length,
+    validClassIdSet,
     berlakuMulai,
     berlakuSampai,
     editingItem,
@@ -1275,6 +1375,11 @@ export default React.memo(function JadwalKegiatanFormModal({
                 )}
               </>
             )}
+            {(errors.waktu_mulai || errors.waktu_selesai) && (
+              <p role="alert" className="mt-1 text-[11px] text-rose-500 font-medium">
+                {errors.waktu_mulai || errors.waktu_selesai}
+              </p>
+            )}
           </div>
 
           <hr className="border-slate-100 dark:border-slate-800" />
@@ -1476,6 +1581,7 @@ export default React.memo(function JadwalKegiatanFormModal({
                   disabled={masaBerlakuOption !== 'MANUAL'}
                   className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-sm"
                 />
+                {errors.berlaku_sampai && <p role="alert" className="mt-1 text-[11px] text-rose-500 font-medium">{errors.berlaku_sampai}</p>}
               </div>
             </div>
           </div>
