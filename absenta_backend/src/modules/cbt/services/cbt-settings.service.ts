@@ -82,7 +82,7 @@ export class CbtSettingsService {
         ? evt.tahun_pelajaran_id
         : null;
     await prisma.cbtEvent.upsert({
-      where: { id: evt.id },
+      where: { tenant_id_id: { tenant_id: tenantId, id: evt.id } },
       update: {
         tahun_pelajaran_id: resolvedTpId,
         nama_event: evt.nama_event,

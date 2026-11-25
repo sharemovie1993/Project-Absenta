@@ -1711,7 +1711,8 @@ model HubinSetting {
 }
 
 model CbtEvent {
-  id                      String         @id
+  uid                     String         @id @default(uuid())
+  id                      String
   tenant_id               String
   tahun_pelajaran_id      String?
   nama_event              String
@@ -1735,6 +1736,7 @@ model CbtEvent {
   Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   TahunPelajaran TahunPelajaran? @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
 
+  @@unique([tenant_id, id])
   @@index([tenant_id])
   @@index([tenant_id, tahun_pelajaran_id])
   @@index([tenant_id, is_active])
