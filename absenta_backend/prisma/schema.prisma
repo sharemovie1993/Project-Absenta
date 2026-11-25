@@ -1713,7 +1713,7 @@ model HubinSetting {
 model CbtEvent {
   id                      String         @id
   tenant_id               String
-  tahun_pelajaran_id      String
+  tahun_pelajaran_id      String?
   nama_event              String
   kode_event              String
   semester                String         @default("GANJIL")
@@ -1732,8 +1732,8 @@ model CbtEvent {
   created_at              DateTime       @default(now())
   updated_at              DateTime       @updatedAt
 
-  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+  Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran? @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
   @@index([tenant_id, tahun_pelajaran_id])

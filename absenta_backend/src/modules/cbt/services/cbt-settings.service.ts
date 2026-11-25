@@ -55,7 +55,7 @@ export class CbtSettingsService {
   private static mapRowToItem(row: any): CbtEventItem {
     return {
       id: row.id,
-      tahun_pelajaran_id: row.tahun_pelajaran_id,
+      tahun_pelajaran_id: row.tahun_pelajaran_id || '',
       nama_event: row.nama_event,
       kode_event: row.kode_event,
       semester: (row.semester as 'GANJIL' | 'GENAP') || 'GANJIL',
@@ -76,12 +76,15 @@ export class CbtSettingsService {
     };
   }
 
-  private static async upsertRelationalEvent(tenantId: string, evt: CbtEventItem) {
-    if (!evt.tahun_pelajaran_id) return;
+  private static async upsertRelationalEvent(tenantId: string, evt: CbtEventItem, validTpIds?: Set<string>) {
+    const resolvedTpId =
+      evt.tahun_pelajaran_id && (!validTpIds || validTpIds.has(evt.tahun_pelajaran_id))
+        ? evt.tahun_pelajaran_id
+        : null;
     await prisma.cbtEvent.upsert({
       where: { id: evt.id },
       update: {
-        tahun_pelajaran_id: evt.tahun_pelajaran_id,
+        tahun_pelajaran_id: resolvedTpId,
         nama_event: evt.nama_event,
         kode_event: evt.kode_event,
         semester: evt.semester || 'GANJIL',
@@ -101,7 +104,7 @@ export class CbtSettingsService {
       create: {
         id: evt.id,
         tenant_id: tenantId,
-        tahun_pelajaran_id: evt.tahun_pelajaran_id,
+        tahun_pelajaran_id: resolvedTpId,
         nama_event: evt.nama_event,
         kode_event: evt.kode_event,
         semester: evt.semester || 'GANJIL',
@@ -239,12 +242,14 @@ export class CbtSettingsService {
       // Auto-migrate legacy Config JSON ke tabel relasional CbtEvent secara aman
       const validTpIds = new Set(tpList.map((tp) => tp.id));
       for (const evt of allEvents) {
-        if (evt.tahun_pelajaran_id && validTpIds.has(evt.tahun_pelajaran_id)) {
-          await this.upsertRelationalEvent(tenantId, {
+        await this.upsertRelationalEvent(
+          tenantId,
+          {
             ...evt,
             is_active: evt.id === activeEventId || Boolean(evt.is_active),
-          }).catch(() => null);
-        }
+          },
+          validTpIds
+        ).catch(() => null);
       }
     }
 
