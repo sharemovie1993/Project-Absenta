@@ -37,6 +37,16 @@ export class CbtJadwalService {
     if (query.bank_soal_id) {
       andConditions.push({ bank_soal_id: query.bank_soal_id });
     }
+    if (query.tahun_pelajaran_id) {
+      andConditions.push({
+        OR: [{ tahun_pelajaran_id: query.tahun_pelajaran_id }, { tahun_pelajaran_id: null }],
+      });
+    }
+    if (query.semester_id) {
+      andConditions.push({
+        OR: [{ semester_id: query.semester_id }, { semester_id: null }],
+      });
+    }
     if (query.guru_id) {
       // Dapatkan penugasan kelas dan mapel guru (UnitPengajaran, JadwalKBM, maupun GuruMapel)
       const [assignedGuruMapel, assignedUnits, delegatedJadwals] = await Promise.all([

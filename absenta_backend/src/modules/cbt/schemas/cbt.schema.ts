@@ -226,6 +226,8 @@ export const queryJadwalUjianSchema = z.object({
   bank_soal_id: z.string().optional(),
   guru_id: z.string().optional(),
   pengawas_guru_id: z.string().optional(),
+  tahun_pelajaran_id: z.string().uuid().optional(),
+  semester_id: z.string().uuid().optional(),
   sort_direction: z.enum(['asc', 'desc']).optional(),
 });
 

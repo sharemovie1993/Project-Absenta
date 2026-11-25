@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
+import { useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
@@ -127,7 +128,22 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
     return getTingkatRoman(raw);
   }, [filter.values.tingkat]);
 
-  // 2. Fetch Bank Soal via TanStack Query
+  const { activeEvent: activeCbtEvent } = useCbtOperationMode();
+  const { activeYear: activeTp } = useTahunPelajaranOptions();
+  const { activeSemester, rawList: semRawList = [] } = useSemesterOptions();
+  const effectiveTpId = activeCbtEvent?.tahun_pelajaran_id || activeTp?.id;
+  const effectiveSemId = useMemo(() => {
+    if (activeCbtEvent?.semester && semRawList.length > 0) {
+      const target = String(activeCbtEvent.semester).toUpperCase().trim();
+      const matched = semRawList.find((s: any) =>
+        String(s.nama_semester || s.nama || '').toUpperCase().includes(target)
+      );
+      if (matched?.id) return matched.id;
+    }
+    return activeSemester?.id;
+  }, [activeCbtEvent?.semester, semRawList, activeSemester?.id]);
+
+  // 2. Fetch Bank Soal via TanStack Query (Terikat Konteks TP & Semester Aktif)
   const effectiveOwnership = !isPanitiaCbt ? ownershipTab : undefined;
   const { data, isLoading } = useQuery({
     queryKey: cbtQueryKeys.bankSoal({
@@ -138,6 +154,8 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
       mapel_id: mapelId || (isPanitiaCbt ? filter.values.mapelId : undefined),
       guru_id: currentGuruId,
       ownership: effectiveOwnership,
+      tahun_pelajaran_id: effectiveTpId,
+      semester_id: effectiveSemId,
     }),
     queryFn: () =>
       cbtApi.getBankSoalList({
@@ -148,6 +166,8 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         mapel_id: mapelId || (isPanitiaCbt ? filter.values.mapelId : undefined),
         guru_id: currentGuruId,
         ownership: effectiveOwnership,
+        ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
+        ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
       }),
   });
 

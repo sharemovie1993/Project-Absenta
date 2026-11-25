@@ -34,6 +34,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
+import { useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
@@ -117,13 +118,30 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
     onFilterChange: () => setPage(1),
   });
 
-  // 2. Fetch Jadwal Data
+  const { activeEvent } = useCbtOperationMode();
+  const { activeYear: activeTp } = useTahunPelajaranOptions();
+  const { activeSemester, rawList: semRawList = [] } = useSemesterOptions();
+  const effectiveTpId = activeEvent?.tahun_pelajaran_id || activeTp?.id;
+  const effectiveSemId = useMemo(() => {
+    if (activeEvent?.semester && semRawList.length > 0) {
+      const target = String(activeEvent.semester).toUpperCase().trim();
+      const matched = semRawList.find((s: any) =>
+        String(s.nama_semester || s.nama || '').toUpperCase().includes(target)
+      );
+      if (matched?.id) return matched.id;
+    }
+    return activeSemester?.id;
+  }, [activeEvent?.semester, semRawList, activeSemester?.id]);
+
+  // 2. Fetch Jadwal Data (Terikat Konteks TP & Semester Aktif)
   const { data, isLoading } = useQuery({
     queryKey: cbtQueryKeys.jadwal({
       page,
       limit,
       search: filter.debouncedSearchQuery,
       guru_id: guruId,
+      tahun_pelajaran_id: effectiveTpId,
+      semester_id: effectiveSemId,
     }),
     queryFn: () =>
       cbtApi.getJadwalList({
@@ -131,6 +149,8 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         limit,
         search: filter.debouncedSearchQuery,
         guru_id: guruId,
+        ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
+        ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
       }),
   });
 

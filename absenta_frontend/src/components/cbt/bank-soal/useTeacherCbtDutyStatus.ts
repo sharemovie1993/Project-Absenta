@@ -7,6 +7,7 @@ import type { CbtBankSoal } from '@/types/cbt.types';
 import type { GuruMapel } from '@/types/academic';
 import { useCbtOperationMode } from '../cbtModeHelper';
 import { useJenjang } from '@/hooks/useJenjang';
+import { useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
 import {
   evaluateTeacherDutiesSSOT,
   type DutyCoverStatus,
@@ -35,6 +36,20 @@ export interface TeacherCbtDutyStatusResult {
 export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusResult {
   const { activeEvent, eventName, targetTingkat } = useCbtOperationMode();
   const { tingkatList } = useJenjang();
+  const { activeYear: activeTp } = useTahunPelajaranOptions();
+  const { activeSemester, rawList: semRawList = [] } = useSemesterOptions();
+
+  const effectiveTpId = activeEvent?.tahun_pelajaran_id || activeTp?.id;
+  const effectiveSemId = useMemo(() => {
+    if (activeEvent?.semester && semRawList.length > 0) {
+      const target = String(activeEvent.semester).toUpperCase().trim();
+      const matched = semRawList.find((s: any) =>
+        String(s.nama_semester || s.nama || '').toUpperCase().includes(target)
+      );
+      if (matched?.id) return matched.id;
+    }
+    return activeSemester?.id;
+  }, [activeEvent?.semester, semRawList, activeSemester?.id]);
 
   // 1. Sumber Kebenaran Tunggal Penugasan Mengajar Guru: SK GuruMapel
   const { data: assignedMapelsRes, isLoading: isMapelLoading } = useQuery({
@@ -70,15 +85,17 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
     staleTime: 60 * 1000,
   });
 
-  // 2. Bank Soal Relevan (milik sendiri + master MGMP / kontributor)
+  // 2. Bank Soal Relevan (milik sendiri + master MGMP / kontributor, terikat TP & Semester aktif)
   const { data: bankListRes, isLoading: isBankLoading } = useQuery({
-    queryKey: ['cbt-bank-soal-for-teacher-duty', guruId],
+    queryKey: ['cbt-bank-soal-for-teacher-duty', guruId, effectiveTpId, effectiveSemId],
     queryFn: () =>
       guruId
         ? cbtApi
             .getBankSoalList({
               guru_id: guruId,
               limit: 200,
+              ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
+              ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
             })
             .catch(() => null)
         : null,
