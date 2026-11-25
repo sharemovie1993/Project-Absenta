@@ -193,6 +193,7 @@ model Tenant {
   RapatPeserta             RapatPeserta[]
   KetarunaanSkemaConfig    KetarunaanSkemaConfig[]
   KetarunaanNilaiSiswa     KetarunaanNilaiSiswa[]
+  RaporSetting             RaporSetting[]
 }
 
 enum BackupStatus {
@@ -1022,6 +1023,7 @@ model TahunPelajaran {
   OrganizationalAssignments OrganizationalAssignment[]
   KetarunaanSkemaConfig  KetarunaanSkemaConfig[]
   KetarunaanNilaiSiswa   KetarunaanNilaiSiswa[]
+  RaporSetting           RaporSetting[]
 
   @@unique([tenant_id, tahun])
   @@index([tenant_id])
@@ -1063,6 +1065,7 @@ model Semester {
   AcademicPlenoSession   AcademicPlenoSession[]
   KetarunaanSkemaConfig  KetarunaanSkemaConfig[]
   KetarunaanNilaiSiswa   KetarunaanNilaiSiswa[]
+  RaporSetting           RaporSetting[]
 
   @@index([tenant_id])
 }
@@ -1639,6 +1642,38 @@ model Config {
   Tenant      Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
+}
+
+model RaporSetting {
+  id                    String         @id @default(uuid())
+  tenant_id             String
+  tahun_pelajaran_id    String
+  semester_id           String
+  tempat_terbit         String?
+  tanggal_rapor         String?
+  tanggal_rapor_p5      String?
+  tanggal_rapor_pts     String?
+  tanggal_pleno         String?
+  tanggal_kelulusan     String?
+  kepsek_status         String?        @default("DEFINITIF")
+  kepsek_nama           String?
+  kepsek_nip            String?
+  ukuran_kertas         String?        @default("A4")
+  tampilkan_kop         Boolean        @default(true)
+  tampilkan_qr          Boolean        @default(true)
+  tampilkan_kokurikuler Boolean        @default(false)
+  mode_cetak_rapor      String?        @default("SUMATIF_AND_CP")
+  sumber_nilai_rapor    String?        @default("FORMULA_SUMATIF")
+  created_at            DateTime       @default(now())
+  updated_at            DateTime       @updatedAt
+
+  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+  Semester       Semester       @relation(fields: [semester_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, tahun_pelajaran_id, semester_id])
+  @@index([tenant_id])
+  @@index([tahun_pelajaran_id, semester_id])
 }
 
 // Global Master Data Wilayah Indonesia (Cross-Tenant)

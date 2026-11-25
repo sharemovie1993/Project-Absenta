@@ -1704,11 +1704,22 @@ export class RaporService {
     return await cacheService.getOrSet(
       cacheKey,
       async () => {
-        // High-performance query: Batch load all configs in a single query
-        const [sekolah, allConfigs] = await Promise.all([
+        // High-performance query: Batch load relational RaporSetting + legacy Config in parallel
+        const [sekolah, allConfigs, raporSettingRows] = await Promise.all([
           prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
           prisma.config.findMany({ where: { tenant_id: tenantId } }),
+          prisma.raporSetting.findMany({
+            where: { tenant_id: tenantId, ...(tpId ? { tahun_pelajaran_id: tpId } : {}) },
+          }),
         ]);
+
+        const settingBySem = new Map<string, (typeof raporSettingRows)[number]>();
+        raporSettingRows.forEach((r) => {
+          settingBySem.set(r.semester_id, r);
+        });
+        const activeRow = (semId ? settingBySem.get(semId) : undefined) || raporSettingRows[0];
+        const ganjilRow = ganjilId ? settingBySem.get(ganjilId) : undefined;
+        const genapRow = genapId ? settingBySem.get(genapId) : undefined;
 
         const cfgMap = new Map<string, string>();
         allConfigs.forEach((c) => {
@@ -1719,23 +1730,23 @@ export class RaporService {
 
         const getCfg = (k?: string | null) => (k ? cfgMap.get(k) : undefined);
 
-        const tempatTerbitCfgVal = getCfg(`RAPOR_TEMPAT_TERBIT_${tpId}`) || getCfg('RAPOR_TEMPAT_TERBIT');
-        let tanggalRaporCfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${semId}`) : undefined;
-        let tanggalP5CfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${semId}`) : undefined;
-        let tanggalPtsCfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${semId}`) : undefined;
-        let tanggalPlenoCfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_PLENO_${tpId}_${semId}`) : undefined;
+        const tempatTerbitCfgVal = activeRow?.tempat_terbit || getCfg(`RAPOR_TEMPAT_TERBIT_${tpId}`) || getCfg('RAPOR_TEMPAT_TERBIT');
+        let tanggalRaporCfgVal = activeRow?.tanggal_rapor || ((tpId && semId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${semId}`) : undefined);
+        let tanggalP5CfgVal = activeRow?.tanggal_rapor_p5 || ((tpId && semId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${semId}`) : undefined);
+        let tanggalPtsCfgVal = activeRow?.tanggal_rapor_pts || ((tpId && semId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${semId}`) : undefined);
+        let tanggalPlenoCfgVal = activeRow?.tanggal_pleno || ((tpId && semId) ? getCfg(`RAPOR_TANGGAL_PLENO_${tpId}_${semId}`) : undefined);
 
         // Ganjil
-        let raporGanjilCfgVal = (tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${ganjilId}`) : undefined;
-        let p5GanjilCfgVal = (tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${ganjilId}`) : undefined;
-        let ptsGanjilCfgVal = (tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${ganjilId}`) : undefined;
+        let raporGanjilCfgVal = ganjilRow?.tanggal_rapor || ((tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${ganjilId}`) : undefined);
+        let p5GanjilCfgVal = ganjilRow?.tanggal_rapor_p5 || ((tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${ganjilId}`) : undefined);
+        let ptsGanjilCfgVal = ganjilRow?.tanggal_rapor_pts || ((tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${ganjilId}`) : undefined);
 
         // Genap
-        let raporGenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${genapId}`) : undefined;
-        let p5GenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${genapId}`) : undefined;
-        let ptsGenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${genapId}`) : undefined;
-        let plenoGenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_PLENO_${tpId}_${genapId}`) : undefined;
-        let kelulusanCfgVal = tpId ? getCfg(`RAPOR_TANGGAL_KELULUSAN_${tpId}`) : undefined;
+        let raporGenapCfgVal = genapRow?.tanggal_rapor || ((tpId && genapId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${genapId}`) : undefined);
+        let p5GenapCfgVal = genapRow?.tanggal_rapor_p5 || ((tpId && genapId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${genapId}`) : undefined);
+        let ptsGenapCfgVal = genapRow?.tanggal_rapor_pts || ((tpId && genapId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${genapId}`) : undefined);
+        let plenoGenapCfgVal = genapRow?.tanggal_pleno || ((tpId && genapId) ? getCfg(`RAPOR_TANGGAL_PLENO_${tpId}_${genapId}`) : undefined);
+        let kelulusanCfgVal = activeRow?.tanggal_kelulusan || (tpId ? getCfg(`RAPOR_TANGGAL_KELULUSAN_${tpId}`) : undefined);
 
         // Multi-level fallback for Titimangsa:
         if (!raporGanjilCfgVal) raporGanjilCfgVal = getCfg('RAPOR_TANGGAL_RAPOR_GANJIL');
@@ -1761,17 +1772,17 @@ export class RaporService {
         }
 
         // Pejabat
-        const kepsekStatusCfgVal = tpId ? getCfg(`RAPOR_KEPSEK_STATUS_${tpId}`) : undefined;
-        const kepsekNamaCfgVal = tpId ? getCfg(`RAPOR_KEPSEK_NAMA_${tpId}`) : undefined;
-        const kepsekNipCfgVal = tpId ? getCfg(`RAPOR_KEPSEK_NIP_${tpId}`) : undefined;
+        const kepsekStatusCfgVal = activeRow?.kepsek_status || (tpId ? getCfg(`RAPOR_KEPSEK_STATUS_${tpId}`) : undefined);
+        const kepsekNamaCfgVal = activeRow?.kepsek_nama || (tpId ? getCfg(`RAPOR_KEPSEK_NAMA_${tpId}`) : undefined);
+        const kepsekNipCfgVal = activeRow?.kepsek_nip || (tpId ? getCfg(`RAPOR_KEPSEK_NIP_${tpId}`) : undefined);
 
         // Format (TP-scoped)
-        const kertasTpCfgVal = tpId ? getCfg(`RAPOR_UKURAN_KERTAS_${tpId}`) : undefined;
-        const kopTpCfgVal = tpId ? getCfg(`RAPOR_TAMPILKAN_KOP_${tpId}`) : undefined;
-        const qrTpCfgVal = tpId ? getCfg(`RAPOR_TAMPILKAN_QR_${tpId}`) : undefined;
-        const kokurikulerTpCfgVal = tpId ? getCfg(`RAPOR_SHOW_KOKURIKULER_${tpId}`) : undefined;
-        const modeCetakTpCfgVal = tpId ? getCfg(`RAPOR_MODE_CETAK_${tpId}`) : undefined;
-        const sumberNilaiTpCfgVal = tpId ? getCfg(`RAPOR_SUMBER_NILAI_${tpId}`) : undefined;
+        const kertasTpCfgVal = activeRow?.ukuran_kertas || (tpId ? getCfg(`RAPOR_UKURAN_KERTAS_${tpId}`) : undefined);
+        const kopTpCfgVal = activeRow ? String(activeRow.tampilkan_kop) : (tpId ? getCfg(`RAPOR_TAMPILKAN_KOP_${tpId}`) : undefined);
+        const qrTpCfgVal = activeRow ? String(activeRow.tampilkan_qr) : (tpId ? getCfg(`RAPOR_TAMPILKAN_QR_${tpId}`) : undefined);
+        const kokurikulerTpCfgVal = activeRow ? String(activeRow.tampilkan_kokurikuler) : (tpId ? getCfg(`RAPOR_SHOW_KOKURIKULER_${tpId}`) : undefined);
+        const modeCetakTpCfgVal = activeRow?.mode_cetak_rapor || (tpId ? getCfg(`RAPOR_MODE_CETAK_${tpId}`) : undefined);
+        const sumberNilaiTpCfgVal = activeRow?.sumber_nilai_rapor || (tpId ? getCfg(`RAPOR_SUMBER_NILAI_${tpId}`) : undefined);
 
         // Format (Global Fallback)
         const kertasGlobalCfgVal = getCfg('RAPOR_UKURAN_KERTAS');
@@ -2115,6 +2126,73 @@ export class RaporService {
         if (payload.tanggal_pleno !== undefined) {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_PLENO_${tpId}_${semId}`, payload.tanggal_pleno);
         }
+      }
+
+      // Persist ke tabel relasional RaporSetting (SSOT dengan FK tahun_pelajaran_id & semester_id agar aman saat clone/restore)
+      const sharedFields: Record<string, any> = {
+        ...(payload.tempat_terbit !== undefined ? { tempat_terbit: payload.tempat_terbit } : {}),
+        ...(payload.kepsek_status !== undefined ? { kepsek_status: payload.kepsek_status } : {}),
+        ...(payload.kepsek_nama !== undefined ? { kepsek_nama: payload.kepsek_nama } : {}),
+        ...(payload.kepsek_nip !== undefined ? { kepsek_nip: payload.kepsek_nip } : {}),
+        ...(payload.tanggal_kelulusan !== undefined ? { tanggal_kelulusan: payload.tanggal_kelulusan } : {}),
+        ...(payload.ukuran_kertas !== undefined ? { ukuran_kertas: payload.ukuran_kertas } : {}),
+        ...(payload.tampilkan_kop !== undefined ? { tampilkan_kop: Boolean(payload.tampilkan_kop) } : {}),
+        ...(payload.tampilkan_qr !== undefined ? { tampilkan_qr: Boolean(payload.tampilkan_qr) } : {}),
+        ...(payload.tampilkan_kokurikuler !== undefined ? { tampilkan_kokurikuler: Boolean(payload.tampilkan_kokurikuler) } : {}),
+        ...(payload.mode_cetak_rapor !== undefined ? { mode_cetak_rapor: payload.mode_cetak_rapor } : {}),
+        ...(payload.sumber_nilai_rapor !== undefined ? { sumber_nilai_rapor: payload.sumber_nilai_rapor } : {}),
+      };
+
+      const upsertRaporRow = async (targetSemId: string, semFields: Record<string, any>) => {
+        const data = { ...sharedFields, ...semFields };
+        if (Object.keys(data).length === 0) return;
+        await prisma.raporSetting.upsert({
+          where: {
+            tenant_id_tahun_pelajaran_id_semester_id: {
+              tenant_id: tenantId,
+              tahun_pelajaran_id: tpId,
+              semester_id: targetSemId,
+            },
+          },
+          update: data,
+          create: {
+            tenant_id: tenantId,
+            tahun_pelajaran_id: tpId,
+            semester_id: targetSemId,
+            ...data,
+          },
+        });
+      };
+
+      if (ganjilId) {
+        await upsertRaporRow(ganjilId, {
+          ...(payload.tanggal_rapor_ganjil !== undefined ? { tanggal_rapor: payload.tanggal_rapor_ganjil } : {}),
+          ...(payload.tanggal_p5_ganjil !== undefined ? { tanggal_rapor_p5: payload.tanggal_p5_ganjil } : {}),
+          ...(payload.tanggal_pts_ganjil !== undefined ? { tanggal_rapor_pts: payload.tanggal_pts_ganjil } : {}),
+        });
+      }
+      if (genapId) {
+        await upsertRaporRow(genapId, {
+          ...(payload.tanggal_rapor_genap !== undefined ? { tanggal_rapor: payload.tanggal_rapor_genap } : {}),
+          ...(payload.tanggal_p5_genap !== undefined ? { tanggal_rapor_p5: payload.tanggal_p5_genap } : {}),
+          ...(payload.tanggal_pts_genap !== undefined ? { tanggal_rapor_pts: payload.tanggal_pts_genap } : {}),
+          ...(payload.tanggal_pleno_genap !== undefined ? { tanggal_pleno: payload.tanggal_pleno_genap } : {}),
+        });
+      }
+      if (semId && semId !== ganjilId && semId !== genapId) {
+        await upsertRaporRow(semId, {
+          ...(payload.tanggal_rapor !== undefined ? { tanggal_rapor: payload.tanggal_rapor } : {}),
+          ...(payload.tanggal_rapor_p5 !== undefined ? { tanggal_rapor_p5: payload.tanggal_rapor_p5 } : {}),
+          ...(payload.tanggal_rapor_pts !== undefined ? { tanggal_rapor_pts: payload.tanggal_rapor_pts } : {}),
+          ...(payload.tanggal_pleno !== undefined ? { tanggal_pleno: payload.tanggal_pleno } : {}),
+        });
+      } else if (semId && (payload.tanggal_rapor !== undefined || payload.tanggal_rapor_p5 !== undefined || payload.tanggal_rapor_pts !== undefined || payload.tanggal_pleno !== undefined)) {
+        await upsertRaporRow(semId, {
+          ...(payload.tanggal_rapor !== undefined ? { tanggal_rapor: payload.tanggal_rapor } : {}),
+          ...(payload.tanggal_rapor_p5 !== undefined ? { tanggal_rapor_p5: payload.tanggal_rapor_p5 } : {}),
+          ...(payload.tanggal_rapor_pts !== undefined ? { tanggal_rapor_pts: payload.tanggal_rapor_pts } : {}),
+          ...(payload.tanggal_pleno !== undefined ? { tanggal_pleno: payload.tanggal_pleno } : {}),
+        });
       }
 
       // Format configs scoped to Academic Year (TP)
