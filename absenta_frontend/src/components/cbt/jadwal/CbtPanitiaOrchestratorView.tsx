@@ -399,10 +399,10 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
     return `${y}-${m}-${d}`;
   }, []);
 
-  // Jadwal yang strictly patuh pada active event & target tingkat
+  // Jadwal yang strictly patuh pada active event & target tingkat (berbasis kelas_id mutlak)
   const effectiveJadwalList = useMemo(() => {
-    return filterEffectiveJadwalList(jadwalList, activeEvent?.id, effectiveTargetTingkat);
-  }, [jadwalList, activeEvent?.id, effectiveTargetTingkat]);
+    return filterEffectiveJadwalList(jadwalList, activeEvent?.id, effectiveTargetTingkat, roomMappings);
+  }, [jadwalList, activeEvent?.id, effectiveTargetTingkat, roomMappings]);
 
   // ── ENGINE KETUNTASAN TIAP FASE MEJA KERJA PANITIA ──
   const readinessStep1 = useMemo(() => {

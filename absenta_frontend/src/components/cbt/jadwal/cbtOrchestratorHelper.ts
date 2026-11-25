@@ -1076,7 +1076,6 @@ export function parseScheduleRoomAndClass(j: CbtJadwalUjian, overrideRoom?: stri
   const detectedTingkat =
     detectNodeTingkat({
       label_sub: rombel,
-      label_utama: roomCode,
       catatan: j.BankSoal?.tingkat,
     }) || 10;
 
@@ -1090,8 +1089,11 @@ export function parseScheduleRoomAndClass(j: CbtJadwalUjian, overrideRoom?: stri
 export function filterEffectiveJadwalList(
   jadwalList: CbtJadwalUjian[],
   activeEventId?: string,
-  targetTingkat?: number[]
+  targetTingkat?: number[],
+  roomMappings?: KelasRoomMapping[]
 ): CbtJadwalUjian[] {
+  const roomByKelasId = new Map((roomMappings || []).map((r) => [r.kelas_id, r]));
+
   return (jadwalList || []).filter((j) => {
     // 0. Sesi remedial dikelola mandiri oleh Guru Mapel, bukan ruang bilik reguler panitia
     if ((j.setting_keamanan as any)?.is_remedial) return false;
@@ -1100,8 +1102,13 @@ export function filterEffectiveJadwalList(
       if (j.setting_keamanan.event_id !== activeEventId) return false;
     }
     if (targetTingkat && targetTingkat.length > 0) {
-      const info = parseScheduleRoomAndClass(j);
-      if (!targetTingkat.includes(info.tingkat)) return false;
+      const targetKelasIds: string[] = Array.isArray(j.target_kelas_ids) ? j.target_kelas_ids : [];
+      const matchedRoom = targetKelasIds.map((id) => roomByKelasId.get(id)).find(Boolean);
+      const bankTingkat = j.BankSoal?.tingkat ? Number(j.BankSoal.tingkat) : undefined;
+      const absTingkat =
+        matchedRoom?.tingkat ??
+        (bankTingkat && !Number.isNaN(bankTingkat) ? bankTingkat : parseScheduleRoomAndClass(j).tingkat);
+      if (!targetTingkat.includes(absTingkat)) return false;
     }
     return true;
   });
