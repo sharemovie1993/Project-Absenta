@@ -47,6 +47,7 @@ import { StaffWeeklyScheduleWidget } from '../../widgets/StaffWeeklyScheduleWidg
 import { BebanMengajarWidget } from '../widgets/BebanMengajarWidget';
 import { TeacherLeaderboardWidget } from '../widgets/TeacherLeaderboardWidget';
 import { useTenant } from '../../../../hooks/useTenant';
+import { useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
 import { toLocalDate, formatLocalTimeFromISO } from '../../../../utils/attendance/time';
 import { useMyPengawasCbt } from '@/hooks/useMyPengawasCbt';
 import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
@@ -156,6 +157,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { tenantId } = useTenant();
+  const { activeYear: activeTp } = useTahunPelajaranOptions();
+  const { activeSemester } = useSemesterOptions();
   const [showIzinModal, setShowIzinModal] = useState(false);
   const [isScanSosialisasiOpen, setIsScanSosialisasiOpen] = useState(false);
   const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
@@ -217,8 +220,13 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
 
   // Klasemen Kedisiplinan & Poin Kinerja Guru Bulan Ini (Gamifikasi Motivasi Diri)
   const { data: leaderboardRes, isLoading: loadingLeaderboard } = useQuery({
-    queryKey: ['teacher-discipline-leaderboard-beranda', 'PENDIDIK', 'this_month'],
-    queryFn: () => getLeaderboardGuru(50, 'PENDIDIK', { timeframe: 'this_month' }).catch(() => ({ success: true, message: '', data: [] })),
+    queryKey: ['teacher-discipline-leaderboard-beranda', 'PENDIDIK', 'this_month', activeTp?.id, activeSemester?.id],
+    queryFn: () =>
+      getLeaderboardGuru(50, 'PENDIDIK', {
+        timeframe: 'this_month',
+        ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
+        ...(activeSemester?.id ? { semester_id: activeSemester.id } : {}),
+      }).catch(() => ({ success: true, message: '', data: [] })),
     staleTime: 60 * 1000,
   });
 

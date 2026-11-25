@@ -693,10 +693,26 @@ export class GuruRekapCalculator {
       dateFilter = { lte: now };
     }
 
-    // Optional Academic Filter
+    // Academic Context Filter: gunakan parameter jika dikirim, atau fallback ke TP & Semester aktif
+    let resolvedTpId = options?.tahun_pelajaran_id;
+    let resolvedSemId = options?.semester_id;
+
+    if (!resolvedTpId || !resolvedSemId) {
+      const [activeTp, activeSem] = await Promise.all([
+        !resolvedTpId
+          ? prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } })
+          : Promise.resolve(null),
+        !resolvedSemId
+          ? prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } })
+          : Promise.resolve(null),
+      ]);
+      if (!resolvedTpId && activeTp?.id) resolvedTpId = activeTp.id;
+      if (!resolvedSemId && activeSem?.id) resolvedSemId = activeSem.id;
+    }
+
     const academicFilter: any = {};
-    if (options?.tahun_pelajaran_id) academicFilter.tahun_pelajaran_id = options.tahun_pelajaran_id;
-    if (options?.semester_id) academicFilter.semester_id = options.semester_id;
+    if (resolvedTpId) academicFilter.tahun_pelajaran_id = resolvedTpId;
+    if (resolvedSemId) academicFilter.semester_id = resolvedSemId;
 
     // 2. Cek Aktivitas Presensi Gerbang Guru di Tenant
     const totalTenantGerbang = await prisma.absenGerbangGuru.count({
