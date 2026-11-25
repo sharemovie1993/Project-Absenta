@@ -421,7 +421,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
             })
             .catch(() => null)
         : null,
-    enabled: isOpen && Boolean(mapelId),
+    enabled: isOpen && Boolean(mapelId) && Boolean(activeEventId || activeTpId),
     staleTime: 30 * 1000,
   });
 
@@ -496,8 +496,13 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   };
 
   const existingBanks = useMemo(() => {
-    return existingBanksRes?.items || (existingBanksRes as any)?.data?.items || [];
-  }, [existingBanksRes]);
+    const raw = existingBanksRes?.items || (existingBanksRes as any)?.data?.items || [];
+    return raw.filter((b: CbtBankSoal) => {
+      if (activeEventId && b.event_id !== activeEventId) return false;
+      if (activeTpId && b.tahun_pelajaran_id && b.tahun_pelajaran_id !== activeTpId) return false;
+      return true;
+    });
+  }, [existingBanksRes, activeEventId, activeTpId]);
 
   const jurusanOccupancy = useMemo(() => {
     return evaluateJurusanOccupancy({
