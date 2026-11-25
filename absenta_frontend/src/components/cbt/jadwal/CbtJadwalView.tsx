@@ -396,7 +396,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         key: 'sesi',
         title: 'Sesi Ujian',
         label: 'Sesi Ujian',
-        className: guruId ? 'w-[30%]' : 'min-w-[200px]',
+        className: guruId ? 'w-[26%]' : 'min-w-[200px]',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           const autoRapor = row.setting_keamanan?.auto_transfer_rapor;
           const targetSlot = row.setting_keamanan?.target_rapor_slot;
@@ -699,7 +699,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         key: 'waktu',
         title: 'Jadwal & Durasi',
         label: 'Jadwal & Durasi',
-        className: guruId ? 'w-[16%]' : 'min-w-[190px]',
+        className: guruId ? 'w-[14%]' : 'min-w-[190px]',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           const tgl = new Date(row.tanggal_mulai);
           const tz = getTimezone();
@@ -751,7 +751,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         key: 'aksi',
         title: guruId ? 'Aksi' : 'Aksi & Proctor',
         label: guruId ? 'Aksi' : 'Aksi & Proctor',
-        className: guruId ? 'w-[12%] text-right' : 'min-w-[260px] text-right',
+        className: guruId ? 'w-[18%] text-right' : 'min-w-[260px] text-right',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           const pesertaCount = row._count?.Peserta || 0;
           const sec = (row.setting_keamanan as any) || {};
@@ -782,8 +782,8 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           // bahkan jika guru tersebut kebetulan adalah pengawas ruang pada mapel tersebut.
           const canControlSession = !readOnly && isPrivilegedPanitia && !guruId;
 
-          // Transfer Nilai ke Rapor: Guru Mapel pemilik Bank Soal atau Panitia, ketika sesi aktif/selesai & ada peserta
-          const canTransferRapor = !readOnly && (isPrivilegedPanitia || isSubjectTeacherOwner) && isSessionUsed;
+          // Transfer Nilai ke Rapor: Guru Pengampu Mapel (Sesi Utama maupun Remedial/Susulan) atau Panitia, ketika sesi aktif/selesai & ada peserta
+          const canTransferRapor = !readOnly && (isPrivilegedPanitia || isSubjectTeacherOwner || Boolean(guruId)) && isSessionUsed;
 
           // Penerbitan Remedial CBT:
           // Hak Prerogatif Guru Pengampu Mapel (atau Panitia) pada Sesi Utama (bukan anak remedial) yang aktif/selesai & ada peserta
@@ -1179,7 +1179,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
             const isSessionUsed = item.status !== 'DRAFT' || pesertaCount > 0;
             const canOpenMonitor = isPrivilegedPanitia || isAssignedProctor || isSubjectTeacherOwner || isSessionUsed;
             const canControlSession = !readOnly && isPrivilegedPanitia && !guruId;
-            const canTransferRapor = !readOnly && (isPrivilegedPanitia || isSubjectTeacherOwner) && isSessionUsed;
+            const canTransferRapor = !readOnly && (isPrivilegedPanitia || isSubjectTeacherOwner || Boolean(guruId)) && isSessionUsed;
             const canPublishRemedial =
               !readOnly &&
               !item._isChildRow &&
