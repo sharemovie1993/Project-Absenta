@@ -999,6 +999,7 @@ export class CbtBankSoalService {
         jurusan: precision.resolvedJurusan || null,
         jurusan_id: precision.resolvedJurusanId ?? null,
         target_jurusan_ids: precision.resolvedTargetJurusanIds ?? undefined,
+        target_kelas_ids: Array.isArray(data.target_kelas_ids) ? data.target_kelas_ids : undefined,
         alokasi_menit: data.alokasi_menit ?? 60,
         acak_soal: data.acak_soal ?? true,
         acak_opsi: data.acak_opsi ?? true,
@@ -1083,6 +1084,9 @@ export class CbtBankSoalService {
         ...(precision.resolvedTargetJurusanIds !== undefined
           ? { target_jurusan_ids: precision.resolvedTargetJurusanIds === null ? null : precision.resolvedTargetJurusanIds }
           : {}),
+        ...(data.target_kelas_ids !== undefined
+          ? { target_kelas_ids: data.target_kelas_ids === null ? null : data.target_kelas_ids }
+          : {}),
         ...(data.alokasi_menit !== undefined ? { alokasi_menit: data.alokasi_menit } : {}),
         ...(data.acak_soal !== undefined ? { acak_soal: data.acak_soal } : {}),
         ...(data.acak_opsi !== undefined ? { acak_opsi: data.acak_opsi } : {}),
@@ -1150,6 +1154,7 @@ export class CbtBankSoalService {
           jurusan: source.jurusan,
           jurusan_id: source.jurusan_id,
           target_jurusan_ids: source.target_jurusan_ids as any,
+          target_kelas_ids: source.target_kelas_ids as any,
           jumlah_soal: source.Soal.length,
           alokasi_menit: source.alokasi_menit,
           acak_soal: source.acak_soal,
@@ -1280,6 +1285,7 @@ export class CbtBankSoalService {
             jurusan: source.jurusan,
             jurusan_id: source.jurusan_id,
             target_jurusan_ids: source.target_jurusan_ids as any,
+            target_kelas_ids: source.target_kelas_ids as any,
             jumlah_soal: source.Soal.length,
             alokasi_menit: source.alokasi_menit,
             acak_soal: source.acak_soal,

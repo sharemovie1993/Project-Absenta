@@ -42,6 +42,7 @@ const bankSoalBaseSchema = z.object({
   jurusan: z.string().nullable().optional(),
   jurusan_id: z.string().uuid().nullable().optional(),
   target_jurusan_ids: z.array(z.string().uuid()).nullable().optional(),
+  target_kelas_ids: z.array(z.string().uuid()).nullable().optional(),
   alokasi_menit: z.number().int().min(10).max(300).default(60),
   acak_soal: z.boolean().default(true),
   acak_opsi: z.boolean().default(true),

@@ -19,6 +19,8 @@ interface CbtMgmpColleaguePickerProps {
   currentGuruId: string;
   selectedIds: string[];
   onChangeSelectedIds: (ids: string[]) => void;
+  selectedKelasIds?: string[];
+  onChangeSelectedKelasIds?: (kelasIds: string[]) => void;
   title?: string;
   isEditMode?: boolean;
   tahunPelajaranId?: string;
@@ -33,6 +35,8 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
   currentGuruId,
   selectedIds,
   onChangeSelectedIds,
+  selectedKelasIds = [],
+  onChangeSelectedKelasIds,
   title,
   isEditMode = false,
   tahunPelajaranId,
@@ -95,6 +99,35 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
     });
   }, [parallelTeachersRes?.data, mapelId, currentGuruId, targetTingkatNum, targetJurusanTokens]);
 
+  // Peta eksplisit guru_id -> daftar kelas (id, nama_kelas, jurusanCode) pada tingkat sasaran
+  const colleagueKelasMap = useMemo(() => {
+    const map = new Map<string, Array<{ kelasId: string; namaKelas: string; jurusanCode: string }>>();
+    const rows: any[] = parallelTeachersRes?.data || [];
+    rows.forEach((gm: any) => {
+      if (!gm?.guru_id || gm.guru_id === currentGuruId || !gm.Kelas?.id) return;
+      const gmTingkat = Number(gm.Kelas?.tingkat ?? gm.tingkat);
+      if (targetTingkatNum && gmTingkat && gmTingkat !== targetTingkatNum) return;
+      const jObj = gm.Kelas?.Jurusan || gm.Jurusan;
+      const jCode = (jObj?.singkatan || jObj?.kode || jObj?.kode_jurusan || jObj?.nama || '')
+        .toUpperCase()
+        .trim();
+      const arr = map.get(gm.guru_id) || [];
+      if (!arr.some((x) => x.kelasId === gm.Kelas.id)) {
+        arr.push({
+          kelasId: gm.Kelas.id,
+          namaKelas: gm.Kelas.nama_kelas || gm.Kelas.nama || '-',
+          jurusanCode: jCode,
+        });
+      }
+      map.set(gm.guru_id, arr);
+    });
+    map.forEach((arr, key) => {
+      arr.sort((a, b) => a.namaKelas.localeCompare(b.namaKelas, 'id', { numeric: true }));
+      map.set(key, arr);
+    });
+    return map;
+  }, [parallelTeachersRes?.data, currentGuruId, targetTingkatNum]);
+
   const guruOwnBankSet = useMemo(() => {
     const items: CbtBankSoal[] = mapelBanksRes?.items || (mapelBanksRes as any)?.data?.items || [];
     const set = new Set<string>();
@@ -116,9 +149,15 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
     if (autoSelectedKeyRef.current !== currentKey) {
       autoSelectedKeyRef.current = currentKey;
       if (!isEditMode) {
-        onChangeSelectedIds(
-          parallelColleagues.filter((c) => !guruOwnBankSet.has(c.id)).map((c) => c.id)
-        );
+        const autoTeachers = parallelColleagues.filter((c) => !guruOwnBankSet.has(c.id));
+        onChangeSelectedIds(autoTeachers.map((c) => c.id));
+        if (onChangeSelectedKelasIds) {
+          const autoKelas: string[] = [];
+          autoTeachers.forEach((c) => {
+            (colleagueKelasMap.get(c.id) || []).forEach((k) => autoKelas.push(k.kelasId));
+          });
+          onChangeSelectedKelasIds(Array.from(new Set(autoKelas)));
+        }
       } else {
         // Pada mode edit: jika ada guru terpilih yang sudah tidak lagi mengajar jurusan target, bersihkan
         const validIds = new Set(parallelColleagues.map((c) => c.id));
@@ -178,16 +217,49 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
   const toggleSelectAll = () => {
     if (allSelected) {
       onChangeSelectedIds([]);
+      onChangeSelectedKelasIds?.([]);
     } else {
       onChangeSelectedIds(parallelColleagues.map((c) => c.id));
+      if (onChangeSelectedKelasIds) {
+        const allK: string[] = [];
+        parallelColleagues.forEach((c) => {
+          (colleagueKelasMap.get(c.id) || []).forEach((k) => allK.push(k.kelasId));
+        });
+        onChangeSelectedKelasIds(Array.from(new Set(allK)));
+      }
     }
   };
 
   const toggleItem = (id: string) => {
+    const teacherKelas = (colleagueKelasMap.get(id) || []).map((k) => k.kelasId);
     if (selectedIds.includes(id)) {
       onChangeSelectedIds(selectedIds.filter((item) => item !== id));
+      if (onChangeSelectedKelasIds && teacherKelas.length > 0) {
+        const removeSet = new Set(teacherKelas);
+        onChangeSelectedKelasIds(selectedKelasIds.filter((kid) => !removeSet.has(kid)));
+      }
     } else {
       onChangeSelectedIds([...selectedIds, id]);
+      if (onChangeSelectedKelasIds && teacherKelas.length > 0) {
+        onChangeSelectedKelasIds(Array.from(new Set([...selectedKelasIds, ...teacherKelas])));
+      }
+    }
+  };
+
+  const toggleSingleKelas = (guruIdOwner: string, kelasId: string) => {
+    if (!onChangeSelectedKelasIds) return;
+    const isSelected = selectedKelasIds.includes(kelasId);
+    const nextKelasIds = isSelected
+      ? selectedKelasIds.filter((k) => k !== kelasId)
+      : [...selectedKelasIds, kelasId];
+    onChangeSelectedKelasIds(nextKelasIds);
+
+    const teacherKelas = (colleagueKelasMap.get(guruIdOwner) || []).map((k) => k.kelasId);
+    const stillHasAny = teacherKelas.some((kid) => nextKelasIds.includes(kid));
+    if (stillHasAny && !selectedIds.includes(guruIdOwner)) {
+      onChangeSelectedIds([...selectedIds, guruIdOwner]);
+    } else if (!stillHasAny && selectedIds.includes(guruIdOwner)) {
+      onChangeSelectedIds(selectedIds.filter((id) => id !== guruIdOwner));
     }
   };
 
@@ -223,60 +295,112 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-44 overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-1">
           {parallelColleagues.map((colleague) => {
-            const isChecked = selectedIds.includes(colleague.id);
+            const teacherKelasList = colleagueKelasMap.get(colleague.id) || [];
+            const selectedCountForTeacher = teacherKelasList.filter((k) =>
+              selectedKelasIds.includes(k.kelasId)
+            ).length;
+            const isAllTeacherKelasSelected =
+              teacherKelasList.length > 0 &&
+              selectedCountForTeacher === teacherKelasList.length;
+            const isPartialTeacherSelected =
+              selectedCountForTeacher > 0 &&
+              selectedCountForTeacher < teacherKelasList.length;
+            const isChecked =
+              teacherKelasList.length > 0
+                ? selectedCountForTeacher > 0
+                : selectedIds.includes(colleague.id);
+
             return (
-              <label
+              <div
                 key={colleague.id}
-                onClick={() => toggleItem(colleague.id)}
                 className={cn(
-                  'flex items-center justify-between gap-2 p-2 rounded-xl border text-xs cursor-pointer select-none transition-all',
+                  'p-2.5 rounded-xl border text-xs transition-all space-y-2',
                   isChecked
-                    ? 'border-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-medium shadow-2xs'
-                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+                    ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50/70 dark:bg-indigo-950/30'
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60'
                 )}
               >
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => {}}
-                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <span className="font-bold block truncate">{colleague.name}</span>
-                    {colleague.matchedJurusanKelas.length > 0 ? (
-                      <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium truncate block">
-                        Mengajar: {colleague.matchedJurusanKelas.join(', ')}
+                <div className="flex items-center justify-between gap-2">
+                  <label
+                    onClick={() => toggleItem(colleague.id)}
+                    className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isAllTeacherKelasSelected || (teacherKelasList.length === 0 && isChecked)}
+                      ref={(el) => {
+                        if (el) el.indeterminate = isPartialTeacherSelected;
+                      }}
+                      onChange={() => {}}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
+                    />
+                    <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
+                      {colleague.name}
+                    </span>
+                    {teacherKelasList.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold shrink-0">
+                        {selectedCountForTeacher}/{teacherKelasList.length} kelas
                       </span>
-                    ) : colleague.kelasNames.length > 0 ? (
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate block">
-                        Mengajar: {colleague.kelasNames.join(', ')}
+                    )}
+                  </label>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {guruOwnBankSet.has(colleague.id) && (
+                      <span
+                        className="text-[9.5px] px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800 font-bold"
+                        title="Rekan ini sudah memiliki Bank Soal Mandiri sendiri"
+                      >
+                        Sudah Ada Mandiri
                       </span>
-                    ) : (
-                      <span className="text-[10px] text-slate-400 truncate block">
-                        Guru Pengampu Paralel
+                    )}
+                    {typeof colleague.tingkatNum === 'number' && !isNaN(colleague.tingkatNum) && colleague.tingkatNum > 0 && (
+                      <span className="text-[9.5px] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold">
+                        Tingkat {formatTingkatRomawi(colleague.tingkatNum)}
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {guruOwnBankSet.has(colleague.id) && (
-                    <span
-                      className="text-[9.5px] px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800 font-bold"
-                      title="Rekan ini sudah memiliki Bank Soal Mandiri sendiri"
-                    >
-                      Sudah Ada Mandiri
-                    </span>
-                  )}
-                  {typeof colleague.tingkatNum === 'number' && !isNaN(colleague.tingkatNum) && colleague.tingkatNum > 0 && (
-                    <span className="text-[9.5px] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold">
-                      Tingkat {formatTingkatRomawi(colleague.tingkatNum)}
-                    </span>
-                  )}
-                </div>
-              </label>
+
+                {teacherKelasList.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 pl-6">
+                    {teacherKelasList.map((k) => {
+                      const kelasSelected = selectedKelasIds.includes(k.kelasId);
+                      return (
+                        <button
+                          key={k.kelasId}
+                          type="button"
+                          onClick={() => toggleSingleKelas(colleague.id, k.kelasId)}
+                          className={cn(
+                            'px-2 py-1 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1.5',
+                            kelasSelected
+                              ? 'border-indigo-500 bg-indigo-600 text-white shadow-2xs'
+                              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-indigo-300'
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'w-3 h-3 rounded-xs flex items-center justify-center text-[9px] border',
+                              kelasSelected
+                                ? 'border-white/70 bg-white/20 text-white'
+                                : 'border-slate-300 dark:border-slate-600'
+                            )}
+                          >
+                            {kelasSelected ? '✓' : ''}
+                          </span>
+                          <span>{k.namaKelas}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 pl-6">
+                    {colleague.kelasNames.length > 0
+                      ? `Mengajar: ${colleague.kelasNames.join(', ')}`
+                      : 'Guru Pengampu Paralel'}
+                  </p>
+                )}
+              </div>
             );
           })}
         </div>

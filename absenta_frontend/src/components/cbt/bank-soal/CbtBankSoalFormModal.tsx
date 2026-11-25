@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Modal, Button, Input, SearchableSelect, Badge } from '@/components/ui';
-import { useGuruOptions, useMapelOptions, useSemesterOptions, useJurusanOptions, useTahunPelajaranOptions } from '@/components/common';
+import { useGuruOptions, useMapelOptions, useSemesterOptions, useJurusanOptions, useTahunPelajaranOptions, useKelasOptions } from '@/components/common';
 import { useJenjang } from '@/hooks/useJenjang';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import { kurikulumApi } from '@/api/kurikulum.api';
@@ -241,8 +241,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   const [acakOpsi, setAcakOpsi] = useState(true);
   const [isShared, setIsShared] = useState(false);
   const [selectedColleagueIds, setSelectedColleagueIds] = useState<string[]>([]);
+  const [selectedColleagueKelasIds, setSelectedColleagueKelasIds] = useState<string[]>([]);
   const [showAllMapels, setShowAllMapels] = useState(isPrivilegedRole || initialScope === 'TERPUSAT_MASSAL');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { rawList: allKelasList = [] } = useKelasOptions({ enabled: isOpen });
 
   // Ambil data kewajiban mengajar guru untuk evaluasi anti human-error pada pilihan Tingkat & Jurusan
   const { items: teacherDutyItems = [] } = useTeacherCbtDutyStatus(guruId || initialGuruId);
@@ -253,8 +256,16 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
   }, [mapelId, teacherDutyItems]);
 
   const myTeachingClasses = useMemo(() => {
-    if (!tingkat) return [] as Array<{ rombelName: string; jurusanCode: string }>;
-    const map = new Map<string, string>();
+    if (!tingkat) return [] as Array<{ rombelName: string; jurusanCode: string; kelasId?: string }>;
+    const targetTingkatNum = parseStrictTingkatValue(tingkat);
+    const kelasByName = new Map<string, string>();
+    (allKelasList || []).forEach((k) => {
+      if (targetTingkatNum && Number(k.tingkat) !== targetTingkatNum) return;
+      const key = String(k.nama_kelas || k.nama || '').trim().toUpperCase();
+      if (key && k.id) kelasByName.set(key, k.id);
+    });
+
+    const map = new Map<string, { jurusanCode: string; kelasId?: string }>();
     relevantDutiesForMapel
       .filter((d) => d.tingkatRoman === tingkat)
       .forEach((d) => {
@@ -262,14 +273,17 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         (d.rombelNames || []).forEach((rName) => {
           const clean = String(rName || '').trim();
           if (clean && !map.has(clean)) {
-            map.set(clean, jurCode);
+            map.set(clean, {
+              jurusanCode: jurCode,
+              kelasId: kelasByName.get(clean.toUpperCase()),
+            });
           }
         });
       });
     return Array.from(map.entries())
-      .map(([rombelName, jurusanCode]) => ({ rombelName, jurusanCode }))
+      .map(([rombelName, info]) => ({ rombelName, jurusanCode: info.jurusanCode, kelasId: info.kelasId }))
       .sort((a, b) => a.rombelName.localeCompare(b.rombelName, 'id', { numeric: true }));
-  }, [relevantDutiesForMapel, tingkat]);
+  }, [relevantDutiesForMapel, tingkat, allKelasList]);
 
   const [selectedRombelNames, setSelectedRombelNames] = useState<string[]>([]);
 
@@ -280,6 +294,18 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       return;
     }
     if (bankSoalToEdit) {
+      const editKelasIds = Array.isArray(bankSoalToEdit.target_kelas_ids)
+        ? bankSoalToEdit.target_kelas_ids
+        : [];
+      if (editKelasIds.length > 0) {
+        const matched = myTeachingClasses
+          .filter((c) => c.kelasId && editKelasIds.includes(c.kelasId))
+          .map((c) => c.rombelName);
+        if (matched.length > 0) {
+          setSelectedRombelNames(matched);
+          return;
+        }
+      }
       const editJurs = (bankSoalToEdit.jurusan || '')
         .split(/[,;/|]+/)
         .map((s) => s.trim().toUpperCase())
@@ -747,6 +773,9 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         (id) => id !== bankSoalToEdit.guru_id
       );
       setSelectedColleagueIds(existingColleagues);
+      setSelectedColleagueKelasIds(
+        Array.isArray(bankSoalToEdit.target_kelas_ids) ? bankSoalToEdit.target_kelas_ids : []
+      );
       const isSharedBank =
         Boolean(bankSoalToEdit.is_shared) || existingColleagues.length > 0;
       setIsShared(isSharedBank);
@@ -822,6 +851,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       setAcakOpsi(true);
       setIsShared(false);
       setSelectedColleagueIds([]);
+      setSelectedColleagueKelasIds([]);
       setShowAllMapels(isPrivilegedRole || isMassal);
 
       if (defaultMapelId && initialTingkat && isMassal) {
@@ -963,9 +993,17 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     try {
       setIsSubmitting(true);
 
-      // Pada mode MGMP Bersama: turunkan cakupan jurusan secara eksplisit dari kelas pembuat + rekan guru yang dicentang
+      // Pada mode MGMP Bersama: turunkan cakupan jurusan & kelas secara eksplisit dari kelas pembuat + kelas rekan yang dicentang
       let effectiveJurusanStr = jurusan || '';
       let effectiveJurusanCodes = selectedJurusanList;
+      const creatorKelasIds = (
+        isShared
+          ? myTeachingClasses
+          : myTeachingClasses.filter((c) => selectedRombelNames.includes(c.rombelName))
+      )
+        .map((c) => c.kelasId)
+        .filter((id): id is string => Boolean(id));
+
       if (isShared) {
         const cachedParallel: any = queryClient.getQueryData([
           'parallel-teachers',
@@ -976,8 +1014,14 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         const parallelRows: any[] = cachedParallel?.data || [];
         const targetTingkatNum = parseStrictTingkatValue(tingkat);
         const derivedSet = new Set<string>(myTeachingJurusans.map((c) => c.toUpperCase().trim()));
+        const useExplicitKelasFilter = selectedColleagueKelasIds.length > 0;
         parallelRows.forEach((gm: any) => {
-          if (!selectedColleagueIds.includes(gm.guru_id)) return;
+          const gmKelasId = gm.Kelas?.id || gm.kelas_id;
+          if (useExplicitKelasFilter) {
+            if (!gmKelasId || !selectedColleagueKelasIds.includes(gmKelasId)) return;
+          } else if (!selectedColleagueIds.includes(gm.guru_id)) {
+            return;
+          }
           const gmTingkat = Number(gm.Kelas?.tingkat ?? gm.tingkat);
           if (targetTingkatNum && gmTingkat && gmTingkat !== targetTingkatNum) return;
           const jObj = gm.Kelas?.Jurusan || gm.Jurusan;
@@ -991,6 +1035,10 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
           effectiveJurusanStr = effectiveJurusanCodes.join(', ');
         }
       }
+
+      const targetKelasIds = isShared
+        ? Array.from(new Set([...creatorKelasIds, ...selectedColleagueKelasIds]))
+        : creatorKelasIds;
 
       const matchedJurusanIds = (rawJurusanList || [])
         .filter((j) => {
@@ -1014,6 +1062,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         jurusan: effectiveJurusanStr || null,
         jurusan_id: matchedJurusanIds.length === 1 ? matchedJurusanIds[0] : null,
         target_jurusan_ids: matchedJurusanIds.length > 0 ? matchedJurusanIds : null,
+        target_kelas_ids: targetKelasIds.length > 0 ? targetKelasIds : null,
         alokasi_menit: Number(alokasiMenit),
         acak_soal: acakSoal,
         acak_opsi: acakOpsi,
@@ -1632,6 +1681,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   onClick={() => {
                     setIsShared(false);
                     setSelectedColleagueIds([]);
+                    setSelectedColleagueKelasIds([]);
                     const curDuty = tingkat ? tingkatDutyMap.get(tingkat) : undefined;
                     const nextJur =
                       !bankSoalToEdit && curDuty?.teachingJurusans && curDuty.teachingJurusans.length > 0
@@ -2008,6 +2058,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                       currentGuruId={guruId}
                       selectedIds={selectedColleagueIds}
                       onChangeSelectedIds={setSelectedColleagueIds}
+                      selectedKelasIds={selectedColleagueKelasIds}
+                      onChangeSelectedKelasIds={setSelectedColleagueKelasIds}
                       tahunPelajaranId={activeTpId}
                       semesterId={activeSemId}
                       eventId={activeEventId}
@@ -2021,9 +2073,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         <span>
                           Naskah bersama ini mencakup kelas binaan Anda +{' '}
                           <strong className="text-slate-800 dark:text-slate-100">
-                            {selectedColleagueIds.length} rekan guru terpilih
+                            {selectedColleagueKelasIds.length > 0
+                              ? `${selectedColleagueKelasIds.length} kelas rekan (${selectedColleagueIds.length} guru)`
+                              : `${selectedColleagueIds.length} rekan guru terpilih`}
                           </strong>
-                          . Rekan yang dicentang otomatis ter-cover.
+                          . Kelas yang dicentang otomatis ter-cover.
                         </span>
                       ) : (
                         <span>

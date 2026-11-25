@@ -86,6 +86,7 @@ export interface CbtBankSoal {
   jurusan?: string | null;
   jurusan_id?: string | null;
   target_jurusan_ids?: string[] | null;
+  target_kelas_ids?: string[] | null;
   jumlah_soal: number;
   alokasi_menit: number;
   acak_soal: boolean;

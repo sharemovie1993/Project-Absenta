@@ -6088,6 +6088,7 @@ model CbtBankSoal {
   jurusan            String?       // Nama/kode jurusan untuk display legacy atau null untuk semua jurusan
   jurusan_id         String?       // FK mutlak ke Jurusan (untuk single-jurusan)
   target_jurusan_ids Json?         // Array string Jurusan.id mutlak (untuk multi-jurusan)
+  target_kelas_ids   Json?         // Array string Kelas.id mutlak (untuk cakupan eksplisit per kelas)
   jumlah_soal        Int           @default(0)
   alokasi_menit      Int           @default(60)
   acak_soal          Boolean       @default(true)
