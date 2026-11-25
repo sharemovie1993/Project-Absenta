@@ -868,9 +868,19 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
               {canManage && canFinish && !isFinished && !isOverdue && onFinish && (
                 <button
                   type="button"
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors cursor-pointer"
-                  onClick={(e) => { e.stopPropagation(); onFinish(); }}
-                  title="Selesaikan Sesi"
+                  disabled={!isSessionActive}
+                  className={cn(
+                    "p-1.5 rounded-lg transition-colors",
+                    !isSessionActive
+                      ? "text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-60"
+                      : "text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 cursor-pointer"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isSessionActive) return;
+                    onFinish();
+                  }}
+                  title={!isSessionActive ? "Selesaikan Sesi aktif setelah sesi dibuka" : "Selesaikan Sesi"}
                 >
                   <CheckCircle2 size={14} />
                 </button>
@@ -880,14 +890,27 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 <Button
                   type="button"
                   size="sm"
+                  disabled={!canStartSessionNow}
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (!canStartSessionNow) return;
                     onOpenPhotoModal(item);
                   }}
-                  title={isSesiKegiatan ? `Buka sesi kegiatan ${kegiatanNamaLabel}` : "Buka sesi kelas (Bisa dengan atau tanpa foto) untuk mulai mengabsenkan siswa"}
-                  className="h-8 px-3.5 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white border-none flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-950/30 active:scale-95 transition-all animate-pulse"
+                  title={
+                    !canStartSessionNow
+                      ? `Tombol Buka Sesi aktif 15 menit sebelum jam mulai (${jamMulai} WIB)`
+                      : isSesiKegiatan
+                      ? `Buka sesi kegiatan ${kegiatanNamaLabel}`
+                      : "Buka sesi kelas (Bisa dengan atau tanpa foto) untuk mulai mengabsenkan siswa"
+                  }
+                  className={cn(
+                    "h-8 px-3.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all",
+                    !canStartSessionNow
+                      ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60"
+                      : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white border-none cursor-pointer shadow-md shadow-emerald-950/30 active:scale-95 animate-pulse"
+                  )}
                 >
-                  <Sparkles size={13} className="text-amber-300" />
+                  <Sparkles size={13} className={!canStartSessionNow ? "text-slate-400" : "text-amber-300"} />
                   <span>{isSesiKegiatan ? `🚀 Buka ${kegiatanNamaLabel}` : "🚀 Buka Sesi Kelas"}</span>
                 </Button>
               )}
