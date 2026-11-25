@@ -396,7 +396,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         key: 'sesi',
         title: 'Sesi Ujian',
         label: 'Sesi Ujian',
-        className: 'min-w-[200px]',
+        className: guruId ? 'w-[37%]' : 'min-w-[200px]',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           const autoRapor = row.setting_keamanan?.auto_transfer_rapor;
           const targetSlot = row.setting_keamanan?.target_rapor_slot;
@@ -530,17 +530,19 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                 )}
               </div>
               <div className="flex items-center gap-1.5 text-[11px] text-slate-400 flex-wrap">
-                <span className="font-mono">{row.BankSoal?.kode_bank || '-'}</span>
-                {ruangUjian && (
+                {!guruId && (
                   <>
-                    <span>•</span>
-                    <span className="text-slate-500 font-medium">{ruangUjian}</span>
+                    <span className="font-mono">{row.BankSoal?.kode_bank || '-'}</span>
+                    {(ruangUjian || pengawas1Nama || proktorNama) && <span>•</span>}
                   </>
+                )}
+                {ruangUjian && (
+                  <span className="text-slate-500 font-medium">{ruangUjian}</span>
                 )}
                 {(pengawas1Nama || proktorNama) && (
                   <>
-                    <span>•</span>
-                    <span className="text-slate-500 truncate max-w-[180px]" title={`Pengawas: ${pengawas1Nama || '-'} | Proktor: ${proktorNama || '-'}`}>
+                    {ruangUjian && <span>•</span>}
+                    <span className="text-slate-500 truncate max-w-[220px]" title={`Pengawas: ${pengawas1Nama || '-'} | Proktor: ${proktorNama || '-'}`}>
                       Pengawas: {pengawas1Nama || proktorNama}
                     </span>
                   </>
@@ -550,50 +552,54 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           );
         },
       },
-      {
-        key: 'mapel',
-        title: 'Mata Pelajaran',
-        label: 'Mata Pelajaran',
-        className: 'min-w-[170px]',
-        render: (_val: unknown, row: CbtJadwalUjian) => {
-          const badge = row.kolaborasi_badge || row.BankSoal?.kolaborasi_badge;
-          const unitNama = row.BankSoal?.UnitPengajaran?.nama_unit;
-          const mapelLabel =
-            row.display_mapel ||
-            row.BankSoal?.display_mapel ||
-            row.BankSoal?.Mapel?.nama_mapel ||
-            '-';
-          return (
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-semibold text-xs text-indigo-600 dark:text-indigo-400 line-clamp-1">
-                  {mapelLabel}
-                </span>
-                {badge && (
-                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                    {badge}
-                  </span>
-                )}
-                {unitNama && (
-                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
-                    Unit
-                  </span>
-                )}
-              </div>
-              {row.BankSoal?.tingkat && (
-                <span className="text-[10px] font-bold text-slate-400">
-                  Kelas {row.BankSoal.tingkat}
-                </span>
-              )}
-            </div>
-          );
-        },
-      },
+      ...(!guruId
+        ? [
+            {
+              key: 'mapel',
+              title: 'Mata Pelajaran',
+              label: 'Mata Pelajaran',
+              className: 'min-w-[170px]',
+              render: (_val: unknown, row: CbtJadwalUjian) => {
+                const badge = row.kolaborasi_badge || row.BankSoal?.kolaborasi_badge;
+                const unitNama = row.BankSoal?.UnitPengajaran?.nama_unit;
+                const mapelLabel =
+                  row.display_mapel ||
+                  row.BankSoal?.display_mapel ||
+                  row.BankSoal?.Mapel?.nama_mapel ||
+                  '-';
+                return (
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-semibold text-xs text-indigo-600 dark:text-indigo-400 line-clamp-1">
+                        {mapelLabel}
+                      </span>
+                      {badge && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          {badge}
+                        </span>
+                      )}
+                      {unitNama && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                          Unit
+                        </span>
+                      )}
+                    </div>
+                    {row.BankSoal?.tingkat && (
+                      <span className="text-[10px] font-bold text-slate-400">
+                        Kelas {row.BankSoal.tingkat}
+                      </span>
+                    )}
+                  </div>
+                );
+              },
+            },
+          ]
+        : []),
       {
         key: 'token',
         title: 'Token Masuk',
         label: 'Token Masuk',
-        className: 'min-w-[130px] text-center',
+        className: guruId ? 'w-[13%] text-center' : 'min-w-[130px] text-center',
         render: (_val: unknown, row: any) => {
           if (row._isChildRow && row.setting_keamanan?.tokenless) {
             return (
@@ -628,7 +634,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         key: 'status',
         title: 'Status Sesi',
         label: 'Status Sesi',
-        className: 'min-w-[130px] text-center',
+        className: guruId ? 'w-[14%] text-center' : 'min-w-[130px] text-center',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           if (row.status === 'ACTIVE') {
             return (
@@ -664,7 +670,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         key: 'waktu',
         title: 'Jadwal & Durasi',
         label: 'Jadwal & Durasi',
-        className: 'min-w-[190px]',
+        className: guruId ? 'w-[17%]' : 'min-w-[190px]',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           const tgl = new Date(row.tanggal_mulai);
           const tz = getTimezone();
@@ -694,9 +700,9 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
       },
       {
         key: 'peserta',
-        title: 'Peserta Ujian',
-        label: 'Peserta Ujian',
-        className: 'min-w-[110px] text-center',
+        title: 'Peserta',
+        label: 'Peserta',
+        className: guruId ? 'w-[7%] text-center' : 'min-w-[110px] text-center',
         render: (_val: unknown, row: any) => {
           if (row._isChildRow && row.setting_keamanan?.target_siswa_ids) {
             return (
@@ -714,9 +720,9 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
       },
       {
         key: 'aksi',
-        title: 'Aksi & Proctor',
-        label: 'Aksi & Proctor',
-        className: 'min-w-[260px] text-right',
+        title: guruId ? 'Aksi' : 'Aksi & Proctor',
+        label: guruId ? 'Aksi' : 'Aksi & Proctor',
+        className: guruId ? 'w-[12%] text-right' : 'min-w-[260px] text-right',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           const pesertaCount = row._count?.Peserta || 0;
           const sec = (row.setting_keamanan as any) || {};
@@ -1456,6 +1462,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
                     columns={columns}
                     loading={false}
                     hoverable={true}
+                    className="[&_table]:table-fixed"
                     emptyMessage="Belum ada jadwal ujian pada mapel ini"
                     rowClassName={(row: any) => {
                       if (row._isChildRow) {
