@@ -386,8 +386,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
     }
   }, [livePengawasSchedules, activeSubTab]);
 
-  const handleEnterMejaPengawas = useCallback((jadwalId: string) => {
-    setSelectedPengawasJadwalId(jadwalId);
+  const handleEnterMejaPengawas = useCallback((_jadwalId: string) => {
+    setSelectedPengawasJadwalId(undefined);
     setShowPengawasDispatchModal(false);
     handleSubTabChange('pengawas_cbt');
   }, [handleSubTabChange]);

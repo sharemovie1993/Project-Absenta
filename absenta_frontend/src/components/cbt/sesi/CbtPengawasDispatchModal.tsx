@@ -226,7 +226,7 @@ export const CbtPengawasDispatchModal: React.FC<CbtPengawasDispatchModalProps> =
                       className="w-full min-h-[46px] py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white shadow-sm shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
                     >
                       <ShieldCheck size={16} className="shrink-0" />
-                      <span>Masuk ke Meja Pengawas Sekarang</span>
+                      <span>Lihat Daftar Sesi &amp; Denah</span>
                       <ArrowRight size={15} className="shrink-0" />
                     </button>
                   </div>
