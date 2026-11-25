@@ -132,12 +132,47 @@ export class CbtTestEngineService {
       return [];
     }
 
+    const [activeTp, activeSem, activeEvents] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true },
+      }),
+      prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, nama_semester: true },
+      }),
+      prisma.cbtEvent.findMany({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, tahun_pelajaran_id: true, semester: true },
+      }),
+    ]);
+
+    const activeSemUpper = (activeSem?.nama_semester || '').toUpperCase();
+    const activeEventIds = new Set(
+      activeEvents
+        .filter((ev) => {
+          if (ev.tahun_pelajaran_id && activeTp?.id && ev.tahun_pelajaran_id !== activeTp.id) {
+            return false;
+          }
+          if (ev.semester && activeSemUpper) {
+            const evSem = ev.semester.toUpperCase();
+            if (evSem !== 'SEMUA' && !activeSemUpper.includes(evSem) && !evSem.includes(activeSemUpper)) {
+              return false;
+            }
+          }
+          return true;
+        })
+        .map((ev) => ev.id)
+    );
+
     const [jadwalList, activeDenahs, allClasses, classGuruMapels] = await Promise.all([
       prisma.cbtJadwalUjian.findMany({
         where: {
           tenant_id: tenantId,
           status: { in: ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED'] },
           target_kelas_ids: { array_contains: [siswa.kelas_id] },
+          ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
+          ...(activeSem?.id ? { semester_id: activeSem.id } : {}),
         },
         orderBy: { tanggal_mulai: 'desc' },
         take: 100,
@@ -154,6 +189,7 @@ export class CbtTestEngineService {
           BankSoal: {
             select: {
               id: true,
+              event_id: true,
               mapel_id: true,
               unit_pengajaran_id: true,
               kode_bank: true,
@@ -321,6 +357,10 @@ export class CbtTestEngineService {
     const rawResult = jadwalList
       .filter((j) => {
         const sec = (j.setting_keamanan as any) || {};
+        const jadwalEventId = sec.event_id || (j.BankSoal as any)?.event_id || null;
+        if (jadwalEventId && !activeEventIds.has(jadwalEventId)) {
+          return false;
+        }
         // Sesi remedial hanya tampil di dashboard siswa yang memang terdaftar di target_siswa_ids
         if (sec.is_remedial && Array.isArray(sec.target_siswa_ids) && !sec.target_siswa_ids.includes(siswaId)) {
           return false;
