@@ -52,6 +52,78 @@ export class CbtSettingsService {
     }
   }
 
+  private static mapRowToItem(row: any): CbtEventItem {
+    return {
+      id: row.id,
+      tahun_pelajaran_id: row.tahun_pelajaran_id || '',
+      nama_event: row.nama_event,
+      kode_event: row.kode_event,
+      semester: (row.semester as 'GANJIL' | 'GENAP') || 'GANJIL',
+      target_tingkat: Array.isArray(row.target_tingkat) ? row.target_tingkat.map(Number) : [10, 11, 12],
+      ...(row.tipe_pelaksanaan ? { tipe_pelaksanaan: row.tipe_pelaksanaan as 'MASSAL' | 'MANDIRI' } : {}),
+      ...(row.keterangan !== null && row.keterangan !== undefined ? { keterangan: row.keterangan } : {}),
+      ...(Array.isArray(row.days_config) ? { days_config: row.days_config } : {}),
+      ...(Array.isArray(row.room_mappings) ? { room_mappings: row.room_mappings } : {}),
+      ...(row.matrix_draft !== null && row.matrix_draft !== undefined ? { matrix_draft: row.matrix_draft } : {}),
+      ...(Array.isArray(row.pengawas_candidates) ? { pengawas_candidates: row.pengawas_candidates } : {}),
+      lock_teacher_scheduling: Boolean(row.lock_teacher_scheduling),
+      token_refresh_interval: Number(row.token_refresh_interval ?? 0),
+      strict_browser_guard: Boolean(row.strict_browser_guard),
+      ...(row.enable_proctor !== null && row.enable_proctor !== undefined ? { enable_proctor: Boolean(row.enable_proctor) } : {}),
+      is_active: Boolean(row.is_active),
+      created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+      updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
+    };
+  }
+
+  private static async upsertRelationalEvent(tenantId: string, evt: CbtEventItem, validTpIds?: Set<string>) {
+    const resolvedTpId =
+      evt.tahun_pelajaran_id && (!validTpIds || validTpIds.has(evt.tahun_pelajaran_id))
+        ? evt.tahun_pelajaran_id
+        : null;
+    await prisma.cbtEvent.upsert({
+      where: { id: evt.id },
+      update: {
+        tahun_pelajaran_id: resolvedTpId,
+        nama_event: evt.nama_event,
+        kode_event: evt.kode_event,
+        semester: evt.semester || 'GANJIL',
+        target_tingkat: evt.target_tingkat || [10, 11, 12],
+        tipe_pelaksanaan: evt.tipe_pelaksanaan ?? null,
+        keterangan: evt.keterangan ?? null,
+        days_config: evt.days_config !== undefined ? evt.days_config : undefined,
+        room_mappings: evt.room_mappings !== undefined ? evt.room_mappings : undefined,
+        matrix_draft: evt.matrix_draft !== undefined ? evt.matrix_draft : undefined,
+        pengawas_candidates: evt.pengawas_candidates !== undefined ? evt.pengawas_candidates : undefined,
+        lock_teacher_scheduling: Boolean(evt.lock_teacher_scheduling),
+        token_refresh_interval: Number(evt.token_refresh_interval ?? 0),
+        strict_browser_guard: Boolean(evt.strict_browser_guard),
+        enable_proctor: evt.enable_proctor !== undefined ? Boolean(evt.enable_proctor) : null,
+        is_active: Boolean(evt.is_active),
+      },
+      create: {
+        id: evt.id,
+        tenant_id: tenantId,
+        tahun_pelajaran_id: resolvedTpId,
+        nama_event: evt.nama_event,
+        kode_event: evt.kode_event,
+        semester: evt.semester || 'GANJIL',
+        target_tingkat: evt.target_tingkat || [10, 11, 12],
+        tipe_pelaksanaan: evt.tipe_pelaksanaan ?? null,
+        keterangan: evt.keterangan ?? null,
+        days_config: evt.days_config !== undefined ? evt.days_config : undefined,
+        room_mappings: evt.room_mappings !== undefined ? evt.room_mappings : undefined,
+        matrix_draft: evt.matrix_draft !== undefined ? evt.matrix_draft : undefined,
+        pengawas_candidates: evt.pengawas_candidates !== undefined ? evt.pengawas_candidates : undefined,
+        lock_teacher_scheduling: Boolean(evt.lock_teacher_scheduling),
+        token_refresh_interval: Number(evt.token_refresh_interval ?? 0),
+        strict_browser_guard: Boolean(evt.strict_browser_guard),
+        enable_proctor: evt.enable_proctor !== undefined ? Boolean(evt.enable_proctor) : null,
+        is_active: Boolean(evt.is_active),
+      },
+    });
+  }
+
   private static generateDefaultEvents(tpId: string): CbtEventItem[] {
     const now = new Date().toISOString();
     return [
@@ -135,12 +207,15 @@ export class CbtSettingsService {
   }
 
   static async getEventsSummary(tenantId: string) {
-    const tpList = await prisma.tahunPelajaran.findMany({
-      where: { tenant_id: tenantId },
-      orderBy: [{ is_active: 'desc' }, { created_at: 'desc' }],
-    });
-
-    const [configRow, activeRow] = await Promise.all([
+    const [tpList, dbEvents, configRow, activeRow] = await Promise.all([
+      prisma.tahunPelajaran.findMany({
+        where: { tenant_id: tenantId },
+        orderBy: [{ is_active: 'desc' }, { created_at: 'desc' }],
+      }),
+      prisma.cbtEvent.findMany({
+        where: { tenant_id: tenantId },
+        orderBy: [{ created_at: 'asc' }],
+      }),
       prisma.config.findFirst({
         where: { tenant_id: tenantId, key: CBT_CONFIG_KEY },
       }),
@@ -150,15 +225,33 @@ export class CbtSettingsService {
     ]);
 
     let allEvents: CbtEventItem[] = [];
-    if (configRow?.value) {
+    let activeEventId = activeRow?.value || '';
+
+    if (dbEvents.length > 0) {
+      allEvents = dbEvents.map((row) => this.mapRowToItem(row));
+      const dbActive = allEvents.find((e) => e.is_active);
+      if (dbActive) {
+        activeEventId = dbActive.id;
+      }
+    } else if (configRow?.value) {
       try {
         allEvents = JSON.parse(configRow.value);
       } catch {
         allEvents = [];
       }
+      // Auto-migrate legacy Config JSON ke tabel relasional CbtEvent secara aman
+      const validTpIds = new Set(tpList.map((tp) => tp.id));
+      for (const evt of allEvents) {
+        await this.upsertRelationalEvent(
+          tenantId,
+          {
+            ...evt,
+            is_active: evt.id === activeEventId || Boolean(evt.is_active),
+          },
+          validTpIds
+        ).catch(() => null);
+      }
     }
-
-    let activeEventId = activeRow?.value || '';
 
     // Auto-inisialisasi event bawaan jika belum ada untuk TP aktif
     const activeTp = tpList.find((tp) => tp.is_active);
@@ -169,8 +262,11 @@ export class CbtSettingsService {
         activeEventId = defaultEvents[0].id;
       }
 
-      // Simpan inisialisasi default
+      // Simpan inisialisasi default ke tabel relasional & Config (dual-write)
       await Promise.all([
+        ...defaultEvents.map((evt) =>
+          this.upsertRelationalEvent(tenantId, { ...evt, is_active: evt.id === activeEventId })
+        ),
         this.setConfig(tenantId, CBT_CONFIG_KEY, JSON.stringify(allEvents)),
         this.setConfig(tenantId, CBT_ACTIVE_KEY, activeEventId),
       ]);
@@ -280,21 +376,29 @@ export class CbtSettingsService {
         ...e,
         is_active: e.id === id,
       }));
+      await prisma.cbtEvent.updateMany({
+        where: { tenant_id: tenantId, id: { not: id } },
+        data: { is_active: false },
+      });
       await this.setConfig(tenantId, CBT_ACTIVE_KEY, id);
     }
 
-    await this.setConfig(tenantId, CBT_CONFIG_KEY, JSON.stringify(allEvents));
+    await Promise.all([
+      this.upsertRelationalEvent(tenantId, updatedEvent),
+      this.setConfig(tenantId, CBT_CONFIG_KEY, JSON.stringify(allEvents)),
+    ]);
 
     return updatedEvent;
   }
 
   static async setActiveEvent(tenantId: string, eventId: string) {
-    const configRow = await prisma.config.findFirst({
-      where: { tenant_id: tenantId, key: CBT_CONFIG_KEY },
-    });
+    const [dbEvents, configRow] = await Promise.all([
+      prisma.cbtEvent.findMany({ where: { tenant_id: tenantId } }),
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: CBT_CONFIG_KEY } }),
+    ]);
 
-    let allEvents: CbtEventItem[] = [];
-    if (configRow?.value) {
+    let allEvents: CbtEventItem[] = dbEvents.map((r) => this.mapRowToItem(r));
+    if (allEvents.length === 0 && configRow?.value) {
       try {
         allEvents = JSON.parse(configRow.value);
       } catch {
@@ -312,6 +416,17 @@ export class CbtSettingsService {
       is_active: e.id === eventId,
     }));
 
+    await prisma.$transaction([
+      prisma.cbtEvent.updateMany({
+        where: { tenant_id: tenantId },
+        data: { is_active: false },
+      }),
+      prisma.cbtEvent.updateMany({
+        where: { tenant_id: tenantId, id: eventId },
+        data: { is_active: true },
+      }),
+    ]);
+
     await Promise.all([
       this.setConfig(tenantId, CBT_CONFIG_KEY, JSON.stringify(allEvents)),
       this.setConfig(tenantId, CBT_ACTIVE_KEY, eventId),
@@ -321,7 +436,8 @@ export class CbtSettingsService {
   }
 
   static async deleteEvent(tenantId: string, eventId: string) {
-    const [configRow, activeRow] = await Promise.all([
+    const [dbTarget, configRow, activeRow] = await Promise.all([
+      prisma.cbtEvent.findFirst({ where: { tenant_id: tenantId, id: eventId } }),
       prisma.config.findFirst({
         where: { tenant_id: tenantId, key: CBT_CONFIG_KEY },
       }),
@@ -330,7 +446,7 @@ export class CbtSettingsService {
       }),
     ]);
 
-    if (activeRow?.value === eventId) {
+    if (dbTarget?.is_active || activeRow?.value === eventId) {
       throw new Error('Event ini sedang aktif di Meja Kerja Panitia dan tidak dapat dihapus. Silakan aktifkan event lain terlebih dahulu.');
     }
 
@@ -345,7 +461,10 @@ export class CbtSettingsService {
 
     allEvents = allEvents.filter((e) => e.id !== eventId);
 
-    await this.setConfig(tenantId, CBT_CONFIG_KEY, JSON.stringify(allEvents));
+    await Promise.all([
+      prisma.cbtEvent.deleteMany({ where: { tenant_id: tenantId, id: eventId } }),
+      this.setConfig(tenantId, CBT_CONFIG_KEY, JSON.stringify(allEvents)),
+    ]);
 
     return { success: true, message: 'Event CBT berhasil dihapus' };
   }
