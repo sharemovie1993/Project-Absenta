@@ -252,6 +252,83 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     return teacherDutyItems.filter((item) => item.mapelId === mapelId);
   }, [mapelId, teacherDutyItems]);
 
+  const myTeachingClasses = useMemo(() => {
+    if (!tingkat) return [] as Array<{ rombelName: string; jurusanCode: string }>;
+    const map = new Map<string, string>();
+    relevantDutiesForMapel
+      .filter((d) => d.tingkatRoman === tingkat)
+      .forEach((d) => {
+        const jurCode = (d.targetJurusan || d.teachingJurusans?.[0] || '').toUpperCase().trim();
+        (d.rombelNames || []).forEach((rName) => {
+          const clean = String(rName || '').trim();
+          if (clean && !map.has(clean)) {
+            map.set(clean, jurCode);
+          }
+        });
+      });
+    return Array.from(map.entries())
+      .map(([rombelName, jurusanCode]) => ({ rombelName, jurusanCode }))
+      .sort((a, b) => a.rombelName.localeCompare(b.rombelName, 'id', { numeric: true }));
+  }, [relevantDutiesForMapel, tingkat]);
+
+  const [selectedRombelNames, setSelectedRombelNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (isShared) return;
+    if (myTeachingClasses.length === 0) {
+      setSelectedRombelNames([]);
+      return;
+    }
+    if (bankSoalToEdit) {
+      const editJurs = (bankSoalToEdit.jurusan || '')
+        .split(/[,;/|]+/)
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean);
+      if (editJurs.length > 0) {
+        setSelectedRombelNames(
+          myTeachingClasses
+            .filter((c) => !c.jurusanCode || editJurs.includes(c.jurusanCode))
+            .map((c) => c.rombelName)
+        );
+      } else {
+        setSelectedRombelNames(myTeachingClasses.map((c) => c.rombelName));
+      }
+      return;
+    }
+    setSelectedRombelNames(myTeachingClasses.map((c) => c.rombelName));
+  }, [myTeachingClasses, bankSoalToEdit, isShared, mapelId, tingkat]);
+
+  const syncJurusanFromRombels = (nextRombels: string[]) => {
+    const jurSet = new Set<string>();
+    myTeachingClasses.forEach((c) => {
+      if (nextRombels.includes(c.rombelName) && c.jurusanCode) {
+        jurSet.add(c.jurusanCode);
+      }
+    });
+    setJurusan(Array.from(jurSet).join(', '));
+  };
+
+  const toggleRombel = (rombelName: string) => {
+    if (isTargetCoveredByColleague.isLocked) return;
+    const next = selectedRombelNames.includes(rombelName)
+      ? selectedRombelNames.filter((r) => r !== rombelName)
+      : [...selectedRombelNames, rombelName];
+    setSelectedRombelNames(next);
+    syncJurusanFromRombels(next);
+  };
+
+  const selectAllRombels = (availableNames: string[]) => {
+    if (isTargetCoveredByColleague.isLocked) return;
+    setSelectedRombelNames(availableNames);
+    syncJurusanFromRombels(availableNames);
+  };
+
+  const clearRombels = () => {
+    if (isTargetCoveredByColleague.isLocked) return;
+    setSelectedRombelNames([]);
+    setJurusan('');
+  };
+
   // Auto-select jurusan binaan di Mode Mandiri agar tidak tercatat sebagai "Semua Jurusan (Umum)" (jurusan: null)
   useEffect(() => {
     if (bankSoalToEdit || defaultJurusan || isShared || !tingkat) return;
@@ -1639,19 +1716,31 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 const isLocked = isTargetCoveredByColleague.isLocked;
 
                 if (!isShared) {
-                  /* ── TAMPILAN KHUSUS MANDIRI: HANYA JURUSAN BINAAN GURU (MULTI-SELECT / RUMPUN) ── */
+                  /* ── TAMPILAN KHUSUS MANDIRI: EKSPLISIT PER KELAS ROMBEL BINAAN GURU ── */
+                  const availableRombelNames = myTeachingClasses
+                    .filter((c) => !isLocked && !(c.jurusanCode && jurusanOccupancy.getOccupiedInfo(c.jurusanCode)))
+                    .map((c) => c.rombelName);
+
                   return (
                     <div className="space-y-2 animate-in fade-in duration-200">
                       <div className="flex items-center justify-between gap-2">
                         <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                           <Star size={13} className="text-amber-500 fill-amber-500" />
-                          <span>Pilih Jurusan Rombel Binaan Anda (Bisa Multi-Pilih / Rumpun):</span>
+                          <span>
+                            {myTeachingClasses.length > 0
+                              ? 'Pilih Kelas Rombel Binaan Anda (Eksplisit):'
+                              : 'Pilih Jurusan Rombel Binaan Anda (Bisa Multi-Pilih / Rumpun):'}
+                          </span>
                         </label>
-                        {!isLocked && myTeachingJurusans.length > 1 && (
+                        {!isLocked && (myTeachingClasses.length > 1 || myTeachingJurusans.length > 1) && (
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => selectAllTeachingJurusans(myTeachingJurusans)}
+                              onClick={() =>
+                                myTeachingClasses.length > 0
+                                  ? selectAllRombels(availableRombelNames)
+                                  : selectAllTeachingJurusans(myTeachingJurusans)
+                              }
                               className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                             >
                               Pilih Semua
@@ -1659,7 +1748,9 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                             <span className="text-slate-300">|</span>
                             <button
                               type="button"
-                              onClick={clearJurusan}
+                              onClick={() =>
+                                myTeachingClasses.length > 0 ? clearRombels() : clearJurusan()
+                              }
                               className="text-[10px] font-semibold text-slate-500 hover:underline cursor-pointer"
                             >
                               Reset
@@ -1668,7 +1759,95 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                         )}
                       </div>
 
-                      {myTeachingJurusans.length > 0 ? (
+                      {myTeachingClasses.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                            {myTeachingClasses.map(({ rombelName, jurusanCode }) => {
+                              const occInfo = jurusanCode
+                                ? jurusanOccupancy.getOccupiedInfo(jurusanCode)
+                                : undefined;
+                              const isOccupied = isLocked || Boolean(occInfo);
+                              const isChecked = !isOccupied && selectedRombelNames.includes(rombelName);
+
+                              return (
+                                <button
+                                  key={rombelName}
+                                  type="button"
+                                  disabled={isOccupied}
+                                  onClick={() => {
+                                    if (isOccupied) return;
+                                    toggleRombel(rombelName);
+                                  }}
+                                  className={cn(
+                                    'p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-1.5',
+                                    isOccupied
+                                      ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed select-none'
+                                      : isChecked
+                                      ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-950 dark:text-emerald-100 font-bold ring-1 ring-emerald-500 shadow-2xs cursor-pointer'
+                                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300 cursor-pointer'
+                                  )}
+                                  title={
+                                    isOccupied
+                                      ? `Terkunci: Rombel ${rombelName} sudah ter-cover`
+                                      : `Kelas ${rombelName}${jurusanCode ? ` (${jurusanCode})` : ''}`
+                                  }
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div
+                                      className={cn(
+                                        'w-4 h-4 rounded border flex items-center justify-center text-[10px] font-black shrink-0',
+                                        isOccupied
+                                          ? 'border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-400'
+                                          : isChecked
+                                          ? 'bg-emerald-600 text-white border-emerald-600'
+                                          : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+                                      )}
+                                    >
+                                      {isChecked ? '✓' : ''}
+                                    </div>
+                                    <span className="text-xs truncate">{rombelName}</span>
+                                  </div>
+                                  {isOccupied ? (
+                                    <span className="text-[9px] px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-0.5 shrink-0">
+                                      <Lock size={8} />
+                                    </span>
+                                  ) : jurusanCode ? (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-semibold shrink-0">
+                                      {jurusanCode}
+                                    </span>
+                                  ) : null}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {isLocked ? (
+                            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                              <Lock size={14} className="text-rose-500 shrink-0" />
+                              <span>
+                                Seluruh rombel binaan Anda pada Tingkat {tingkat} telah di-cover oleh naskah master rekan MGMP ({isTargetCoveredByColleague.authorName || 'Rekan Guru'}). Pemilihan kelas dinonaktifkan.
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                              <ShieldCheck size={15} className="text-emerald-600 shrink-0" />
+                              {selectedRombelNames.length > 0 ? (
+                                <span>
+                                  Naskah mandiri ini mencakup {selectedRombelNames.length} kelas:{' '}
+                                  <strong className="text-slate-800 dark:text-slate-100">
+                                    {selectedRombelNames.join(', ')}
+                                  </strong>
+                                  {selectedJurusanList.length > 0 ? ` (${selectedJurusanList.join(', ')})` : ''}.
+                                </span>
+                              ) : (
+                                <span>
+                                  Pilih minimal 1 kelas binaan Anda di atas agar sasaran ujian tercatat spesifik.
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : myTeachingJurusans.length > 0 ? (
                         <div className="space-y-1.5">
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                             {myTeachingJurusans.map((code) => {
