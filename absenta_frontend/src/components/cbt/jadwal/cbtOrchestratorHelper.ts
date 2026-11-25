@@ -1018,13 +1018,8 @@ export function reconstructMatrixFromExistingSchedules(
         const firstMapelId = firstBank?.mapel_id || existingVal;
         const firstJurId = firstJurIdByKey[key] || firstBank?.jurusan || '';
 
-        const isSameMapelNoJurusanDiff =
-          thisMapelId &&
-          firstMapelId === thisMapelId &&
-          (!firstJurId || !absJurId || firstJurId === absJurId || (!thisBank?.jurusan && !firstBank?.jurusan));
-
-        if (isSameMapelNoJurusanDiff) {
-          // Mapel reguler sama dengan varian bank soal guru pengampu berbeda
+        if (thisMapelId && firstMapelId === thisMapelId) {
+          // Mapel reguler sama (meskipun ada varian bank soal per jurusan/guru) -> tetap mapel_id tunggal, jangan diubah menjadi DDPK/Multi-Jurusan
           reconstructed[key] = thisMapelId;
         } else {
           // Multi-jurusan terdeteksi (pertahankan bank soal & jurusan pertama agar tidak hilang)
