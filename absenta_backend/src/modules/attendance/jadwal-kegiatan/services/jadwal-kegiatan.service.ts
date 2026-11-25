@@ -48,7 +48,8 @@ export class JadwalKegiatanService {
    */
   private async resyncUpdatedTodayActivitySessions(
     tenantId: string,
-    kegiatan: { id: string; nama: string; waktu_mulai: string; waktu_selesai: string | null }
+    kegiatan: { id: string; nama: string; waktu_mulai: string; waktu_selesai: string | null },
+    previousNama?: string
   ) {
     try {
       const tz = await getTenantTimezone(tenantId);
@@ -62,11 +63,19 @@ export class JadwalKegiatanService {
         ? new Date(`${dateStr}T${kegiatan.waktu_selesai.slice(0, 5)}:00.000${tzOffset}`)
         : new Date(newWaktuMulai.getTime() + 60 * 60 * 1000);
 
+      const orConditions: any[] = [
+        { jadwal_kegiatan_id: kegiatan.id },
+        { jenis_kegiatan: { equals: kegiatan.nama, mode: 'insensitive' } },
+      ];
+      if (previousNama && previousNama.toLowerCase() !== kegiatan.nama.toLowerCase()) {
+        orConditions.push({ jenis_kegiatan: { equals: previousNama, mode: 'insensitive' } });
+      }
+
       const todaySessions = await prisma.sesiAbsensi.findMany({
         where: {
           tenant_id: tenantId,
-          jadwal_kegiatan_id: kegiatan.id,
           tanggal: { gte: startOfDay, lte: endOfDay },
+          OR: orConditions,
         },
         select: {
           id: true,
@@ -90,6 +99,7 @@ export class JadwalKegiatanService {
         await prisma.sesiAbsensi.update({
           where: { id: s.id },
           data: {
+            jadwal_kegiatan_id: kegiatan.id,
             waktu_mulai: newWaktuMulai,
             waktu_selesai: newWaktuSelesai,
             jenis_kegiatan: kegiatan.nama,
@@ -297,7 +307,7 @@ export class JadwalKegiatanService {
           where: { tenant_id: scope.tenantId, jadwal_kegiatan_id: id, status: 'MENDATANG' },
         });
       } else {
-        await this.resyncUpdatedTodayActivitySessions(scope.tenantId, updated);
+        await this.resyncUpdatedTodayActivitySessions(scope.tenantId, updated, existing.nama);
         await this.syncTodayActivitySessions(scope.tenantId);
       }
       await cacheInvalidationService.invalidateAttendanceCache(scope.tenantId);

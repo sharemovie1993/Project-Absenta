@@ -298,17 +298,33 @@ export class SesiQueryService {
                   { jenis_kegiatan: { not: 'KBM' } }
                 ]
               },
-              select: { id: true, jadwal_kegiatan_id: true, kelas_id: true, jenis_kegiatan: true },
+              select: {
+                id: true,
+                jadwal_kegiatan_id: true,
+                kelas_id: true,
+                jenis_kegiatan: true,
+                waktu_mulai: true,
+                waktu_selesai: true,
+                status: true,
+                _count: { select: { AbsenSiswa: true, AbsenGuru: true } },
+              },
             }),
           ]);
 
           const activeSemId = activeYear?.Semester?.[0]?.id;
           if (activeYear && activeSemId) {
             const existingSet = new Set<string>();
+            const existingMap = new Map<string, any>();
             existingActSessions.forEach((s: any) => {
-              if (s.jadwal_kegiatan_id) existingSet.add(`${s.jadwal_kegiatan_id}_${s.kelas_id}`);
+              if (s.jadwal_kegiatan_id) {
+                existingSet.add(`${s.jadwal_kegiatan_id}_${s.kelas_id}`);
+                existingMap.set(`${s.jadwal_kegiatan_id}_${s.kelas_id}`, s);
+              }
               const norm = String(s.jenis_kegiatan || '').trim().toLowerCase();
-              if (norm) existingSet.add(`named_${norm}_${s.kelas_id}`);
+              if (norm) {
+                existingSet.add(`named_${norm}_${s.kelas_id}`);
+                existingMap.set(`named_${norm}_${s.kelas_id}`, s);
+              }
             });
             let allActiveKelasIds: string[] | null = null;
             const toCreate: any[] = [];
@@ -346,7 +362,37 @@ export class SesiQueryService {
               const normKegiatan = String(kegiatan.nama || '').trim().toLowerCase();
 
               for (const kId of targetKelasIds) {
-                if (existingSet.has(`${kegiatan.id}_${kId}`) || (normKegiatan && existingSet.has(`named_${normKegiatan}_${kId}`))) {
+                const existingMatch =
+                  existingMap.get(`${kegiatan.id}_${kId}`) ||
+                  (normKegiatan ? existingMap.get(`named_${normKegiatan}_${kId}`) : undefined);
+                if (existingMatch) {
+                  const prevMulai = existingMatch.waktu_mulai ? new Date(existingMatch.waktu_mulai).getTime() : 0;
+                  const prevSelesai = existingMatch.waktu_selesai ? new Date(existingMatch.waktu_selesai).getTime() : 0;
+                  const timeChanged =
+                    Math.abs(prevMulai - startMulai.getTime()) > 30_000 ||
+                    Math.abs(prevSelesai - startSelesai.getTime()) > 30_000 ||
+                    existingMatch.jadwal_kegiatan_id !== kegiatan.id;
+
+                  if (timeChanged) {
+                    const canReopen = startSelesai.getTime() > Date.now();
+                    const hasAnyTap =
+                      (existingMatch._count?.AbsenSiswa || 0) > 0 || (existingMatch._count?.AbsenGuru || 0) > 0;
+                    const nextStatus =
+                      canReopen && existingMatch.status === 'SELESAI'
+                        ? (hasAnyTap ? 'BERLANGSUNG' : 'MENDATANG')
+                        : existingMatch.status;
+                    await prisma.sesiAbsensi.update({
+                      where: { id: existingMatch.id },
+                      data: {
+                        jadwal_kegiatan_id: kegiatan.id,
+                        waktu_mulai: startMulai,
+                        waktu_selesai: startSelesai,
+                        jenis_kegiatan: kegiatan.nama,
+                        status: nextStatus,
+                        updated_at: new Date(),
+                      },
+                    }).catch(() => {});
+                  }
                   continue;
                 }
                 toCreate.push({
