@@ -763,21 +763,40 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
     return loadPersistedMatrixState(tenantId, activeTpId, activeSemId, eventId);
   }, [tenantId, activeTpId, activeSemId, eventId, isOpen]);
 
-  // ── 5. Query Jadwal Ujian Aktif (Fase 3 Hari & Sesi) ──
+  // ── 5. Query Jadwal Ujian Aktif (Fase 3 Hari & Sesi - Terikat Konteks Akademik) ──
+  const jadwalParams = useMemo(
+    () => ({
+      limit: 1000,
+      sort_direction: 'asc' as const,
+      ...(activeTpId ? { tahun_pelajaran_id: activeTpId } : {}),
+      ...(activeSemId ? { semester_id: activeSemId } : {}),
+    }),
+    [activeTpId, activeSemId]
+  );
+
   const { data: jadwalRes } = useQuery({
-    queryKey: cbtQueryKeys.jadwal({ limit: 1000, sort_direction: 'asc' }),
-    queryFn: () => cbtApi.getJadwalList({ limit: 1000, sort_direction: 'asc' }),
-    enabled: isOpen,
+    queryKey: cbtQueryKeys.jadwal(jadwalParams),
+    queryFn: () => cbtApi.getJadwalList(jadwalParams),
+    enabled: isOpen && Boolean(activeTpId),
     staleTime: 5 * 60 * 1000,
   });
 
   const jadwalList = jadwalRes?.items || [];
 
-  // Query Master Bank Soal untuk Resolusi Nama Mata Pelajaran & Tingkat (Jalur 1 & Jalur 2)
+  // Query Master Bank Soal untuk Resolusi Nama Mata Pelajaran & Tingkat (Terikat Konteks Akademik)
+  const bankParams = useMemo(
+    () => ({
+      limit: 500,
+      ...(activeTpId ? { tahun_pelajaran_id: activeTpId } : {}),
+      ...(activeSemId ? { semester_id: activeSemId } : {}),
+    }),
+    [activeTpId, activeSemId]
+  );
+
   const { data: bankRes } = useQuery({
-    queryKey: cbtQueryKeys.bankSoal({ limit: 500 }),
-    queryFn: () => cbtApi.getBankSoalList({ limit: 500 }),
-    enabled: isOpen,
+    queryKey: cbtQueryKeys.bankSoal(bankParams),
+    queryFn: () => cbtApi.getBankSoalList(bankParams),
+    enabled: isOpen && Boolean(activeTpId),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -1057,15 +1076,21 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
     return DEFAULT_WEEK_SCHEDULE;
   }, [currentClassMapping, jadwalList, effectiveEvent, persistedMatrix, bankMap, mapelNameById, eventId, activeTpId, activeSemId]);
 
-  // ── 6. Query Siswa Terfokus 1 Kelas ──
+  // ── 6. Query Siswa Terfokus 1 Kelas (Terikat Konteks Akademik) ──
   const { data: realStudentsRes, isLoading: isLoadingSiswa } = useQuery({
-    queryKey: ['cbt-print-students-class', activeKelasId],
+    queryKey: ['cbt-print-students-class', activeKelasId, activeTpId, activeSemId],
     queryFn: async () => {
       if (!activeKelasId) return [];
-      const res = await siswaApi.getAll({ kelas_id: activeKelasId, limit: 50, status: 'AKTIF' });
+      const res = await siswaApi.getAll({
+        kelas_id: activeKelasId,
+        limit: 50,
+        status: 'AKTIF',
+        ...(activeTpId ? { tahun_pelajaran_id: activeTpId } : {}),
+        ...(activeSemId ? { semester_id: activeSemId } : {}),
+      });
       return res?.data || [];
     },
-    enabled: isOpen && Boolean(activeKelasId),
+    enabled: isOpen && Boolean(activeKelasId && activeTpId),
     staleTime: 60 * 1000,
   });
 
