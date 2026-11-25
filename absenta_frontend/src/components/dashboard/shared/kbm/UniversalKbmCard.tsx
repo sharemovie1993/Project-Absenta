@@ -297,6 +297,7 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     const matchingKegiatan = rawList
       .filter((k: any) => {
         if (!k.aktif) return false;
+        if (/pulang/i.test(k.nama || '')) return false;
         const days: string[] = Array.isArray(k.hari) ? k.hari : (k.hari || '').split(',').map((s: string) => s.trim().toUpperCase());
         if (!days.includes(todayStr)) return false;
         if (!k.waktu_selesai || !k.waktu_selesai.includes(':')) return false;
@@ -309,6 +310,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
             kegStart = startH * 60 + startM;
           }
         }
+        // Hanya kegiatan pagi (mulai sebelum pukul 12:00 WIB) yang memicu peringatan wajib hadir fisik
+        if (kegStart >= 12 * 60) return false;
         return kegEnd > scheduledMinutes && kegStart < kbmEndMinutes;
       })
       .sort((a: any, b: any) => {

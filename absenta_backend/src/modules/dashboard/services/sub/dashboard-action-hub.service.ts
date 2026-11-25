@@ -323,6 +323,7 @@ export class DashboardActionHubService {
       const items: UnifiedActionItem[] = [];
 
       for (const keg of kegiatanList) {
+        if (/pulang/i.test(keg.nama || '')) continue;
         const days: string[] = Array.isArray(keg.hari)
           ? keg.hari.map((d: any) => String(d).trim().toUpperCase())
           : String(keg.hari || '').split(',').map((d) => d.trim().toUpperCase());
@@ -330,7 +331,7 @@ export class DashboardActionHubService {
 
         const kegStart = parseMin(keg.waktu_mulai) ?? 0;
         const kegEnd = parseMin(keg.waktu_selesai);
-        if (kegEnd === null) continue;
+        if (kegEnd === null || kegStart >= 12 * 60) continue;
 
         const overlappingKbm = kbmList.find((kbm) => {
           const kbmStart = parseMin(kbm.jam_mulai);
