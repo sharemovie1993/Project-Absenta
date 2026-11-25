@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { kurikulumApi } from '@/api/kurikulum.api';
+import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
 import { getMyJadwalKBM, getJadwalKBM, type JadwalKBM } from '@/api/attendance/jadwalKBM.api';
 import { cbtApi } from '@/api/cbt.api';
 import type { CbtBankSoal } from '@/types/cbt.types';
@@ -52,20 +52,30 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
     return undefined;
   }, [activeSemester?.id, activeEvent?.semester, semRawList]);
 
-  // 1. Sumber Kebenaran Tunggal Penugasan Mengajar Guru: SK GuruMapel
+  // 1. Sumber Kebenaran Tunggal Penugasan Mengajar Guru: SK GuruMapel (terikat Tahun Pelajaran aktif)
   const { data: assignedMapelsRes, isLoading: isMapelLoading } = useQuery({
-    queryKey: ['guru-assigned-mapels-for-duty', guruId],
-    queryFn: () => (guruId ? kurikulumApi.getGuruMapel(guruId).catch(() => null) : null),
-    enabled: Boolean(guruId),
+    queryKey: ['guru-assigned-mapels-for-duty', guruId, effectiveTpId],
+    queryFn: () =>
+      guruId
+        ? listGuruMapel({
+            guru_id: guruId,
+            ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
+          }).catch(() => null)
+        : null,
+    enabled: Boolean(guruId && effectiveTpId),
     staleTime: 60 * 1000,
   });
 
-  // 1b. Ambil Jadwal KBM Mingguan Riil Guru (untuk melengkapi relasi kelas_id & tingkat jika SK GuruMapel belum mengikat kelas_id)
+  // 1b. Ambil Jadwal KBM Mingguan Riil Guru (terikat TP & Semester aktif)
   const { data: jadwalKBMRes, isLoading: isJadwalLoading } = useQuery({
-    queryKey: ['guru-jadwal-kbm-for-duty', guruId],
+    queryKey: ['guru-jadwal-kbm-for-duty', guruId, effectiveTpId, effectiveSemId],
     queryFn: async () => {
       try {
-        const res = await getMyJadwalKBM({ weekly: 'true' } as any);
+        const res = await getMyJadwalKBM({
+          weekly: 'true',
+          ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
+          ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
+        } as any);
         const list = res?.data || (res as any)?.items;
         if (Array.isArray(list) && list.length > 0) return list;
       } catch {
@@ -73,7 +83,11 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       }
       if (guruId) {
         try {
-          const res2 = await getJadwalKBM({ guru_id: guruId } as any);
+          const res2 = await getJadwalKBM({
+            guru_id: guruId,
+            ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
+            ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
+          } as any);
           const list2 = res2?.data || (res2 as any)?.items;
           if (Array.isArray(list2)) return list2;
         } catch {
@@ -82,7 +96,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       }
       return [];
     },
-    enabled: Boolean(guruId),
+    enabled: Boolean(guruId && effectiveTpId),
     staleTime: 60 * 1000,
   });
 
@@ -105,18 +119,24 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
   });
 
   const rawAssignedList: GuruMapel[] = useMemo(() => {
-    return assignedMapelsRes?.data || [];
-  }, [assignedMapelsRes]);
+    const list = assignedMapelsRes?.data || [];
+    if (!effectiveTpId) return list;
+    return list.filter((gm: any) => !gm.tahun_pelajaran_id || gm.tahun_pelajaran_id === effectiveTpId);
+  }, [assignedMapelsRes, effectiveTpId]);
 
   const rawJadwalList: JadwalKBM[] = useMemo(() => {
     const list = Array.isArray(jadwalKBMRes) ? jadwalKBMRes : (jadwalKBMRes as any)?.data || [];
-    if (!guruId) return list;
     return list.filter((j: any) => {
-      const directGuruId = j.guru_id || j.guru_pelaksana_id;
-      const unitGuruId = j.UnitPengajaran?.guru_id;
-      return (directGuruId && directGuruId === guruId) || (unitGuruId && unitGuruId === guruId);
+      if (guruId) {
+        const directGuruId = j.guru_id || j.guru_pelaksana_id;
+        const unitGuruId = j.UnitPengajaran?.guru_id;
+        if (!((directGuruId && directGuruId === guruId) || (unitGuruId && unitGuruId === guruId))) return false;
+      }
+      if (effectiveTpId && j.tahun_pelajaran_id && j.tahun_pelajaran_id !== effectiveTpId) return false;
+      if (effectiveSemId && j.semester_id && j.semester_id !== effectiveSemId) return false;
+      return true;
     });
-  }, [jadwalKBMRes, guruId]);
+  }, [jadwalKBMRes, guruId, effectiveTpId, effectiveSemId]);
 
   const rawBankList: CbtBankSoal[] = useMemo(() => {
     return bankListRes?.items || (bankListRes as any)?.data?.items || [];
