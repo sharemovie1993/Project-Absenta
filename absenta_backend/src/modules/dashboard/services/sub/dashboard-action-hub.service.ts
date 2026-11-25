@@ -1245,100 +1245,141 @@ export class DashboardActionHubService {
    */
   private async detectCbtBankSoalTasks(tenantId: string, guruId: string): Promise<UnifiedActionItem[]> {
     try {
-      const activeTp = await prisma.tahunPelajaran.findFirst({
-        where: { tenant_id: tenantId, is_active: true }
-      });
+      const [activeTp, tenantInfo, activeEvent] = await Promise.all([
+        prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
+        prisma.tenant.findUnique({ where: { id: tenantId }, select: { jenjang: true, durasi_smk: true } }),
+        CbtSettingsService.getActiveEvent(tenantId),
+      ]);
       if (!activeTp) return [];
 
-      const activeEvent = await CbtSettingsService.getActiveEvent(tenantId);
-      const targetTingkat = activeEvent?.target_tingkat || [];
+      // Cakupan tingkat mutlak: ikuti target_tingkat event aktif, atau rentang jenjang tenant jika belum diset
+      const jenjangUpper = String(tenantInfo?.jenjang || 'SMK').toUpperCase();
+      const defaultTingkatByJenjang =
+        jenjangUpper === 'SD' || jenjangUpper === 'MI'
+          ? [1, 2, 3, 4, 5, 6]
+          : jenjangUpper === 'SMP' || jenjangUpper === 'MTS'
+          ? [7, 8, 9]
+          : jenjangUpper === 'SMK' || jenjangUpper === 'MAK'
+          ? tenantInfo?.durasi_smk === '4_TAHUN'
+            ? [10, 11, 12, 13]
+            : [10, 11, 12]
+          : [10, 11, 12];
+      const targetTingkat: number[] =
+        Array.isArray(activeEvent?.target_tingkat) && activeEvent.target_tingkat.length > 0
+          ? activeEvent.target_tingkat.map(Number).filter((n: number) => !Number.isNaN(n))
+          : defaultTingkatByJenjang;
 
       const [guruMapelRows, jadwalRows, candidateBanks] = await Promise.all([
         prisma.guruMapel.findMany({
           where: { guru_id: guruId },
           include: {
             Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
-            Kelas: { select: { id: true, nama_kelas: true, tingkat: true, Jurusan: { select: { kode: true, singkatan: true, nama: true } } } },
-            Jurusan: { select: { kode: true, singkatan: true, nama: true } }
-          }
+            Kelas: {
+              select: {
+                id: true,
+                nama_kelas: true,
+                tingkat: true,
+                jurusan_id: true,
+                Jurusan: { select: { id: true, kode: true, singkatan: true, nama: true } },
+              },
+            },
+            Jurusan: { select: { id: true, kode: true, singkatan: true, nama: true } },
+          },
         }),
         prisma.jadwalKBM.findMany({
           where: {
             tenant_id: tenantId,
             tahun_pelajaran_id: activeTp.id,
             OR: [{ guru_id: guruId }, { guru_pelaksana_id: guruId }],
-            mapel_id: { not: null }
+            mapel_id: { not: null },
           },
           include: {
             Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true, tingkat: true } },
-            Kelas: { select: { id: true, nama_kelas: true, tingkat: true, Jurusan: { select: { kode: true, singkatan: true, nama: true } } } }
-          }
+            Kelas: {
+              select: {
+                id: true,
+                nama_kelas: true,
+                tingkat: true,
+                jurusan_id: true,
+                Jurusan: { select: { id: true, kode: true, singkatan: true, nama: true } },
+              },
+            },
+          },
         }),
         prisma.cbtBankSoal.findMany({
           where: {
             tenant_id: tenantId,
             OR: [
               { guru_id: guruId },
-              { Kontributor: { some: { guru_id: guruId } } }
-            ]
+              { Kontributor: { some: { guru_id: guruId } } },
+              { is_shared: true, status: 'PUBLISHED', OR: [{ jurusan: null }, { jurusan: '' }, { jurusan: 'SEMUA' }] },
+            ],
           },
           include: {
-            Mapel: { select: { id: true, nama_mapel: true } },
-            Kontributor: true
-          }
-        })
+            Kontributor: true,
+          },
+        }),
       ]);
 
-      const isNonAcademicDuty = (name: string): boolean => {
+      const ROMAN_MAP: Record<string, number> = {
+        I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6,
+        VII: 7, VIII: 8, IX: 9, X: 10, XI: 11, XII: 12, XIII: 13,
+      };
+      const ROMAN_LABELS: Record<number, string> = {
+        1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI',
+        7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X', 11: 'XI', 12: 'XII', 13: 'XIII',
+      };
+
+      const parseStrictTingkat = (raw: unknown): number | null => {
+        if (raw === null || raw === undefined || raw === '') return null;
+        const n = Number(raw);
+        if (Number.isInteger(n) && n >= 1 && n <= 13) return n;
+        if (typeof raw === 'string') {
+          return ROMAN_MAP[raw.toUpperCase().trim()] ?? null;
+        }
+        return null;
+      };
+
+      const isNonAcademicDuty = (name: string, jenisKegiatan?: string | null): boolean => {
+        if (jenisKegiatan && String(jenisKegiatan).toUpperCase() !== 'KBM') return true;
         const lower = (name || '').toLowerCase().trim();
         const nonAcademicKeywords = [
           'piket', 'tugas piket', 'bimbingan', 'konseling', 'bp/bk', 'bk',
           'upacara', 'apel', 'literasi', 'istirahat', 'sholat', 'duha', 'dzuhur',
           'ekskul', 'ekstrakurikuler', 'kokurikuler', 'wali kelas', 'p5',
-          'projek penguatan', 'keagamaan', 'senam'
+          'projek penguatan', 'keagamaan', 'senam',
         ];
         return nonAcademicKeywords.some((kw) => lower.includes(kw));
       };
 
-      const resolveTingkat = (raw: any, textRef?: string): number => {
-        let tNum = Number(raw);
-        if (!tNum && textRef) {
-          const match = textRef.match(/\b(X|XI|XII|10|11|12)\b/i);
-          if (match) {
-            const roman = match[1].toUpperCase();
-            tNum = roman === 'XI' || roman === '11' ? 11 : roman === 'XII' || roman === '12' ? 12 : 10;
-          }
-        }
-        if (!tNum) {
-          tNum = raw === 'XI' ? 11 : raw === 'XII' ? 12 : 10;
-        }
-        return tNum;
-      };
-
-      const resolveJurusanKode = (jurRef?: any, kelasRef?: any): string => {
-        const jur = jurRef || kelasRef?.Jurusan;
-        if (!jur) return 'UMUM';
-        const code = jur.kode || jur.singkatan || (jur.nama ? String(jur.nama).trim() : '');
-        if (!code) return 'UMUM';
-        const clean = code.toUpperCase().trim();
-        return clean === 'SEMUA' || clean === 'UMUM' ? 'UMUM' : clean;
-      };
-
-      const formatRoman = (tingkat: number): string => {
-        if (tingkat === 10) return 'X';
-        if (tingkat === 11) return 'XI';
-        if (tingkat === 12) return 'XII';
-        return String(tingkat);
+      const resolveStrictJurusan = (jurRef?: any, kelasRef?: any): { jurusanId?: string; jurusanKode: string } => {
+        const jur = kelasRef?.Jurusan || jurRef;
+        const jurusanId: string | undefined = kelasRef?.jurusan_id || jur?.id || undefined;
+        const rawCode = jur?.kode || jur?.singkatan || jur?.nama || '';
+        const clean = String(rawCode).toUpperCase().trim();
+        const jurusanKode = !clean || clean === 'SEMUA' || clean === 'UMUM' ? 'UMUM' : clean;
+        return { jurusanId, jurusanKode };
       };
 
       const mapelTingkatMap = new Map<string, any>();
 
-      const addAssignment = (mId: string, mName: string, mKode: string | undefined, rawTingkat: any, kName: string | undefined, jurRef: any, kelasRef: any) => {
-        if (!mId || !mName || isNonAcademicDuty(mName)) return;
-        const tNum = resolveTingkat(rawTingkat, kName);
+      const registerRow = (
+        mId: string,
+        mName: string,
+        mKode: string | undefined,
+        rawTingkat: any,
+        kName: string | undefined,
+        jurRef: any,
+        kelasRef: any,
+        jenisKegiatan?: string | null
+      ) => {
+        if (!mId || !mName || isNonAcademicDuty(mName, jenisKegiatan)) return;
+        // Mutlak tanpa fallback ke Tingkat 10 bila tingkat belum terikat ke kelas/mapel
+        const tNum = parseStrictTingkat(rawTingkat);
+        if (!tNum) return;
         if (targetTingkat.length > 0 && !targetTingkat.includes(tNum)) return;
 
-        const jurKode = resolveJurusanKode(jurRef, kelasRef);
+        const { jurusanId, jurusanKode } = resolveStrictJurusan(jurRef, kelasRef);
         const key = `${mId}_${tNum}`;
         if (!mapelTingkatMap.has(key)) {
           mapelTingkatMap.set(key, {
@@ -1346,43 +1387,55 @@ export class DashboardActionHubService {
             mapelName: mName,
             mapelKode: mKode,
             tingkat: tNum,
-            jurusanMap: new Map<string, any>()
+            jurusanMap: new Map<string, any>(),
           });
         }
 
         const entry = mapelTingkatMap.get(key);
-        if (!entry.jurusanMap.has(jurKode)) {
-          entry.jurusanMap.set(jurKode, {
-            jurusanKode: jurKode,
-            rombelNames: new Set<string>()
+        const jKey = jurusanId || jurusanKode;
+        if (!entry.jurusanMap.has(jKey)) {
+          entry.jurusanMap.set(jKey, {
+            jurusanId,
+            jurusanKode,
+            rombelNames: new Set<string>(),
           });
         }
-        if (kName) entry.jurusanMap.get(jurKode).rombelNames.add(kName);
+        if (kName) entry.jurusanMap.get(jKey).rombelNames.add(kName);
       };
 
-      for (const gm of guruMapelRows) {
-        addAssignment(gm.mapel_id, gm.Mapel?.nama_mapel, gm.Mapel?.kode_mapel, gm.Kelas?.tingkat || gm.Mapel?.tingkat, gm.Kelas?.nama_kelas, gm.Jurusan, gm.Kelas);
-      }
+      // Daftarkan dari JadwalKBM riil terlebih dahulu (punya kelas_id & Kelas.tingkat eksak)
+      const kbmKeys = new Set<string>();
       for (const j of jadwalRows) {
-        addAssignment(j.mapel_id, j.Mapel?.nama_mapel, j.Mapel?.kode_mapel, j.Kelas?.tingkat || j.Mapel?.tingkat, j.Kelas?.nama_kelas, null, j.Kelas);
+        const tNum = parseStrictTingkat(j.Kelas?.tingkat ?? j.Mapel?.tingkat);
+        if (j.mapel_id && tNum) {
+          kbmKeys.add(`${j.mapel_id}_${tNum}`);
+        }
+        registerRow(
+          j.mapel_id!,
+          j.Mapel?.nama_mapel || '',
+          j.Mapel?.kode_mapel ?? undefined,
+          j.Kelas?.tingkat ?? j.Mapel?.tingkat,
+          j.Kelas?.nama_kelas,
+          null,
+          j.Kelas,
+          (j as any).jenis_kegiatan
+        );
       }
 
-      // Rekonsiliasi UMUM vs Spesifik
-      for (const entry of mapelTingkatMap.values()) {
-        const specificRombels = new Set<string>();
-        let hasSpecific = false;
-        for (const [jCode, group] of entry.jurusanMap.entries()) {
-          if (jCode !== 'UMUM') {
-            for (const r of group.rombelNames) specificRombels.add(r);
-            if (group.rombelNames.size > 0) hasSpecific = true;
-          }
-        }
-        if (entry.jurusanMap.has('UMUM')) {
-          const umumGroup = entry.jurusanMap.get('UMUM');
-          for (const r of specificRombels) umumGroup.rombelNames.delete(r);
-          if (hasSpecific && umumGroup.rombelNames.size === 0) {
-            entry.jurusanMap.delete('UMUM');
-          }
+      for (const gm of guruMapelRows) {
+        const tNum = parseStrictTingkat(gm.Kelas?.tingkat ?? gm.Mapel?.tingkat);
+        if (!tNum) continue;
+        // Jika SK memiliki kelas_id eksplisit atau belum ada entri KBM spesifik pada mapel+tingkat ini, daftarkan
+        if (gm.kelas_id || !kbmKeys.has(`${gm.mapel_id}_${tNum}`)) {
+          registerRow(
+            gm.mapel_id,
+            gm.Mapel?.nama_mapel || '',
+            gm.Mapel?.kode_mapel ?? undefined,
+            gm.Kelas?.tingkat ?? gm.Mapel?.tingkat,
+            gm.Kelas?.nama_kelas,
+            gm.Jurusan,
+            gm.Kelas
+          );
         }
       }
 
@@ -1390,26 +1443,26 @@ export class DashboardActionHubService {
       let coveredDuties = 0;
       const uncompletedList: string[] = [];
 
+      const isGeneralBank = (b: any) => {
+        if (b.jurusan_id) return false;
+        if (Array.isArray(b.target_jurusan_ids) && b.target_jurusan_ids.length > 0) return false;
+        const r = (b.jurusan || '').toUpperCase().trim();
+        return !r || r === 'SEMUA' || r === 'UMUM';
+      };
+
       for (const mt of mapelTingkatMap.values()) {
         const { mapelId, mapelName, tingkat, jurusanMap } = mt;
-        const roman = formatRoman(tingkat);
-        const normMapelName = mapelName.trim().toLowerCase();
+        const roman = ROMAN_LABELS[tingkat] || String(tingkat);
 
+        // Pencocokan mutlak mapel_id + tingkat_num (tanpa fallback nama mapel / wildcard tingkat)
         const relatedBanks = candidateBanks.filter((b: any) => {
-          const bName = (b.Mapel?.nama_mapel || b.judul || '').trim().toLowerCase();
-          const isMatch = b.mapel_id === mapelId || (bName && bName.includes(normMapelName));
-          if (!isMatch) return false;
-          const bTingkatNum = b.tingkat === 'XI' ? 11 : b.tingkat === 'XII' ? 12 : b.tingkat === 'X' ? 10 : undefined;
-          return bTingkatNum === tingkat || bTingkatNum === undefined;
+          if (b.mapel_id !== mapelId) return false;
+          const bTingkatNum = parseStrictTingkat(b.tingkat_num ?? b.tingkat);
+          return bTingkatNum === tingkat;
         });
 
-        const isGeneralBank = (b: any) => {
-          const r = (b.jurusan || '').toUpperCase().trim();
-          return !r || r === 'SEMUA' || r === 'UMUM';
-        };
-
         const generalBank = relatedBanks.find(isGeneralBank);
-        const hasSpecificBanks = relatedBanks.some((b: any) => b.jurusan && b.jurusan !== 'SEMUA' && b.jurusan !== 'UMUM');
+        const hasSpecificBanks = relatedBanks.some((b: any) => !isGeneralBank(b));
         const jurusanList = Array.from(jurusanMap.values());
 
         if (generalBank && !hasSpecificBanks) {
@@ -1423,19 +1476,25 @@ export class DashboardActionHubService {
         }
 
         for (const jg of jurusanList) {
-          const { jurusanKode } = jg;
+          const { jurusanId, jurusanKode } = jg;
           totalDuties++;
           const jCode = jurusanKode !== 'UMUM' ? jurusanKode : undefined;
-          const matchJurusan = (bJur: string | null | undefined, target: string) => {
-            if (!bJur || !target) return false;
-            const parts = bJur.toUpperCase().split(/[,;/|]+/).map((s: string) => s.trim()).filter(Boolean);
-            return parts.includes(target.toUpperCase().trim());
-          };
 
-          const matchedBank = relatedBanks.find((b: any) => matchJurusan(b.jurusan, jurusanKode)) || generalBank;
-          const label = jCode && !mapelName.toUpperCase().includes(jCode)
-            ? `${mapelName} Jurusan ${jCode} (Tingkat ${roman})`
-            : `${mapelName} (Tingkat ${roman})`;
+          const matchedBank =
+            relatedBanks.find((b: any) => {
+              if (jurusanId) {
+                if (b.jurusan_id && b.jurusan_id === jurusanId) return true;
+                if (Array.isArray(b.target_jurusan_ids) && b.target_jurusan_ids.includes(jurusanId)) return true;
+              }
+              if (!b.jurusan || !jCode) return false;
+              const parts = String(b.jurusan).toUpperCase().split(/[,;/|]+/).map((s: string) => s.trim()).filter(Boolean);
+              return parts.includes(jCode);
+            }) || generalBank;
+
+          const label =
+            jCode && !mapelName.toUpperCase().includes(jCode)
+              ? `${mapelName} Jurusan ${jCode} (Tingkat ${roman})`
+              : `${mapelName} (Tingkat ${roman})`;
 
           if (matchedBank && matchedBank.jumlah_soal > 0) {
             coveredDuties++;
