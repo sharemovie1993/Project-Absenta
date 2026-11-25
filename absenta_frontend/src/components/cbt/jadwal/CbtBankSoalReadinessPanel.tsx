@@ -250,7 +250,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
         // 1. Bank Soal Mandiri Milik Guru Sendiri
         const ownBank = candidateBanks.find((b) => b.guru_id === gId);
 
-        // 2. Bank Soal MGMP / Rekan Berbagi yang Meng-cover Guru Ini (SSOT Mutlak tanpa fallback)
+        // 2. Bank Soal MGMP / Rekan Berbagi yang Meng-cover Guru Ini (SSOT Mutlak: hanya Kontributor eksplisit atau Master Umum se-tingkat)
         const { jurusanId, jurusanKode } = resolveStrictJurusan(gm);
         const mgmpCoveringBank = candidateBanks.find((b) =>
           isStrictMgmpBankCoveringAssignment({
@@ -259,7 +259,7 @@ export const CbtBankSoalReadinessPanel: React.FC<CbtBankSoalReadinessPanelProps>
             jurusanId,
             jurusanKode,
             mgmpSharedIds: mgmpSharedMap[b.id],
-            allowSharedByJurusan: true,
+            allowSharedByJurusan: false,
           })
         );
 

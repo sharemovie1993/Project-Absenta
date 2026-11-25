@@ -686,26 +686,36 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
           const defaultFallbackBank = directBank || candidateBanks[0];
 
           const resolveBankForClass = (cls: (typeof classesInTingkat)[number]): CbtBankSoal | null => {
-            const clsJurCode = (cls.kode_jurusan || '').toUpperCase().trim();
-
-            // 1. Cari bank soal spesifik yang kode jurusannya cocok dengan jurusan_id/kode_jurusan rombel (tanpa regex nama kelas)
-            const specificBank = candidateBanks.find((b) => {
-              if (!b.jurusan || !clsJurCode) return false;
-              const bJurUpper = b.jurusan.toUpperCase().trim();
-              return bJurUpper === clsJurCode || bJurUpper.includes(clsJurCode) || clsJurCode.includes(bJurUpper);
-            });
-            if (specificBank) return specificBank;
-
-            // 2. Cari bank soal buatan guru pengampu rombel ini (dari rawGuruMapel jika ada)
+            // 1. Prioritas tertinggi: Bank soal milik guru pengampu rombel ini (atau yang eksplisit dibagikan kepadanya via Kontributor)
             if (rawGuruMapel && Array.isArray(rawGuruMapel)) {
               const gmAssignment = rawGuruMapel.find(
                 (gm: any) => gm.kelas_id === cls.kelas_id && gm.mapel_id === targetMapelId
               );
               if (gmAssignment?.guru_id) {
-                const guruBank = candidateBanks.find((b) => b.guru_id === gmAssignment.guru_id);
-                if (guruBank) return guruBank;
+                const ownGuruBank = candidateBanks.find((b) => b.guru_id === gmAssignment.guru_id);
+                if (ownGuruBank) return ownGuruBank;
+                const sharedToGuruBank = candidateBanks.find(
+                  (b) =>
+                    b.Kontributor &&
+                    b.Kontributor.some((c) => c.guru_id === gmAssignment.guru_id && c.can_edit_soal !== false)
+                );
+                if (sharedToGuruBank) return sharedToGuruBank;
               }
             }
+
+            // 2. Bank soal spesifik jurusan (id mutlak atau kode jurusan)
+            const clsJurId = cls.jurusan_id;
+            const clsJurCode = (cls.kode_jurusan || '').toUpperCase().trim();
+            const specificBank = candidateBanks.find((b) => {
+              if (clsJurId) {
+                if (b.jurusan_id && b.jurusan_id === clsJurId) return true;
+                if (Array.isArray(b.target_jurusan_ids) && b.target_jurusan_ids.includes(clsJurId)) return true;
+              }
+              if (!b.jurusan || !clsJurCode) return false;
+              const bJurUpper = b.jurusan.toUpperCase().trim();
+              return bJurUpper === clsJurCode || bJurUpper.includes(clsJurCode) || clsJurCode.includes(bJurUpper);
+            });
+            if (specificBank) return specificBank;
 
             // 3. Fallback ke bank soal kandidat pertama yang paling siap (jumlah soal terbanyak)
             if (candidateBanks.length > 0) {

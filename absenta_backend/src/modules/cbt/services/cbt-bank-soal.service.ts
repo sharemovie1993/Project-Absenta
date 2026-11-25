@@ -370,41 +370,21 @@ export class CbtBankSoalService {
             continue;
           }
 
-          const jurusanCandidates: string[] = [];
-          for (const j of scope.jurusans) {
-            jurusanCandidates.push(j);
-            jurusanCandidates.push(j.toUpperCase());
-            jurusanCandidates.push(j.toLowerCase());
-          }
-
-          const jurusanOR: Prisma.CbtBankSoalWhereInput[] = [
-            { jurusan: null },
-            { jurusan: '' },
-            { jurusan: 'SEMUA' },
-            { jurusan: 'semua' },
-          ];
-
-          if (jurusanCandidates.length > 0) {
-            const uniqueCandidates = Array.from(new Set(jurusanCandidates));
-            jurusanOR.push({
-              jurusan: { in: uniqueCandidates },
-            });
-            // Mendukung pencocokan multi-jurusan (misal bank soal berisi 'AKL, TKJ, PHT, KUL')
-            uniqueCandidates.forEach((cand) => {
-              if (cand && cand.length >= 2) {
-                jurusanOR.push({
-                  jurusan: { contains: cand, mode: 'insensitive' },
-                });
-              }
-            });
-          }
-
+          // Hanya Master Umum Se-Tingkat (tanpa batasan jurusan & tanpa daftar kontributor eksplisit) yang otomatis dibagikan ke seluruh guru se-mapel-tingkat.
+          // Bank soal spesifik jurusan hanya dibagikan ke guru yang EKSPLISIT terdaftar di CbtBankSoalKontributor.
           sharedScopeConditions.push({
             status: 'PUBLISHED',
             is_shared: true,
             mapel_id: scope.mapelId,
             tingkat: { in: scope.tingkatVariants },
-            OR: jurusanOR,
+            jurusan_id: null,
+            Kontributor: { none: {} },
+            OR: [
+              { jurusan: null },
+              { jurusan: '' },
+              { jurusan: 'SEMUA' },
+              { jurusan: 'semua' },
+            ],
           });
         }
 
