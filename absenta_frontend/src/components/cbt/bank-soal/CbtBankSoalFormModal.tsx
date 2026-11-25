@@ -795,13 +795,6 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       return;
     }
 
-    if (isShared && jurusanOccupancy.isGeneralOccupied) {
-      toast.error(
-        `Pembuatan master MGMP dikunci karena paket master Umum untuk Tingkat ${tingkat} sudah diterbitkan oleh ${jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}.`
-      );
-      return;
-    }
-
     if (isTargetOutOfSchedule.isInvalid) {
       toast.error(isTargetOutOfSchedule.message);
       return;
@@ -858,13 +851,6 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       return;
     }
 
-    if (isShared && jurusanOccupancy.isGeneralOccupied) {
-      toast.error(
-        `Pembuatan master MGMP dikunci karena paket master Umum untuk Tingkat ${tingkat} sudah diterbitkan oleh ${jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}.`
-      );
-      return;
-    }
-
     if (isTargetOutOfSchedule.isInvalid) {
       toast.error(isTargetOutOfSchedule.message);
       return;
@@ -900,12 +886,41 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     try {
       setIsSubmitting(true);
 
+      // Pada mode MGMP Bersama: turunkan cakupan jurusan secara eksplisit dari kelas pembuat + rekan guru yang dicentang
+      let effectiveJurusanStr = jurusan || '';
+      let effectiveJurusanCodes = selectedJurusanList;
+      if (isShared) {
+        const cachedParallel: any = queryClient.getQueryData([
+          'parallel-teachers',
+          mapelId,
+          activeTpId,
+          activeSemId,
+        ]);
+        const parallelRows: any[] = cachedParallel?.data || [];
+        const targetTingkatNum = parseStrictTingkatValue(tingkat);
+        const derivedSet = new Set<string>(myTeachingJurusans.map((c) => c.toUpperCase().trim()));
+        parallelRows.forEach((gm: any) => {
+          if (!selectedColleagueIds.includes(gm.guru_id)) return;
+          const gmTingkat = Number(gm.Kelas?.tingkat ?? gm.tingkat);
+          if (targetTingkatNum && gmTingkat && gmTingkat !== targetTingkatNum) return;
+          const jObj = gm.Kelas?.Jurusan || gm.Jurusan;
+          const jCode = (jObj?.singkatan || jObj?.kode || jObj?.kode_jurusan || jObj?.nama || '')
+            .toUpperCase()
+            .trim();
+          if (jCode) derivedSet.add(jCode);
+        });
+        if (derivedSet.size > 0) {
+          effectiveJurusanCodes = Array.from(derivedSet);
+          effectiveJurusanStr = effectiveJurusanCodes.join(', ');
+        }
+      }
+
       const matchedJurusanIds = (rawJurusanList || [])
         .filter((j) => {
           const code = ((j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string)
             .toUpperCase()
             .trim();
-          return code && selectedJurusanList.includes(code);
+          return code && effectiveJurusanCodes.includes(code);
         })
         .map((j) => j.id)
         .filter(Boolean);
@@ -919,7 +934,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         unit_pengajaran_id: unitPengajaranId || null,
         tingkat,
         tingkat_num: parseStrictTingkatValue(tingkat),
-        jurusan: jurusan || null,
+        jurusan: effectiveJurusanStr || null,
         jurusan_id: matchedJurusanIds.length === 1 ? matchedJurusanIds[0] : null,
         target_jurusan_ids: matchedJurusanIds.length > 0 ? matchedJurusanIds : null,
         alokasi_menit: Number(alokasiMenit),
@@ -1792,127 +1807,51 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   );
                 }
 
-                /* ── TAMPILAN KHUSUS MGMP BERSAMA (SKALA SEKOLAH) ── */
+                /* ── TAMPILAN KHUSUS MGMP BERSAMA: EKSPLISIT BERBASIS GURU & KELAS YANG DIAJAR ── */
                 return (
-                  <div className="space-y-2 animate-in fade-in duration-200">
+                  <div className="space-y-2.5 animate-in fade-in duration-200">
                     <div className="flex items-center justify-between gap-2">
-                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        Cakupan Jurusan Master MGMP Se-Sekolah:
+                      <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <Users size={13} className="text-indigo-600 dark:text-indigo-400" />
+                        <span>Cakupan Kelas &amp; Rekan Guru Paralel (Eksplisit):</span>
                       </label>
-                      <span className="text-[10px] text-slate-500 font-medium">
-                        {jurusan ? `Khusus Jurusan ${jurusan}` : 'Berlaku untuk semua jurusan'}
-                      </span>
+                      {myTeachingJurusans.length > 0 && (
+                        <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+                          Kelas Anda: {myTeachingJurusans.join(', ')}
+                        </span>
+                      )}
                     </div>
 
-                    {/* Banner Penjelas jika Semua Jurusan Sudah Ada */}
-                    {jurusanOccupancy.isGeneralOccupied && (
-                      <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200 flex items-start gap-2.5">
-                        <Lock size={16} className="text-rose-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold text-rose-800 dark:text-rose-200">
-                            Naskah Master Umum (Semua Jurusan) Sudah Diterbitkan
-                          </div>
-                          <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-0.5 leading-relaxed">
-                            Paket Master <strong>Umum (Semua Jurusan)</strong> untuk Tingkat {tingkat || '-'} telah diterbitkan oleh{' '}
-                            <strong>{jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}</strong>. Seluruh jurusan pada tingkat ini telah resmi tercakup dalam naskah master tersebut sehingga pembuatan bank soal baru dikunci untuk mencegah duplikasi ujian.
-                          </p>
-                        </div>
-                      </div>
-                    )}
+                    <CbtMgmpColleaguePicker
+                      mapelId={mapelId}
+                      tingkat={tingkat}
+                      jurusan=""
+                      currentGuruId={guruId}
+                      selectedIds={selectedColleagueIds}
+                      onChangeSelectedIds={setSelectedColleagueIds}
+                      tahunPelajaranId={activeTpId}
+                      semesterId={activeSemId}
+                      eventId={activeEventId}
+                      title="Pilih Rekan Guru Paralel & Kelas yang Mereka Ajar:"
+                      isEditMode={Boolean(bankSoalToEdit)}
+                    />
 
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                      {/* Chip Semua Jurusan (Umum) */}
-                      {(() => {
-                        const isGeneralOcc = jurusanOccupancy.isGeneralOccupied;
-                        const isSelected = !jurusan;
-                        return (
-                          <button
-                            type="button"
-                            disabled={isGeneralOcc}
-                            onClick={() => {
-                              if (isGeneralOcc) return;
-                              clearJurusan();
-                            }}
-                            className={cn(
-                              'py-1.5 px-2.5 rounded-lg border text-xs font-semibold transition-all text-left flex items-center gap-1 cursor-pointer',
-                              isGeneralOcc
-                                ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-                                : isSelected
-                                ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
-                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
-                            )}
-                            title={
-                              isGeneralOcc
-                                ? `Bank soal Umum sudah dibuat oleh ${jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}`
-                                : 'Berlaku untuk semua rombel se-sekolah'
-                            }
-                          >
-                            <span>Semua Jurusan (Umum)</span>
-                            {isGeneralOcc && (
-                              <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
-                                Sudah Ada
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })()}
-
-                      {/* Seluruh Jurusan di Sekolah (Multi-Select atau Single Select) */}
-                      {rawJurusanList &&
-                        rawJurusanList.map((j) => {
-                          const code = ((j.singkatan || j.kode || j.kode_jurusan || j.nama || '') as string).trim();
-                          const isChecked = selectedJurusanList.includes(code.toUpperCase());
-                          const occInfo = jurusanOccupancy.getOccupiedInfo(code);
-                          const isOccupied = Boolean(occInfo);
-
-                          return (
-                            <button
-                              key={j.id}
-                              type="button"
-                              disabled={isOccupied}
-                              onClick={() => toggleJurusan(code)}
-                              className={cn(
-                                'py-1.5 px-2.5 rounded-lg border text-xs font-medium transition-all text-left flex items-center gap-1 cursor-pointer',
-                                isOccupied
-                                  ? 'opacity-40 bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed'
-                                  : isChecked
-                                  ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
-                                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
-                              )}
-                              title={
-                                isOccupied
-                                  ? `Bank soal jurusan ${code} sudah di-cover oleh naskah master Umum (${occInfo?.guruName || 'rekan guru'})`
-                                  : j.nama
-                              }
-                            >
-                              <span>{code}</span>
-                              {isOccupied ? (
-                                <span className="text-[8.5px] px-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 ml-0.5">
-                                  Sudah Ada
-                                </span>
-                              ) : isChecked ? (
-                                <span className="text-[9px]">✓</span>
-                              ) : null}
-                            </button>
-                          );
-                        })}
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                      <ShieldCheck size={15} className="text-indigo-600 shrink-0" />
+                      {selectedColleagueIds.length > 0 ? (
+                        <span>
+                          Naskah bersama ini mencakup kelas binaan Anda +{' '}
+                          <strong className="text-slate-800 dark:text-slate-100">
+                            {selectedColleagueIds.length} rekan guru terpilih
+                          </strong>
+                          . Rekan yang dicentang otomatis ter-cover.
+                        </span>
+                      ) : (
+                        <span>
+                          Belum ada rekan guru yang dicentang — naskah ini hanya meng-cover kelas binaan Anda sendiri, dan rekan lain tetap bebas membuat soal sendiri.
+                        </span>
+                      )}
                     </div>
-
-                    {/* Colleague Picker untuk Mode MGMP (hanya jika master umum belum diterbitkan) */}
-                    {!jurusanOccupancy.isGeneralOccupied && (
-                      <div className="pt-2">
-                        <CbtMgmpColleaguePicker
-                          mapelId={mapelId}
-                          tingkat={tingkat}
-                          jurusan={jurusan}
-                          currentGuruId={guruId}
-                          selectedIds={selectedColleagueIds}
-                          onChangeSelectedIds={setSelectedColleagueIds}
-                          title="Pilih Rekan Guru Paralel Penerima Naskah:"
-                          isEditMode={Boolean(bankSoalToEdit)}
-                        />
-                      </div>
-                    )}
                   </div>
                 );
               })()}
@@ -2126,19 +2065,6 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
               >
                 <Lock size={14} className="text-rose-500" />
                 <span>Terkunci: Sudah Di-cover Rekan MGMP</span>
-              </Button>
-            ) : isShared && jurusanOccupancy.isGeneralOccupied ? (
-              <Button
-                key="btn-step1-mgmp-locked"
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={true}
-                className="bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed flex items-center gap-1.5 font-bold"
-                title={`Terkunci: Naskah Master Umum untuk Tingkat ${tingkat} sudah diterbitkan oleh ${jurusanOccupancy.generalInfo?.guruName || 'rekan guru'}`}
-              >
-                <Lock size={14} className="text-rose-500" />
-                <span>Terkunci: Master Umum Tingkat {tingkat} Sudah Ada</span>
               </Button>
             ) : isTargetOutOfSchedule.isInvalid ? (
               <Button

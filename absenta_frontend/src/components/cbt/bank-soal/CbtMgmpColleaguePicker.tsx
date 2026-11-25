@@ -21,6 +21,9 @@ interface CbtMgmpColleaguePickerProps {
   onChangeSelectedIds: (ids: string[]) => void;
   title?: string;
   isEditMode?: boolean;
+  tahunPelajaranId?: string;
+  semesterId?: string;
+  eventId?: string;
 }
 
 export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
@@ -32,17 +35,36 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
   onChangeSelectedIds,
   title,
   isEditMode = false,
+  tahunPelajaranId,
+  semesterId,
+  eventId,
 }) => {
   const { data: parallelTeachersRes, isLoading } = useQuery({
-    queryKey: ['parallel-teachers', mapelId],
-    queryFn: () => (mapelId ? listGuruMapel({ mapel_id: mapelId }) : null),
+    queryKey: ['parallel-teachers', mapelId, tahunPelajaranId, semesterId],
+    queryFn: () =>
+      mapelId
+        ? listGuruMapel({
+            mapel_id: mapelId,
+            ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {}),
+            ...(semesterId ? { semester_id: semesterId } : {}),
+          })
+        : null,
     enabled: Boolean(mapelId),
   });
 
-  // Cek rekan yang sudah memiliki bank soal mandiri sendiri pada mapel & tingkat ini
+  // Cek rekan yang sudah memiliki bank soal mandiri sendiri pada event/TP/semester aktif
   const { data: mapelBanksRes } = useQuery({
-    queryKey: ['mapel-banks-distribution', mapelId],
-    queryFn: () => (mapelId ? cbtApi.getBankSoalList({ mapel_id: mapelId, limit: 200 }) : null),
+    queryKey: ['mapel-banks-distribution', mapelId, tahunPelajaranId, semesterId, eventId],
+    queryFn: () =>
+      mapelId
+        ? cbtApi.getBankSoalList({
+            mapel_id: mapelId,
+            ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {}),
+            ...(semesterId ? { semester_id: semesterId } : {}),
+            ...(eventId ? { event_id: eventId } : {}),
+            limit: 200,
+          })
+        : null,
     enabled: Boolean(mapelId),
     staleTime: 30 * 1000,
   });
