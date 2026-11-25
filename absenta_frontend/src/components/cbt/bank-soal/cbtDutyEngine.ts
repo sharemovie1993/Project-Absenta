@@ -172,34 +172,14 @@ export function isStrictMgmpBankCoveringAssignment(params: {
   mgmpSharedIds?: string[];
   allowSharedByJurusan?: boolean;
 }): boolean {
-  const { bank, guruId, jurusanId, jurusanKode, mgmpSharedIds, allowSharedByJurusan = false } = params;
+  const { bank, guruId, mgmpSharedIds } = params;
   if (bank.guru_id === guruId) return false;
 
-  const isExplicitContributor =
+  // Kebijakan share MGMP mutlak: HANYA guru yang eksplisit dicentang sebagai Kontributor
+  return (
     Boolean(bank.Kontributor && bank.Kontributor.some((c) => c.guru_id === guruId && c.can_edit_soal !== false)) ||
-    Boolean(mgmpSharedIds && mgmpSharedIds.includes(guruId));
-  if (isExplicitContributor) return true;
-
-  const isSharedOrPublished = Boolean(bank.is_shared || bank.status === 'PUBLISHED');
-  if (!isSharedOrPublished) return false;
-
-  if (isGeneralBankJurusan(bank.jurusan, bank)) {
-    return !bank.Kontributor || bank.Kontributor.length === 0 || allowSharedByJurusan;
-  }
-
-  if (!allowSharedByJurusan) return false;
-
-  // Prioritas 1: ID mutlak jurusan (jurusan_id / target_jurusan_ids)
-  if (jurusanId) {
-    if (bank.jurusan_id && bank.jurusan_id === jurusanId) return true;
-    if (Array.isArray(bank.target_jurusan_ids) && bank.target_jurusan_ids.includes(jurusanId)) return true;
-  }
-
-  // Prioritas 2: Token kode jurusan pada data bank soal yang belum memiliki jurusan_id
-  const tokens = parseBankJurusanTokens(bank.jurusan);
-  if (jurusanId && tokens.includes(jurusanId.toUpperCase())) return true;
-  if (jurusanKode && jurusanKode !== 'UMUM' && tokens.includes(jurusanKode.toUpperCase())) return true;
-  return false;
+    Boolean(mgmpSharedIds && mgmpSharedIds.includes(guruId))
+  );
 }
 
 /**

@@ -148,7 +148,7 @@ export const CbtSharedDistributionModal: React.FC<CbtSharedDistributionModalProp
       }
 
       const isAuthor = gId === bankSoal.guru_id;
-      const isExplicitRecipient = explicitSharedIds.length > 0 ? explicitSharedIds.includes(gId) : true;
+      const isExplicitRecipient = explicitSharedIds.includes(gId);
       const hasOwnBank = guruOwnBankSet.has(gId);
 
       if (!map.has(gId)) {

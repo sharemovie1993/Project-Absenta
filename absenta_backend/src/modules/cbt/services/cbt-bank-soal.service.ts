@@ -370,22 +370,7 @@ export class CbtBankSoalService {
             continue;
           }
 
-          // Hanya Master Umum Se-Tingkat (tanpa batasan jurusan & tanpa daftar kontributor eksplisit) yang otomatis dibagikan ke seluruh guru se-mapel-tingkat.
-          // Bank soal spesifik jurusan hanya dibagikan ke guru yang EKSPLISIT terdaftar di CbtBankSoalKontributor.
-          sharedScopeConditions.push({
-            status: 'PUBLISHED',
-            is_shared: true,
-            mapel_id: scope.mapelId,
-            tingkat: { in: scope.tingkatVariants },
-            jurusan_id: null,
-            Kontributor: { none: {} },
-            OR: [
-              { jurusan: null },
-              { jurusan: '' },
-              { jurusan: 'SEMUA' },
-              { jurusan: 'semua' },
-            ],
-          });
+        // Kebijakan share MGMP mutlak: HANYA guru yang eksplisit terdaftar di CbtBankSoalKontributor yang menerima share (tanpa auto-share jurusan maupun Semua Jurusan).
         }
 
         const orConditions: Prisma.CbtBankSoalWhereInput[] = [

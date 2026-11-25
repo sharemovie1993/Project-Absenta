@@ -1312,7 +1312,6 @@ export class DashboardActionHubService {
             OR: [
               { guru_id: guruId },
               { Kontributor: { some: { guru_id: guruId } } },
-              { is_shared: true, status: 'PUBLISHED', OR: [{ jurusan: null }, { jurusan: '' }, { jurusan: 'SEMUA' }] },
             ],
           },
           include: {
