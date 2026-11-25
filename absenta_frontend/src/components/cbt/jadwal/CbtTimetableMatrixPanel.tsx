@@ -824,6 +824,18 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     return map;
   }, [existingSchedules, bankList]);
 
+  // Kumpulan prefix `${day_index}_${session_index}` yang aktif di days_config
+  // Mencegah slot hantu dari hari/sesi yang sudah dihapus ikut dihitung sebagai "Terplot"
+  const validSlotPrefixes = useMemo(() => {
+    const set = new Set<string>();
+    days.forEach((d) => {
+      (d.sessions || []).forEach((s) => {
+        set.add(`${d.day_index}_${s.session_index}`);
+      });
+    });
+    return set;
+  }, [days]);
+
   // Kumpulan ID mapel/bank yang sedang terpasang di dalam slot matriks DIPISAH PER TINGKAT
   // (PENTING: Mapel Kelas 10 yang sudah di-plot TIDAK BOLEH memblokir Kelas 11 atau Kelas 12!)
   const usedSubjectIdsByTingkat = useMemo(() => {
@@ -834,6 +846,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       if (!rawVal) return;
       // Key format: `${dayIndex}_${sessionIndex}_${tingkat}`
       const parts = key.split('_');
+      if (!validSlotPrefixes.has(`${parts[0]}_${parts[1]}`)) return;
       const tNum = Number(parts[2]);
       if (!tNum || !map.has(tNum)) return;
 
@@ -853,7 +866,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     });
 
     return map;
-  }, [matrix, bankList]);
+  }, [matrix, bankList, validSlotPrefixes]);
 
   // State Modal Konfigurasi Multi-Jurusan (DDPK / Produktif)
   const [multiModalState, setMultiModalState] = useState<{
@@ -1461,9 +1474,11 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                     <th className="py-2 px-3 w-40 text-center">Waktu Ujian</th>
                     <th className="py-2 px-2 w-20 text-center">Durasi</th>
                     {activeTingkatList.map((tingkat) => {
-                      const slottedCount = Object.keys(matrix).filter(
-                        (k) => k.endsWith(`_${tingkat}`) && Boolean(matrix[k])
-                      ).length;
+                      const slottedCount = Object.keys(matrix).filter((k) => {
+                        if (!k.endsWith(`_${tingkat}`) || !matrix[k]) return false;
+                        const parts = k.split('_');
+                        return validSlotPrefixes.has(`${parts[0]}_${parts[1]}`);
+                      }).length;
                       const mainOptions = mainSubjectOptionsByTingkat.get(tingkat) || [];
                       const hasVocationalInTingkat = (subjectOptionsByTingkat.get(tingkat) || []).some(
                         (o) => isVocationalSubject(o.namaMapel, (o as any).kelompokMapel) || o.isAutoDraft
