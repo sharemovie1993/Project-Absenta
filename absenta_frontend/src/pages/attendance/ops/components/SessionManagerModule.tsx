@@ -244,6 +244,7 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
   const handleOpenScan = useCallback((id: string) => {
     const targetSession = activeSessionsList.find(s => s.id === id);
     if (targetSession) {
+      const isKegiatan = Boolean(targetSession.jenis_kegiatan && String(targetSession.jenis_kegiatan).toUpperCase() !== 'KBM');
       const isSessionActive = Boolean(
         targetSession.foto_kegiatan ||
         targetSession.foto_masuk ||
@@ -251,7 +252,7 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
         targetSession.isLive ||
         (targetSession.guru_status && !['BELUM_TAP', 'BELUM_HADIR', 'ALPA', 'MENDATANG'].includes(targetSession.guru_status as string))
       );
-      if (!isSessionActive) {
+      if (!isKegiatan && !isSessionActive) {
         toast.error('Sesi KBM belum dibuka. Silakan buka sesi terlebih dahulu (Bisa dengan atau tanpa foto) sebelum membuka Terminal Scan RFID.', { duration: 3500 });
         return;
       }

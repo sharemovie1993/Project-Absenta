@@ -888,8 +888,8 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                   <CheckCircle2 size={14} />
                 </button>
               )}
-              {/* 1. Sesi BELUM DIBUKA: Petugas Kelas membuka sesi (Bisa dengan atau tanpa foto) */}
-              {!isSessionActive && !isFinished && !isOverdue && onOpenPhotoModal && (
+              {/* 1. Sesi BELUM DIBUKA: Petugas Kelas membuka sesi (Khusus KBM Reguler; Pembiasaan tidak perlu dibuka dulu) */}
+              {!isSesiKegiatan && !isSessionActive && !isFinished && !isOverdue && onOpenPhotoModal && (
                 <Button
                   type="button"
                   size="sm"
@@ -971,35 +971,39 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 </Button>
               )}
 
-              {onOpenScanModal && (
+              {onOpenScanModal && (() => {
+                const isScanDisabled = isOverdue || isFinished || (!isSesiKegiatan && !isSessionActive);
+                return (
                 <Button
                   type="button"
                   size="sm"
-                  disabled={isOverdue || isFinished || !isSessionActive}
+                  disabled={isScanDisabled}
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (isScanDisabled) return;
                     onOpenScanModal(item.id);
                   }}
                   title={
                     isOverdue 
-                      ? "Sesi KBM telah terlewat (Scan RFID terkunci)" 
+                      ? "Sesi telah terlewat (Scan RFID terkunci)" 
                       : isFinished 
-                      ? "Sesi KBM telah selesai" 
-                      : !isSessionActive
+                      ? "Sesi telah selesai" 
+                      : isScanDisabled
                       ? "Sesi KBM belum dibuka (Klik tombol Buka Sesi Kelas terlebih dahulu)"
                       : "Buka Terminal Scan Kartu RFID / QR Siswa"
                   }
                   className={cn(
-                    "h-8 px-3 rounded-xl text-xs font-black border flex items-center gap-1.5 cursor-pointer transition-all",
-                    isOverdue || isFinished || !isSessionActive
+                    "h-8 px-3 rounded-xl text-xs font-black border flex items-center gap-1.5 transition-all",
+                    isScanDisabled
                       ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60"
-                      : "bg-emerald-600 hover:bg-emerald-500 text-white border-transparent shadow-xs shadow-emerald-600/30"
+                      : "bg-emerald-600 hover:bg-emerald-500 text-white border-transparent shadow-xs shadow-emerald-600/30 cursor-pointer"
                   )}
                 >
                   <QrCode size={13} />
                   <span>Scan RFID / QR</span>
                 </Button>
-              )}
+                );
+              })()}
             </div>
 
             {/* Rincian Hadir Siswa di Paling Kanan */}

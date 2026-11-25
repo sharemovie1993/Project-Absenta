@@ -210,7 +210,7 @@ export class SesiTapEngineService {
     // Cegah siswa/petugas mengabsenkan sesi jam siang/sore di pagi hari sekaligus.
     // Presensi HADIR hanya diizinkan mulai dari 15 menit sebelum waktu_mulai sesi.
     // Bypass: Jika sesi SUDAH DIBUKA RESMI ('BERLANGSUNG'), operasi sistem (GATE_PROPAGATION, AUTO_PULL), atau status non-HADIR (IZIN, SAKIT, DISPEN).
-    if (!isSystemOp && status === 'HADIR' && sesi.status !== 'BERLANGSUNG' && sesi.waktu_mulai) {
+    if (!isSystemOp && status === 'HADIR' && sesi.jenis_kegiatan === 'KBM' && sesi.status !== 'BERLANGSUNG' && sesi.waktu_mulai) {
       const tz = await getTenantTimezone(tenantId);
       const tzLabel = getTimezoneLabel(tz);
       const EARLY_TOLERANCE_MS = 15 * 60 * 1000; // 15 menit sebelum jam mulai
@@ -412,6 +412,14 @@ export class SesiTapEngineService {
           catatan: catatan || null
         }
       });
+    }
+
+    // Auto-aktivasi sesi pembiasaan (Ketarunaan, Apel, Upacara, Dhuha) ketika ada siswa yang scan/diabsenkan
+    if (sesi.jenis_kegiatan !== 'KBM' && sesi.status === 'MENDATANG') {
+      await prisma.sesiAbsensi.update({
+        where: { id: sesi_id },
+        data: { status: 'BERLANGSUNG', updated_at: new Date() }
+      }).catch(() => {});
     }
 
     // Emit non-blocking domain event agar log kehadiran masuk ke jalur komunikasi Orang Tua

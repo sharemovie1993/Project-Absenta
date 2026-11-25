@@ -933,7 +933,11 @@ export class SesiQueryService {
       // 1. isLive:
       // - HANYA bernilai TRUE jika sesi fisik sudah resmi dibuka/dimulai oleh guru (ada foto / check-in guru)
       //   dan sesi belum selesai ditutup.
-      const isLive = !isFinished && !isVirtualSession && item.status === 'BERLANGSUNG' && hasTeacherCheckInOrPhoto;
+      const isKegiatanItem = Boolean(
+        item.jadwal_kegiatan_id ||
+        (item.jenis_kegiatan && String(item.jenis_kegiatan).toUpperCase() !== 'KBM')
+      );
+      const isLive = !isFinished && !isVirtualSession && item.status === 'BERLANGSUNG' && (hasTeacherCheckInOrPhoto || isKegiatanItem);
 
       // 2. isOverdue (TERLEWAT):
       // - HANYA untuk jadwal virtual atau sesi yang TIDAK PERNAH DIBUKA sama sekali (tanpa foto / tanpa check-in guru)
