@@ -69,9 +69,10 @@ export const JURUSAN_ALIASES: Record<string, string[]> = {
   TM: ['tm', 'tp', 'pemesinan', 'mesin', 'teknik mesin'],
 };
 
-// Blacklist Mata Pelajaran Umum (Normatif / Adaptif) agar tidak pernah salah masuk ke slot kejuruan
+// Blacklist Mata Pelajaran Umum (Normatif / Adaptif) & Mapel Wajib Lintas Jurusan (seperti PKK)
+// agar tidak pernah salah dijaring Auto-Match ke slot spesialisasi kejuruan (DDPK / KK / MPP)
 const MAPEL_UMUM_REGEX =
-  /\b(bahasa\s+indonesia|bahasa\s+inggris|bahasa\s+sunda|muatan\s+lokal|matematika|pendidikan\s+agama|paibp|pai|pendidikan\s+pancasila|ppkn|pancasila|pendidikan\s+jasmani|pjok|penjas|orkes|projek\s+ilmu\s+pengetahuan\s+alam|ipas|sejarah|seni\s+budaya|informatika|bimbingan\s+konseling|bk|bp)\b/i;
+  /\b(bahasa\s+indonesia|bahasa\s+inggris|bahasa\s+sunda|muatan\s+lokal|matematika|pendidikan\s+agama|paibp|pai|pendidikan\s+pancasila|ppkn|pancasila|pendidikan\s+jasmani|pjok|penjas|orkes|projek\s+ilmu\s+pengetahuan\s+alam|ipas|sejarah|seni\s+budaya|informatika|bimbingan\s+konseling|bk|bp|projek\s+kreatif\s+dan\s+kewirausahaan|produk\s+kreatif\s+dan\s+kewirausahaan|kewirausahaan|pkk)\b/i;
 
 export function isMapelUmum(name?: string, kode?: string, label?: string): boolean {
   const combined = `${name || ''} ${kode || ''} ${label || ''}`.toLowerCase();
