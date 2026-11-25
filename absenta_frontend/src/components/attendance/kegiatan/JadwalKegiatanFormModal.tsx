@@ -522,7 +522,7 @@ export default React.memo(function JadwalKegiatanFormModal({
 
   // Sanitize & deduplicate targetKelasIds against active classes so stale/deleted IDs never inflate count
   useEffect(() => {
-    if (!isOpen || classes.length === 0) return;
+    if (classes.length === 0) return;
     setTargetKelasIds(prev => {
       const cleaned = Array.from(new Set(prev)).filter(id => validClassIdSet.has(id));
       if (cleaned.length === prev.length && cleaned.every((id, idx) => id === prev[idx])) {
@@ -530,7 +530,7 @@ export default React.memo(function JadwalKegiatanFormModal({
       }
       return cleaned;
     });
-  }, [isOpen, classes.length, validClassIdSet]);
+  }, [classes.length, validClassIdSet]);
 
   const handleToggleClass = useCallback((classId: string) => {
     setTargetKelasIds(prev => prev.includes(classId) ? prev.filter(id => id !== classId) : [...prev, classId]);
