@@ -397,10 +397,20 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
     return rawBankList.filter((b) => (b.jumlah_soal || b._count?.Soal || 0) > 0);
   }, [rawBankList]);
 
-  // ── 3. Fetch Jadwal Ujian Aktif ──
+  // ── 3. Fetch Jadwal Ujian Aktif (Terikat Konteks TP & Semester Event Aktif) ──
+  const jadwalQueryParams = useMemo(
+    () => ({
+      limit: 1000,
+      sort_direction: 'asc' as const,
+      ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
+      ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
+    }),
+    [effectiveTpId, effectiveSemId]
+  );
   const { data: jadwalRes, isLoading: isLoadingJadwal, refetch: refetchJadwal } = useQuery({
-    queryKey: cbtQueryKeys.jadwal({ limit: 1000, sort_direction: 'asc' }),
-    queryFn: () => cbtApi.getJadwalList({ limit: 1000, sort_direction: 'asc' }),
+    queryKey: cbtQueryKeys.jadwal(jadwalQueryParams),
+    queryFn: () => cbtApi.getJadwalList(jadwalQueryParams),
+    enabled: Boolean(effectiveTpId),
     staleTime: 3 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
