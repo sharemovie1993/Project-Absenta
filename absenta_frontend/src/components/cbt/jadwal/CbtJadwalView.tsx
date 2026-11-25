@@ -396,7 +396,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         key: 'sesi',
         title: 'Sesi Ujian',
         label: 'Sesi Ujian',
-        className: guruId ? 'w-[37%]' : 'min-w-[200px]',
+        className: guruId ? 'w-[30%]' : 'min-w-[200px]',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           const autoRapor = row.setting_keamanan?.auto_transfer_rapor;
           const targetSlot = row.setting_keamanan?.target_rapor_slot;
@@ -552,8 +552,38 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
           );
         },
       },
-      ...(!guruId
+      ...(guruId
         ? [
+            {
+              key: 'kelas',
+              title: 'Kelas',
+              label: 'Kelas',
+              className: 'w-[10%] text-center',
+              render: (_val: unknown, row: CbtJadwalUjian) => {
+                const cfg = (row.setting_keamanan as any) || {};
+                let kelasLabel: string = cfg.rombel_nama || cfg.kelas_nama || '';
+                if (!kelasLabel) {
+                  // Ambil grup terakhir dalam kurung yang berisi nama kelas, mis. "(X AKL 1 - R.01)" -> "X AKL 1"
+                  const matches = Array.from(String(row.nama_sesi || '').matchAll(/\(([^)]+)\)/g));
+                  const lastMatch = matches.length > 0 ? matches[matches.length - 1][1] : '';
+                  if (lastMatch) {
+                    kelasLabel = lastMatch.split(/\s*-\s*/)[0].trim();
+                  }
+                }
+                if (!kelasLabel && row.BankSoal?.tingkat) {
+                  kelasLabel = `Kelas ${row.BankSoal.tingkat}`;
+                }
+                return kelasLabel ? (
+                  <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-lg text-[11px] font-black bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700">
+                    {kelasLabel}
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-400">-</span>
+                );
+              },
+            },
+          ]
+        : [
             {
               key: 'mapel',
               title: 'Mata Pelajaran',
@@ -599,7 +629,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         key: 'token',
         title: 'Token Masuk',
         label: 'Token Masuk',
-        className: guruId ? 'w-[13%] text-center' : 'min-w-[130px] text-center',
+        className: guruId ? 'w-[12%] text-center' : 'min-w-[130px] text-center',
         render: (_val: unknown, row: any) => {
           if (row._isChildRow && row.setting_keamanan?.tokenless) {
             return (
@@ -634,7 +664,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         key: 'status',
         title: 'Status Sesi',
         label: 'Status Sesi',
-        className: guruId ? 'w-[14%] text-center' : 'min-w-[130px] text-center',
+        className: guruId ? 'w-[13%] text-center' : 'min-w-[130px] text-center',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           if (row.status === 'ACTIVE') {
             return (
@@ -670,7 +700,7 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
         key: 'waktu',
         title: 'Jadwal & Durasi',
         label: 'Jadwal & Durasi',
-        className: guruId ? 'w-[17%]' : 'min-w-[190px]',
+        className: guruId ? 'w-[16%]' : 'min-w-[190px]',
         render: (_val: unknown, row: CbtJadwalUjian) => {
           const tgl = new Date(row.tanggal_mulai);
           const tz = getTimezone();
