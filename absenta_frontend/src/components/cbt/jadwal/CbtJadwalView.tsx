@@ -121,8 +121,9 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
   const { activeEvent } = useCbtOperationMode();
   const { activeYear: activeTp } = useTahunPelajaranOptions();
   const { activeSemester, rawList: semRawList = [] } = useSemesterOptions();
-  const effectiveTpId = activeEvent?.tahun_pelajaran_id || activeTp?.id;
+  const effectiveTpId = activeTp?.id || activeEvent?.tahun_pelajaran_id;
   const effectiveSemId = useMemo(() => {
+    if (activeSemester?.id) return activeSemester.id;
     if (activeEvent?.semester && semRawList.length > 0) {
       const target = String(activeEvent.semester).toUpperCase().trim();
       const matched = semRawList.find((s: any) =>
@@ -130,8 +131,8 @@ export const CbtJadwalView: React.FC<UniversalCbtJadwalViewProps> = React.memo((
       );
       if (matched?.id) return matched.id;
     }
-    return activeSemester?.id;
-  }, [activeEvent?.semester, semRawList, activeSemester?.id]);
+    return undefined;
+  }, [activeSemester?.id, activeEvent?.semester, semRawList]);
 
   // 2. Fetch Jadwal Data (Terikat Konteks TP & Semester Aktif)
   const { data, isLoading } = useQuery({

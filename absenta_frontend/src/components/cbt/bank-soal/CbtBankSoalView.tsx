@@ -131,8 +131,9 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const { activeEvent: activeCbtEvent } = useCbtOperationMode();
   const { activeYear: activeTp } = useTahunPelajaranOptions();
   const { activeSemester, rawList: semRawList = [] } = useSemesterOptions();
-  const effectiveTpId = activeCbtEvent?.tahun_pelajaran_id || activeTp?.id;
+  const effectiveTpId = activeTp?.id || activeCbtEvent?.tahun_pelajaran_id;
   const effectiveSemId = useMemo(() => {
+    if (activeSemester?.id) return activeSemester.id;
     if (activeCbtEvent?.semester && semRawList.length > 0) {
       const target = String(activeCbtEvent.semester).toUpperCase().trim();
       const matched = semRawList.find((s: any) =>
@@ -140,8 +141,8 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
       );
       if (matched?.id) return matched.id;
     }
-    return activeSemester?.id;
-  }, [activeCbtEvent?.semester, semRawList, activeSemester?.id]);
+    return undefined;
+  }, [activeSemester?.id, activeCbtEvent?.semester, semRawList]);
 
   // 2. Fetch Bank Soal via TanStack Query (Terikat Konteks TP & Semester Aktif)
   const effectiveOwnership = !isPanitiaCbt ? ownershipTab : undefined;

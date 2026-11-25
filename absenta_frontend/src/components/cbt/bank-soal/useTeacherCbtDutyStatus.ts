@@ -39,8 +39,9 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
   const { activeYear: activeTp } = useTahunPelajaranOptions();
   const { activeSemester, rawList: semRawList = [] } = useSemesterOptions();
 
-  const effectiveTpId = activeEvent?.tahun_pelajaran_id || activeTp?.id;
+  const effectiveTpId = activeTp?.id || activeEvent?.tahun_pelajaran_id;
   const effectiveSemId = useMemo(() => {
+    if (activeSemester?.id) return activeSemester.id;
     if (activeEvent?.semester && semRawList.length > 0) {
       const target = String(activeEvent.semester).toUpperCase().trim();
       const matched = semRawList.find((s: any) =>
@@ -48,8 +49,8 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
       );
       if (matched?.id) return matched.id;
     }
-    return activeSemester?.id;
-  }, [activeEvent?.semester, semRawList, activeSemester?.id]);
+    return undefined;
+  }, [activeSemester?.id, activeEvent?.semester, semRawList]);
 
   // 1. Sumber Kebenaran Tunggal Penugasan Mengajar Guru: SK GuruMapel
   const { data: assignedMapelsRes, isLoading: isMapelLoading } = useQuery({

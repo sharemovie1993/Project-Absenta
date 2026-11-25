@@ -105,9 +105,10 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   const { activeYear: activeTp, rawList: tpRawList = [] } = useTahunPelajaranOptions();
   const { activeSemester, rawList: semRawList = [] } = useSemesterOptions();
 
-  // Konteks Akademik Efektif: Prioritaskan Event CBT Aktif -> Konteks Akademik Aktif Sistem
-  const effectiveTpId = activeEvent?.tahun_pelajaran_id || activeTp?.id;
+  // Konteks Akademik Efektif: Prioritaskan TP & Semester aktif sistem agar isolasi lintas periode terjaga
+  const effectiveTpId = activeTp?.id || activeEvent?.tahun_pelajaran_id;
   const effectiveSemId = useMemo(() => {
+    if (activeSemester?.id) return activeSemester.id;
     if (activeEvent?.semester && semRawList.length > 0) {
       const target = String(activeEvent.semester).toUpperCase().trim();
       const matched = semRawList.find((s: any) =>
@@ -115,8 +116,8 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
       );
       if (matched?.id) return matched.id;
     }
-    return activeSemester?.id;
-  }, [activeEvent?.semester, semRawList, activeSemester?.id]);
+    return undefined;
+  }, [activeSemester?.id, activeEvent?.semester, semRawList]);
 
   // Resolusi Tahun Pelajaran SSoT: Prioritaskan Pengaturan Event CBT Aktif -> Konteks Akademik Aktif
   const effectiveTpName = useMemo(() => {

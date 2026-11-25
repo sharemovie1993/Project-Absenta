@@ -207,10 +207,14 @@ export class CbtSettingsService {
 
   // NOTE: SSOT Event CBT kini 100% menggunakan tabel relasional `CbtEvent` (fallback & dual-write Config CBT_EVENTS_CONFIG/CBT_ACTIVE_EVENT_ID sudah diputus).
   static async getEventsSummary(tenantId: string) {
-    const [tpList, dbEvents] = await Promise.all([
+    const [tpList, activeSem, dbEvents] = await Promise.all([
       prisma.tahunPelajaran.findMany({
         where: { tenant_id: tenantId },
         orderBy: [{ is_active: 'desc' }, { created_at: 'desc' }],
+      }),
+      prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { nama_semester: true },
       }),
       prisma.cbtEvent.findMany({
         where: { tenant_id: tenantId },
@@ -219,24 +223,38 @@ export class CbtSettingsService {
     ]);
 
     let allEvents: CbtEventItem[] = dbEvents.map((row) => this.mapRowToItem(row));
-    let activeEventId = allEvents.find((e) => e.is_active)?.id || '';
+    const activeTp = tpList.find((tp) => tp.is_active);
 
     // Auto-inisialisasi event bawaan jika belum ada untuk TP aktif
-    const activeTp = tpList.find((tp) => tp.is_active);
     if (activeTp && !allEvents.some((e) => e.tahun_pelajaran_id === activeTp.id)) {
       const defaultEvents = this.generateDefaultEvents(activeTp.id);
-      if (!activeEventId) {
-        activeEventId = defaultEvents[0].id;
-      }
       const seededDefaults = defaultEvents.map((evt) => ({
         ...evt,
-        is_active: evt.id === activeEventId,
+        is_active: false,
       }));
       allEvents = [...allEvents, ...seededDefaults];
 
       await Promise.all(
         seededDefaults.map((evt) => this.upsertRelationalEvent(tenantId, evt))
       );
+    }
+
+    // Isolasi TP: active_event WAJIB berasal dari Tahun Pelajaran yang sedang aktif
+    let activeEventId = '';
+    if (activeTp) {
+      const tpEvents = allEvents.filter((e) => e.tahun_pelajaran_id === activeTp.id);
+      const activeSemKey = String(activeSem?.nama_semester || '').toUpperCase().includes('GENAP')
+        ? 'GENAP'
+        : String(activeSem?.nama_semester || '').toUpperCase().includes('GANJIL')
+        ? 'GANJIL'
+        : '';
+      activeEventId =
+        tpEvents.find((e) => e.is_active)?.id ||
+        (activeSemKey ? tpEvents.find((e) => String(e.semester || '').toUpperCase() === activeSemKey)?.id : '') ||
+        tpEvents[0]?.id ||
+        '';
+    } else {
+      activeEventId = allEvents.find((e) => e.is_active)?.id || '';
     }
 
     // Pastikan flag is_active sinkron dengan activeEventId
