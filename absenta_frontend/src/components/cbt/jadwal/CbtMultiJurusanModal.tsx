@@ -244,16 +244,31 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
   useEffect(() => {
     if (initialConfig) {
       setTitle(initialConfig.title || defaultTitle);
-      setAssignments(initialConfig.assignments || {});
+      const rawAssignments = initialConfig.assignments || {};
+      // Normalkan key ke jur.id (jurusan_id mutlak), tetap dukung draft lama berbasis jur.kode
+      const normalized: Record<string, string> = {};
+      jurusans.forEach((j) => {
+        const val = rawAssignments[j.id] || rawAssignments[j.kode];
+        if (val) normalized[j.id] = val;
+      });
+      // Pertahankan key lain jika ada (misal dari tingkat/periode berbeda) agar tidak hilang
+      Object.entries(rawAssignments).forEach(([k, v]) => {
+        if (!v) return;
+        const matched = jurusans.find((j) => j.id === k || j.kode === k);
+        if (!matched && !normalized[k]) {
+          normalized[k] = v;
+        }
+      });
+      setAssignments(normalized);
     } else {
       setTitle(defaultTitle);
       setAssignments({});
     }
-  }, [initialConfig, defaultTitle, isOpen]);
+  }, [initialConfig, defaultTitle, isOpen, jurusans]);
 
   // Total terpetakan
   const mappedCount = useMemo(() => {
-    return jurusans.filter((j) => Boolean(assignments[j.kode])).length;
+    return jurusans.filter((j) => Boolean(assignments[j.id] || assignments[j.kode])).length;
   }, [jurusans, assignments]);
 
   // ⚡ Heuristik Auto-Match Otomatis Cerdas & Presisi (Mendukung DDPK, KK, MPP SMK)
@@ -280,7 +295,7 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
         .sort((a, b) => b.score - a.score);
 
       if (scoredOptions.length > 0) {
-        nextAssignments[jur.kode] = scoredOptions[0].opt.id;
+        nextAssignments[jur.id] = scoredOptions[0].opt.id;
         matchedCount++;
       } else {
         unmatchedJur.push(jur.kode);
@@ -320,13 +335,13 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
     return detectKejuruanCategory(title, tingkat);
   }, [title, tingkat]);
 
-  const handleSelectMapel = (kodeJurusan: string, bankId: string) => {
+  const handleSelectMapel = (jurusanKey: string, bankId: string) => {
     setAssignments((prev) => {
       const next = { ...prev };
       if (!bankId) {
-        delete next[kodeJurusan];
+        delete next[jurusanKey];
       } else {
-        next[kodeJurusan] = bankId;
+        next[jurusanKey] = bankId;
       }
       return next;
     });
@@ -474,7 +489,7 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700 font-medium">
               {jurusans.map((jur, idx) => {
-                const selectedBankId = assignments[jur.kode] || '';
+                const selectedBankId = assignments[jur.id] || assignments[jur.kode] || '';
                 const selectedOpt = subjectOptions.find((o) => o.id === selectedBankId);
                 const isZeroQuestions = Boolean(selectedOpt && selectedOpt.soalCount === 0);
 
@@ -493,7 +508,7 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
 
                 return (
                   <tr
-                    key={jur.kode}
+                    key={jur.id}
                     className={cn(
                       'divide-x divide-slate-200 dark:divide-slate-700 transition-colors',
                       selectedBankId
@@ -525,7 +540,7 @@ export const CbtMultiJurusanModal: React.FC<CbtMultiJurusanModalProps> = ({
                     <td className="py-1.5 px-3 align-middle">
                       <select
                         value={selectedBankId}
-                        onChange={(e) => handleSelectMapel(jur.kode, e.target.value)}
+                        onChange={(e) => handleSelectMapel(jur.id, e.target.value)}
                         className={cn(
                           'w-full h-8 px-2 text-xs rounded-md border font-medium transition-all cursor-pointer',
                           selectedBankId

@@ -244,13 +244,31 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       const { matrix: dbMatrix, days: dbDays } = reconstructMatrixFromExistingSchedules(
         existingSchedules,
         effectiveDays,
-        bankList
+        bankList,
+        roomMappings
       );
       if (dbDays && dbDays.length > 0) {
         effectiveDays = dbDays;
       }
       if (Object.keys(dbMatrix).length > 0) {
-        effectiveMatrix = { ...effectiveMatrix, ...dbMatrix };
+        const mergedMatrix: TimetableMatrixState = { ...effectiveMatrix };
+        Object.entries(dbMatrix).forEach(([k, dbVal]) => {
+          const draftVal = mergedMatrix[k];
+          if (draftVal && isMultiJurusanSlot(draftVal)) {
+            const draftCfg = parseMultiJurusanSlot(draftVal);
+            const dbCfg = isMultiJurusanSlot(dbVal) ? parseMultiJurusanSlot(dbVal) : null;
+            if (draftCfg && dbCfg) {
+              mergedMatrix[k] = serializeMultiJurusanSlot({
+                title: draftCfg.title || dbCfg.title,
+                assignments: { ...draftCfg.assignments, ...dbCfg.assignments },
+              });
+            }
+            // Jika draft sudah Multi-Jurusan tapi di DB baru terbit 1 jurusan (single val), pertahankan draft
+          } else {
+            mergedMatrix[k] = dbVal;
+          }
+        });
+        effectiveMatrix = mergedMatrix;
       }
     }
 
@@ -385,7 +403,7 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
     return groupMappingsByTingkat(roomMappings);
   }, [roomMappings]);
 
-  // Jurusan grouped by tingkat (dievaluasi dari seluruh rombel aktif di sekolah)
+  // Jurusan grouped by tingkat (berbasis jurusan_id mutlak dari relasi master Kelas/Jurusan, tanpa parsing nama kelas)
   const jurusansByTingkat = useMemo(() => {
     const map = new Map<number, JurusanItem[]>();
 
@@ -394,26 +412,14 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
       if (!map.has(t)) map.set(t, []);
       const list = map.get(t)!;
 
-      let kode = (m.kode_jurusan || m.nama_jurusan || '').toUpperCase().trim();
-      if (!kode || kode === 'UMUM') {
-        const match = (m.nama_kelas || '').match(/\b(AKL|AK|TKJ|TKR|TSM|TP|TM|KUL|PHT|HTL|TOI|TAV|TE|TO)\b/i);
-        if (match) {
-          kode = match[1].toUpperCase();
-        } else {
-          const parts = (m.nama_kelas || '').trim().split(/\s+/);
-          if (parts.length >= 2 && !/^\d+$/.test(parts[1])) {
-            kode = parts[1].toUpperCase();
-          } else {
-            kode = 'UMUM';
-          }
-        }
-      }
+      const kode = (m.kode_jurusan || m.nama_jurusan || 'UMUM').toUpperCase().trim();
+      const absJurId = m.jurusan_id || kode;
 
-      let existing = list.find((j) => j.kode === kode);
+      let existing = list.find((j) => j.id === absJurId);
       if (!existing) {
         existing = {
-          id: m.jurusan_id || kode,
-          kode: kode,
+          id: absJurId,
+          kode,
           nama: m.nama_jurusan || kode,
           rombelCount: 0,
           rombelNames: [],
@@ -1137,59 +1143,71 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
   // Hitung perkiraan jadwal yang akan di-generate
   const totalSlotsFilled = useMemo(() => Object.keys(matrix).length, [matrix]);
 
-  // Hitung jadwal baru vs jadwal yang sudah pernah diterbitkan (Idempotensi & Multi-Jurusan)
+  // Hitung jadwal baru vs jadwal yang sudah pernah diterbitkan (100% sinkron dengan buildMassSchedulePayloads)
   const { newGeneratedCount, alreadyPublishedCount } = useMemo(() => {
     let newCount = 0;
     let publishedCount = 0;
+    const bankMapLocal = new Map(bankList.map((b) => [b.id, b]));
 
-    Object.entries(matrix).forEach(([key, val]) => {
-      if (!val) return;
-      const parts = key.split('_');
-      const tingkat = Number(parts[2]);
-      if (targetTingkat && targetTingkat.length > 0 && !targetTingkat.includes(tingkat)) {
-        return;
-      }
-
-      const classesInTingkat = groupedRoomsByTingkat.get(tingkat) || [];
-
-      if (isMultiJurusanSlot(val)) {
-        const multiConfig = parseMultiJurusanSlot(val);
-        const assignments = multiConfig?.assignments || {};
-
-        classesInTingkat.forEach((cls) => {
-          let assignedBankId =
-            (cls.kode_jurusan && assignments[cls.kode_jurusan]) ||
-            (cls.jurusan_id && assignments[cls.jurusan_id]);
-          if (!assignedBankId) {
-            const matchedKey = Object.keys(assignments).find((jKey) => {
-              if (!jKey) return false;
-              const reg = new RegExp(`\\b${jKey}\\b`, 'i');
-              return reg.test(cls.nama_kelas);
-            });
-            if (matchedKey) assignedBankId = assignments[matchedKey];
+    days.forEach((day) => {
+      day.sessions.forEach((session) => {
+        Array.from(groupedRoomsByTingkat.keys()).forEach((tingkat) => {
+          if (targetTingkat && targetTingkat.length > 0 && !targetTingkat.includes(tingkat)) {
+            return;
           }
-          if (!assignedBankId) return;
 
-          const isPublished = (publishedSessionsByBankId.get(assignedBankId)?.length || 0) > 0;
-          if (isPublished) {
-            publishedCount += 1;
+          const key = `${day.day_index}_${session.session_index}_${tingkat}`;
+          const val = matrix[key];
+          if (!val) return;
+
+          const classesInTingkat = groupedRoomsByTingkat.get(tingkat) || [];
+          if (classesInTingkat.length === 0) return;
+
+          if (isMultiJurusanSlot(val)) {
+            const multiConfig = parseMultiJurusanSlot(val);
+            const assignments = multiConfig?.assignments || {};
+
+            classesInTingkat.forEach((cls) => {
+              const assignedBankId =
+                (cls.jurusan_id && assignments[cls.jurusan_id]) ||
+                (cls.kode_jurusan && assignments[cls.kode_jurusan]);
+              if (!assignedBankId || !bankMapLocal.has(assignedBankId)) return;
+
+              const isPublished = (publishedSessionsByBankId.get(assignedBankId)?.length || 0) > 0;
+              if (isPublished) {
+                publishedCount += 1;
+              } else {
+                newCount += 1;
+              }
+            });
           } else {
-            newCount += 1;
+            const directBank = bankMapLocal.get(val);
+            const targetMapelId = directBank?.mapel_id || val;
+            const candidateBanks = bankList.filter((b) => {
+              if (b.mapel_id !== targetMapelId) return false;
+              const bTingkat = resolveBankTingkatNumber(b);
+              if (bTingkat !== undefined && bTingkat !== tingkat) return false;
+              return true;
+            });
+
+            if (candidateBanks.length === 0 && !directBank) return;
+
+            const rombelCount = generationMode === 'per_tingkat' ? 1 : classesInTingkat.length;
+            const isPublished =
+              (directBank && (publishedSessionsByBankId.get(directBank.id)?.length || 0) > 0) ||
+              candidateBanks.some((b) => (publishedSessionsByBankId.get(b.id)?.length || 0) > 0);
+            if (isPublished) {
+              publishedCount += rombelCount;
+            } else {
+              newCount += rombelCount;
+            }
           }
         });
-      } else {
-        const rombelCount = generationMode === 'per_tingkat' ? 1 : classesInTingkat.length;
-        const isPublished = (publishedSessionsByBankId.get(val)?.length || 0) > 0;
-        if (isPublished) {
-          publishedCount += rombelCount;
-        } else {
-          newCount += rombelCount;
-        }
-      }
+      });
     });
 
     return { newGeneratedCount: newCount, alreadyPublishedCount: publishedCount };
-  }, [matrix, generationMode, groupedRoomsByTingkat, publishedSessionsByBankId, targetTingkat]);
+  }, [days, matrix, bankList, generationMode, groupedRoomsByTingkat, publishedSessionsByBankId, targetTingkat]);
 
   const estimatedGeneratedCount = useMemo(() => {
     return newGeneratedCount + alreadyPublishedCount;
@@ -1538,7 +1556,9 @@ export const CbtTimetableMatrixPanel: React.FC<CbtTimetableMatrixPanelProps> = (
                         const isMulti = isMultiJurusanSlot(selectedBankId);
                         const multiConfig = isMulti ? parseMultiJurusanSlot(selectedBankId) : null;
                         const assignedJurusanCount = isMulti && multiConfig
-                          ? Object.keys(multiConfig.assignments).filter((k) => Boolean(multiConfig.assignments[k])).length
+                          ? jurusansForTingkat.filter((j) =>
+                              Boolean(multiConfig.assignments[j.id] || multiConfig.assignments[j.kode])
+                            ).length
                           : 0;
 
                         if (isMulti) {

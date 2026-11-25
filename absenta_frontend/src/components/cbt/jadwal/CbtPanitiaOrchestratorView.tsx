@@ -213,8 +213,10 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
             rm.nama_jurusan;
           const mNamaKelas = master.nama_kelas || master.nama || rm.nama_kelas;
           const mTingkat = Number(master.tingkat) || rm.tingkat;
+          const mJurusanId = master.jurusan_id || master.Jurusan?.id || rm.jurusan_id;
 
           if (
+            rm.jurusan_id !== mJurusanId ||
             rm.kode_jurusan !== jurKode ||
             rm.nama_jurusan !== jurNama ||
             rm.nama_kelas !== mNamaKelas ||
@@ -223,6 +225,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
             hasChanges = true;
             return {
               ...rm,
+              jurusan_id: mJurusanId,
               kode_jurusan: jurKode,
               nama_jurusan: jurNama,
               nama_kelas: mNamaKelas,

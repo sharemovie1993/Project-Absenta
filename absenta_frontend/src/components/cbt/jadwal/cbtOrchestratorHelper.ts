@@ -614,18 +614,9 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
           const assignments = multiConfig?.assignments || {};
 
           classesInTingkat.forEach((cls) => {
-            let targetBankId =
-              (cls.kode_jurusan && assignments[cls.kode_jurusan]) ||
-              (cls.jurusan_id && assignments[cls.jurusan_id]);
-
-            if (!targetBankId) {
-              const matchedKey = Object.keys(assignments).find((jKey) => {
-                if (!jKey) return false;
-                const reg = new RegExp(`\\b${jKey}\\b`, 'i');
-                return reg.test(cls.nama_kelas);
-              });
-              if (matchedKey) targetBankId = assignments[matchedKey];
-            }
+            const targetBankId =
+              (cls.jurusan_id && assignments[cls.jurusan_id]) ||
+              (cls.kode_jurusan && assignments[cls.kode_jurusan]);
 
             if (!targetBankId) return;
 
@@ -691,15 +682,12 @@ export function buildMassSchedulePayloads(params: BuildMassScheduleParams): any[
 
           const resolveBankForClass = (cls: (typeof classesInTingkat)[number]): CbtBankSoal | null => {
             const clsJurCode = (cls.kode_jurusan || '').toUpperCase().trim();
-            const clsName = (cls.nama_kelas || '').toUpperCase();
 
-            // 1. Cari bank soal spesifik yang jurusannya cocok dengan rombel cls
+            // 1. Cari bank soal spesifik yang kode jurusannya cocok dengan jurusan_id/kode_jurusan rombel (tanpa regex nama kelas)
             const specificBank = candidateBanks.find((b) => {
-              if (!b.jurusan) return false;
+              if (!b.jurusan || !clsJurCode) return false;
               const bJurUpper = b.jurusan.toUpperCase().trim();
-              if (clsJurCode && (bJurUpper.includes(clsJurCode) || clsJurCode.includes(bJurUpper))) return true;
-              const reg = new RegExp(`\\b${bJurUpper}\\b`, 'i');
-              return reg.test(clsName);
+              return bJurUpper === clsJurCode || bJurUpper.includes(clsJurCode) || clsJurCode.includes(bJurUpper);
             });
             if (specificBank) return specificBank;
 
@@ -914,21 +902,29 @@ export function savePersistedMatrixState(
 export function reconstructMatrixFromExistingSchedules(
   existingSchedules: any[],
   baseDays: ExamDayConfig[],
-  bankList: CbtBankSoal[]
+  bankList: CbtBankSoal[],
+  roomMappings?: KelasRoomMapping[]
 ): { matrix: TimetableMatrixState; days: ExamDayConfig[] } {
   if (!existingSchedules || !Array.isArray(existingSchedules) || existingSchedules.length === 0) {
     return { matrix: {}, days: baseDays || [] };
   }
 
   const bankMap = new Map(bankList.map((b) => [b.id, b]));
+  const roomByKelasId = new Map((roomMappings || []).map((r) => [r.kelas_id, r]));
   const reconstructed: TimetableMatrixState = {};
+  const firstBankIdByKey: Record<string, string> = {};
+  const firstJurIdByKey: Record<string, string> = {};
   const workingDays: ExamDayConfig[] = JSON.parse(JSON.stringify(baseDays || []));
 
   existingSchedules.forEach((j) => {
     if (!j.bank_soal_id || !j.tanggal_mulai) return;
 
     const bank = bankMap.get(j.bank_soal_id);
-    const tingkat = bank ? resolveBankTingkatNumber(bank) : (j.BankSoal?.tingkat ? Number(j.BankSoal.tingkat) : undefined);
+    const targetKelasIds: string[] = Array.isArray(j.target_kelas_ids) ? j.target_kelas_ids : [];
+    const matchedRoom = targetKelasIds.map((id) => roomByKelasId.get(id)).find(Boolean);
+    const tingkat =
+      matchedRoom?.tingkat ??
+      (bank ? resolveBankTingkatNumber(bank) : (j.BankSoal?.tingkat ? Number(j.BankSoal.tingkat) : undefined));
     if (tingkat === undefined) return;
 
     // Ambil tanggal lokal YYYY-MM-DD
@@ -1000,37 +996,48 @@ export function reconstructMatrixFromExistingSchedules(
       const thisMapelId = thisBank?.mapel_id || (j.BankSoal as any)?.mapel_id;
       const effectiveVal = thisMapelId || j.bank_soal_id;
 
+      // Resolusi jurusan mutlak dari target_kelas_ids -> roomMappings (tanpa parsing nama rombel)
+      const absJurId = matchedRoom?.jurusan_id || matchedRoom?.kode_jurusan || thisBank?.jurusan || '';
+
       if (!existingVal) {
         reconstructed[key] = effectiveVal;
-      } else if (existingVal !== effectiveVal) {
-        // Cek apakah existingVal dan effectiveVal sebenarnya mapel_id yang sama
-        const existingBank = bankMap.get(existingVal);
-        const existingMapelId = existingBank?.mapel_id || existingVal;
+        firstBankIdByKey[key] = j.bank_soal_id;
+        if (absJurId) firstJurIdByKey[key] = absJurId;
+      } else if (isMultiJurusanSlot(existingVal)) {
+        const multiConfig = parseMultiJurusanSlot(existingVal) || {
+          title: 'DDPK / Produktif Kejuruan',
+          assignments: {},
+        };
+        if (absJurId) {
+          multiConfig.assignments[absJurId] = j.bank_soal_id;
+        }
+        reconstructed[key] = serializeMultiJurusanSlot(multiConfig);
+      } else if (j.bank_soal_id !== firstBankIdByKey[key]) {
+        const firstBankId = firstBankIdByKey[key];
+        const firstBank = firstBankId ? bankMap.get(firstBankId) : undefined;
+        const firstMapelId = firstBank?.mapel_id || existingVal;
+        const firstJurId = firstJurIdByKey[key] || firstBank?.jurusan || '';
 
-        if (thisMapelId && existingMapelId === thisMapelId) {
-          // Mapelnya sama (misal Bahasa Inggris varian rombel berbeda) -> tetap mapel_id yang sama
+        const isSameMapelNoJurusanDiff =
+          thisMapelId &&
+          firstMapelId === thisMapelId &&
+          (!firstJurId || !absJurId || firstJurId === absJurId || (!thisBank?.jurusan && !firstBank?.jurusan));
+
+        if (isSameMapelNoJurusanDiff) {
+          // Mapel reguler sama dengan varian bank soal guru pengampu berbeda
           reconstructed[key] = thisMapelId;
         } else {
-          // Multi-jurusan terdeteksi (ada beberapa bank soal/mapel kejuruan berbeda dalam 1 slot tingkat & sesi yang sama)
-          let multiConfig = parseMultiJurusanSlot(existingVal);
-          if (!multiConfig) {
-            multiConfig = {
-              title: 'DDPK / Produktif Kejuruan',
-              assignments: {},
-            };
-            const firstBank = existingBank || bankMap.get(existingVal);
-            const firstJur = firstBank?.jurusan;
-            if (firstJur) {
-              multiConfig.assignments[firstJur] = existingVal;
-            }
+          // Multi-jurusan terdeteksi (pertahankan bank soal & jurusan pertama agar tidak hilang)
+          const multiConfig: MultiJurusanSlotConfig = {
+            title: tingkat === 10 ? 'DDPK Kejuruan' : 'DDPK / Produktif Kejuruan',
+            assignments: {},
+          };
+          if (firstJurId && firstBankId) {
+            multiConfig.assignments[firstJurId] = firstBankId;
           }
-
-          const { rombel } = parseScheduleRoomAndClass(j);
-          const jurCode = thisBank?.jurusan || (rombel.split(' ')[1] || '').trim();
-          if (jurCode) {
-            multiConfig.assignments[jurCode] = j.bank_soal_id;
+          if (absJurId) {
+            multiConfig.assignments[absJurId] = j.bank_soal_id;
           }
-
           reconstructed[key] = serializeMultiJurusanSlot(multiConfig);
         }
       }
