@@ -190,13 +190,29 @@ export class PerangkatAjarService {
       jenis?: string;
     }
   ) {
+    let resolvedTpId = filter.tahun_pelajaran_id;
+    let resolvedSemId = filter.semester_id;
+
+    if (!resolvedTpId || !resolvedSemId) {
+      const [activeTp, activeSem] = await Promise.all([
+        !resolvedTpId
+          ? prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } })
+          : Promise.resolve(null),
+        !resolvedSemId
+          ? prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } })
+          : Promise.resolve(null),
+      ]);
+      if (!resolvedTpId && activeTp?.id) resolvedTpId = activeTp.id;
+      if (!resolvedSemId && activeSem?.id) resolvedSemId = activeSem.id;
+    }
+
     const rows = await prisma.perangkatAjar.findMany({
       where: {
         tenant_id: tenantId,
         ...(filter.guru_id ? { OR: [{ guru_id: filter.guru_id }, { is_shared: true }] } : {}),
         ...(filter.mapel_id ? { mapel_id: filter.mapel_id } : {}),
-        ...(filter.tahun_pelajaran_id ? { tahun_pelajaran_id: filter.tahun_pelajaran_id } : {}),
-        ...(filter.semester_id ? { semester_id: filter.semester_id } : {}),
+        ...(resolvedTpId ? { tahun_pelajaran_id: resolvedTpId } : {}),
+        ...(resolvedSemId ? { semester_id: resolvedSemId } : {}),
         ...(filter.status ? { status: filter.status } : {}),
         ...(filter.jenis ? { jenis: filter.jenis } : {}),
       },

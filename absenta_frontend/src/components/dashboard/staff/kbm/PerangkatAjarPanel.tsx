@@ -8,6 +8,8 @@ import {
   Zap, Check, ArrowRight, BookCheck, ShieldCheck
 } from 'lucide-react';
 import { kurikulumApi } from '../../../../api/kurikulum.api';
+import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
+import { useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
 import {
   getBahanAjarPresets,
   importBahanAjarPreset,
@@ -119,25 +121,44 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
     return 999;
   };
 
-  // 0. Fetch Teacher's Assigned Subjects
+  const { activeYear: activeTp } = useTahunPelajaranOptions();
+  const { activeSemester } = useSemesterOptions();
+  const activeTpId = activeTp?.id;
+  const activeSemId = activeSemester?.id;
+
+  // 0. Fetch Teacher's Assigned Subjects (Terikat Konteks Akademik)
   const { data: teacherAssignedRes } = useQuery({
-    queryKey: ['guru-assigned-mapels-panel', guruId],
-    queryFn: () => (guruId ? kurikulumApi.getGuruMapel(guruId).catch(() => null) : null),
-    enabled: !!guruId
+    queryKey: ['guru-assigned-mapels-panel', guruId, activeTpId, activeSemId],
+    queryFn: () =>
+      guruId
+        ? listGuruMapel({
+            guru_id: guruId,
+            ...(activeTpId ? { tahun_pelajaran_id: activeTpId } : {}),
+            ...(activeSemId ? { semester_id: activeSemId } : {}),
+            limit: 200,
+          }).catch(() => null)
+        : null,
+    enabled: !!guruId && !!activeTpId,
   });
 
   const assignedMapelList = useMemo(() => {
-    const raw = teacherAssignedRes?.data || [];
+    const raw = (teacherAssignedRes as any)?.items || (teacherAssignedRes as any)?.data || [];
     return raw.map((item: any) => ({
       id: item.mapel_id || item.Mapel?.id || item.id,
       name: item.Mapel?.nama_mapel || item.nama_mapel || ''
     })).filter((m: any) => Boolean(m.name));
   }, [teacherAssignedRes]);
 
-  // 1. Fetch Real Teacher's Perangkat Ajar
+  // 1. Fetch Real Teacher's Perangkat Ajar (Terikat Konteks Akademik)
   const { data: myPerangkatRes, isLoading: isLoadingMyPerangkat } = useQuery({
-    queryKey: ['myPerangkatAjarKbm', guruId],
-    queryFn: () => kurikulumApi.getPerangkatAjar(guruId ? { guru_id: guruId } : {}),
+    queryKey: ['myPerangkatAjarKbm', guruId, activeTpId, activeSemId],
+    queryFn: () =>
+      kurikulumApi.getPerangkatAjar({
+        ...(guruId ? { guru_id: guruId } : {}),
+        ...(activeTpId ? { tahun_pelajaran_id: activeTpId } : {}),
+        ...(activeSemId ? { semester_id: activeSemId } : {}),
+      }),
+    enabled: Boolean(activeTpId),
     staleTime: 1000 * 60 * 5
   });
 

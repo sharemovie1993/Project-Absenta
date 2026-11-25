@@ -254,9 +254,16 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = React.memo(({
 
   // Query Perangkat Ajar Guru Sendiri (Untuk Notification Badges di Sidebar)
   const { data: myPerangkatRes } = useQuery({
-    queryKey: ['my-perangkat-workspace', guruId],
-    queryFn: () => kurikulumApi.getPerangkatAjar({ guru_id: guruId }).catch(() => ({ success: true, data: [] })),
-    enabled: Boolean(guruId) && isActualTeachingStaff,
+    queryKey: ['my-perangkat-workspace', guruId, activeTp?.id, activeSemester?.id],
+    queryFn: () =>
+      kurikulumApi
+        .getPerangkatAjar({
+          guru_id: guruId,
+          ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
+          ...(activeSemester?.id ? { semester_id: activeSemester.id } : {}),
+        })
+        .catch(() => ({ success: true, data: [] })),
+    enabled: Boolean(guruId && activeTp?.id) && isActualTeachingStaff,
     staleTime: 3 * 60 * 1000,
   });
 

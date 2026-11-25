@@ -17,6 +17,7 @@ import {
 import { kurikulumApi } from '@/api/kurikulum.api';
 import { HubCard } from '@/components/ui/hub';
 import { safeArr } from '@/components/kurikulum/dashboard/DashboardComponents';
+import { useTahunPelajaranOptions, useSemesterOptions } from '@/components/common';
 
 interface TeacherCoreWorkspaceBentoProps {
   guruId?: string;
@@ -42,12 +43,21 @@ export const TeacherCoreWorkspaceBento: React.FC<TeacherCoreWorkspaceBentoProps>
   className,
 }) => {
   const navigate = useNavigate();
+  const { activeYear: activeTp } = useTahunPelajaranOptions();
+  const { activeSemester } = useSemesterOptions();
 
-  // 1. Query Dokumen Perangkat Ajar Guru Sendiri
+  // 1. Query Dokumen Perangkat Ajar Guru Sendiri (Terikat Konteks Akademik)
   const { data: myPerangkatRes, isLoading: loadingPerangkat } = useQuery({
-    queryKey: ['my-perangkat-workspace', guruId],
-    queryFn: () => kurikulumApi.getPerangkatAjar({ guru_id: guruId }).catch(() => ({ success: true, data: [] })),
-    enabled: Boolean(guruId),
+    queryKey: ['my-perangkat-workspace', guruId, activeTp?.id, activeSemester?.id],
+    queryFn: () =>
+      kurikulumApi
+        .getPerangkatAjar({
+          guru_id: guruId,
+          ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
+          ...(activeSemester?.id ? { semester_id: activeSemester.id } : {}),
+        })
+        .catch(() => ({ success: true, data: [] })),
+    enabled: Boolean(guruId && activeTp?.id),
     staleTime: 60 * 1000,
   });
 
