@@ -193,6 +193,10 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
   const isRoomInitializedRef = useRef(false);
 
   useEffect(() => {
+    isRoomInitializedRef.current = false;
+  }, [activeEvent?.id, effectiveTpId]);
+
+  useEffect(() => {
     if (!scopedKelasList.length) {
       setRoomMappings([]);
       isRoomInitializedRef.current = false;

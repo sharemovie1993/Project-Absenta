@@ -106,21 +106,11 @@ export interface PersistedRoomStoragePayload {
 
 export function loadPersistedRoomMappingsList(tenantId?: string, eventId?: string): KelasRoomMapping[] | null {
   try {
-    // 1. Coba baca key khusus event jika ada
-    if (eventId) {
-      const rawEvent = localStorage.getItem(getStorageKeyRoomMappings(tenantId, eventId));
-      if (rawEvent) {
-        const parsed = JSON.parse(rawEvent);
-        if (parsed && Array.isArray(parsed.mappings) && parsed.mappings.length > 0) {
-          return parsed.mappings;
-        }
-      }
-    }
-
-    // 2. Baca key tenant umum
-    const rawGeneral = localStorage.getItem(getStorageKeyRoomMappings(tenantId));
-    if (!rawGeneral) return null;
-    const parsed = JSON.parse(rawGeneral);
+    // Isolasi ketat per eventId: jangan fallback ke key global tenant agar mapping TP/event lain tidak bocor
+    if (!eventId) return null;
+    const rawEvent = localStorage.getItem(getStorageKeyRoomMappings(tenantId, eventId));
+    if (!rawEvent) return null;
+    const parsed = JSON.parse(rawEvent);
     if (parsed && Array.isArray(parsed.mappings) && parsed.mappings.length > 0) {
       return parsed.mappings;
     }
@@ -135,21 +125,13 @@ export function loadPersistedRoomMappings(
   eventId?: string
 ): Record<string, { slot_ruang: string; nama_ruang: string }> | null {
   try {
-    // Coba baca dari key event dulu
-    if (eventId) {
-      const rawEvent = localStorage.getItem(getStorageKeyRoomMappings(tenantId, eventId));
-      if (rawEvent) {
-        const parsed = JSON.parse(rawEvent);
-        if (parsed?.mapObj && typeof parsed.mapObj === 'object') return parsed.mapObj;
-        if (parsed && typeof parsed === 'object' && !parsed.mappings) return parsed;
-      }
-    }
-
-    const raw = localStorage.getItem(getStorageKeyRoomMappings(tenantId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
+    // Isolasi ketat per eventId: jangan fallback ke key global tenant agar mapping TP/event lain tidak bocor
+    if (!eventId) return null;
+    const rawEvent = localStorage.getItem(getStorageKeyRoomMappings(tenantId, eventId));
+    if (!rawEvent) return null;
+    const parsed = JSON.parse(rawEvent);
     if (parsed?.mapObj && typeof parsed.mapObj === 'object') return parsed.mapObj;
-    if (parsed && typeof parsed === 'object') return parsed;
+    if (parsed && typeof parsed === 'object' && !parsed.mappings) return parsed;
     return null;
   } catch {
     return null;
@@ -162,6 +144,7 @@ export function savePersistedRoomMappings(
   eventId?: string
 ): void {
   try {
+    if (!eventId) return;
     const mapObj: Record<string, { slot_ruang: string; nama_ruang: string }> = {};
     mappings.forEach((m) => {
       mapObj[m.kelas_id] = { slot_ruang: m.slot_ruang, nama_ruang: m.nama_ruang };
@@ -175,13 +158,7 @@ export function savePersistedRoomMappings(
     };
 
     const payloadStr = JSON.stringify(payload);
-
-    // Simpan ke key event jika ada
-    if (eventId) {
-      localStorage.setItem(getStorageKeyRoomMappings(tenantId, eventId), payloadStr);
-    }
-    // Simpan ke key umum
-    localStorage.setItem(getStorageKeyRoomMappings(tenantId), payloadStr);
+    localStorage.setItem(getStorageKeyRoomMappings(tenantId, eventId), payloadStr);
   } catch (err) {
     console.warn('Gagal menyimpan mapping ruang ke localStorage:', err);
   }
