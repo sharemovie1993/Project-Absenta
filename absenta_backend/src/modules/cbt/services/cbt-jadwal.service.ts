@@ -38,7 +38,7 @@ export class CbtJadwalService {
       andConditions.push({ bank_soal_id: query.bank_soal_id });
     }
     if (query.guru_id) {
-      // Dapatkan penugasan kelas dan mapel guru (GuruMapel, UnitPengajaran, maupun Delegasi Pelaksana)
+      // Dapatkan penugasan kelas dan mapel guru (UnitPengajaran, JadwalKBM, maupun GuruMapel)
       const [assignedGuruMapel, assignedUnits, delegatedJadwals] = await Promise.all([
         prisma.guruMapel.findMany({
           where: { tenant_id: tenantId, guru_id: query.guru_id },
@@ -55,52 +55,49 @@ export class CbtJadwalService {
       ]);
 
       const orConditions: Prisma.CbtJadwalUjianWhereInput[] = [
-        { BankSoal: { guru_id: query.guru_id } },
-        { BankSoal: { Kontributor: { some: { guru_id: query.guru_id, tenant_id: tenantId } } } },
         {
           setting_keamanan: {
             path: ['created_by_guru_id'],
             equals: query.guru_id,
           },
         },
-        {
-          setting_keamanan: {
-            path: ['pengawas_1_id'],
-            equals: query.guru_id,
-          },
-        },
-        {
-          setting_keamanan: {
-            path: ['pengawas_2_id'],
-            equals: query.guru_id,
-          },
-        },
-        {
-          setting_keamanan: {
-            path: ['proktor_id'],
-            equals: query.guru_id,
-          },
-        },
       ];
 
-      const pushMapelKelasFilter = (rows: Array<{ mapel_id?: string | null; kelas_id?: string | null }>) => {
+      const seenPair = new Set<string>();
+      const mapelsWithClassScope = new Set<string>();
+      const mapelsWithoutClassScope = new Set<string>();
+
+      const collectPairs = (rows: Array<{ mapel_id?: string | null; kelas_id?: string | null }>) => {
         for (const row of rows) {
-          if (row.mapel_id && row.kelas_id) {
-            orConditions.push({
-              BankSoal: { mapel_id: row.mapel_id },
-              target_kelas_ids: { array_contains: [row.kelas_id] },
-            });
-          } else if (row.mapel_id) {
-            orConditions.push({
-              BankSoal: { mapel_id: row.mapel_id },
-            });
+          if (!row.mapel_id) continue;
+          if (row.kelas_id) {
+            mapelsWithClassScope.add(row.mapel_id);
+            const key = `${row.mapel_id}::${row.kelas_id}`;
+            if (!seenPair.has(key)) {
+              seenPair.add(key);
+              orConditions.push({
+                BankSoal: { mapel_id: row.mapel_id },
+                target_kelas_ids: { array_contains: [row.kelas_id] },
+              });
+            }
+          } else {
+            mapelsWithoutClassScope.add(row.mapel_id);
           }
         }
       };
 
-      pushMapelKelasFilter(assignedGuruMapel);
-      pushMapelKelasFilter(assignedUnits);
-      pushMapelKelasFilter(delegatedJadwals);
+      collectPairs(assignedUnits);
+      collectPairs(delegatedJadwals);
+      collectPairs(assignedGuruMapel);
+
+      // Fallback hanya jika mapel di GuruMapel belum punya pemetaan kelas sama sekali di UnitPengajaran/JadwalKBM
+      for (const mapelId of mapelsWithoutClassScope) {
+        if (!mapelsWithClassScope.has(mapelId)) {
+          orConditions.push({
+            BankSoal: { mapel_id: mapelId },
+          });
+        }
+      }
 
       andConditions.push({
         OR: orConditions,
