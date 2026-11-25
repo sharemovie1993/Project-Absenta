@@ -101,6 +101,25 @@ export const cbtApi = {
     return res.data?.data as CbtBankSoal;
   },
 
+  rolloverBankSoal: async (payload: {
+    bank_soal_ids?: string[];
+    source_event_id?: string;
+    source_tahun_pelajaran_id?: string;
+    source_semester_id?: string;
+    target_event_id: string;
+    target_tahun_pelajaran_id?: string;
+    target_semester_id?: string;
+    guru_id?: string;
+    keep_status?: boolean;
+  }) => {
+    const res = await api.post('/cbt/bank-soal/rollover', payload);
+    return res.data?.data as {
+      created_count: number;
+      skipped_count: number;
+      created_ids: string[];
+    };
+  },
+
   getBankContributors: async (id: string) => {
     const res = await api.get(`/cbt/bank-soal/${id}/kontributor`);
     return res.data?.data as CbtBankContributorsResponse;
@@ -415,6 +434,21 @@ export const cbtApi = {
   setActiveEvent: async (eventId: string) => {
     const res = await api.post('/cbt/settings/events/set-active', { event_id: eventId });
     return res.data?.data as CbtEventItem;
+  },
+
+  rolloverEvent: async (payload: {
+    source_event_id: string;
+    target_event_id: string;
+    include_room_mappings?: boolean;
+    include_days_config?: boolean;
+    include_pengawas_candidates?: boolean;
+    include_bank_soal?: boolean;
+  }) => {
+    const res = await api.post('/cbt/settings/events/rollover', payload);
+    return res.data?.data as {
+      event: CbtEventItem;
+      bank_rollover?: { created_count: number; skipped_count: number; created_ids: string[] } | null;
+    };
   },
 
   deleteEvent: async (eventId: string) => {

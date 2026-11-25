@@ -26,8 +26,10 @@ import {
   Unlock,
   Edit2,
   Check,
+  History,
 } from 'lucide-react';
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
+import { CbtRolloverModal, type CbtRolloverMode } from '../shared/CbtRolloverModal';
 import { Modal } from '@/components/ui';
 import type { CbtJadwalUjian, CbtBankSoal } from '@/types/cbt.types';
 import { getVirtualDate } from '@/utils/attendance/time';
@@ -99,6 +101,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
 
   const [activeTab, setActiveTab] = useState<CbtPanitiaPhase>('fase_1_soal');
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [rolloverModalMode, setRolloverModalMode] = useState<CbtRolloverMode | null>(null);
 
   const { rawList: guruList = [] } = useGuruOptions({ jenisPtk: 'ALL' });
   const { rawList: kelasList = [] } = useKelasOptions();
@@ -376,14 +379,15 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
     isRoomInitializedRef.current = true;
   }, [scopedKelasList, tenantId, activeEvent?.id, denahMapByKelasId]);
 
-  // ── 2. Fetch Bank Soal (Terikat Konteks TP & Semester Event Aktif) ──
+  // ── 2. Fetch Bank Soal (Terikat Konteks TP, Semester & Event Aktif) ──
   const bankQueryParams = useMemo(
     () => ({
       limit: 500,
       ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
       ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
+      ...(activeEvent?.id ? { event_id: activeEvent.id } : {}),
     }),
-    [effectiveTpId, effectiveSemId]
+    [effectiveTpId, effectiveSemId, activeEvent?.id]
   );
   const { data: bankRes, refetch: refetchBankSoal } = useQuery({
     queryKey: cbtQueryKeys.bankSoal(bankQueryParams),
@@ -543,8 +547,19 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           )}
         </div>
 
-        {/* Right: Quick Settings */}
-        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto text-xs">
+        {/* Right: Quick Rollover & Settings */}
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto text-xs flex-wrap">
+          <button
+            type="button"
+            onClick={() =>
+              setRolloverModalMode(activeTab === 'fase_2_ruang' ? 'event-config' : 'bank-soal')
+            }
+            className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+            title="Tarik Bank Soal atau Konfigurasi Ruang/Pengawas dari Event Sebelumnya"
+          >
+            <History size={13} />
+            <span>{activeTab === 'fase_2_ruang' ? 'Rollover Ruang/Event' : 'Rollover Soal'}</span>
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -789,6 +804,18 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           </Suspense>
         </div>
       </Modal>
+      <CbtRolloverModal
+        isOpen={rolloverModalMode !== null}
+        onClose={() => setRolloverModalMode(null)}
+        mode={rolloverModalMode || 'bank-soal'}
+        targetEvent={activeEvent}
+        targetTpId={effectiveTpId}
+        targetSemId={effectiveSemId}
+        onSuccess={() => {
+          refetchBankSoal();
+          refetchJadwal();
+        }}
+      />
     </div>
   );
 };

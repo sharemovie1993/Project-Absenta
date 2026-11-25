@@ -14,6 +14,7 @@ export interface QueryBankSoalDto {
   guru_id?: string;
   tahun_pelajaran_id?: string;
   semester_id?: string;
+  event_id?: string;
   unit_pengajaran_id?: string;
   include_shared?: boolean;
   ownership?: 'ALL' | 'OWN' | 'SHARED';
@@ -197,6 +198,9 @@ export class CbtBankSoalService {
       andConditions.push({
         OR: [{ semester_id: query.semester_id }, { semester_id: null }],
       });
+    }
+    if (query.event_id) {
+      andConditions.push({ event_id: query.event_id });
     }
     if (query.unit_pengajaran_id) {
       andConditions.push({ unit_pengajaran_id: query.unit_pengajaran_id });
@@ -951,6 +955,7 @@ export class CbtBankSoalService {
           tingkat: { in: tingkatVariants },
           ...(resolvedTpId ? { tahun_pelajaran_id: resolvedTpId } : {}),
           ...(resolvedSemId ? { semester_id: resolvedSemId } : {}),
+          ...(data.event_id ? { event_id: data.event_id } : {}),
           status: 'PUBLISHED',
           unit_pengajaran_id: null,
           guru_id: { not: data.guru_id },
@@ -985,6 +990,7 @@ export class CbtBankSoalService {
         mapel_id: data.mapel_id,
         tahun_pelajaran_id: resolvedTpId,
         semester_id: resolvedSemId,
+        event_id: data.event_id || null,
         unit_pengajaran_id: data.unit_pengajaran_id || null,
         kode_bank: data.kode_bank.toUpperCase().trim(),
         judul: data.judul.trim(),
@@ -1135,11 +1141,15 @@ export class CbtBankSoalService {
           mapel_id: source.mapel_id,
           tahun_pelajaran_id: source.tahun_pelajaran_id,
           semester_id: source.semester_id,
+          event_id: source.event_id,
           unit_pengajaran_id: source.unit_pengajaran_id,
           kode_bank: newCode,
           judul: `${source.judul} (Salinan)`,
           tingkat: source.tingkat,
+          tingkat_num: source.tingkat_num,
           jurusan: source.jurusan,
+          jurusan_id: source.jurusan_id,
+          target_jurusan_ids: source.target_jurusan_ids as any,
           jumlah_soal: source.Soal.length,
           alokasi_menit: source.alokasi_menit,
           acak_soal: source.acak_soal,
@@ -1172,6 +1182,143 @@ export class CbtBankSoalService {
 
       return clonedBank;
     });
+  }
+
+  /**
+   * Rollover Bank Soal (beserta seluruh butir soalnya) dari event/TP/semester sebelumnya ke event target
+   */
+  static async rollover(
+    tenantId: string,
+    params: {
+      bank_soal_ids?: string[];
+      source_event_id?: string;
+      source_tahun_pelajaran_id?: string;
+      source_semester_id?: string;
+      target_event_id: string;
+      target_tahun_pelajaran_id?: string;
+      target_semester_id?: string;
+      guru_id?: string;
+      keep_status?: boolean;
+    }
+  ) {
+    const { tahun_pelajaran_id: resolvedTargetTpId, semester_id: resolvedTargetSemId } =
+      await this.resolveAcademicContext(
+        tenantId,
+        params.target_tahun_pelajaran_id,
+        params.target_semester_id
+      );
+
+    const sourceWhere: Prisma.CbtBankSoalWhereInput = {
+      tenant_id: tenantId,
+      ...(params.guru_id ? { guru_id: params.guru_id } : {}),
+    };
+
+    if (Array.isArray(params.bank_soal_ids) && params.bank_soal_ids.length > 0) {
+      sourceWhere.id = { in: params.bank_soal_ids };
+    } else {
+      if (params.source_event_id) sourceWhere.event_id = params.source_event_id;
+      if (params.source_tahun_pelajaran_id) sourceWhere.tahun_pelajaran_id = params.source_tahun_pelajaran_id;
+      if (params.source_semester_id) sourceWhere.semester_id = params.source_semester_id;
+    }
+
+    const sources = await prisma.cbtBankSoal.findMany({
+      where: sourceWhere,
+      include: {
+        Soal: { orderBy: { nomor_urut: 'asc' } },
+      },
+      orderBy: { created_at: 'asc' },
+    });
+
+    if (sources.length === 0) {
+      return { created_count: 0, skipped_count: 0, created_ids: [] as string[] };
+    }
+
+    // Cek duplikasi yang sudah pernah di-rollover ke event target
+    const existingTargetBanks = await prisma.cbtBankSoal.findMany({
+      where: {
+        tenant_id: tenantId,
+        event_id: params.target_event_id,
+      },
+      select: { guru_id: true, mapel_id: true, judul: true, tingkat: true, jurusan_id: true },
+    });
+
+    const existingKeys = new Set(
+      existingTargetBanks.map(
+        (b) => `${b.guru_id}__${b.mapel_id}__${b.tingkat}__${b.jurusan_id || ''}__${b.judul.trim().toLowerCase()}`
+      )
+    );
+
+    const createdIds: string[] = [];
+    let skippedCount = 0;
+
+    for (const source of sources) {
+      const dedupKey = `${source.guru_id}__${source.mapel_id}__${source.tingkat}__${source.jurusan_id || ''}__${source.judul.trim().toLowerCase()}`;
+      if (existingKeys.has(dedupKey)) {
+        skippedCount++;
+        continue;
+      }
+
+      const randSuffix = Math.floor(10000 + Math.random() * 90000);
+      const newCode = `CBT-${new Date().getFullYear()}-${randSuffix}`;
+      const nextStatus =
+        params.keep_status !== false && source.status !== 'ARCHIVED' ? source.status : 'DRAFT';
+
+      const cloned = await prisma.$transaction(async (tx) => {
+        const bank = await tx.cbtBankSoal.create({
+          data: {
+            tenant_id: tenantId,
+            guru_id: source.guru_id,
+            mapel_id: source.mapel_id,
+            tahun_pelajaran_id: resolvedTargetTpId,
+            semester_id: resolvedTargetSemId,
+            event_id: params.target_event_id,
+            unit_pengajaran_id: source.unit_pengajaran_id,
+            kode_bank: newCode,
+            judul: source.judul,
+            tingkat: source.tingkat,
+            tingkat_num: source.tingkat_num,
+            jurusan: source.jurusan,
+            jurusan_id: source.jurusan_id,
+            target_jurusan_ids: source.target_jurusan_ids as any,
+            jumlah_soal: source.Soal.length,
+            alokasi_menit: source.alokasi_menit,
+            acak_soal: source.acak_soal,
+            acak_opsi: source.acak_opsi,
+            status: nextStatus,
+            is_shared: source.is_shared,
+          },
+        });
+
+        if (source.Soal.length > 0) {
+          await tx.cbtSoal.createMany({
+            data: source.Soal.map((s, idx) => ({
+              tenant_id: tenantId,
+              bank_soal_id: bank.id,
+              unit_pengajaran_id: s.unit_pengajaran_id,
+              nomor_urut: idx + 1,
+              jenis_soal: s.jenis_soal,
+              konten_pertanyaan: s.konten_pertanyaan,
+              gambar_stimulus_url: s.gambar_stimulus_url,
+              bobot: s.bobot,
+              opsi_jawaban_json: s.opsi_jawaban_json as any,
+              kunci_jawaban: s.kunci_jawaban,
+              pembahasan: s.pembahasan,
+            })),
+          });
+        }
+
+        return bank;
+      });
+
+      existingKeys.add(dedupKey);
+      createdIds.push(cloned.id);
+    }
+
+    return {
+      created_count: createdIds.length,
+      skipped_count: skippedCount,
+      created_ids: createdIds,
+    };
   }
 
   /**

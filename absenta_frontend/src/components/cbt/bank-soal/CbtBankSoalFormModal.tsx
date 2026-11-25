@@ -822,6 +822,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         judul: judul.trim(),
         guru_id: guruId,
         mapel_id: mapelId,
+        event_id: bankSoalToEdit?.event_id ?? activeEvent?.id ?? null,
         unit_pengajaran_id: unitPengajaranId || null,
         tingkat,
         tingkat_num: parseStrictTingkatValue(tingkat),

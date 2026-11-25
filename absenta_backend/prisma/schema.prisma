@@ -6077,6 +6077,7 @@ model CbtBankSoal {
   mapel_id           String
   tahun_pelajaran_id String?
   semester_id        String?
+  event_id           String?
   unit_pengajaran_id String?
   kode_bank          String
   judul              String
@@ -6108,6 +6109,7 @@ model CbtBankSoal {
   @@unique([tenant_id, kode_bank])
   @@index([tenant_id])
   @@index([tenant_id, tahun_pelajaran_id, semester_id])
+  @@index([tenant_id, event_id])
   @@index([guru_id])
   @@index([mapel_id])
   @@index([jurusan_id])

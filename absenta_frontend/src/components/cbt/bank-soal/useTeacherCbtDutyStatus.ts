@@ -100,9 +100,9 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
     staleTime: 60 * 1000,
   });
 
-  // 2. Bank Soal Relevan (milik sendiri + master MGMP / kontributor, terikat TP & Semester aktif)
+  // 2. Bank Soal Relevan (milik sendiri + master MGMP / kontributor, terikat TP, Semester & Event aktif)
   const { data: bankListRes, isLoading: isBankLoading } = useQuery({
-    queryKey: ['cbt-bank-soal-for-teacher-duty', guruId, effectiveTpId, effectiveSemId],
+    queryKey: ['cbt-bank-soal-for-teacher-duty', guruId, effectiveTpId, effectiveSemId, activeEvent?.id],
     queryFn: () =>
       guruId
         ? cbtApi
@@ -111,6 +111,7 @@ export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusRe
               limit: 200,
               ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
               ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
+              ...(activeEvent?.id ? { event_id: activeEvent.id } : {}),
             })
             .catch(() => null)
         : null,

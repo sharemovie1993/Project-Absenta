@@ -9,6 +9,7 @@ import {
   bulkImportSoalSchema,
   parseGoogleFormSchema,
   updateBankContributorsSchema,
+  rolloverBankSoalSchema,
 } from '../schemas/cbt.schema';
 import { z } from 'zod';
 
@@ -87,6 +88,32 @@ export class CbtBankSoalController {
       return sendResponse(reply, 201, true, 'Bank soal berhasil diduplikasi ke akun Anda', result);
     } catch (error: any) {
       return sendError(reply, 400, error.message || 'Gagal menduplikasi bank soal');
+    }
+  }
+
+  static async rollover(req: any, reply: any) {
+    try {
+      const { tenant_id, guru_profile, role } = req.user!;
+      const parsed = rolloverBankSoalSchema.parse(req.body || {});
+      const roleName = String(role?.name || role || '').toUpperCase();
+      const isGuruOnly = roleName === 'GURU';
+      const scopedGuruId = isGuruOnly ? (guru_profile?.id || parsed.guru_id) : parsed.guru_id;
+      const result = await CbtBankSoalService.rollover(tenant_id, {
+        ...parsed,
+        guru_id: scopedGuruId,
+      });
+      return sendResponse(
+        reply,
+        201,
+        true,
+        `Rollover selesai: ${result.created_count} bank soal berhasil ditarik (${result.skipped_count} dilewati karena sudah ada).`,
+        result
+      );
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return sendError(reply, 400, error.errors?.[0]?.message || 'Validasi rollover gagal', error.errors);
+      }
+      return sendError(reply, 400, error.message || 'Gagal melakukan rollover bank soal');
     }
   }
 

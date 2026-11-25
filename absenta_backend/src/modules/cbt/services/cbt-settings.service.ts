@@ -527,4 +527,74 @@ export class CbtSettingsService {
       estimatedSeconds: queuedCount * 3,
     };
   }
+
+  /**
+   * Rollover konfigurasi Event CBT (ploting ruang, kandidat pengawas, days_config, & opsional bank soal)
+   */
+  static async rolloverEvent(
+    tenantId: string,
+    params: {
+      source_event_id: string;
+      target_event_id: string;
+      include_room_mappings?: boolean;
+      include_days_config?: boolean;
+      include_pengawas_candidates?: boolean;
+      include_bank_soal?: boolean;
+    }
+  ) {
+    const [sourceRow, targetRow] = await Promise.all([
+      prisma.cbtEvent.findFirst({ where: { tenant_id: tenantId, id: params.source_event_id } }),
+      prisma.cbtEvent.findFirst({ where: { tenant_id: tenantId, id: params.target_event_id } }),
+    ]);
+
+    if (!sourceRow) throw new Error('Event CBT sumber tidak ditemukan');
+    if (!targetRow) throw new Error('Event CBT tujuan tidak ditemukan');
+
+    const source = this.mapRowToItem(sourceRow);
+    const target = this.mapRowToItem(targetRow);
+
+    const updatedTarget = await this.upsertEvent(tenantId, {
+      ...target,
+      ...(params.include_room_mappings !== false ? { room_mappings: source.room_mappings || [] } : {}),
+      ...(params.include_days_config ? { days_config: source.days_config || [] } : {}),
+      ...(params.include_pengawas_candidates !== false
+        ? { pengawas_candidates: source.pengawas_candidates || [] }
+        : {}),
+      target_tingkat:
+        Array.isArray(target.target_tingkat) && target.target_tingkat.length > 0
+          ? target.target_tingkat
+          : source.target_tingkat,
+      lock_teacher_scheduling: source.lock_teacher_scheduling,
+      strict_browser_guard: source.strict_browser_guard,
+      enable_proctor: source.enable_proctor,
+      token_refresh_interval: source.token_refresh_interval,
+    });
+
+    let bankRolloverResult: any = null;
+    if (params.include_bank_soal) {
+      const { CbtBankSoalService } = await import('./cbt-bank-soal.service');
+      let targetSemId: string | undefined;
+      if (target.tahun_pelajaran_id) {
+        const sems = await prisma.semester.findMany({
+          where: { tenant_id: tenantId, tahun_pelajaran_id: target.tahun_pelajaran_id },
+          select: { id: true, nama_semester: true, is_active: true },
+        });
+        const semTarget = String(target.semester || '').toUpperCase().trim();
+        const matched = sems.find((s) => String(s.nama_semester || '').toUpperCase().includes(semTarget));
+        targetSemId = matched?.id || sems.find((s) => s.is_active)?.id;
+      }
+      bankRolloverResult = await CbtBankSoalService.rollover(tenantId, {
+        source_event_id: source.id,
+        source_tahun_pelajaran_id: source.tahun_pelajaran_id || undefined,
+        target_event_id: target.id,
+        target_tahun_pelajaran_id: target.tahun_pelajaran_id || undefined,
+        target_semester_id: targetSemId,
+      });
+    }
+
+    return {
+      event: updatedTarget,
+      bank_rollover: bankRolloverResult,
+    };
+  }
 }

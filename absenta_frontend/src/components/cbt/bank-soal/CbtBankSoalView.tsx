@@ -34,6 +34,8 @@ import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicL
 import { cbtApi, cbtQueryKeys } from '@/api/cbt.api';
 import type { CbtBankSoal } from '@/types/cbt.types';
 import { CbtBankSoalFormModal } from './CbtBankSoalFormModal';
+import { CbtRolloverModal } from '../shared/CbtRolloverModal';
+import { History } from 'lucide-react';
 import { CbtBankSoalDetailModal } from './CbtBankSoalDetailModal';
 import { TeacherCbtDutyCard } from './TeacherCbtDutyCard';
 import { CbtJadwalFormModal } from '../jadwal/CbtJadwalFormModal';
@@ -94,6 +96,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isRolloverModalOpen, setIsRolloverModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedBankSoal, setSelectedBankSoal] = useState<CbtBankSoal | null>(null);
   const [defaultMapelForCreate, setDefaultMapelForCreate] = useState<string | undefined>(undefined);
@@ -157,6 +160,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
       ownership: effectiveOwnership,
       tahun_pelajaran_id: effectiveTpId,
       semester_id: effectiveSemId,
+      event_id: activeCbtEvent?.id,
     }),
     queryFn: () =>
       cbtApi.getBankSoalList({
@@ -169,6 +173,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         ownership: effectiveOwnership,
         ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
         ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
+        ...(activeCbtEvent?.id ? { event_id: activeCbtEvent.id } : {}),
       }),
   });
 
@@ -563,19 +568,34 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
 
       {/* ── Toolbar: Panitia CBT menggunakan AcademicFilterToolbar, Guru cukup tombol '+ Buat Bank Soal' ── */}
       {isPanitiaCbt ? (
-        <AcademicFilterToolbar
-          {...filter.toolbarProps}
-          onAdd={
-            !readOnly
-              ? () => {
-                  setSelectedBankSoal(null);
-                  setIsFormModalOpen(true);
-                }
-              : undefined
-          }
-          addLabel="Buat Bank Soal"
-          className="shadow-2xs"
-        />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <AcademicFilterToolbar
+            {...filter.toolbarProps}
+            onAdd={
+              !readOnly
+                ? () => {
+                    setSelectedBankSoal(null);
+                    setIsFormModalOpen(true);
+                  }
+                : undefined
+            }
+            addLabel="Buat Bank Soal"
+            className="shadow-2xs flex-1"
+          />
+          {!readOnly && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsRolloverModalOpen(true)}
+              className="border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-bold text-xs h-9 px-3 rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0"
+              title="Tarik Bank Soal dari Event atau Tahun Pelajaran Sebelumnya"
+            >
+              <History size={14} />
+              <span>Rollover Soal</span>
+            </Button>
+          )}
+        </div>
       ) : (
         /* Area Guru: 3-Pill Switcher (Soal Buatan Saya vs Dibagikan Kepada Saya vs Semua Naskah) & Tombol Buat */
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -669,19 +689,32 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           </div>
 
           {!readOnly && (
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                setSelectedBankSoal(null);
-                setIsFormModalOpen(true);
-              }}
-              className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs h-8 sm:h-9 px-3.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all shrink-0 self-end sm:self-auto"
-            >
-              <Plus size={14} className="stroke-[2.5]" />
-              <span>Buat Bank Soal</span>
-            </Button>
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsRolloverModalOpen(true)}
+                className="border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-bold text-xs h-8 sm:h-9 px-3 rounded-xl flex items-center gap-1.5 cursor-pointer transition-all"
+                title="Tarik Bank Soal dari Event atau Tahun Pelajaran Sebelumnya"
+              >
+                <History size={14} />
+                <span>Rollover</span>
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setSelectedBankSoal(null);
+                  setIsFormModalOpen(true);
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs h-8 sm:h-9 px-3.5 rounded-xl shadow-2xs flex items-center gap-1.5 cursor-pointer transition-all"
+              >
+                <Plus size={14} className="stroke-[2.5]" />
+                <span>Buat Bank Soal</span>
+              </Button>
+            </div>
           )}
         </div>
       )}
@@ -855,6 +888,18 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
             }}
           />
         </div>
+      )}
+
+      {!readOnly && (
+        <CbtRolloverModal
+          isOpen={isRolloverModalOpen}
+          onClose={() => setIsRolloverModalOpen(false)}
+          mode="bank-soal"
+          targetEvent={activeCbtEvent}
+          targetTpId={effectiveTpId}
+          targetSemId={effectiveSemId}
+          guruId={!isPanitiaCbt ? currentGuruId : undefined}
+        />
       )}
 
       {/* Modal Form Tambah / Edit Bank Soal */}

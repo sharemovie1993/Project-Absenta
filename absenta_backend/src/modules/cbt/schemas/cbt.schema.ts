@@ -33,6 +33,7 @@ const bankSoalBaseSchema = z.object({
   mapel_id: z.string().uuid('ID Mapel tidak valid'),
   tahun_pelajaran_id: z.string().uuid('ID Tahun Pelajaran tidak valid').nullable().optional(),
   semester_id: z.string().uuid('ID Semester tidak valid').nullable().optional(),
+  event_id: z.string().max(120).nullable().optional(),
   unit_pengajaran_id: z.string().uuid('ID Unit Pengajaran tidak valid').nullable().optional(),
   kode_bank: z.string().min(2, 'Kode bank soal minimal 2 karakter').max(50),
   judul: z.string().min(3, 'Judul bank soal minimal 3 karakter').max(200),
@@ -112,9 +113,31 @@ export const queryBankSoalSchema = z.object({
   guru_id: z.string().optional(),
   tahun_pelajaran_id: z.string().optional(),
   semester_id: z.string().optional(),
+  event_id: z.string().optional(),
   unit_pengajaran_id: z.string().optional(),
   include_shared: z.coerce.boolean().optional().default(true),
   ownership: z.enum(['ALL', 'OWN', 'SHARED']).optional().default('ALL'),
+});
+
+export const rolloverBankSoalSchema = z.object({
+  bank_soal_ids: z.array(z.string().uuid()).optional(),
+  source_event_id: z.string().optional(),
+  source_tahun_pelajaran_id: z.string().uuid().optional(),
+  source_semester_id: z.string().uuid().optional(),
+  target_event_id: z.string().min(1, 'Target event_id wajib diisi'),
+  target_tahun_pelajaran_id: z.string().uuid().optional(),
+  target_semester_id: z.string().uuid().optional(),
+  guru_id: z.string().uuid().optional(),
+  keep_status: z.boolean().optional().default(true),
+});
+
+export const rolloverEventSchema = z.object({
+  source_event_id: z.string().min(1, 'Event sumber wajib dipilih'),
+  target_event_id: z.string().min(1, 'Event tujuan wajib dipilih'),
+  include_room_mappings: z.boolean().optional().default(true),
+  include_days_config: z.boolean().optional().default(false),
+  include_pengawas_candidates: z.boolean().optional().default(true),
+  include_bank_soal: z.boolean().optional().default(false),
 });
 
 export const updateBankContributorsSchema = z.object({

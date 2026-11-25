@@ -77,6 +77,7 @@ export interface CbtBankSoal {
   mapel_id: string;
   tahun_pelajaran_id?: string | null;
   semester_id?: string | null;
+  event_id?: string | null;
   unit_pengajaran_id?: string | null;
   kode_bank: string;
   judul: string;

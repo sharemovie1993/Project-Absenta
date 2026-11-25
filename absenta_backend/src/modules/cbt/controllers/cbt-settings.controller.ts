@@ -47,6 +47,16 @@ export class CbtSettingsController {
     }
   }
 
+  static async rolloverEvent(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const result = await CbtSettingsService.rolloverEvent(tenant_id, req.body || {});
+      return sendResponse(reply, 200, true, 'Rollover konfigurasi event CBT berhasil dijalankan', result);
+    } catch (error: any) {
+      return sendError(reply, 400, error.message || 'Gagal melakukan rollover event CBT', error);
+    }
+  }
+
   static async getNudgeHistory(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;

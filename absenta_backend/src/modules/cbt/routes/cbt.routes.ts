@@ -46,6 +46,10 @@ export async function cbtRoutes(fastify: any) {
     preHandler: [requireCapability('cbt.bank.manage', cbtGuruExempt), determineDataScope()],
   }, CbtBankSoalController.duplicate);
 
+  fastify.post('/bank-soal/rollover', {
+    preHandler: [requireCapability('cbt.bank.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtBankSoalController.rollover);
+
   fastify.get('/bank-soal/:id/kontributor', {
     preHandler: [requireCapability('cbt.bank.view', cbtGuruExempt), determineDataScope()],
   }, CbtBankSoalController.listContributors);
@@ -225,6 +229,10 @@ export async function cbtRoutes(fastify: any) {
   fastify.post('/settings/events/set-active', {
     preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
   }, CbtSettingsController.setActiveEvent);
+
+  fastify.post('/settings/events/rollover', {
+    preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
+  }, CbtSettingsController.rolloverEvent);
 
   fastify.delete('/settings/events/:id', {
     preHandler: [requireCapability('cbt.jadwal.manage', cbtGuruExempt), determineDataScope()],
