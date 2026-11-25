@@ -237,6 +237,16 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     return teacherDutyItems.filter((item) => item.mapelId === mapelId);
   }, [mapelId, teacherDutyItems]);
 
+  // Auto-select jurusan binaan di Mode Mandiri agar tidak tercatat sebagai "Semua Jurusan (Umum)" (jurusan: null)
+  useEffect(() => {
+    if (bankSoalToEdit || defaultJurusan || isShared || !tingkat) return;
+    const duty = relevantDutiesForMapel.find((d) => d.tingkatRoman === tingkat);
+    const teachingJurs = duty?.teachingJurusans || [];
+    if (teachingJurs.length > 0 && !jurusan) {
+      setJurusan(teachingJurs.join(', '));
+    }
+  }, [bankSoalToEdit, defaultJurusan, isShared, tingkat, relevantDutiesForMapel, jurusan]);
+
   const tingkatDutyMap = useMemo(() => {
     const map = new Map<
       string,
@@ -1349,8 +1359,16 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   onClick={() => {
                     setIsShared(false);
                     setSelectedColleagueIds([]);
+                    const curDuty = tingkat ? tingkatDutyMap.get(tingkat) : undefined;
+                    const nextJur =
+                      !bankSoalToEdit && curDuty?.teachingJurusans && curDuty.teachingJurusans.length > 0
+                        ? curDuty.teachingJurusans.join(', ')
+                        : jurusan;
+                    if (!bankSoalToEdit && curDuty?.teachingJurusans && curDuty.teachingJurusans.length > 0) {
+                      setJurusan(nextJur);
+                    }
                     if (!bankSoalToEdit && scope === 'TERPUSAT_MASSAL' && mapelId) {
-                      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, jurusan, false);
+                      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, nextJur, false);
                     }
                   }}
                   className={cn(
@@ -1372,7 +1390,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     )}
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                    Hanya untuk rombel binaan Anda. Bebas memilih rumpun jurusan sendiri tanpa terpengaruh guru lain.
+                    Hanya untuk jurusan/rombel binaan Anda sendiri (Draft; terkunci jika sudah ter-cover Master MGMP).
                   </p>
                 </button>
 
@@ -1381,8 +1399,15 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   type="button"
                   onClick={() => {
                     setIsShared(true);
+                    const hasOccupiedSelection = selectedJurusanList.some((code) =>
+                      Boolean(jurusanOccupancy.getOccupiedInfo(code))
+                    );
+                    const nextJur = hasOccupiedSelection || jurusanOccupancy.isGeneralOccupied ? '' : jurusan;
+                    if (nextJur !== jurusan) {
+                      setJurusan(nextJur);
+                    }
                     if (!bankSoalToEdit && scope === 'TERPUSAT_MASSAL' && mapelId) {
-                      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, jurusan, true);
+                      triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, nextJur, true);
                     }
                   }}
                   className={cn(
@@ -1404,7 +1429,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                     )}
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                    Naskah bersama se-sekolah. Rekan guru yang dipilih otomatis terhubung &amp; bebas tugas.
+                    Naskah bersama se-sekolah (langsung Terbit/Published). Rekan yang belum punya soal mandiri otomatis ter-cover.
                   </p>
                 </button>
               </div>
@@ -1525,7 +1550,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                                 </span>
                               ) : (
                                 <span>
-                                  Belum memilih spesifik (berlaku untuk <strong>Semua Rombel Binaan Anda</strong>).
+                                  Pilih minimal 1 jurusan binaan Anda di atas agar sasaran kelas tercatat spesifik.
                                 </span>
                               )}
                             </div>

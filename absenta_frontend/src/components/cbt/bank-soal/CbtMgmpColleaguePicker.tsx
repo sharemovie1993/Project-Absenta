@@ -2,10 +2,15 @@ import React, { useMemo, useEffect, useRef } from 'react';
 import { Users, CheckSquare, Square, Info, UserCheck, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { listGuruMapel } from '@/api/kurikulum/guru-mapel.api';
-import type { GuruMapel } from '@/types/academic';
+import { cbtApi } from '@/api/cbt.api';
+import type { CbtBankSoal } from '@/types/cbt.types';
 import { cn } from '@/lib/utils';
 import { formatTingkatRomawi } from './cbtAsesmenHelper';
-import { findParallelColleaguesSSOT, parseStrictTingkatValue } from './cbtDutyEngine';
+import {
+  findParallelColleaguesSSOT,
+  parseStrictTingkatValue,
+  resolveStrictBankTingkat,
+} from './cbtDutyEngine';
 
 interface CbtMgmpColleaguePickerProps {
   mapelId: string;
@@ -34,6 +39,14 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
     enabled: Boolean(mapelId),
   });
 
+  // Cek rekan yang sudah memiliki bank soal mandiri sendiri pada mapel & tingkat ini
+  const { data: mapelBanksRes } = useQuery({
+    queryKey: ['mapel-banks-distribution', mapelId],
+    queryFn: () => (mapelId ? cbtApi.getBankSoalList({ mapel_id: mapelId, limit: 200 }) : null),
+    enabled: Boolean(mapelId),
+    staleTime: 30 * 1000,
+  });
+
   // Konversi tingkat target multi-jenjang (1..13 / I..XIII) untuk pencocokan ketat
   const targetTingkatNum = useMemo(() => {
     if (!tingkat || tingkat === 'SEMUA') return null;
@@ -60,17 +73,30 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
     });
   }, [parallelTeachersRes?.data, mapelId, currentGuruId, targetTingkatNum, targetJurusanTokens]);
 
+  const guruOwnBankSet = useMemo(() => {
+    const items: CbtBankSoal[] = mapelBanksRes?.items || (mapelBanksRes as any)?.data?.items || [];
+    const set = new Set<string>();
+    items.forEach((b) => {
+      if (!b.guru_id || b.guru_id === currentGuruId) return;
+      const bTingkat = resolveStrictBankTingkat(b);
+      if (targetTingkatNum && bTingkat && bTingkat !== targetTingkatNum) return;
+      set.add(b.guru_id);
+    });
+    return set;
+  }, [mapelBanksRes, currentGuruId, targetTingkatNum]);
+
   // Otomatis sinkronkan centang rekan guru saat tingkat, mapel, atau sasaran jurusan berubah
   // PENTING: Pada mode edit, JANGAN otomatis memilih semua agar penarikan share (uncheck) tidak tertimpa!
-  // Namun, bersihkan id guru yang sudah tidak lagi lolos filter jurusan target.
+  // Pada pembuatan baru: hanya centang rekan yang BELUM memiliki bank soal mandiri.
   const autoSelectedKeyRef = useRef<string>('');
   useEffect(() => {
-    const currentKey = `${mapelId}_${tingkat}_${targetJurusanTokens.join('-')}`;
+    const currentKey = `${mapelId}_${tingkat}_${targetJurusanTokens.join('-')}_${guruOwnBankSet.size}`;
     if (autoSelectedKeyRef.current !== currentKey) {
       autoSelectedKeyRef.current = currentKey;
       if (!isEditMode) {
-        // Centang hanya rekan guru yang lolos filter jurusan & tingkat pada saat pembuatan baru
-        onChangeSelectedIds(parallelColleagues.map((c) => c.id));
+        onChangeSelectedIds(
+          parallelColleagues.filter((c) => !guruOwnBankSet.has(c.id)).map((c) => c.id)
+        );
       } else {
         // Pada mode edit: jika ada guru terpilih yang sudah tidak lagi mengajar jurusan target, bersihkan
         const validIds = new Set(parallelColleagues.map((c) => c.id));
@@ -80,7 +106,7 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
         }
       }
     }
-  }, [parallelColleagues, mapelId, tingkat, targetJurusanTokens, onChangeSelectedIds, isEditMode, selectedIds]);
+  }, [parallelColleagues, mapelId, tingkat, targetJurusanTokens, onChangeSelectedIds, isEditMode, selectedIds, guruOwnBankSet]);
 
   if (!mapelId) {
     return (
@@ -213,11 +239,21 @@ export const CbtMgmpColleaguePicker: React.FC<CbtMgmpColleaguePickerProps> = ({
                     )}
                   </div>
                 </div>
-                {typeof colleague.tingkatNum === 'number' && !isNaN(colleague.tingkatNum) && colleague.tingkatNum > 0 && (
-                  <span className="text-[9.5px] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold shrink-0">
-                    Tingkat {formatTingkatRomawi(colleague.tingkatNum)}
-                  </span>
-                )}
+                <div className="flex items-center gap-1 shrink-0">
+                  {guruOwnBankSet.has(colleague.id) && (
+                    <span
+                      className="text-[9.5px] px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800 font-bold"
+                      title="Rekan ini sudah memiliki Bank Soal Mandiri sendiri"
+                    >
+                      Sudah Ada Mandiri
+                    </span>
+                  )}
+                  {typeof colleague.tingkatNum === 'number' && !isNaN(colleague.tingkatNum) && colleague.tingkatNum > 0 && (
+                    <span className="text-[9.5px] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold">
+                      Tingkat {formatTingkatRomawi(colleague.tingkatNum)}
+                    </span>
+                  )}
+                </div>
               </label>
             );
           })}

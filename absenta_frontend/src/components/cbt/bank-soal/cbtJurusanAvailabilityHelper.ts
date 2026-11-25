@@ -1,4 +1,5 @@
 import type { CbtBankSoal } from '@/types/cbt.types';
+import { isGeneralBankJurusan, parseBankJurusanTokens, parseStrictTingkatValue } from './cbtDutyEngine';
 
 export interface OccupiedJurusanInfo {
   jurusanCode: string;
@@ -43,6 +44,7 @@ export function evaluateJurusanOccupancy(params: {
   }
 
   const cleanTargetTingkat = (targetTingkat || '').trim().toUpperCase();
+  const targetTingkatNum = parseStrictTingkatValue(targetTingkat);
 
   existingBanks.forEach((b) => {
     // Abaikan bank soal yang sedang dalam mode edit (tidak memblokir diri sendiri)
@@ -50,10 +52,13 @@ export function evaluateJurusanOccupancy(params: {
       return;
     }
 
-    // Pastikan tingkat cocok jika targetTingkat ditentukan
+    // Pastikan tingkat cocok jika targetTingkat ditentukan (mendukung multi-jenjang 1..13 / I..XIII)
     if (cleanTargetTingkat && cleanTargetTingkat !== 'SEMUA') {
-      const bTingkat = (b.tingkat || '').trim().toUpperCase();
-      if (bTingkat && bTingkat !== cleanTargetTingkat && bTingkat !== 'SEMUA') {
+      const bTingkatNum = parseStrictTingkatValue(b.tingkat_num ?? b.tingkat);
+      const bTingkatStr = (b.tingkat || '').trim().toUpperCase();
+      if (targetTingkatNum && bTingkatNum) {
+        if (bTingkatNum !== targetTingkatNum) return;
+      } else if (bTingkatStr && bTingkatStr !== cleanTargetTingkat && bTingkatStr !== 'SEMUA') {
         return;
       }
     }
@@ -76,9 +81,8 @@ export function evaluateJurusanOccupancy(params: {
     }
 
     const guruName = b.Guru?.nama_guru || 'Guru Pengampu';
-    const rawJurusan = (b.jurusan || '').trim().toUpperCase();
 
-    if (!rawJurusan || rawJurusan === 'SEMUA' || rawJurusan === 'UMUM') {
+    if (isGeneralBankJurusan(b.jurusan, b)) {
       // Menandai bahwa paket bank soal reguler / umum untuk semua rombel sudah ada
       isGeneralOccupied = true;
       generalInfo = {
@@ -90,13 +94,17 @@ export function evaluateJurusanOccupancy(params: {
       };
       occupiedMap.set('SEMUA', generalInfo);
     } else {
-      // Menandai jurusan spesifik (bisa single 'KUL' maupun multi 'KUL, PHT')
-      const codes = rawJurusan
-        .split(/[,;/|]+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
+      // Menandai jurusan spesifik (baik berdasarkan ID mutlak maupun kode jurusan)
+      const tokens = parseBankJurusanTokens(b.jurusan);
+      if (Array.isArray(b.target_jurusan_ids)) {
+        b.target_jurusan_ids.forEach((id) => {
+          if (id && !tokens.includes(id.toUpperCase())) tokens.push(id.toUpperCase());
+        });
+      } else if (b.jurusan_id && !tokens.includes(b.jurusan_id.toUpperCase())) {
+        tokens.push(b.jurusan_id.toUpperCase());
+      }
 
-      codes.forEach((code) => {
+      tokens.forEach((code) => {
         const info: OccupiedJurusanInfo = {
           jurusanCode: code,
           guruName,
