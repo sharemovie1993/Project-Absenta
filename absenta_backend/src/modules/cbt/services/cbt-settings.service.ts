@@ -429,23 +429,13 @@ export class CbtSettingsService {
       throw new Error('Pesan terlalu panjang (maksimal 4000 karakter)');
     }
 
-    const configRow = await prisma.config.findFirst({
-      where: { tenant_id: tenantId, key: CBT_CONFIG_KEY },
+    const dbEventRow = await prisma.cbtEvent.findFirst({
+      where: { tenant_id: tenantId, id: eventId },
     });
-
-    let allEvents: CbtEventItem[] = [];
-    if (configRow?.value) {
-      try {
-        allEvents = JSON.parse(configRow.value);
-      } catch {
-        allEvents = [];
-      }
-    }
-
-    const targetEvent = allEvents.find((e) => e.id === eventId);
-    if (!targetEvent) {
+    if (!dbEventRow) {
       throw new Error('Event CBT tidak ditemukan');
     }
+    const targetEvent = this.mapRowToItem(dbEventRow);
 
     const candidateIds = Array.isArray(payload.guru_ids) && payload.guru_ids.length > 0
       ? Array.from(new Set(payload.guru_ids))
