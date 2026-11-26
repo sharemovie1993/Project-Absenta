@@ -607,4 +607,112 @@ export class NilaiMonitoringService {
       CACHE_TTL.DYNAMIC
     );
   }
+
+  /**
+   * SSOT Kesiapan Fase Nilai & Rapor terscope ke Konteks Akademik Aktif (TP & Semester Aktif)
+   * Menggabungkan progres keterisian nilai sumatif guru, kesiapan biodata siswa, dan catatan wali kelas.
+   */
+  static async getAcademicScopedRaporReadiness(tenantId: string) {
+    const [tp, sem] = await Promise.all([
+      prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, tahun: true },
+      }),
+      prisma.semester.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+        select: { id: true, nama_semester: true },
+      }),
+    ]);
+
+    if (!tp || !sem) {
+      return {
+        academicContext: 'Belum Ada Periode Aktif',
+        totalSiswaAkademik: 0,
+        biodataLengkapCount: 0,
+        biodataSiapPct: 0,
+        totalGuruMapel: 0,
+        guruCompleted: 0,
+        guruPartial: 0,
+        guruEmpty: 0,
+        totalTasks: 0,
+        completedTasks: 0,
+        totalSiswaNilaiTarget: 0,
+        siswaNilaiTerisi: 0,
+        nilaiSumatifPct: 0,
+        catatanWalasCount: 0,
+        catatanWalasPct: 0,
+      };
+    }
+
+    const [teacherProgress, siswaAkademikList, raporCatatanCount] = await Promise.all([
+      this.getSchoolWideTeacherProgress(tenantId, {
+        tahun_pelajaran_id: tp.id,
+        semester_id: sem.id,
+      }),
+      prisma.siswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          status: 'AKTIF',
+          SiswaAkademik: {
+            some: {
+              tahun_pelajaran_id: tp.id,
+              semester_id: sem.id,
+              status: 'AKTIF',
+            },
+          },
+        },
+        select: {
+          id: true,
+          nisn: true,
+          tempat_lahir: true,
+          tanggal_lahir: true,
+          alamat: true,
+          nama_ibu: true,
+          nama_ayah: true,
+        },
+      }),
+      prisma.raporSiswa.count({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: tp.id,
+          semester_id: sem.id,
+          catatan_wali: { not: null },
+        },
+      }),
+    ]);
+
+    const totalSiswaAkademik = siswaAkademikList.length;
+    let biodataLengkapCount = 0;
+    for (const s of siswaAkademikList) {
+      if (s.nisn && s.tempat_lahir && s.tanggal_lahir && s.alamat && (s.nama_ibu || s.nama_ayah)) {
+        biodataLengkapCount++;
+      }
+    }
+
+    const biodataSiapPct =
+      totalSiswaAkademik > 0 ? Math.round((biodataLengkapCount / totalSiswaAkademik) * 100) : 0;
+    const catatanWalasPct =
+      totalSiswaAkademik > 0 ? Math.round((raporCatatanCount / totalSiswaAkademik) * 100) : 0;
+
+    const meta = (teacherProgress as any)?.meta || {};
+    const nilaiSumatifPct = Math.round(Number(meta.percentage || 0));
+
+    return {
+      academicContext: `${tp.tahun} (${sem.nama_semester})`,
+      totalSiswaAkademik,
+      biodataLengkapCount,
+      biodataSiapPct,
+      totalGuruMapel: Number(meta.total_guru || 0),
+      guruCompleted: Number(meta.guru_completed || 0),
+      guruPartial: Number(meta.guru_partial || 0),
+      guruEmpty: Number(meta.guru_empty || 0),
+      totalTasks: Number(meta.total_tasks || 0),
+      completedTasks: Number(meta.completed_tasks || 0),
+      totalSiswaNilaiTarget: Number(meta.total_siswa || 0),
+      siswaNilaiTerisi: Number(meta.siswa_terisi || 0),
+      nilaiSumatifPct,
+      catatanWalasCount: raporCatatanCount,
+      catatanWalasPct,
+    };
+  }
 }

@@ -16,6 +16,7 @@ import { getTenantTimezone, getTenantDayRangeUTC } from '@/utils/timezone.utils'
 import { IBriefingCollector } from './briefing-collector.interface';
 import { UniversalBriefingData, BriefingMetricItem, BriefingSection } from '../../types/briefing.types';
 import { BpbkAnalyticsService } from '@/modules/bpbk/services/sub/bpbk-analytics.service';
+import { NilaiMonitoringService } from '@/modules/rapor/services/sub/nilai-monitoring.service';
 
 export class KepsekBriefingCollector implements IBriefingCollector {
   async collect(
@@ -505,64 +506,15 @@ export class KepsekBriefingCollector implements IBriefingCollector {
     }
     const cbtProgressPct = cbtTotalBank > 0 ? Math.round((cbtSiapBank / cbtTotalBank) * 100) : 0;
 
-    // ── 7d. Fase Penilaian KBM: Kesiapan Biodata & Keterisian Nilai Sumatif ───
-    let biodataLengkapCount = 0;
-    let nilaiSumatifTerisiCount = 0;
-    let nilaiSumatifTargetCount = 0;
-    let activeSemesterLabel = '';
+    // ── 7d. Fase Penilaian KBM & Rapor (SSOT via NilaiMonitoringService, Scoped TP & Semester Aktif)
+    let raporReadiness: Awaited<ReturnType<typeof NilaiMonitoringService.getAcademicScopedRaporReadiness>> | null = null;
     try {
-      const activeSiswaList = await prisma.siswa.findMany({
-        where: { tenant_id: tenantId, status: 'AKTIF' },
-        select: {
-          nisn: true,
-          nik: true,
-          tempat_lahir: true,
-          tanggal_lahir: true,
-          alamat: true,
-          nama_ibu: true,
-          nama_ayah: true,
-        },
-      });
-      for (const s of activeSiswaList) {
-        const isComplete = Boolean(
-          s.nisn && s.tempat_lahir && s.tanggal_lahir && s.alamat && (s.nama_ibu || s.nama_ayah)
-        );
-        if (isComplete) biodataLengkapCount++;
-      }
-
-      if (activeTp && activeSem) {
-        activeSemesterLabel = `${activeTp.tahun} (${activeSem.nama_semester})`;
-        const nilaiRows = await prisma.nilaiSiswa.findMany({
-          where: {
-            tenant_id: tenantId,
-            tahun_pelajaran_id: activeTp.id,
-            semester_id: activeSem.id,
-          },
-          select: {
-            sumatif_1: true,
-            nilai_akhir_sumatif: true,
-            nilai_rapor_final: true,
-            nilai: true,
-          },
-        });
-        nilaiSumatifTargetCount = nilaiRows.length;
-        for (const n of nilaiRows) {
-          if (
-            n.nilai_akhir_sumatif !== null ||
-            n.nilai_rapor_final !== null ||
-            n.sumatif_1 !== null ||
-            (n.nilai && n.nilai > 0)
-          ) {
-            nilaiSumatifTerisiCount++;
-          }
-        }
-      }
+      raporReadiness = await NilaiMonitoringService.getAcademicScopedRaporReadiness(tenantId);
     } catch (err) {
-      console.warn('[Briefing:Rapor] Error querying rapor readiness:', err);
+      console.warn('[Briefing:Rapor] Error querying SSOT rapor readiness:', err);
     }
-    const biodataSiapPct = totalSiswaAktif > 0 ? Math.round((biodataLengkapCount / totalSiswaAktif) * 100) : 0;
-    const nilaiSumatifPct =
-      nilaiSumatifTargetCount > 0 ? Math.round((nilaiSumatifTerisiCount / nilaiSumatifTargetCount) * 100) : 0;
+    const biodataSiapPct = raporReadiness?.biodataSiapPct ?? 0;
+    const nilaiSumatifPct = raporReadiness?.nilaiSumatifPct ?? 0;
 
     // ── 7e. Kesiswaan: Tren Penurunan Pelanggaran Siswa (7 Hari vs 7 Hari Lalu)
     let pelanggaranMingguIni = 0;
@@ -837,32 +789,40 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       });
     }
 
-    // SEKSI 3c: FASE PENILAIAN KBM & KESIAPAN RAPOR
+    // SEKSI 3c: FASE PENILAIAN KBM & KESIAPAN RAPOR (SSOT)
     sections.push({
       id: 'penilaian_rapor',
       title: 'Fase Penilaian KBM & Kesiapan Rapor',
       category: 'Penilaian & Rapor',
       badge: `Rapor ${nilaiSumatifPct}%`,
-      summary: `Kesiapan biodata siswa aktif mencapai ${biodataSiapPct}% (${biodataLengkapCount}/${totalSiswaAktif}) dan keterisian nilai sumatif/rapor${activeSemesterLabel ? ` ${activeSemesterLabel}` : ''} sebesar ${nilaiSumatifPct}%.`,
-      stats: [
-        { label: 'Biodata Siswa Siap', value: `${biodataSiapPct}%` },
-        { label: 'Nilai Sumatif Terisi', value: `${nilaiSumatifPct}%` },
-        { label: 'Entri Nilai Masuk', value: `${nilaiSumatifTerisiCount} / ${nilaiSumatifTargetCount}` },
-      ],
-      progressBars: [
-        {
-          label: 'Kesiapan Keterisian Biodata Siswa',
-          value: biodataSiapPct,
-          detail: `${biodataLengkapCount} / ${totalSiswaAktif} Siswa Lengkap`,
-          color: biodataSiapPct >= 95 ? 'emerald' : biodataSiapPct >= 75 ? 'blue' : 'amber',
-        },
-        {
-          label: 'Keterisian Nilai Sumatif & Rapor',
-          value: nilaiSumatifPct,
-          detail: `${nilaiSumatifTerisiCount} / ${nilaiSumatifTargetCount} Data Nilai Terisi`,
-          color: nilaiSumatifPct >= 90 ? 'emerald' : nilaiSumatifPct >= 50 ? 'indigo' : 'amber',
-        },
-      ],
+      summary: raporReadiness
+        ? `Konteks ${raporReadiness.academicContext}: Kesiapan biodata siswa mencapai ${biodataSiapPct}% (${raporReadiness.biodataLengkapCount}/${raporReadiness.totalSiswaAkademik}), keterisian nilai sumatif ${nilaiSumatifPct}% (${raporReadiness.completedTasks}/${raporReadiness.totalTasks} tugas mapel tuntas dari ${raporReadiness.totalGuruMapel} guru).`
+        : 'Data kesiapan penilaian & rapor belum tersedia.',
+      stats: raporReadiness
+        ? [
+            { label: 'Biodata Siswa Siap', value: `${biodataSiapPct}%` },
+            { label: 'Nilai Sumatif Terisi', value: `${nilaiSumatifPct}%` },
+            { label: 'Tugas Mapel Tuntas', value: `${raporReadiness.completedTasks} / ${raporReadiness.totalTasks}` },
+            { label: 'Guru Tuntas Input', value: `${raporReadiness.guruCompleted} / ${raporReadiness.totalGuruMapel}` },
+            { label: 'Catatan Wali Kelas', value: `${raporReadiness.catatanWalasPct}%` },
+          ]
+        : undefined,
+      progressBars: raporReadiness
+        ? [
+            {
+              label: 'Kesiapan Keterisian Biodata Siswa',
+              value: biodataSiapPct,
+              detail: `${raporReadiness.biodataLengkapCount} / ${raporReadiness.totalSiswaAkademik} Siswa Lengkap`,
+              color: biodataSiapPct >= 95 ? 'emerald' : biodataSiapPct >= 75 ? 'blue' : 'amber',
+            },
+            {
+              label: 'Keterisian Nilai Sumatif & Rapor',
+              value: nilaiSumatifPct,
+              detail: `${raporReadiness.siswaNilaiTerisi.toLocaleString('id-ID')} / ${raporReadiness.totalSiswaNilaiTarget.toLocaleString('id-ID')} Entri Nilai (${raporReadiness.guruCompleted}/${raporReadiness.totalGuruMapel} Guru Tuntas)`,
+              color: nilaiSumatifPct >= 90 ? 'emerald' : nilaiSumatifPct >= 50 ? 'indigo' : 'amber',
+            },
+          ]
+        : undefined,
     });
 
     // SEKSI 4: BP/BK & PEMBINAAN (SSOT & Scoped Konteks Akademik Aktif)
