@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { getRedisConnection } from '@/queue/redis';
-import { createRedisConnection } from '@/infra/redis/redisClient';
+import { createRedisSubscriberConnection } from '@/infra/redis/redisClient';
 import { getNodeId } from '@/infra/nodeId';
 
 /**
@@ -20,11 +20,13 @@ class EventBus {
 
   private ensureRedisSubscriber(): void {
     if (this.redisSubInitialized || process.env.NODE_ENV === 'test') return;
-    this.redisSubInitialized = true;
+    // Pastikan sharedClient sudah diinisialisasi oleh initRedis() sebelum menduplikasi koneksi subscriber
+    if (!getRedisConnection()) return;
 
     try {
-      const sub: any = createRedisConnection();
+      const sub: any = createRedisSubscriberConnection();
       if (!sub || typeof sub.subscribe !== 'function') return;
+      this.redisSubInitialized = true;
 
       sub.on('message', async (ch: string, rawMessage: string) => {
         if (ch !== REDIS_EVENT_CHANNEL || !rawMessage) return;
@@ -87,6 +89,7 @@ class EventBus {
    * 📤 Mempublikasikan event ke subscriber (Lokal & Cluster Redis Pub/Sub)
    */
   async publish<T = any>(event: string, payload: T) {
+    this.ensureRedisSubscriber();
     const eventId = `${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
     const localHandlers = this.subscribers.get(event);
     const hasLocalHandlers = Boolean(localHandlers && localHandlers.length > 0);

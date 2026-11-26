@@ -162,6 +162,23 @@ export function createRedisConnection(): any {
   return sharedClient;
 }
 
+/**
+ * Membuat koneksi duplikat khusus untuk Redis Pub/Sub Subscriber (.subscribe / .psubscribe)
+ * agar tidak mengubah sharedClient utama menjadi "subscriber mode".
+ */
+export function createRedisSubscriberConnection(): any {
+  if (!sharedClient || typeof (sharedClient as any).duplicate !== 'function') {
+    return null;
+  }
+  const sub = (sharedClient as any).duplicate();
+  sub.on('error', (err: any) => {
+    if (process.env.DEBUG_REDIS === 'true') {
+      console.warn('[RedisSubscriber] Warning/error:', err?.message);
+    }
+  });
+  return sub;
+}
+
 export async function stopRedisConnection(): Promise<void> {
   if (sharedClient) {
     await sharedClient.quit();
