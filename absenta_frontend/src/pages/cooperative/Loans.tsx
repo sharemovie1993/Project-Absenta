@@ -38,6 +38,9 @@ const LoanSuccessModal = lazy(() =>
 const RejectLoanModal = lazy(() => 
   import('../../components/cooperative/loans/RejectLoanModal').then(module => ({ default: module.RejectLoanModal }))
 );
+const LoanDetailView = lazy(() =>
+  import('../../components/cooperative/loans/LoanDetailView').then(module => ({ default: module.LoanDetailView }))
+);
 
 // Zod Schema Validation Guard (Pilar 25)
 const loanFilterSchema = z.object({
@@ -102,6 +105,7 @@ const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
   }, [setActiveTab]);
 
   const navigate = useNavigate();
+  const [selectedLoanDetailId, setSelectedLoanDetailId] = useState<string | null>(null);
 
   const canApprove = isAdmin || isKoperasiHead || isKoperasiFinance || can('cooperative.loans.approve');
   const canReject = can('cooperative.loans.reject');
@@ -547,15 +551,14 @@ const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
         label: 'Tindakan',
         render: (_, row: Loan) => (
           <div className="flex flex-col gap-1 w-24 mx-auto">
-            <Link to={`/cooperative/loans/${row.id}`} className="w-full">
-              <Button 
-                size="xs" 
-                variant="outline" 
-                className="w-full text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-[11px] flex items-center justify-center gap-1 rounded-lg h-7"
-              >
-                <Eye size={11} /> Detail
-              </Button>
-            </Link>
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => setSelectedLoanDetailId(row.id)}
+              className="w-full text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-[11px] flex items-center justify-center gap-1 rounded-lg h-7"
+            >
+              <Eye size={11} /> Detail
+            </Button>
 
             {(canApprove || canReject) && row.status === 'PENDING' && (
               <div className="flex gap-1 w-full">
@@ -691,11 +694,14 @@ const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-          <Link to={`/cooperative/loans/${row.id}`}>
-            <Button size="sm" variant="outline" className="font-bold text-[11px] inline-flex items-center gap-1">
-              <Eye size={12} /> Detail
-            </Button>
-          </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSelectedLoanDetailId(row.id)}
+            className="font-bold text-[11px] inline-flex items-center gap-1"
+          >
+            <Eye size={12} /> Detail
+          </Button>
 
           {(canApprove || canReject) && row.status === 'PENDING' && (
             <>
@@ -876,7 +882,24 @@ const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
             </div>
           )}
 
-          {/* Top Banner Stats */}
+          {/* Inline Universal Role-Ready View untuk Detail Pinjaman */}
+          {selectedLoanDetailId ? (
+            <Suspense
+              fallback={
+                <div className="flex justify-center items-center h-64 w-full">
+                  <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                </div>
+              }
+            >
+              <LoanDetailView
+                loanId={selectedLoanDetailId}
+                hideLayout={true}
+                onClose={() => setSelectedLoanDetailId(null)}
+              />
+            </Suspense>
+          ) : (
+            <>
+              {/* Top Banner Stats */}
           <LoanStatsBanner
             isStudent={isStudent}
             studentMetrics={studentMetrics}
@@ -943,6 +966,8 @@ const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
               />
             )}
           </SectionCard>
+            </>
+          )}
         </div>
       </AcademicPageLayout>
 
@@ -1006,7 +1031,9 @@ const Loans: React.FC<LoansProps> = React.memo(({ hideLayout = false }) => {
             loan={createdLoanData}
             coopSettings={coopSettings}
             onViewDetail={(loanId) => {
-              navigate(`/cooperative/loans/${loanId}`);
+              setIsSuccessModalOpen(false);
+              setCreatedLoanData(null);
+              setSelectedLoanDetailId(loanId);
             }}
           />
         )}
