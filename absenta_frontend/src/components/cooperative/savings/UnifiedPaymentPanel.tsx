@@ -20,8 +20,9 @@ import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import type { Saving } from './types';
 import type { Student } from '../../common/SmartStudentPicker';
-import { formatIndonesianDate, formatTerbilangIndonesian } from '../../../utils/cooperative/coopDocUtils';
-import { printUnifiedThermalSlip } from './savingsExportUtils';
+import { formatIndonesianDate } from '../../../utils/cooperative/coopDocUtils';
+import type { PrintUnifiedThermalSlipData } from './savingsExportUtils';
+import { UnifiedReceiptPrintModal } from './UnifiedReceiptPrintModal';
 import { useAuthStore } from '../../../store/authStore';
 
 export interface LoanInstallmentItem {
@@ -76,6 +77,7 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
 
   // Dual-mode Cashier: Deposit/Bill Payment vs Cash Withdrawal
   const [tellerMode, setTellerMode] = useState<'DEPOSIT_AND_BILL' | 'WITHDRAWAL'>('DEPOSIT_AND_BILL');
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState<boolean>(false);
 
   // 1. Simpanan Pokok Evaluation (Initial Capital — hanya jika kategori aktif)
   const pokokSaving = useMemo(() => {
@@ -477,7 +479,7 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
 
   const handlePrintAgain = () => {
     if (lastReceiptData) {
-      printUnifiedThermalSlip(lastReceiptData);
+      setIsReceiptModalOpen(true);
     }
   };
 
@@ -552,6 +554,12 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
             Selesai / Layani Anggota Lain
           </Button>
         </div>
+
+        <UnifiedReceiptPrintModal
+          isOpen={isReceiptModalOpen}
+          onClose={() => setIsReceiptModalOpen(false)}
+          receiptData={lastReceiptData as PrintUnifiedThermalSlipData}
+        />
       </div>
     );
   }
