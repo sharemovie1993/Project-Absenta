@@ -33,8 +33,19 @@ export interface TeacherCbtDutyStatusResult {
   pendingJurusanSummary?: string;
 }
 
-export function useTeacherCbtDutyStatus(guruId?: string): TeacherCbtDutyStatusResult {
-  const { activeEvent, eventName, targetTingkat } = useCbtOperationMode();
+export function useTeacherCbtDutyStatus(
+  guruId?: string,
+  overrideEvent?: any
+): TeacherCbtDutyStatusResult {
+  const cbtMode = useCbtOperationMode();
+  const activeEvent = overrideEvent !== undefined ? overrideEvent : cbtMode.activeEvent;
+  const eventName = overrideEvent !== undefined ? overrideEvent?.nama_event : cbtMode.eventName;
+  const targetTingkat =
+    overrideEvent !== undefined
+      ? Array.isArray(overrideEvent?.target_tingkat)
+        ? overrideEvent.target_tingkat
+        : cbtMode.targetTingkat
+      : cbtMode.targetTingkat;
   const { tingkatList } = useJenjang();
   const { activeYear: activeTp } = useTahunPelajaranOptions();
   const { activeSemester, rawList: semRawList = [] } = useSemesterOptions();

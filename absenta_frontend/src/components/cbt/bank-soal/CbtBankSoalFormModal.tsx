@@ -247,8 +247,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
 
   const { rawList: allKelasList = [] } = useKelasOptions({ enabled: isOpen });
 
-  // Ambil data kewajiban mengajar guru untuk evaluasi anti human-error pada pilihan Tingkat & Jurusan
-  const { items: teacherDutyItems = [] } = useTeacherCbtDutyStatus(guruId || initialGuruId);
+  // Ambil data kewajiban mengajar guru untuk evaluasi anti human-error pada pilihan Tingkat & Jurusan (ter-scope ke activeEvent/viewedEvent)
+  const { items: teacherDutyItems = [] } = useTeacherCbtDutyStatus(guruId || initialGuruId, activeEvent);
 
   const relevantDutiesForMapel = useMemo(() => {
     if (!mapelId || !teacherDutyItems || teacherDutyItems.length === 0) return [];
