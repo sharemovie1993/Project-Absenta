@@ -182,6 +182,7 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
     mutationFn: (payload: {
       jadwal_ids: string[];
       action: 'RETAKE_ALL' | 'COMPLETE_ALL' | 'UNBLOCK_ALL';
+      event_id?: string;
     }) => cbtApi.bulkMonitoringAction(payload),
     onSuccess: async (res) => {
       toast.success(res.message || 'Aksi massal berhasil dijalankan.');
@@ -227,7 +228,11 @@ export const CbtPanitiaLiveCommandPanel: React.FC<CbtPanitiaLiveCommandPanelProp
     });
 
     if (isConfirmed) {
-      bulkMonitoringMutation.mutate({ jadwal_ids: targetIds, action });
+      bulkMonitoringMutation.mutate({
+        jadwal_ids: targetIds,
+        action,
+        event_id: activeEvent?.id,
+      });
     }
   };
 

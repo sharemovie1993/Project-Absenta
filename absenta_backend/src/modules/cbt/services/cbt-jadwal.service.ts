@@ -1466,14 +1466,15 @@ export class CbtJadwalService {
     tenantId: string,
     jadwalIds: string[],
     action: 'RETAKE_ALL' | 'COMPLETE_ALL' | 'UNBLOCK_ALL',
-    currentUser?: any
+    currentUser?: any,
+    eventId?: string
   ) {
     const cleanIds = Array.from(new Set((jadwalIds || []).filter((id) => typeof id === 'string' && id.trim())));
     if (cleanIds.length === 0) {
       throw new Error('Tidak ada sesi ujian yang dipilih.');
     }
 
-    const jadwals = await prisma.cbtJadwalUjian.findMany({
+    const rawJadwals = await prisma.cbtJadwalUjian.findMany({
       where: { tenant_id: tenantId, id: { in: cleanIds } },
       select: {
         id: true,
@@ -1481,11 +1482,19 @@ export class CbtJadwalService {
         token_ujian: true,
         target_kelas_ids: true,
         setting_keamanan: true,
+        BankSoal: { select: { event_id: true } },
       },
     });
 
+    const jadwals = eventId
+      ? rawJadwals.filter((j) => {
+          const jEventId = (j.setting_keamanan as any)?.event_id || j.BankSoal?.event_id || null;
+          return jEventId === eventId;
+        })
+      : rawJadwals;
+
     if (jadwals.length === 0) {
-      throw new Error('Jadwal ujian tidak ditemukan.');
+      throw new Error('Tidak ada jadwal ujian yang sesuai dengan event aktif.');
     }
 
     // Pastikan izin panitia/pengawas terpenuhi

@@ -244,11 +244,17 @@ export class CbtJadwalController {
   static async bulkMonitoringAction(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { jadwal_ids, action } = req.body || {};
+      const { jadwal_ids, action, event_id } = req.body || {};
       if (!Array.isArray(jadwal_ids) || !['RETAKE_ALL', 'COMPLETE_ALL', 'UNBLOCK_ALL'].includes(action)) {
         return sendError(reply, 400, 'Parameter jadwal_ids atau action tidak valid');
       }
-      const result = await CbtJadwalService.bulkMonitoringAction(tenant_id, jadwal_ids, action, req.user);
+      const result = await CbtJadwalService.bulkMonitoringAction(
+        tenant_id,
+        jadwal_ids,
+        action,
+        req.user,
+        typeof event_id === 'string' && event_id.trim() ? event_id.trim() : undefined
+      );
       return sendResponse(reply, 200, true, result.message, result);
     } catch (error: any) {
       return sendError(reply, 400, error.message || 'Gagal menjalankan aksi monitoring massal');

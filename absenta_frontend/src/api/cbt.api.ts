@@ -304,6 +304,7 @@ export const cbtApi = {
   bulkMonitoringAction: async (payload: {
     jadwal_ids: string[];
     action: 'RETAKE_ALL' | 'COMPLETE_ALL' | 'UNBLOCK_ALL';
+    event_id?: string;
   }) => {
     const res = await api.post('/cbt/jadwal/bulk-monitoring-action', payload);
     return res.data?.data as {
