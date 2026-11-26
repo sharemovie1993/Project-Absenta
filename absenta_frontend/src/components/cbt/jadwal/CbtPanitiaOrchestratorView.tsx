@@ -89,7 +89,37 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
-  const activeEvent = eventsData?.active_event;
+  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const systemActiveEvent = eventsData?.active_event;
+
+  const availableEvents = useMemo(() => {
+    const groups = eventsData?.summary || [];
+    const list: any[] = [];
+    const seen = new Set<string>();
+    groups.forEach((grp: any) => {
+      (grp?.events || []).forEach((ev: any) => {
+        if (!ev?.id || seen.has(ev.id)) return;
+        seen.add(ev.id);
+        list.push(ev);
+      });
+    });
+    if (systemActiveEvent?.id && !seen.has(systemActiveEvent.id)) {
+      list.unshift(systemActiveEvent);
+    }
+    return list.sort((a, b) => Number(Boolean(b.is_active)) - Number(Boolean(a.is_active)));
+  }, [eventsData, systemActiveEvent]);
+
+  const activeEvent = useMemo(() => {
+    if (selectedEventId) {
+      const matched = availableEvents.find((e) => e.id === selectedEventId);
+      if (matched) return matched;
+    }
+    return systemActiveEvent;
+  }, [selectedEventId, availableEvents, systemActiveEvent]);
+
+  const isViewingNonActiveEvent = Boolean(
+    activeEvent?.id && systemActiveEvent?.id && activeEvent.id !== systemActiveEvent.id
+  );
 
   const effectiveEventName = activeEvent?.nama_event || eventName;
   const effectiveTargetTingkat = useMemo(() => {
@@ -534,7 +564,29 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           <h2 className="text-sm font-black tracking-tight text-slate-900 dark:text-white shrink-0">
             Meja Kerja Panitia
           </h2>
-          {effectiveEventName && (
+          {availableEvents.length > 1 ? (
+            <div className={cn(
+              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-bold shadow-2xs',
+              isViewingNonActiveEvent
+                ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200'
+                : 'bg-indigo-50 dark:bg-indigo-950/80 border-indigo-200 dark:border-indigo-700/60 text-indigo-700 dark:text-indigo-200'
+            )}>
+              <Calendar size={12} className="shrink-0" />
+              <span className="text-[11px] font-semibold opacity-75 shrink-0">Event:</span>
+              <select
+                value={activeEvent?.id || ''}
+                onChange={(e) => setSelectedEventId(e.target.value)}
+                aria-label="Pilih Konteks Event Meja Kerja Panitia"
+                className="bg-transparent text-xs font-bold focus:outline-none cursor-pointer min-w-[200px] sm:min-w-[260px] max-w-[360px]"
+              >
+                {availableEvents.map((ev) => (
+                  <option key={ev.id} value={ev.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                    {ev.nama_event}{ev.is_active ? ' (Aktif)' : ' (Persiapan / Non-Aktif)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : effectiveEventName ? (
             <button
               type="button"
               onClick={() => setIsSettingsModalOpen(true)}
@@ -544,7 +596,7 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
               <Lock size={12} className="text-indigo-500 shrink-0" />
               <span className="truncate max-w-xs sm:max-w-md font-bold">{effectiveEventName}</span>
             </button>
-          )}
+          ) : null}
         </div>
 
         {/* Right: Quick Rollover & Settings */}
@@ -574,6 +626,21 @@ export const CbtPanitiaOrchestratorView: React.FC<CbtPanitiaOrchestratorViewProp
           </button>
         </div>
       </div>
+
+      {isViewingNonActiveEvent && activeEvent && (
+        <div className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 text-xs text-amber-800 dark:text-amber-200 flex items-center justify-between gap-2 flex-wrap">
+          <span>
+            Mode Persiapan Event Non-Aktif: Anda sedang mengatur <strong>{activeEvent.nama_event}</strong> (belum aktif di siswa). Simulasi/ujian aktif tetap berjalan normal.
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedEventId('')}
+            className="text-[11px] font-bold text-amber-900 dark:text-amber-100 underline cursor-pointer shrink-0"
+          >
+            Kembali ke Event Aktif
+          </button>
+        </div>
+      )}
 
       {/* ── Stepper Garis Lingkaran Horizontal (Sesuai Konsep Desain) ── */}
       <div className="pt-2 pb-1 border-t border-slate-100 dark:border-slate-800/80">
