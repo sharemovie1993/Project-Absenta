@@ -1302,26 +1302,41 @@ export class KetarunaanPenilaianService {
   }
 
   /**
-   * SSOT Pengumpulan Data Progres Program Ketarunaan terscope ke Konteks Akademik Aktif (TP & Semester Aktif)
+   * SSOT Pengumpulan Data Progres Program Ketarunaan terscope khusus ke 1 Semester Ganjil pada Tahun Pelajaran Aktif.
    * Menghitung progres penilaian 4 pilar (Samapta, PBB, Disiplin, Mental), finalisasi nilai, rata-rata capaian,
-   * distribusi predikat (A/B/C/D), serta sesi & kehadiran kegiatan latihan ketarunaan.
+   * distribusi predikat (A/B/C/D), serta rekap penuh 5 siklus kegiatan ketarunaan selama 1 Semester Ganjil.
    */
   async getAcademicScopedKetarunaanProgress(
     tenantId: string,
     options?: { startUTC?: Date; endUTC?: Date }
   ) {
-    const [activeTp, activeSem] = await Promise.all([
-      prisma.tahunPelajaran.findFirst({
-        where: { tenant_id: tenantId, is_active: true },
-        select: { id: true, tahun: true },
-      }),
-      prisma.semester.findFirst({
+    const activeTp = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true },
+      select: { id: true, tahun: true },
+    });
+
+    if (!activeTp) {
+      return null;
+    }
+
+    // Prioritaskan Semester Ganjil pada Tahun Pelajaran aktif sesuai standar siklus ketarunaan
+    let targetSem = await prisma.semester.findFirst({
+      where: {
+        tenant_id: tenantId,
+        tahun_pelajaran_id: activeTp.id,
+        nama_semester: { contains: 'Ganjil', mode: 'insensitive' },
+      },
+      select: { id: true, nama_semester: true },
+    });
+
+    if (!targetSem) {
+      targetSem = await prisma.semester.findFirst({
         where: { tenant_id: tenantId, is_active: true },
         select: { id: true, nama_semester: true },
-      }),
-    ]);
+      });
+    }
 
-    if (!activeTp || !activeSem) {
+    if (!targetSem) {
       return null;
     }
 
@@ -1333,12 +1348,12 @@ export class KetarunaanPenilaianService {
     ] = await Promise.all([
       this.getSkemaConfig(tenantId, {
         tahun_pelajaran_id: activeTp.id,
-        semester_id: activeSem.id,
+        semester_id: targetSem.id,
       }),
       prisma.siswaAkademik.count({
         where: {
           tahun_pelajaran_id: activeTp.id,
-          semester_id: activeSem.id,
+          semester_id: targetSem.id,
           status: 'AKTIF',
           siswa: { tenant_id: tenantId, status: 'AKTIF' },
         },
@@ -1347,7 +1362,7 @@ export class KetarunaanPenilaianService {
         where: {
           tenant_id: tenantId,
           tahun_pelajaran_id: activeTp.id,
-          semester_id: activeSem.id,
+          semester_id: targetSem.id,
         },
         select: {
           nilai_samapta: true,
@@ -1363,13 +1378,29 @@ export class KetarunaanPenilaianService {
         where: {
           tenant_id: tenantId,
           tahun_pelajaran_id: activeTp.id,
-          semester_id: activeSem.id,
-          jenis_kegiatan: { contains: 'TARUNA', mode: 'insensitive' },
+          semester_id: targetSem.id,
+          status: { not: 'MENDATANG' },
+          jenis_kegiatan: {
+            in: [
+              'Upacara',
+              'UPACARA',
+              'Ketarunaan',
+              'KETARUNAAN',
+              'Duha',
+              'DUHA',
+              'Dhuha',
+              'DHUHA',
+              'Apel Pulang',
+              'APEL_SORE',
+              'Apel Pulang Siswa',
+            ],
+          },
         },
         select: {
           id: true,
           tanggal: true,
           status: true,
+          jenis_kegiatan: true,
         },
       }),
     ]);
@@ -1405,11 +1436,42 @@ export class KetarunaanPenilaianService {
       }
     }
 
+    const classifySiklus = (j: string) => {
+      const u = String(j || '').toUpperCase();
+      if (u.includes('UPACARA')) return 'UPACARA';
+      if (u.includes('DUHA') || u.includes('DHUHA')) return 'DUHA';
+      if (u.includes('SORE') || u.includes('PULANG')) return 'APEL_SORE';
+      return 'KETARUNAAN';
+    };
+
+    let sesiKetarunaanPagiCount = 0;
+    let sesiUpacaraCount = 0;
+    let sesiDuhaCount = 0;
+    let sesiApelPulangCount = 0;
+
     const totalSesiSemester = sesiKetarunaanList.length;
     const sesiHariIniIds: string[] = [];
     const allSesiIds: string[] = [];
+    const disiplinSesiIds: string[] = [];
+    const duhaSesiIds: string[] = [];
+
     for (const s of sesiKetarunaanList) {
       allSesiIds.push(s.id);
+      const jenis = classifySiklus(s.jenis_kegiatan);
+      if (jenis === 'KETARUNAAN') {
+        sesiKetarunaanPagiCount++;
+        disiplinSesiIds.push(s.id);
+      } else if (jenis === 'UPACARA') {
+        sesiUpacaraCount++;
+        disiplinSesiIds.push(s.id);
+      } else if (jenis === 'DUHA') {
+        sesiDuhaCount++;
+        duhaSesiIds.push(s.id);
+      } else if (jenis === 'APEL_SORE') {
+        sesiApelPulangCount++;
+        disiplinSesiIds.push(s.id);
+      }
+
       if (
         options?.startUTC &&
         options?.endUTC &&
@@ -1420,17 +1482,19 @@ export class KetarunaanPenilaianService {
       }
     }
 
+    // Agregasi presensi selama 1 Semester Ganjil penuh (seluruh sesi 5 siklus di Semester Ganjil)
     let kehadiranLatihanPct = 0;
     let hadirLatihanCount = 0;
+    let sakitIzinLatihanCount = 0;
+    let alpaLatihanCount = 0;
     let totalPresensiLatihan = 0;
-    const targetSesiForAttendance = sesiHariIniIds.length > 0 ? sesiHariIniIds : allSesiIds.slice(-10);
 
-    if (targetSesiForAttendance.length > 0) {
+    if (allSesiIds.length > 0) {
       const presensiStats = await prisma.absenSiswa.groupBy({
         by: ['status'],
         where: {
           tenant_id: tenantId,
-          sesi_id: { in: targetSesiForAttendance },
+          sesi_id: { in: allSesiIds },
         },
         _count: { id: true },
       });
@@ -1440,6 +1504,10 @@ export class KetarunaanPenilaianService {
         const st = (ps.status || '').toUpperCase();
         if (st === 'HADIR' || st === 'TERLAMBAT') {
           hadirLatihanCount += c;
+        } else if (st === 'SAKIT' || st === 'IZIN' || st === 'DISPENSASI') {
+          sakitIzinLatihanCount += c;
+        } else if (st === 'ALPA') {
+          alpaLatihanCount += c;
         }
       }
       if (totalPresensiLatihan > 0) {
@@ -1458,12 +1526,12 @@ export class KetarunaanPenilaianService {
     const rataRataPbb =
       tarunaDinilai > 0 ? Number((sumPbb / tarunaDinilai).toFixed(1)) : 0;
     const rataRataDisiplin =
-      tarunaDinilai > 0 ? Number((sumDisiplin / tarunaDinilai).toFixed(1)) : 0;
+      tarunaDinilai > 0 ? Number((sumDisiplin / tarunaDinilai).toFixed(1)) : kehadiranLatihanPct;
     const rataRataMental =
-      tarunaDinilai > 0 ? Number((sumMental / tarunaDinilai).toFixed(1)) : 0;
+      tarunaDinilai > 0 ? Number((sumMental / tarunaDinilai).toFixed(1)) : kehadiranLatihanPct;
 
     return {
-      academicContext: `${activeTp.tahun} (${activeSem.nama_semester})`,
+      academicContext: `TP ${activeTp.tahun} • Semester ${targetSem.nama_semester}`,
       modePelatihan:
         (skemaConfig as any)?.mode_pelatihan === 'FULL_TARUNA' ? 'Full Taruna' : 'Semi Taruna',
       isConfigured: !(skemaConfig as any)?.is_default,
@@ -1479,9 +1547,15 @@ export class KetarunaanPenilaianService {
       rataRataMental,
       predikatCount,
       totalSesiSemester,
+      sesiKetarunaanPagiCount,
+      sesiUpacaraCount,
+      sesiDuhaCount,
+      sesiApelPulangCount,
       sesiHariIniCount: sesiHariIniIds.length,
       kehadiranLatihanPct,
       hadirLatihanCount,
+      sakitIzinLatihanCount,
+      alpaLatihanCount,
       totalPresensiLatihan,
     };
   }

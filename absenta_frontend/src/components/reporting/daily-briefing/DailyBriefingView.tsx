@@ -837,7 +837,9 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                   {sec.rangeStats && sec.rangeStats.length > 0 && (
                     <div className="pt-2 space-y-1.5">
                       <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-0.5 rounded-full border border-indigo-200/60 dark:border-indigo-800/60">
-                        📊 Data Rentang &amp; Akumulasi Periode Aktif
+                        {sec.id === 'ketarunaan'
+                          ? '📊 Rentang Data Khusus: 1 Semester Ganjil (Akumulasi 5 Siklus & Penilaian)'
+                          : '📊 Data Rentang & Akumulasi Periode Aktif'}
                       </span>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                         {sec.rangeStats.map((st, sIdx) => (

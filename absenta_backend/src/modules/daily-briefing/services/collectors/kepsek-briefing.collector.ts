@@ -991,78 +991,122 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       })),
     });
 
-    // SEKSI 4b: PROGRAM KETARUNAAN (SSOT & Scoped Konteks Akademik Aktif)
+    // SEKSI 4b: PROGRAM KETARUNAAN (SSOT & Scoped Khusus Rentang 1 Semester Ganjil)
     if (
       ketarunaanProgress &&
       (ketarunaanProgress.isConfigured ||
         ketarunaanProgress.tarunaDinilai > 0 ||
         ketarunaanProgress.totalSesiSemester > 0)
     ) {
+      const hasManualGrading = ketarunaanProgress.tarunaDinilai > 0;
+
       sections.push({
         id: 'ketarunaan',
-        title: 'Program Ketarunaan & Pembinaan Fisik/Disiplin',
+        title: 'Program Ketarunaan & Pembinaan Fisik/Disiplin (1 Semester Ganjil)',
         category: 'Ketarunaan',
-        badge: `${ketarunaanProgress.modePelatihan} • Nilai ${ketarunaanProgress.progresInputNilaiPct}%`,
-        summary: `Konteks ${ketarunaanProgress.academicContext} (${ketarunaanProgress.modePelatihan}): Progres penilaian 4 pilar (Samapta, PBB, Disiplin, Mental) mencapai ${ketarunaanProgress.progresInputNilaiPct}% (${ketarunaanProgress.tarunaDinilai}/${ketarunaanProgress.totalTarunaTarget} taruna, rata-rata ${ketarunaanProgress.rataRataNilaiAkhir}). Tercatat ${ketarunaanProgress.totalSesiSemester} sesi latihan ketarunaan semester ini.`,
-        todayStats: [
-          { label: 'Sesi Latihan Hari Ini', value: `${ketarunaanProgress.sesiHariIniCount} Sesi` },
-        ],
+        badge: hasManualGrading
+          ? `${ketarunaanProgress.modePelatihan} • Nilai ${ketarunaanProgress.progresInputNilaiPct}%`
+          : `${ketarunaanProgress.modePelatihan} • Siklus ${ketarunaanProgress.kehadiranLatihanPct}%`,
+        summary: `Rentang 1 Semester Ganjil (${ketarunaanProgress.academicContext} • ${ketarunaanProgress.modePelatihan}): Tercatat ${ketarunaanProgress.totalSesiSemester.toLocaleString('id-ID')} sesi kegiatan 5 siklus ketarunaan (Ketarunaan Pagi: ${ketarunaanProgress.sesiKetarunaanPagiCount}, Upacara: ${ketarunaanProgress.sesiUpacaraCount}, Dhuha: ${ketarunaanProgress.sesiDuhaCount}, Apel Pulang: ${ketarunaanProgress.sesiApelPulangCount}) dengan tingkat kehadiran ${ketarunaanProgress.kehadiranLatihanPct}%. Progres input penilaian rapor 4 pilar mencapai ${ketarunaanProgress.progresInputNilaiPct}% (${ketarunaanProgress.tarunaDinilai}/${ketarunaanProgress.totalTarunaTarget} taruna).`,
         rangeStats: [
-          { label: 'Taruna Dinilai (Semester)', value: `${ketarunaanProgress.tarunaDinilai} / ${ketarunaanProgress.totalTarunaTarget}` },
-          { label: 'Rata-Rata Nilai', value: ketarunaanProgress.rataRataNilaiAkhir },
-          { label: 'Samapta / PBB', value: `${ketarunaanProgress.rataRataSamapta} / ${ketarunaanProgress.rataRataPbb}` },
-          { label: 'Disiplin / Mental', value: `${ketarunaanProgress.rataRataDisiplin} / ${ketarunaanProgress.rataRataMental}` },
-          { label: 'Finalisasi Rapor', value: `${ketarunaanProgress.progresFinalisasiPct}%` },
-          { label: 'Total Sesi Semester', value: `${ketarunaanProgress.totalSesiSemester} Sesi` },
+          {
+            label: 'Total Sesi (Sem. Ganjil)',
+            value: `${ketarunaanProgress.totalSesiSemester.toLocaleString('id-ID')} Sesi`,
+          },
+          {
+            label: 'Ketarunaan / Upacara',
+            value: `${ketarunaanProgress.sesiKetarunaanPagiCount} / ${ketarunaanProgress.sesiUpacaraCount} Sesi`,
+          },
+          {
+            label: 'Dhuha / Apel Pulang',
+            value: `${ketarunaanProgress.sesiDuhaCount} / ${ketarunaanProgress.sesiApelPulangCount} Sesi`,
+          },
+          {
+            label: 'Kehadiran Siklus (Ganjil)',
+            value: `${ketarunaanProgress.kehadiranLatihanPct}%`,
+          },
+          {
+            label: 'Taruna Dinilai (Ganjil)',
+            value: `${ketarunaanProgress.tarunaDinilai} / ${ketarunaanProgress.totalTarunaTarget}`,
+          },
+          {
+            label: 'Finalisasi Rapor (Ganjil)',
+            value: `${ketarunaanProgress.progresFinalisasiPct}%`,
+          },
         ],
         progressBars: [
           {
-            label: 'Progres Penilaian 4 Pilar Ketarunaan',
-            value: ketarunaanProgress.progresInputNilaiPct,
-            detail: `${ketarunaanProgress.tarunaDinilai} / ${ketarunaanProgress.totalTarunaTarget} Taruna (Predikat A: ${ketarunaanProgress.predikatCount.A}, B: ${ketarunaanProgress.predikatCount.B}, C: ${ketarunaanProgress.predikatCount.C}, D: ${ketarunaanProgress.predikatCount.D})`,
-            color: ketarunaanProgress.progresInputNilaiPct >= 90 ? 'emerald' : ketarunaanProgress.progresInputNilaiPct >= 50 ? 'indigo' : 'amber',
+            label: '[Rentang 1 Semester Ganjil] Tingkat Kehadiran 5 Siklus Ketarunaan',
+            value: ketarunaanProgress.kehadiranLatihanPct,
+            detail: `${ketarunaanProgress.hadirLatihanCount.toLocaleString('id-ID')} Hadir dari ${ketarunaanProgress.totalPresensiLatihan.toLocaleString('id-ID')} Log Presensi (${ketarunaanProgress.totalSesiSemester.toLocaleString('id-ID')} Sesi Selama Semester Ganjil)`,
+            color:
+              ketarunaanProgress.kehadiranLatihanPct >= 90
+                ? 'emerald'
+                : ketarunaanProgress.kehadiranLatihanPct >= 75
+                ? 'blue'
+                : 'amber',
           },
           {
-            label:
-              ketarunaanProgress.totalPresensiLatihan > 0
-                ? 'Tingkat Kehadiran Sesi Latihan Ketarunaan'
-                : 'Progres Kunci & Sinkronisasi Rapor Ketarunaan',
-            value:
-              ketarunaanProgress.totalPresensiLatihan > 0
-                ? ketarunaanProgress.kehadiranLatihanPct
-                : ketarunaanProgress.progresFinalisasiPct,
-            detail:
-              ketarunaanProgress.totalPresensiLatihan > 0
-                ? `${ketarunaanProgress.hadirLatihanCount} / ${ketarunaanProgress.totalPresensiLatihan} Kehadiran Latihan (${ketarunaanProgress.sesiHariIniCount} sesi hari ini)`
-                : `${ketarunaanProgress.tarunaFinalLocked} / ${ketarunaanProgress.totalTarunaTarget} Nilai Terkunci ke Rapor`,
-            color: 'blue',
+            label: '[Rentang 1 Semester Ganjil] Progres Penilaian 4 Pilar Ketarunaan',
+            value: ketarunaanProgress.progresInputNilaiPct,
+            detail: `${ketarunaanProgress.tarunaDinilai} / ${ketarunaanProgress.totalTarunaTarget} Taruna Dinilai (Predikat A: ${ketarunaanProgress.predikatCount.A}, B: ${ketarunaanProgress.predikatCount.B}, C: ${ketarunaanProgress.predikatCount.C}, D: ${ketarunaanProgress.predikatCount.D})`,
+            color:
+              ketarunaanProgress.progresInputNilaiPct >= 90
+                ? 'emerald'
+                : ketarunaanProgress.progresInputNilaiPct >= 50
+                ? 'indigo'
+                : 'amber',
           },
         ],
         charts: [
-          {
-            type: 'bar',
-            title: 'Rata-Rata Capaian 4 Pilar Ketarunaan',
-            subtitle: 'Skor rata-rata Samapta, PBB, Disiplin, dan Mental (Skala 0-100)',
-            maxValue: 100,
-            data: [
-              { label: 'Samapta', value: ketarunaanProgress.rataRataSamapta, color: 'blue', unit: 'Poin' },
-              { label: 'PBB', value: ketarunaanProgress.rataRataPbb, color: 'indigo', unit: 'Poin' },
-              { label: 'Disiplin', value: ketarunaanProgress.rataRataDisiplin, color: 'emerald', unit: 'Poin' },
-              { label: 'Mental', value: ketarunaanProgress.rataRataMental, color: 'purple', unit: 'Poin' },
-            ],
-          },
-          {
-            type: 'pie',
-            title: 'Distribusi Predikat Nilai Taruna',
-            subtitle: 'Sebaran predikat A, B, C, dan D pada taruna yang telah dinilai',
-            centerLabel: `${ketarunaanProgress.rataRataNilaiAkhir}`,
-            data: [
-              { label: 'Predikat A (Sangat Baik)', value: ketarunaanProgress.predikatCount.A, color: 'emerald' },
-              { label: 'Predikat B (Baik)', value: ketarunaanProgress.predikatCount.B, color: 'blue' },
-              { label: 'Predikat C (Cukup)', value: ketarunaanProgress.predikatCount.C, color: 'amber' },
-              { label: 'Predikat D (Kurang)', value: ketarunaanProgress.predikatCount.D, color: 'rose' },
-            ],
-          },
+          hasManualGrading
+            ? {
+                type: 'pie',
+                title: 'Distribusi Predikat Nilai Taruna (Semester Ganjil)',
+                subtitle: 'Sebaran predikat A, B, C, dan D pada taruna selama 1 Semester Ganjil',
+                centerLabel: `${ketarunaanProgress.rataRataNilaiAkhir}`,
+                data: [
+                  { label: 'Predikat A (Sangat Baik)', value: ketarunaanProgress.predikatCount.A, color: 'emerald' },
+                  { label: 'Predikat B (Baik)', value: ketarunaanProgress.predikatCount.B, color: 'blue' },
+                  { label: 'Predikat C (Cukup)', value: ketarunaanProgress.predikatCount.C, color: 'amber' },
+                  { label: 'Predikat D (Kurang)', value: ketarunaanProgress.predikatCount.D, color: 'rose' },
+                ],
+              }
+            : {
+                type: 'pie',
+                title: 'Komposisi Kehadiran 5 Siklus (1 Semester Ganjil)',
+                subtitle: 'Proporsi kehadiran taruna pada kegiatan ketarunaan selama Semester Ganjil',
+                centerLabel: `${ketarunaanProgress.kehadiranLatihanPct}%`,
+                data: [
+                  { label: 'Hadir / Tepat Waktu', value: ketarunaanProgress.hadirLatihanCount, color: 'emerald' },
+                  { label: 'Sakit / Izin', value: ketarunaanProgress.sakitIzinLatihanCount, color: 'amber' },
+                  { label: 'Alpa', value: ketarunaanProgress.alpaLatihanCount, color: 'rose' },
+                ],
+              },
+          hasManualGrading
+            ? {
+                type: 'bar',
+                title: 'Rata-Rata Capaian 4 Pilar Ketarunaan (Semester Ganjil)',
+                subtitle: 'Skor rata-rata Samapta, PBB, Disiplin, dan Mental (Skala 0-100)',
+                maxValue: 100,
+                data: [
+                  { label: 'Samapta', value: ketarunaanProgress.rataRataSamapta, color: 'blue', unit: 'Poin' },
+                  { label: 'PBB', value: ketarunaanProgress.rataRataPbb, color: 'indigo', unit: 'Poin' },
+                  { label: 'Disiplin', value: ketarunaanProgress.rataRataDisiplin, color: 'emerald', unit: 'Poin' },
+                  { label: 'Mental', value: ketarunaanProgress.rataRataMental, color: 'purple', unit: 'Poin' },
+                ],
+              }
+            : {
+                type: 'bar',
+                title: 'Realisasi Sesi 5 Siklus Ketarunaan (1 Semester Ganjil)',
+                subtitle: 'Jumlah sesi kegiatan pembinaan ketarunaan selama 1 Semester Ganjil',
+                data: [
+                  { label: 'Ketarunaan Pagi', value: ketarunaanProgress.sesiKetarunaanPagiCount, color: 'indigo', unit: 'Sesi' },
+                  { label: 'Upacara Bendera', value: ketarunaanProgress.sesiUpacaraCount, color: 'blue', unit: 'Sesi' },
+                  { label: 'Pembiasaan Dhuha', value: ketarunaanProgress.sesiDuhaCount, color: 'emerald', unit: 'Sesi' },
+                  { label: 'Apel Pulang / Sore', value: ketarunaanProgress.sesiApelPulangCount, color: 'purple', unit: 'Sesi' },
+                ],
+              },
         ],
       });
     }
@@ -1243,8 +1287,12 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       bpbkProgress && bpbkProgress.totalKasus > 0 ? bpbkProgress.progresPenangananKasusPct : 90;
     const ketarunaanPct =
       ketarunaanProgress &&
-      (ketarunaanProgress.isConfigured || ketarunaanProgress.tarunaDinilai > 0)
-        ? ketarunaanProgress.progresInputNilaiPct
+      (ketarunaanProgress.isConfigured ||
+        ketarunaanProgress.tarunaDinilai > 0 ||
+        ketarunaanProgress.totalSesiSemester > 0)
+        ? ketarunaanProgress.tarunaDinilai > 0
+          ? ketarunaanProgress.progresInputNilaiPct
+          : ketarunaanProgress.kehadiranLatihanPct
         : bkCasePct;
     const p5Score = Math.max(0, Math.min(100, Math.round(bkCasePct * 0.6 + ketarunaanPct * 0.4)));
     aiPillars.push({
@@ -1254,8 +1302,11 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       grade: toGrade(p5Score),
       status: toStatus(p5Score),
       summary: `Penanganan kasus BK ${bkCasePct}%${
-        ketarunaanProgress && (ketarunaanProgress.isConfigured || ketarunaanProgress.tarunaDinilai > 0)
-          ? `, penilaian ketarunaan ${ketarunaanProgress.progresInputNilaiPct}%`
+        ketarunaanProgress &&
+        (ketarunaanProgress.isConfigured ||
+          ketarunaanProgress.tarunaDinilai > 0 ||
+          ketarunaanProgress.totalSesiSemester > 0)
+          ? `, ketarunaan Sem. Ganjil ${ketarunaanPct}% (${ketarunaanProgress.totalSesiSemester.toLocaleString('id-ID')} sesi)`
           : ''
       }.`,
     });
