@@ -70,6 +70,7 @@ export interface WaChatMessage {
   message: string;
   nama: string | null;
   role: string | null;
+  delivery_status?: 'SENT' | 'DELIVERED' | 'READ' | string | null;
   created_at: string;
 }
 

@@ -5595,20 +5595,23 @@ model SKWaliKelasArsip {
 // Menyimpan riwayat percakapan chatbot per user.
 // Data otomatis dihapus setelah 3 bulan via logRetention job.
 model WaChatLog {
-  id         String   @id @default(uuid())
-  tenant_id  String
-  jid        String
-  phone      String
-  nama       String?
-  role       String?
-  direction  String
-  message    String   @db.Text
-  created_at DateTime @default(now())
+  id              String   @id @default(uuid())
+  tenant_id       String
+  jid             String
+  phone           String
+  nama            String?
+  role            String?
+  direction       String
+  message         String   @db.Text
+  wa_message_id   String?
+  delivery_status String?  @default("SENT")
+  created_at      DateTime @default(now())
 
   Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
   @@index([tenant_id, phone])
+  @@index([tenant_id, wa_message_id])
   @@index([tenant_id, created_at(sort: Desc)])
   @@index([created_at])
 }

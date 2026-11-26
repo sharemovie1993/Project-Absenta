@@ -164,6 +164,23 @@ const WhatsAppChatLogPage: React.FC = () => {
   useEffect(() => { fetchContacts(1, false); }, [fetchContacts]);
   useEffect(() => { fetchGroups(); }, [fetchGroups]);
 
+  // Silent live polling every 5s for open conversation to reflect SENT -> DELIVERED -> READ receipts
+  useEffect(() => {
+    if (viewMode !== 'chats' || !selected?.phone || msgPage !== 1) return;
+    const timer = setInterval(async () => {
+      try {
+        const res = await getWaChatLogDetail(selected.phone, { page: 1, limit: 50 });
+        if (res.success && Array.isArray(res.data)) {
+          setMessages(res.data);
+          setTotalMsgs(res.total);
+        }
+      } catch {
+        // Ignore silent polling errors
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [viewMode, selected?.phone, msgPage]);
+
   // ── Fetch messages ──────────────────────────────────────────────────────
   const fetchMessages = useCallback(async (phone: string, page = 1, prepend = false) => {
     if (page === 1) setLoadingMsgs(true);

@@ -35,7 +35,7 @@ export class WaChatLogService {
   }
 
   /**
-   * Simpan pesan keluar (bot → user).
+   * Simpan pesan keluar (bot / gateway → user).
    */
   static async logOut(params: {
     tenantId: string | null;
@@ -44,6 +44,8 @@ export class WaChatLogService {
     nama?: string | null;
     role?: string | null;
     message: string;
+    waMessageId?: string | null;
+    deliveryStatus?: 'SENT' | 'DELIVERED' | 'READ';
   }): Promise<void> {
     if (!params.tenantId) return;
     try {
@@ -56,10 +58,48 @@ export class WaChatLogService {
           role: params.role ?? null,
           direction: 'OUT',
           message: params.message,
+          wa_message_id: params.waMessageId ?? null,
+          delivery_status: params.deliveryStatus ?? 'SENT',
         },
       });
     } catch (err: any) {
       console.warn('[WaChatLog] Failed to log OUT message:', err.message);
+    }
+  }
+
+  /**
+   * Perbarui status pengiriman / baca (SENT -> DELIVERED -> READ) berdasarkan wa_message_id Baileys.
+   * Tidak pernah menurunkan status (misal READ tidak akan turun kembali ke DELIVERED).
+   */
+  static async updateDeliveryStatus(
+    tenantId: string | null,
+    waMessageId: string,
+    status: 'SENT' | 'DELIVERED' | 'READ'
+  ): Promise<void> {
+    if (!tenantId || !waMessageId) return;
+    try {
+      const allowedPrev =
+        status === 'READ'
+          ? ['SENT', 'DELIVERED']
+          : status === 'DELIVERED'
+          ? ['SENT']
+          : [];
+
+      if (allowedPrev.length === 0) return;
+
+      await prisma.waChatLog.updateMany({
+        where: {
+          tenant_id: tenantId,
+          wa_message_id: waMessageId,
+          OR: [
+            { delivery_status: { in: allowedPrev } },
+            { delivery_status: null },
+          ],
+        },
+        data: { delivery_status: status },
+      });
+    } catch (err: any) {
+      console.debug('[WaChatLog] Failed to update delivery status:', err.message);
     }
   }
 
@@ -190,6 +230,7 @@ export class WaChatLogService {
           message: true,
           nama: true,
           role: true,
+          delivery_status: true,
           created_at: true,
         },
       }),

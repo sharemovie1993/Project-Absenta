@@ -15,6 +15,7 @@ import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
 import { prisma } from '@/utils/prisma';
 import { waChatbotResolverService, persistLidMapping } from '@/modules/whatsapp/services/wa-chatbot-resolver.service';
+import { WaChatLogService } from '@/modules/whatsapp/services/wa-chat-log.service';
 import { getRedisConnection } from '@/queue/redis';
 import { createRedisConnection } from '@/infra/redis/redisClient';
 import { appLogger } from '@/utils/app-logger';
@@ -362,6 +363,31 @@ async function connectTenant(tenantId: string): Promise<void> {
     }
   });
 
+  // ── Live Delivery & Read Receipt Listener (Centang 1 / 2 / Biru) ──
+  sock.ev.on('messages.update', async (updates: any[]) => {
+    if (parseWaSessionKey(tenantId).userId) return;
+    if (!Array.isArray(updates)) return;
+    for (const item of updates) {
+      const msgId = item?.key?.id;
+      const fromMe = item?.key?.fromMe;
+      const rawStatus = item?.update?.status;
+      if (!msgId || !fromMe || rawStatus === undefined || rawStatus === null) continue;
+
+      let mapped: 'SENT' | 'DELIVERED' | 'READ' | null = null;
+      if (rawStatus === 4 || rawStatus === 5 || rawStatus === 'READ' || rawStatus === 'PLAYED') {
+        mapped = 'READ';
+      } else if (rawStatus === 3 || rawStatus === 'DELIVERY_ACK') {
+        mapped = 'DELIVERED';
+      } else if (rawStatus === 2 || rawStatus === 'SERVER_ACK') {
+        mapped = 'SENT';
+      }
+
+      if (mapped && mapped !== 'SENT') {
+        WaChatLogService.updateDeliveryStatus(tenantId, msgId, mapped).catch(() => {});
+      }
+    }
+  });
+
   // ── Inbound Chatbot Event Listener (khusus WA Sekolah/Tenant, bukan WA Pribadi User) ──
   sock.ev.on('messages.upsert', async (m: any) => {
     if (parseWaSessionKey(tenantId).userId) return;
@@ -516,7 +542,19 @@ async function sendBaileysPayloadWithRetry(
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('TIMEOUT_SEND')), timeoutMs)
     );
-    await Promise.race([sendPromise, timeoutPromise]);
+    const sentMsg: any = await Promise.race([sendPromise, timeoutPromise]);
+    const waMessageId = sentMsg?.key?.id || null;
+    if (!parseWaSessionKey(tenantId).userId && jid.endsWith('@s.whatsapp.net') && typeof payload?.text === 'string') {
+      const phone = jid.split('@')[0];
+      WaChatLogService.logOut({
+        tenantId,
+        jid,
+        phone,
+        message: payload.text,
+        waMessageId,
+        deliveryStatus: 'SENT',
+      }).catch(() => {});
+    }
   };
 
   try {
@@ -966,6 +1004,7 @@ export const waGatewayServiceLocal = {
         if (entry.sock) {
           entry.sock.ev.removeAllListeners('connection.update');
           entry.sock.ev.removeAllListeners('messages.upsert');
+          entry.sock.ev.removeAllListeners('messages.update');
           entry.sock.ws?.close();
           entry.sock.end?.(undefined);
         }

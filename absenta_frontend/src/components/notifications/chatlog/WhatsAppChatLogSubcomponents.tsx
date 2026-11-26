@@ -3,6 +3,7 @@ import {
   BookOpen, 
   GraduationCap, 
   HeartHandshake, 
+  Check,
   CheckCheck, 
   Bot, 
   ShieldCheck, 
@@ -186,7 +187,21 @@ export const ChatBubble: React.FC<{ msg: WaChatMessage }> = ({ msg }) => {
           isOut ? 'text-emerald-200' : 'text-muted-foreground'
         }`}>
           <span>{formatMsgTime(msg.created_at)}</span>
-          {isOut && <CheckCheck className="w-3.5 h-3.5 text-emerald-200" />}
+          {isOut && (
+            msg.delivery_status === 'READ' ? (
+              <span title="Dibaca" className="inline-flex items-center">
+                <CheckCheck className="w-3.5 h-3.5 text-sky-300" />
+              </span>
+            ) : msg.delivery_status === 'DELIVERED' ? (
+              <span title="Terkirim ke HP penerima" className="inline-flex items-center">
+                <CheckCheck className="w-3.5 h-3.5 text-emerald-200" />
+              </span>
+            ) : (
+              <span title="Terkirim ke server WA" className="inline-flex items-center">
+                <Check className="w-3.5 h-3.5 text-emerald-200/80" />
+              </span>
+            )
+          )}
         </div>
       </div>
     </div>
