@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axiosInstance';
 import { useSocket } from '../../../hooks/useSocket';
 import { SectionCard, Modal, Button, Table } from '../../ui';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
 import { 
   TrendingUp, 
@@ -325,60 +326,81 @@ export const ShuMemberView = React.memo<ShuMemberViewProps>(({
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <SectionCard className="p-6 border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl bg-white/70 dark:bg-slate-900/50 backdrop-blur-md relative overflow-hidden flex items-center gap-4">
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-2xl">
-            <DollarSign size={24} />
-          </div>
-          <div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total SHU Diterima</p>
-            <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">
-              Rp {(myHistory || []).reduce((sum, h) => sum + Number(h.totalShu), 0).toLocaleString('id-ID')}
-            </h3>
-          </div>
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl" />
-        </SectionCard>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6">
+        <AnalyticsCard
+          title="Total SHU Diterima"
+          value={`Rp ${(myHistory || []).reduce((sum, h) => sum + Number(h.totalShu), 0).toLocaleString('id-ID')}`}
+          icon={<DollarSign size={24} />}
+          gradient="from-emerald-500 to-emerald-700 text-white border-emerald-400/30"
+          subtitle="Akumulasi dividen SHU yang telah dibagikan"
+          mobileCompact={true}
+        />
 
-        <SectionCard className="p-6 border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl bg-white/70 dark:bg-slate-900/50 backdrop-blur-md relative overflow-hidden flex items-center gap-4">
-          <div className="p-3 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-2xl">
-            <Award size={24} />
-          </div>
-          <div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Penerimaan Terakhir</p>
-            <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">
-              {(myHistory || []).length > 0 
-                ? `Rp ${Number(myHistory?.[0]?.totalShu || 0).toLocaleString('id-ID')} (${myHistory?.[0]?.Period?.year || ''})`
-                : 'Belum ada data'
-              }
-            </h3>
-          </div>
-          <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-xl" />
-        </SectionCard>
+        <AnalyticsCard
+          title="Penerimaan Terakhir"
+          value={
+            (myHistory || []).length > 0
+              ? `Rp ${Number(myHistory?.[0]?.totalShu || 0).toLocaleString('id-ID')}`
+              : 'Belum Ada'
+          }
+          icon={<Award size={24} />}
+          gradient="from-indigo-600 to-purple-700 text-white border-indigo-400/30"
+          subtitle={
+            (myHistory || []).length > 0
+              ? `Periode Tahun Buku ${myHistory?.[0]?.Period?.year || ''}`
+              : 'Menunggu proses distribusi tutup buku RAT'
+          }
+          mobileCompact={true}
+        />
 
-        <SectionCard className="p-6 border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl bg-white/70 dark:bg-slate-900/50 backdrop-blur-md relative overflow-hidden flex items-center gap-4">
-          <div className="p-3 bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 rounded-2xl">
-            <TrendingUp size={24} />
-          </div>
-          <div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status Anggota</p>
-            <h3 className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
-              AKTIF & BERHAK
-            </h3>
-          </div>
-          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-xl" />
-        </SectionCard>
+        <AnalyticsCard
+          title="Status Kepesertaan SHU"
+          value="AKTIF & BERHAK"
+          icon={<TrendingUp size={24} />}
+          gradient="from-teal-600 to-emerald-700 text-white border-teal-400/30"
+          subtitle="Terdaftar aktif sebagai anggota penerima SHU"
+          mobileCompact={true}
+        />
       </div>
 
       {/* History Table */}
-      <SectionCard fullWidth className="p-6 border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl bg-white/70 dark:bg-slate-900/50 backdrop-blur-md">
-        <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-4">Riwayat Distribusi SHU</h3>
+      <SectionCard fullWidth className="p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-2xs rounded-2xl bg-white dark:bg-slate-900 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <Award size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                Riwayat Distribusi SHU
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Rekapitulasi pembagian Sisa Hasil Usaha tahunan berdasarkan Jasa Modal &amp; Jasa Usaha
+              </p>
+            </div>
+          </div>
+          <span className="self-start sm:self-auto px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+            {(myHistory || []).length} Periode Tercatat
+          </span>
+        </div>
+
         {loadingHistory ? (
-          <div className="flex items-center justify-center min-h-[150px]">
+          <div className="flex items-center justify-center min-h-[160px]">
             <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
           </div>
         ) : (myHistory || []).length === 0 ? (
-          <div className="p-12 text-center text-slate-400 font-bold uppercase tracking-wider text-xs">
-            Belum ada data riwayat penerimaan SHU.
+          <div className="py-10 px-4 flex flex-col items-center justify-center text-center space-y-2.5 bg-slate-50/70 dark:bg-slate-950/30 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-500 dark:text-indigo-400 flex items-center justify-center">
+              <Sparkles size={22} />
+            </div>
+            <div className="space-y-1 max-w-md">
+              <p className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                Belum Ada Riwayat Pembagian SHU
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Dividen SHU akan otomatis tercatat di sini setelah tutup buku tahunan (RAT) dan proses distribusi SHU selesai disahkan oleh pengurus koperasi.
+              </p>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl">
