@@ -89,6 +89,10 @@ const EMPTY_GRADES_LIST: ApiGradeRecord[] = Object.freeze([]);
 export interface UniversalInputNilaiViewProps {
   initialKelasId?: string;
   initialMapelId?: string;
+  initialTpId?: string;
+  initialSemesterId?: string;
+  initialTab?: 'my_tasks' | 'supervisi';
+  lockedMode?: 'supervisi' | 'my_tasks';
   isModal?: boolean;
   hideLayout?: boolean;
   readOnly?: boolean;
@@ -98,6 +102,10 @@ export interface UniversalInputNilaiViewProps {
 export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo(({
   initialKelasId,
   initialMapelId,
+  initialTpId,
+  initialSemesterId,
+  initialTab,
+  lockedMode,
   isModal = false,
   hideLayout = false,
   readOnly: explicitReadOnly,
@@ -121,14 +129,17 @@ export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo
   if (!initialContextRef.current) {
     const saved = getSavedNilaiContext();
     const urlTab = searchParams.get('tab') as 'my_tasks' | 'supervisi' | null;
-    const validTab = urlTab && ['my_tasks', 'supervisi'].includes(urlTab) ? urlTab : (saved?.tab === 'supervisi' ? 'supervisi' : 'my_tasks');
+    const validTab =
+      lockedMode ||
+      initialTab ||
+      (urlTab && ['my_tasks', 'supervisi'].includes(urlTab) ? urlTab : (saved?.tab === 'supervisi' ? 'supervisi' : 'my_tasks'));
 
     initialContextRef.current = {
       tab: validTab,
       kelasId: initialKelasId || searchParams.get('kelas_id') || searchParams.get('kelas') || saved?.kelasId || '',
       mapelId: initialMapelId || searchParams.get('mapel_id') || searchParams.get('mapel') || saved?.mapelId || '',
-      tpId: searchParams.get('tahun_pelajaran_id') || searchParams.get('tp_id') || saved?.tahunPelajaranId || '',
-      semId: searchParams.get('semester_id') || searchParams.get('sem_id') || saved?.semesterId || '',
+      tpId: initialTpId || searchParams.get('tahun_pelajaran_id') || searchParams.get('tp_id') || saved?.tahunPelajaranId || '',
+      semId: initialSemesterId || searchParams.get('semester_id') || searchParams.get('sem_id') || saved?.semesterId || '',
     };
   }
 
@@ -144,7 +155,8 @@ export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo
   const canSupervise = isAdmin || isKurikulum || isKepsek;
 
   const [activeRoleTab, setActiveRoleTab] = useState<'my_tasks' | 'supervisi'>(initialContext.tab);
-  const isSupervisiMode = activeRoleTab === 'supervisi' && canSupervise;
+  const effectiveRoleTab = lockedMode || activeRoleTab;
+  const isSupervisiMode = effectiveRoleTab === 'supervisi' && canSupervise;
   const [selectedKelas, setSelectedKelas] = useState<string>(initialKelasId || initialContext.kelasId);
   const [selectedMapel, setSelectedMapel] = useState<string>(initialMapelId || initialContext.mapelId);
   const selectedJenisNilai = '';
@@ -504,8 +516,8 @@ export const InputNilaiView: React.FC<UniversalInputNilaiViewProps> = React.memo
   });
 
   // Guru Mapel TIDAK BOLEH mencetak rapor atau melihat tombol monitoring (hanya untuk supervisi/wali kelas)
-  const isGuruMapelContext = isModal || activeRoleTab === 'my_tasks';
-  const canPrintRapor = !isModal && activeRoleTab === 'supervisi' && canSupervise;
+  const isGuruMapelContext = lockedMode === 'supervisi' ? false : (isModal || effectiveRoleTab === 'my_tasks');
+  const canPrintRapor = (lockedMode === 'supervisi' || !isModal) && effectiveRoleTab === 'supervisi' && canSupervise;
   const canShowMonitoring = !isGuruMapelContext && canSupervise;
 
   const handleNavigateCetakRapor = useCallback(() => {

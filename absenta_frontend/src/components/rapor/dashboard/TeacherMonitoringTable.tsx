@@ -11,13 +11,15 @@ import {
   ExternalLink,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown
+  ArrowUpDown,
+  ArrowLeft,
+  ShieldCheck
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { Card } from '../../ui/Card';
 import { Badge } from '../../ui/Badge';
 import { getShortSubjectName } from '../../../utils/mapelAbbreviator';
 import { useIsMobile } from '../../../hooks/useIsMobile';
+import { InputNilaiView } from '../input-nilai/InputNilaiView';
 
 
 export interface TeacherTaskDetail {
@@ -60,17 +62,23 @@ export const TeacherMonitoringTable: React.FC<TeacherMonitoringTableProps> = ({
   semesterId,
 }) => {
   const isMobile = useIsMobile();
-  const navigate = useNavigate();
+  const [selectedInlineTask, setSelectedInlineTask] = useState<{
+    guruName: string;
+    kelasId: string;
+    namaKelas: string;
+    mapelId: string;
+    namaMapel: string;
+  } | null>(null);
 
-  const buildNilaiUrl = (kelasId: string, mapelId: string) => {
-    const params = new URLSearchParams({
-      kelas_id: kelasId,
-      mapel_id: mapelId,
-      tab: 'supervisi',
+  const openInlineSupervisi = (guruName: string, task: TeacherTaskDetail) => {
+    if (!task.kelas_id || !task.mapel_id) return;
+    setSelectedInlineTask({
+      guruName,
+      kelasId: task.kelas_id,
+      namaKelas: task.nama_kelas,
+      mapelId: task.mapel_id,
+      namaMapel: task.nama_mapel,
     });
-    if (tahunPelajaranId) params.set('tahun_pelajaran_id', tahunPelajaranId);
-    if (semesterId) params.set('semester_id', semesterId);
-    return `/rapor/nilai?${params.toString()}`;
   };
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'partial' | 'empty'>('all');
@@ -186,6 +194,52 @@ export const TeacherMonitoringTable: React.FC<TeacherMonitoringTableProps> = ({
       <Card className="p-8 text-center bg-white dark:bg-slate-900 border-none shadow-xs">
         <div className="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin mx-auto mb-3" />
         <p className="text-xs font-semibold text-slate-400">Memuat matriks progres penginputan nilai guru...</p>
+      </Card>
+    );
+  }
+
+  if (selectedInlineTask) {
+    return (
+      <Card className="p-4 sm:p-5 bg-white dark:bg-slate-900 border-none shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setSelectedInlineTask(null)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer"
+            >
+              <ArrowLeft size={14} />
+              <span>Kembali ke Matriks</span>
+            </button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60 text-[10px] font-black uppercase tracking-wider">
+                  <ShieldCheck size={11} />
+                  Mode Supervisi
+                </span>
+                <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                  {selectedInlineTask.namaKelas} • {selectedInlineTask.namaMapel}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Guru Pengampu: <strong className="text-slate-700 dark:text-slate-300">{selectedInlineTask.guruName}</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <InputNilaiView
+          key={`${selectedInlineTask.kelasId}_${selectedInlineTask.mapelId}_${tahunPelajaranId || ''}_${semesterId || ''}`}
+          initialKelasId={selectedInlineTask.kelasId}
+          initialMapelId={selectedInlineTask.mapelId}
+          initialTpId={tahunPelajaranId}
+          initialSemesterId={semesterId}
+          initialTab="supervisi"
+          lockedMode="supervisi"
+          hideLayout={true}
+          isModal={true}
+          onClose={() => setSelectedInlineTask(null)}
+        />
       </Card>
     );
   }
@@ -351,7 +405,7 @@ export const TeacherMonitoringTable: React.FC<TeacherMonitoringTableProps> = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           if (taskForMapel?.kelas_id && taskForMapel?.mapel_id) {
-                            navigate(buildNilaiUrl(taskForMapel.kelas_id, taskForMapel.mapel_id));
+                            openInlineSupervisi(guru.nama_guru, taskForMapel);
                           }
                         }}
                         title={`Buka input nilai: ${m}`}
@@ -402,7 +456,7 @@ export const TeacherMonitoringTable: React.FC<TeacherMonitoringTableProps> = ({
                         key={idx}
                         onClick={() => {
                           if (t.kelas_id && t.mapel_id) {
-                            navigate(buildNilaiUrl(t.kelas_id, t.mapel_id));
+                            openInlineSupervisi(guru.nama_guru, t);
                           }
                         }}
                         title={`Klik untuk input nilai ${t.nama_kelas} - ${t.nama_mapel}`}
@@ -533,7 +587,7 @@ export const TeacherMonitoringTable: React.FC<TeacherMonitoringTableProps> = ({
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (taskForMapel?.kelas_id && taskForMapel?.mapel_id) {
-                                    navigate(buildNilaiUrl(taskForMapel.kelas_id, taskForMapel.mapel_id));
+                                    openInlineSupervisi(guru.nama_guru, taskForMapel);
                                   }
                                 }}
                                 title={`Buka lembar input nilai: ${m} (${taskForMapel?.nama_kelas || 'Pilih rombel'})`}
@@ -616,7 +670,7 @@ export const TeacherMonitoringTable: React.FC<TeacherMonitoringTableProps> = ({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     if (t.kelas_id && t.mapel_id) {
-                                      navigate(buildNilaiUrl(t.kelas_id, t.mapel_id));
+                                      openInlineSupervisi(guru.nama_guru, t);
                                     }
                                   }}
                                   title={`Buka Lembar Input Nilai: ${t.nama_kelas} - ${t.nama_mapel}`}
