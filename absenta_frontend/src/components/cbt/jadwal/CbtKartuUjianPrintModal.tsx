@@ -763,40 +763,42 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
     return loadPersistedMatrixState(tenantId, activeTpId, activeSemId, eventId);
   }, [tenantId, activeTpId, activeSemId, eventId, isOpen]);
 
-  // ── 5. Query Jadwal Ujian Aktif (Fase 3 Hari & Sesi - Terikat Konteks Akademik) ──
+  // ── 5. Query Jadwal Ujian Aktif (Fase 3 Hari & Sesi - Terisolasi Event Terpilih) ──
   const jadwalParams = useMemo(
     () => ({
       limit: 1000,
       sort_direction: 'asc' as const,
+      ...(eventId ? { event_id: eventId } : {}),
       ...(activeTpId ? { tahun_pelajaran_id: activeTpId } : {}),
       ...(activeSemId ? { semester_id: activeSemId } : {}),
     }),
-    [activeTpId, activeSemId]
+    [eventId, activeTpId, activeSemId]
   );
 
   const { data: jadwalRes } = useQuery({
     queryKey: cbtQueryKeys.jadwal(jadwalParams),
     queryFn: () => cbtApi.getJadwalList(jadwalParams),
-    enabled: isOpen && Boolean(activeTpId),
+    enabled: isOpen && Boolean(activeTpId || eventId),
     staleTime: 5 * 60 * 1000,
   });
 
   const jadwalList = jadwalRes?.items || [];
 
-  // Query Master Bank Soal untuk Resolusi Nama Mata Pelajaran & Tingkat (Terikat Konteks Akademik)
+  // Query Master Bank Soal untuk Resolusi Nama Mata Pelajaran & Tingkat (Terisolasi Event Terpilih)
   const bankParams = useMemo(
     () => ({
       limit: 500,
+      ...(eventId ? { event_id: eventId } : {}),
       ...(activeTpId ? { tahun_pelajaran_id: activeTpId } : {}),
       ...(activeSemId ? { semester_id: activeSemId } : {}),
     }),
-    [activeTpId, activeSemId]
+    [eventId, activeTpId, activeSemId]
   );
 
   const { data: bankRes } = useQuery({
     queryKey: cbtQueryKeys.bankSoal(bankParams),
     queryFn: () => cbtApi.getBankSoalList(bankParams),
-    enabled: isOpen && Boolean(activeTpId),
+    enabled: isOpen && Boolean(activeTpId || eventId),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -846,8 +848,12 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
     // JALUR 1: JIKA SUDAH ADA JADWAL SESI TERBIT DI DATABASE (CbtJadwalUjian)
     // =========================================================================
     const matchedFromDb = jadwalList.filter((j) => {
-      if (eventId && (j as any).event_id && (j as any).event_id !== eventId) {
-        return false;
+      const linkedBank = bankMap.get(j.bank_soal_id);
+      if (eventId) {
+        const jEventId = (j as any).event_id || j.BankSoal?.event_id || linkedBank?.event_id;
+        if (jEventId !== eventId) {
+          return false;
+        }
       }
       if (activeTpId && j.tahun_pelajaran_id && j.tahun_pelajaran_id !== activeTpId) {
         return false;
@@ -861,7 +867,6 @@ export const CbtKartuUjianPrintModal: React.FC<CbtKartuUjianPrintModalProps> = (
         return clsIds.includes(classId);
       }
 
-      const linkedBank = bankMap.get(j.bank_soal_id);
       const jTingkatNum = parseTingkatNum(
         (j as any).tingkat ?? j.BankSoal?.tingkat ?? linkedBank?.tingkat
       );
