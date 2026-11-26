@@ -143,12 +143,33 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
     };
   }, [isOpen, memberId, initialSaving, memberSavings]);
 
-  // Effective list of savings to display
+  // Effective list of savings to display (aware terhadap pengaturan kategori simpanan: aktif & urutan order)
   const effectiveSavings = useMemo(() => {
-    if (detailedSavings.length > 0) return detailedSavings;
-    if (memberSavings.length > 0) return memberSavings;
-    if (initialSaving) return [initialSaving];
-    return [];
+    const raw =
+      detailedSavings.length > 0
+        ? detailedSavings
+        : memberSavings.length > 0
+        ? memberSavings
+        : initialSaving
+        ? [initialSaving]
+        : [];
+
+    return [...raw]
+      .filter((s) => {
+        const isCatActive = s.category?.isActive !== false;
+        const hasBalance = (parseFloat(String(s.amount)) || 0) > 0;
+        const hasTx = (s.transactions?.length ?? 0) > 0;
+        // Tampilkan kategori aktif, atau kategori nonaktif yang masih memiliki saldo/histori mutasi
+        return isCatActive || hasBalance || hasTx;
+      })
+      .sort((a, b) => {
+        const orderA = typeof a.category?.order === 'number' ? a.category.order : 999;
+        const orderB = typeof b.category?.order === 'number' ? b.category.order : 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return String(a.category?.name || a.type || '').localeCompare(
+          String(b.category?.name || b.type || '')
+        );
+      });
   }, [detailedSavings, memberSavings, initialSaving]);
 
   // Total balance across all accounts
