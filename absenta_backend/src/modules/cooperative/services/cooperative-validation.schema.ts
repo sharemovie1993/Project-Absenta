@@ -103,7 +103,8 @@ export const createSavingCategorySchema = z.object({
   withdrawRule: z.string().optional(),
   defaultAmount: z.coerce.number().min(0).nullable().optional().transform(v => v === null ? undefined : v),
   isIncludedInShu: z.boolean().optional(),
-  accountCode: z.string().optional()
+  accountCode: z.string().optional(),
+  isActive: z.boolean().optional()
 });
 
 export const updateSavingCategorySchema = z.object({
@@ -117,7 +118,8 @@ export const updateSavingCategorySchema = z.object({
   withdrawRule: z.string().optional(),
   defaultAmount: z.coerce.number().min(0).nullable().optional().transform(v => v === null ? undefined : v),
   isIncludedInShu: z.boolean().optional(),
-  accountCode: z.string().optional()
+  accountCode: z.string().optional(),
+  isActive: z.boolean().optional()
 });
 
 // === 3. Toko & POS (Shop) ===

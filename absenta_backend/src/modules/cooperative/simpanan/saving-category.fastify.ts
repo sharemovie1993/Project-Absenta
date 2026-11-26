@@ -72,15 +72,25 @@ export async function savingCategoryRoutes(fastify: any) {
     fastify.patch('/saving-categories/:id/toggle', {
         preHandler: requireCapability('cooperative.savings.types.manage'),
     }, async (req: any, reply: any) => {
-        const data = await SavingCategoryService.toggleActive(req.params.id, req.tenantId);
-        return reply.send({ success: true, data });
+        try {
+            const data = await SavingCategoryService.toggleActive(req.params.id, req.tenantId);
+            return reply.send({ success: true, data });
+        } catch (error: any) {
+            appLogger.error({ err: error }, 'Cooperative toggle saving category error');
+            return reply.code(400).send({ success: false, message: error.message });
+        }
     });
 
     // DELETE /cooperative/saving-categories/:id — hapus kategori
     fastify.delete('/saving-categories/:id', {
         preHandler: requireCapability('cooperative.savings.types.manage'),
     }, async (req: any, reply: any) => {
-        const data = await SavingCategoryService.deleteCategory(req.params.id, req.tenantId);
-        return reply.send({ success: true, message: 'Kategori simpanan berhasil dihapus', data });
+        try {
+            const data = await SavingCategoryService.deleteCategory(req.params.id, req.tenantId);
+            return reply.send({ success: true, message: 'Kategori simpanan berhasil dihapus', data });
+        } catch (error: any) {
+            appLogger.error({ err: error }, 'Cooperative delete saving category error');
+            return reply.code(400).send({ success: false, message: error.message });
+        }
     });
 }

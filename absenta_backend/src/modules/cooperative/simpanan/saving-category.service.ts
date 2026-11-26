@@ -176,24 +176,17 @@ export class SavingCategoryService {
                 ...(data.isIncludedInShu !== undefined && { isIncludedInShu: isPokok ? true : data.isIncludedInShu }),
                 ...(data.accountCode && { accountCode: data.accountCode }),
                 ...(data.code && { code: data.code.toUpperCase() }),
+                ...((data as any).isActive !== undefined && { isActive: Boolean((data as any).isActive) }),
             },
         });
     }
 
-    /** Toggle aktif/nonaktif — tidak boleh nonaktif jika masih punya saving */
+    /** Toggle aktif/nonaktif (soft-archive: tetap aman meski sudah ada data rekening historis) */
     static async toggleActive(id: string, tenantId: string) {
         const category = await prisma.savingCategory.findFirst({
             where: { id, tenantId },
-            include: { _count: { select: { Savings: true } } },
         });
         if (!category) throw new Error('Kategori tidak ditemukan.');
-
-        // Tidak boleh nonaktifkan jika masih ada data saving
-        if (category.isActive && category._count.Savings > 0) {
-            throw new Error(
-                `Kategori '${category.name}' masih digunakan oleh ${category._count.Savings} rekening simpanan. Tidak dapat dinonaktifkan.`
-            );
-        }
 
         return prisma.savingCategory.update({
             where: { id },
