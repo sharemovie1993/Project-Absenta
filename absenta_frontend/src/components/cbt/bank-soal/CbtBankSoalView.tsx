@@ -23,6 +23,7 @@ import {
   Sparkles,
   User,
   Layers,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
@@ -134,20 +135,63 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
   const { activeEvent: activeCbtEvent } = useCbtOperationMode();
   const { activeYear: activeTp } = useTahunPelajaranOptions();
   const { activeSemester, rawList: semRawList = [] } = useSemesterOptions();
-  const effectiveTpId = activeTp?.id || activeCbtEvent?.tahun_pelajaran_id;
+
+  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const { data: eventsSummaryRes } = useQuery({
+    queryKey: cbtQueryKeys.eventsSummary(),
+    queryFn: () => cbtApi.getEventsSummary(),
+    staleTime: 60 * 1000,
+  });
+
+  const availableEvents = useMemo(() => {
+    const groups = eventsSummaryRes?.summary || [];
+    const list: any[] = [];
+    const seen = new Set<string>();
+    const activeTpIdFilter = activeTp?.id;
+
+    groups.forEach((grp: any) => {
+      (grp?.events || []).forEach((ev: any) => {
+        if (!ev?.id || seen.has(ev.id)) return;
+        if (activeTpIdFilter && ev.tahun_pelajaran_id && ev.tahun_pelajaran_id !== activeTpIdFilter) return;
+        seen.add(ev.id);
+        list.push(ev);
+      });
+    });
+
+    if (activeCbtEvent?.id && !seen.has(activeCbtEvent.id)) {
+      list.unshift(activeCbtEvent);
+    }
+
+    // Event aktif tampil paling atas
+    return list.sort((a, b) => Number(Boolean(b.is_active)) - Number(Boolean(a.is_active)));
+  }, [eventsSummaryRes, activeTp?.id, activeCbtEvent]);
+
+  const viewedEvent = useMemo(() => {
+    if (selectedEventId) {
+      const matched = availableEvents.find((e) => e.id === selectedEventId);
+      if (matched) return matched;
+    }
+    return activeCbtEvent || availableEvents[0] || null;
+  }, [selectedEventId, availableEvents, activeCbtEvent]);
+
+  const isViewingNonActiveEvent = Boolean(
+    viewedEvent?.id && activeCbtEvent?.id && viewedEvent.id !== activeCbtEvent.id
+  );
+
+  const effectiveTpId = activeTp?.id || viewedEvent?.tahun_pelajaran_id;
   const effectiveSemId = useMemo(() => {
     if (activeSemester?.id) return activeSemester.id;
-    if (activeCbtEvent?.semester && semRawList.length > 0) {
-      const target = String(activeCbtEvent.semester).toUpperCase().trim();
+    if (viewedEvent?.semester && semRawList.length > 0) {
+      const target = String(viewedEvent.semester).toUpperCase().trim();
       const matched = semRawList.find((s: any) =>
         String(s.nama_semester || s.nama || '').toUpperCase().includes(target)
       );
       if (matched?.id) return matched.id;
     }
     return undefined;
-  }, [activeSemester?.id, activeCbtEvent?.semester, semRawList]);
+  }, [activeSemester?.id, viewedEvent?.semester, semRawList]);
 
-  // 2. Fetch Bank Soal via TanStack Query (Terikat Konteks TP & Semester Aktif)
+  // 2. Fetch Bank Soal via TanStack Query (Terikat Konteks TP, Semester, & Event yang Dipilih)
   const effectiveOwnership = !isPanitiaCbt ? ownershipTab : undefined;
   const { data, isLoading } = useQuery({
     queryKey: cbtQueryKeys.bankSoal({
@@ -160,7 +204,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
       ownership: effectiveOwnership,
       tahun_pelajaran_id: effectiveTpId,
       semester_id: effectiveSemId,
-      event_id: activeCbtEvent?.id,
+      event_id: viewedEvent?.id,
     }),
     queryFn: () =>
       cbtApi.getBankSoalList({
@@ -173,7 +217,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
         ownership: effectiveOwnership,
         ...(effectiveTpId ? { tahun_pelajaran_id: effectiveTpId } : {}),
         ...(effectiveSemId ? { semester_id: effectiveSemId } : {}),
-        ...(activeCbtEvent?.id ? { event_id: activeCbtEvent.id } : {}),
+        ...(viewedEvent?.id ? { event_id: viewedEvent.id } : {}),
       }),
   });
 
@@ -689,7 +733,27 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           </div>
 
           {!readOnly && (
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            <div className="flex items-center gap-2 flex-wrap shrink-0 self-end sm:self-auto">
+              {availableEvents.length > 1 && (
+                <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 h-8 sm:h-9 shadow-2xs">
+                  <Calendar size={13} className={isViewingNonActiveEvent ? 'text-amber-600 shrink-0' : 'text-indigo-600 shrink-0'} />
+                  <select
+                    value={viewedEvent?.id || ''}
+                    onChange={(e) => {
+                      setSelectedEventId(e.target.value);
+                      setPage(1);
+                    }}
+                    aria-label="Pilih Konteks Event CBT"
+                    className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer max-w-[190px] truncate"
+                  >
+                    {availableEvents.map((ev) => (
+                      <option key={ev.id} value={ev.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                        {ev.nama_event}{ev.is_active ? ' (Aktif)' : ' (Non-Aktif)'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -716,6 +780,24 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
               </Button>
             </div>
           )}
+        </div>
+      )}
+
+      {isViewingNonActiveEvent && viewedEvent && (
+        <div className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 text-xs text-amber-800 dark:text-amber-200 flex items-center justify-between gap-2 flex-wrap">
+          <span>
+            Anda sedang melihat &amp; mengelola Bank Soal pada event <strong>{viewedEvent.nama_event}</strong> (belum aktif di siswa). Event aktif saat ini tetap aman berjalan.
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedEventId('');
+              setPage(1);
+            }}
+            className="text-[11px] font-bold text-amber-900 dark:text-amber-100 underline cursor-pointer shrink-0"
+          >
+            Kembali ke Event Aktif
+          </button>
         </div>
       )}
 
@@ -895,7 +977,7 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           isOpen={isRolloverModalOpen}
           onClose={() => setIsRolloverModalOpen(false)}
           mode="bank-soal"
-          targetEvent={activeCbtEvent}
+          targetEvent={viewedEvent || activeCbtEvent}
           targetTpId={effectiveTpId}
           targetSemId={effectiveSemId}
           guruId={!isPanitiaCbt ? currentGuruId : undefined}
@@ -919,8 +1001,8 @@ export const CbtBankSoalView: React.FC<UniversalCbtBankSoalViewProps> = React.me
           defaultTingkat={defaultTingkatForCreate}
           defaultJurusan={defaultJurusanForCreate}
           roleContext={roleContext}
-          activeEvent={activeEvent}
-          eventName={eventName}
+          activeEvent={viewedEvent || activeEvent}
+          eventName={viewedEvent?.nama_event || eventName}
           targetTingkat={targetTingkat}
           onSuccess={async () => {
             setPage(1);
