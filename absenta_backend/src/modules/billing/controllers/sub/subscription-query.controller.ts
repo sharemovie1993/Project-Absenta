@@ -48,8 +48,18 @@ function getPlanSizeLabel(plan: any): string {
 
 
 
+const lastTenantSyncAt = new Map<string, number>();
+const notFoundLicenseKeys = new Map<string, number>();
+const SYNC_COOLDOWN_MS = 60 * 1000;
+const NOT_FOUND_KEY_TTL_MS = 60 * 60 * 1000;
+
 export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string): Promise<void> {
   try {
+    const now = Date.now();
+    const lastSync = lastTenantSyncAt.get(tenantId) || 0;
+    if (now - lastSync < SYNC_COOLDOWN_MS) return;
+    lastTenantSyncAt.set(tenantId, now);
+
     const licenseKey = process.env.LICENSE_KEY;
     if (!licenseKey) return;
 
@@ -67,10 +77,10 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
     const candidateKeys = new Set<string>();
     if (licenseKey && licenseKey.trim()) candidateKeys.add(licenseKey.trim());
 
-    // Gather package-specific license keys saved in tenant's subscriptions
+    // Gather package-specific license keys saved in non-expired tenant subscriptions
     try {
       const existingSubs = await prisma.subscription.findMany({
-        where: { tenant_id: tenantId },
+        where: { tenant_id: tenantId, status: { not: 'EXPIRED' } },
         select: { pricing_meta: true }
       });
       for (const s of existingSubs) {
@@ -95,12 +105,18 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
     const seenRemoteSubIds = new Set<string>();
 
     for (const key of candidateKeys) {
+      const trimmedKey = key.trim();
+      const nfAt = notFoundLicenseKeys.get(trimmedKey);
+      if (nfAt && Date.now() - nfAt < NOT_FOUND_KEY_TTL_MS) {
+        continue;
+      }
       try {
         const response = await axios.get(
-          `${LICENSE_SERVER_URL}/api/license/my-subscriptions/${key.trim()}${slug ? `?tenant_slug=${slug}` : ''}`,
+          `${LICENSE_SERVER_URL}/api/license/my-subscriptions/${trimmedKey}${slug ? `?tenant_slug=${slug}` : ''}`,
           { timeout: 2500 }
         );
         if (response.data && response.data.success && Array.isArray(response.data.data)) {
+          notFoundLicenseKeys.delete(trimmedKey);
           for (const sub of response.data.data) {
             if (sub?.id && !seenRemoteSubIds.has(sub.id)) {
               seenRemoteSubIds.add(sub.id);
@@ -110,9 +126,10 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
         }
       } catch (fetchErr: any) {
         if (fetchErr.response && fetchErr.response.status === 404) {
-          console.warn(`[SYNC SUBSCRIPTION] Key ${key} returned 404 from license server.`);
+          notFoundLicenseKeys.set(trimmedKey, Date.now());
+          console.warn(`[SYNC SUBSCRIPTION] Key ${trimmedKey} returned 404 from license server (muted 1h).`);
         } else {
-          console.error(`[SYNC SUBSCRIPTION] Error reaching license server for key ${key}: ${fetchErr.message}`);
+          console.error(`[SYNC SUBSCRIPTION] Error reaching license server for key ${trimmedKey}: ${fetchErr.message}`);
         }
       }
     }
