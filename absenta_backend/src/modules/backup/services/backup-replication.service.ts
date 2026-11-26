@@ -78,8 +78,8 @@ class BackupReplicationService {
       return;
     }
     try {
-      const row = await prisma.config.findUnique({
-        where: { tenant_id_key: { tenant_id: 'system', key: REPLICATION_CONFIG_DB_KEY } }
+      const row = await prisma.config.findFirst({
+        where: { tenant_id: 'system', key: REPLICATION_CONFIG_DB_KEY }
       });
       if (row?.value) {
         const parsed = JSON.parse(row.value);
@@ -108,11 +108,19 @@ class BackupReplicationService {
     try {
       this.dbCache = JSON.parse(JSON.stringify(cfg));
       this.lastDbLoadAt = Date.now();
-      await prisma.config.upsert({
-        where: { tenant_id_key: { tenant_id: 'system', key: REPLICATION_CONFIG_DB_KEY } },
-        update: { value: JSON.stringify(cfg) },
-        create: { tenant_id: 'system', key: REPLICATION_CONFIG_DB_KEY, value: JSON.stringify(cfg) }
+      const existing = await prisma.config.findFirst({
+        where: { tenant_id: 'system', key: REPLICATION_CONFIG_DB_KEY }
       });
+      if (existing) {
+        await prisma.config.update({
+          where: { id: existing.id },
+          data: { value: JSON.stringify(cfg) }
+        });
+      } else {
+        await prisma.config.create({
+          data: { tenant_id: 'system', key: REPLICATION_CONFIG_DB_KEY, value: JSON.stringify(cfg) }
+        });
+      }
     } catch (err: any) {
       console.warn('[BackupReplicationService] Gagal menyimpan config replikasi ke DB:', err?.message);
     }
