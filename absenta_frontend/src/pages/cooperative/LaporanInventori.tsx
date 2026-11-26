@@ -27,6 +27,15 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { COOP_QUERY_KEYS } from '../../lib/coopQueryKeys';
 import { CoopFiscalYearSelector } from '../../components/cooperative/shared/CoopFiscalYearSelector';
+import {
+  LaporanInventoriPrintModal,
+  type StockItem,
+  type StockSummary,
+  type ValuationRow,
+  type ValuationGrand,
+  type PurchaseRow,
+  type PurchaseGrand,
+} from '../../components/cooperative/products/LaporanInventoriPrintModal';
 
 const SearchableSelect = lazy(() => import('../../components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
 
@@ -38,30 +47,6 @@ const inventoryFilterSchema = z.object({
   endDate: z.string().optional(),
   supplierFilter: z.string().optional(),
 });
-
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-interface StockItem {
-  id: string; code: string; name: string; category: string;
-  stock: number; costPrice: number; price: number;
-  nilaiPersediaan: number; status: 'NORMAL' | 'RENDAH' | 'HABIS';
-}
-
-interface StockSummary {
-  totalSKU: number; totalItems: number; totalNilaiPersediaan: number;
-  jumlahHabis: number; jumlahRendah: number;
-}
-interface ValuationRow { category: string; sku: number; totalStock: number; totalValue: number; }
-interface ValuationGrand { totalSKU: number; totalStock: number; totalValue: number; }
-interface PurchaseRow {
-  id: string; date: string; supplier: string; paymentMethod: string;
-  notes: string; nilaiBarang: number; shippingFee: number; totalBayar: number;
-  itemCount: number; skuCount: number;
-}
-interface PurchaseGrand {
-  totalTransaksi: number; totalNilaiBarang: number;
-  totalShippingFee: number; totalPembayaran: number; totalItemDibeli: number;
-}
 
 const fmt = (n: number) => `Rp ${Math.round(n).toLocaleString('id-ID')}`;
 
@@ -157,6 +142,7 @@ const LaporanInventori: React.FC<LaporanInventoriProps> = React.memo(({ hideLayo
   }, [stockItems, categoryFilter, lowStockOnly]);
 
   const [isExporting, setIsExporting] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // ─── Export Excel ────────────────────────────────────────────────────────
 
@@ -232,7 +218,7 @@ const LaporanInventori: React.FC<LaporanInventoriProps> = React.memo(({ hideLayo
   };
 
   const handlePrint = () => {
-    window.print();
+    setIsPrintModalOpen(true);
   };
 
   const breadcrumbs = useMemo(() => [
@@ -659,13 +645,23 @@ const LaporanInventori: React.FC<LaporanInventoriProps> = React.memo(({ hideLayo
         </div>
       </SectionCard>
 
-        {/* Print styles */}
-        <style dangerouslySetInnerHTML={{ __html: `
-          @media print {
-            .print\\:hidden { display: none !important; }
-            body { background: white !important; font-size: 11px; }
-          }
-        ` }} />
+        {/* Universal Document Printing Modal */}
+        <LaporanInventoriPrintModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          activeTab={activeTab}
+          stockItems={filteredStockItems}
+          stockSummary={stockSummary}
+          categoryFilter={categoryFilter}
+          lowStockOnly={lowStockOnly}
+          valuationRows={valuationRows}
+          valuationGrand={valuationGrand}
+          purchaseRows={purchaseRows}
+          purchaseGrand={purchaseGrand}
+          startDate={startDate}
+          endDate={endDate}
+          supplierFilter={supplierFilter}
+        />
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
