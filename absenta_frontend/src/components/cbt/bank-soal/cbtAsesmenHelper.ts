@@ -424,8 +424,9 @@ export function generateAutoFillMassal(params: {
   targetJurusan?: string;
   jenjang?: string;
   isShared?: boolean;
+  eventPrefix?: string;
 }): { kodeBank: string; judul: string } {
-  const { mapelOptions, targetMapelId, targetTingkat, targetKegiatanKey, targetJurusan, jenjang, isShared } = params;
+  const { mapelOptions, targetMapelId, targetTingkat, targetKegiatanKey, targetJurusan, jenjang, isShared, eventPrefix } = params;
   const selectedMapel = mapelOptions.find((m) => m.value === targetMapelId);
   const mapelLabel = selectedMapel?.label || 'Mata Pelajaran';
   const mapelName = mapelLabel.split('(')[0]?.trim() || 'Mata Pelajaran';
@@ -435,7 +436,12 @@ export function generateAutoFillMassal(params: {
 
   const allTypes = getOfficialAsesmenTypes(jenjang);
   const selectedDef = allTypes.find((t) => t.key === targetKegiatanKey);
-  const prefix = selectedDef?.defaultPrefix || targetKegiatanKey;
+  const cleanEventPrefix = (eventPrefix || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const prefix = cleanEventPrefix || selectedDef?.defaultPrefix || targetKegiatanKey;
   const romanTingkat = getTingkatRoman(targetTingkat);
   const isSemua = !targetTingkat || targetTingkat.toUpperCase() === 'SEMUA';
 

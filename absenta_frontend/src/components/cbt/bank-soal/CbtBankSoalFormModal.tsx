@@ -711,8 +711,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     targetJurusan?: string,
     overrideIsShared?: boolean
   ) => {
-    const activeJur = targetJurusan !== undefined ? targetJurusan : jurusan;
     const activeShared = overrideIsShared !== undefined ? overrideIsShared : isShared;
+    const activeJur = activeShared ? '' : (targetJurusan !== undefined ? targetJurusan : jurusan);
     const { kodeBank: genCode, judul: genTitle } = generateAutoFillMassal({
       mapelOptions: activeMapelOptions,
       targetMapelId,
@@ -721,6 +721,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
       targetJurusan: activeJur,
       jenjang,
       isShared: activeShared,
+      eventPrefix: activeEvent?.kode_event || undefined,
     });
 
     // Cek duplikasi kode_bank terhadap daftar bank soal yang sudah ada di tenant (Anti-Collision)
@@ -924,8 +925,10 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
     }
 
     if (scope === 'TERPUSAT_MASSAL') {
+      const evPrefix = (activeEvent?.kode_event || '').trim().toUpperCase();
       const isAutoTitle =
         !judul ||
+        (evPrefix && judul.toUpperCase().startsWith(`${evPrefix} -`)) ||
         officialAsesmenTypes.some(
           (t) =>
             judul.startsWith(`${t.defaultPrefix} -`) ||
@@ -933,7 +936,7 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
             judul.startsWith(`${t.singkatan} -`)
         );
       if (isAutoTitle) {
-        triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, jurusan);
+        triggerAutoFillMassal(mapelId, tingkat, jenisKegiatanMassal, isShared ? '' : jurusan, isShared);
       }
     } else if (scope === 'MANDIRI_GURU' && !judul) {
       const selectedMapel = mapelOptions.find((m) => m.value === mapelId);
@@ -1060,6 +1063,8 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
         judul: judul.trim(),
         guru_id: guruId,
         mapel_id: mapelId,
+        tahun_pelajaran_id: bankSoalToEdit?.tahun_pelajaran_id ?? activeTpId ?? null,
+        semester_id: bankSoalToEdit?.semester_id ?? activeSemId ?? null,
         event_id: bankSoalToEdit?.event_id ?? activeEvent?.id ?? null,
         unit_pengajaran_id: unitPengajaranId || null,
         tingkat,
@@ -2112,6 +2117,11 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                   Sasaran Terpilih:
                 </span>
+                {activeEvent?.nama_event && (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-md bg-violet-100 dark:bg-violet-950/80 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+                    🗓️ {activeEvent.nama_event}
+                  </span>
+                )}
                 <span className="inline-flex items-center gap-1 text-xs font-black px-2.5 py-1 rounded-md bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                   🎯 Tingkat {tingkat || '-'}
                 </span>
@@ -2119,7 +2129,14 @@ export const CbtBankSoalFormModal: React.FC<CbtBankSoalFormModalProps> = ({
                   📚 {mapelOptions.find((m) => m.value === mapelId)?.label?.split('(')[0]?.trim() || 'Mata Pelajaran'}
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                  👥 {jurusan ? `Jurusan ${jurusan}` : 'Semua Jurusan'}
+                  👥{' '}
+                  {isShared
+                    ? `Naskah Bersama (${selectedColleagueKelasIds.length > 0 ? `${selectedColleagueKelasIds.length} kelas rekan` : `${selectedColleagueIds.length} rekan`})`
+                    : selectedRombelNames.length > 0
+                    ? `${selectedRombelNames.length} Kelas (${selectedRombelNames.join(', ')})`
+                    : jurusan
+                    ? `Jurusan ${jurusan}`
+                    : 'Semua Jurusan'}
                 </span>
               </div>
               <button
