@@ -342,9 +342,10 @@ export const KOPERASI_SUBTABS_BASE: KoperasiTabDefinition[] = [
     targetPath: '/dashboard?tab=koperasi&subtab=langganan',
     color: 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400',
     anyOfCapabilities: [
-      'cooperative.settings.view',
-      'cooperative.settings.update',
-      'cooperative.setup.manage',
+      'billing.my.subscription.view',
+      'billing.my.subscription.create',
+      'billing.subscriptions.choose.plan',
+      'billing.invoices.pay',
     ],
   },
   {
