@@ -23,6 +23,7 @@ import { PelanggaranService } from '@/modules/kesiswaan/services/pelanggaran.ser
 import { ketarunaanPenilaianService } from '@/modules/kesiswaan/program-ketarunaan/services/ketarunaan-penilaian.service';
 import { DashboardAttendanceStatsService } from '@/modules/dashboard/services/sub/dashboard-attendance-stats.service';
 import { PerangkatAjarService } from '@/modules/kurikulum/services/perangkat-ajar.service';
+import { activityLogService } from '@/modules/activity/services/activity-log.service';
 
 export class KepsekBriefingCollector implements IBriefingCollector {
   async collect(
@@ -292,6 +293,17 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       });
     } catch (err) {
       console.warn('[Briefing:PerangkatAjar] Error querying SSOT Perangkat Ajar progress:', err);
+    }
+
+    // ── 7b3. Adopsi Platform & Aktivitas Pengguna Guru (SSOT via ActivityLogService)
+    let adoptionProgress: Awaited<ReturnType<typeof activityLogService.getAcademicScopedPlatformAdoption>> | null = null;
+    try {
+      adoptionProgress = await activityLogService.getAcademicScopedPlatformAdoption(tenantId, {
+        startUTC,
+        endUTC,
+      });
+    } catch (err) {
+      console.warn('[Briefing:Adoption] Error querying SSOT platform adoption:', err);
     }
 
     // ── 7c. Kurikulum: Event CBT Aktif & Pengumpulan Soal (SSOT via CbtSettingsService)
@@ -575,6 +587,65 @@ export class KepsekBriefingCollector implements IBriefingCollector {
             color: perangkatProgress.progresApprovalPct >= 80 ? 'emerald' : 'blue',
           },
         ],
+      });
+    }
+
+    // SEKSI 3a3: ADOPSI PLATFORM & KEAKTIFAN DIGITAL GURU (SSOT)
+    if (adoptionProgress) {
+      const adoptionItems = [
+        ...adoptionProgress.topActiveToday.map((g, idx) => ({
+          title: `[Teraktif #${idx + 1} Hari Ini] ${g.nama}`,
+          subtitle: g.detail,
+          badge: 'Aktif Hari Ini',
+          badgeColor:
+            'text-emerald-700 bg-emerald-100 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800',
+        })),
+        ...adoptionProgress.belumPernahMasukItems.map((g) => ({
+          title: g.nama,
+          subtitle: `NIP: ${g.nip} • Belum tercatat login atau aktivitas di platform`,
+          badge: 'Belum Pernah Login',
+          badgeColor:
+            'text-rose-700 bg-rose-100 border border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800',
+          note: 'Perlu pendampingan aktivasi akun oleh operator / Tim Kurikulum.',
+        })),
+      ];
+
+      sections.push({
+        id: 'adopsi_platform',
+        title: 'Adopsi Platform Digital & Keaktifan Guru',
+        category: 'Transformasi Digital',
+        badge: `${adoptionProgress.progresAdopsiPct}% Adopsi`,
+        summary: `Sebanyak ${adoptionProgress.guruSudahMasuk}/${adoptionProgress.totalGuru} guru (${adoptionProgress.progresAdopsiPct}%) telah aktif menggunakan platform (${adoptionProgress.guruBelumPernahMasuk} guru belum pernah masuk). Hari ini tercatat ${adoptionProgress.guruAktifHariIni} guru aktif berinteraksi di sistem.`,
+        todayStats: [
+          { label: 'Guru Aktif Hari Ini', value: `${adoptionProgress.guruAktifHariIni} Guru` },
+          { label: 'Rasio Aktif Hari Ini', value: `${adoptionProgress.progresAktifHariIniPct}%` },
+        ],
+        rangeStats: [
+          { label: 'Total Guru Terdaftar', value: adoptionProgress.totalGuru },
+          { label: 'Sudah Adopsi Platform', value: adoptionProgress.guruSudahMasuk },
+          { label: 'Belum Pernah Masuk', value: adoptionProgress.guruBelumPernahMasuk },
+          { label: 'Tingkat Adopsi', value: `${adoptionProgress.progresAdopsiPct}%` },
+        ],
+        progressBars: [
+          {
+            label: '[Hari Ini] Keaktifan Login & Interaksi Guru Hari Ini',
+            value: adoptionProgress.progresAktifHariIniPct,
+            detail: `${adoptionProgress.guruAktifHariIni} / ${adoptionProgress.totalGuru} Guru Beraktivitas di Sistem Hari Ini`,
+            color: adoptionProgress.progresAktifHariIniPct >= 75 ? 'emerald' : 'blue',
+          },
+          {
+            label: '[Akumulasi] Progres Adopsi Platform Digital Guru',
+            value: adoptionProgress.progresAdopsiPct,
+            detail: `${adoptionProgress.guruSudahMasuk} Sudah Masuk • ${adoptionProgress.guruBelumPernahMasuk} Belum Pernah Masuk Platform`,
+            color:
+              adoptionProgress.progresAdopsiPct >= 90
+                ? 'emerald'
+                : adoptionProgress.progresAdopsiPct >= 60
+                ? 'indigo'
+                : 'amber',
+          },
+        ],
+        items: adoptionItems.length > 0 ? adoptionItems : undefined,
       });
     }
 
