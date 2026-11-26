@@ -749,32 +749,50 @@ export class KepsekBriefingCollector implements IBriefingCollector {
         title: 'Event CBT & Progres Pengumpulan Soal',
         category: 'Kurikulum • CBT',
         badge: cbtProgress.activeEvent
-          ? `${cbtProgress.activeEvent.kode_event} (${cbtProgress.progresPengumpulanPct}%)`
+          ? `${cbtProgress.activeEvent.kode_event} (${cbtProgress.progresPelaksanaanPct}% Terlaksana)`
           : `${cbtProgress.totalBank} Bank Soal`,
         summary: cbtProgress.activeEvent
-          ? `Konteks ${cbtProgress.academicContext} — Event Aktif: ${cbtProgress.activeEvent.nama_event}. Pengumpulan soal mencapai ${cbtProgress.progresPengumpulanPct}% (${cbtProgress.bankTerisiSoal}/${cbtProgress.totalBank} bank soal terisi, ${cbtProgress.bankPublished} published, total ${cbtProgress.totalSoal} butir soal).`
+          ? `Konteks ${cbtProgress.academicContext} — Event Aktif: ${cbtProgress.activeEvent.nama_event}. Bank soal ${cbtProgress.progresPengumpulanPct}% siap (${cbtProgress.bankTerisiSoal}/${cbtProgress.totalBank}). Pelaksanaan: ${cbtProgress.sudahMelaksanakan}/${cbtProgress.totalPeserta} peserta selesai (rata-rata ${cbtProgress.rataRataNilai}), ${cbtProgress.belumMelaksanakan} belum mulai, ${cbtProgress.jumlahKecurangan} indikasi kecurangan, dan ${cbtProgress.jumlahRemedial} peserta remedial.`
           : `Terdapat ${cbtProgress.totalBank} bank soal terdaftar dengan ${cbtProgress.totalSoal} butir soal terkumpul.`,
         stats: [
-          { label: 'Event CBT Aktif', value: cbtProgress.activeEvent ? cbtProgress.activeEvent.kode_event : 'Tidak Ada' },
+          { label: 'Sudah CBT', value: `${cbtProgress.sudahMelaksanakan} / ${cbtProgress.totalPeserta}` },
+          { label: 'Belum CBT', value: cbtProgress.belumMelaksanakan },
+          { label: 'Rata-Rata Nilai', value: cbtProgress.rataRataNilai },
+          { label: 'Kecurangan', value: cbtProgress.jumlahKecurangan },
+          { label: 'Perlu Remedial', value: cbtProgress.jumlahRemedial },
           { label: 'Bank Soal Terisi', value: `${cbtProgress.bankTerisiSoal} / ${cbtProgress.totalBank}` },
-          { label: 'Bank Published', value: `${cbtProgress.bankPublished} / ${cbtProgress.totalBank}` },
-          { label: 'Total Butir Soal', value: cbtProgress.totalSoal },
-          { label: 'Sesi Ujian Aktif', value: `${cbtProgress.jadwalAktif} / ${cbtProgress.jadwalTotal}` },
         ],
         progressBars: [
           {
             label: 'Progres Pengumpulan Bank Soal CBT',
             value: cbtProgress.progresPengumpulanPct,
-            detail: `${cbtProgress.bankTerisiSoal} / ${cbtProgress.totalBank} Bank Soal Terisi (${cbtProgress.totalSoal} butir soal)`,
+            detail: `${cbtProgress.bankTerisiSoal} / ${cbtProgress.totalBank} Bank Soal Terisi (${cbtProgress.totalSoal} butir soal • ${cbtProgress.bankPublished} Published)`,
             color: cbtProgress.progresPengumpulanPct >= 90 ? 'emerald' : cbtProgress.progresPengumpulanPct >= 60 ? 'indigo' : 'amber',
           },
           {
-            label: 'Kesiapan Publikasi Bank Soal (Siap Ujian)',
-            value: cbtProgress.progresPublikasiPct,
-            detail: `${cbtProgress.bankPublished} / ${cbtProgress.totalBank} Bank Soal Berstatus PUBLISHED`,
-            color: cbtProgress.progresPublikasiPct >= 90 ? 'emerald' : 'blue',
+            label: 'Progres Pelaksanaan Ujian CBT',
+            value: cbtProgress.progresPelaksanaanPct,
+            detail: `${cbtProgress.sudahMelaksanakan} Selesai • ${cbtProgress.sedangMengerjakan} Berlangsung • ${cbtProgress.belumMelaksanakan} Belum Melaksanakan`,
+            color: cbtProgress.progresPelaksanaanPct >= 90 ? 'emerald' : 'blue',
+          },
+          {
+            label: 'Ketuntasan Nilai CBT (Di Atas KKM)',
+            value: cbtProgress.progresTuntasPct,
+            detail: `Rata-rata perolehan: ${cbtProgress.rataRataNilai} • ${cbtProgress.jumlahRemedial} peserta di bawah KKM (Remedial)`,
+            color: cbtProgress.progresTuntasPct >= 80 ? 'emerald' : cbtProgress.progresTuntasPct >= 50 ? 'amber' : 'rose',
           },
         ],
+        items:
+          cbtProgress.kecuranganItems.length > 0
+            ? cbtProgress.kecuranganItems.map((c) => ({
+                title: `${c.namaSiswa} (${c.kelas})`,
+                subtitle: `Ujian: ${c.namaSesi} • ${c.jumlahPelanggaran} catatan pelanggaran`,
+                badge: c.status === 'DISQUALIFIED' ? 'Diskualifikasi' : `${c.jumlahPelanggaran}x Pelanggaran`,
+                badgeColor:
+                  'text-rose-700 bg-rose-100 border border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800',
+                note: 'Terdeteksi perpindahan tab/pelanggaran pengawas selama sesi CBT.',
+              }))
+            : undefined,
       });
     }
 

@@ -327,7 +327,7 @@ export class CbtSettingsService {
       bankWhere.event_id = activeEvent.id;
     }
 
-    const [bankList, jadwalList] = await Promise.all([
+    const [bankList, jadwalList, kkmpList] = await Promise.all([
       prisma.cbtBankSoal.findMany({
         where: bankWhere,
         select: {
@@ -345,9 +345,24 @@ export class CbtSettingsService {
               semester_id: activeSem.id,
               ...(activeEvent?.id ? { BankSoal: { event_id: activeEvent.id } } : {}),
             },
-            select: { id: true, status: true },
+            select: {
+              id: true,
+              status: true,
+              nama_sesi: true,
+              BankSoal: {
+                select: {
+                  mapel_id: true,
+                  tingkat_num: true,
+                  Mapel: { select: { nama_mapel: true } },
+                },
+              },
+            },
           })
         : Promise.resolve([]),
+      prisma.kkmp.findMany({
+        where: { tenant_id: tenantId },
+        select: { mapel_id: true, tingkat: true, kkm_nilai: true },
+      }),
     ]);
 
     let totalBank = bankList.length;
@@ -365,10 +380,108 @@ export class CbtSettingsService {
     const jadwalTotal = jadwalList.length;
     const jadwalAktif = jadwalList.filter((j) => j.status === 'ACTIVE').length;
 
+    const kkmMap = new Map<string, number>();
+    for (const k of kkmpList) {
+      kkmMap.set(`${k.mapel_id}_${k.tingkat}`, k.kkm_nilai);
+    }
+
+    const jadwalMetaMap = new Map<string, { kkm: number; namaSesi: string; mapelNama: string }>();
+    const jadwalIds: string[] = [];
+    for (const j of jadwalList as any[]) {
+      jadwalIds.push(j.id);
+      const mapelId = j.BankSoal?.mapel_id;
+      const tingkatNum = j.BankSoal?.tingkat_num;
+      const kkm = (mapelId && tingkatNum ? kkmMap.get(`${mapelId}_${tingkatNum}`) : undefined) ?? 75;
+      jadwalMetaMap.set(j.id, {
+        kkm,
+        namaSesi: j.nama_sesi || 'Ujian CBT',
+        mapelNama: j.BankSoal?.Mapel?.nama_mapel || '',
+      });
+    }
+
+    let totalPeserta = 0;
+    let sudahMelaksanakan = 0;
+    let sedangMengerjakan = 0;
+    let belumMelaksanakan = 0;
+    let sumNilai = 0;
+    let jumlahKecurangan = 0;
+    let totalLogPelanggaran = 0;
+    let jumlahRemedial = 0;
+    const kecuranganList: Array<{
+      namaSiswa: string;
+      kelas: string;
+      namaSesi: string;
+      jumlahPelanggaran: number;
+      status: string;
+    }> = [];
+
+    if (jadwalIds.length > 0) {
+      const pesertaList = await prisma.cbtPesertaUjian.findMany({
+        where: {
+          tenant_id: tenantId,
+          jadwal_ujian_id: { in: jadwalIds },
+        },
+        select: {
+          jadwal_ujian_id: true,
+          status: true,
+          nilai_akhir: true,
+          log_pelanggaran_json: true,
+          Siswa: {
+            select: {
+              nama_siswa: true,
+              Kelas: { select: { nama_kelas: true } },
+            },
+          },
+        },
+      });
+
+      totalPeserta = pesertaList.length;
+      for (const p of pesertaList) {
+        if (p.status === 'FINISHED' || p.status === 'DISQUALIFIED') {
+          sudahMelaksanakan++;
+          const nilai = Number(p.nilai_akhir || 0);
+          sumNilai += nilai;
+          const meta = jadwalMetaMap.get(p.jadwal_ujian_id);
+          const kkm = meta?.kkm ?? 75;
+          if (nilai < kkm) {
+            jumlahRemedial++;
+          }
+        } else if (p.status === 'IN_PROGRESS') {
+          sedangMengerjakan++;
+        } else {
+          belumMelaksanakan++;
+        }
+
+        const logs = Array.isArray(p.log_pelanggaran_json) ? p.log_pelanggaran_json : [];
+        if (logs.length > 0 || p.status === 'DISQUALIFIED') {
+          jumlahKecurangan++;
+          totalLogPelanggaran += logs.length;
+          const meta = jadwalMetaMap.get(p.jadwal_ujian_id);
+          kecuranganList.push({
+            namaSiswa: p.Siswa?.nama_siswa || 'Siswa',
+            kelas: p.Siswa?.Kelas?.nama_kelas || '-',
+            namaSesi: meta?.mapelNama || meta?.namaSesi || 'CBT',
+            jumlahPelanggaran: logs.length,
+            status: p.status,
+          });
+        }
+      }
+    }
+
+    kecuranganList.sort((a, b) => b.jumlahPelanggaran - a.jumlahPelanggaran);
+
     const progresPengumpulanPct =
       totalBank > 0 ? Math.round((bankTerisiSoal / totalBank) * 100) : 0;
     const progresPublikasiPct =
       totalBank > 0 ? Math.round((bankPublished / totalBank) * 100) : 0;
+    const progresPelaksanaanPct =
+      totalPeserta > 0 ? Math.round((sudahMelaksanakan / totalPeserta) * 100) : 0;
+    const rataRataNilai =
+      sudahMelaksanakan > 0 ? Number((sumNilai / sudahMelaksanakan).toFixed(1)) : 0;
+    const progresTuntasPct =
+      sudahMelaksanakan > 0
+        ? Math.round(((sudahMelaksanakan - jumlahRemedial) / sudahMelaksanakan) * 100)
+        : 0;
 
     return {
       academicContext: activeTp
@@ -390,6 +503,17 @@ export class CbtSettingsService {
       jadwalAktif,
       progresPengumpulanPct,
       progresPublikasiPct,
+      totalPeserta,
+      sudahMelaksanakan,
+      sedangMengerjakan,
+      belumMelaksanakan,
+      progresPelaksanaanPct,
+      rataRataNilai,
+      jumlahKecurangan,
+      totalLogPelanggaran,
+      kecuranganItems: kecuranganList.slice(0, 5),
+      jumlahRemedial,
+      progresTuntasPct,
     };
   }
 
