@@ -16,6 +16,7 @@ import {
 import { Button } from '../../ui';
 import type { IncomeStatementData, FinancialAccountLine } from './types';
 import type { CooperativeSettings } from '../../../pages/cooperative/Settings';
+import { AccountingReportPrintModal } from './AccountingReportPrintModal';
 
 interface IncomeStatementReportProps {
     coopSettings?: CooperativeSettings | null;
@@ -33,6 +34,7 @@ export const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({
     // State Filter Periode
     const [periodPreset, setPeriodPreset] = useState<'year' | 'custom'>('year');
     const [selectedYear, setSelectedYear] = useState<number>(defaultYear);
+    const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
     const [customStartDate, setCustomStartDate] = useState<string>(
         initialStartDate || `${defaultYear}-01-01`
     );
@@ -75,8 +77,13 @@ export const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({
     };
 
     const handlePrint = () => {
-        window.print();
+        setIsPrintModalOpen(true);
     };
+
+    const periodLabel =
+        periodPreset === 'year'
+            ? `Untuk Tahun Buku yang Berakhir pada 31 Desember ${selectedYear}`
+            : `Periode: ${effectiveStartDate} s/d ${effectiveEndDate}`;
 
     // Filter Akun Pendapatan vs HPP vs Beban Operasional
     const revenues = data?.revenue || [];
@@ -372,6 +379,94 @@ export const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({
                     </div>
                 )}
             </div>
+
+            <AccountingReportPrintModal
+                isOpen={isPrintModalOpen}
+                onClose={() => setIsPrintModalOpen(false)}
+                modalTitle="Cetak Laporan Laba Rugi (A4 Portrait)"
+                reportTitle="LAPORAN LABA RUGI (PERHITUNGAN HASIL USAHA)"
+                periodLabel={periodLabel}
+                fileName={`LAPORAN_LABA_RUGI_${periodPreset === 'year' ? selectedYear : `${effectiveStartDate}_${effectiveEndDate}`}.pdf`}
+            >
+                <div className="space-y-5 text-xs text-slate-900">
+                    <div>
+                        <div className="font-bold uppercase tracking-wider border-b border-slate-400 pb-1 mb-1.5">
+                            Pendapatan Usaha Koperasi
+                        </div>
+                        {validRevenues.length === 0 ? (
+                            <p className="italic text-slate-500 py-1">Tidak ada catatan pendapatan.</p>
+                        ) : (
+                            validRevenues.map((r) => (
+                                <div key={r.id} className="flex justify-between py-0.5 pl-2">
+                                    <span>
+                                        <span className="font-mono text-[10px] text-slate-500 mr-2">{r.code}</span>
+                                        {r.name}
+                                    </span>
+                                    <span className="font-mono font-semibold">{formatCurrency(Number(r.balance))}</span>
+                                </div>
+                            ))
+                        )}
+                        <div className="flex justify-between pt-1.5 mt-1 border-t border-slate-400 font-bold">
+                            <span>TOTAL PENDAPATAN USAHA</span>
+                            <span className="font-mono">{formatCurrency(totalRevenue)}</span>
+                        </div>
+                    </div>
+
+                    {cogsAccounts.length > 0 && (
+                        <div>
+                            <div className="font-bold uppercase tracking-wider border-b border-slate-400 pb-1 mb-1.5">
+                                Beban Pokok Penjualan (HPP)
+                            </div>
+                            {cogsAccounts.map((c) => (
+                                <div key={c.id} className="flex justify-between py-0.5 pl-2">
+                                    <span>
+                                        <span className="font-mono text-[10px] text-slate-500 mr-2">{c.code}</span>
+                                        {c.name}
+                                    </span>
+                                    <span className="font-mono font-semibold">{formatCurrency(Number(c.balance))}</span>
+                                </div>
+                            ))}
+                            <div className="flex justify-between pt-1.5 mt-1 border-t border-slate-400 font-bold">
+                                <span>TOTAL BEBAN POKOK PENJUALAN</span>
+                                <span className="font-mono">{formatCurrency(totalCogs)}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-between py-2 px-3 bg-slate-100 border border-slate-300 rounded font-bold">
+                        <span>LABA KOTOR (GROSS PROFIT)</span>
+                        <span className="font-mono">{formatCurrency(grossProfit)}</span>
+                    </div>
+
+                    <div>
+                        <div className="font-bold uppercase tracking-wider border-b border-slate-400 pb-1 mb-1.5">
+                            Beban Operasional &amp; Administrasi
+                        </div>
+                        {operatingExpenseAccounts.length === 0 ? (
+                            <p className="italic text-slate-500 py-1">Tidak ada catatan beban operasional.</p>
+                        ) : (
+                            operatingExpenseAccounts.map((e) => (
+                                <div key={e.id} className="flex justify-between py-0.5 pl-2">
+                                    <span>
+                                        <span className="font-mono text-[10px] text-slate-500 mr-2">{e.code}</span>
+                                        {e.name}
+                                    </span>
+                                    <span className="font-mono font-semibold">{formatCurrency(Number(e.balance))}</span>
+                                </div>
+                            ))
+                        )}
+                        <div className="flex justify-between pt-1.5 mt-1 border-t border-slate-400 font-bold">
+                            <span>TOTAL BEBAN OPERASIONAL</span>
+                            <span className="font-mono">{formatCurrency(totalOperatingExpense)}</span>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-3 pb-2 border-t-2 border-slate-800 border-b-4 border-double font-black text-sm">
+                        <span>SISA HASIL USAHA (SHU) BERSIH</span>
+                        <span className="font-mono">{formatCurrency(netIncome)}</span>
+                    </div>
+                </div>
+            </AccountingReportPrintModal>
         </div>
     );
 };
