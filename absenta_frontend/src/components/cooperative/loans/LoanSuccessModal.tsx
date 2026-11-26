@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   CheckCircle2, 
@@ -36,24 +36,6 @@ export const LoanSuccessModal: React.FC<LoanSuccessModalProps> = React.memo(({
   onViewDetail,
 }) => {
   const [printTarget, setPrintTarget] = useState<'AGREEMENT' | 'RECEIPT' | 'CARD' | null>(null);
-
-  // Trigger browser print dialog when printTarget is set
-  useEffect(() => {
-    if (printTarget) {
-      const handleAfterPrint = () => {
-        setPrintTarget(null);
-      };
-      window.addEventListener('afterprint', handleAfterPrint);
-      const timer = setTimeout(() => {
-        window.print();
-      }, 150);
-
-      return () => {
-        clearTimeout(timer);
-        window.removeEventListener('afterprint', handleAfterPrint);
-      };
-    }
-  }, [printTarget]);
 
   if (!isOpen || !loan) return null;
 
@@ -295,53 +277,26 @@ export const LoanSuccessModal: React.FC<LoanSuccessModalProps> = React.memo(({
         </div>
       </div>
 
-      {/* Media Print Portal & CSS Hardening */}
-      {printTarget && createPortal(
-        <>
-          {printTarget === 'AGREEMENT' && (
-            <PrintLoanAgreement 
-              loan={loanDataForPrint} 
-              coopSettings={coopSettings} 
-            />
-          )}
-          {printTarget === 'RECEIPT' && (
-            <PrintLoanReceipt 
-              loan={loanDataForPrint} 
-              coopSettings={coopSettings} 
-            />
-          )}
-          {printTarget === 'CARD' && (
-            <PrintLoanCard 
-              loan={loanDataForPrint} 
-              remainingBalance={totalRepayment} 
-              coopSettings={coopSettings} 
-            />
-          )}
-        </>,
-        document.body
-      )}
-
-      {/* Print CSS Styles */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @media print {
-          #root {
-            display: none !important;
-          }
-          body {
-            background: white !important;
-            color: black !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          #print-loan-card, #print-loan-agreement, #print-loan-receipt {
-            display: block !important;
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-          }
-        }
-      `}} />
+      {/* Universal Document Printing Modals */}
+      <PrintLoanAgreement
+        isOpen={printTarget === 'AGREEMENT'}
+        onClose={() => setPrintTarget(null)}
+        loan={loanDataForPrint}
+        coopSettings={coopSettings}
+      />
+      <PrintLoanReceipt
+        isOpen={printTarget === 'RECEIPT'}
+        onClose={() => setPrintTarget(null)}
+        loan={loanDataForPrint}
+        coopSettings={coopSettings}
+      />
+      <PrintLoanCard
+        isOpen={printTarget === 'CARD'}
+        onClose={() => setPrintTarget(null)}
+        loan={loanDataForPrint}
+        remainingBalance={totalRepayment}
+        coopSettings={coopSettings}
+      />
     </>,
     document.body
   );

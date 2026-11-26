@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { createPortal } from 'react-dom';
 import api from '../../../lib/axiosInstance';
 import { Button, SectionCard, Table, Badge } from '../../../components/ui';
 import type { Column } from '../../../components/ui/Table';
@@ -76,24 +75,6 @@ export const LoanDetailView: React.FC<UniversalLoanDetailViewProps> = React.memo
   const [selectedRepayment, setSelectedRepayment] = useState<{ installment: Installment; index: number } | null>(null);
   const [installmentPage, setInstallmentPage] = useState(1);
   const installmentLimit = 12;
-
-  // Browser print trigger when printTarget changes
-  useEffect(() => {
-    if (printTarget) {
-      const handleAfterPrint = () => {
-        setPrintTarget(null);
-      };
-      window.addEventListener('afterprint', handleAfterPrint);
-      const timer = setTimeout(() => {
-        window.print();
-      }, 150);
-
-      return () => {
-        clearTimeout(timer);
-        window.removeEventListener('afterprint', handleAfterPrint);
-      };
-    }
-  }, [printTarget]);
 
   // Proxy Modals State (Pilar Komponen Bersama Modal & Proxy Pattern)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -818,37 +799,38 @@ export const LoanDetailView: React.FC<UniversalLoanDetailViewProps> = React.memo
         />
       )}
 
-      {loan && printTarget && createPortal(
+      {loan && (
         <>
-          {printTarget === 'CARD' && (
-            <PrintLoanCard 
-              loan={loan} 
-              remainingBalance={remainingBalance} 
-              coopSettings={coopSettings}
-            />
-          )}
-          {printTarget === 'AGREEMENT' && (
-            <PrintLoanAgreement 
-              loan={loan} 
-              coopSettings={coopSettings}
-            />
-          )}
-          {printTarget === 'RECEIPT' && (
-            <PrintLoanReceipt 
-              loan={loan} 
-              coopSettings={coopSettings}
-            />
-          )}
-          {printTarget === 'REPAYMENT' && selectedRepayment && (
-            <PrintLoanRepayment 
+          <PrintLoanCard
+            isOpen={printTarget === 'CARD'}
+            onClose={() => setPrintTarget(null)}
+            loan={loan}
+            remainingBalance={remainingBalance}
+            coopSettings={coopSettings}
+          />
+          <PrintLoanAgreement
+            isOpen={printTarget === 'AGREEMENT'}
+            onClose={() => setPrintTarget(null)}
+            loan={loan}
+            coopSettings={coopSettings}
+          />
+          <PrintLoanReceipt
+            isOpen={printTarget === 'RECEIPT'}
+            onClose={() => setPrintTarget(null)}
+            loan={loan}
+            coopSettings={coopSettings}
+          />
+          {selectedRepayment && (
+            <PrintLoanRepayment
+              isOpen={printTarget === 'REPAYMENT'}
+              onClose={() => setPrintTarget(null)}
               loan={loan}
               installment={selectedRepayment.installment}
               installmentNo={selectedRepayment.index}
               coopSettings={coopSettings}
             />
           )}
-        </>,
-        document.body
+        </>
       )}
     </>
   );
@@ -858,15 +840,15 @@ export const LoanDetailView: React.FC<UniversalLoanDetailViewProps> = React.memo
       <div className="w-full max-w-full min-w-0">
         {loan.status === 'REJECTED' ? rejectedNoticeSection : installmentsTableSection}
 
-        {/* Portal Cetak Slip Setor jika anggota klik cetak bukti di baris cicilan */}
-        {loan && printTarget === 'REPAYMENT' && selectedRepayment && createPortal(
-          <PrintLoanRepayment 
+        {loan && selectedRepayment && (
+          <PrintLoanRepayment
+            isOpen={printTarget === 'REPAYMENT'}
+            onClose={() => setPrintTarget(null)}
             loan={loan}
             installment={selectedRepayment.installment}
             installmentNo={selectedRepayment.index}
             coopSettings={coopSettings}
-          />,
-          document.body
+          />
         )}
       </div>
     );
