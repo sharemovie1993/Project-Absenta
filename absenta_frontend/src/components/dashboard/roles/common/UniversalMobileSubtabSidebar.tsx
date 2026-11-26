@@ -256,10 +256,10 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
               className
             )}
           >
-            {/* ─── Drawer Header (Adaptif Gradien Ekosistem Opsi 1) ─── */}
+            {/* ─── Drawer Header (Adaptif Gradien Ekosistem Opsi 1 + Safe Area Poni Kamera Atas) ─── */}
             <div
               className={cn(
-                'flex items-center justify-between px-3.5 py-3 shrink-0 relative overflow-hidden text-white border-b transition-colors shadow-xs',
+                'flex items-center justify-between px-3.5 pt-[calc(0.75rem+var(--mobile-top-gap,0px))] pb-3 shrink-0 relative overflow-hidden text-white border-b transition-colors shadow-xs',
                 headerGradientClass
               )}
             >
@@ -457,8 +457,8 @@ export const UniversalMobileSubtabSidebar: React.FC<UniversalMobileSubtabSidebar
               )}
             </div>
 
-            {/* ─── Drawer Footer (Logout & Extra Actions) ─── */}
-            <div className="p-3 bg-slate-50 dark:bg-slate-950/80 border-t border-slate-100 dark:border-slate-800 shrink-0 space-y-2">
+            {/* ─── Drawer Footer (Logout & Extra Actions + Safe Area Navigasi Bawah HP) ─── */}
+            <div className="p-3 pb-[calc(0.875rem+var(--mobile-bottom-gap,16px))] bg-slate-50 dark:bg-slate-950/80 border-t border-slate-100 dark:border-slate-800 shrink-0 space-y-2">
               {footerExtra}
               <button
                 type="button"

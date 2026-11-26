@@ -2,10 +2,35 @@
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
-/* Anti-interferensi OS / Browser Auto-Dark */
+/* Anti-interferensi OS / Browser Auto-Dark & Global Safe-Area Insets (Poni Kamera & Navigasi Bawah HP) */
 :root {
   color-scheme: light;
   forced-color-adjust: none;
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--native-safe-top, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--native-safe-bottom, 0px));
+  --mobile-top-gap: var(--safe-top);
+  --mobile-bottom-gap: var(--safe-bottom);
+}
+
+@media (max-width: 1023px) {
+  :root {
+    /* Jaminan jarak aman bawah layar di seluruh mode HP agar navigasi platform tidak menempel/bertumpuk dengan navigasi HP */
+    --mobile-bottom-gap: max(env(safe-area-inset-bottom, 0px), var(--native-safe-bottom, 0px), 16px);
+    --mobile-top-gap: max(env(safe-area-inset-top, 0px), var(--native-safe-top, 0px));
+  }
+}
+
+html.is-native-apk {
+  /* Di dalam APK Android / WebView layar penuh: jaminan ruang aman ekstra untuk poni kamera depan (notch/punch-hole) & navigasi sistem bawah */
+  --mobile-top-gap: max(env(safe-area-inset-top, 0px), var(--native-safe-top, 0px), 32px);
+  --mobile-bottom-gap: max(env(safe-area-inset-bottom, 0px), var(--native-safe-bottom, 0px), 24px);
+}
+
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  :root {
+    --mobile-top-gap: max(env(safe-area-inset-top, 0px), var(--native-safe-top, 0px), 28px);
+    --mobile-bottom-gap: max(env(safe-area-inset-bottom, 0px), var(--native-safe-bottom, 0px), 20px);
+  }
 }
 
 /* ── Custom Official Fonts for Document & Certificate Printing ── */

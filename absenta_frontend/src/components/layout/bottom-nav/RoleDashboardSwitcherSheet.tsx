@@ -463,7 +463,7 @@ export const RoleDashboardSwitcherSheet: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div className="p-3 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
+            <div className="p-3 pb-[calc(0.875rem+var(--mobile-bottom-gap,16px))] bg-slate-50 dark:bg-slate-950/60 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
               <span className="font-medium">
                 {isAdminRole ? 'Superuser Akses Penuh' : 'Akses Terpilih Sesuai SK'}
               </span>

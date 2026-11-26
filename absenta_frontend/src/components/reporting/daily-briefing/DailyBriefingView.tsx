@@ -232,7 +232,9 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
     <div
       className={cn(
         'w-full max-w-4xl mx-auto space-y-6 print:space-y-4 print:max-w-none print:m-0 print:p-0',
-        hideLayout ? 'p-0' : 'p-3 sm:p-6 pb-20'
+        hideLayout
+          ? 'p-0 pb-[calc(1rem+var(--mobile-bottom-gap,0px))]'
+          : 'px-3 sm:px-6 pt-[calc(0.75rem+var(--mobile-top-gap,0px))] sm:pt-6 pb-[calc(5.5rem+var(--mobile-bottom-gap,16px))]'
       )}
     >
       {/* ── 1. HEADER UTAMA LAPORAN EKSEKUTIF ── */}

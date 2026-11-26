@@ -370,7 +370,7 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
 
       {/* ── 2. Mobile Shopee-Style Back Navigation Bar (< lg, Sub-halaman di luar dashboard utama) ── */}
       {isNotDashboard && (
-        <header className="flex lg:hidden fixed top-0 left-0 right-0 z-30 h-12 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800/80 items-center justify-between px-3 shadow-xs">
+        <header className="flex lg:hidden fixed top-0 left-0 right-0 z-30 pt-[var(--mobile-top-gap,0px)] h-[calc(3rem+var(--mobile-top-gap,0px))] bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800/80 items-center justify-between px-3 shadow-xs">
           <button
             type="button"
             onClick={handleGoBack}

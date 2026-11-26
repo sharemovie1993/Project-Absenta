@@ -10,6 +10,26 @@ import { toLocalDate } from './utils/attendance/time';
 // Cache ini tidak digunakan lagi agar badge Lokal/Tunnel selalu akurat lintas jaringan.
 try { localStorage.removeItem('absenta_cached_route'); } catch { /* ignore */ }
 
+// Deteksi APK Native (Capacitor / Android WebView) & Standalone Fullscreen untuk proteksi Safe-Area (Poni Kamera Atas & Navigasi HP Bawah)
+try {
+  const w = window as any;
+  const ua = navigator.userAgent || '';
+  const isCapacitorNative = Boolean(
+    w.Capacitor?.isNativePlatform?.() ||
+    w.Capacitor?.getPlatform?.() === 'android' ||
+    w.Capacitor?.getPlatform?.() === 'ios' ||
+    /; wv\)|Capacitor/i.test(ua)
+  );
+  const isStandalone = Boolean(
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    window.matchMedia?.('(display-mode: fullscreen)').matches ||
+    (navigator as any).standalone === true
+  );
+  if (isCapacitorNative || isStandalone) {
+    document.documentElement.classList.add('is-native-apk');
+  }
+} catch { /* ignore */ }
+
 // Global Production & Development Auto-Recovery for Stale Chunk Deployments
 window.addEventListener('vite:preloadError', (event) => {
   console.warn('[Absenta] 🔄 Stale chunk detected after new deployment. Auto-reloading page...', event);

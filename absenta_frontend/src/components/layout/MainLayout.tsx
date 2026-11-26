@@ -166,11 +166,11 @@ function MainLayoutContent() {
             {/* Drawer */}
             <aside
               className={cn(
-                "fixed inset-y-0 left-0 w-[280px] sm:w-[320px] bg-white dark:bg-slate-900 z-[70] lg:hidden shadow-2xl flex flex-col transition-transform duration-300 ease-out",
+                "fixed inset-y-0 left-0 w-[280px] sm:w-[320px] bg-white dark:bg-slate-900 z-[70] lg:hidden shadow-2xl flex flex-col transition-transform duration-300 ease-out pt-[var(--mobile-top-gap,0px)]",
                 isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
               )}
             >
-              <div className="flex-1 overflow-y-auto overscroll-contain pb-24">
+              <div className="flex-1 overflow-y-auto overscroll-contain pb-[calc(6rem+var(--mobile-bottom-gap,16px))]">
                 {isMobileMenuOpen && (
                   <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader /></div>}>
                     <InAppSidebar 
@@ -189,8 +189,14 @@ function MainLayoutContent() {
         {/* Main Content Area - Below Topbar */}
         <div className={cn(
           "flex-1 w-full relative transition-all duration-300",
-          isCbtExamRoom ? "pb-4 lg:pb-8 px-2 sm:px-4" : "pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-12 px-4",
-          isTvMode ? "pt-4" : "pt-2.5 sm:pt-3 lg:pt-[72px]"
+          isCbtExamRoom
+            ? "pb-[calc(1rem+var(--mobile-bottom-gap,16px))] lg:pb-8 px-2 sm:px-4"
+            : "pb-[calc(5.75rem+var(--mobile-bottom-gap,16px))] lg:pb-12 px-4",
+          isTvMode
+            ? "pt-4"
+            : !isDashboardPage && location.pathname !== '/dashboard/overview'
+            ? "pt-[calc(3.5rem+var(--mobile-top-gap,0px))] lg:pt-[72px]"
+            : "pt-[calc(0.625rem+var(--mobile-top-gap,0px))] sm:pt-[calc(0.75rem+var(--mobile-top-gap,0px))] lg:pt-[72px]"
         )}>
           <div className={cn(
             "w-full gap-4 items-start transition-all duration-500",

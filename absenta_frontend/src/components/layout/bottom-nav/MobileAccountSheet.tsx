@@ -142,7 +142,7 @@ export const MobileAccountSheet: React.FC<MobileAccountSheetProps> = ({
               </div>
 
               {/* Sheet Body Content */}
-              <div className="p-4 space-y-4 overflow-y-auto no-scrollbar pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+              <div className="p-4 space-y-4 overflow-y-auto no-scrollbar pb-[calc(1.5rem+var(--mobile-bottom-gap,16px))]">
                 {/* 1. Identity Card */}
                 <div 
                   onClick={() => {

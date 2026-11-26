@@ -435,7 +435,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-auto overflow-visible">
         <nav
           aria-label="Navigasi Bawah Seluler"
-          className="w-full relative flex flex-col justify-start h-[calc(64px+env(safe-area-inset-bottom))] sm:h-[calc(68px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] overflow-visible"
+          className="w-full relative flex flex-col justify-start h-[calc(64px+var(--mobile-bottom-gap,16px))] sm:h-[calc(68px+var(--mobile-bottom-gap,16px))] pb-[var(--mobile-bottom-gap,16px)] overflow-visible"
         >
           {/* Background Shape Lekukan Cekung S-Curve Lebar & Bernapas Menempel Penuh ke Tepi Layar */}
           <BottomNavNotchBackground
