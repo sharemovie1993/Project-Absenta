@@ -443,13 +443,17 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       title: 'Divisi Kesiswaan & Kedisiplinan Siswa',
       category: 'Kesiswaan',
       badge: persentaseSiswa >= 95 ? 'Optimal' : 'Perlu Perhatian',
-      summary: `Presensi siswa berada pada angka ${persentaseSiswa}%. Terdapat ${siswaTerlambat} siswa terlambat gerbang, ${siswaIzinKeluar} izin keluar, dan ${pelanggaranMingguIni} catatan pelanggaran (7 hari terakhir).`,
-      stats: [
-        { label: 'Siswa Hadir', value: siswaHadir },
-        { label: 'Sakit / Izin', value: siswaSakit + siswaIzin },
-        { label: 'Alpa / Tanpa Ket.', value: siswaAlpa },
+      summary: `Presensi siswa hari ini ${persentaseSiswa}% (${siswaTerlambat} terlambat gerbang, ${siswaIzinKeluar} izin keluar). Rentang 7 hari terakhir tercatat ${pelanggaranMingguIni} pelanggaran.`,
+      todayStats: [
+        { label: 'Siswa Hadir Hari Ini', value: siswaHadir },
+        { label: 'Sakit / Izin Hari Ini', value: siswaSakit + siswaIzin },
+        { label: 'Alpa Hari Ini', value: siswaAlpa },
         { label: 'Terlambat Gerbang', value: siswaTerlambat },
+        { label: 'Izin Keluar Piket', value: siswaIzinKeluar },
+      ],
+      rangeStats: [
         { label: 'Pelanggaran (7 Hari)', value: pelanggaranMingguIni },
+        { label: '7 Hari Sebelumnya', value: pelanggaranMingguLalu },
         {
           label: 'Tren Pelanggaran',
           value:
@@ -459,18 +463,20 @@ export class KepsekBriefingCollector implements IBriefingCollector {
               ? `Turun ${Math.abs(pelanggaranDeltaPct)}%`
               : `Naik +${pelanggaranDeltaPct}%`,
         },
+        { label: 'Total Kasus Semester', value: pelanggaranSemesterTotal },
+        { label: 'Kasus Selesai Semester', value: `${pelanggaranSemesterSelesai} (${progresPenangananPelanggaranPct}%)` },
       ],
       progressBars: [
         {
-          label: 'Persentase Kehadiran Siswa di KBM',
+          label: '[Hari Ini] Persentase Kehadiran Siswa di KBM',
           value: persentaseSiswa,
-          detail: `${siswaHadir} / ${totalSiswaAktif} Siswa Hadir`,
+          detail: `${siswaHadir} / ${totalSiswaAktif} Siswa Hadir Hari Ini`,
           color: persentaseSiswa >= 95 ? 'emerald' : persentaseSiswa >= 85 ? 'amber' : 'rose',
         },
         {
-          label: 'Indeks Penurunan Pelanggaran (7 Hari vs Sebelumnya)',
+          label: '[Rentang 7 Hari] Indeks Penurunan Pelanggaran',
           value: pelanggaranDeltaPct === null ? 100 : Math.max(0, Math.min(100, 100 - Math.max(0, pelanggaranDeltaPct))),
-          detail: `${pelanggaranMingguIni} kasus minggu ini vs ${pelanggaranMingguLalu} minggu lalu (Penanganan semester: ${pelanggaranSemesterSelesai}/${pelanggaranSemesterTotal} selesai • ${progresPenangananPelanggaranPct}%)`,
+          detail: `${pelanggaranMingguIni} kasus (7 hari ini) vs ${pelanggaranMingguLalu} (7 hari lalu) • Semester: ${pelanggaranSemesterSelesai}/${pelanggaranSemesterTotal} selesai`,
           color: pelanggaranDeltaPct !== null && pelanggaranDeltaPct <= 0 ? 'emerald' : 'amber',
         },
       ],
@@ -493,25 +499,25 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       title: 'Divisi Kurikulum & Kedisiplinan Guru KBM',
       category: 'Kurikulum',
       badge: `${persentaseGuru}% Guru Hadir`,
-      summary: `Sebanyak ${guruHadir} guru aktif mengajar (${persentaseGuru}%). Total sesi KBM terjadwal ${totalSesiKbm} sesi dengan kepatuhan jurnal ${persentaseJurnal}%.`,
-      stats: [
-        { label: 'Guru Hadir', value: guruHadir },
+      summary: `Hari ini: ${guruHadir} guru aktif mengajar (${persentaseGuru}%), ${totalSesiKbm} sesi KBM terjadwal dengan kepatuhan jurnal ${persentaseJurnal}%.`,
+      todayStats: [
+        { label: 'Guru Hadir Hari Ini', value: guruHadir },
         { label: 'Guru Izin / Sakit', value: guruTidakHadir },
-        { label: 'Total Sesi KBM', value: totalSesiKbm },
+        { label: 'Sesi KBM Hari Ini', value: totalSesiKbm },
         { label: 'KBM Terlaksana', value: sesiKbmTerlaksana },
-        { label: 'Guru Inval / Pengganti', value: guruInvalCount },
+        { label: 'Inval Hari Ini', value: guruInvalCount },
       ],
       progressBars: [
         {
-          label: 'Persentase Kehadiran Guru di KBM',
+          label: '[Hari Ini] Persentase Kehadiran Guru di KBM',
           value: persentaseGuru,
-          detail: `${guruHadir} / ${totalGuru} Guru Hadir`,
+          detail: `${guruHadir} / ${totalGuru} Guru Terjadwal Hadir Hari Ini`,
           color: persentaseGuru >= 95 ? 'emerald' : persentaseGuru >= 85 ? 'amber' : 'rose',
         },
         {
-          label: 'Keterlaksanaan Sesi KBM Terjadwal',
+          label: '[Hari Ini] Keterlaksanaan Sesi KBM Terjadwal',
           value: persentaseKbmTerlaksana,
-          detail: `${sesiKbmTerlaksana} / ${totalSesiKbm} Sesi Terlaksana (Jurnal ${persentaseJurnal}%)`,
+          detail: `${sesiKbmTerlaksana} / ${totalSesiKbm} Sesi Terlaksana Hari Ini (Jurnal ${persentaseJurnal}%)`,
           color: persentaseKbmTerlaksana >= 90 ? 'blue' : 'amber',
         },
       ],
@@ -530,11 +536,15 @@ export class KepsekBriefingCollector implements IBriefingCollector {
         summary: cbtProgress.activeEvent
           ? `Konteks ${cbtProgress.academicContext} — Event Aktif: ${cbtProgress.activeEvent.nama_event}. Bank soal ${cbtProgress.progresPengumpulanPct}% siap (${cbtProgress.bankTerisiSoal}/${cbtProgress.totalBank}). Pelaksanaan: ${cbtProgress.sudahMelaksanakan}/${cbtProgress.totalPeserta} peserta selesai (rata-rata ${cbtProgress.rataRataNilai}), ${cbtProgress.belumMelaksanakan} belum mulai, ${cbtProgress.jumlahKecurangan} indikasi kecurangan, dan ${cbtProgress.jumlahRemedial} peserta remedial.`
           : `Terdapat ${cbtProgress.totalBank} bank soal terdaftar dengan ${cbtProgress.totalSoal} butir soal terkumpul.`,
-        stats: [
-          { label: 'Sudah CBT', value: `${cbtProgress.sudahMelaksanakan} / ${cbtProgress.totalPeserta}` },
-          { label: 'Belum CBT', value: cbtProgress.belumMelaksanakan },
+        todayStats: [
+          { label: 'Sesi Ujian Aktif', value: cbtProgress.jadwalAktif },
+          { label: 'Sedang Mengerjakan', value: cbtProgress.sedangMengerjakan },
+        ],
+        rangeStats: [
+          { label: 'Sudah CBT (Event)', value: `${cbtProgress.sudahMelaksanakan} / ${cbtProgress.totalPeserta}` },
+          { label: 'Belum CBT (Event)', value: cbtProgress.belumMelaksanakan },
           { label: 'Rata-Rata Nilai', value: cbtProgress.rataRataNilai },
-          { label: 'Kecurangan', value: cbtProgress.jumlahKecurangan },
+          { label: 'Kecurangan (Event)', value: cbtProgress.jumlahKecurangan },
           { label: 'Perlu Remedial', value: cbtProgress.jumlahRemedial },
           { label: 'Bank Soal Terisi', value: `${cbtProgress.bankTerisiSoal} / ${cbtProgress.totalBank}` },
         ],
@@ -581,7 +591,7 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       summary: raporReadiness
         ? `Konteks ${raporReadiness.academicContext}: Kesiapan biodata siswa mencapai ${biodataSiapPct}% (${raporReadiness.biodataLengkapCount}/${raporReadiness.totalSiswaAkademik}), keterisian nilai sumatif ${nilaiSumatifPct}% (${raporReadiness.completedTasks}/${raporReadiness.totalTasks} tugas mapel tuntas dari ${raporReadiness.totalGuruMapel} guru).`
         : 'Data kesiapan penilaian & rapor belum tersedia.',
-      stats: raporReadiness
+      rangeStats: raporReadiness
         ? [
             { label: 'Biodata Siswa Siap', value: `${biodataSiapPct}%` },
             { label: 'Nilai Sumatif Terisi', value: `${nilaiSumatifPct}%` },
@@ -619,14 +629,18 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       summary: bpbkProgress
         ? `Konteks ${bpbkProgress.academicContext}: ${bpbkProgress.totalKasus} kasus tercatat (${bpbkProgress.kasusSelesai} selesai, ${bpbkProgress.kasusAktif} aktif), ${bpbkProgress.totalKonseling} sesi konseling (${bpbkProgress.konselingHariIni.length} hari ini), ${bpbkProgress.pemanggilanPending} panggilan ortu pending, dan ${bpbkProgress.homeVisitTotal} home visit.`
         : 'Situasi pembinaan terpantau kondusif, tidak ada laporan insiden darurat atau pembinaan khusus hari ini.',
-      stats: bpbkProgress
+      todayStats: bpbkProgress
         ? [
-            { label: 'Kasus Aktif', value: bpbkProgress.kasusAktif },
-            { label: 'Kasus Selesai', value: bpbkProgress.kasusSelesai },
             { label: 'Konseling Hari Ini', value: bpbkProgress.konselingHariIni.length },
+          ]
+        : undefined,
+      rangeStats: bpbkProgress
+        ? [
+            { label: 'Kasus Aktif (Semester)', value: bpbkProgress.kasusAktif },
+            { label: 'Kasus Selesai (Semester)', value: bpbkProgress.kasusSelesai },
             { label: 'Konseling Berjalan', value: bpbkProgress.konselingProses },
             { label: 'Panggilan Ortu Pending', value: bpbkProgress.pemanggilanPending },
-            { label: 'Home Visit', value: bpbkProgress.homeVisitTotal },
+            { label: 'Home Visit (Semester)', value: bpbkProgress.homeVisitTotal },
           ]
         : undefined,
       progressBars: bpbkProgress
@@ -669,13 +683,16 @@ export class KepsekBriefingCollector implements IBriefingCollector {
         category: 'Ketarunaan',
         badge: `${ketarunaanProgress.modePelatihan} • Nilai ${ketarunaanProgress.progresInputNilaiPct}%`,
         summary: `Konteks ${ketarunaanProgress.academicContext} (${ketarunaanProgress.modePelatihan}): Progres penilaian 4 pilar (Samapta, PBB, Disiplin, Mental) mencapai ${ketarunaanProgress.progresInputNilaiPct}% (${ketarunaanProgress.tarunaDinilai}/${ketarunaanProgress.totalTarunaTarget} taruna, rata-rata ${ketarunaanProgress.rataRataNilaiAkhir}). Tercatat ${ketarunaanProgress.totalSesiSemester} sesi latihan ketarunaan semester ini.`,
-        stats: [
-          { label: 'Taruna Dinilai', value: `${ketarunaanProgress.tarunaDinilai} / ${ketarunaanProgress.totalTarunaTarget}` },
+        todayStats: [
+          { label: 'Sesi Latihan Hari Ini', value: `${ketarunaanProgress.sesiHariIniCount} Sesi` },
+        ],
+        rangeStats: [
+          { label: 'Taruna Dinilai (Semester)', value: `${ketarunaanProgress.tarunaDinilai} / ${ketarunaanProgress.totalTarunaTarget}` },
           { label: 'Rata-Rata Nilai', value: ketarunaanProgress.rataRataNilaiAkhir },
           { label: 'Samapta / PBB', value: `${ketarunaanProgress.rataRataSamapta} / ${ketarunaanProgress.rataRataPbb}` },
           { label: 'Disiplin / Mental', value: `${ketarunaanProgress.rataRataDisiplin} / ${ketarunaanProgress.rataRataMental}` },
           { label: 'Finalisasi Rapor', value: `${ketarunaanProgress.progresFinalisasiPct}%` },
-          { label: 'Sesi Latihan', value: `${ketarunaanProgress.totalSesiSemester} Sesi` },
+          { label: 'Total Sesi Semester', value: `${ketarunaanProgress.totalSesiSemester} Sesi` },
         ],
         progressBars: [
           {
@@ -716,12 +733,14 @@ export class KepsekBriefingCollector implements IBriefingCollector {
         category: 'Hubin & PKL',
         badge: `Nilai PKL ${progresNilaiPklPct}%`,
         summary: `Konteks ${activeTpLabel || 'TP Aktif'}: ${totalPklAll} siswa PKL (${totalSiswaPklAktif} aktif di DUDI, ${siswaPklHadir} lapor hadir hari ini). Progres input nilai PKL ${progresNilaiPklPct}% dan penilaian sidang ${progresSidangPklPct}%.`,
-        stats: [
-          { label: 'Total Siswa PKL', value: totalPklAll || totalSiswaPklAktif },
+        todayStats: [
           { label: 'Lapor Hadir Hari Ini', value: siswaPklHadir },
-          { label: 'Kendala / Tidak Hadir', value: siswaPklKendala },
-          { label: 'Input Nilai PKL', value: `${progresNilaiPklPct}%` },
-          { label: 'Nilai Sidang PKL', value: `${progresSidangPklPct}%` },
+          { label: 'Kendala / Alpa Hari Ini', value: siswaPklKendala },
+        ],
+        rangeStats: [
+          { label: 'Total Siswa PKL (Periode)', value: totalPklAll || totalSiswaPklAktif },
+          { label: 'Input Nilai PKL (Periode)', value: `${progresNilaiPklPct}%` },
+          { label: 'Nilai Sidang PKL (Periode)', value: `${progresSidangPklPct}%` },
         ],
         progressBars: [
           {

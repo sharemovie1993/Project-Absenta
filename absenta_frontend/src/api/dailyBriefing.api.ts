@@ -39,6 +39,8 @@ export interface BriefingSection {
   badge?: string;
   summary: string;
   stats?: Array<{ label: string; value: string | number }>;
+  todayStats?: Array<{ label: string; value: string | number }>;
+  rangeStats?: Array<{ label: string; value: string | number }>;
   progressBars?: BriefingProgressBar[];
   items?: BriefingSectionItem[];
 }
@@ -88,6 +90,8 @@ export interface UniversalBriefingData {
     academicContext: string;
     topTeachers: BriefingLeaderboardPerson[];
     topStudents: BriefingLeaderboardPerson[];
+    rangeTopTeachers?: BriefingLeaderboardPerson[];
+    rangeTopStudents?: BriefingLeaderboardPerson[];
   };
   kbmGallery?: {
     isToday: boolean;

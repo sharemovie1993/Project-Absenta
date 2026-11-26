@@ -679,68 +679,81 @@ export class DashboardAttendanceStatsService {
       ...(activeSem ? { semester_id: activeSem.id } : {}),
     };
 
-    // ── 1. Leaderboard Guru Terbaik (Scoped TP & Semester Aktif) ──────────────
-    const guruGroup = await prisma.absenGuru.groupBy({
-      by: ['guru_id'],
-      where: {
-        tenant_id: tenantId,
-        status: 'HADIR',
-        ...sesiAcademicScope,
-      },
-      _sum: { poin_kehadiran: true },
-      _count: { id: true },
-      orderBy: [{ _sum: { poin_kehadiran: 'desc' } }, { _count: { id: 'desc' } }],
-      take: limit,
-    });
+    const todayDateScope: any =
+      options?.startUTC && options?.endUTC
+        ? { gte: options.startUTC, lte: options.endUTC }
+        : undefined;
 
-    const guruIds = guruGroup.map((g) => g.guru_id);
-    const guruList =
-      guruIds.length > 0
-        ? await prisma.guru.findMany({
-            where: { id: { in: guruIds } },
-            select: { id: true, nama_guru: true, nip: true, foto: true },
-          })
-        : [];
+    // Helper: Build Teacher Leaderboard for a given AbsenGuru where filter
+    const buildTeacherLeaderboard = async (whereClause: any, isDaily: boolean) => {
+      const group = await prisma.absenGuru.groupBy({
+        by: ['guru_id'],
+        where: whereClause,
+        _sum: { poin_kehadiran: true },
+        _count: { id: true },
+        _min: { waktu_tap: true },
+        orderBy: [
+          { _sum: { poin_kehadiran: 'desc' } },
+          { _count: { id: 'desc' } },
+          { _min: { waktu_tap: 'asc' } },
+        ],
+        take: limit,
+      });
 
-    const topTeachers = guruGroup.map((g, idx) => {
-      const info = guruList.find((item) => item.id === g.guru_id);
-      const poin = g._sum.poin_kehadiran || 0;
-      const sesi = g._count.id || 0;
-      return {
-        rank: idx + 1,
-        name: info?.nama_guru || 'Guru',
-        subtitle: info?.nip ? `NIP. ${info.nip}` : 'Tenaga Pendidik',
-        badge: `${poin} Poin • ${sesi} Sesi KBM`,
-        photoUrl: info?.foto || null,
-      };
-    });
+      const ids = group.map((g) => g.guru_id);
+      const list =
+        ids.length > 0
+          ? await prisma.guru.findMany({
+              where: { id: { in: ids } },
+              select: { id: true, nama_guru: true, nip: true, foto: true },
+            })
+          : [];
 
-    // ── 2. Leaderboard Siswa Terbaik (Scoped TP & Semester Aktif) ─────────────
-    const siswaHadirGroup = await prisma.absenSiswa.groupBy({
-      by: ['siswa_id'],
-      where: {
-        tenant_id: tenantId,
-        status: 'HADIR',
-        ...(activeTp ? { SesiAbsensi: sesiAcademicScope } : {}),
-      },
-      _count: { id: true },
-      orderBy: { _count: { id: 'desc' } },
-      take: 25,
-    });
+      return group.map((g, idx) => {
+        const info = list.find((item) => item.id === g.guru_id);
+        const poin = g._sum.poin_kehadiran || 0;
+        const sesi = g._count.id || 0;
+        const tapTime =
+          isDaily && g._min?.waktu_tap
+            ? ` • Tap ${new Date(g._min.waktu_tap).toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: tz,
+              })}`
+            : '';
+        return {
+          rank: idx + 1,
+          name: info?.nama_guru || 'Guru',
+          subtitle: info?.nip ? `NIP. ${info.nip}` : 'Tenaga Pendidik',
+          badge: `${poin} Poin • ${sesi} Sesi${tapTime}`,
+          photoUrl: info?.foto || null,
+        };
+      });
+    };
 
-    const candidateSiswaIds = siswaHadirGroup.map((s) => s.siswa_id).filter(Boolean);
-    let topStudents: Array<{
-      rank: number;
-      name: string;
-      subtitle: string;
-      badge: string;
-      photoUrl?: string | null;
-    }> = [];
+    // Helper: Build Student Leaderboard for daily (1 hari ini) or semester range
+    const buildStudentLeaderboard = async (isDaily: boolean) => {
+      const dateFilter = isDaily && todayDateScope ? { created_at: todayDateScope } : {};
+      const hadirGroup = await prisma.absenSiswa.groupBy({
+        by: ['siswa_id'],
+        where: {
+          tenant_id: tenantId,
+          status: 'HADIR',
+          ...dateFilter,
+          ...(activeTp ? { SesiAbsensi: sesiAcademicScope } : {}),
+        },
+        _count: { id: true },
+        _min: { created_at: true },
+        orderBy: [{ _count: { id: 'desc' } }, { _min: { created_at: 'asc' } }],
+        take: 25,
+      });
 
-    if (candidateSiswaIds.length > 0) {
-      const [candidateDetails, alpaGroup, pelanggaranGroup, prestasiGroup] = await Promise.all([
+      const candIds = hadirGroup.map((s) => s.siswa_id).filter(Boolean);
+      if (candIds.length === 0) return [];
+
+      const [details, alpaGroup, pelGroup, presGroup] = await Promise.all([
         prisma.siswa.findMany({
-          where: { id: { in: candidateSiswaIds }, status: 'AKTIF' },
+          where: { id: { in: candIds }, status: 'AKTIF' },
           select: {
             id: true,
             nama_siswa: true,
@@ -760,8 +773,9 @@ export class DashboardAttendanceStatsService {
           by: ['siswa_id'],
           where: {
             tenant_id: tenantId,
-            siswa_id: { in: candidateSiswaIds },
+            siswa_id: { in: candIds },
             status: 'ALPA',
+            ...dateFilter,
             ...(activeTp ? { SesiAbsensi: sesiAcademicScope } : {}),
           },
           _count: { id: true },
@@ -770,7 +784,8 @@ export class DashboardAttendanceStatsService {
           by: ['siswa_id'],
           where: {
             tenant_id: tenantId,
-            siswa_id: { in: candidateSiswaIds },
+            siswa_id: { in: candIds },
+            ...(isDaily && todayDateScope ? { tanggal: todayDateScope } : {}),
             ...(activeTp ? { tahun_pelajaran_id: activeTp.id } : {}),
           },
           _sum: { poin: true },
@@ -779,7 +794,8 @@ export class DashboardAttendanceStatsService {
           by: ['siswa_id'],
           where: {
             tenant_id: tenantId,
-            siswa_id: { in: candidateSiswaIds },
+            siswa_id: { in: candIds },
+            ...(isDaily && todayDateScope ? { tanggal: todayDateScope } : {}),
           },
           _count: { id: true },
         }),
@@ -787,22 +803,20 @@ export class DashboardAttendanceStatsService {
 
       const alpaMap = new Map<string, number>();
       alpaGroup.forEach((a) => alpaMap.set(a.siswa_id, a._count.id));
+      const pelMap = new Map<string, number>();
+      pelGroup.forEach((p) => pelMap.set(p.siswa_id, p._sum.poin || 0));
+      const presMap = new Map<string, number>();
+      presGroup.forEach((pr) => presMap.set(pr.siswa_id, pr._count.id));
 
-      const pelanggaranMap = new Map<string, number>();
-      pelanggaranGroup.forEach((p) => pelanggaranMap.set(p.siswa_id, p._sum.poin || 0));
-
-      const prestasiMap = new Map<string, number>();
-      prestasiGroup.forEach((pr) => prestasiMap.set(pr.siswa_id, pr._count.id));
-
-      const scoredStudents = siswaHadirGroup
+      const scored = hadirGroup
         .map((sh) => {
-          const detail = candidateDetails.find((d) => d.id === sh.siswa_id);
+          const detail = details.find((d) => d.id === sh.siswa_id);
           if (!detail) return null;
           const hadirCount = sh._count.id || 0;
           const alpaCount = alpaMap.get(sh.siswa_id) || 0;
-          const pelPoin = pelanggaranMap.get(sh.siswa_id) || 0;
-          const prestasiCount = prestasiMap.get(sh.siswa_id) || 0;
-          const score = hadirCount * 10 + prestasiCount * 50 - alpaCount * 30 - pelPoin * 2;
+          const pelPoin = pelMap.get(sh.siswa_id) || 0;
+          const presCount = presMap.get(sh.siswa_id) || 0;
+          const score = hadirCount * 10 + presCount * 50 - alpaCount * 30 - pelPoin * 2;
           const kelasNama =
             (Array.isArray(detail.SiswaAkademik) && detail.SiswaAkademik[0]?.kelas?.nama_kelas) ||
             detail.Kelas?.nama_kelas ||
@@ -811,13 +825,12 @@ export class DashboardAttendanceStatsService {
             name: detail.nama_siswa,
             subtitle: `${kelasNama} • NIS. ${detail.nis}`,
             badge:
-              prestasiCount > 0
-                ? `${hadirCount} Sesi Hadir • ${prestasiCount} Prestasi`
-                : `${hadirCount} Sesi Hadir • 0 Pelanggaran`,
+              presCount > 0
+                ? `${hadirCount} Sesi Hadir • ${presCount} Prestasi`
+                : `${hadirCount} Sesi Hadir${isDaily ? ' Hari Ini' : ''} • 0 Pelanggaran`,
             photoUrl: detail.foto || null,
             score,
             alpaCount,
-            pelPoin,
           };
         })
         .filter((x): x is NonNullable<typeof x> => x !== null)
@@ -828,58 +841,60 @@ export class DashboardAttendanceStatsService {
         })
         .slice(0, limit);
 
-      topStudents = scoredStudents.map((s, idx) => ({
+      return scored.map((s, idx) => ({
         rank: idx + 1,
         name: s.name,
         subtitle: s.subtitle,
         badge: s.badge,
         photoUrl: s.photoUrl,
       }));
-    }
-
-    // ── 3. Galeri Bukti KBM Hari Ini (foto_kegiatan dari SesiAbsensi) ─────────
-    const basePhotoWhere: any = {
-      tenant_id: tenantId,
-      foto_kegiatan: { not: null },
-      NOT: { foto_kegiatan: '' },
-      ...sesiAcademicScope,
     };
 
-    const todayPhotoSessions =
-      options?.startUTC && options?.endUTC
-        ? await prisma.sesiAbsensi.findMany({
-            where: {
-              ...basePhotoWhere,
-              tanggal: { gte: options.startUTC, lte: options.endUTC },
-            },
-            include: {
-              Guru: { select: { nama_guru: true } },
-              GuruPelaksana: { select: { nama_guru: true } },
-              Kelas: { select: { nama_kelas: true } },
-              Mapel: { select: { nama_mapel: true } },
-            },
-            orderBy: { waktu_mulai: 'desc' },
-            take: 12,
-          })
-        : [];
+    const [topTeachersToday, topStudentsToday, rangeTopTeachers, rangeTopStudents] =
+      await Promise.all([
+        buildTeacherLeaderboard(
+          {
+            tenant_id: tenantId,
+            status: 'HADIR',
+            ...(todayDateScope ? { created_at: todayDateScope } : {}),
+            ...sesiAcademicScope,
+          },
+          true
+        ),
+        buildStudentLeaderboard(true),
+        buildTeacherLeaderboard(
+          {
+            tenant_id: tenantId,
+            status: 'HADIR',
+            ...sesiAcademicScope,
+          },
+          false
+        ),
+        buildStudentLeaderboard(false),
+      ]);
 
-    let isToday = todayPhotoSessions.length > 0;
-    const rawGallerySessions =
-      todayPhotoSessions.length > 0
-        ? todayPhotoSessions
-        : await prisma.sesiAbsensi.findMany({
-            where: basePhotoWhere,
-            include: {
-              Guru: { select: { nama_guru: true } },
-              GuruPelaksana: { select: { nama_guru: true } },
-              Kelas: { select: { nama_kelas: true } },
-              Mapel: { select: { nama_mapel: true } },
-            },
-            orderBy: { waktu_mulai: 'desc' },
-            take: 8,
-          });
+    // ── 3. Galeri Bukti KBM KHUSUS 1 HARI INI (Strict 1-Day Scope, tanpa fallback hari lalu) ──
+    const todayPhotoSessions = todayDateScope
+      ? await prisma.sesiAbsensi.findMany({
+          where: {
+            tenant_id: tenantId,
+            foto_kegiatan: { not: null },
+            NOT: { foto_kegiatan: '' },
+            ...sesiAcademicScope,
+            OR: [{ tanggal: todayDateScope }, { waktu_mulai: todayDateScope }],
+          },
+          include: {
+            Guru: { select: { nama_guru: true } },
+            GuruPelaksana: { select: { nama_guru: true } },
+            Kelas: { select: { nama_kelas: true } },
+            Mapel: { select: { nama_mapel: true } },
+          },
+          orderBy: { waktu_mulai: 'desc' },
+          take: 16,
+        })
+      : [];
 
-    const galleryItems = rawGallerySessions
+    const galleryItems = todayPhotoSessions
       .filter((s) => Boolean(s.foto_kegiatan && s.foto_kegiatan.trim()))
       .map((s) => ({
         id: s.id,
@@ -900,12 +915,14 @@ export class DashboardAttendanceStatsService {
     return {
       leaderboard: {
         academicContext,
-        topTeachers,
-        topStudents,
+        topTeachers: topTeachersToday,
+        topStudents: topStudentsToday,
+        rangeTopTeachers,
+        rangeTopStudents,
       },
       kbmGallery: {
-        isToday,
-        totalPhotosToday: todayPhotoSessions.length,
+        isToday: true,
+        totalPhotosToday: galleryItems.length,
         items: galleryItems,
       },
     };

@@ -95,6 +95,7 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
 
   const [copied, setCopied] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<BriefingKbmGalleryItem | null>(null);
+  const [leaderboardScope, setLeaderboardScope] = useState<'today' | 'range'>('today');
 
   const toggleSection = (id: string) => {
     setOpenSections((prev) => ({
@@ -450,8 +451,56 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
               {/* Section Content */}
               {isOpen && (
                 <div className="p-4 sm:p-5 pt-0 space-y-4 border-t border-slate-100 dark:border-slate-800/60">
-                  {/* Stats Grid Chips */}
-                  {sec.stats && sec.stats.length > 0 && (
+                  {/* 1. Data Operasional Hari Ini (Scope: 1 Hari) */}
+                  {sec.todayStats && sec.todayStats.length > 0 && (
+                    <div className="pt-3 space-y-1.5">
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-0.5 rounded-full border border-emerald-200/60 dark:border-emerald-800/60">
+                        📅 Data Operasional Hari Ini (Scope: 1 Hari)
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                        {sec.todayStats.map((st, sIdx) => (
+                          <div
+                            key={sIdx}
+                            className="p-2.5 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 text-center"
+                          >
+                            <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold block truncate">
+                              {st.label}
+                            </span>
+                            <span className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 mt-0.5 block">
+                              {st.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Data Rentang & Progres Kumulatif Semester Aktif */}
+                  {sec.rangeStats && sec.rangeStats.length > 0 && (
+                    <div className="pt-2 space-y-1.5">
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-0.5 rounded-full border border-indigo-200/60 dark:border-indigo-800/60">
+                        📊 Data Rentang &amp; Akumulasi Periode Aktif
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                        {sec.rangeStats.map((st, sIdx) => (
+                          <div
+                            key={sIdx}
+                            className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-center"
+                          >
+                            <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-bold block truncate">
+                              {st.label}
+                            </span>
+                            <span className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 mt-0.5 block">
+                              {st.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Legacy Stats Grid Chips (fallback) */}
+                  {!sec.todayStats && !sec.rangeStats && sec.stats && sec.stats.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 pt-3">
                       {sec.stats.map((st, sIdx) => (
                         <div
@@ -558,11 +607,14 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
                   )}
 
                   {/* Empty state bila tidak ada rincian kendala */}
-                  {(!sec.stats || sec.stats.length === 0) && (!sec.items || sec.items.length === 0) && (
-                    <div className="py-4 text-center rounded-xl bg-slate-50/60 dark:bg-slate-800/20 border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
-                      ✨ Situasi operasional divisi terpantau kondusif. Tidak ada catatan kasus darurat hari ini.
-                    </div>
-                  )}
+                  {(!sec.stats || sec.stats.length === 0) &&
+                    (!sec.todayStats || sec.todayStats.length === 0) &&
+                    (!sec.rangeStats || sec.rangeStats.length === 0) &&
+                    (!sec.items || sec.items.length === 0) && (
+                      <div className="py-4 text-center rounded-xl bg-slate-50/60 dark:bg-slate-800/20 border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+                        ✨ Situasi operasional divisi terpantau kondusif. Tidak ada catatan kasus darurat hari ini.
+                      </div>
+                    )}
                 </div>
               )}
             </div>
@@ -570,166 +622,230 @@ export const DailyBriefingView: React.FC<UniversalDailyBriefingViewProps> = Reac
         })}
       </div>
 
-      {/* ── 4b. LEADERBOARD GURU TERBAIK & SISWA TERBAIK ── */}
-      {briefing.leaderboard &&
-        (briefing.leaderboard.topTeachers.length > 0 || briefing.leaderboard.topStudents.length > 0) && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-                <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                Leaderboard Apresiasi Kedisiplinan ({briefing.leaderboard.academicContext})
-              </h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Top Guru */}
-              <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
-                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-                  <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
-                    <Trophy className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Guru Terbaik (Kedisiplinan KBM)</h4>
-                    <p className="text-[11px] text-slate-500">Berdasarkan poin kehadiran &amp; ketepatan sesi mengajar</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {briefing.leaderboard.topTeachers.length === 0 ? (
-                    <p className="text-xs text-slate-400 py-4 text-center">Belum ada data peringkat guru.</p>
-                  ) : (
-                    briefing.leaderboard.topTeachers.map((t) => (
-                      <div
-                        key={t.rank}
-                        className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span
-                            className={cn(
-                              'w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0',
-                              t.rank === 1
-                                ? 'bg-amber-400 text-amber-950'
-                                : t.rank === 2
-                                ? 'bg-slate-300 text-slate-800'
-                                : t.rank === 3
-                                ? 'bg-amber-700/80 text-white'
-                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                            )}
-                          >
-                            {t.rank}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{t.name}</p>
-                            <p className="text-[10px] text-slate-500 truncate">{t.subtitle}</p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 shrink-0">
-                          {t.badge}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Top Siswa */}
-              <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
-                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-                  <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
-                    <GraduationCap className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Siswa Terbaik (Kehadiran &amp; Prestasi)</h4>
-                    <p className="text-[11px] text-slate-500">Kehadiran sesi KBM tertinggi tanpa catatan alpa/pelanggaran</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {briefing.leaderboard.topStudents.length === 0 ? (
-                    <p className="text-xs text-slate-400 py-4 text-center">Belum ada data peringkat siswa.</p>
-                  ) : (
-                    briefing.leaderboard.topStudents.map((s) => (
-                      <div
-                        key={s.rank}
-                        className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span
-                            className={cn(
-                              'w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0',
-                              s.rank === 1
-                                ? 'bg-amber-400 text-amber-950'
-                                : s.rank === 2
-                                ? 'bg-slate-300 text-slate-800'
-                                : s.rank === 3
-                                ? 'bg-amber-700/80 text-white'
-                                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                            )}
-                          >
-                            {s.rank}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{s.name}</p>
-                            <p className="text-[10px] text-slate-500 truncate">{s.subtitle}</p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 shrink-0">
-                          {s.badge}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+      {/* ── 4b. LEADERBOARD GURU TERBAIK & SISWA TERBAIK (TERPISAH: 1 HARI INI vs RENTANG SEMESTER) ── */}
+      {briefing.leaderboard && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <Trophy className="w-3.5 h-3.5 text-amber-500" />
+              Leaderboard Apresiasi Kedisiplinan ({leaderboardScope === 'today' ? 'Scope: 1 Hari Ini' : `Rentang: ${briefing.leaderboard.academicContext}`})
+            </h3>
+            <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-200/70 dark:bg-slate-800 border border-slate-300/50 dark:border-slate-700 text-[11px] font-bold print:hidden">
+              <button
+                type="button"
+                onClick={() => setLeaderboardScope('today')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg transition-all cursor-pointer',
+                  leaderboardScope === 'today'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                )}
+              >
+                📅 Hari Ini (1 Hari)
+              </button>
+              <button
+                type="button"
+                onClick={() => setLeaderboardScope('range')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg transition-all cursor-pointer',
+                  leaderboardScope === 'range'
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                )}
+              >
+                📊 Rentang Semester
+              </button>
             </div>
           </div>
-        )}
 
-      {/* ── 4c. GALERI BUKTI KBM HARI INI (FOTO KEGIATAN SESI KBM) ── */}
-      {briefing.kbmGallery && briefing.kbmGallery.items.length > 0 && (
+          {(() => {
+            const activeTeachers =
+              leaderboardScope === 'today'
+                ? briefing.leaderboard!.topTeachers
+                : briefing.leaderboard!.rangeTopTeachers || [];
+            const activeStudents =
+              leaderboardScope === 'today'
+                ? briefing.leaderboard!.topStudents
+                : briefing.leaderboard!.rangeTopStudents || [];
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Top Guru */}
+                <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+                    <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+                      <Trophy className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                        Guru Terbaik ({leaderboardScope === 'today' ? 'Hari Ini' : 'Akumulasi Semester'})
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        {leaderboardScope === 'today'
+                          ? 'Berdasarkan poin kehadiran, jumlah sesi & ketepatan waktu tap hari ini'
+                          : 'Berdasarkan akumulasi poin kehadiran & sesi mengajar semester aktif'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {activeTeachers.length === 0 ? (
+                      <p className="text-xs text-slate-400 py-4 text-center">
+                        {leaderboardScope === 'today'
+                          ? 'Belum ada data kehadiran guru KBM pada hari ini.'
+                          : 'Belum ada data peringkat guru semester ini.'}
+                      </p>
+                    ) : (
+                      activeTeachers.map((t) => (
+                        <div
+                          key={t.rank}
+                          className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span
+                              className={cn(
+                                'w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0',
+                                t.rank === 1
+                                  ? 'bg-amber-400 text-amber-950'
+                                  : t.rank === 2
+                                  ? 'bg-slate-300 text-slate-800'
+                                  : t.rank === 3
+                                  ? 'bg-amber-700/80 text-white'
+                                  : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                              )}
+                            >
+                              {t.rank}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{t.name}</p>
+                              <p className="text-[10px] text-slate-500 truncate">{t.subtitle}</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 shrink-0">
+                            {t.badge}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Top Siswa */}
+                <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+                    <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+                      <GraduationCap className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                        Siswa Terbaik ({leaderboardScope === 'today' ? 'Hari Ini' : 'Akumulasi Semester'})
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        {leaderboardScope === 'today'
+                          ? 'Kehadiran penuh sesi KBM hari ini tanpa catatan alpa/pelanggaran'
+                          : 'Akumulasi kehadiran sesi KBM & prestasi tertinggi semester aktif'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {activeStudents.length === 0 ? (
+                      <p className="text-xs text-slate-400 py-4 text-center">
+                        {leaderboardScope === 'today'
+                          ? 'Belum ada data kehadiran siswa KBM pada hari ini.'
+                          : 'Belum ada data peringkat siswa semester ini.'}
+                      </p>
+                    ) : (
+                      activeStudents.map((s) => (
+                        <div
+                          key={s.rank}
+                          className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span
+                              className={cn(
+                                'w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0',
+                                s.rank === 1
+                                  ? 'bg-amber-400 text-amber-950'
+                                  : s.rank === 2
+                                  ? 'bg-slate-300 text-slate-800'
+                                  : s.rank === 3
+                                  ? 'bg-amber-700/80 text-white'
+                                  : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                              )}
+                            >
+                              {s.rank}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{s.name}</p>
+                              <p className="text-[10px] text-slate-500 truncate">{s.subtitle}</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 shrink-0">
+                            {s.badge}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* ── 4c. GALERI BUKTI KBM HARI INI (STRICT SCOPE: 1 HARI INI) ── */}
+      {briefing.kbmGallery && (
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
               <Camera className="w-3.5 h-3.5 text-indigo-500" />
-              Galeri Dokumentasi &amp; Bukti KBM ({briefing.kbmGallery.isToday ? 'Hari Ini' : 'Terbaru Semester Ini'})
+              Galeri Dokumentasi &amp; Bukti KBM Hari Ini (Scope: 1 Hari Ini)
             </h3>
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
-              {briefing.kbmGallery.items.length} Foto Sesi KBM
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60">
+              {briefing.kbmGallery.items.length} Foto Hari Ini
             </span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {briefing.kbmGallery.items.map((photo) => (
-              <button
-                key={photo.id}
-                type="button"
-                onClick={() => setSelectedPhoto(photo)}
-                className="group text-left rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col"
-              >
-                <div className="relative aspect-video w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                  <img
-                    src={resolveProfilePhotoUrl(photo.photoUrl)}
-                    alt={`${photo.mapel} - ${photo.kelas}`}
-                    loading="lazy"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-slate-900/75 text-white text-[10px] font-bold backdrop-blur-xs">
-                    {photo.kelas}
-                  </span>
-                  <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-mono">
-                    {photo.waktu}
-                  </span>
-                </div>
-                <div className="p-2.5 flex-1 flex flex-col justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{photo.mapel}</p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{photo.guru}</p>
+          {briefing.kbmGallery.items.length === 0 ? (
+            <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400">
+              Belum ada foto dokumentasi bukti KBM yang diunggah pada sesi KBM hari ini ({briefing.tanggalStr}).
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {briefing.kbmGallery.items.map((photo) => (
+                <button
+                  key={photo.id}
+                  type="button"
+                  onClick={() => setSelectedPhoto(photo)}
+                  className="group text-left rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col"
+                >
+                  <div className="relative aspect-video w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <img
+                      src={resolveProfilePhotoUrl(photo.photoUrl)}
+                      alt={`${photo.mapel} - ${photo.kelas}`}
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-slate-900/75 text-white text-[10px] font-bold backdrop-blur-xs">
+                      {photo.kelas}
+                    </span>
+                    <span className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-mono">
+                      {photo.waktu}
+                    </span>
                   </div>
-                  {photo.jurnal && (
-                    <p className="text-[10px] text-slate-400 italic truncate mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800">
-                      &ldquo;{photo.jurnal}&rdquo;
-                    </p>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
+                  <div className="p-2.5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{photo.mapel}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{photo.guru}</p>
+                    </div>
+                    {photo.jurnal && (
+                      <p className="text-[10px] text-slate-400 italic truncate mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800">
+                        &ldquo;{photo.jurnal}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
