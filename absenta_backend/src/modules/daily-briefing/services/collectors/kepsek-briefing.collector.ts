@@ -30,6 +30,7 @@ import { programKetarunaanService } from '@/modules/kesiswaan/program-ketarunaan
 import { DashboardAttendanceStatsService } from '@/modules/dashboard/services/sub/dashboard-attendance-stats.service';
 import { PerangkatAjarService } from '@/modules/kurikulum/services/perangkat-ajar.service';
 import { activityLogService } from '@/modules/activity/services/activity-log.service';
+import { HubinService } from '@/modules/hubin/services/hubin.service';
 
 export class KepsekBriefingCollector implements IBriefingCollector {
   async collect(
@@ -241,62 +242,33 @@ export class KepsekBriefingCollector implements IBriefingCollector {
       }
     } catch {}
 
-    // ── 7b. Hubin & PKL: Progres Input Nilai PKL & Sidang (Scoped TP Aktif) ──
+    // ── 7b. Hubin & PKL: Progres Input Nilai PKL, Sidang & Mitra DUDI (SSOT via HubinService) ──
     let totalPklAll = 0;
     let pklNilaiTerisi = 0;
     let pklSidangTerisi = 0;
     let pklSidangScheduled = 0;
     let pklAssessmentMode = 'DUDI_ONLY';
+    let totalMitraDudi = 0;
+    let filledMitraTp = 0;
     try {
-      if (activeTp) {
-        const hubinSetting = await prisma.hubinSetting.findUnique({
-          where: {
-            tenant_id_tahun_pelajaran_id: {
-              tenant_id: tenantId,
-              tahun_pelajaran_id: activeTp.id,
-            },
-          },
-          select: { assessment_mode: true },
-        });
-        if (hubinSetting?.assessment_mode) {
-          pklAssessmentMode = hubinSetting.assessment_mode;
-        }
+      const hubinService = new HubinService();
+      const [hubinSettings, hubinSummary] = await Promise.all([
+        hubinService.getSettings(tenantId, activeTp?.id),
+        hubinService.getKaprogPklSummary(tenantId, undefined, { tahunPelajaranId: activeTp?.id }),
+      ]);
+      if (hubinSettings?.assessmentMode) {
+        pklAssessmentMode = hubinSettings.assessmentMode;
       }
-
-      const pklRows = await prisma.siswaPkl.findMany({
-        where: {
-          tenant_id: tenantId,
-          status: { in: ['AKTIF', 'SELESAI'] },
-          ...pklAcademicScope,
-        },
-        select: {
-          nilai_akhir_pkl: true,
-          hard_kompetensi_teknis: true,
-          soft_kedisiplinan: true,
-          nomor_sertifikat: true,
-          nilai_json: true,
-        },
-      });
-      totalPklAll = pklRows.length;
-      for (const row of pklRows) {
-        const nj = (row.nilai_json && typeof row.nilai_json === 'object' ? row.nilai_json : {}) as Record<string, any>;
-        const hasNilaiPkl =
-          row.nilai_akhir_pkl !== null ||
-          row.hard_kompetensi_teknis !== null ||
-          row.soft_kedisiplinan !== null ||
-          (nj.dudi_avg !== undefined && nj.dudi_avg !== null) ||
-          (nj.nilai_akhir !== undefined && nj.nilai_akhir !== null);
-        if (hasNilaiPkl) pklNilaiTerisi++;
-
-        if (nj.penguji_id) pklSidangScheduled++;
-        const hasSidang =
-          (nj.nilai_sidang !== undefined && nj.nilai_sidang !== null) ||
-          (nj.sidang_avg !== undefined && nj.sidang_avg !== null) ||
-          Boolean(nj.sidang_completed_at);
-        if (hasSidang) pklSidangTerisi++;
+      if (hubinSummary) {
+        totalPklAll = hubinSummary.penilaianStatus?.totalSiswaPkl ?? 0;
+        pklNilaiTerisi = hubinSummary.penilaianStatus?.sudahDinilaiDudi ?? 0;
+        pklSidangTerisi = hubinSummary.penilaianStatus?.sudahSidang ?? 0;
+        pklSidangScheduled = hubinSummary.plotingPengujiStatus?.sudahDiplot ?? 0;
+        totalMitraDudi = hubinSummary.tpStatus?.totalMitra ?? 0;
+        filledMitraTp = hubinSummary.tpStatus?.filledMitra ?? 0;
       }
     } catch (err) {
-      console.warn('[Briefing:PKL] Error querying PKL grading:', err);
+      console.warn('[Briefing:PKL] Error querying SSOT HubinService summary:', err);
     }
     const progresNilaiPklPct = totalPklAll > 0 ? Math.round((pklNilaiTerisi / totalPklAll) * 100) : 0;
     const sidangDenominator = pklSidangScheduled > 0 ? pklSidangScheduled : totalPklAll;
@@ -1140,6 +1112,8 @@ export class KepsekBriefingCollector implements IBriefingCollector {
         ],
         rangeStats: [
           { label: 'Total Siswa PKL (Periode)', value: totalPklAll || totalSiswaPklAktif },
+          { label: 'Mitra DUDI Aktif', value: `${totalMitraDudi} Mitra (${filledMitraTp} TP Siap)` },
+          { label: 'Ploting Penguji Sidang', value: `${pklSidangScheduled} / ${totalPklAll || totalSiswaPklAktif}` },
           { label: 'Input Nilai PKL (Periode)', value: `${progresNilaiPklPct}%` },
           { label: 'Nilai Sidang PKL (Periode)', value: `${progresSidangPklPct}%` },
         ],
