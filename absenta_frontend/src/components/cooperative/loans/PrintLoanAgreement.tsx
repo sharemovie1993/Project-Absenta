@@ -5,6 +5,7 @@ import {
   UniversalDocumentSignatures,
 } from '@/components/ui';
 import { CoopDocumentKop } from '../shared/CoopDocumentKop';
+import { CoopSignatureToggleBar, useCoopSignatureToggles, type CoopSignatureToggleItem } from '../shared/CoopSignatureToggleBar';
 import { useDocumentSigners } from '@/hooks/useDocumentSigners';
 import toast from 'react-hot-toast';
 import { exportPrintSheetsToPdf } from '../../../utils/print/exportPrintSheetsToPdf';
@@ -27,6 +28,12 @@ export const PrintLoanAgreement: React.FC<PrintLoanAgreementProps> = ({
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const signers = useDocumentSigners();
+  const signerToggles: CoopSignatureToggleItem[] = [
+    { slot: 'left', label: 'Ketua Koperasi' },
+    { slot: 'center', label: 'Peminjam (Anggota)' },
+    { slot: 'right', label: 'Kepala Sekolah', isKepsek: true },
+  ];
+  const { visibility: sigVis, toggle: toggleSig } = useCoopSignatureToggles(signerToggles);
 
   const coopName = coopSettings?.cooperative_name || 'KOPERASI SEKOLAH';
   const amountNumber = parseFloat(loan.amount) || 0;
@@ -76,6 +83,7 @@ export const PrintLoanAgreement: React.FC<PrintLoanAgreementProps> = ({
       onDownloadPdf={handleDownloadPdf}
       downloadPdfText={isExportingPdf ? 'Memproses PDF...' : 'Unduh PDF (A4)'}
       printButtonText="Cetak Dokumen"
+      subHeader={<CoopSignatureToggleBar items={signerToggles} visibility={sigVis} onToggle={toggleSig} />}
     >
       <div ref={sheetContainerRef} className="w-full flex flex-col items-center">
         <PrintDocumentSheet
@@ -221,6 +229,9 @@ export const PrintLoanAgreement: React.FC<PrintLoanAgreementProps> = ({
                 roleTitle: 'Kepala Sekolah / Pembina',
                 topDate: signers.titimangsa,
               }}
+              showSignerLeft={sigVis.left}
+              showSignerCenter={sigVis.center}
+              showSignerRight={sigVis.right}
             />
           </div>
         </PrintDocumentSheet>

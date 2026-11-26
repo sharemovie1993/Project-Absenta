@@ -5,6 +5,7 @@ import {
   UniversalDocumentSignatures,
 } from '@/components/ui';
 import { CoopDocumentKop } from '../shared/CoopDocumentKop';
+import { CoopSignatureToggleBar, useCoopSignatureToggles, type CoopSignatureToggleItem } from '../shared/CoopSignatureToggleBar';
 import { useDocumentSigners } from '@/hooks/useDocumentSigners';
 import toast from 'react-hot-toast';
 import { exportPrintSheetsToPdf } from '../../../utils/print/exportPrintSheetsToPdf';
@@ -30,6 +31,11 @@ export const PrintLoanRepayment: React.FC<PrintLoanRepaymentProps> = ({
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const signers = useDocumentSigners();
+  const signerToggles: CoopSignatureToggleItem[] = [
+    { slot: 'left', label: 'Bendahara Penerima' },
+    { slot: 'right', label: 'Penyetor (Anggota)' },
+  ];
+  const { visibility: sigVis, toggle: toggleSig } = useCoopSignatureToggles(signerToggles);
 
   const amountNumber = parseFloat(installment.amount) || 0;
   const paidYear = installment.paidDate
@@ -74,6 +80,7 @@ export const PrintLoanRepayment: React.FC<PrintLoanRepaymentProps> = ({
       onDownloadPdf={handleDownloadPdf}
       downloadPdfText={isExportingPdf ? 'Memproses PDF...' : 'Unduh PDF (A4)'}
       printButtonText="Cetak Dokumen"
+      subHeader={<CoopSignatureToggleBar items={signerToggles} visibility={sigVis} onToggle={toggleSig} />}
     >
       <div ref={sheetContainerRef} className="w-full flex flex-col items-center">
         <PrintDocumentSheet
@@ -187,6 +194,8 @@ export const PrintLoanRepayment: React.FC<PrintLoanRepaymentProps> = ({
                 headerPrefix: 'Disetorkan oleh,',
                 topDate: signers.titimangsa,
               }}
+              showSignerLeft={sigVis.left}
+              showSignerRight={sigVis.right}
             />
           </div>
         </PrintDocumentSheet>

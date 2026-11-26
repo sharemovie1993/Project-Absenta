@@ -5,6 +5,7 @@ import {
   UniversalDocumentSignatures,
 } from '@/components/ui';
 import { CoopDocumentKop } from '../shared/CoopDocumentKop';
+import { CoopSignatureToggleBar, useCoopSignatureToggles, type CoopSignatureToggleItem } from '../shared/CoopSignatureToggleBar';
 import { useDocumentSigners } from '@/hooks/useDocumentSigners';
 import toast from 'react-hot-toast';
 import {
@@ -29,6 +30,11 @@ export const UnifiedReceiptPrintModal: React.FC<UnifiedReceiptPrintModalProps> =
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const signers = useDocumentSigners();
+  const signerToggles: CoopSignatureToggleItem[] = [
+    { slot: 'left', label: 'Anggota / Penyetor' },
+    { slot: 'right', label: 'Bendahara Koperasi' },
+  ];
+  const { visibility: sigVis, toggle: toggleSig } = useCoopSignatureToggles(signerToggles);
 
   if (!receiptData) return null;
 
@@ -84,6 +90,7 @@ export const UnifiedReceiptPrintModal: React.FC<UnifiedReceiptPrintModalProps> =
       onDownloadPdf={handleDownloadPdf}
       downloadPdfText={isExportingPdf ? 'Memproses PDF...' : 'Unduh PDF (A4)'}
       printButtonText="Cetak Dokumen"
+      subHeader={<CoopSignatureToggleBar items={signerToggles} visibility={sigVis} onToggle={toggleSig} />}
     >
       <div ref={sheetContainerRef} className="w-full flex flex-col items-center">
         <PrintDocumentSheet
@@ -221,6 +228,8 @@ export const UnifiedReceiptPrintModal: React.FC<UnifiedReceiptPrintModalProps> =
                 headerPrefix: isWithdrawal ? 'Dibayarkan oleh,' : 'Diterima oleh,',
                 topDate: signers.titimangsa,
               }}
+              showSignerLeft={sigVis.left}
+              showSignerRight={sigVis.right}
             />
           </div>
         </PrintDocumentSheet>

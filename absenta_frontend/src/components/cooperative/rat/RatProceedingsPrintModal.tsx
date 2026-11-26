@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axiosInstance';
 import toast from 'react-hot-toast';
 import { CoopDocumentKop } from '../shared/CoopDocumentKop';
+import { CoopSignatureToggleBar, useCoopSignatureToggles, type CoopSignatureToggleItem } from '../shared/CoopSignatureToggleBar';
 import { ResolutionTextRenderer } from './ResolutionTextRenderer';
 import { getAgendaMinuteRequirement, cleanAgendaTitle } from './ratAgendaClassifier';
 
@@ -27,6 +28,12 @@ export const RatProceedingsPrintModal: React.FC<RatProceedingsPrintModalProps> =
   meetingDate,
 }) => {
   const [copied, setCopied] = useState(false);
+  const signerToggles: CoopSignatureToggleItem[] = [
+    { slot: 'left', label: 'Ketua Presidium' },
+    { slot: 'center', label: 'Sekretaris / Notulis' },
+    { slot: 'right', label: 'Anggota Presidium' },
+  ];
+  const { visibility: sigVis, toggle: toggleSig } = useCoopSignatureToggles(signerToggles);
   const [presidium, setPresidium] = useState({
     chairperson: '',
     secretary: '',
@@ -141,6 +148,13 @@ export const RatProceedingsPrintModal: React.FC<RatProceedingsPrintModalProps> =
             </Button>
           </div>
         </div>
+
+        <CoopSignatureToggleBar
+          items={signerToggles}
+          visibility={sigVis}
+          onToggle={toggleSig}
+          className="rounded-xl border"
+        />
 
         {/* PRESIDIUM INTEGRATION BAR (HIDDEN ON PRINT) */}
         <div className="p-3.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/60 space-y-2.5 print:hidden">
@@ -326,6 +340,9 @@ export const RatProceedingsPrintModal: React.FC<RatProceedingsPrintModalProps> =
                 nip: 'Anggota Presidium',
               }}
               spacingHeightMm={16}
+              showSignerLeft={sigVis.left}
+              showSignerCenter={sigVis.center}
+              showSignerRight={sigVis.right}
             />
           </div>
         </div>

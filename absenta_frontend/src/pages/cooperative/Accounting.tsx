@@ -25,6 +25,7 @@ import type { CooperativeSettings } from '../../components/cooperative/loans/typ
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import { invalidateAccountingCaches } from '../../lib/coopQueryKeys';
+import { CoopSignatureToggleBar } from '../../components/cooperative/shared/CoopSignatureToggleBar';
 
 import { 
     JournalTable, 
@@ -92,6 +93,8 @@ const Accounting: React.FC<AccountingProps> = React.memo(({ hideLayout = false }
             }
         }
     }, [tabParam, navigate, isDashboardEmbedded]);
+
+    const [showPayrollSignature, setShowPayrollSignature] = useState(true);
 
     const activeTab: AccountingTabId = useMemo(() => {
         if (tabParam === 'income-statement' || tabParam === 'laba-rugi') return 'income-statement';
@@ -623,6 +626,11 @@ const Accounting: React.FC<AccountingProps> = React.memo(({ hideLayout = false }
 
                         {activeTab === 'payroll' && (
                             <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400">Memuat rekapitulasi gaji...</div>}>
+                                <CoopSignatureToggleBar
+                                    items={[{ slot: 'right', label: 'Ketua Koperasi (Cetak Potongan Gaji)' }]}
+                                    visibility={{ left: true, center: true, right: showPayrollSignature, bottom: true }}
+                                    onToggle={() => setShowPayrollSignature((prev) => !prev)}
+                                />
                                 <PayrollDeductionsSection
                                     selectedMonth={selectedMonth}
                                     setSelectedMonth={setSelectedMonth}
@@ -687,6 +695,7 @@ const Accounting: React.FC<AccountingProps> = React.memo(({ hideLayout = false }
                         savingCategories={savingCategories}
                         visibleColumns={visibleColumns}
                         showLoans={hasLoans && showLoans}
+                        showSignature={showPayrollSignature}
                     />,
                     document.body
                 )}

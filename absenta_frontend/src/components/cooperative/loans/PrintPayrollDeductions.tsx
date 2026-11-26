@@ -23,6 +23,7 @@ interface PrintPayrollDeductionsProps {
   savingCategories: { code: string; name: string }[];
   visibleColumns: Record<string, boolean>;
   showLoans: boolean;
+  showSignature?: boolean;
 }
 
 const indonesianMonths = [
@@ -38,6 +39,7 @@ export const PrintPayrollDeductions = React.memo<PrintPayrollDeductionsProps>(({
   savingCategories,
   visibleColumns,
   showLoans,
+  showSignature = true,
 }) => {
   const monthName = indonesianMonths[month - 1] || 'JANUARI';
   
@@ -179,19 +181,22 @@ export const PrintPayrollDeductions = React.memo<PrintPayrollDeductionsProps>(({
       </table>
 
       {/* Signature block terstandarisasi */}
-      <div className="pt-8 page-break-inside-avoid">
-        <UniversalDocumentSignatures
-          layout="single_kepsek"
-          titimangsaCity="Purwakarta"
-          titimangsaDate={`${monthName.charAt(0) + monthName.slice(1).toLowerCase()} ${year}`}
-          overrideSignerRight={{
-            roleTitle: 'Ketua Koperasi',
-            personName: coopSettings?.signatures?.ketua || '........................',
-            nip: undefined,
-          }}
-          spacingHeightMm={16}
-        />
-      </div>
+      {showSignature && (
+        <div className="pt-8 page-break-inside-avoid">
+          <UniversalDocumentSignatures
+            layout="single_kepsek"
+            titimangsaCity="Purwakarta"
+            titimangsaDate={`${monthName.charAt(0) + monthName.slice(1).toLowerCase()} ${year}`}
+            overrideSignerRight={{
+              roleTitle: 'Ketua Koperasi',
+              personName: coopSettings?.signatures?.ketua || '........................',
+              nip: undefined,
+            }}
+            showSignerRight={showSignature}
+            spacingHeightMm={16}
+          />
+        </div>
+      )}
     </div>
   );
 });

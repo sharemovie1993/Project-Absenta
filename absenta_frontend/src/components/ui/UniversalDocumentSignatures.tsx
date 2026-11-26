@@ -39,6 +39,10 @@ export interface UniversalDocumentSignaturesProps extends UseDocumentSignersPara
   overrideSignerRight?: Partial<SignerPerson> & { headerPrefix?: string; topDate?: string };
   overrideSignerCenter?: Partial<SignerPerson> & { headerPrefix?: string; topDate?: string };
   overrideSignerBottom?: Partial<SignerPerson> & { headerPrefix?: string; topDate?: string };
+  showSignerLeft?: boolean;
+  showSignerCenter?: boolean;
+  showSignerRight?: boolean;
+  showSignerBottom?: boolean;
 }
 
 /**
@@ -65,6 +69,10 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
   overrideSignerRight,
   overrideSignerCenter,
   overrideSignerBottom,
+  showSignerLeft = true,
+  showSignerCenter = true,
+  showSignerRight = true,
+  showSignerBottom = true,
   ...hookParams
 }) => {
   const signers = useDocumentSigners(hookParams);
@@ -162,6 +170,7 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
 
   // ── PRESET 1: Single Signer (Kepala Sekolah Kanan Bawah) ──
   if (layout === 'single_kepsek') {
+    if (!showSignerBottom && !showSignerRight) return null;
     const basePerson = signerRight || signerBottom || signers.kepsek;
     const person = { ...basePerson, ...(overrideSignerRight || overrideSignerBottom) };
     const date = (overrideSignerRight?.topDate !== undefined)
@@ -267,6 +276,7 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
 
   // ── PRESET 5: Dual Custom / Dual Column (Dua Pihak Fleksibel Bebas Role) ──
   if (layout === 'dual_custom' || (layout as string) === 'dual_column') {
+    if (!showSignerLeft && !showSignerRight) return null;
     const baseLeft = signerLeft || { roleTitle: 'Pihak Pertama,', personName: '................................', isAssigned: false };
     const baseRight = signerRight || { roleTitle: 'Pihak Kedua,', personName: '................................', isAssigned: false };
     const leftPerson = { ...baseLeft, ...overrideSignerLeft };
@@ -274,15 +284,21 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
     const rightDate = (overrideSignerRight?.topDate !== undefined)
       ? overrideSignerRight.topDate
       : (showTitimangsa ? signers.titimangsa : undefined);
+    const justifyClass =
+      showSignerLeft && showSignerRight
+        ? 'justify-between'
+        : showSignerRight
+        ? 'justify-end'
+        : 'justify-start';
     return (
-      <div className={cn(containerStyle, 'flex items-start justify-between pt-2')}>
-        {renderSignerBox(leftPerson, {
+      <div className={cn(containerStyle, 'flex items-start pt-2', justifyClass)}>
+        {showSignerLeft && renderSignerBox(leftPerson, {
           headerPrefix: overrideSignerLeft?.headerPrefix,
           align: 'left',
           widthClass: 'w-[75mm]',
         })}
 
-        {renderSignerBox(rightPerson, {
+        {showSignerRight && renderSignerBox(rightPerson, {
           headerPrefix: overrideSignerRight?.headerPrefix,
           topDate: rightDate,
           align: 'left',
@@ -339,6 +355,7 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
 
   // ── PRESET 7: Triangle 2-Tier Standar Dinas (Verifikator Kiri, Pembuat Kanan, Pengesah Tengah Bawah) ──
   if (layout === 'triangle_2tier') {
+    if (!showSignerLeft && !showSignerRight && !showSignerBottom) return null;
     const baseLeft = signerLeft || signers.wakaSarpras || signers.wakaKurikulum;
     const baseRight = signerRight || signers.kaprog;
     const baseBottom = signerBottom || signerCenter || signers.kepsek;
@@ -348,39 +365,51 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
     const rightDate = (overrideSignerRight?.topDate !== undefined)
       ? overrideSignerRight.topDate
       : (showTitimangsa ? signers.titimangsa : undefined);
+    const topRowJustify =
+      showSignerLeft && showSignerRight
+        ? 'justify-between'
+        : showSignerRight
+        ? 'justify-end'
+        : 'justify-start';
     return (
       <div className={cn(containerStyle, 'space-y-4 pt-2')}>
         {/* Baris 1: Verifikator (Waka) di Kiri & Pembuat (Kaprog/Staf) di Kanan */}
-        <div className="flex items-start justify-between w-full">
-          {renderSignerBox(leftPerson, {
-            headerPrefix: overrideSignerLeft?.headerPrefix || verifierLabel,
-            align: 'left',
-            widthClass: 'w-[75mm]',
-            overrideRoleTitle: unitRoleTitle,
-          })}
+        {(showSignerLeft || showSignerRight) && (
+          <div className={cn('flex items-start w-full', topRowJustify)}>
+            {showSignerLeft && renderSignerBox(leftPerson, {
+              headerPrefix: overrideSignerLeft?.headerPrefix || verifierLabel,
+              align: 'left',
+              widthClass: 'w-[75mm]',
+              overrideRoleTitle: unitRoleTitle,
+            })}
 
-          {renderSignerBox(rightPerson, {
-            headerPrefix: overrideSignerRight?.headerPrefix || makerLabel,
-            topDate: rightDate,
-            align: 'left',
-            widthClass: 'w-[75mm]',
-          })}
-        </div>
+            {showSignerRight && renderSignerBox(rightPerson, {
+              headerPrefix: overrideSignerRight?.headerPrefix || makerLabel,
+              topDate: rightDate,
+              align: 'left',
+              widthClass: 'w-[75mm]',
+            })}
+          </div>
+        )}
 
         {/* Baris 2: Mengetahui / Menyetujui Kepala Sekolah di Tengah Bawah */}
-        <div className="flex flex-col items-center justify-center text-center w-full pt-1">
-          {renderSignerBox(bottomPerson, {
-            headerPrefix: overrideSignerCenter?.headerPrefix || overrideSignerBottom?.headerPrefix || notesOrApprovalLabel,
-            align: 'center',
-            widthClass: 'w-[85mm]',
-          })}
-        </div>
+        {showSignerBottom && (
+          <div className="flex flex-col items-center justify-center text-center w-full pt-1">
+            {renderSignerBox(bottomPerson, {
+              headerPrefix: overrideSignerCenter?.headerPrefix || overrideSignerBottom?.headerPrefix || notesOrApprovalLabel,
+              align: 'center',
+              widthClass: 'w-[85mm]',
+            })}
+          </div>
+        )}
       </div>
     );
   }
 
   // ── PRESET 8: Tri-Party Row (DUDI, Kaprog, Kepsek Sejajar 3 Kolom) ──
   if (layout === 'tri_party_row') {
+    const visibleCount = [showSignerLeft, showSignerCenter, showSignerRight].filter(Boolean).length;
+    if (visibleCount === 0) return null;
     const baseLeft = signerLeft || signers.dudi;
     const baseCenter = signerCenter || signers.kaprog;
     const baseRight = signerRight || signers.kepsek;
@@ -390,18 +419,20 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
     const rightDate = (overrideSignerRight?.topDate !== undefined)
       ? overrideSignerRight.topDate
       : (showTitimangsa ? signers.titimangsa : undefined);
+    const gridColsClass =
+      visibleCount === 3 ? 'grid-cols-3' : visibleCount === 2 ? 'grid-cols-2' : 'grid-cols-1';
     return (
-      <div className={cn(containerStyle, 'grid grid-cols-3 gap-3 items-start pt-2')}>
-        {/* Kolom 1: Pembimbing DUDI / Industri */}
-        {renderSignerBox(leftPerson, {
+      <div className={cn(containerStyle, 'grid gap-3 items-start pt-2', gridColsClass)}>
+        {/* Kolom 1 */}
+        {showSignerLeft && renderSignerBox(leftPerson, {
           headerPrefix: overrideSignerLeft?.headerPrefix,
           topDate: overrideSignerLeft?.topDate,
           align: 'center',
           widthClass: 'w-full',
         })}
 
-        {/* Kolom 2: Kaprog / Penguji Internal Sekolah */}
-        {renderSignerBox(centerPerson, {
+        {/* Kolom 2 */}
+        {showSignerCenter && renderSignerBox(centerPerson, {
           headerPrefix: overrideSignerCenter?.headerPrefix,
           topDate: overrideSignerCenter?.topDate,
           align: 'center',
@@ -409,8 +440,8 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
           overrideRoleTitle: unitRoleTitle,
         })}
 
-        {/* Kolom 3: Titimangsa + Mengetahui Kepala Sekolah */}
-        {renderSignerBox(rightPerson, {
+        {/* Kolom 3 */}
+        {showSignerRight && renderSignerBox(rightPerson, {
           headerPrefix: overrideSignerRight?.headerPrefix || notesOrApprovalLabel,
           topDate: rightDate,
           align: 'center',
@@ -422,6 +453,8 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
 
   // ── PRESET 9: Tri-Party Koperasi (Ketua Koperasi, Peminjam/Anggota, Pengawas/Kepsek) ──
   if (layout === 'tri_party_coop') {
+    const visibleCount = [showSignerLeft, showSignerCenter, showSignerRight].filter(Boolean).length;
+    if (visibleCount === 0) return null;
     const baseLeft = signerLeft || signers.ketuaKoperasi;
     const baseCenter = signerCenter || { roleTitle: 'Peminjam (Anggota)', personName: '................................', isAssigned: false };
     const baseRight = signerRight || signers.kepsek;
@@ -431,10 +464,12 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
     const rightDate = (overrideSignerRight?.topDate !== undefined)
       ? overrideSignerRight.topDate
       : (showTitimangsa ? signers.titimangsa : undefined);
+    const gridColsClass =
+      visibleCount === 3 ? 'grid-cols-3' : visibleCount === 2 ? 'grid-cols-2' : 'grid-cols-1';
     return (
-      <div className={cn(containerStyle, 'grid grid-cols-3 gap-3 items-start pt-2')}>
+      <div className={cn(containerStyle, 'grid gap-3 items-start pt-2', gridColsClass)}>
         {/* Kolom 1: Pihak Pertama (Ketua Koperasi / Pengurus) */}
-        {renderSignerBox(leftPerson, {
+        {showSignerLeft && renderSignerBox(leftPerson, {
           headerPrefix: overrideSignerLeft?.headerPrefix || 'PIHAK PERTAMA,',
           topDate: overrideSignerLeft?.topDate,
           align: 'center',
@@ -442,7 +477,7 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
         })}
 
         {/* Kolom 2: Pihak Kedua (Peminjam / Anggota Koperasi) */}
-        {renderSignerBox(centerPerson, {
+        {showSignerCenter && renderSignerBox(centerPerson, {
           headerPrefix: overrideSignerCenter?.headerPrefix || 'PIHAK KEDUA,',
           topDate: overrideSignerCenter?.topDate,
           align: 'center',
@@ -450,7 +485,7 @@ export const UniversalDocumentSignatures: React.FC<UniversalDocumentSignaturesPr
         })}
 
         {/* Kolom 3: Mengetahui (Kepala Sekolah / Pembina Koperasi) */}
-        {renderSignerBox(rightPerson, {
+        {showSignerRight && renderSignerBox(rightPerson, {
           headerPrefix: overrideSignerRight?.headerPrefix || notesOrApprovalLabel || 'MENGETAHUI,',
           topDate: rightDate,
           align: 'center',

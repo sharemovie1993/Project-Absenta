@@ -6,6 +6,7 @@ import {
   UniversalDocumentSignatures,
 } from '@/components/ui';
 import { CoopDocumentKop } from '../shared/CoopDocumentKop';
+import { CoopSignatureToggleBar, useCoopSignatureToggles, type CoopSignatureToggleItem } from '../shared/CoopSignatureToggleBar';
 import { useDocumentSigners } from '@/hooks/useDocumentSigners';
 import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
@@ -51,6 +52,12 @@ export const SavingsPassbookPrintModal: React.FC<SavingsPassbookPrintModalProps>
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const signers = useDocumentSigners();
+  const signerToggles: CoopSignatureToggleItem[] = [
+    { slot: 'left', label: 'Ketua Koperasi' },
+    { slot: 'right', label: 'Bendahara Koperasi' },
+    { slot: 'bottom', label: 'Kepala Sekolah', isKepsek: true },
+  ];
+  const { visibility: sigVis, toggle: toggleSig } = useCoopSignatureToggles(signerToggles);
   const todayLabel = formatIndonesianDate(new Date());
 
   const { data: savingCategories = [] } = useQuery({
@@ -141,6 +148,7 @@ export const SavingsPassbookPrintModal: React.FC<SavingsPassbookPrintModalProps>
       downloadPdfText={isExportingPdf ? 'Memproses PDF...' : 'Unduh PDF (A4)'}
       printButtonText="Cetak Dokumen"
       size="5xl"
+      subHeader={<CoopSignatureToggleBar items={signerToggles} visibility={sigVis} onToggle={toggleSig} />}
     >
       <div ref={sheetContainerRef} className="space-y-6 flex flex-col items-center">
         <PrintDocumentSheet orientation="portrait" className="flex flex-col justify-between text-slate-900">
@@ -294,6 +302,9 @@ export const SavingsPassbookPrintModal: React.FC<SavingsPassbookPrintModalProps>
               verifierLabel="Mengetahui,"
               makerLabel="Disiapkan Oleh,"
               notesOrApprovalLabel="Menyetujui / Pembina Koperasi,"
+              showSignerLeft={sigVis.left}
+              showSignerRight={sigVis.right}
+              showSignerBottom={sigVis.bottom}
             />
           </div>
         </PrintDocumentSheet>

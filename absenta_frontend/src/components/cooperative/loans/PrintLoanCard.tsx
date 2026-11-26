@@ -5,6 +5,7 @@ import {
   UniversalDocumentSignatures,
 } from '@/components/ui';
 import { CoopDocumentKop } from '../shared/CoopDocumentKop';
+import { CoopSignatureToggleBar, useCoopSignatureToggles, type CoopSignatureToggleItem } from '../shared/CoopSignatureToggleBar';
 import { useDocumentSigners } from '@/hooks/useDocumentSigners';
 import toast from 'react-hot-toast';
 import { exportPrintSheetsToPdf } from '../../../utils/print/exportPrintSheetsToPdf';
@@ -27,6 +28,12 @@ export const PrintLoanCard: React.FC<PrintLoanCardProps> = ({
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const signers = useDocumentSigners();
+  const signerToggles: CoopSignatureToggleItem[] = [
+    { slot: 'left', label: 'Ketua Koperasi' },
+    { slot: 'right', label: 'Bendahara Koperasi' },
+    { slot: 'bottom', label: 'Kepala Sekolah', isKepsek: true },
+  ];
+  const { visibility: sigVis, toggle: toggleSig } = useCoopSignatureToggles(signerToggles);
 
   const cardNo = `KKP/${loan.id.substring(0, 8).toUpperCase()}/${new Date(loan.createdAt).getFullYear()}`;
 
@@ -67,6 +74,7 @@ export const PrintLoanCard: React.FC<PrintLoanCardProps> = ({
       onDownloadPdf={handleDownloadPdf}
       downloadPdfText={isExportingPdf ? 'Memproses PDF...' : 'Unduh PDF (A4)'}
       printButtonText="Cetak Dokumen"
+      subHeader={<CoopSignatureToggleBar items={signerToggles} visibility={sigVis} onToggle={toggleSig} />}
     >
       <div ref={sheetContainerRef} className="w-full flex flex-col items-center">
         <PrintDocumentSheet
@@ -198,6 +206,9 @@ export const PrintLoanCard: React.FC<PrintLoanCardProps> = ({
               verifierLabel="Mengetahui,"
               makerLabel="Disiapkan Oleh,"
               notesOrApprovalLabel="Menyetujui / Pembina Koperasi,"
+              showSignerLeft={sigVis.left}
+              showSignerRight={sigVis.right}
+              showSignerBottom={sigVis.bottom}
             />
           </div>
         </PrintDocumentSheet>

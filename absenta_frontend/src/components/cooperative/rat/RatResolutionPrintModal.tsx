@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import type { CoopResolutionItem } from '../../../pages/cooperative/RatMeetingPage';
 import { ResolutionTextRenderer } from './ResolutionTextRenderer';
 import { CoopDocumentKop } from '../shared/CoopDocumentKop';
+import { CoopSignatureToggleBar, useCoopSignatureToggles, type CoopSignatureToggleItem } from '../shared/CoopSignatureToggleBar';
 
 interface RatResolutionPrintModalProps {
   isOpen: boolean;
@@ -27,6 +28,12 @@ export const RatResolutionPrintModal: React.FC<RatResolutionPrintModalProps> = R
   meetingDate,
 }) => {
   const [copied, setCopied] = React.useState(false);
+  const signerToggles: CoopSignatureToggleItem[] = [
+    { slot: 'left', label: 'Ketua Sidang' },
+    { slot: 'center', label: 'Sekretaris Sidang' },
+    { slot: 'right', label: 'Anggota Presidium' },
+  ];
+  const { visibility: sigVis, toggle: toggleSig } = useCoopSignatureToggles(signerToggles);
   const [presidium, setPresidium] = React.useState({
     chairperson: '',
     secretary: '',
@@ -147,6 +154,13 @@ ${resolution.summary}
           </div>
         </div>
 
+        <CoopSignatureToggleBar
+          items={signerToggles}
+          visibility={sigVis}
+          onToggle={toggleSig}
+          className="rounded-xl border"
+        />
+
         {/* PRESIDIUM INTEGRATION BAR (HIDDEN ON PRINT) */}
         <div className="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 space-y-2.5 print:hidden">
           <div className="flex items-center justify-between">
@@ -251,6 +265,9 @@ ${resolution.summary}
                 personName: presidium.member.trim() ? presidium.member.trim() : '( .................................... )',
               }}
               spacingHeightMm={16}
+              showSignerLeft={sigVis.left}
+              showSignerCenter={sigVis.center}
+              showSignerRight={sigVis.right}
             />
           </div>
         </div>
