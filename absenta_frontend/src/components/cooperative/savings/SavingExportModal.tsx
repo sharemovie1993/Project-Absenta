@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FileSpreadsheet, Printer, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
+import api from '../../../lib/axiosInstance';
+import { fetchCoopSettings } from '../../../utils/cooperative/coopDocUtils';
+import type { FlatTransaction } from './savingsExportUtils';
+import { SavingMutasiPrintModal } from './SavingMutasiPrintModal';
 
 interface SavingExportModalProps {
   isOpen: boolean;
@@ -24,6 +29,41 @@ export const SavingExportModal: React.FC<SavingExportModalProps> = React.memo(({
   exportLoading,
   onExport
 }) => {
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [previewTransactions, setPreviewTransactions] = useState<FlatTransaction[]>([]);
+  const [previewSignatures, setPreviewSignatures] = useState<{
+    ketua?: string;
+    bendahara?: string;
+    kepsek?: string;
+  }>({});
+  const [previewLogoUrl, setPreviewLogoUrl] = useState<string | undefined>(undefined);
+
+  const handleOpenUniversalPrint = async () => {
+    try {
+      setLoadingPreview(true);
+      const [txRes, coopSettings] = await Promise.all([
+        api.get('/cooperative/savings/transactions', {
+          params: { startDate: exportStartDate, endDate: exportEndDate },
+        }),
+        fetchCoopSettings(),
+      ]);
+      const txData: FlatTransaction[] = txRes.data || [];
+      if (txData.length === 0) {
+        toast.error('Tidak ada transaksi pada periode yang dipilih.');
+        return;
+      }
+      setPreviewTransactions(txData);
+      setPreviewSignatures(coopSettings.signatures || {});
+      setPreviewLogoUrl(coopSettings.cooperative_logo_url);
+      setIsPrintModalOpen(true);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Gagal memuat rekap mutasi kas');
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -111,14 +151,24 @@ export const SavingExportModal: React.FC<SavingExportModalProps> = React.memo(({
 
           <Button
             type="button"
-            isLoading={exportLoading}
-            onClick={() => onExport('PDF')}
+            isLoading={exportLoading || loadingPreview}
+            onClick={handleOpenUniversalPrint}
             className="w-full sm:w-auto py-2.5 sm:py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/10"
           >
             <Printer size={14} /> Cetak PDF
           </Button>
         </div>
       </div>
+
+      <SavingMutasiPrintModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        transactions={previewTransactions}
+        startDate={exportStartDate}
+        endDate={exportEndDate}
+        signatures={previewSignatures}
+        logoUrl={previewLogoUrl}
+      />
     </div>
   );
 });
