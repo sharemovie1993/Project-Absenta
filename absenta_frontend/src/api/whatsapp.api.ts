@@ -321,4 +321,65 @@ export const saveKbmNotificationConfig = async (data: Partial<KbmNotificationCon
   };
 };
 
+// ── Broadcast Pengumuman Dadakan ke Guru Mengajar Jam KBM ke-n ───────────────
+
+export interface KbmTeachingTeacherItem {
+  guru_id: string;
+  nama_guru: string;
+  nip: string | null;
+  no_hp: string | null;
+  normalizedPhone: string;
+  hasValidPhone: boolean;
+  slots: number[];
+  jamRangeLabel: string;
+  kelasList: string[];
+  mapelList: string[];
+  hasInval: boolean;
+}
+
+export interface KbmTeachersPreviewResponse {
+  tanggal: string;
+  tanggalLabel: string;
+  hari: string;
+  slots: number[];
+  schoolName: string;
+  totalTeachers: number;
+  validPhoneCount: number;
+  missingPhoneCount: number;
+  teachers: KbmTeachingTeacherItem[];
+}
+
+export const getKbmTeachersPreview = async (params: {
+  tanggal?: string;
+  slots: number[];
+}): Promise<KbmTeachersPreviewResponse> => {
+  const response = await axiosInstance.get('/whatsapp/kbm-teachers-preview', {
+    params: {
+      tanggal: params.tanggal,
+      slots: params.slots.join(','),
+    },
+  });
+  return response.data?.data as KbmTeachersPreviewResponse;
+};
+
+export const broadcastKbmTeachers = async (payload: {
+  tanggal?: string;
+  slots: number[];
+  message: string;
+  guru_ids?: string[];
+}) => {
+  const response = await axiosInstance.post('/whatsapp/kbm-teachers-broadcast', payload);
+  return response.data?.data as {
+    tanggal: string;
+    tanggalLabel: string;
+    slots: number[];
+    totalTargeted: number;
+    queuedCount: number;
+    skippedCount: number;
+    skippedTeachers: Array<{ guru_id: string; nama_guru: string; reason: string }>;
+    estimatedSeconds: number;
+  };
+};
+
+
 

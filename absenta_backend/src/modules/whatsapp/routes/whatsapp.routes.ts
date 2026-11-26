@@ -176,5 +176,17 @@ export async function whatsappRoutes(fastify: any) {
     preHandler: [requireStaffDocumentSender, determineDataScope()],
     handler: whatsappController.sendMessage.bind(whatsappController),
   });
+
+  // GET /whatsapp/kbm-teachers-preview - Daftar guru unik yang mengajar di jam KBM ke-n hari ini
+  fastify.get('/kbm-teachers-preview', {
+    preHandler: [requireStaffDocumentSender, determineDataScope()],
+    handler: whatsappController.getKbmTeachersPreview.bind(whatsappController),
+  });
+
+  // POST /whatsapp/kbm-teachers-broadcast - Broadcast WA dadakan ke guru mengajar di jam KBM ke-n
+  fastify.post('/kbm-teachers-broadcast', {
+    preHandler: [requireStaffDocumentSender, determineDataScope()],
+    handler: whatsappController.broadcastKbmTeachers.bind(whatsappController),
+  });
 }
 

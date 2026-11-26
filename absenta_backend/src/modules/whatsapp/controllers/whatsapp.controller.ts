@@ -1,5 +1,6 @@
 import { WhatsappService } from '../services/whatsapp.service';
 import { waGatewayService } from '../../../services/wa-gateway.service';
+import { waKbmBroadcastService, parseKbmSlots } from '../services/wa-kbm-broadcast.service';
 
 const whatsappService = new WhatsappService();
 
@@ -464,6 +465,78 @@ export class WhatsappController {
       return reply.status(400).send({
         success: false,
         message: error.message || 'Gagal memuat direktori nomor WA penerima.',
+      });
+    }
+  }
+
+  /**
+   * GET /whatsapp/kbm-teachers-preview
+   * Mengambil daftar guru unik yang mengajar pada tanggal & rentang jam KBM ke-n tertentu.
+   */
+  async getKbmTeachersPreview(request: any, reply: any) {
+    const tenantId = request.dataScope?.tenantId ?? request.user?.tenant_id ?? request.user?.tenantId;
+    if (!tenantId) {
+      return reply.status(400).send({ success: false, message: 'Tenant konteks tidak ditemukan.' });
+    }
+
+    const { tanggal, slots, slot_start, slot_end } = (request.query || {}) as {
+      tanggal?: string;
+      slots?: string;
+      slot_start?: string;
+      slot_end?: string;
+    };
+
+    try {
+      const parsedSlots = parseKbmSlots({ slots, slot_start, slot_end });
+      const data = await waKbmBroadcastService.getTeachingTeachers(tenantId, {
+        tanggal,
+        slots: parsedSlots,
+      });
+      return reply.send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(400).send({
+        success: false,
+        message: error.message || 'Gagal memuat daftar guru mengajar pada jam KBM tersebut.',
+      });
+    }
+  }
+
+  /**
+   * POST /whatsapp/kbm-teachers-broadcast
+   * Mengirim pengumuman dadakan via WA Gateway ke guru yang mengajar pada jam KBM ke-n.
+   */
+  async broadcastKbmTeachers(request: any, reply: any) {
+    const tenantId = request.dataScope?.tenantId ?? request.user?.tenant_id ?? request.user?.tenantId;
+    if (!tenantId) {
+      return reply.status(400).send({ success: false, message: 'Tenant konteks tidak ditemukan.' });
+    }
+
+    const { tanggal, slots, slot_start, slot_end, message, guru_ids } = (request.body || {}) as {
+      tanggal?: string;
+      slots?: number[] | string;
+      slot_start?: number | string;
+      slot_end?: number | string;
+      message?: string;
+      guru_ids?: string[];
+    };
+
+    try {
+      const parsedSlots = parseKbmSlots({ slots, slot_start, slot_end });
+      const data = await waKbmBroadcastService.broadcastToTeachingTeachers(tenantId, {
+        tanggal,
+        slots: parsedSlots,
+        message: message || '',
+        guru_ids,
+      });
+      return reply.send({
+        success: true,
+        message: `${data.queuedCount} pesan WA guru mengajar berhasil masuk antrian pengiriman.`,
+        data,
+      });
+    } catch (error: any) {
+      return reply.status(400).send({
+        success: false,
+        message: error.message || 'Gagal mengirim pengumuman WA ke guru mengajar.',
       });
     }
   }

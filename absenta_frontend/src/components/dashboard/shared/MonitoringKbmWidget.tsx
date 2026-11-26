@@ -25,6 +25,7 @@ import { KbmFilters } from './kbm/KbmFilters';
 import { KbmSessionTable } from './kbm/KbmSessionTable';
 import { KbmSessionCard } from './kbm/KbmSessionCard';
 import { KbmDetailModal } from './kbm/KbmDetailModal';
+import { KbmTeacherWaBroadcastModal } from './kbm/KbmTeacherWaBroadcastModal';
 
 export type SesiCategoryType = 'KBM' | 'DUHA' | 'KETARUNAAN' | 'UPACARA' | 'APEL' | 'NON_KBM' | 'ALL';
 
@@ -159,6 +160,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
   const [expandedSesiId, setExpandedSesiId] = useState<string | null>(null);
   const [journalModalOpen, setJournalModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isWaBroadcastModalOpen, setIsWaBroadcastModalOpen] = useState(false);
 
   // Status Modal State (Inval / Izin / Sakit)
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -675,17 +677,28 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
                 Live
               </span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-              <HeartPulse size={14} className={cn(
-                healthScore > 80 ? "text-emerald-500 animate-pulse" :
-                healthScore > 50 ? "text-amber-500" : "text-rose-500 animate-bounce"
-              )} />
-              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                Kesehatan KBM: <strong className={cn(
-                  healthScore > 80 ? "text-emerald-600 dark:text-emerald-400" :
-                  healthScore > 50 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"
-                )}>{healthScore}%</strong>
-              </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsWaBroadcastModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
+                title="Kirim pengumuman dadakan via WA Gateway ke guru yang mengajar pada jam KBM ke-n"
+              >
+                <MessageSquare size={13} />
+                <span>Pengumuman WA Guru</span>
+              </button>
+              <div className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                <HeartPulse size={14} className={cn(
+                  healthScore > 80 ? "text-emerald-500 animate-pulse" :
+                  healthScore > 50 ? "text-amber-500" : "text-rose-500 animate-bounce"
+                )} />
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                  Kesehatan KBM: <strong className={cn(
+                    healthScore > 80 ? "text-emerald-600 dark:text-emerald-400" :
+                    healthScore > 50 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"
+                  )}>{healthScore}%</strong>
+                </span>
+              </div>
             </div>
           </div>
 
@@ -873,6 +886,15 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
             </div>
 
             <div className="flex items-center gap-3 self-end md:self-auto flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsWaBroadcastModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                title="Kirim pengumuman dadakan via WA Gateway ke guru yang mengajar pada jam KBM ke-n"
+              >
+                <MessageSquare size={13} />
+                <span>Pengumuman WA Guru</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setIsPrintModalOpen(true)}
@@ -1157,6 +1179,13 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({
         initialDate={targetDate}
         tahunPelajaranId={tahunPelajaranId}
         semesterId={semesterId}
+      />
+
+      {/* Modal Pengumuman Dadakan WA Guru Mengajar Jam KBM ke-n */}
+      <KbmTeacherWaBroadcastModal
+        isOpen={isWaBroadcastModalOpen}
+        onClose={() => setIsWaBroadcastModalOpen(false)}
+        initialDate={targetDate}
       />
     </div>
   );
