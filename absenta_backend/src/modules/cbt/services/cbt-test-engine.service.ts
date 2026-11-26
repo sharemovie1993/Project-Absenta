@@ -697,49 +697,90 @@ export class CbtTestEngineService {
     }
 
     const redis = getRedisConnection();
-    let cachedJadwalId: string | null = null;
-    if (redis && cleanToken !== 'TOKENLESS') {
-      cachedJadwalId = await redis.get(`cbt:${tenantId}:token:${cleanToken}`).catch(() => null);
-    }
+    const jadwalSelectWithBank = {
+      BankSoal: {
+        select: {
+          id: true,
+          mapel_id: true,
+          judul: true,
+          jumlah_soal: true,
+          alokasi_menit: true,
+          Mapel: { select: { id: true, nama_mapel: true } },
+          Guru: { select: { id: true, nama_guru: true } },
+        },
+      },
+    };
 
     // 2. Cari jadwal berdasarkan jadwalId (jika 1-klik remedial) atau token ujian
-    let jadwal = null;
+    //    PENTING: Pada mode Token Bersama (shared token), 1 token dipakai oleh banyak kelas/ruang berbeda.
+    //    Maka pencarian WAJIB memprioritaskan jadwal yang menargetkan siswa.kelas_id terlebih dahulu!
+    let jadwal: any = null;
     if (jadwalId) {
       jadwal = await prisma.cbtJadwalUjian.findFirst({
         where: { id: jadwalId, tenant_id: tenantId },
-        include: {
-          BankSoal: {
-            select: {
-              id: true,
-              mapel_id: true,
-              judul: true,
-              jumlah_soal: true,
-              alokasi_menit: true,
-              Mapel: { select: { id: true, nama_mapel: true } },
-              Guru: { select: { id: true, nama_guru: true } },
-            },
-          },
-        },
+        include: jadwalSelectWithBank,
       });
     } else {
-      jadwal = await prisma.cbtJadwalUjian.findFirst({
-        where: cachedJadwalId
-          ? { id: cachedJadwalId, tenant_id: tenantId }
-          : { tenant_id: tenantId, token_ujian: cleanToken },
-        include: {
-          BankSoal: {
-            select: {
-              id: true,
-              mapel_id: true,
-              judul: true,
-              jumlah_soal: true,
-              alokasi_menit: true,
-              Mapel: { select: { id: true, nama_mapel: true } },
-              Guru: { select: { id: true, nama_guru: true } },
-            },
+      const classTokenKey =
+        siswa.kelas_id && cleanToken !== 'TOKENLESS'
+          ? `cbt:${tenantId}:token:${cleanToken}:kelas:${siswa.kelas_id}`
+          : null;
+
+      let classCachedId: string | null = null;
+      if (redis && classTokenKey) {
+        classCachedId = await redis.get(classTokenKey).catch(() => null);
+      }
+
+      if (classCachedId) {
+        jadwal = await prisma.cbtJadwalUjian.findFirst({
+          where: { id: classCachedId, tenant_id: tenantId },
+          include: jadwalSelectWithBank,
+        });
+      }
+
+      if (!jadwal && siswa.kelas_id) {
+        // Prioritaskan sesi ACTIVE untuk kelas siswa terlebih dahulu (penting untuk Token Bersama antar hari/sesi)
+        jadwal = await prisma.cbtJadwalUjian.findFirst({
+          where: {
+            tenant_id: tenantId,
+            token_ujian: cleanToken,
+            status: 'ACTIVE',
+            target_kelas_ids: { array_contains: [siswa.kelas_id] },
           },
-        },
-      });
+          orderBy: { tanggal_mulai: 'desc' },
+          include: jadwalSelectWithBank,
+        });
+
+        if (!jadwal) {
+          jadwal = await prisma.cbtJadwalUjian.findFirst({
+            where: {
+              tenant_id: tenantId,
+              token_ujian: cleanToken,
+              target_kelas_ids: { array_contains: [siswa.kelas_id] },
+            },
+            orderBy: { tanggal_mulai: 'desc' },
+            include: jadwalSelectWithBank,
+          });
+        }
+
+        if (jadwal && jadwal.status === 'ACTIVE' && redis && classTokenKey) {
+          await redis.set(classTokenKey, jadwal.id, 'EX', 300).catch(() => null);
+        }
+      }
+
+      // Fallback hanya jika token tidak ditemukan untuk kelas siswa (untuk diagnosis WRONG_CLASS / DRAFT / dll)
+      if (!jadwal) {
+        let cachedJadwalId: string | null = null;
+        if (redis && cleanToken !== 'TOKENLESS') {
+          cachedJadwalId = await redis.get(`cbt:${tenantId}:token:${cleanToken}`).catch(() => null);
+        }
+        jadwal = await prisma.cbtJadwalUjian.findFirst({
+          where: cachedJadwalId
+            ? { id: cachedJadwalId, tenant_id: tenantId }
+            : { tenant_id: tenantId, token_ujian: cleanToken },
+          include: jadwalSelectWithBank,
+        });
+      }
     }
 
     // ── DIAGNOSIS 1: TOKEN TIDAK DITEMUKAN DI SISTEM ──
