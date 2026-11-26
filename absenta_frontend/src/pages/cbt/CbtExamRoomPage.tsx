@@ -261,13 +261,15 @@ export default function CbtExamRoomPage() {
     };
   }, []);
 
-  // Remedial 1-Click Access for whitelisted students
+  // Remedial 1-Click Access for whitelisted students (jitter 45-60s agar anti-stampede)
+  const tokenGatePollingMs = useMemo(() => 45000 + Math.floor(Math.random() * 15000), []);
   const { data: myExams = [] } = useQuery({
     queryKey: ['cbt-my-exams-remedial'],
     queryFn: () => cbtApi.getMyExams(),
     enabled: step === 'TOKEN_GATE',
-    staleTime: 10000,
-    refetchInterval: 25000,
+    staleTime: 30000,
+    refetchInterval: tokenGatePollingMs,
+    refetchOnWindowFocus: false,
   });
 
   const activeRemedial = useMemo(() => {
