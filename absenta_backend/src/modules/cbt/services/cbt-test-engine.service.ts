@@ -856,6 +856,28 @@ export class CbtTestEngineService {
     const ruangName = (jadwal.setting_keamanan as any)?.ruang_ujian || 'Ruang CBT';
 
     const isRemedial = Boolean((jadwal.setting_keamanan as any)?.is_remedial);
+    if (jadwalId) {
+      const linkedEventId = (jadwal.setting_keamanan as any)?.event_id;
+      const linkedEvent = linkedEventId
+        ? await prisma.cbtEvent.findFirst({
+            where: { tenant_id: tenantId, id: String(linkedEventId) },
+            select: { tokenless: true },
+          })
+        : null;
+      const isTokenless =
+        (isRemedial && (jadwal.setting_keamanan as any)?.tokenless !== false) ||
+        Boolean(linkedEvent?.tokenless) ||
+        (jadwal.setting_keamanan as any)?.tokenless === true;
+
+      if (!isTokenless && jadwal.token_ujian !== cleanToken) {
+        const err: any = new Error(
+          'Sesi ujian ini memerlukan token resmi dari pengawas. Silakan masukkan 6 karakter token ujian.'
+        );
+        err.statusCode = 400;
+        err.code = 'TOKEN_REQUIRED';
+        throw err;
+      }
+    }
 
     // ── DIAGNOSIS 2: SESI MASIH DRAFT (BELUM DIAKTIFKAN OLEH PENGAWAS) ──
     if (!isRemedial && jadwal.status === 'DRAFT') {

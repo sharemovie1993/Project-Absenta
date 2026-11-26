@@ -228,17 +228,20 @@ export default function CbtExamRoomPage() {
         // ── SKENARIO 2: MASUK DARI DASHBOARD SISWA (URL QUERY PARAMS) ──
         if (urlJadwalId) {
           const tokenToVerify = urlToken ? urlToken.trim().toUpperCase() : 'TOKENLESS';
-          setTokenInput(tokenToVerify);
           try {
             setLoadingVerify(true);
             const res = await cbtApi.verifyToken(tokenToVerify, urlJadwalId);
             if (isMounted) {
+              setTokenInput(tokenToVerify);
               setExamOverview(res);
               setJadwalId(res.jadwal_id);
               setStep('CONFIRMATION');
               return;
             }
           } catch (err: any) {
+            if (isMounted && !urlToken) {
+              setTokenInput('');
+            }
             console.warn('[CBT Auto verify with urlJadwalId failed, fallback to TOKEN_GATE]', err?.message);
           } finally {
             if (isMounted) setLoadingVerify(false);
