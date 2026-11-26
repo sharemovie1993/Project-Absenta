@@ -9,6 +9,15 @@ import {
     updateSavingCategorySchema
 } from '../services/cooperative-validation.schema';
 
+const MANAGE_SAVING_CATEGORY_CAPS = [
+    'cooperative.savings.types.manage',
+    'cooperative.members.manage',
+    'cooperative.settings.manage',
+    'cooperative.savings.manage',
+    'cooperative.accounting.manage',
+    'cooperative.settings.view',
+];
+
 export async function savingCategoryRoutes(fastify: any) {
     // GET /cooperative/saving-categories — list semua kategori aktif (anggota & pengurus)
     fastify.get('/saving-categories', {
@@ -20,7 +29,7 @@ export async function savingCategoryRoutes(fastify: any) {
 
     // GET /cooperative/saving-categories/all — termasuk nonaktif (pengurus saja)
     fastify.get('/saving-categories/all', {
-        preHandler: requireCapability(['cooperative.savings.types.manage', 'cooperative.settings.view']),
+        preHandler: requireCapability(MANAGE_SAVING_CATEGORY_CAPS),
     }, async (req: any, reply: any) => {
         const data = await SavingCategoryService.getAllCategories(req.tenantId);
         return reply.send({ success: true, data });
@@ -28,7 +37,7 @@ export async function savingCategoryRoutes(fastify: any) {
 
     // POST /cooperative/saving-categories — tambah kategori baru
     fastify.post('/saving-categories', {
-        preHandler: requireCapability('cooperative.savings.types.manage'),
+        preHandler: requireCapability(MANAGE_SAVING_CATEGORY_CAPS),
     }, async (req: any, reply: any) => {
         try {
             const parsed = createSavingCategorySchema.parse(req.body);
@@ -49,7 +58,7 @@ export async function savingCategoryRoutes(fastify: any) {
 
     // PUT /cooperative/saving-categories/:id — update kategori
     fastify.put('/saving-categories/:id', {
-        preHandler: requireCapability('cooperative.savings.types.manage'),
+        preHandler: requireCapability(MANAGE_SAVING_CATEGORY_CAPS),
     }, async (req: any, reply: any) => {
         try {
             const parsed = updateSavingCategorySchema.parse(req.body);
@@ -70,7 +79,7 @@ export async function savingCategoryRoutes(fastify: any) {
 
     // PATCH /cooperative/saving-categories/:id/toggle — aktif/nonaktif
     fastify.patch('/saving-categories/:id/toggle', {
-        preHandler: requireCapability('cooperative.savings.types.manage'),
+        preHandler: requireCapability(MANAGE_SAVING_CATEGORY_CAPS),
     }, async (req: any, reply: any) => {
         try {
             const data = await SavingCategoryService.toggleActive(req.params.id, req.tenantId);
@@ -83,7 +92,7 @@ export async function savingCategoryRoutes(fastify: any) {
 
     // DELETE /cooperative/saving-categories/:id — hapus kategori
     fastify.delete('/saving-categories/:id', {
-        preHandler: requireCapability('cooperative.savings.types.manage'),
+        preHandler: requireCapability(MANAGE_SAVING_CATEGORY_CAPS),
     }, async (req: any, reply: any) => {
         try {
             const data = await SavingCategoryService.deleteCategory(req.params.id, req.tenantId);

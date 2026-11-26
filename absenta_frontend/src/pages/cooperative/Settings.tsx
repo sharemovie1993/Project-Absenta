@@ -189,9 +189,9 @@ const Settings: React.FC<SettingsProps> = React.memo(({ hideLayout = false }) =>
         toast.success('Status kategori simpanan diperbarui');
         fetchCategories();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error toggling status category:', err);
-      toast.error('Gagal memperbarui status');
+      toast.error(err?.response?.data?.message || 'Gagal memperbarui status');
     }
   }, [fetchCategories]);
 
